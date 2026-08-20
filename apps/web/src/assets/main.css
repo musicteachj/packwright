@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+/**
+ * Design tokens land here in phase 2, before any screen is built — graphite
+ * chrome, the ANSI Z535.1 severity scale, the IBM Plex type scale, and the 4px
+ * rhythm. Deliberately empty for now rather than filled with placeholders that
+ * would need unpicking later.
+ *
+ * @theme {
+ *   --color-chrome-*   warm-neutral graphite, ink rather than blue-black
+ *   --color-danger     ANSI Z535.1 safety red      — blocking
+ *   --color-warning    ANSI Z535.1 safety orange   — violation
+ *   --color-caution    ANSI Z535.1 safety yellow   — advisory
+ *   --color-notice     ANSI Z535.1 safety blue     — guidance
+ *   --color-pass       ANSI Z535.1 safety green    — passed
+ * }
+ */

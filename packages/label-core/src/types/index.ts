@@ -1,0 +1,107 @@
+/**
+ * Core contracts shared by every part of the label engine.
+ *
+ * Units are never branded types — they are encoded in the field name instead
+ * (`widthMm`, `heightIn`). Branding would be more rigorous but adds a
+ * constructor call at every literal, and the naming convention is what the
+ * packaging and prepress world already uses.
+ */
+
+// --- Symbologies -------------------------------------------------------------
+
+/**
+ * Every symbology this application can render. Lives here rather than beside
+ * either consumer because both geometry (quiet zones) and symbology (input
+ * constraints) key off it, and two drifting copies would be worse than one
+ * shared import.
+ */
+export type SymbologyId =
+  | 'UPC-A'
+  | 'UPC-E'
+  | 'EAN-13'
+  | 'EAN-8'
+  | 'ITF-14'
+  | 'GS1-128'
+  | 'CODE128'
+  | 'CODE39'
+  | 'MSI'
+  | 'PHARMACODE'
+
+// --- Compliance findings -----------------------------------------------------
+
+/**
+ * Severity levels map onto ANSI Z535.1, the US safety colour standard — the same
+ * scale printed on the labels this app generates. See the design notes: DANGER
+ * red, WARNING orange, CAUTION yellow, NOTICE blue, green for safety
+ * instructions. Colour lives in the web theme; the scale itself is domain.
+ */
+export type Severity = 'blocking' | 'violation' | 'advisory' | 'guidance' | 'pass'
+
+export type Authority = 'GS1' | 'FDA' | 'OSHA' | 'EU'
+
+export interface Citation {
+  authority: Authority
+  /** Exact reference, e.g. '21 CFR 101.7(i)' or 'GS1 GenSpec 5.2.3'. */
+  reference: string
+  /** Human-readable title of the cited provision. */
+  title?: string
+  url?: string
+}
+
+/** What was found against what the rule demands. Both pre-formatted for display. */
+export interface Measurement {
+  actual: string
+  required: string
+}
+
+export interface Finding {
+  /** Stable machine code, e.g. 'GS1_QUIET_ZONE_TOO_NARROW'. Never localised. */
+  code: string
+  severity: Severity
+  /** One plain sentence stating the defect. */
+  message: string
+  citation: Citation
+  /** Links the finding to an element in the resolved layout, for canvas highlighting. */
+  elementId?: string
+  measurement?: Measurement
+}
+
+// --- Extraction --------------------------------------------------------------
+
+export interface BoundingBox {
+  xMm: number
+  yMm: number
+  widthMm: number
+  heightMm: number
+}
+
+export interface ExtractedField<T> {
+  value: T
+  /** 0–1. Surfaced to the user; never used to auto-accept a value. */
+  confidence: number
+  /** Where on the source image this came from, when the producer can say. */
+  sourceRegion?: BoundingBox
+}
+
+export interface ExtractionWarning {
+  code: string
+  message: string
+  /** Dotted path to the field this concerns, when it concerns one. */
+  path?: string
+}
+
+/**
+ * The modality-agnostic contract every extraction producer returns.
+ *
+ * A photo of a label produces one. A Safety Data Sheet PDF would produce one.
+ * An eval harness scores anything that produces one. Defining it before the
+ * first producer exists is what keeps later producers additive rather than a
+ * refactor.
+ *
+ * Nothing here is label data yet — every field is unverified until a user
+ * confirms it.
+ */
+export interface ExtractionResult<T> {
+  fields: { [K in keyof T]?: ExtractedField<T[K]> }
+  warnings: ExtractionWarning[]
+}

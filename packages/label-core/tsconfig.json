@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    // Deliberately empty. label-core must not depend on Node or DOM globals —
+    // it runs in the browser, on the server, and in tests unchanged. If a change
+    // needs `types` widened here, the boundary is in the wrong place.
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    // "node" is here for the build tooling only — vite.config.ts and
+    // vitest.config.ts import node:url. Application code under src/ must not
+    // reach for Node globals; it runs in a browser.
+    "types": ["vite/client", "node"],
+    "jsx": "preserve",
+    // No baseUrl — deprecated in TypeScript 6. Path mappings resolve relative
+    // to this file's directory, which is what we wanted anyway.
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "vitest.config.ts"]
+}

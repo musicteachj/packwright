@@ -1,0 +1,20 @@
+{
+  "name": "@packwright/label-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-free label engine: GS1 encoding, geometry, layout, compliance rules, rendering. Imports no UI or server framework, by design.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./gs1": "./src/gs1/index.ts",
+    "./geometry": "./src/geometry/index.ts",
+    "./types": "./src/types/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bwip-js": "^4.11.2",
+    "zod": "^4.4.3"
+  }
+}
