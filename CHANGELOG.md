@@ -99,6 +99,13 @@ Findings from the phase 1 review, each confirmed against a primary source rather
   every type-size minimum keyed off it.
 - Severity was cited to ANSI Z535.1 in both `types/index.ts` and `CLAUDE.md`. Z535.1 is the safety *colour*
   standard; the signal words that make up the scale are defined in **Z535.4**. Both now name the right one.
+- **No element string ever verified a check digit, so an invalid GTIN encoded into a symbol.** This was first
+  logged as a narrow gap in GLN handling; it was not narrow. `validateAiValue` checked charset and length
+  only, so `09506000134353` — fourteen numeric digits, wrong final digit — passed every rule and encoded
+  cleanly. The resulting symbol prints, scans, and decodes to an identifier that does not exist, which is the
+  precise failure the check digit exists to prevent. All five AIs the GS1 Barcode Syntax Dictionary marks
+  `csum` (00, 01, 02, 410, 414) are now verified via the existing `isValidCheckDigit`, and a test pins the
+  flagged set so a new AI cannot be added without one.
 - `CLAUDE.md` still required Node ≥ 22 after the project retargeted to 24.
 - Phase 1's "no UI exists yet" gate in `docs/DESIGN.md` was unsatisfiable as written — a workspace scaffold
   needs a bootable app to prove it boots. Reworded to what was actually meant: no *product* UI, with the one
@@ -125,8 +132,5 @@ Findings from the phase 1 review, each confirmed against a primary source rather
   requirements come from their own ISO/IEC symbology specifications, and none has been confirmed against a
   source document — so they fall back to the general floor and report `hasVerifiedQuietZone === false`. Any
   rule that reports a pass/fail must gate on that flag rather than consuming the floor blind.
-- Every finding from the phase 1 review is now closed. One piece of residual risk is worth naming: GLN check
-  digits are still not verified. AIs 410 and 414 are flagged `csum` in the GS1 syntax dictionary, but
-  `validateAiValue` checks length and charset only, so a GLN with a bad final digit is accepted. `label-core`
-  already has `isValidCheckDigit`; wiring it in is a small change deferred only because it widens
-  `validateAiValue`'s contract beyond format into content.
+- Every finding from the phase 1 review is now closed, including check-digit verification, which was
+  initially deferred as a design call and turned out to be the most serious item of the lot.
