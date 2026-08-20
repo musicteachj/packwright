@@ -39,6 +39,8 @@ into a version only when there is a reason to.
 - Retargeted from Node 22 to **Node 24** (Active LTS; 22 is in maintenance)
 - Prettier now owns formatting outright — added `eslint-config-prettier` after
   `eslint-plugin-vue`'s stylistic rules started arguing with it over the same lines
+- CI actions bumped to `actions/checkout@v5` and `actions/setup-node@v5`. The v4 pair targets
+  Node.js 20, which GitHub has deprecated on its runners and was force-running on Node 24.
 
 ### Fixed
 
