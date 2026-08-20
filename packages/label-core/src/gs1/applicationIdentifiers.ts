@@ -11,6 +11,8 @@
  * Specifications rather than extending this table from memory.
  */
 
+import { isValidCheckDigit } from './checkDigit'
+
 export interface AiSpec {
   ai: string
   title: string
@@ -24,6 +26,15 @@ export interface AiSpec {
    * terminated by FNC1 unless it is the final element in the symbol.
    */
   predefinedLength: boolean
+  /**
+   * True when the AI's value carries a GS1 mod-10 check digit in its final
+   * position, and the value is therefore self-validating.
+   *
+   * Corresponds to the `csum` attribute in the GS1 Barcode Syntax Dictionary,
+   * which carries it on exactly five of the AIs in this table: 00, 01, 02, 410
+   * and 414 — every one of them an identification key.
+   */
+  checkDigit?: boolean
   /** Path segment used in a GS1 Digital Link URI, where GS1 defines one. */
   digitalLinkAlpha?: string
   /** True when this AI may open a Digital Link path as its primary key. */
@@ -67,6 +78,7 @@ const SPECS: readonly AiSpec[] = [
     charset: 'numeric',
     length: 18,
     predefinedLength: true,
+    checkDigit: true,
     digitalLinkAlpha: 'sscc',
     primaryKey: true,
   },
@@ -76,6 +88,7 @@ const SPECS: readonly AiSpec[] = [
     charset: 'numeric',
     length: 14,
     predefinedLength: true,
+    checkDigit: true,
     digitalLinkAlpha: 'gtin',
     primaryKey: true,
   },
@@ -85,6 +98,7 @@ const SPECS: readonly AiSpec[] = [
     charset: 'numeric',
     length: 14,
     predefinedLength: true,
+    checkDigit: true,
   },
   {
     ai: '10',
@@ -151,13 +165,21 @@ const SPECS: readonly AiSpec[] = [
   // `41` prefix is in it — so a GLN is never followed by a separator. Marking
   // these variable-length emits a stray FNC1 that a conformant decoder reads as
   // data corruption, since it has already consumed exactly 13 digits.
-  { ai: '410', title: 'Ship to GLN', charset: 'numeric', length: 13, predefinedLength: true },
+  {
+    ai: '410',
+    title: 'Ship to GLN',
+    charset: 'numeric',
+    length: 13,
+    predefinedLength: true,
+    checkDigit: true,
+  },
   {
     ai: '414',
     title: 'GLN of physical location',
     charset: 'numeric',
     length: 13,
     predefinedLength: true,
+    checkDigit: true,
   },
 ] as const
 
@@ -177,8 +199,18 @@ export function hasPredefinedLength(ai: string): boolean {
 }
 
 /**
- * Validates a value against its AI's declared format.
+ * Validates a value against its AI's declared format, and — for the five AIs
+ * that carry one — its check digit.
+ *
  * Returns null when valid, or a human-readable reason when not.
+ *
+ * The check digit is content rather than format, which is why it did not
+ * originally live here. Leaving it out meant `encodeElementString` would encode
+ * an invalid GTIN into a symbol without complaint: the value is fourteen
+ * numeric digits, so every format rule passed. That symbol prints, scans, and
+ * decodes to an identifier that does not exist — and the check digit is the one
+ * mechanism designed to catch exactly that, so declining to run it was the
+ * wrong call.
  */
 export function validateAiValue(ai: string, value: string): string | null {
   const spec = BY_AI.get(ai)
@@ -200,12 +232,19 @@ export function validateAiValue(ai: string, value: string): string | null {
     if (value.length !== spec.length) {
       return `AI (${ai}) ${spec.title} is fixed at ${spec.length} characters, received ${value.length}`
     }
-    return null
+  } else {
+    const { min, max } = spec.length
+    if (value.length < min || value.length > max) {
+      return `AI (${ai}) ${spec.title} accepts ${min}–${max} characters, received ${value.length}`
+    }
   }
 
-  const { min, max } = spec.length
-  if (value.length < min || value.length > max) {
-    return `AI (${ai}) ${spec.title} accepts ${min}–${max} characters, received ${value.length}`
+  // Runs last, and only once charset and length have passed — so the value is
+  // known to be all digits and long enough for isValidCheckDigit, which throws
+  // rather than returns on malformed input.
+  if (spec.checkDigit && !isValidCheckDigit(value)) {
+    return `AI (${ai}) ${spec.title} "${value}" has an invalid check digit`
   }
+
   return null
 }
