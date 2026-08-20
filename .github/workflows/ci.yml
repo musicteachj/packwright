@@ -1,8 +1,13 @@
 name: CI
 
 on:
+  # `dev` is the integration branch — every feature branch is cut from it and
+  # merged back to it, so it is where work actually lands and where CI needs to
+  # run. `main` stays listed because it is the release branch: dormant for now,
+  # but a push to it should never be the one thing nobody checked.
   push:
-    branches: ['main']
+    branches: ['main', 'dev']
+  # No branch filter: this covers every pull request, including feature -> dev.
   pull_request:
   workflow_dispatch:
 

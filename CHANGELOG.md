@@ -43,6 +43,9 @@ into a version only when there is a reason to.
   `eslint-plugin-vue`'s stylistic rules started arguing with it over the same lines
 - CI actions bumped to `actions/checkout@v5` and `actions/setup-node@v5`. The v4 pair targets
   Node.js 20, which GitHub has deprecated on its runners and was force-running on Node 24.
+- CI now runs on pushes to `dev` as well as `main`. `dev` is the integration branch — everything is cut from
+  it and merged back to it — but the push trigger still named only `main`, so the branch carrying all the work
+  was the one branch CI never watched. Pull requests were always covered; direct pushes were not.
 
 ### Fixed
 
