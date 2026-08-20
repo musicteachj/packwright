@@ -40,6 +40,19 @@ describe('encodeElementString', () => {
     expect(encoded).not.toContain(GS)
   })
 
+  it('does not separate a GLN, whose 41-prefix is predefined-length', () => {
+    // The predefined-length table is keyed on the AI's first two digits, so 410
+    // and 414 are fixed at 13 digits and carry no separator. Getting this wrong
+    // emits an FNC1 the decoder has no room for: it has already consumed
+    // exactly 13 digits and reads the separator as the start of the next AI.
+    const encoded = encodeElementString([
+      { ai: '410', value: '9506000134352' },
+      { ai: '01', value: '09506000134352' },
+    ])
+    expect(encoded).toBe('41095060001343520109506000134352')
+    expect(encoded).not.toContain(GS)
+  })
+
   it('separates a variable-length field that is followed by another', () => {
     const encoded = encodeElementString([
       { ai: '10', value: 'ABC123' },
@@ -74,7 +87,48 @@ describe('encodeElementString', () => {
   })
 })
 
+describe('character set 82', () => {
+  it('accepts punctuation that is inside the set', () => {
+    // '-' and '/' are in CSET 82 and are common in real lot codes.
+    expect(encodeElementString([{ ai: '10', value: 'AB-12/C' }])).toBe('10AB-12/C')
+  })
+
+  it.each([
+    ['a space', 'AB CD'],
+    ['a hash', 'AB#CD'],
+    ['a dollar sign', 'AB$CD'],
+    ['an at sign', 'AB@CD'],
+    ['a backtick', 'AB`CD'],
+    ['a pipe', 'AB|CD'],
+    ['a tilde', 'AB~CD'],
+  ])('rejects a lot value containing %s', (_label, value) => {
+    // Printable, but outside the 82 characters GS1 can encode.
+    expect(() => encodeElementString([{ ai: '10', value }])).toThrow(Gs1ElementStringError)
+  })
+
+  it('rejects a value carrying an embedded separator', () => {
+    // The dangerous one. This encoded happily and the decoder read the lot as
+    // 'AB', silently truncating the field with no error anywhere.
+    expect(() => encodeElementString([{ ai: '10', value: `AB${GS}CD` }])).toThrow(
+      Gs1ElementStringError,
+    )
+  })
+})
+
 describe('parseHumanReadable', () => {
+  it('rejects data before the first AI', () => {
+    // The regex is unanchored and only trailing data was checked, so anything
+    // ahead of the first bracket was skipped over silently and the result
+    // looked like a clean parse.
+    expect(() => parseHumanReadable('junk(01)09506000134352')).toThrow(Gs1ElementStringError)
+  })
+
+  it('rejects data between two elements', () => {
+    expect(() => parseHumanReadable('(01)09506000134352 junk (10)ABC123')).toThrow(
+      Gs1ElementStringError,
+    )
+  })
+
   it('round-trips the human-readable form', () => {
     const elements = [
       { ai: '01', value: '09506000134352' },

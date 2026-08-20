@@ -17,12 +17,18 @@ import type { SymbologyId } from '../types/index'
 /**
  * Nominal X-dimension at 100% magnification for the EAN/UPC family, in mm.
  *
- * TODO(verify): confirm against the General Specifications directly before any
- * rule reports a pass/fail that depends on this constant.
+ * GS1 General Specifications 25.0 §5.2.3.1: "The X-dimension at nominal size is
+ * 0.330 millimetre (0.0130 inch)."
  */
 export const EAN_UPC_NOMINAL_X_DIMENSION_MM = 0.33
 
-/** GS1 permits scaling the EAN/UPC family between these bounds. */
+/**
+ * GS1 permits scaling the EAN/UPC family between these bounds.
+ *
+ * Derived from the symbol specification table (GenSpec 25.0 figure 5.12.3.1-1),
+ * which gives the EAN/UPC X-dimension as 0.264 mm minimum and 0.660 mm maximum
+ * against the 0.330 mm target — 0.8x and 2.0x respectively.
+ */
 export const MIN_MAGNIFICATION = 0.8
 export const MAX_MAGNIFICATION = 2.0
 
@@ -34,24 +40,38 @@ export interface QuietZoneSpec {
 }
 
 /**
- * The general minimum required by the specification. Applied to any symbology
- * without a documented, verified rule of its own — the specification's own
- * fallback, rather than a guess.
+ * The floor stated in GenSpec 25.0 §5.2.3.4: "The minimum Quiet Zone width
+ * required by the main symbol is 7x."
+ *
+ * It is a floor, not a safe default. Most symbologies require *more* than 7X,
+ * so falling back to it understates the requirement rather than overstating it
+ * — which yields a confident pass on a label that will not scan. Gate any
+ * pass/fail on `hasVerifiedQuietZone` rather than consuming this blind.
  */
 export const GENERAL_QUIET_ZONE: QuietZoneSpec = { leftX: 7, rightX: 7 }
 
 /**
- * Symbology-specific quiet zones, where the asymmetry is documented.
+ * Symbology-specific quiet zones, verified against the General Specifications.
  *
- * Deliberately sparse. EAN-13, EAN-8, ITF-14 and GS1-128 each have their own
- * documented figures, but they are not recorded here until confirmed against
- * the General Specifications — an unverified quiet-zone number produces a
- * confident pass on a label that will not scan, which is worse than falling
- * back to the general 7X minimum.
+ * EAN/UPC figures are GenSpec 25.0 figure 5.2.3.4-1, corroborated by symbol
+ * specification table 1 (figure 5.12.3.1-1). ITF-14 is §5.3.2.2 ("The minimum
+ * width of each Quiet Zone is 10X"); GS1-128 is §5.4.6.3 ("Both Quiet Zones
+ * have a minimum width of 10x").
+ *
+ * The asymmetry is real and load-bearing: EAN-13 needs 11X on the left but only
+ * 7X on the right, because the leading digit sits outside the symbol.
+ *
+ * CODE128, CODE39, MSI and PHARMACODE are absent deliberately — they are not
+ * GS1-governed, their quiet zones come from their own ISO/IEC symbology
+ * specifications, and none has been confirmed against a source document yet.
  */
 const SYMBOLOGY_QUIET_ZONES: Partial<Record<SymbologyId, QuietZoneSpec>> = {
   'UPC-A': { leftX: 9, rightX: 9 },
   'UPC-E': { leftX: 9, rightX: 7 },
+  'EAN-13': { leftX: 11, rightX: 7 },
+  'EAN-8': { leftX: 7, rightX: 7 },
+  'ITF-14': { leftX: 10, rightX: 10 },
+  'GS1-128': { leftX: 10, rightX: 10 },
 }
 
 export function quietZoneFor(symbology: SymbologyId): QuietZoneSpec {

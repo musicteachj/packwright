@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./gs1": "./src/gs1/index.ts",
     "./geometry": "./src/geometry/index.ts",
+    "./symbology": "./src/symbology/index.ts",
     "./types": "./src/types/index.ts"
   },
   "scripts": {

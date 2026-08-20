@@ -29,6 +29,18 @@ export interface OtherContainer {
   shape: 'other'
   /** Total surface area of the container, excluding the same features. */
   totalSurfaceAreaSqMm: number
+  /**
+   * Set when the container presents an obvious principal display panel — the
+   * regulation's own example is the top of a triangular or circular package of
+   * cheese. 21 CFR 101.1(c): "Provided, however, That where such container
+   * presents an obvious 'principal display panel' [...] the area shall consist
+   * of the entire top surface."
+   *
+   * When present this *is* the panel area, and the 40 percent rule does not
+   * apply. Omitting it understated the panel for exactly the packages whose
+   * panel is easiest to identify by eye.
+   */
+  obviousPanelAreaSqMm?: number
 }
 
 export type Container = RectangularPanel | CylindricalContainer | OtherContainer
@@ -48,7 +60,10 @@ export function pdpAreaSqMm(container: Container): number {
     case 'cylindrical':
       return NON_RECTANGULAR_PDP_FRACTION * (container.heightMm * container.circumferenceMm)
     case 'other':
-      return NON_RECTANGULAR_PDP_FRACTION * container.totalSurfaceAreaSqMm
+      return (
+        container.obviousPanelAreaSqMm ??
+        NON_RECTANGULAR_PDP_FRACTION * container.totalSurfaceAreaSqMm
+      )
   }
 }
 
@@ -82,10 +97,32 @@ export function minNetQuantityTypeHeightMm(pdpSqInches: number): number {
 }
 
 /**
+ * Panel area at or below which the bottom-30% placement rule does not apply.
+ * 21 CFR 101.7(f): "on packages having a principal display panel of 5 square
+ * inches or less, the requirement for placement within the bottom 30 percent of
+ * the area of the label panel shall not apply".
+ */
+export const NET_QUANTITY_ZONE_EXEMPT_MAX_SQ_INCHES = 5
+
+/**
  * The net quantity declaration must sit within the bottom 30% of the PDP.
  * Returns the y coordinate, in millimetres from the panel top, at which that
  * zone begins.
+ *
+ * 21 CFR 101.7(**f**) — the placement rule, not 101.7(i), which governs type
+ * size. They are adjacent in the regulation and easy to conflate, and a finding
+ * that cites the wrong paragraph is not a finding a user can act on.
  */
 export function netQuantityZoneTopMm(panelHeightMm: number): number {
   return panelHeightMm * 0.7
+}
+
+/**
+ * Whether the bottom-30% placement rule applies to a panel of this size at all.
+ *
+ * A rule that checks placement without consulting this reports a violation
+ * against a small package that is fully compliant — 21 CFR 101.7(f) exempts it.
+ */
+export function isNetQuantityZoneRequired(pdpSqInches: number): boolean {
+  return pdpSqInches > NET_QUANTITY_ZONE_EXEMPT_MAX_SQ_INCHES
 }

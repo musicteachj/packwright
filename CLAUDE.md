@@ -67,7 +67,7 @@ apps/api/              Express API — persistence, PDF export, vision extractio
 
 ## Stack
 
-- **Node ≥ 22** and **npm ≥ 11**. npm 10's arborist crashes resolving this dependency graph
+- **Node ≥ 24** (Active LTS; 22 is in maintenance) and **npm ≥ 11**. npm 10's arborist crashes resolving this dependency graph
   (`Cannot read properties of null (reading 'edgesOut')`). Use `npx npm@11` if the global npm is older.
 - **Vitest**, not Jest — Vite is already the build tool, so there is no second transform config.
 - **`vue-tsc --noEmit`**, not bare `tsc`, for anything containing `.vue`. Plain `tsc` reads the script block
@@ -84,6 +84,8 @@ apps/api/              Express API — persistence, PDF export, vision extractio
 - Units live in the field name — `widthMm`, `heightIn`, `xDimensionMm`. Never a bare `width`.
 - Monospace and tabular figures for identifiers and measurements in the UI; dimensions update live as you
   type, and proportional figures make the readout jitter on every keystroke.
-- Severity levels map onto ANSI Z535.1 — the safety colour standard printed on the labels this app
-  generates. Colour never carries meaning alone; every severity has an icon and a text label.
+- Severity levels map onto the ANSI Z535 scale printed on the labels this app generates. Cite **Z535.4** for
+  the signal words (DANGER, WARNING, CAUTION, NOTICE) and **Z535.1** for the colours they are printed in —
+  Z535.1 is the colour standard alone and does not define the scale. Colour never carries meaning alone;
+  every severity has an icon and a text label.
 - Update `CHANGELOG.md` **in the same edit as the change**, never as a separate pass afterwards.

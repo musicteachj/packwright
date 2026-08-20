@@ -17,15 +17,27 @@ import {
  * out of the function under test proves only that the function is
  * deterministic.
  *
- * TODO(verify): `09506000134352` and the SSCC are taken from GS1's published
- * Digital Link and logistics-label examples as reproduced in secondary
- * documentation, not from the General Specifications PDF directly. Re-confirm
- * against the GenSpec itself and delete this note.
+ * All four were re-derived against General Specifications 25.0 §7.9.1 during
+ * the phase 1 review, using the weighting in figure 7.9.1-1: multiply
+ * alternately by 3 and 1 anchored at the digit immediately left of the check
+ * digit, sum, then subtract from the nearest equal or higher multiple of ten.
  */
 
 describe('calculateCheckDigit', () => {
-  it('computes the GS1 Digital Link reference GTIN-14', () => {
-    // 09506000134352 — the GTIN used throughout GS1's Digital Link examples.
+  it("computes the GenSpec's own worked example", () => {
+    // Figure 7.9.1-2, the only fully worked calculation in the specification:
+    // the 18-digit field 376104250021234569. Weighted sum 101, nearest equal or
+    // higher multiple of ten 110, so the check digit is 9. This is the vector
+    // with the strongest provenance in the file — it is printed, digit by
+    // digit, in the source document.
+    expect(calculateCheckDigit('37610425002123456')).toBe(9)
+  })
+
+  it('computes a GTIN-14 from the GS1 Digital Link examples', () => {
+    // 09506000134352 appears in GS1's Digital Link material. Note it is *not*
+    // the example GTIN used inside the URI Syntax standard itself, which is
+    // 09520123456788 — the two get conflated easily. The expected value here
+    // rests on the §7.9.1 algorithm, not on the provenance of the string.
     expect(calculateCheckDigit('0950600013435')).toBe(2)
   })
 

@@ -81,6 +81,16 @@ export function parseHumanReadable(input: string): Gs1Element[] {
     const value = match[2]
     if (ai === undefined || value === undefined) continue
 
+    // The pattern is unanchored, so a match may begin past the end of the last
+    // one. Checking only for trailing data lets anything before the first AI
+    // through silently: 'junk(01)09506000134352' consumes to the end of the
+    // input and parses as a clean, single-element list.
+    if (match.index !== consumed) {
+      throw new Gs1ElementStringError(
+        `Unexpected data before AI (${ai}): "${input.slice(consumed, match.index)}"`,
+      )
+    }
+
     if (!getAiSpec(ai)) {
       throw new Gs1ElementStringError(`Unknown Application Identifier (${ai})`)
     }

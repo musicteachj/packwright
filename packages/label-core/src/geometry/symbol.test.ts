@@ -22,14 +22,45 @@ describe('quietZoneFor', () => {
     expect(quietZoneFor('UPC-E')).toEqual({ leftX: 9, rightX: 7 })
   })
 
-  it('falls back to the general 7X minimum for symbologies without a verified rule', () => {
+  it('requires 11X on the left of an EAN-13', () => {
+    // GenSpec figure 5.2.3.4-1. The general 7X floor is 4X short here, and the
+    // shortfall is invisible: the symbol looks correctly margined and fails at
+    // the till. This is the case that makes the floor unsafe as a default.
+    expect(quietZoneFor('EAN-13')).toEqual({ leftX: 11, rightX: 7 })
+  })
+
+  it('requires 7X on both sides of an EAN-8', () => {
+    expect(quietZoneFor('EAN-8')).toEqual({ leftX: 7, rightX: 7 })
+  })
+
+  it.each(['ITF-14', 'GS1-128'] as const)('requires 10X on both sides of %s', (symbology) => {
+    // ITF-14 GenSpec §5.3.2.2, GS1-128 §5.4.6.3 — both 10X, not the 7X floor.
+    expect(quietZoneFor(symbology)).toEqual({ leftX: 10, rightX: 10 })
+  })
+
+  it('falls back to the general 7X floor for symbologies without a verified rule', () => {
+    // CODE128 is not GS1-governed; its quiet zone comes from ISO/IEC 15417 and
+    // has not been confirmed against a source document, so it stays unverified
+    // rather than being guessed at.
     expect(quietZoneFor('CODE128')).toEqual(GENERAL_QUIET_ZONE)
     expect(hasVerifiedQuietZone('CODE128')).toBe(false)
   })
 
-  it('marks the symbologies whose rules have been verified', () => {
-    expect(hasVerifiedQuietZone('UPC-A')).toBe(true)
-    expect(hasVerifiedQuietZone('UPC-E')).toBe(true)
+  it.each(['UPC-A', 'UPC-E', 'EAN-13', 'EAN-8', 'ITF-14', 'GS1-128'] as const)(
+    'marks %s as verified against the General Specifications',
+    (symbology) => {
+      expect(hasVerifiedQuietZone(symbology)).toBe(true)
+    },
+  )
+
+  it('never reports a verified requirement below the specification floor', () => {
+    // Guards the direction of the bug this table was written to fix: every
+    // verified entry must be at least the 7X general minimum, never under it.
+    for (const symbology of ['UPC-A', 'UPC-E', 'EAN-13', 'EAN-8', 'ITF-14', 'GS1-128'] as const) {
+      const { leftX, rightX } = quietZoneFor(symbology)
+      expect(leftX).toBeGreaterThanOrEqual(GENERAL_QUIET_ZONE.leftX)
+      expect(rightX).toBeGreaterThanOrEqual(GENERAL_QUIET_ZONE.rightX)
+    }
   })
 })
 

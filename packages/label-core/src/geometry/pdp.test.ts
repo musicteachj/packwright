@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isNetQuantityZoneRequired,
   minNetQuantityTypeHeightInches,
   minNetQuantityTypeHeightMm,
   netQuantityZoneTopMm,
@@ -82,5 +83,36 @@ describe('netQuantityZoneTopMm', () => {
   it('starts the permitted zone 70% down the panel', () => {
     // The declaration must sit within the bottom 30% of the PDP.
     expect(netQuantityZoneTopMm(150)).toBeCloseTo(105, 10)
+  })
+})
+
+describe('the obvious-panel exception for otherwise shaped containers', () => {
+  it('uses 40% of total surface when there is no obvious panel', () => {
+    expect(pdpAreaSqMm({ shape: 'other', totalSurfaceAreaSqMm: 1000 })).toBeCloseTo(400, 10)
+  })
+
+  it('uses the entire top surface when the container presents an obvious panel', () => {
+    // 21 CFR 101.1(c): "where such container presents an obvious 'principal
+    // display panel' such as the top of a triangular or circular package of
+    // cheese, the area shall consist of the entire top surface." Applying the
+    // 40% rule here understates the panel, which understates every type-size
+    // minimum that keys off it.
+    expect(
+      pdpAreaSqMm({ shape: 'other', totalSurfaceAreaSqMm: 1000, obviousPanelAreaSqMm: 620 }),
+    ).toBeCloseTo(620, 10)
+  })
+})
+
+describe('isNetQuantityZoneRequired', () => {
+  it.each([
+    [1, false],
+    [5, false],
+    [5.1, true],
+    [30, true],
+  ])('a %f sq in panel requires the bottom-30%% zone: %s', (sqIn, expected) => {
+    // 21 CFR 101.7(f) exempts a panel of 5 square inches or less. A placement
+    // rule that skips this check reports a violation against a small package
+    // that is fully compliant.
+    expect(isNetQuantityZoneRequired(sqIn)).toBe(expected)
   })
 })

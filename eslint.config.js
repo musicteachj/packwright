@@ -4,6 +4,20 @@ import pluginVue from 'eslint-plugin-vue'
 import vueA11y from 'eslint-plugin-vuejs-accessibility'
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
 import configPrettier from 'eslint-config-prettier/flat'
+import { builtinModules } from 'node:module'
+
+/**
+ * Every Node built-in, in both spellings.
+ *
+ * Asking Node for the list beats hand-maintaining one: a partial list is worse
+ * than none, because it reads as complete. The `node:` prefix was blocked here
+ * before but the bare form was not, so `import { readFileSync } from 'fs'`
+ * passed lint and was caught only by `"types": []` in the tsconfig — which
+ * would stop holding the moment `@types/node` reached that workspace.
+ */
+const NODE_BUILTINS = builtinModules
+  .filter((name) => !name.startsWith('_'))
+  .flatMap((name) => [name, `${name}/*`, `node:${name}`, `node:${name}/*`])
 
 export default defineConfigWithVueTs(
   {
@@ -58,7 +72,7 @@ export default defineConfigWithVueTs(
                 'label-core must stay framework-free — it runs in the browser, on the server, and in tests unchanged. Move UI concerns into apps/web.',
             },
             {
-              group: ['express', 'express/*', 'mongoose', 'node:*'],
+              group: ['express', 'express/*', 'mongoose', 'node:*', ...NODE_BUILTINS],
               message:
                 'label-core must stay framework-free and platform-agnostic. Move server concerns into apps/api.',
             },

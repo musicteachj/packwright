@@ -30,10 +30,16 @@ export type SymbologyId =
 // --- Compliance findings -----------------------------------------------------
 
 /**
- * Severity levels map onto ANSI Z535.1, the US safety colour standard — the same
- * scale printed on the labels this app generates. See the design notes: DANGER
- * red, WARNING orange, CAUTION yellow, NOTICE blue, green for safety
- * instructions. Colour lives in the web theme; the scale itself is domain.
+ * Severity levels map onto the ANSI Z535 scale printed on the labels this app
+ * generates: DANGER red, WARNING orange, CAUTION yellow, NOTICE blue, green for
+ * safety instructions.
+ *
+ * Two standards, and citing the wrong one is easy: **Z535.4** (Product Safety
+ * Signs and Labels) defines the signal words and therefore the scale, while
+ * **Z535.1** (Safety Colors) defines only the colours they are printed in.
+ *
+ * Colour lives in the web theme; the scale itself is domain. Colour never
+ * carries meaning alone — every severity also has an icon and a text label.
  */
 export type Severity = 'blocking' | 'violation' | 'advisory' | 'guidance' | 'pass'
 

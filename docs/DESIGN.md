@@ -458,7 +458,11 @@ widths per symbology, PDP area. The `ExtractionResult` contract. Port the constr
 - PDP area matches the worked examples for all three container shapes (rectangular, cylindrical, other)
 - CI runs lint, typecheck and test on push
 - `CLAUDE.md` and `CHANGELOG.md` exist at the root, and the changelog already has entries
-- No UI exists yet — this phase is pure functions
+- No *product* UI exists — `label-core` is pure functions, and `apps/web` is a scaffold whose only screen
+  exists to prove the wiring end to end: that the browser bundle resolves `label-core` from source and its
+  output is real. It is placeholder styling by definition and phase 2 replaces it. The original wording here
+  was "no UI exists yet", which the scaffold could never satisfy — a workspace needs a bootable app to prove
+  it boots
 
 ### Phase 2 — Rendering spine + design tokens
 
@@ -588,7 +592,7 @@ copy-adapt from the old repo.
 
 | Phase | State |
 |---|---|
-| 1 · Foundation | **Complete** — 97 tests, CI green |
+| 1 · Foundation | **Complete** — 146 tests, CI green; reviewed and remediated |
 | 2 · Rendering spine + design tokens | Next |
 | 3 · Rule engine + findings rail | Not started |
 | 4 · GHS chemical label | Not started |

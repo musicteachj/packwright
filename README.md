@@ -56,7 +56,8 @@ invented one.
 
 Phase 1 of 8 complete. `label-core` has working `gs1`, `geometry`, `symbology` and `types` modules — GS1 check
 digits, Application Identifiers, element strings, Digital Link URIs, PDP geometry, FDA type-size bands, quiet
-zones. 97 tests, CI green. The rendering spine is next.
+zones. Every regulatory constant is cited to a source document. 146 tests, CI green. The rendering spine is
+next.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for detail and [`docs/DESIGN.md`](docs/DESIGN.md) for the full design and
 remaining phases.

@@ -44,6 +44,22 @@ export interface AiSpec {
  */
 export const FNC1_SEPARATOR = '\u001D'
 
+/**
+ * GS1 AI encodable character set 82, from General Specifications 25.0 figure
+ * 7.11-1 — a subset of ISO/IEC 646 IRV, not "any printable ASCII".
+ *
+ * Transcribed from the figure rather than derived: 13 punctuation marks, the
+ * ten digits, six more punctuation marks, A–Z, low line, a–z. That totals 82
+ * characters, which is where the name comes from.
+ *
+ * The 13 printable characters it *excludes* are the point of the rule: space,
+ * `#`, `$`, `@`, `[`, `\`, `]`, `^`, backtick, `{`, `|`, `}` and `~`. A value
+ * carrying one of those cannot be represented in a GS1 element string — and an
+ * embedded separator in particular truncates the field at the decoder, which
+ * the encoder has no way to notice.
+ */
+const CSET_82 = /^[!"%&'()*+,\-./0-9:;<=>?A-Z_a-z]*$/
+
 const SPECS: readonly AiSpec[] = [
   {
     ai: '00',
@@ -131,13 +147,17 @@ const SPECS: readonly AiSpec[] = [
     length: { min: 1, max: 30 },
     predefinedLength: false,
   },
-  { ai: '410', title: 'Ship to GLN', charset: 'numeric', length: 13, predefinedLength: false },
+  // The predefined-length table is keyed on the AI's first two digits, and the
+  // `41` prefix is in it — so a GLN is never followed by a separator. Marking
+  // these variable-length emits a stray FNC1 that a conformant decoder reads as
+  // data corruption, since it has already consumed exactly 13 digits.
+  { ai: '410', title: 'Ship to GLN', charset: 'numeric', length: 13, predefinedLength: true },
   {
     ai: '414',
     title: 'GLN of physical location',
     charset: 'numeric',
     length: 13,
-    predefinedLength: false,
+    predefinedLength: true,
   },
 ] as const
 
@@ -164,8 +184,16 @@ export function validateAiValue(ai: string, value: string): string | null {
   const spec = BY_AI.get(ai)
   if (!spec) return `Unknown Application Identifier (${ai})`
 
-  if (spec.charset === 'numeric' && !/^[0-9]+$/.test(value)) {
+  // Both patterns allow the empty string on purpose, so that a missing value
+  // falls through to the length check below and is reported as missing rather
+  // than as a character-set violation. The rejection is the same either way;
+  // the reason the user reads is not.
+  if (spec.charset === 'numeric' && !/^[0-9]*$/.test(value)) {
     return `AI (${ai}) ${spec.title} accepts digits only`
+  }
+
+  if (spec.charset === 'alphanumeric' && !CSET_82.test(value)) {
+    return `AI (${ai}) ${spec.title} accepts only GS1 character set 82`
   }
 
   if (typeof spec.length === 'number') {
