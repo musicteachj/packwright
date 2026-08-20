@@ -33,6 +33,8 @@ into a version only when there is a reason to.
 - `apps/web` — Vue 3 + Vite 8 + Pinia + Tailwind 4 skeleton with the route inventory stubbed out
 - GitHub Actions CI running lint, format check, `vue-tsc` typecheck, tests and build
 - 97 tests; full CI sequence green locally
+- `README.md` and `docs/DESIGN.md` — the design document now lives in the repo rather than outside it,
+  so it is version-controlled alongside the code it describes and discoverable without a path
 
 ### Changed
 
