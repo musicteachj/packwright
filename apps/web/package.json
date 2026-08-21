@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Vue 3 client — label editor, live print-accurate preview, compliance findings.",
+  "description": "Vue 3 client \u2014 label editor, live print-accurate preview, compliance findings.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -15,7 +15,8 @@
     "pinia": "^4.0.2",
     "vue": "^3.5.41",
     "vue-router": "^5.2.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "bwip-js": "^4.11.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

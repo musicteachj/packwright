@@ -77,8 +77,11 @@ the browser for live preview and on the server for PDF generation.
 
 - **[bwip-js](https://github.com/metafloor/bwip-js/)** (MIT) — the library that makes this project viable.
   90+ symbologies including [GS1-128, GS1 DataMatrix, GS1 Digital Link DataMatrix, and GS1 Digital Link QR
-  Code](https://github.com/metafloor/bwip-js/wiki/BWIPP-Barcode-Types). Framework-agnostic, with both SVG and
-  PDFKit output — so one dependency covers preview and export, 1D and 2D.
+  Code](https://github.com/metafloor/bwip-js/wiki/BWIPP-Barcode-Types). Framework-agnostic. It has **no
+  PDFKit output** — an earlier draft of this document said otherwise. What it has is better for us: a
+  pluggable `DrawingContext`, so one adapter emits our own millimetre primitives and both renderers consume
+  them. `render`, `raw`, `toSVG` and `drawingSVG` are present in both its browser and node builds; only
+  `toCanvas` and `toBuffer` differ, so `label-core` stays platform-identical.
 - **[PDFKit](https://npm-compare.com/pdf-lib,pdfkit,pdfmake)** — chosen over pdf-lib because it is built for
   low-level precise positioning and custom vector drawing and includes an SVG path parser. pdf-lib is oriented
   toward modifying existing PDFs, which is not the problem here.

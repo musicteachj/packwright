@@ -88,6 +88,15 @@ describe('buildDigitalLinkUri', () => {
     ).toThrow(DigitalLinkError)
   })
 
+  it('refuses a non-numeric GTIN with this module’s own error type', () => {
+    // 'ABCDEFGH' is a valid GTIN *length*, so it passed the length check and
+    // reached normaliseToGtin14, which raises Gs1FormatError — a type a caller
+    // of this module has no reason to catch.
+    expect(() =>
+      buildDigitalLinkUri({ domain: DOMAIN, primary: { ai: '01', value: 'ABCDEFGH' } }),
+    ).toThrow(DigitalLinkError)
+  })
+
   it('refuses a GTIN that is not a valid key length', () => {
     // '12348' carries a mathematically correct check digit and pads to the
     // well-formed GTIN-14 00000000012348, because left-padding zeros cannot

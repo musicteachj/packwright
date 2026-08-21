@@ -1,38 +1,85 @@
 <script setup lang="ts">
-import { buildDigitalLinkUri, calculateCheckDigit, quietZoneMm } from '@packwright/label-core'
+/**
+ * The landing view.
+ *
+ * It renders a real label through the real engine rather than showing a picture
+ * of one — the same `layOutUpcALabel` the API export calls, in the browser, from
+ * TypeScript source. That is the claim the project makes, so the front door
+ * should demonstrate it rather than assert it.
+ */
+import { computed } from 'vue'
+import * as bwip from 'bwip-js/generic'
+import { DEFAULT_UPC_A_STOCK, layOutUpcALabel } from '@packwright/label-core'
+import LabelCanvas from '../components/LabelCanvas.vue'
 
-// A placeholder view whose only job right now is to prove the workspace wiring:
-// the browser bundle resolves label-core from source, and its output is real.
-// Replaced by the actual landing page in phase 6.
-const gtinPayload = '0950600013435'
-const gtin = `${gtinPayload}${calculateCheckDigit(gtinPayload)}`
-const digitalLink = buildDigitalLinkUri({
-  domain: 'https://id.example.com',
-  primary: { ai: '01', value: gtin },
-})
-const quietZone = quietZoneMm('UPC-A', 0.33)
+const GTIN_PAYLOAD = '03600029145'
+
+const layout = computed(() =>
+  layOutUpcALabel(bwip as never, {
+    data: { gtinPayload: GTIN_PAYLOAD },
+    stock: DEFAULT_UPC_A_STOCK,
+  }),
+)
+
+const gtin = computed(() => layout.value.symbols[0]?.value ?? '')
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl p-8 font-mono text-sm">
-    <h1 class="mb-6 text-lg font-bold">packwright</h1>
-    <dl class="space-y-2">
-      <div>
-        <dt class="inline">GTIN</dt>
-        <dd class="inline">
-          {{ gtin }}
-        </dd>
-      </div>
-      <div>
-        <dt class="inline">Digital Link</dt>
-        <dd class="inline">
-          {{ digitalLink }}
-        </dd>
-      </div>
-      <div>
-        <dt class="inline">UPC-A quiet zone</dt>
-        <dd class="inline">{{ quietZone.leftMm.toFixed(2) }} mm each side at 0.33 mm X</dd>
-      </div>
-    </dl>
+  <main class="bg-chrome-950 text-chrome-100 min-h-screen">
+    <div class="mx-auto flex max-w-5xl flex-col gap-12 px-8 py-16">
+      <header class="border-chrome-800 flex flex-col gap-4 border-b pb-8">
+        <p class="numeric text-chrome-400 text-xs tracking-widest uppercase">
+          Packaging label compliance
+        </p>
+        <h1 class="text-3xl font-semibold tracking-tight">packwright</h1>
+        <p class="text-chrome-300 max-w-2xl leading-relaxed">
+          Print-accurate GS1 retail, GHS chemical and FDA food labels — with an engine that reports
+          why a label is non-compliant and cites the regulation for every finding.
+        </p>
+      </header>
+
+      <section class="flex flex-col gap-4">
+        <h2 class="text-chrome-200 text-sm font-semibold tracking-wide uppercase">
+          Rendered live, in this page
+        </h2>
+        <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
+          The label below is not an image. The same layout engine that produces the PDF export runs
+          here in the browser, resolves
+          <span class="numeric text-chrome-200">{{ gtin }}</span> to primitives positioned in
+          millimetres, and hands them to the SVG renderer. Both renderers read the same geometry, so
+          the preview cannot disagree with the print.
+        </p>
+
+        <LabelCanvas :layout="layout" :title="`UPC-A label for GTIN ${gtin}`" />
+      </section>
+
+      <section class="border-chrome-800 flex flex-col gap-4 border-t pt-8">
+        <h2 class="text-chrome-200 text-sm font-semibold tracking-wide uppercase">
+          Every dimension traced to a source
+        </h2>
+        <dl class="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+          <div class="border-chrome-700 flex flex-col gap-1 border-l pl-4">
+            <dt class="text-chrome-400">X-dimension at nominal size</dt>
+            <dd class="numeric text-chrome-100">0.330 mm</dd>
+            <dd class="text-chrome-400 text-xs">GS1 General Specifications §5.2.3.1</dd>
+          </div>
+          <div class="border-chrome-700 flex flex-col gap-1 border-l pl-4">
+            <dt class="text-chrome-400">UPC-A quiet zone</dt>
+            <dd class="numeric text-chrome-100">9X either side</dd>
+            <dd class="text-chrome-400 text-xs">Figure 5.2.3.4-1</dd>
+          </div>
+          <div class="border-chrome-700 flex flex-col gap-1 border-l pl-4">
+            <dt class="text-chrome-400">Symbol length</dt>
+            <dd class="numeric text-chrome-100">113 modules — 37.29 mm</dd>
+            <dd class="text-chrome-400 text-xs">Figure 5.2.3.5-1, quiet zones included</dd>
+          </div>
+          <div class="border-chrome-700 flex flex-col gap-1 border-l pl-4">
+            <dt class="text-chrome-400">Bar height at nominal</dt>
+            <dd class="numeric text-chrome-100">22.85 mm</dd>
+            <dd class="text-chrome-400 text-xs">§5.2.3.2, scaling with magnification</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
   </main>
 </template>

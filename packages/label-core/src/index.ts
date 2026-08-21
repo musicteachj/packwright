@@ -1,4 +1,7 @@
 export * from './gs1/index'
 export * from './geometry/index'
+export * from './layout/index'
+export * from './render/index'
 export * from './symbology/index'
+export * from './templates/index'
 export * from './types/index'

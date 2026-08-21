@@ -3,12 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Express API — persistence, PDF export, and Claude vision extraction.",
+  "description": "Express API \u2014 persistence, PDF export, and Claude vision extraction.",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsup",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "print-test": "tsx src/labels/printTestSheet.cli.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
@@ -20,7 +21,8 @@
     "mongoose": "^9.9.2",
     "morgan": "^1.11.0",
     "pdfkit": "^0.19.1",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "bwip-js": "^4.11.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

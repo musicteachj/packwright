@@ -92,6 +92,12 @@ export function buildDigitalLinkUri(input: DigitalLinkInput): string {
   // at either weight — so a five-digit key normalises into a well-formed
   // GTIN-14 and the check-digit guard below has nothing left to catch.
   if (primary.ai === '01') {
+    // Digits are checked here rather than left to `normaliseToGtin14`, which
+    // raises Gs1FormatError — a type callers of this module have no reason to
+    // catch. Every rejection from this function should be a DigitalLinkError.
+    if (!/^[0-9]+$/.test(primary.value)) {
+      throw new DigitalLinkError(`A GTIN is digits only, received "${primary.value}"`)
+    }
     if (!GTIN_LENGTHS.has(primary.value.length)) {
       throw new DigitalLinkError(
         `A GTIN is 8, 12, 13 or 14 digits, received ${primary.value.length} ("${primary.value}")`,

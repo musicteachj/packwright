@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   EAN_UPC_NOMINAL_X_DIMENSION_MM,
+  barPatternWidthMm,
+  nominalBarHeightMm,
+  symbolMetricsFor,
   GENERAL_QUIET_ZONE,
   hasVerifiedQuietZone,
   isMagnificationInRange,
@@ -99,10 +102,82 @@ describe('magnification', () => {
   })
 })
 
-describe('totalSymbolWidthMm', () => {
-  it('accounts for both quiet zones, not just the bars', () => {
-    // A layout sized to the symbol alone looks like it fits and does not.
+describe('barPatternWidthMm', () => {
+  it.each([
+    ['UPC-A', 95],
+    ['EAN-13', 95],
+    ['EAN-8', 67],
+    ['UPC-E', 51],
+  ] as const)('%s bar pattern is %i modules', (symbology, modules) => {
+    // GenSpec figure 5.2.3.5-1 tabulates the total *including* quiet zones, so
+    // the bar pattern is that total minus both zones. UPC-A: 113 − 9 − 9 = 95.
+    // EAN-13 lands on the same 95 from a different split, 113 − 11 − 7, which is
+    // a useful coincidence: both carry twelve data digits plus guards.
     const x = EAN_UPC_NOMINAL_X_DIMENSION_MM
-    expect(totalSymbolWidthMm('UPC-A', 37.29, x)).toBeCloseTo(37.29 + 2.97 * 2, 6)
+    expect(barPatternWidthMm(symbology, x)).toBeCloseTo(modules * x, 10)
+  })
+
+  it('is undefined for a symbology whose length varies with its payload', () => {
+    // GS1-128 grows with the data, so there is no figure to look up.
+    expect(barPatternWidthMm('GS1-128', 0.33)).toBeUndefined()
+  })
+})
+
+describe('totalSymbolWidthMm', () => {
+  it('reconstructs the tabulated total from the bar pattern and quiet zones', () => {
+    // The round trip that pins the relationship: bars + both quiet zones must
+    // equal GenSpec's tabulated 113 modules, 37.29 mm at nominal.
+    //
+    // This test previously passed 37.29 as the bar-pattern width — but 37.29 mm
+    // *is* the 113-module total, so it added quiet zones a second time and
+    // asserted a symbol 43.23 mm wide. It passed only because it was
+    // tautological, and the layout engine is about to consume these numbers.
+    const x = EAN_UPC_NOMINAL_X_DIMENSION_MM
+    const bars = barPatternWidthMm('UPC-A', x) as number
+
+    expect(bars).toBeCloseTo(31.35, 10)
+    expect(totalSymbolWidthMm('UPC-A', bars, x)).toBeCloseTo(37.29, 10)
+    expect(totalSymbolWidthMm('UPC-A', bars, x)).toBeCloseTo(113 * x, 10)
+  })
+
+  it('accounts for both quiet zones, not just the bars', () => {
+    // A layout sized to the bars alone looks like it fits and does not.
+    const x = EAN_UPC_NOMINAL_X_DIMENSION_MM
+    expect(totalSymbolWidthMm('UPC-A', 10, x)).toBeCloseTo(10 + 2.97 * 2, 6)
+  })
+})
+
+describe('symbolMetricsFor', () => {
+  it('gives the nominal height for the EAN/UPC family', () => {
+    // GenSpec §5.2.3.2 — 22.85 mm for EAN-13, UPC-A and UPC-E; EAN-8 is shorter.
+    expect(symbolMetricsFor('UPC-A')?.nominalHeightMm).toBe(22.85)
+    expect(symbolMetricsFor('EAN-8')?.nominalHeightMm).toBe(18.23)
+  })
+
+  it('has no entry for variable-length symbologies', () => {
+    expect(symbolMetricsFor('ITF-14')).toBeUndefined()
+  })
+})
+
+describe('nominalBarHeightMm', () => {
+  it.each([
+    [0.8, 18.28],
+    [1, 22.85],
+    [2, 45.7],
+  ])('a UPC-A at %fx is %f mm tall', (magnification, expected) => {
+    // GenSpec figure 5.12.3.1-1 tabulates minimum symbol height against each
+    // X-dimension: 18.28 mm at X = 0.264, 22.85 at 0.330, 45.70 at 0.660. Those
+    // are the specification's own numbers, and they are exactly 22.85 x the
+    // magnification — so height scales with the symbol rather than being fixed.
+    const x = EAN_UPC_NOMINAL_X_DIMENSION_MM * magnification
+    expect(nominalBarHeightMm('UPC-A', x)).toBeCloseTo(expected, 2)
+  })
+
+  it('is shorter for EAN-8, which the specification sizes separately', () => {
+    expect(nominalBarHeightMm('EAN-8', EAN_UPC_NOMINAL_X_DIMENSION_MM)).toBeCloseTo(18.23, 10)
+  })
+
+  it('is undefined for a symbology with no tabulated height', () => {
+    expect(nominalBarHeightMm('GS1-128', 0.33)).toBeUndefined()
   })
 })

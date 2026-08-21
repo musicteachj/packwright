@@ -1,17 +1,134 @@
 @import 'tailwindcss';
 
 /**
- * Design tokens land here in phase 2, before any screen is built — graphite
- * chrome, the ANSI Z535.1 severity scale, the IBM Plex type scale, and the 4px
- * rhythm. Deliberately empty for now rather than filled with placeholders that
- * would need unpicking later.
+ * IBM Plex, self-hosted.
  *
- * @theme {
- *   --color-chrome-*   warm-neutral graphite, ink rather than blue-black
- *   --color-danger     ANSI Z535.1 safety red      — blocking
- *   --color-warning    ANSI Z535.1 safety orange   — violation
- *   --color-caution    ANSI Z535.1 safety yellow   — advisory
- *   --color-notice     ANSI Z535.1 safety blue     — guidance
- *   --color-pass       ANSI Z535.1 safety green    — passed
- * }
+ * Vendored from IBM's own release rather than loaded from a CDN: the exported
+ * PDF embeds the same TTFs, so the browser and the print path draw type from one
+ * source. A CDN copy could drift from the embedded one and nothing would say so.
+ *
+ * Four faces only — regular and semibold in each family. Every extra weight is
+ * bytes a user waits for, and a spec sheet needs emphasis, not a range.
  */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('../../../../assets/fonts/woff2/IBMPlexSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('../../../../assets/fonts/woff2/IBMPlexSans-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('../../../../assets/fonts/woff2/IBMPlexMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('../../../../assets/fonts/woff2/IBMPlexMono-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+
+/**
+ * Design tokens.
+ *
+ * Two rules govern everything below.
+ *
+ * **The label must read as paper.** It is the artifact; the interface is
+ * apparatus around it. So the chrome is deep graphite and the canvas is a true
+ * paper-white, the way an artboard floats in a design tool.
+ *
+ * **The graphite is warm-neutral — ink, not blue-black.** Partly so paper-white
+ * reads warm against it rather than glaring, and partly because the severity
+ * colours are high-chroma: on white they shout, on warm graphite they sit still
+ * and stay readable.
+ *
+ * Every pairing here is contrast-tested in `theme.test.ts`, which parses this
+ * file. The tokens are declared once, in this file, and the test reads what
+ * ships rather than a second copy of the values.
+ */
+@theme {
+  /* Warm-neutral graphite. 950 is the app field, 900 panels, 800 raised surfaces. */
+  --color-chrome-950: #14120f;
+  --color-chrome-900: #1c1a16;
+  --color-chrome-800: #262320;
+  --color-chrome-700: #34302b;
+  --color-chrome-600: #4a453e;
+  --color-chrome-500: #6b655c;
+  --color-chrome-400: #8f887d;
+  --color-chrome-300: #b5aea3;
+  --color-chrome-200: #d6d0c7;
+  --color-chrome-100: #ebe7e0;
+
+  /* The canvas. Warm white, so it reads as stock rather than as a lit screen. */
+  --color-paper: #fdfcfa;
+
+  /**
+   * Severity scale.
+   *
+   * **Derived from the ANSI Z535 signal-word scale — not its published values.**
+   * Z535.1 specifies safety colours in Munsell and CIE coordinates, and it is
+   * paywalled; even the Pantone equivalents that circulate are described by the
+   * standard as reference-only and not valid for compliance. So these are hues
+   * chosen to read as DANGER / WARNING / CAUTION / NOTICE / safety-green against
+   * this chrome, and tuned until every one clears 4.5:1. They are the app's
+   * interface colours. They are not a claim about what the standard prints, and
+   * nothing generated onto a label may take its colour from here.
+   *
+   * Colour is never the only signal. Warning and pass differ in luminance by a
+   * factor of 1.06 — near-identical in greyscale — so every severity also
+   * carries an icon and a text label.
+   */
+  --color-danger: #ff5c4d;
+  --color-warning: #f59340;
+  --color-caution: #f5ce4a;
+  --color-notice: #5aa9e6;
+  --color-pass: #52c57e;
+
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Courier New', monospace;
+}
+
+/**
+ * Identifiers and measurements are monospace with tabular figures.
+ *
+ * Not decoration: dimensions update live as a user types, and proportional
+ * figures make the readout jitter on every keystroke. `tnum` fixes the advance
+ * width so a changing number stays still.
+ */
+@utility numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-chrome-950);
+  color: var(--color-chrome-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/**
+ * The only animation in the system that earns its place, and it defers to the
+ * user's preference. See the design notes on motion.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
