@@ -10,6 +10,37 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 2, stage 3 — design tokens, IBM Plex and the canvas. The label now reads as paper on a work surface,
+and the type in the export is the type on the screen.
+
+- Design tokens in `apps/web/src/assets/main.css`: warm-neutral graphite chrome — ink rather than blue-black,
+  so paper-white reads warm against it and the high-chroma severity colours sit still instead of shouting —
+  plus a true paper-white canvas and the IBM Plex scale.
+- **The severity scale is derived from the ANSI Z535 signal words, not taken from the standard.** Z535.1
+  specifies safety colours in Munsell and CIE coordinates and is paywalled; even the Pantone equivalents that
+  circulate are described by the standard itself as reference-only and not valid for compliance. So these are
+  hues chosen to read as DANGER / WARNING / CAUTION / NOTICE / safety-green against this chrome. They are
+  interface colours, they are not a claim about what the standard prints, and nothing generated onto a label
+  may take its colour from them. A test asserts the file says so.
+- Contrast is measured rather than assumed. `theme.test.ts` parses `main.css` and checks every severity
+  against every surface it can sit on — all clear 4.5:1 — and the palette is declared once, in the CSS, so
+  the test reads what ships instead of a second copy. Two results worth recording: `chrome-500` fails as body
+  text at 3.01:1 and is a hairline token only, and warning and pass differ in luminance by a factor of 1.06,
+  which is near-identical in greyscale and exactly why colour never carries meaning alone here.
+- That guardrail is enforced, not just documented. Writing the rule in a comment did not stop `chrome-500`
+  being used for the citation lines on the landing view, so a test now scans the components for it — and was
+  verified to fail, naming the offending file, before being relied on.
+- IBM Plex Sans and Mono vendored from IBM's own releases under the OFL, in `assets/fonts/` — woff2 for the
+  browser, TTF for the PDF. Deliberately outside `packages/`, which is an npm workspace glob.
+- **The PDF embeds Plex rather than substituting Courier.** Type is geometry too: a different face means
+  different advance widths, so preview == print was true of the bars and only approximately true of the
+  digits. Both paths now draw from the same four font files.
+- `LabelCanvas` renders the label true-scale on the field, with crop marks at the corners, a dimension
+  callout with tick ends, and a live readout in tabular figures. Verified in a real browser at 100%: a 60 mm
+  label measures 227 px, which is 60 mm at 96 dpi.
+- The landing view renders a real label through the real engine in the browser — the same `layOutUpcALabel`
+  the API export calls — rather than showing a picture of one, and no longer uses placeholder styling.
+
 Phase 2, stage 2 — the PDF renderer and export path. The second consumer of a `ResolvedLayout` now exists,
 and with it the property the phase was built to establish: preview and print are the same drawing.
 
@@ -100,6 +131,25 @@ That is what makes preview == print structural rather than something two code pa
   was the one branch CI never watched. Pull requests were always covered; direct pushes were not.
 
 ### Fixed
+
+Findings from the stage 3 review.
+
+- **The production build's PDF export was completely broken.** `renderPdf.ts` resolved the font directory four
+  levels up, which is correct from `src/labels/` and wrong from the tsup bundle at `dist/server.js` — where it
+  pointed outside the repository altogether. `node dist/server.js` answered the first export request with a 500
+  and `ENOENT`. All 283 tests passed throughout, because every one of them runs from source. Two changes
+  close it: the resolver now checks explicit candidates and fails with the paths it tried, and tsup copies the
+  fonts beside the bundle so a `dist`-only container has them.
+- CI now builds the server and exercises the export against the artifact (`npm run verify:build`). Unit tests
+  could not have caught the above and still cannot; only running what ships can.
+- `toSVG` interpolated `fill` and `stroke` without escaping, unlike every other value. Unreachable today since
+  fills are literals — but the browser renders that string through `v-html`, and the suppression there
+  justified itself by claiming the renderer escapes everything it interpolates. The claim is now true, and
+  tested: the fix originally shipped without one, which made the invariant true and unverified rather than
+  false. The tests were confirmed to fail with the escaping removed.
+- The `vue/no-v-html` suppression was a `disable-next-line` above the opening tag, while the rule reports at
+  the `v-html` attribute two lines down — so it suppressed nothing and the warning stood. Replaced with a
+  block disable, which is also stable under Prettier's reformatting.
 
 Findings from the stage 1 + 2 review, each reproduced before being fixed.
 

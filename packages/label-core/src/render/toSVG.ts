@@ -28,6 +28,12 @@ function mm(value: number): string {
  *
  * Label text is user-supplied — a product name is free-form — so this is the
  * difference between rendering an ampersand and emitting a broken document.
+ *
+ * Applied to *every* interpolated value, including colours. Fills are literals
+ * today, so escaping them changes nothing — but the browser renders this string
+ * through `v-html`, and a suppression there justified itself by claiming this
+ * renderer escapes everything it interpolates. Either the claim is true or the
+ * suppression is unjustified; making it true is the cheaper of the two.
  */
 function escapeXml(value: string): string {
   return value
@@ -50,14 +56,14 @@ function renderPrimitive(primitive: LayoutPrimitive): string {
       return (
         `<rect x="${mm(primitive.xMm)}" y="${mm(primitive.yMm)}" ` +
         `width="${mm(primitive.widthMm)}" height="${mm(primitive.heightMm)}" ` +
-        `fill="#${primitive.fill}"${id}/>`
+        `fill="#${escapeXml(primitive.fill)}"${id}/>`
       )
 
     case 'line':
       return (
         `<line x1="${mm(primitive.x1Mm)}" y1="${mm(primitive.y1Mm)}" ` +
         `x2="${mm(primitive.x2Mm)}" y2="${mm(primitive.y2Mm)}" ` +
-        `stroke="#${primitive.stroke}" stroke-width="${mm(primitive.strokeWidthMm)}"` +
+        `stroke="#${escapeXml(primitive.stroke)}" stroke-width="${mm(primitive.strokeWidthMm)}"` +
         (primitive.dashMm ? ` stroke-dasharray="${primitive.dashMm.map(mm).join(' ')}"` : '') +
         `${id}/>`
       )
@@ -67,7 +73,7 @@ function renderPrimitive(primitive: LayoutPrimitive): string {
         `<text x="${mm(primitive.xMm)}" y="${mm(primitive.baselineYMm)}" ` +
         `font-family="${escapeXml(primitive.fontFamily)}" ` +
         `font-size="${mm(primitive.fontSizeMm)}" ` +
-        `fill="#${primitive.fill}" text-anchor="${primitive.anchor}"${id}>` +
+        `fill="#${escapeXml(primitive.fill)}" text-anchor="${primitive.anchor}"${id}>` +
         `${escapeXml(primitive.text)}</text>`
       )
   }

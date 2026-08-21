@@ -114,14 +114,30 @@ describe('the exported PDF matches the requested millimetres', () => {
     expect((right - left) * (25.4 / 72)).toBeCloseTo(31.35 * 2, 3)
   })
 
-  it('embeds the human-readable digits as text, not as outlines', async () => {
-    // Text stays selectable and searchable in the export. PDFKit writes the
-    // string as a hex-encoded show operator.
+  it('embeds IBM Plex rather than substituting a standard font', async () => {
+    // The browser draws the label in Plex. Until this landed the PDF drew it in
+    // Courier, so the digits had different advance widths from the preview —
+    // "preview == print" held for the bars and not quite for the type.
     const { source } = await renderAndParse(layoutFor())
-    const shown = [...source.matchAll(/\[<([0-9A-Fa-f]+)>\s*[\d.-]*\]\s*TJ/g)].map((match) =>
-      Buffer.from(match[1] as string, 'hex').toString('latin1'),
-    )
-    expect(shown).toEqual(['0', '36000', '29145', '2'])
+    expect(source).toMatch(/IBMPlexMono/)
+    expect(source).not.toMatch(/Courier/)
+  })
+
+  it('embeds the font file itself, not just a reference to it', async () => {
+    // /FontFile2 is the embedded TrueType program. Without it the reader
+    // substitutes whatever it has, and the metrics stop matching.
+    const { source } = await renderAndParse(layoutFor())
+    expect(source).toMatch(/\/FontFile2/)
+  })
+
+  it('keeps the digits selectable by shipping a ToUnicode map', async () => {
+    // An embedded subset is addressed by glyph id, not by character code — so
+    // the show operators carry ids like <0001> rather than ASCII. ToUnicode is
+    // what maps them back, and therefore what makes the text selectable and
+    // searchable. Asserting the operator bytes instead, as this test first did,
+    // was really asserting that the font had *not* been embedded.
+    const { source } = await renderAndParse(layoutFor())
+    expect(source).toMatch(/\/ToUnicode/)
   })
 
   it('produces a valid PDF header and trailer', async () => {

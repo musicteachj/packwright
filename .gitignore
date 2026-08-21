@@ -21,5 +21,7 @@ npm-debug.log*
 yarn-error.log*
 *.local
 
-# Generated verification artefact — regenerate with npm run print-test
+# Generated artefacts, not sources. The print-test sheet comes from
+# `npm run print-test`; label.pdf is what the documented curl example writes.
 print-test-sheet*.pdf
+/label.pdf

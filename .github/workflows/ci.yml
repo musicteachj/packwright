@@ -47,3 +47,10 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Exercises the PDF export against the *built* artifact, not the source
+      # tree. The whole suite once passed while `npm start` answered the first
+      # export with a 500, because the fonts resolved from src/ and not from the
+      # bundle. Tests alone could not see that; only running what ships can.
+      - name: Verify the built server
+        run: npm run verify:build

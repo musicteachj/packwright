@@ -9,23 +9,93 @@
  */
 
 import { pageSizePoints, toPDF, type ResolvedLayout } from '@packwright/label-core'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import PDFDocument from 'pdfkit'
 
 /**
- * Maps the layout's font families onto fonts the document can actually use.
+ * IBM Plex, embedded.
  *
- * IBM Plex is not one of PDF's standard 14, and embedding it is phase 2 stage 3
- * work — it arrives with the design tokens. Until then the monospace request
- * resolves to Courier, which is metrically different but present in every
- * reader. Named here rather than hidden inside the renderer so the substitution
- * is visible: the human-readable digits will not be typeset in Plex yet.
+ * The browser draws the label in Plex; without this the PDF drew it in Courier,
+ * a substitution that was named in the code rather than hidden but was still a
+ * gap in the promise this phase exists to make. Type is geometry too — a
+ * different face is different advance widths, so "preview == print" was true of
+ * the bars and not quite true of the digits.
+ *
+ * The TTFs are the ones vendored for the web build, so both paths draw from one
+ * set of files rather than two copies that could drift.
  */
-const STANDARD_FONTS: Record<string, string> = {
-  'IBM Plex Mono': 'Courier',
-  'IBM Plex Sans': 'Helvetica',
+/**
+ * Locates the vendored fonts from either the source tree or the bundle.
+ *
+ * A single relative path cannot serve both. From `src/labels/` the repo root is
+ * four levels up; from the tsup bundle at `dist/server.js` it is three, and the
+ * four-segment path resolved *outside the repository entirely*. Nothing caught
+ * it, because every test runs from source — the built artifact answered
+ * `npm start` with a 500 and `ENOENT` on the first export request.
+ *
+ * So the candidates are explicit and checked, and a container image only needs
+ * `dist/` because the build copies the fonts beside the bundle.
+ */
+function resolveFontDir(): string {
+  const here = fileURLToPath(new URL('.', import.meta.url))
+  const candidates = [
+    // Bundled: tsup's publicDir copies the fonts beside server.js in dist/.
+    here,
+    // Running from source, via tsx or vitest.
+    join(here, '../../../../assets/fonts/ttf'),
+  ]
+
+  const found = candidates.find((candidate) =>
+    existsSync(join(candidate, 'IBMPlexMono-Regular.ttf')),
+  )
+  if (!found) {
+    throw new Error(
+      `IBM Plex was not found. Looked in:\n${candidates.map((c) => `  ${c}`).join('\n')}\n` +
+        'The PDF export embeds these fonts, so it cannot run without them.',
+    )
+  }
+  return found
 }
 
-const fontFor = (family: string): string => STANDARD_FONTS[family] ?? family
+/**
+ * IBM Plex, embedded.
+ *
+ * The browser draws the label in Plex; without this the PDF drew it in Courier,
+ * a substitution that was named in the code rather than hidden but was still a
+ * gap in the promise this phase exists to make. Type is geometry too — a
+ * different face is different advance widths, so "preview == print" was true of
+ * the bars and not quite true of the digits.
+ *
+ * The TTFs are the ones vendored for the web build, so both paths draw from one
+ * set of files rather than two copies that could drift.
+ */
+const PLEX_FACES: Record<string, string> = {
+  'IBM Plex Mono': 'IBMPlexMono-Regular.ttf',
+  'IBM Plex Mono SemiBold': 'IBMPlexMono-SemiBold.ttf',
+  'IBM Plex Sans': 'IBMPlexSans-Regular.ttf',
+  'IBM Plex Sans SemiBold': 'IBMPlexSans-SemiBold.ttf',
+}
+
+/** Resolved once, so a missing font directory surfaces on first use, not per request. */
+let fontDir: string | undefined
+
+/**
+ * Registers each face under the family name the layout asks for, so the
+ * renderer needs no translation table.
+ */
+function registerPlex(document: PDFKit.PDFDocument): void {
+  fontDir ??= resolveFontDir()
+  for (const [family, file] of Object.entries(PLEX_FACES)) {
+    document.registerFont(family, join(fontDir, file))
+  }
+}
+
+/** Exposed so a test can assert the fonts are reachable in this build. */
+export function plexFontDirectory(): string {
+  return resolveFontDir()
+}
 
 export interface RenderPdfOptions {
   /**
@@ -58,7 +128,8 @@ export function renderLayoutToPdf(
     document.on('error', reject)
   })
 
-  toPDF(layout, document as never, { fontFor })
+  registerPlex(document)
+  toPDF(layout, document as never)
   document.end()
 
   return finished
