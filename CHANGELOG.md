@@ -10,6 +10,28 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 2, stage 2 — the PDF renderer and export path. The second consumer of a `ResolvedLayout` now exists,
+and with it the property the phase was built to establish: preview and print are the same drawing.
+
+- `toPDF`, and the `PdfCanvas` interface it draws through. `label-core` never imports PDFKit — it runs in the
+  browser too — so the canvas is described structurally and injected. A real `PDFDocument` satisfies it
+  without knowing the interface exists, and a recording stub satisfies it in tests, which is what lets the
+  renderer be verified without producing a PDF at all.
+- A test that reduces both renderers to the geometry they were handed and compares them directly. If SVG and
+  PDF ever disagree, one of them is doing arithmetic it should not be.
+- `POST /api/labels/upc-a/export`. The API computes no geometry: it validates, calls the same engine the
+  browser preview uses, and streams the result. A request that is well formed but impossible — a 2x symbol on
+  stock too small to carry its quiet zone — is a 422 with the measurements that did not fit, not a 500.
+- Assertions against a real exported PDF, read back out of the content stream: the MediaBox equals the stock,
+  every bar lands within a micrometre of its resolved position, the bar pattern measures 31.35 mm in the file
+  itself, and the digits are embedded as text rather than outlines so the export stays selectable.
+- `npm run print-test --workspace @packwright/api` writes an A4 sheet carrying the same GTIN at 0.8x, 1.0x
+  and 2.0x, plus a control whose quiet zone is deliberately obstructed. The control is the point: if every
+  symbol scans including that one, the phone is being generous and the test proved nothing. Only the control
+  failing means the spine is correct.
+- Human-readable digits scale with magnification on the sheet. A fixed type size left the 2x symbol wearing
+  digits sized for the nominal one, which misrepresents what a printed pack carries.
+
 - npm workspace scaffold: `@packwright/label-core`, `@packwright/web`, `@packwright/api`
 - Toolchain — TypeScript 6 (strict, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), Vitest 4 with
   v8 coverage, ESLint 9 flat config, Prettier with the Tailwind class-sorting plugin, EditorConfig
@@ -36,6 +58,36 @@ into a version only when there is a reason to.
 - `README.md` and `docs/DESIGN.md` — the design document now lives in the repo rather than outside it,
   so it is version-controlled alongside the code it describes and discoverable without a path
 
+Phase 2, stage 1 — the rendering spine. A layout engine now produces a `ResolvedLayout`, a flat list of
+primitives positioned in millimetres, and the SVG renderer consumes it without doing arithmetic of its own.
+That is what makes preview == print structural rather than something two code paths have to keep agreeing on.
+
+- `ResolvedLayout` and the `LayoutPrimitive` union — `rect`, `line` and `text`, every field in millimetres.
+  Each primitive carries an `elementId`, so phase 3's findings can point at geometry rather than at intent.
+  `ResolvedSymbol` records each barcode's measured position and quiet zones, so a rule can ask what was drawn
+  instead of what was requested.
+- bwip-js adapter. Two things had to be established by probing the library rather than trusting its
+  documentation. At `scale: 1` one bwip-js unit is exactly one module, so a UPC-A comes back spanning exactly
+  the 95 modules GenSpec figure 5.2.3.5-1 implies — which lets every millimetre trace to our own verified
+  X-dimension. And its `height` option is in millimetres but converts at 72 units per inch, treating a unit as
+  a point while horizontally a unit is a module; two unit systems in one call, so its vertical output is
+  discarded and bar heights come from the specification instead.
+- The symbol is requested with `includetext: false` and the human-readable digits are drawn separately. Not a
+  stylistic choice: bwip-js's text metrics feed back into its bar positions, so supplying different metrics
+  moves the bars. With text off the bar pattern is byte-identical regardless of font.
+- Module-count and nominal-height tables for the EAN/UPC family, and the symbol structure — start guard 101,
+  six characters, centre guard 01010, six characters, end guard 101. That composition sums to 95, closing
+  against the specification's 113-module total less two 9X quiet zones, so guard bars and digit groups are
+  positioned from arithmetic rather than measured off a rendering.
+- `layOutUpcALabel` and the UPC-A template. A symbol that will not fit its stock is refused rather than scaled
+  down, because shrinking it silently breaks the quiet zone and produces a label that looks right and does not
+  scan.
+- `toSVG` — pure string building, no DOM. Pairs `width`/`height` in millimetres with a bare-unit `viewBox` so
+  one user unit is one millimetre, which is what makes a browser print at 100% produce a scannable symbol.
+- A barrel-export guard. Checks what a consumer can actually import rather than what a regex finds in a file,
+  and is verified to fail when an export is removed. It only sees runtime values, so type-only exports remain
+  unguarded — stated in the test rather than left to look more complete than it is.
+
 ### Changed
 
 - Retargeted from Node 22 to **Node 24** (Active LTS; 22 is in maintenance)
@@ -48,6 +100,91 @@ into a version only when there is a reason to.
   was the one branch CI never watched. Pull requests were always covered; direct pushes were not.
 
 ### Fixed
+
+Findings from the stage 1 + 2 review, each reproduced before being fixed.
+
+- **Bar height did not scale with magnification, so a 2x symbol was drawn half as tall as the specification
+  requires.** GenSpec figure 5.12.3.1-1 tabulates a minimum symbol height against each X-dimension — for
+  UPC-A, 18.28 mm at X = 0.264, 22.85 at 0.330 and 45.70 at 0.660, which are exactly 22.85 multiplied by the
+  magnification. The engine took the nominal 22.85 mm regardless. Nothing about the result looks wrong: the
+  bars are the right width, the quiet zones are right, the symbol merely reads as slightly squat. It is
+  non-conformant at point of sale, and the print-test sheet's "2.0x" block was printing a symbol that was not
+  a 2x symbol. The table had been extracted during stage 1 and only its middle column used.
+- The guard extension scaled while the bar height did not, so the guard-to-data ratio drifted with
+  magnification too. Both now derive from `nominalBarHeightMm`, and a test pins the ratio across 0.8x, 1x
+  and 2x.
+- The same unscaled height was computed a second time in the layout engine, so the stock-fit check accepted
+  stock that could not carry a conformant symbol. Both sites now share one helper rather than each doing the
+  arithmetic.
+- A non-numeric GTIN reached `normaliseToGtin14` and raised `Gs1FormatError` instead of `DigitalLinkError`.
+  `'ABCDEFGH'` is a valid GTIN *length*, so it passed the length guard added in the phase 1 review — and a
+  caller catching this module's documented error type would have missed it.
+- `layOutHri` returned early when a declared digit group had no matching data area, skipping the cursor
+  advance and silently mis-slicing every later group and the trailing digit. Unreachable today, but a silent
+  wrong-digits path is precisely what this engine may never produce; it throws now.
+- The human-readable type size scaled only in the print-test sheet, not in the engine the API export and the
+  browser preview both use. The previous entry claimed this was fixed; it was fixed in one of the two places.
+  Scaling now lives in the template as `upcAHriFor`, and both consumers call it.
+- The export route restated the payload length, the magnification bounds and the default stock rather than
+  importing them from `label-core`. Each side was tested against its own copy, so the two could drift apart
+  without a single test failing.
+
+Findings from the stage 1 review, all reproduced before being fixed.
+
+- **The human-readable digits printed 1.3 mm into the guard bars.** The baseline sat a fixed gap below the
+  bars, but glyphs rise *above* their baseline rather than hanging below it — so the digits overlapped the bar
+  pattern, which is a scanning failure. The style now reserves a vertical *band* and puts the baseline at its
+  lower edge, so glyphs grow upward into space set aside for them. The band must be at least the font's
+  ascent, which is the caller's to know because the caller chose the font. The old test asserted only the
+  baseline position, so it passed while the output was wrong.
+- **EAN-13 inherited UPC-A's digit grouping.** It rendered `5 | 90123 | 412345 | 7`, splitting eleven digits
+  by a half that truncated to five and pushing the check digit into the 7X right quiet zone — the one place a
+  digit must never go. An EAN-13 prints `5 901234 123457`: one digit left, six under each half, nothing to
+  the right. The grouping is now part of each symbology's structure rather than hardcoded, and a mismatch
+  between grouping and digit count throws instead of silently dropping a digit.
+- **The label was not vertically centred** — 6.075 mm above the artwork and 8.825 mm below. The engine added
+  the HRI font size as though text hung below the baseline, while the symbol's own footprint excluded the
+  digits it had just emitted. The footprint now includes the band, and the same error also refused stock that
+  was in fact large enough.
+- **`npm run typecheck` was failing and reported green.** `bwip-js` does not resolve under
+  `moduleResolution: bundler` — its `exports["."]` has no `default` condition — and `import.meta.glob` is
+  untyped under the deliberate `"types": []`. Both are fixed: tests import `bwip-js/generic`, the
+  platform-neutral build, which also means they exercise what `label-core` actually ships rather than the
+  node build Vite was silently selecting; and the barrel guard now uses explicit imports. The failure was
+  missed because the verification piped `npm run typecheck` to `tail`, and npm continues to the next
+  workspace after one fails, so a clean-looking ending hid three errors.
+- `exports` omitted `./layout`, `./render` and `./templates` — the same omission as `./symbology` in phase 1.
+  A test now pins the manifest, which the barrel guard could not do: that one checks *within* a module, this
+  one checks the manifest that makes a module reachable at all.
+- The bar collector treated any `line` callback as a vertical bar. ITF-14 draws horizontal bearer bars
+  through the same callback, and counting one would corrupt the module span the entire millimetre calibration
+  is measured against.
+- `UPC_A_HRI` documented that its type size was "deliberately not defaulted" and then defaulted it, with no
+  way for a caller to override. Renamed `UPC_A_HRI_DEFAULT`, still defaulted because a label needs digits,
+  but now overridable and honest that the size is legible rather than regulated.
+- `GUARD_BAR_EXTENSION_MODULES` shipped without a citation — the only constant in that file without one. It
+  comes from the bwip-js reference rendering, which measures an implementation rather than reading a
+  specification. Recorded as unverified, and no rule may judge against it until a source is confirmed.
+- `TextPrimitive.fontSizeMm` was documented as cap-to-baseline but emitted as SVG `font-size`, which is the
+  em. Roughly a third apart, and 21 CFR 101.7(i) sets the net-quantity minimum by the height of a lowercase
+  "o" — so a rule comparing the two directly would have passed type well under the legal minimum.
+- `"No verified metrics for EAN-8"` sent you to the wrong table when the metrics existed and the structure
+  entry did not. The two are now reported separately.
+- The symbol was encoded twice per layout, once to measure and once to place. Every figure needed for the
+  footprint is already tabulated, so the measuring pass cost an encode and told us nothing.
+- Duplicate `### Added` and `### Fixed` headings under one `## [Unreleased]`, created by an earlier insert.
+
+- `isNetQuantityZoneRequired` and `NET_QUANTITY_ZONE_EXEMPT_MAX_SQ_INCHES` were added during the phase 1
+  review but never re-exported from `geometry/index.ts`, so they were unreachable from
+  `@packwright/label-core`. Their tests imported from `./pdp` directly, which is why nothing failed. The same
+  class as the missing `./symbology` export, and now caught by a test rather than by a manual scan.
+- `totalSymbolWidthMm`'s test passed `37.29` as the bar-pattern width. That figure is GenSpec's 113-module
+  total *including* both quiet zones, so the test added quiet zones a second time and asserted a symbol
+  43.23 mm wide. It passed only because it was tautological. The bar pattern is 95 modules — 31.35 mm — and
+  the layout engine was about to consume the wrong number.
+- `docs/DESIGN.md` claimed bwip-js offers "both SVG and PDFKit output". It does not; there is no PDFKit
+  export. What it ships is a pluggable `DrawingContext` and a reference PDFKit implementation in its examples,
+  which suits this architecture better than the built-in would have.
 
 Findings from the phase 1 review, each confirmed against a primary source rather than inferred.
 

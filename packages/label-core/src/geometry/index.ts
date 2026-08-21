@@ -14,6 +14,8 @@ export {
 } from './units'
 
 export {
+  NET_QUANTITY_ZONE_EXEMPT_MAX_SQ_INCHES,
+  isNetQuantityZoneRequired,
   minNetQuantityTypeHeightInches,
   minNetQuantityTypeHeightMm,
   netQuantityZoneTopMm,
@@ -31,14 +33,19 @@ export type {
 export {
   EAN_UPC_NOMINAL_X_DIMENSION_MM,
   GENERAL_QUIET_ZONE,
+  GUARD_BAR_EXTENSION_MODULES,
   MAX_MAGNIFICATION,
   MIN_MAGNIFICATION,
+  barPatternWidthMm,
   hasVerifiedQuietZone,
   isMagnificationInRange,
   magnificationToXDimensionMm,
+  nominalBarHeightMm,
   quietZoneFor,
   quietZoneMm,
+  symbolMetricsFor,
+  symbolStructureFor,
   totalSymbolWidthMm,
   xDimensionMmToMagnification,
 } from './symbol'
-export type { QuietZoneSpec } from './symbol'
+export type { ModuleRange, QuietZoneSpec, SymbolMetrics, SymbolStructure } from './symbol'

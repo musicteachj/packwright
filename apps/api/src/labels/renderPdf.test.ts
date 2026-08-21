@@ -1,0 +1,139 @@
+import { layOutUpcALabel, mmToPoints, type ResolvedLayout } from '@packwright/label-core'
+import * as bwip from 'bwip-js/generic'
+import { describe, expect, it } from 'vitest'
+import { renderLayoutToPdf } from './renderPdf'
+
+/**
+ * The test the whole phase exists for.
+ *
+ * Everything else checks that the layout engine computes the right millimetres.
+ * This checks that those millimetres survive into the exported file — it renders
+ * a real PDF, reads the drawing operators back out of the content stream, and
+ * asserts they land where the layout said. A renderer that quietly rescaled, or
+ * a page box that did not match the stock, would pass every other test in the
+ * suite and produce a label that does not scan.
+ *
+ * The PDF is parsed by regex rather than with a library. The content stream is
+ * plain text when uncompressed, the two operators that matter are `re` and the
+ * `/MediaBox` entry, and adding a PDF parser to assert two shapes of number
+ * would be more machinery than the thing being verified.
+ */
+
+const STOCK = { widthMm: 60, heightMm: 40, marginMm: 3 }
+
+const layoutFor = (data: Record<string, unknown> = {}, stock = STOCK): ResolvedLayout =>
+  layOutUpcALabel(bwip as never, { data: { gtinPayload: '03600029145', ...data }, stock })
+
+async function renderAndParse(layout: ResolvedLayout) {
+  const pdf = await renderLayoutToPdf(layout, { uncompressed: true })
+  const source = pdf.toString('latin1')
+
+  const mediaBox = (source.match(/\/MediaBox\s*\[([^\]]+)\]/)?.[1] ?? '')
+    .trim()
+    .split(/\s+/)
+    .map(Number)
+
+  // `x y w h re` — one per filled rectangle, in points from the top-left.
+  const rects = [...source.matchAll(/([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+) re/g)].map((match) =>
+    match.slice(1, 5).map(Number),
+  )
+
+  return { pdf, source, mediaBox, rects }
+}
+
+describe('the exported PDF matches the requested millimetres', () => {
+  it('sets a MediaBox equal to the stock', async () => {
+    // The one dimension a printer cannot be talked out of.
+    const { mediaBox } = await renderAndParse(layoutFor())
+    expect(mediaBox[0]).toBe(0)
+    expect(mediaBox[1]).toBe(0)
+    expect(mediaBox[2]).toBeCloseTo(mmToPoints(60), 3)
+    expect(mediaBox[3]).toBeCloseTo(mmToPoints(40), 3)
+  })
+
+  it('sizes the MediaBox from the stock, not from a default page', async () => {
+    // A4 would be 595 x 842 pt. Asserting a *different* stock rules out the
+    // possibility that the numbers above matched by coincidence.
+    const { mediaBox } = await renderAndParse(
+      layoutFor({ magnification: 2 }, { widthMm: 90, heightMm: 70, marginMm: 3 }),
+    )
+    expect(mediaBox[2]).toBeCloseTo(mmToPoints(90), 3)
+    expect(mediaBox[3]).toBeCloseTo(mmToPoints(70), 3)
+  })
+
+  it('draws one rectangle per bar', async () => {
+    const layout = layoutFor()
+    const { rects } = await renderAndParse(layout)
+    expect(rects).toHaveLength(layout.primitives.filter((p) => p.kind === 'rect').length)
+  })
+
+  it('places every bar within a micrometre of the resolved position', async () => {
+    // Converted from points back to millimetres, so a scaling error surfaces
+    // rather than cancelling itself out on the round trip.
+    const layout = layoutFor()
+    const { rects } = await renderAndParse(layout)
+
+    const expected = layout.primitives
+      .filter((p) => p.kind === 'rect')
+      .map((p) => p as { xMm: number; yMm: number; widthMm: number; heightMm: number })
+
+    rects.forEach((rect, index) => {
+      const target = expected[index]!
+      const [xPt, yPt, widthPt, heightPt] = rect as [number, number, number, number]
+      expect(xPt).toBeCloseTo(mmToPoints(target.xMm), 4)
+      expect(yPt).toBeCloseTo(mmToPoints(target.yMm), 4)
+      expect(widthPt).toBeCloseTo(mmToPoints(target.widthMm), 4)
+      expect(heightPt).toBeCloseTo(mmToPoints(target.heightMm), 4)
+    })
+  })
+
+  it('keeps the symbol bounding box inside the page', async () => {
+    const layout = layoutFor()
+    const { rects, mediaBox } = await renderAndParse(layout)
+    const right = Math.max(...rects.map((r) => r[0]! + r[2]!))
+    const bottom = Math.max(...rects.map((r) => r[1]! + r[3]!))
+    expect(right).toBeLessThanOrEqual(mediaBox[2]!)
+    expect(bottom).toBeLessThanOrEqual(mediaBox[3]!)
+  })
+
+  it('measures the bar pattern at 31.35 mm in the file itself', async () => {
+    // The GenSpec figure, asserted against the exported artefact rather than
+    // against the layout that produced it.
+    const { rects } = await renderAndParse(layoutFor())
+    const left = Math.min(...rects.map((r) => r[0]!))
+    const right = Math.max(...rects.map((r) => r[0]! + r[2]!))
+    expect((right - left) * (25.4 / 72)).toBeCloseTo(31.35, 3)
+  })
+
+  it('scales the exported symbol with magnification', async () => {
+    const big = await renderAndParse(
+      layoutFor({ magnification: 2 }, { widthMm: 90, heightMm: 70, marginMm: 3 }),
+    )
+    const left = Math.min(...big.rects.map((r) => r[0]!))
+    const right = Math.max(...big.rects.map((r) => r[0]! + r[2]!))
+    expect((right - left) * (25.4 / 72)).toBeCloseTo(31.35 * 2, 3)
+  })
+
+  it('embeds the human-readable digits as text, not as outlines', async () => {
+    // Text stays selectable and searchable in the export. PDFKit writes the
+    // string as a hex-encoded show operator.
+    const { source } = await renderAndParse(layoutFor())
+    const shown = [...source.matchAll(/\[<([0-9A-Fa-f]+)>\s*[\d.-]*\]\s*TJ/g)].map((match) =>
+      Buffer.from(match[1] as string, 'hex').toString('latin1'),
+    )
+    expect(shown).toEqual(['0', '36000', '29145', '2'])
+  })
+
+  it('produces a valid PDF header and trailer', async () => {
+    const { pdf } = await renderAndParse(layoutFor())
+    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
+    expect(pdf.subarray(-6).toString().trim()).toBe('%%EOF')
+  })
+
+  it('compresses by default', async () => {
+    // The uncompressed stream is a testing affordance, not what ships.
+    const compressed = await renderLayoutToPdf(layoutFor())
+    const plain = await renderLayoutToPdf(layoutFor(), { uncompressed: true })
+    expect(compressed.length).toBeLessThan(plain.length)
+  })
+})

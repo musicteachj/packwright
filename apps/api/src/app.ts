@@ -2,6 +2,7 @@ import cors from 'cors'
 import express, { type Express, type NextFunction, type Request, type Response } from 'express'
 import helmet from 'helmet'
 import morgan from 'morgan'
+import { createLabelRouter } from './labels/routes'
 
 export interface AppOptions {
   /** Suppresses request logging under test, where it is only noise. */
@@ -36,6 +37,8 @@ export function createApp(options: AppOptions = {}): Express {
       timestamp: new Date().toISOString(),
     })
   })
+
+  app.use('/api/labels', createLabelRouter())
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: 'Not found' })
