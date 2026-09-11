@@ -37,7 +37,7 @@ import {
   symbolStructureFor,
 } from '../geometry/symbol'
 import { appendCheckDigit } from '../gs1/checkDigit'
-import type { LayoutPrimitive, RectPrimitive, ResolvedSymbol } from '../layout/types'
+import type { LayoutPrimitive, PlacedSymbol, RectPrimitive, ResolvedElement } from '../layout/types'
 import type { SymbologyId } from '../types/index'
 import { getSymbologyConstraints, validatePayload } from './constraints'
 
@@ -95,7 +95,14 @@ export interface HriStyle {
 
 export interface LaidOutSymbol {
   primitives: LayoutPrimitive[]
-  symbol: ResolvedSymbol
+  symbol: PlacedSymbol
+  /**
+   * The space this symbol occupies, for anything that measures rather than
+   * draws. The box is the *footprint* — bars plus the quiet zones either side —
+   * not the ink alone, because the quiet zone is the part that has to stay clear
+   * and is therefore the part a rule and a canvas highlight both care about.
+   */
+  element: ResolvedElement
   /** Full footprint including both quiet zones — what a layout must reserve. */
   footprintWidthMm: number
   footprintHeightMm: number
@@ -376,6 +383,9 @@ export function layOutSymbol(bwip: BwipRenderer, request: SymbolRequest): LaidOu
     )
   }
 
+  const footprintWidthMm = quietZoneLeftMm + barPatternMm + quietZoneRightMm
+  const footprintHeightMm = guardHeightMm + hriBandMm
+
   return {
     primitives,
     symbol: {
@@ -387,10 +397,20 @@ export function layOutSymbol(bwip: BwipRenderer, request: SymbolRequest): LaidOu
       barHeightMm,
       xMm: barsLeftMm,
       yMm,
-      quietZoneLeftMm,
-      quietZoneRightMm,
+      drawnHeightMm: footprintHeightMm,
+      guardBarHeightMm: guardHeightMm,
+      // What the specification demands here — not what this label leaves blank.
+      // The measurement is the engine's to take, once it knows what else is on
+      // the label; see `layout/clearSpace.ts`.
+      requiredQuietZoneLeftMm: quietZoneLeftMm,
+      requiredQuietZoneRightMm: quietZoneRightMm,
     },
-    footprintWidthMm: quietZoneLeftMm + barPatternMm + quietZoneRightMm,
-    footprintHeightMm: guardHeightMm + hriBandMm,
+    element: {
+      elementId,
+      label: `${symbology} symbol`,
+      box: { xMm, yMm, widthMm: footprintWidthMm, heightMm: footprintHeightMm },
+    },
+    footprintWidthMm,
+    footprintHeightMm,
   }
 }

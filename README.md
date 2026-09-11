@@ -54,10 +54,13 @@ invented one.
 
 ## Status
 
-Phase 1 of 8 complete. `label-core` has working `gs1`, `geometry`, `symbology` and `types` modules — GS1 check
-digits, Application Identifiers, element strings, Digital Link URIs, PDP geometry, FDA type-size bands, quiet
-zones. Every regulatory constant is cited to a source document. 146 tests, CI green. The rendering spine is
-next.
+Phase 3 of 8 complete. `label-core` resolves a UPC-A retail label to millimetre geometry, renders it to SVG and
+to PDF from that one resolved layout, and runs six GS1 rules against what was **drawn** rather than what was
+asked for. The editor at `/labels/new` puts the form, the label and the findings side by side, and clicking a
+finding outlines the offending element on the canvas.
+
+Every regulatory constant is cited to a source document, and every rule ships with a known-bad label asserting
+the exact code, severity and citation it produces. 376 tests, CI green. The GHS chemical label is next.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for detail and [`docs/DESIGN.md`](docs/DESIGN.md) for the full design and
 remaining phases.

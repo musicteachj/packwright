@@ -18,8 +18,11 @@ import {
   EAN_UPC_NOMINAL_X_DIMENSION_MM,
   layOutSymbol,
   magnificationToXDimensionMm,
+  measureClearSpace,
   upcAHriFor,
   type LayoutPrimitive,
+  type PlacedSymbol,
+  type ResolvedElement,
   type ResolvedLayout,
   type ResolvedSymbol,
 } from '@packwright/label-core'
@@ -72,33 +75,51 @@ function caption(text: string, xMm: number, baselineYMm: number): LayoutPrimitiv
  * artwork is the single most common way a real label stops scanning, precisely
  * because the space looks empty and therefore wasted.
  */
-function obstructQuietZone(symbol: ResolvedSymbol): LayoutPrimitive[] {
-  const encroachMm = symbol.quietZoneLeftMm * 0.8
-  return [
+function obstructQuietZone(symbol: PlacedSymbol): {
+  primitives: LayoutPrimitive[]
+  elements: ResolvedElement[]
+} {
+  const boxes = [
     {
-      kind: 'rect',
-      xMm: symbol.xMm - encroachMm,
-      yMm: symbol.yMm,
-      widthMm: encroachMm,
-      heightMm: symbol.barHeightMm,
-      fill: '000000',
       elementId: 'sabotage-left',
+      label: 'Obstruction — left quiet zone',
+      box: {
+        xMm: symbol.xMm - symbol.requiredQuietZoneLeftMm * 0.8,
+        yMm: symbol.yMm,
+        widthMm: symbol.requiredQuietZoneLeftMm * 0.8,
+        heightMm: symbol.barHeightMm,
+      },
     },
     {
-      kind: 'rect',
-      xMm: symbol.xMm + symbol.barPatternWidthMm,
-      yMm: symbol.yMm,
-      widthMm: symbol.quietZoneRightMm * 0.8,
-      heightMm: symbol.barHeightMm,
-      fill: '000000',
       elementId: 'sabotage-right',
+      label: 'Obstruction — right quiet zone',
+      box: {
+        xMm: symbol.xMm + symbol.barPatternWidthMm,
+        yMm: symbol.yMm,
+        widthMm: symbol.requiredQuietZoneRightMm * 0.8,
+        heightMm: symbol.barHeightMm,
+      },
     },
   ]
+
+  return {
+    elements: boxes,
+    // Emitted as elements as well as ink, so the control's measured clear space
+    // reports the obstruction rather than the trim edge. The sheet then states
+    // in millimetres what it is asking the phone to fail on.
+    primitives: boxes.map(({ elementId, box }) => ({
+      kind: 'rect' as const,
+      ...box,
+      fill: '000000',
+      elementId,
+    })),
+  }
 }
 
 export function buildPrintTestSheet(): ResolvedLayout {
   const primitives: LayoutPrimitive[] = []
-  const symbols: ResolvedSymbol[] = []
+  const elements: ResolvedElement[] = []
+  const placed: PlacedSymbol[] = []
   let cursorYMm = MARGIN_MM
 
   primitives.push(
@@ -129,8 +150,13 @@ export function buildPrintTestSheet(): ResolvedLayout {
     })
 
     primitives.push(...laidOut.primitives)
-    if (block.sabotageQuietZone) primitives.push(...obstructQuietZone(laidOut.symbol))
-    symbols.push(laidOut.symbol)
+    elements.push(laidOut.element)
+    if (block.sabotageQuietZone) {
+      const obstruction = obstructQuietZone(laidOut.symbol)
+      primitives.push(...obstruction.primitives)
+      elements.push(...obstruction.elements)
+    }
+    placed.push(laidOut.symbol)
 
     cursorYMm += laidOut.footprintHeightMm + BLOCK_GAP_MM
   }
@@ -142,11 +168,24 @@ export function buildPrintTestSheet(): ResolvedLayout {
     )
   }
 
+  // Measured once every element on the sheet is known — clear space is a
+  // property of a symbol and its surroundings, so it cannot be settled while
+  // the surroundings are still being placed.
+  const symbols: ResolvedSymbol[] = placed.map((symbol) => ({
+    ...symbol,
+    ...measureClearSpace({ symbol, elements, labelWidthMm: PAGE.widthMm }),
+    // Every block is placed inside the page margins by construction, and the
+    // height guard above fails the build if the sheet outgrows A4.
+    verticalOverflowMm: 0,
+  }))
+
   return {
     widthMm: PAGE.widthMm,
     heightMm: PAGE.heightMm,
     primitives,
+    elements,
     symbols,
+    omissions: [],
   }
 }
 

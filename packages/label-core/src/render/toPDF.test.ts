@@ -48,7 +48,7 @@ function recordingCanvas() {
 
 const layout = () =>
   layOutUpcALabel(bwip as never, {
-    data: { gtinPayload: '03600029145' },
+    data: { gtin: '036000291452' },
     stock: DEFAULT_UPC_A_STOCK,
   })
 
@@ -113,6 +113,8 @@ describe('toPDF', () => {
         widthMm: 50,
         heightMm: 20,
         symbols: [],
+        elements: [],
+        omissions: [],
         primitives: (['start', 'middle', 'end'] as const).map((anchor) => ({
           kind: 'text' as const,
           xMm: 10,

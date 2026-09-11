@@ -22,7 +22,7 @@ import { renderLayoutToPdf } from './renderPdf'
 const STOCK = { widthMm: 60, heightMm: 40, marginMm: 3 }
 
 const layoutFor = (data: Record<string, unknown> = {}, stock = STOCK): ResolvedLayout =>
-  layOutUpcALabel(bwip as never, { data: { gtinPayload: '03600029145', ...data }, stock })
+  layOutUpcALabel(bwip as never, { data: { gtin: '036000291452', ...data }, stock })
 
 async function renderAndParse(layout: ResolvedLayout) {
   const pdf = await renderLayoutToPdf(layout, { uncompressed: true })

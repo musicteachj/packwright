@@ -483,6 +483,17 @@ exists at this point.
 
 ### Phase 3 — Rule engine + findings rail
 
+*Two things this plan assumed turned out to be wrong, and are recorded here rather than only in the changelog:*
+
+- **The engine had to stop refusing.** It threw when a quiet zone would not fit or a magnification fell
+  outside 0.8–2.0, so no non-compliant label could be resolved — and therefore none could be measured, and no
+  rule could ship with the known-bad fixture this project requires. It now draws what it was asked for and
+  `rules/` judges the result. `LayoutError` survives only for input that describes no drawing at all.
+- **A GTIN with a wrong check digit cannot be drawn by anyone.** bwip-js rejects it, correctly: a UPC-A's
+  twelfth digit *is* the check digit. So that rule reads the document rather than the geometry, and the engine
+  records an explicit omission instead of throwing or silently encoding a corrected GTIN. The editor lives at
+  `/labels/new` rather than `/labels/:id`, since persistence is phase 6.
+
 *Build:* the `Finding` type, the GS1 retail validators (check digit, 80–200% magnification, quiet zones,
 Digital Link syntax, 2D placement guidance), the three-pane editor shell, the findings rail, and the
 finding ↔ canvas ↔ form highlight link.
@@ -596,9 +607,9 @@ copy-adapt from the old repo.
 | Phase | State |
 |---|---|
 | 1 · Foundation | **Complete** — 146 tests, CI green; reviewed and remediated |
-| 2 · Rendering spine + design tokens | Next |
-| 3 · Rule engine + findings rail | Not started |
-| 4 · GHS chemical label | Not started |
+| 2 · Rendering spine + design tokens | **Complete** — preview == print asserted against a real exported PDF |
+| 3 · Rule engine + findings rail | **Complete** — six GS1 rules, each with a known-bad fixture |
+| 4 · GHS chemical label | Next |
 | 5 · US food label | Not started |
 | 6 · Scanning, persistence, catalogue | Not started |
 | 7 · Label audit from a photo | Not started |

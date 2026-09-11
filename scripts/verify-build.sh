@@ -9,7 +9,7 @@ trap 'kill $pid 2>/dev/null || true' EXIT
 for _ in $(seq 1 20); do curl -sf "http://localhost:${PORT:-5187}/health" >/dev/null && break; sleep 0.5; done
 code=$(curl -s -o /tmp/pw-build-check.pdf -w '%{http_code}' -X POST \
   "http://localhost:${PORT:-5187}/api/labels/upc-a/export" \
-  -H 'Content-Type: application/json' -d '{"gtinPayload":"03600029145"}')
+  -H 'Content-Type: application/json' -d '{"gtin":"036000291452"}')
 [ "$code" = "200" ] || { echo "export failed: HTTP $code"; tail -20 /tmp/pw-build-check.log; exit 1; }
 head -c 5 /tmp/pw-build-check.pdf | grep -q '%PDF-' || { echo "not a PDF"; exit 1; }
 grep -q 'IBMPlexMono' /tmp/pw-build-check.pdf || { echo "Plex not embedded in the built artifact"; exit 1; }

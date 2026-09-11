@@ -78,7 +78,7 @@ describe('layOutSymbol geometry', () => {
   it('places the bars after the left quiet zone', () => {
     const { symbol } = layOut({ xMm: 10 })
     // 9X at nominal is 2.97 mm, so bars start at 12.97 mm.
-    expect(symbol.quietZoneLeftMm).toBeCloseTo(2.97, 10)
+    expect(symbol.requiredQuietZoneLeftMm).toBeCloseTo(2.97, 10)
     expect(symbol.xMm).toBeCloseTo(12.97, 10)
   })
 
@@ -247,8 +247,8 @@ describe('EAN-13 prints its digits by its own convention', () => {
     // Both are 95 modules of bars; EAN-13 needs 11X on the left, UPC-A 9X.
     const { symbol } = ean13()
     expect(symbol.barPatternWidthMm).toBeCloseTo(95 * X, 10)
-    expect(symbol.quietZoneLeftMm).toBeCloseTo(11 * X, 10)
-    expect(symbol.quietZoneRightMm).toBeCloseTo(7 * X, 10)
+    expect(symbol.requiredQuietZoneLeftMm).toBeCloseTo(11 * X, 10)
+    expect(symbol.requiredQuietZoneRightMm).toBeCloseTo(7 * X, 10)
   })
 })
 
