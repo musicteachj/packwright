@@ -10,6 +10,7 @@ import * as elementString from './gs1/elementString'
 import * as gs1Barrel from './gs1/index'
 import * as clearSpace from './layout/clearSpace'
 import * as engine from './layout/engine'
+import * as ghsEngine from './layout/ghsEngine'
 import * as layoutBarrel from './layout/index'
 import * as renderBarrel from './render/index'
 import * as toPDF from './render/toPDF'
@@ -27,7 +28,12 @@ import * as ruleTypes from './rules/types'
 import * as constraints from './symbology/constraints'
 import * as symbologyBarrel from './symbology/index'
 import * as layOutSymbol from './symbology/layOutSymbol'
+import * as ghsBarrel from './ghs/index'
+import * as ghsLabelDimensions from './ghs/labelDimensions'
+import * as ghsPictograms from './ghs/pictograms'
 import * as templatesBarrel from './templates/index'
+import * as ghsTemplate from './templates/ghs'
+import * as stock from './templates/stock'
 import * as upcA from './templates/upcA'
 
 /**
@@ -84,6 +90,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     [
       ['clearSpace.ts', clearSpace],
       ['engine.ts', engine],
+      ['ghsEngine.ts', ghsEngine],
     ],
   ],
   [
@@ -117,7 +124,23 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['gs1/quietZone.ts', quietZoneRule],
     ],
   ],
-  ['templates', templatesBarrel, [['upcA.ts', upcA]]],
+  [
+    'ghs',
+    ghsBarrel,
+    [
+      ['labelDimensions.ts', ghsLabelDimensions],
+      ['pictograms.ts', ghsPictograms],
+    ],
+  ],
+  [
+    'templates',
+    templatesBarrel,
+    [
+      ['ghs.ts', ghsTemplate],
+      ['stock.ts', stock],
+      ['upcA.ts', upcA],
+    ],
+  ],
 ]
 
 describe('barrel exports', () => {

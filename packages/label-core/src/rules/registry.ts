@@ -17,14 +17,14 @@ import { gtinCheckDigitRule } from './gs1/gtinCheckDigit'
 import { humanReadableRule } from './gs1/humanReadable'
 import { magnificationRule } from './gs1/magnification'
 import { quietZoneRule } from './gs1/quietZone'
-import type { Rule, RuleContext } from './types'
+import type { GhsChemicalRule, Gs1RetailRule, LabelType, Rule, RuleContext } from './types'
 
 /**
  * Ordered as a person would check a label: is the identifier right, is the
  * symbol the right size, does it have the room it needs, is it legible, and
  * does the web address on it work.
  */
-export const GS1_RETAIL_RULES: readonly Rule[] = [
+export const GS1_RETAIL_RULES: readonly Gs1RetailRule[] = [
   gtinCheckDigitRule,
   magnificationRule,
   barHeightRule,
@@ -33,10 +33,40 @@ export const GS1_RETAIL_RULES: readonly Rule[] = [
   digitalLinkRule,
 ]
 
-export function listRules(): readonly Rule[] {
-  return GS1_RETAIL_RULES
+/**
+ * The GHS rule set, empty until its stage.
+ *
+ * Declared now rather than when the first rule arrives, because an absent entry
+ * here and an empty one are indistinguishable to `runRules` and only one of them
+ * is a decision. A GHS label currently runs no checks, and the findings rail
+ * already says "no checks have run" rather than "everything passed" — a
+ * distinction phase 3's review established the hard way.
+ */
+export const GHS_RULES: readonly GhsChemicalRule[] = []
+
+/**
+ * Every rule, or every rule for one label type.
+ *
+ * The `/rules` catalogue in phase 6 calls this with no argument, because a user
+ * browsing the encoded rules wants all of them.
+ */
+export function listRules(labelType?: LabelType): readonly Rule[] {
+  const all: readonly Rule[] = [...GS1_RETAIL_RULES, ...GHS_RULES]
+  return labelType === undefined ? all : all.filter((rule) => rule.appliesTo === labelType)
 }
 
+/**
+ * Runs the rules for the document's own label type.
+ *
+ * The switch is what keeps this honest: narrowing on `labelType` gives each rule
+ * set a context it already matches, so no assertion is needed and the compiler
+ * still checks that a rule and the document it judges describe the same thing.
+ */
 export function runRules(context: RuleContext): Finding[] {
-  return listRules().flatMap((rule) => rule.check(context))
+  switch (context.labelType) {
+    case 'gs1-retail':
+      return GS1_RETAIL_RULES.flatMap((rule) => rule.check(context))
+    case 'ghs-chemical':
+      return GHS_RULES.flatMap((rule) => rule.check(context))
+  }
 }

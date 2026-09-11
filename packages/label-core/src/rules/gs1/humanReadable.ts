@@ -20,7 +20,7 @@
 
 import type { Citation, Finding } from '../../types/index'
 import { finding, passed } from '../finding'
-import type { Rule, RuleContext } from '../types'
+import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_HRI_MISSING = 'GS1_HRI_MISSING'
 export const GS1_HRI_PRESENT = 'GS1_HRI_PRESENT'
@@ -31,13 +31,14 @@ const CITATION: Citation = {
   title: 'Human readable interpretation for EAN/UPC barcodes',
 }
 
-export const humanReadableRule: Rule = {
+export const humanReadableRule: Gs1RetailRule = {
   id: 'gs1/human-readable',
   title: 'An EAN/UPC symbol prints its GTIN in human-readable digits below the bars.',
   citation: CITATION,
   codes: [GS1_HRI_MISSING, GS1_HRI_PRESENT],
+  appliesTo: 'gs1-retail',
 
-  check({ layout }: RuleContext): Finding[] {
+  check({ layout }: Gs1RetailContext): Finding[] {
     return layout.symbols.map((symbol) => {
       const hasDigits = layout.primitives.some(
         (primitive) => primitive.kind === 'text' && primitive.elementId === symbol.elementId,

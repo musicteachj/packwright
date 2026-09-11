@@ -33,8 +33,10 @@ import {
 import { isValidCheckDigit } from '../gs1/checkDigit'
 import type { HriStyle } from '../symbology/layOutSymbol'
 import { layOutSymbol } from '../symbology/layOutSymbol'
-import type { LabelStock, UpcALabelData } from '../templates/upcA'
-import { ARTWORK_DEFAULT, UPC_A_ELEMENTS, anchorBox, panelFor, upcAHriFor } from '../templates/upcA'
+import type { LabelStock } from '../templates/stock'
+import { ARTWORK_DEFAULT, anchorBox, panelFor } from '../templates/stock'
+import type { UpcALabelData } from '../templates/upcA'
+import { UPC_A_ELEMENTS, upcAHriFor } from '../templates/upcA'
 import { measureClearSpace } from './clearSpace'
 import type {
   LayoutOmission,
@@ -182,6 +184,7 @@ export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest):
     omissions.push({
       elementId: UPC_A_ELEMENTS.symbol,
       reason: `The GTIN ${data.gtin} has an invalid check digit, so no UPC-A symbol can encode it.`,
+      scope: 'element',
     })
   } else {
     const bars = barPatternWidthMm('UPC-A', xDimensionMm)
@@ -249,6 +252,10 @@ export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest):
     primitives,
     elements,
     symbols,
+    // A UPC-A label carries no hazard pictograms, the mirror of a GHS label
+    // carrying no symbols. Both arrays exist on every layout so a consumer never
+    // has to know which template produced it.
+    pictograms: [],
     omissions,
   }
 }

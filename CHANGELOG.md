@@ -10,6 +10,65 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 4, stage 1 — a GHS chemical label that draws. No rule ships in this stage: the point is to make a
+chemical label able to be **wrong**, the same way phase 3 stage 1 had to make a barcode label able to be wrong
+before the rule engine had anything to catch.
+
+- **A path primitive, and both renderers grew a fourth case.** Rectangles and lines drew a barcode label
+  completely; a GHS pictogram is a red square set at a point around a glyph, and no composition of rectangles
+  makes one. `PathPrimitive` carries **structured commands in millimetres**, not an SVG `d` string — the plan
+  said `d` and PDFKit's parser, and that was wrong. It would have made preview == print depend on two
+  independent SVG path parsers agreeing, which is the trade this project already declined once when it threw
+  away bwip-js's vertical output rather than let a library's metrics feed back into bar positions. Each
+  renderer emits its own form from the same numbers. The cross-renderer equivalence test was extended to cover
+  paths and confirmed to fail when the PDF side skipped its millimetre conversion.
+- `ghs/` — CLP label and pictogram dimensions, and the nine Annex V codes with their symbol names, read from
+  the consolidated regulation rather than recalled. **Every figure traces to `02008R1272 — EN — 01.09.2025 —
+  029.003`**, retrieved 2026-09-11.
+- **The pictogram dimension was ambiguous in the source, and the source resolved it.** Table 1.3 says "not
+  smaller than 10 × 10" and §1.2.1.1 says a pictogram is "a square set at a point" — so is 10 mm the square's
+  edge or its bounding box? They differ by a factor of two in area. §1.2.1.3 sets a floor of 1 cm², and a
+  10 mm edge is exactly 100 mm² while the bounding-box reading gives half that. Only one leaves the regulation
+  consistent with itself. The rejected reading is kept as a test so the decision stays visible rather than
+  becoming folklore.
+- `layOutGhsLabel`, a sibling of `layOutUpcALabel` rather than a branch inside it. It takes no barcode encoder,
+  because a chemical label has no symbol to encode. It resolves rather than refuses: an undersized pictogram
+  or undersized stock is drawn as asked, because a label that cannot be resolved cannot be measured.
+- `ResolvedPictogram` keeps `drawnSideMm` and `requiredSideMm` apart, for the reason phase 3 learned the hard
+  way — `quietZoneLeftMm` was a restatement of the specification under a name that read like a measurement,
+  and a rule written against it passed every label put to it. Only the drawn figure can fail.
+- **The pictogram glyphs are deliberately not drawn.** CLP Annex V requires conformance to specimen artwork
+  published with the standard, and no verified vector of it could be retrieved. Each frame is drawn to its
+  resolved size and each missing glyph records a `LayoutOmission` saying so. An approximated flame would look
+  compliant without being so, which is the failure this project exists to prevent.
+- `LayoutOmission.scope` distinguishes an **absent element** from a **missing detail**. The export gate was
+  "any omission is a 422", which was correct while one label type existed and would have made every GHS export
+  a 422, since every GHS label omits its glyphs. A UPC-A with no symbol is still refused; a GHS label with
+  frames and no glyphs still ships.
+- **The label-type seam.** `RuleContext` is now a discriminated union and every rule declares `appliesTo`, so
+  `runRules` narrows on the type and hands each rule set a context it already matches — no cast anywhere. The
+  alternative was one widened context and an assertion at the dispatch, and this project has been bitten by
+  exactly that: the export route's `as never` switched off the only check that the request schema and
+  `UpcALabelData` still described the same thing.
+- `POST /api/labels/ghs/export`, and the editor renders either label type. Both enums in the request schema are
+  derived from `label-core`'s own lists rather than restated.
+
+### Fixed
+
+- **The signal word would have printed in the wrong weight.** The GHS template asked for `IBM Plex Sans Bold`,
+  which is not one of the four faces the exporter embeds — so the allowlist would have quietly substituted the
+  regular weight in the PDF while the browser rendered the same text bold. The most prominent word on a
+  hazard label, differing between preview and print, via a fallback designed to be silent. The embedded face
+  is `SemiBold`; a test now asserts the GHS layout emits no family outside the allowlist, and was confirmed to
+  fail with the old value.
+- `docs/DESIGN.md`'s OSHA compliance dates were wrong and superseded. It gave "substances 19 Jul 2026,
+  mixtures 19 Jan 2028"; 29 CFR 1910.1200(j) as of the 2026-09-09 eCFR issue gives 19 May 2026 and 20 Nov 2026
+  for substances and 19 Nov 2027 and 19 May 2028 for mixtures — manufacturers and employers respectively, a
+  distinction the old summary lost entirely. The first has already passed.
+- `docs/DESIGN.md` summarised CLP Article 26 as two suppression rules. There are five, and two of them make
+  the second pictogram **optional** rather than forbidden — a rule engine built on the summary would report
+  violations that do not exist.
+
 Phase 3, stage 3 — the editor. Three panes, and the link between them that is the whole point.
 
 - `/labels/new` — the form rail, the canvas and the findings rail, on an in-memory document. `/labels/:id` and

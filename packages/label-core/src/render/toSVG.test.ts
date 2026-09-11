@@ -20,6 +20,7 @@ const wrap = (primitives: LayoutPrimitive[]): ResolvedLayout => ({
   widthMm: 50,
   heightMm: 20,
   symbols: [],
+  pictograms: [],
   elements: [],
   omissions: [],
   primitives,

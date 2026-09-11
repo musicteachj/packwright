@@ -1,7 +1,13 @@
-import { layOutUpcALabel, mmToPoints, type ResolvedLayout } from '@packwright/label-core'
+import {
+  DEFAULT_GHS_STOCK,
+  layOutGhsLabel,
+  layOutUpcALabel,
+  mmToPoints,
+  type ResolvedLayout,
+} from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import { describe, expect, it } from 'vitest'
-import { renderLayoutToPdf } from './renderPdf'
+import { EMBEDDED_FONT_FAMILIES, embeddedFontFor, renderLayoutToPdf } from './renderPdf'
 
 /**
  * The test the whole phase exists for.
@@ -151,5 +157,37 @@ describe('the exported PDF matches the requested millimetres', () => {
     const compressed = await renderLayoutToPdf(layoutFor())
     const plain = await renderLayoutToPdf(layoutFor(), { uncompressed: true })
     expect(compressed.length).toBeLessThan(plain.length)
+  })
+})
+
+describe('the GHS label only asks for faces this build embeds', () => {
+  /**
+   * A family the exporter does not recognise falls back to the body face rather
+   * than reaching the filesystem, which is the right behaviour and a silent one.
+   * The signal word is the place it would hurt most: the browser would render
+   * "Danger" semibold and the PDF would render it regular, and preview == print
+   * is the property this whole architecture exists to guarantee.
+   */
+  it('emits no font family outside EMBEDDED_FONT_FAMILIES', () => {
+    const layout = layOutGhsLabel({
+      data: {
+        productIdentifier: 'Acetone',
+        capacityL: 5,
+        signalWord: 'Danger',
+        pictograms: ['GHS02'],
+        hazardStatements: ['Highly flammable liquid and vapour.'],
+        supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way' },
+      },
+      stock: DEFAULT_GHS_STOCK,
+    })
+
+    const families = [
+      ...new Set(layout.primitives.flatMap((p) => (p.kind === 'text' ? [p.fontFamily] : []))),
+    ]
+    expect(families.length).toBeGreaterThan(1)
+    for (const family of families) {
+      expect(EMBEDDED_FONT_FAMILIES, `"${family}" is not an embedded face`).toContain(family)
+      expect(embeddedFontFor(family)).toBe(family)
+    }
   })
 })

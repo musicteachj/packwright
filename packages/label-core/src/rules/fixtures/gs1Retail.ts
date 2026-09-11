@@ -15,7 +15,8 @@
  * chosen to make a test go red.
  */
 
-import type { LabelStock, UpcALabelData } from '../../templates/upcA'
+import type { LabelStock } from '../../templates/stock'
+import type { UpcALabelData } from '../../templates/upcA'
 import type { Severity } from '../../types/index'
 import {
   GS1_BAR_HEIGHT_BELOW_MINIMUM,

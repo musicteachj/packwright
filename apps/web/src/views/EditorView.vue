@@ -30,14 +30,40 @@ const exportError = ref<string | null>(null)
  * refuses to export one. Offering the button and then showing a 422 would be a
  * worse way of saying the same thing.
  */
-const cannotExport = computed(() => (store.layout?.omissions.length ?? 0) > 0)
+// Matches the API's own gate: a missing *element* is a blank page, a missing
+// detail is not. The two must agree or the button offers an export the server
+// refuses, or hides one it would have served.
+const cannotExport = computed(
+  () => (store.layout?.omissions.filter((o) => o.scope === 'element').length ?? 0) > 0,
+)
 
 const exportBlockedReason = computed(() => store.layout?.omissions[0]?.reason ?? '')
 
-const canvasTitle = computed(() =>
-  store.layout?.symbols[0]
+/**
+ * Names what was actually drawn rather than assuming a barcode.
+ *
+ * This is the canvas's accessible name, so "Label with no barcode drawn" was a
+ * reasonable fallback while UPC-A was the only label type and a misleading one
+ * the moment a GHS label — which has no barcode by design — reached the canvas.
+ */
+const canvasTitle = computed(() => {
+  if (store.labelType === 'ghs-chemical') {
+    return `GHS chemical label for ${store.ghsData.productIdentifier}`
+  }
+  return store.layout?.symbols[0]
     ? `UPC-A label for GTIN ${store.layout.symbols[0].value}`
-    : 'Label with no barcode drawn',
+    : 'Label with no barcode drawn'
+})
+
+/** The route and filename follow the label type, so neither is hardcoded. */
+const exportPath = computed(() =>
+  store.labelType === 'ghs-chemical' ? '/api/labels/ghs/export' : '/api/labels/upc-a/export',
+)
+
+const exportFilename = computed(() =>
+  store.labelType === 'ghs-chemical'
+    ? `${store.ghsData.productIdentifier.replace(/[^a-zA-Z0-9._-]+/g, '-')}.pdf`
+    : `${store.data.gtin}.pdf`,
 )
 
 async function exportPdf() {
@@ -54,10 +80,14 @@ async function exportPdf() {
   exporting.value = true
   exportError.value = null
   try {
-    const response = await fetch('/api/labels/upc-a/export', {
+    const response = await fetch(exportPath.value, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...store.data, stock: store.stock }),
+      body: JSON.stringify(
+        store.labelType === 'ghs-chemical'
+          ? { ...store.ghsData, stock: store.ghsStock }
+          : { ...store.data, stock: store.stock },
+      ),
     })
 
     if (!response.ok) {
@@ -72,7 +102,7 @@ async function exportPdf() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${store.data.gtin}.pdf`
+    link.download = exportFilename.value
     link.click()
     URL.revokeObjectURL(url)
   } catch (error) {
@@ -89,13 +119,23 @@ async function exportPdf() {
       <div class="flex items-baseline gap-3">
         <span class="text-notice text-lg" aria-hidden="true">⊕</span>
         <h1 class="text-sm font-semibold tracking-tight">packwright</h1>
-        <p class="text-chrome-400 numeric text-xs">GS1 retail label</p>
+        <label for="field-label-type" class="text-chrome-400 flex items-baseline gap-2 text-xs">
+          <span class="sr-only">Label type</span>
+          <select
+            id="field-label-type"
+            v-model="store.labelType"
+            class="border-chrome-700 bg-chrome-900 text-chrome-300 numeric border px-2 py-0.5 text-xs"
+          >
+            <option value="gs1-retail">GS1 retail label</option>
+            <option value="ghs-chemical">GHS chemical label</option>
+          </select>
+        </label>
       </div>
 
       <div class="flex items-center gap-4">
         <p v-if="exportError" class="text-danger max-w-md text-xs">{{ exportError }}</p>
         <p v-else-if="cannotExport" class="text-chrome-300 max-w-md text-xs">
-          Nothing to export — no barcode was drawn.
+          Nothing to export — part of the label could not be drawn.
         </p>
         <button
           type="button"

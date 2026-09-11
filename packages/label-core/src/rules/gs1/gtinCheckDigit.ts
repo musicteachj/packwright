@@ -12,7 +12,7 @@
 import { calculateCheckDigit, isValidCheckDigit } from '../../gs1/checkDigit'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passed } from '../finding'
-import type { Rule, RuleContext } from '../types'
+import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_GTIN_CHECK_DIGIT_INVALID = 'GS1_GTIN_CHECK_DIGIT_INVALID'
 export const GS1_GTIN_CHECK_DIGIT_VALID = 'GS1_GTIN_CHECK_DIGIT_VALID'
@@ -25,13 +25,14 @@ const CITATION: Citation = {
 
 const GTIN_12 = /^[0-9]{12}$/
 
-export const gtinCheckDigitRule: Rule = {
+export const gtinCheckDigitRule: Gs1RetailRule = {
   id: 'gs1/gtin-check-digit',
   title: 'A GTIN-12 ends in the check digit computed from its first eleven digits.',
   citation: CITATION,
   codes: [GS1_GTIN_CHECK_DIGIT_INVALID, GS1_GTIN_CHECK_DIGIT_VALID],
+  appliesTo: 'gs1-retail',
 
-  check({ data, layout }: RuleContext): Finding[] {
+  check({ data, layout }: Gs1RetailContext): Finding[] {
     // A half-typed GTIN is a form-validation matter, not a compliance verdict.
     // Reporting it as non-compliant would fire on every keystroke.
     if (!GTIN_12.test(data.gtin)) return []

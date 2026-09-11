@@ -210,6 +210,7 @@ describe('toSVG', () => {
         widthMm: 10,
         heightMm: 10,
         symbols: [],
+        pictograms: [],
         elements: [],
         omissions: [],
         primitives: [

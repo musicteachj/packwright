@@ -16,12 +16,18 @@
 
 import {
   ANCHORS,
+  DEFAULT_GHS_STOCK,
   DEFAULT_UPC_A_STOCK,
+  GHS_PICTOGRAM_CODES,
+  GHS_SIGNAL_WORDS,
   LayoutError,
   getSymbologyConstraints,
+  layOutGhsLabel,
   layOutUpcALabel,
   type ArtworkBlock,
   type DigitalLinkData,
+  type GhsLabelData,
+  type GhsSupplier,
   type UpcALabelData,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
@@ -120,6 +126,45 @@ function toDigitalLink(link: z.infer<typeof DigitalLink>): DigitalLinkData {
   }
 }
 
+const GhsSupplierSchema = z.object({
+  name: z.string().min(1),
+  address: z.string().min(1),
+  telephone: z.string().optional(),
+})
+
+const GhsRequest = z.object({
+  productIdentifier: z.string().min(1),
+  // Bounded below only, and required. Capacity selects the CLP Table 1.3 band
+  // that every dimensional rule is measured against; defaulting it would invent
+  // a requirement the caller never stated.
+  capacityL: z.number().positive(),
+  // Both enums are derived from `label-core`'s own lists rather than restated,
+  // so a signal word or pictogram code cannot exist on one side and not the
+  // other — the drift the UPC-A schema was already fixed for.
+  signalWord: z.enum(GHS_SIGNAL_WORDS).optional(),
+  pictograms: z.array(z.enum(GHS_PICTOGRAM_CODES)).optional(),
+  hazardStatements: z.array(z.string()).optional(),
+  precautionaryStatements: z.array(z.string()).optional(),
+  supplier: GhsSupplierSchema.optional(),
+  pictogramSideMm: z.number().positive().optional(),
+  stock: z
+    .object({
+      widthMm: z.number().positive(),
+      heightMm: z.number().positive(),
+      marginMm: z.number().min(0),
+    })
+    .optional(),
+})
+
+/** The same key-by-key reconciliation `toArtwork` does, and for the same reason. */
+function toSupplier(supplier: z.infer<typeof GhsSupplierSchema>): GhsSupplier {
+  return {
+    name: supplier.name,
+    address: supplier.address,
+    ...(supplier.telephone === undefined ? {} : { telephone: supplier.telephone }),
+  }
+}
+
 export function createLabelRouter(): Router {
   const router = Router()
 
@@ -160,10 +205,14 @@ export function createLabelRouter(): Router {
       // page is not an export. The browser warns before it gets here; a script
       // or a partner integration got 200 and 1,145 bytes of nothing, with the
       // reason recorded only in a field it never reads.
-      if (layout.omissions.length > 0) {
+      // Only an *absent element* makes the export worthless. A detail the
+      // engine could not draw is recorded and shipped, because the label around
+      // it is real — see `LayoutOmission.scope`.
+      const blocking = layout.omissions.filter((omission) => omission.scope === 'element')
+      if (blocking.length > 0) {
         response.status(422).json({
           error: 'Label cannot be exported',
-          detail: layout.omissions.map((omission) => omission.reason),
+          detail: blocking.map((omission) => omission.reason),
         })
         return
       }
@@ -179,6 +228,66 @@ export function createLabelRouter(): Router {
     } catch (error) {
       // A layout that cannot be produced at all is the caller's problem, not the
       // server's, and the message says exactly what could not be drawn.
+      if (error instanceof LayoutError) {
+        response.status(422).json({ error: 'Label cannot be laid out', detail: error.message })
+        return
+      }
+      throw error
+    }
+  })
+
+  router.post('/ghs/export', async (request: Request, response: Response) => {
+    const parsed = GhsRequest.safeParse(request.body)
+    if (!parsed.success) {
+      response.status(400).json({
+        error: 'Invalid label request',
+        detail: parsed.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      })
+      return
+    }
+
+    const { stock = DEFAULT_GHS_STOCK, ...rest } = parsed.data
+
+    const data: GhsLabelData = {
+      productIdentifier: rest.productIdentifier,
+      capacityL: rest.capacityL,
+      ...(rest.signalWord === undefined ? {} : { signalWord: rest.signalWord }),
+      ...(rest.pictograms === undefined ? {} : { pictograms: rest.pictograms }),
+      ...(rest.hazardStatements === undefined ? {} : { hazardStatements: rest.hazardStatements }),
+      ...(rest.precautionaryStatements === undefined
+        ? {}
+        : { precautionaryStatements: rest.precautionaryStatements }),
+      ...(rest.supplier === undefined ? {} : { supplier: toSupplier(rest.supplier) }),
+      ...(rest.pictogramSideMm === undefined ? {} : { pictogramSideMm: rest.pictogramSideMm }),
+    }
+
+    try {
+      const layout = layOutGhsLabel({ data, stock })
+
+      const blocking = layout.omissions.filter((omission) => omission.scope === 'element')
+      if (blocking.length > 0) {
+        response.status(422).json({
+          error: 'Label cannot be exported',
+          detail: blocking.map((omission) => omission.reason),
+        })
+        return
+      }
+
+      const pdf = await renderLayoutToPdf(layout)
+
+      response
+        .status(200)
+        .setHeader('Content-Type', 'application/pdf')
+        .setHeader('Content-Length', String(pdf.length))
+        .setHeader(
+          'Content-Disposition',
+          `attachment; filename="${data.productIdentifier.replace(/[^a-zA-Z0-9._-]+/g, '-')}.pdf"`,
+        )
+      response.end(pdf)
+    } catch (error) {
       if (error instanceof LayoutError) {
         response.status(422).json({ error: 'Label cannot be laid out', detail: error.message })
         return

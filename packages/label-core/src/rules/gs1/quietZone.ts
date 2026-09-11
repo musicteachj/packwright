@@ -15,7 +15,7 @@
 import { hasVerifiedQuietZone } from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
-import type { Rule, RuleContext } from '../types'
+import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_QUIET_ZONE_TOO_NARROW = 'GS1_QUIET_ZONE_TOO_NARROW'
 export const GS1_QUIET_ZONE_CLEAR = 'GS1_QUIET_ZONE_CLEAR'
@@ -26,13 +26,14 @@ const CITATION: Citation = {
   title: 'Minimum quiet zone requirements for EAN/UPC symbols',
 }
 
-export const quietZoneRule: Rule = {
+export const quietZoneRule: Gs1RetailRule = {
   id: 'gs1/quiet-zone',
   title: 'Each side of a symbol keeps its minimum quiet zone clear of other artwork.',
   citation: CITATION,
   codes: [GS1_QUIET_ZONE_TOO_NARROW, GS1_QUIET_ZONE_CLEAR],
+  appliesTo: 'gs1-retail',
 
-  check({ layout }: RuleContext): Finding[] {
+  check({ layout }: Gs1RetailContext): Finding[] {
     const findings: Finding[] = []
 
     for (const symbol of layout.symbols) {

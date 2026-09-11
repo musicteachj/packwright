@@ -1,5 +1,6 @@
 export * from './gs1/index'
 export * from './geometry/index'
+export * from './ghs/index'
 export * from './layout/index'
 export * from './render/index'
 export * from './rules/index'

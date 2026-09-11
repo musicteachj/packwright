@@ -12,7 +12,7 @@
 import { nominalBarHeightMm } from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed, xDimensionMm } from '../finding'
-import type { Rule, RuleContext } from '../types'
+import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_BAR_HEIGHT_BELOW_MINIMUM = 'GS1_BAR_HEIGHT_BELOW_MINIMUM'
 export const GS1_BAR_HEIGHT_SUFFICIENT = 'GS1_BAR_HEIGHT_SUFFICIENT'
@@ -23,13 +23,14 @@ const CITATION: Citation = {
   title: 'EAN/UPC symbol height at nominal size, and the minimum by X-dimension',
 }
 
-export const barHeightRule: Rule = {
+export const barHeightRule: Gs1RetailRule = {
   id: 'gs1/bar-height',
   title: 'Bar height meets the specification’s minimum for the symbol’s X-dimension.',
   citation: CITATION,
   codes: [GS1_BAR_HEIGHT_BELOW_MINIMUM, GS1_BAR_HEIGHT_SUFFICIENT],
+  appliesTo: 'gs1-retail',
 
-  check({ layout }: RuleContext): Finding[] {
+  check({ layout }: Gs1RetailContext): Finding[] {
     const findings: Finding[] = []
 
     for (const symbol of layout.symbols) {

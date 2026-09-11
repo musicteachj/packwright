@@ -1,7 +1,15 @@
-export { GS1_RETAIL_RULES, listRules, runRules } from './registry'
+export { GHS_RULES, GS1_RETAIL_RULES, listRules, runRules } from './registry'
 
-export { SEVERITY_ORDER, compareSeverity } from './types'
-export type { Rule, RuleContext } from './types'
+export { LABEL_TYPES, SEVERITY_ORDER, compareSeverity } from './types'
+export type {
+  GhsChemicalContext,
+  GhsChemicalRule,
+  Gs1RetailContext,
+  Gs1RetailRule,
+  LabelType,
+  Rule,
+  RuleContext,
+} from './types'
 
 export { MEASUREMENT_TOLERANCE_MM, finding, mm, passed, xDimensionMm } from './finding'
 

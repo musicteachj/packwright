@@ -198,15 +198,43 @@ field is what makes the compliance panel credible rather than decorative.
 Six required elements — product identifier, signal word, hazard statements, pictograms, precautionary
 statements, supplier identification.
 
-- **Signal word precedence: DANGER supersedes WARNING; never both**
-- **Pictogram precedence** — e.g. corrosion suppresses the exclamation mark for skin/eye irritation; skull and
-  crossbones suppresses the exclamation mark
+- **Signal word precedence — CLP Article 20(3)**, verbatim: "Where the signal word 'Danger' is used on the
+  label, the signal word 'Warning' shall not appear on the label."
+- **Pictogram precedence — CLP Article 26**, which has five rules, not two, and they are not all suppression.
+  Verbatim from the consolidated text: if GHS01 applies, GHS02 and GHS03 are **optional**; if GHS06 applies,
+  GHS07 **shall not appear**; if GHS05 applies, GHS07 shall not appear **for skin or eye irritation**; if
+  GHS08 applies for respiratory sensitisation, GHS07 shall not appear for skin sensitisation or skin and eye
+  irritation; if GHS02 or GHS06 applies, GHS04 is **optional**. Treating the two "optional" rules as mandatory
+  suppression would report violations that do not exist.
 - 9 pictograms, red square-on-point border
-- EU CLP sizing (Annex I §1.2): label **≥ 52 × 74 mm** for packages ≤ 3 L; each pictogram **≥ 1/15 of the label
-  information area AND ≥ 1 cm²**; recommended 16 × 16 mm, minimum 10 × 10 mm under 3 L
+- EU CLP sizing (Annex I §1.2.1). **Verified 2026-09-11** against the consolidated text
+  `02008R1272 — EN — 01.09.2025 — 029.003`, Table 1.3. Three things the earlier summary here got wrong or
+  left out:
+  - The **2008 original is the wrong source.** Its Table 1.3 has no pictogram column at all — that was added
+    by amendment — and its area rule measures "the surface area of the harmonised label" where the current
+    text measures "the minimum surface area of the label dedicated to the information required by Article 17".
+  - The label figure for ≤ 3 L is qualified **"If possible, at least 52 × 74"** in the legal text. Only that
+    band is so qualified, so it is a weaker requirement than the three above it and a rule must not report it
+    with the same severity.
+  - Table 1.3 gives a pictogram dimension per band: 10 × 10 (16 × 16 if possible) ≤ 3 L, 23 × 23 to 50 L,
+    32 × 32 to 500 L, 46 × 46 above. Read as the **square's own edge**, not the bounding box of the rotated
+    square — §1.2.1.3's 1 cm² floor and the table's 10 × 10 agree exactly on that reading and differ by a
+    factor of two on the other. See `ghs/labelDimensions.ts`.
 - OSHA's May 2024 final rule aligning to GHS Rev. 7: containers **under 100 mL** may use a fold-out label, but
   product identifier, pictograms, signal word and supplier info must remain on the immediate container
-- Surface the compliance deadlines in the UI: **substances 19 Jul 2026, mixtures 19 Jan 2028**
+- Surface the compliance deadlines in the UI. **Corrected 2026-09-11** — the dates previously given here
+  ("substances 19 Jul 2026, mixtures 19 Jan 2028") were wrong, and were in any case superseded by an
+  extension. Read from the eCFR text of **29 CFR 1910.1200(j)**, issue date 2026-09-09:
+
+  | Paragraph | Who | Deadline |
+  |---|---|---|
+  | (j)(2)(i) | Substances — manufacturers, importers, distributors | 19 May 2026 *(passed)* |
+  | (j)(2)(ii) | Substances — employers | 20 Nov 2026 |
+  | (j)(3)(i) | Mixtures — manufacturers, importers, distributors | 19 Nov 2027 |
+  | (j)(3)(ii) | Mixtures — employers | 19 May 2028 |
+
+  The distinction between the manufacturer date and the employer date is the part that was lost; they are
+  six months apart in both rows and apply to different people.
 
 ### US food label (21 CFR 101)
 
@@ -609,7 +637,7 @@ copy-adapt from the old repo.
 | 1 · Foundation | **Complete** — 146 tests, CI green; reviewed and remediated |
 | 2 · Rendering spine + design tokens | **Complete** — preview == print asserted against a real exported PDF |
 | 3 · Rule engine + findings rail | **Complete** — six GS1 rules, each with a known-bad fixture |
-| 4 · GHS chemical label | Next |
+| 4 · GHS chemical label | **In progress** — stage 1 (a GHS label that draws) complete |
 | 5 · US food label | Not started |
 | 6 · Scanning, persistence, catalogue | Not started |
 | 7 · Label audit from a photo | Not started |

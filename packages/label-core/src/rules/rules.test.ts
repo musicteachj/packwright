@@ -1,15 +1,17 @@
 import * as bwip from 'bwip-js/generic'
 import { describe, expect, it } from 'vitest'
 import { layOutUpcALabel } from '../layout/engine'
-import type { LabelStock, UpcALabelData } from '../templates/upcA'
+import type { LabelStock } from '../templates/stock'
+import type { UpcALabelData } from '../templates/upcA'
 import type { Finding } from '../types/index'
 import { CONFORMANT_FIXTURE, GS1_RETAIL_FIXTURES } from './fixtures/gs1Retail'
-import { GS1_RETAIL_RULES, listRules, runRules } from './registry'
+import { layOutGhsLabel } from '../layout/ghsEngine'
+import { GHS_RULES, GS1_RETAIL_RULES, listRules, runRules } from './registry'
 import { compareSeverity } from './types'
 
 function findingsFor(data: UpcALabelData, stock: LabelStock): Finding[] {
   const layout = layOutUpcALabel(bwip as never, { data, stock })
-  return runRules({ data, stock, layout })
+  return runRules({ labelType: 'gs1-retail', data, stock, layout })
 }
 
 describe('the rule registry', () => {
@@ -298,5 +300,39 @@ describe('compareSeverity', () => {
       compareSeverity(a as never, b as never),
     )
     expect(sorted).toEqual(['blocking', 'violation', 'advisory', 'guidance', 'pass'])
+  })
+})
+
+describe('the registry runs the rules for the document’s own label type', () => {
+  const ghsStock = { widthMm: 74, heightMm: 105, marginMm: 4 }
+  const ghsData = { productIdentifier: 'Acetone', capacityL: 5, pictograms: ['GHS02'] } as const
+
+  it('runs no GS1 rule against a chemical label', () => {
+    const layout = layOutGhsLabel({ data: { ...ghsData }, stock: ghsStock })
+    const findings = runRules({
+      labelType: 'ghs-chemical',
+      data: { ...ghsData },
+      stock: ghsStock,
+      layout,
+    })
+
+    // No GHS rule exists yet, so this is empty — and empty must read as "no check
+    // ran", never as "everything passed". The findings rail already draws that
+    // distinction; this pins that the registry does too.
+    expect(findings).toEqual([])
+    expect(GHS_RULES).toEqual([])
+  })
+
+  it('declares a label type on every rule, so none can no-op on the wrong document', () => {
+    for (const rule of listRules()) {
+      expect(rule.appliesTo, `${rule.id} declares no label type`).toBeDefined()
+    }
+    expect(GS1_RETAIL_RULES.every((rule) => rule.appliesTo === 'gs1-retail')).toBe(true)
+  })
+
+  it('filters the catalogue by label type, and lists everything without one', () => {
+    expect(listRules('gs1-retail')).toHaveLength(GS1_RETAIL_RULES.length)
+    expect(listRules('ghs-chemical')).toHaveLength(0)
+    expect(listRules()).toHaveLength(GS1_RETAIL_RULES.length + GHS_RULES.length)
   })
 })

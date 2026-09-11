@@ -1,6 +1,9 @@
 export { LayoutError, layOutUpcALabel } from './engine'
 export type { UpcALayoutRequest } from './engine'
 
+export { layOutGhsLabel } from './ghsEngine'
+export type { GhsLayoutRequest } from './ghsEngine'
+
 export { measureClearSpace } from './clearSpace'
 export type { ClearSpace } from './clearSpace'
 
@@ -14,6 +17,7 @@ export type {
   RectPrimitive,
   ResolvedElement,
   ResolvedLayout,
+  ResolvedPictogram,
   ResolvedSymbol,
   TextAnchor,
   TextPrimitive,

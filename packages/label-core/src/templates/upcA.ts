@@ -9,6 +9,9 @@
  * spine exists to establish, and proving it on a single well-understood symbol
  * is worth more than three label types that are each plausibly wrong.
  *
+ * The stock, panel and anchor kernel this builds on lives in `./stock`, since
+ * every label type shares it. What is here is UPC-A's own.
+ *
  * The template *owns layout* — a user positions elements by anchor, not by
  * dragging them to arbitrary coordinates. That is what lets compliance be
  * enforced rather than merely suggested. It does not mean the result is
@@ -20,73 +23,13 @@
 
 import { EAN_UPC_NOMINAL_X_DIMENSION_MM } from '../geometry/symbol'
 import { appendCheckDigit } from '../gs1/checkDigit'
+import type { Anchor, ArtworkBlock, LabelStock } from './stock'
 
 /** Stable element identifiers, so a finding can point at geometry. */
 export const UPC_A_ELEMENTS = {
   symbol: 'upca-symbol',
   artwork: 'artwork-block',
   border: 'label-border',
-} as const
-
-/**
- * The physical substrate. Every label is printed on something, and its
- * dimensions bound everything placed on it.
- */
-export interface LabelStock {
-  widthMm: number
-  heightMm: number
-  /** Keep-clear margin at every edge. */
-  marginMm: number
-}
-
-/**
- * Where an element sits in the panel inside the stock's margins.
- *
- * Nine positions rather than free coordinates. A user choosing "bottom left"
- * cannot express a half-millimetre nudge that quietly breaks a quiet zone, and
- * the engine can always say which anchor produced a given box.
- */
-export const ANCHORS = [
-  'top-left',
-  'top-centre',
-  'top-right',
-  'centre-left',
-  'centre',
-  'centre-right',
-  'bottom-left',
-  'bottom-centre',
-  'bottom-right',
-] as const
-
-/**
- * Derived from the list rather than declared alongside it, so the two cannot
- * disagree — and so a consumer that needs a runtime enum (the API's Zod schema)
- * gets one that is typed as `Anchor` instead of widening to `string`.
- */
-export type Anchor = (typeof ANCHORS)[number]
-
-/**
- * A block of artwork — a brand or product name.
- *
- * Its width and height are declared rather than measured. `label-core` has no
- * font metrics, so it cannot know how wide a string sets; what it can know, and
- * what everything downstream actually needs, is the box the element was given.
- * Type that overflows its declared box is the caller's problem and a separate
- * one from where the box sits.
- */
-export interface ArtworkBlock {
-  text: string
-  anchor: Anchor
-  widthMm: number
-  heightMm: number
-  /** Em size. Defaults to something legible; see `ARTWORK_DEFAULT`. */
-  fontSizeMm?: number
-  fontFamily?: string
-}
-
-export const ARTWORK_DEFAULT = {
-  fontFamily: 'IBM Plex Sans',
-  fontSizeMm: 3,
 } as const
 
 /**
@@ -200,62 +143,4 @@ export const NOMINAL_X_DIMENSION_MM = EAN_UPC_NOMINAL_X_DIMENSION_MM
  */
 export function completeGtin(payload: string): string {
   return appendCheckDigit(payload)
-}
-
-/** The area inside the stock's margins, which is what anchors are relative to. */
-export interface Panel {
-  xMm: number
-  yMm: number
-  widthMm: number
-  heightMm: number
-}
-
-export function panelFor(stock: LabelStock): Panel {
-  return {
-    xMm: stock.marginMm,
-    yMm: stock.marginMm,
-    widthMm: stock.widthMm - stock.marginMm * 2,
-    heightMm: stock.heightMm - stock.marginMm * 2,
-  }
-}
-
-/**
- * Top-left corner of a box of the given size at the given anchor.
- *
- * Nothing is clamped. A box larger than the panel produces a negative
- * coordinate and gets drawn hanging off the stock, which is exactly what the
- * user asked for and exactly what the rules are there to report. Quietly
- * nudging it back inside would hide the defect and print a symbol nobody
- * specified.
- */
-export function anchorBox(
-  anchor: Anchor,
-  panel: Panel,
-  widthMm: number,
-  heightMm: number,
-): { xMm: number; yMm: number } {
-  const [vertical, horizontal] = anchor.split('-') as [
-    'top' | 'centre' | 'bottom',
-    'left' | 'centre' | 'right',
-  ]
-
-  // 'centre' as the whole anchor splits to ['centre', undefined]; treat the
-  // missing half as centred rather than falling through to a NaN coordinate.
-  const across = horizontal ?? 'centre'
-
-  const xMm =
-    across === 'left'
-      ? panel.xMm
-      : across === 'right'
-        ? panel.xMm + panel.widthMm - widthMm
-        : panel.xMm + (panel.widthMm - widthMm) / 2
-
-  const yMm =
-    vertical === 'top'
-      ? panel.yMm
-      : vertical === 'bottom'
-        ? panel.yMm + panel.heightMm - heightMm
-        : panel.yMm + (panel.heightMm - heightMm) / 2
-
-  return { xMm, yMm }
 }

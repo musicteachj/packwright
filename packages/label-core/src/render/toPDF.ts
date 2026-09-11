@@ -31,9 +31,19 @@ export interface PdfCanvas {
   save(): unknown
   restore(): unknown
   rect(x: number, y: number, width: number, height: number): unknown
-  fill(color?: string): unknown
+  fill(color?: string, rule?: string): unknown
   moveTo(x: number, y: number): unknown
   lineTo(x: number, y: number): unknown
+  bezierCurveTo(
+    cp1x: number,
+    cp1y: number,
+    cp2x: number,
+    cp2y: number,
+    x: number,
+    y: number,
+  ): unknown
+  closePath(): unknown
+  fillAndStroke(fillColor?: string, strokeColor?: string, rule?: string): unknown
   lineWidth(width: number): unknown
   stroke(color?: string): unknown
   dash(length: number, options?: { space?: number }): unknown
@@ -76,13 +86,20 @@ function anchorOffset(canvas: PdfCanvas, text: string, anchor: TextAnchor): numb
 function drawPrimitive(canvas: PdfCanvas, primitive: LayoutPrimitive, options: PdfOptions): void {
   switch (primitive.kind) {
     case 'rect':
+      canvas.save()
       canvas.rect(
         pt(primitive.xMm),
         pt(primitive.yMm),
         pt(primitive.widthMm),
         pt(primitive.heightMm),
       )
-      canvas.fill(`#${primitive.fill}`)
+      if (primitive.stroke === undefined) {
+        canvas.fill(`#${primitive.fill}`)
+      } else {
+        if (primitive.strokeWidthMm !== undefined) canvas.lineWidth(pt(primitive.strokeWidthMm))
+        canvas.fillAndStroke(`#${primitive.fill}`, `#${primitive.stroke}`)
+      }
+      canvas.restore()
       return
 
     case 'line':
@@ -98,6 +115,43 @@ function drawPrimitive(canvas: PdfCanvas, primitive: LayoutPrimitive, options: P
       if (primitive.dashMm?.length) canvas.undash()
       canvas.restore()
       return
+
+    case 'path': {
+      canvas.save()
+      for (const command of primitive.commands) {
+        switch (command.op) {
+          case 'move':
+            canvas.moveTo(pt(command.xMm), pt(command.yMm))
+            break
+          case 'line':
+            canvas.lineTo(pt(command.xMm), pt(command.yMm))
+            break
+          case 'cubic':
+            canvas.bezierCurveTo(
+              pt(command.c1xMm),
+              pt(command.c1yMm),
+              pt(command.c2xMm),
+              pt(command.c2yMm),
+              pt(command.xMm),
+              pt(command.yMm),
+            )
+            break
+          case 'close':
+            canvas.closePath()
+            break
+        }
+      }
+      if (primitive.strokeWidthMm !== undefined) canvas.lineWidth(pt(primitive.strokeWidthMm))
+      if (primitive.fill !== undefined && primitive.stroke !== undefined) {
+        canvas.fillAndStroke(`#${primitive.fill}`, `#${primitive.stroke}`, primitive.fillRule)
+      } else if (primitive.fill !== undefined) {
+        canvas.fill(`#${primitive.fill}`, primitive.fillRule)
+      } else if (primitive.stroke !== undefined) {
+        canvas.stroke(`#${primitive.stroke}`)
+      }
+      canvas.restore()
+      return
+    }
 
     case 'text': {
       const family = options.fontFor?.(primitive.fontFamily) ?? primitive.fontFamily

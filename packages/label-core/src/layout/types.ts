@@ -40,6 +40,12 @@ export interface RectPrimitive extends PrimitiveBase {
   heightMm: number
   /** CSS/PDF hex without the leading hash, e.g. `000000`. */
   fill: string
+  /**
+   * Optional outline, for bordered blocks. Omitted means fill only, which is
+   * what every rectangle drawn before the GHS label needed.
+   */
+  stroke?: string
+  strokeWidthMm?: number
 }
 
 /** A stroked straight line. Die lines, dimension callouts, crop marks. */
@@ -89,7 +95,67 @@ export interface TextPrimitive extends PrimitiveBase {
   anchor: TextAnchor
 }
 
-export type LayoutPrimitive = RectPrimitive | LinePrimitive | TextPrimitive
+/**
+ * One segment of a path, in millimetres, with absolute coordinates.
+ *
+ * Deliberately *not* an SVG `d` string.
+ *
+ * A `d` string would be cheaper — pictogram artwork arrives as one, and PDFKit
+ * will parse it. But that makes preview == print depend on two independent SVG
+ * path parsers, the browser's and PDFKit's, producing identical geometry from
+ * the same text. This project already declined that trade once: it throws away
+ * bwip-js's own vertical output and draws the human-readable digits separately,
+ * because letting the library's metrics feed back into bar positions made the
+ * result true by coincidence rather than by construction. A path is geometry,
+ * and geometry belongs in numbers the engine resolved.
+ *
+ * So `d` strings are an authoring-time input. Converting one into these commands
+ * is a separate, tested step, and what ships in a layout is the result.
+ *
+ * Cubic only, no arcs and no shorthand: every curve an arc can express, a cubic
+ * can approximate to well under a printing tolerance, and one curve form means
+ * one thing for each renderer to get right.
+ */
+export type PathCommand =
+  | { op: 'move'; xMm: number; yMm: number }
+  | { op: 'line'; xMm: number; yMm: number }
+  | {
+      op: 'cubic'
+      c1xMm: number
+      c1yMm: number
+      c2xMm: number
+      c2yMm: number
+      xMm: number
+      yMm: number
+    }
+  | { op: 'close' }
+
+/**
+ * An arbitrary filled or stroked shape.
+ *
+ * Rectangles and lines cover a barcode label entirely. A GHS pictogram does not:
+ * it is a red square-on-point frame around a glyph — a flame, a skull, a
+ * corroding surface — and no composition of rectangles draws one.
+ */
+export interface PathPrimitive extends PrimitiveBase {
+  kind: 'path'
+  commands: readonly PathCommand[]
+  /** Hex without the leading hash. Omitted means the shape is not filled. */
+  fill?: string
+  /** Omitted means the shape is not stroked. A path with neither draws nothing. */
+  stroke?: string
+  strokeWidthMm?: number
+  /**
+   * How overlapping subpaths combine.
+   *
+   * `evenodd` is what makes a counter a hole rather than more ink — the skull's
+   * eye sockets, the gaps in the exploding-bomb rays. Defaults to `nonzero`,
+   * matching both SVG and PDF.
+   */
+  fillRule?: 'nonzero' | 'evenodd'
+}
+
+export type LayoutPrimitive = RectPrimitive | LinePrimitive | TextPrimitive | PathPrimitive
 
 /**
  * The space the engine allocated to one label element.
@@ -106,6 +172,45 @@ export type LayoutPrimitive = RectPrimitive | LinePrimitive | TextPrimitive
  * engine, on the other hand, knows precisely what box it set aside. So it says
  * so, once, instead of every consumer guessing.
  */
+/**
+ * A hazard pictogram as drawn, with the requirement it is judged against.
+ *
+ * The two are separate fields for the reason phase 3 learned the hard way:
+ * `quietZoneLeftMm` was a restatement of the specification under a name that
+ * read like a measurement, and a rule written against it passed every label put
+ * to it. `drawnSideMm` is what this label carries; `requiredSideMm` is what CLP
+ * Table 1.3 demands for its capacity band. Only the first can fail.
+ *
+ * Parallel to `ResolvedSymbol`, and for the same reason — a GHS label returns an
+ * empty `symbols` array and a UPC-A label returns an empty `pictograms` one.
+ */
+export interface ResolvedPictogram {
+  elementId: ElementId
+  /** Annex V code, e.g. `GHS02`. Typed as a string here to keep `layout` from
+   * depending on `ghs`; the GHS template supplies the narrowed value. */
+  code: string
+  /** Annex V's own symbol name, for the accessible title. */
+  symbolName: string
+  /** The square's edge as drawn — not the bounding box of the rotated square. */
+  drawnSideMm: number
+  /** CLP Table 1.3 minimum for the package's capacity band. */
+  requiredSideMm: number
+  /** Table 1.3's "if possible" target, where the band states one. */
+  preferredSideMm?: number
+  /** Area as drawn, square millimetres. The square's area, not its bounding box. */
+  drawnAreaSqMm: number
+  /** The bounding box the rotated square occupies, which is what it is placed in. */
+  box: BoundingBox
+  /**
+   * Whether the specified symbol artwork was drawn inside the frame.
+   *
+   * `false` means the frame is there and the glyph is not, and a matching
+   * `LayoutOmission` says why. A rule must not certify a pictogram whose symbol
+   * was never drawn, however correctly sized its frame is.
+   */
+  glyphDrawn: boolean
+}
+
 export interface ResolvedElement {
   elementId: ElementId
   /** Human-readable name, for the findings rail and the canvas text equivalent. */
@@ -129,6 +234,21 @@ export interface LayoutOmission {
   elementId: ElementId
   /** Plain sentence naming what could not be drawn and why. */
   reason: string
+  /**
+   * Whether the element is absent entirely, or present with a detail missing.
+   *
+   * The two look identical in a list of omissions and mean opposite things to a
+   * caller deciding whether a layout is worth exporting. A UPC-A whose GTIN will
+   * not encode has no symbol at all, and exporting it produces a blank page. A
+   * GHS pictogram whose specimen artwork was unavailable still has its frame,
+   * its size and its position — the label is substantially there and the export
+   * is worth having.
+   *
+   * Without this, the export gate had to be "any omission blocks", which was
+   * right for the only label type that existed and would have made every GHS
+   * export a 422.
+   */
+  scope: 'element' | 'detail'
 }
 
 /**
@@ -222,6 +342,8 @@ export interface ResolvedLayout {
   elements: ResolvedElement[]
   /** Every barcode on the label, with its measured geometry. */
   symbols: ResolvedSymbol[]
+  /** Hazard pictograms as drawn. Empty for every label type that carries none. */
+  pictograms: ResolvedPictogram[]
   /** Anything the engine could not draw. Empty on a label that resolved fully. */
   omissions: LayoutOmission[]
 }

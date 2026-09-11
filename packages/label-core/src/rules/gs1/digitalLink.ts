@@ -17,7 +17,7 @@ import { DigitalLinkError, buildDigitalLinkUri } from '../../gs1/digitalLink'
 import type { Gs1Element } from '../../gs1/elementString'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passed } from '../finding'
-import type { Rule, RuleContext } from '../types'
+import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_DIGITAL_LINK_INVALID = 'GS1_DIGITAL_LINK_INVALID'
 export const GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS = 'GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS'
@@ -35,13 +35,14 @@ const ALPHAS_CITATION: Citation = {
   title: 'Removal of the convenience alphas from the URI path',
 }
 
-export const digitalLinkRule: Rule = {
+export const digitalLinkRule: Gs1RetailRule = {
   id: 'gs1/digital-link',
   title: 'A configured GS1 Digital Link resolves to a conformant URI.',
   citation: CITATION,
   codes: [GS1_DIGITAL_LINK_INVALID, GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS, GS1_DIGITAL_LINK_VALID],
+  appliesTo: 'gs1-retail',
 
-  check({ data }: RuleContext): Finding[] {
+  check({ data }: Gs1RetailContext): Finding[] {
     // No Digital Link configured is not a defect. Sunrise 2027 is a transition,
     // not a deadline that has passed.
     if (!data.digitalLink) return []
