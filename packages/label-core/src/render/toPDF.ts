@@ -64,7 +64,7 @@ export interface PdfOptions {
    * name itself, which works for the standard 14 and fails loudly otherwise —
    * better than silently substituting a face and changing every measurement.
    */
-  fontFor?: (family: string) => string
+  fontFor?: (family: string, weight?: number) => string
 }
 
 /** Millimetres are the layout's unit; points are the page's. */
@@ -154,7 +154,8 @@ function drawPrimitive(canvas: PdfCanvas, primitive: LayoutPrimitive, options: P
     }
 
     case 'text': {
-      const family = options.fontFor?.(primitive.fontFamily) ?? primitive.fontFamily
+      const family =
+        options.fontFor?.(primitive.fontFamily, primitive.fontWeight) ?? primitive.fontFamily
       canvas.save()
       canvas.font(family)
       canvas.fontSize(pt(primitive.fontSizeMm))

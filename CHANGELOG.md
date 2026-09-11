@@ -55,12 +55,35 @@ before the rule engine had anything to catch.
 
 ### Fixed
 
-- **The signal word would have printed in the wrong weight.** The GHS template asked for `IBM Plex Sans Bold`,
-  which is not one of the four faces the exporter embeds — so the allowlist would have quietly substituted the
-  regular weight in the PDF while the browser rendered the same text bold. The most prominent word on a
-  hazard label, differing between preview and print, via a fallback designed to be silent. The embedded face
-  is `SemiBold`; a test now asserts the GHS layout emits no family outside the allowlist, and was confirmed to
-  fail with the old value.
+- **The signal word would have printed in a different typeface than it previewed — and the first fix moved the
+  bug instead of closing it.** Worth recording in full, because it took three attempts and the first two both
+  looked correct.
+
+  The GHS template first asked for `IBM Plex Sans Bold`, which the PDF exporter does not embed, so its
+  allowlist quietly substituted the regular weight in print while the browser rendered bold. That was caught
+  and "fixed" by renaming to `IBM Plex Sans SemiBold` — a face the exporter *does* embed. But the browser
+  declares one family at two weights, not two families, so there is no `@font-face` by that name at all: the
+  preview fell back to the system sans instead, and the divergence simply changed sides. The word `DANGER` on
+  a hazard label, in a different typeface in preview than in print, through a fallback designed not to
+  complain.
+
+  The reason it survived a fix is that the only guard read the exporter's allowlist. A font is a contract
+  between the layout and **two** renderers, and a test that reads one of them cannot see a mismatch with the
+  other. `TextPrimitive` now carries `fontWeight`, which is what both renderers actually understand — SVG
+  emits `font-weight`, and the exporter resolves family plus weight onto its registered face — so the layout
+  never names a bold family again. Weight is expressed as intent and satisfied differently by each renderer,
+  exactly as `anchor` already was.
+
+  Two tests now, one per side, and the new one was confirmed to fail on the flagged state **while the old one
+  passed it**, which is the whole point. Verified in a real export: the PDF embeds `IBMPlexSans-SmBld` and uses
+  it for the signal word alone, and the SVG asks for `IBM Plex Sans` at `font-weight="600"`.
+- `PathCommand` and `PathPrimitive` were declared but never re-exported from the layout barrel, so a consumer
+  authoring pictogram artwork could not name either without deep-importing `layout/types`. The barrel guard
+  sees only runtime values and types are erased before it runs — a limit it documents about itself, and the
+  second time that limit has let something through.
+- The pictogram strip computed its own width and each frame's position from two separate expressions of one
+  formula, so a change to the spacing could have moved the frames without moving the box that measures them.
+  Its `length - 1` was also non-negative only by grace of the guard above it. One expression now, used by both.
 - `docs/DESIGN.md`'s OSHA compliance dates were wrong and superseded. It gave "substances 19 Jul 2026,
   mixtures 19 Jan 2028"; 29 CFR 1910.1200(j) as of the 2026-09-09 eCFR issue gives 19 May 2026 and 20 Nov 2026
   for substances and 19 Nov 2027 and 19 May 2028 for mixtures — manufacturers and employers respectively, a

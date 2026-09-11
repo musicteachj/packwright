@@ -12,6 +12,8 @@ export type {
   LayoutOmission,
   LayoutPrimitive,
   LinePrimitive,
+  PathCommand,
+  PathPrimitive,
   PlacedSymbol,
   PrimitiveBase,
   RectPrimitive,

@@ -119,6 +119,7 @@ function renderPrimitive(primitive: LayoutPrimitive): string {
         `<text x="${mm(primitive.xMm)}" y="${mm(primitive.baselineYMm)}" ` +
         `font-family="${escapeXml(primitive.fontFamily)}" ` +
         `font-size="${mm(primitive.fontSizeMm)}" ` +
+        (primitive.fontWeight === undefined ? '' : `font-weight="${primitive.fontWeight}" `) +
         `fill="#${escapeXml(primitive.fill)}" text-anchor="${primitive.anchor}"${id}>` +
         `${escapeXml(primitive.text)}</text>`
       )

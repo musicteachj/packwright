@@ -105,7 +105,8 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       baselineYMm: cursorYMm + fontSizeMm,
       text,
       fontSizeMm,
-      fontFamily: bold ? type.emphasisFontFamily : type.fontFamily,
+      fontFamily: type.fontFamily,
+      ...(bold ? { fontWeight: type.emphasisFontWeight } : {}),
       fill: '000000',
       anchor: 'start',
     })
@@ -125,19 +126,25 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
 
   if (data.pictograms?.length) {
     const boxMm = sideMm * Math.SQRT2
+    // One formula, used by both the strip's own box and each frame's position.
+    // They were two expressions of the same arithmetic, so a change to the
+    // spacing could have moved the frames without moving the box that measures
+    // them — and `length - 1` was non-negative only because of the guard above.
+    const pictogramXMm = (index: number) => panel.xMm + index * (boxMm + type.blockGapMm)
+    const stripWidthMm = pictogramXMm(data.pictograms.length - 1) + boxMm - panel.xMm
     elements.push({
       elementId: GHS_ELEMENTS.pictograms,
       label: 'Hazard pictograms',
       box: {
         xMm: panel.xMm,
         yMm: cursorYMm,
-        widthMm: data.pictograms.length * boxMm + (data.pictograms.length - 1) * type.blockGapMm,
+        widthMm: stripWidthMm,
         heightMm: boxMm,
       },
     })
 
     data.pictograms.forEach((code, index) => {
-      const xMm = panel.xMm + index * (boxMm + type.blockGapMm)
+      const xMm = pictogramXMm(index)
       const elementId = `${GHS_ELEMENTS.pictograms}-${code}`
 
       primitives.push({

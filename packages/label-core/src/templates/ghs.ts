@@ -96,15 +96,20 @@ export interface GhsLabelData {
 export const GHS_TYPE_DEFAULT = {
   fontFamily: 'IBM Plex Sans',
   /**
-   * The face for the signal word, named in full rather than derived.
+   * The weight for the signal word — a weight, not a second family name.
    *
-   * It must be one the PDF exporter actually embeds. An earlier draft built this
-   * by appending " Bold", which is not an embedded face — the exporter's
-   * allowlist would have quietly fallen back to the regular weight while the
-   * browser rendered the same text bold, so the single most important word on a
-   * GHS label would have differed between preview and print.
+   * This went wrong twice. First as `'IBM Plex Sans Bold'`, which the PDF
+   * exporter does not embed, so it fell back to regular in print while the
+   * browser showed bold. Then as `'IBM Plex Sans SemiBold'`, which the exporter
+   * *does* embed but the browser does not declare — the stylesheet has one
+   * family at two weights — so the divergence simply swapped sides and the
+   * preview fell back to the system sans instead.
+   *
+   * A weight is the thing both renderers actually understand, and
+   * `font-family-is-declared.test.ts` now checks the browser side too, which is
+   * what neither earlier fix was tested against.
    */
-  emphasisFontFamily: 'IBM Plex Sans SemiBold',
+  emphasisFontWeight: 600,
   productIdentifierMm: 4,
   signalWordMm: 5,
   statementMm: 2.6,

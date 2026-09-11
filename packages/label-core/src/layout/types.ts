@@ -91,6 +91,22 @@ export interface TextPrimitive extends PrimitiveBase {
    */
   fontSizeMm: number
   fontFamily: string
+  /**
+   * CSS weight, defaulting to 400.
+   *
+   * Expressed as intent, like `anchor`, because the two renderers satisfy it
+   * differently: a browser resolves family plus weight against `@font-face`
+   * rules, while PDFKit registers one face per weight under its own name.
+   *
+   * Naming the bold face as a *family* instead — `'IBM Plex Sans SemiBold'` —
+   * looks like it works and silently does not. The exporter registers a face by
+   * that literal name and renders correctly, but the browser has no such family
+   * (the stylesheet declares `'IBM Plex Sans'` at `font-weight: 600`), so the
+   * SVG falls back to the system sans. That put the single most prominent word
+   * on a hazard label in a different typeface in preview than in print, which is
+   * the precise divergence this architecture exists to prevent.
+   */
+  fontWeight?: number
   fill: string
   anchor: TextAnchor
 }

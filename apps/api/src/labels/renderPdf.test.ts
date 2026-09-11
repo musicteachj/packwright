@@ -181,13 +181,22 @@ describe('the GHS label only asks for faces this build embeds', () => {
       stock: DEFAULT_GHS_STOCK,
     })
 
-    const families = [
-      ...new Set(layout.primitives.flatMap((p) => (p.kind === 'text' ? [p.fontFamily] : []))),
-    ]
-    expect(families.length).toBeGreaterThan(1)
-    for (const family of families) {
-      expect(EMBEDDED_FONT_FAMILIES, `"${family}" is not an embedded face`).toContain(family)
-      expect(embeddedFontFor(family)).toBe(family)
+    const faces = layout.primitives.flatMap((p) =>
+      p.kind === 'text' ? [{ family: p.fontFamily, weight: p.fontWeight ?? 400 }] : [],
+    )
+    expect(faces.length).toBeGreaterThan(0)
+    // At least one emphasised face, or the weight path below asserts nothing.
+    expect(faces.some((face) => face.weight >= 600)).toBe(true)
+
+    for (const { family, weight } of faces) {
+      const resolved = embeddedFontFor(family, weight)
+      expect(EMBEDDED_FONT_FAMILIES, `"${family}" resolved to an unregistered face`).toContain(
+        resolved,
+      )
+      // A weight of 600 must actually reach the SemiBold face. Falling back to
+      // the regular weight here is the silent half of the divergence this pair
+      // of tests exists to close.
+      if (weight >= 600) expect(resolved).toContain('SemiBold')
     }
   })
 })
