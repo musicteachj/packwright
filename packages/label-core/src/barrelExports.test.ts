@@ -8,11 +8,22 @@ import * as checkDigit from './gs1/checkDigit'
 import * as digitalLink from './gs1/digitalLink'
 import * as elementString from './gs1/elementString'
 import * as gs1Barrel from './gs1/index'
+import * as clearSpace from './layout/clearSpace'
 import * as engine from './layout/engine'
 import * as layoutBarrel from './layout/index'
 import * as renderBarrel from './render/index'
 import * as toPDF from './render/toPDF'
 import * as toSVG from './render/toSVG'
+import * as barHeight from './rules/gs1/barHeight'
+import * as digitalLinkRule from './rules/gs1/digitalLink'
+import * as gtinCheckDigitRule from './rules/gs1/gtinCheckDigit'
+import * as humanReadableRule from './rules/gs1/humanReadable'
+import * as magnificationRule from './rules/gs1/magnification'
+import * as quietZoneRule from './rules/gs1/quietZone'
+import * as findingBuilders from './rules/finding'
+import * as rulesBarrel from './rules/index'
+import * as registry from './rules/registry'
+import * as ruleTypes from './rules/types'
 import * as constraints from './symbology/constraints'
 import * as symbologyBarrel from './symbology/index'
 import * as layOutSymbol from './symbology/layOutSymbol'
@@ -67,7 +78,14 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['units.ts', units],
     ],
   ],
-  ['layout', layoutBarrel, [['engine.ts', engine]]],
+  [
+    'layout',
+    layoutBarrel,
+    [
+      ['clearSpace.ts', clearSpace],
+      ['engine.ts', engine],
+    ],
+  ],
   [
     'render',
     renderBarrel,
@@ -82,6 +100,21 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     [
       ['constraints.ts', constraints],
       ['layOutSymbol.ts', layOutSymbol],
+    ],
+  ],
+  [
+    'rules',
+    rulesBarrel,
+    [
+      ['finding.ts', findingBuilders],
+      ['registry.ts', registry],
+      ['types.ts', ruleTypes],
+      ['gs1/barHeight.ts', barHeight],
+      ['gs1/digitalLink.ts', digitalLinkRule],
+      ['gs1/gtinCheckDigit.ts', gtinCheckDigitRule],
+      ['gs1/humanReadable.ts', humanReadableRule],
+      ['gs1/magnification.ts', magnificationRule],
+      ['gs1/quietZone.ts', quietZoneRule],
     ],
   ],
   ['templates', templatesBarrel, [['upcA.ts', upcA]]],

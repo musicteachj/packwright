@@ -10,6 +10,7 @@
     "./geometry": "./src/geometry/index.ts",
     "./layout": "./src/layout/index.ts",
     "./render": "./src/render/index.ts",
+    "./rules": "./src/rules/index.ts",
     "./symbology": "./src/symbology/index.ts",
     "./templates": "./src/templates/index.ts",
     "./types": "./src/types/index.ts"

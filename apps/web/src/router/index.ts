@@ -1,21 +1,31 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 /**
- * Route inventory from the plan. Only the landing route is implemented; the
- * rest are added as their phases land.
+ * Route inventory from the plan. Implemented routes only; the rest are added as
+ * their phases land.
  *
- *   /              landing
+ *   /              landing                                   — done
+ *   /labels/new    the editor, on an in-memory document      — done
  *   /labels        saved labels
- *   /labels/new    label type chooser
- *   /labels/:id    the editor — the app
+ *   /labels/:id    the editor, on a saved document
  *   /audit         photo/camera label audit
  *   /rules         the rule catalogue, generated from the registry
+ *
+ * `/labels/new` carries the editor rather than `/labels/:id` because there is no
+ * persistence yet. An id would have to be invented, and inventing one means
+ * either a fake route parameter or a browser-storage layer built to be thrown
+ * away. The route shape is the cheaper of the two to change later.
  */
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'landing',
     component: () => import('../views/LandingView.vue'),
+  },
+  {
+    path: '/labels/new',
+    name: 'editor',
+    component: () => import('../views/EditorView.vue'),
   },
 ]
 

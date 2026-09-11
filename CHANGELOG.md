@@ -10,6 +10,242 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 3, stage 3 — the editor. Three panes, and the link between them that is the whole point.
+
+- `/labels/new` — the form rail, the canvas and the findings rail, on an in-memory document. `/labels/:id` and
+  persistence are a later phase; inventing an id now would mean either a fake route parameter or a
+  browser-storage layer built to be thrown away, and the route shape is the cheaper of the two to change.
+- **Click a finding and the offending element outlines on the canvas and its form section rings. Focus a field
+  and the same element outlines.** One piece of store state carries both directions, so the two halves cannot
+  drift into disagreeing about what is selected. It is tested by driving the real components rather than the
+  store alone — the store holding the right element id proves nothing about whether the canvas draws anything
+  — and the test was confirmed to fail when the outline was disabled.
+- Findings grouped by the ANSI Z535.4 signal-word scale, passes collapsed at the bottom. Every severity
+  carries an icon and a word; `theme.test.ts` already pins why, since warning and pass are within 1.06 of each
+  other in luminance on this chrome and all but identical in greyscale.
+- The rail announces through a **polite** live region carrying a summary, not `role="alert"` per finding. The
+  findings recompute on every keystroke, and an assertive region per item would interrupt a screen-reader user
+  continuously while they typed a GTIN. The summary is what changed; the detail is there to navigate to.
+- Overlays drawn into a second SVG sharing the label's `viewBox`, so an annotation sits in the same millimetre
+  space as the thing it annotates and stays registered at any zoom: hatched quiet-zone bands, symbol dimension
+  callouts, and the selection outline. Selection is dashed and inset so it cannot be read as a severity —
+  it is transient interface state and says nothing about the label.
+- "Label contents as text" — every element with its position and size, and every omission with its reason. An
+  accessibility requirement for an SVG canvas that turns out to be the fastest way for anyone to see what the
+  layout engine actually produced.
+- Export warns rather than refuses when a blocking finding is present. "Non-compliant as drawn" is what that
+  severity means, and exporting anyway is the user's call — the confirmation only makes sure the finding was
+  seen.
+- A half-typed GTIN reads as a form state, not a compliance verdict. Inventing a finding for it would fire on
+  every keystroke.
+
+### Fixed
+
+Phase 3, third review. Four findings, all in the web layer — and the notable result is where they are *not*.
+The second round's fixes were the least-reviewed code in the phase and the ones with the worst track record,
+since the first round's fixes had introduced a regression. This pass found nothing wrong with them: the
+narrowed overprint suppression, the vertical-containment measurement, the font allowlist, the number
+validation and the 422 export path all came through clean, as did every rule and citation in `label-core`.
+
+- **Focusing a field could clear the highlight the user had just set.** `EditorSection` emitted its `select`
+  event on every `focusin`, passing an element id that Stock and Digital Link do not have — so the emit
+  carried `undefined` and the store read it as "nothing is selected". The cost lands on the one interaction
+  this phase exists for: click a quiet-zone finding, see the symbol outlined, then tab into Stock to widen the
+  label and fix it, and the outline showing what needs to move vanishes mid-edit. The canvas and the rail stop
+  agreeing about what is selected at exactly the moment it is being acted on. Only a section that owns an
+  element now speaks for the canvas, and the emit is typed `string` rather than `string | undefined` so the
+  invariant is stated rather than remembered. The existing test only ever focused a field that *did* own an
+  element, which is why it passed throughout.
+- The overlay checkbox ids were hardcoded, reintroducing the exact collision the hatch pattern had just been
+  fixed for — three lines below the comment explaining why hardcoding them was wrong. Two canvases on a page
+  bound both sets of labels to the first one's checkboxes, leaving the second's overlays untoggleable by their
+  label. Both ids are now seeded from `useId()`, like the hatch beside them.
+- The uncertifiable-symbol notice hand-rolled `.toFixed(2)` instead of the shared `mm()` helper. This is the
+  third instance of that pattern and the second time it has been recorded as fixed; `mm()` exists precisely
+  because raw `toFixed` skips `collapseFloatNoise`, which is what produced the "14.33 / 14.32" readout on a
+  label symmetric to the micrometre.
+- The live region announced "All 1 checks passed" — `findings` and `symbols` were both pluralised on the
+  neighbouring lines and `checks` was not. Small, but it is read aloud to the users least able to ignore it,
+  on a tool that will not paraphrase a single character of a regulated statement.
+
+Phase 3, second review. Fifteen findings from a full multi-agent pass, including a regression the first round
+of fixes had introduced — which is the argument for reviewing each stage rather than a whole phase at once.
+
+- **The overprint fix from the first round had manufactured a second false pass.** Suppressing the whole
+  symbol when artwork crossed it also suppressed real, measured violations: a brand block anchored bottom-left
+  produced a quiet zone of 0.00 mm against a required 2.97 mm with every verdict reading "pass". The rule now
+  withholds only the **pass**, never the finding. Two mistakes compounded: the overprint band was the symbol's
+  full drawn height, so artwork merely level with the printed digits — which touches no bar — tripped the
+  suppression. `PlacedSymbol.guardBarHeightMm` now gives the bar ink its own extent.
+- **Nothing measured vertical containment.** `measureClearSpace` was only ever told the label's *width*, so a
+  symbol drawn off the top and bottom of its stock reported six passes and no findings. The changelog's
+  justification for not shipping a clipped-by-trim rule — "clipped bars measure as negative clear space" — was
+  true horizontally and silently false the other way. `ResolvedSymbol.verticalOverflowMm` records it, and the
+  quiet-zone rule declines to certify a symbol that is not entirely on the label.
+- **A quiet zone exactly at the minimum was reported as a violation.** The comparison had no tolerance, unlike
+  the bar-height rule beside it, so on stock exactly one symbol footprint wide the two sides reached 2.97 mm
+  by different arithmetic and one landed a fraction under: *"The right quiet zone measures 2.97 mm; UPC-A
+  requires 2.97 mm"* — a violation contradicting its own message under a real GS1 citation. The tolerance is
+  now declared once and shared.
+- **`artwork.fontFamily` was an arbitrary local file read.** It reached PDFKit's `document.font()`, which
+  resolves an unregistered name as a filesystem path — `'Arial'` returned a 500, and a real path was opened by
+  the server process. The API now accepts only the faces the exporter embeds, and the renderer passes
+  everything through that allowlist before it reaches PDFKit.
+- **The export handed out blank PDFs.** A GTIN with a bad check digit — newly reachable, since the check digit
+  is supplied rather than computed — returned 200 and 1,145 bytes of empty page, with the reason recorded only
+  in a field no HTTP client reads. It is now a 422 carrying the omission, and the editor does not offer the
+  button.
+- **A Digital Link with no valid resolver passed.** `buildDigitalLinkUri` never inspects the domain, so "it did
+  not throw" was being read as conformance: an empty string, `not a url` and `javascript:alert(1)` each came
+  back as a green pass under a GS1 citation. It also emitted a `pass` and an advisory for the *same* URI when
+  the convenience alphas were used, so the rail counted a check as cleared that the rule had just faulted.
+- **Blank and negative numbers corrupted the layout instead of being refused.** A cleared margin field arrived
+  as `''` and string-concatenated through every coordinate — `symbol.xMm` became `"11.3552.97"`, the rail
+  printed "the left quiet zone measures NaN mm" under a real citation, and the renderer threw on a coordinate
+  that was not a number. A negative bar height inverted the band used to detect encroachment, turning a real
+  violation into two passes. The engine now validates every number it is given.
+- **The quiet-zone hatch was invisible.** `currentColor` inside a `<pattern>` inherits from the pattern's own
+  ancestors — `<defs>` — never from the element referencing it, so the overlay resolved to the body text
+  colour and rendered at roughly 1.1:1 on paper. Ticking "Quiet zones" appeared to do nothing. The pattern id
+  is also unique per instance now, rather than colliding as soon as two canvases share a page.
+- The canvas caption hand-rolled `.toFixed()` and reproduced the exact `14.33 / 14.32` asymmetry
+  `collapseFloatNoise` had just been written to kill — while the rail three inches away, formatting through
+  the shared helper, printed 14.33 for both. Both now use the same helper.
+- Smaller: a finding with no geometry is no longer a button, since clicking it *cleared* the canvas highlight
+  instead of setting one; findings use phrasing content, as `<p>` and `<dl>` are not permitted inside a
+  `<button>` and ARIA flattened them into one unreadable name; only the first form section owning an element
+  scrolls, so a shared selection no longer races two `scrollIntoView` calls; and an API test asserting
+  `expect([200, 422]).toContain(status)` — which no behaviour could fail — now asserts one status.
+- `scripts/verify-build.sh` still posted the removed `gtinPayload`, so CI was red on this branch. It was the
+  only surviving reference and it sat in a shell script, which a `--include='*.ts'` sweep never looked at.
+
+**Reviewed and not changed.** `measureClearSpace` ignores artwork lying entirely outside the trim. That was
+raised as a dropped obstruction; it is the correct answer, because ink outside the trim is never printed and so
+obstructs nothing. Artwork straddling the edge still counts, via its right edge landing inside. Also left
+alone: re-encoding the symbol on every magnification change. It is 92% of the keystroke pipeline and the
+pipeline is 0.4 ms, so caching it would add state to a pure module to buy nothing measurable.
+
+
+Phase 3 review. Four defects, two of them false passes — the failure class this project exists to prevent.
+
+- **A label with artwork printed through the barcode reported six passes and no findings.** `measureClearSpace`
+  only considered elements extending past the left or right edge of the bar pattern, so a block sitting
+  entirely inside it was neither and got skipped; both quiet zones measured clean. Reachable from the editor in
+  two clicks. `ResolvedSymbol.overprintedBy` now records it, and the quiet-zone rule **declines to certify**
+  such a symbol rather than passing it — a pass would be true in the narrow sense and gravely misleading in
+  every other. No violation is raised either: no clause covering overprinting has been verified against a
+  source document, and this project does not ship rules it cannot cite. The editor states the fact in words
+  instead, under "Cannot be checked", and suppresses the all-clear banner while it stands.
+- **The findings rail claimed "Every check passed" when no check had run.** The guard tested only that nothing
+  had failed. With a half-typed GTIN there is no resolvable layout, so there are no findings at all — and the
+  rail rendered a green tick beside a live region correctly announcing that no checks had run. It now requires
+  a check to have actually passed, and says so plainly when none has.
+- **The landing page drew hatched quiet-zone bands over the label with no way to remove them.** The overlay
+  defaulted on regardless of whether the toggles were offered, so the one page whose entire point is "this is a
+  real label, not a picture of one" covered it in apparatus. The default is now seeded from whether the
+  controls are shown.
+- **The Digital Link rule blamed the URI for a fault in the GTIN.** `buildDigitalLinkUri` validates the check
+  digit and throws, so a transposed digit produced two findings for one cause — the second of them
+  misattributed to a Digital Link that was perfectly well formed. It now declines when the key it builds from
+  is unsound, and leaves that defect to the rule that owns it.
+- The API export route no longer casts past its own type checker. `z.enum(ANCHORS)` widened to `string`, which
+  forced an `as never` on the engine call — and that cast switched off the only check that the request schema
+  and `UpcALabelData` still describe the same thing. `Anchor` is now derived from `ANCHORS` so the enum stays
+  typed, and the nested Zod optionals are reconciled with `exactOptionalPropertyTypes` by construction rather
+  than by assertion.
+
+### Changed
+
+- Form controls are both nested in their label and associated by `for`/`id`. The accessibility lint requires
+  both, and it is right to: the two associations are handled differently by different assistive technologies,
+  and nesting alone is the one that silently degrades.
+
+Phase 3, stage 2 — the rule engine. Six GS1 retail rules, each citing a clause that was read rather than
+recalled, each shipping with a label that provokes it.
+
+- `rules/` — a registry of rules, each a pure function from a resolved label to findings. It is the only place
+  in the system permitted to say something is non-compliant. The `/rules` catalogue in phase 6 is generated
+  from this list, so a rule that ships is a rule whose citation a user can go and read.
+- The six: GTIN check digit, magnification against the 0.8–2.0 range, bar height against the minimum for its
+  X-dimension, quiet zone against measured clear space, human-readable digits, and Digital Link URI syntax.
+  Every citation traces to a phase 1 module where it was verified against a source — none is new research and
+  none was written from memory.
+- **Findings inherit their citation from the rule that produced them.** Hand-writing it at each `return` is
+  how a quiet-zone message ends up carrying the bar-height clause: invisible in review, survives any test that
+  only checks the code, and makes the whole report untrustworthy. `finding()` also refuses a code the rule
+  does not declare, because the catalogue is generated from those declarations and an undeclared code would be
+  invisible to a user browsing them.
+- **An empty result means the rule did not apply, and that is not a pass.** No symbol to measure because the
+  GTIN could not be encoded, no Digital Link configured, no quiet-zone figure verified for the symbology — in
+  each case the rule says nothing rather than something reassuring. A check that could not run has not cleared
+  anything.
+- Eight known-bad fixtures asserting the exact code, severity **and citation string**, plus a conformant
+  control that must produce nothing but passes. The defects are the ordinary ones — a transposed check digit,
+  a brand block that took the quiet zone for artwork, a symbol scaled past what the specification allows — not
+  contrivances chosen to make a test go red.
+- The quiet-zone rule reads `clearSpaceLeftMm`, not `requiredQuietZoneLeftMm`. Comparing the requirement
+  against itself is the shape this bug takes, and it passes every label put to it.
+- Measurements are formatted through one place, and it discards representation error first. A UPC-A centred on
+  60 mm stock leaves exactly 14.325 mm either side; in binary the two straddle the boundary two-decimal
+  rounding turns on, so the rail read "14.33 mm / 14.32 mm" for a label symmetric to the micrometre. X-dimensions
+  get three places, since the permitted range spans 0.264 to 0.660 and two places cannot tell 0.264 from 0.26.
+- **Two rules deliberately not shipped, recorded here so they read as decisions rather than oversights.** A
+  distinct `GS1_SYMBOL_CLIPPED_BY_TRIM`: the quiet-zone rule already catches it — clipped bars measure as
+  negative clear space and the message says so in millimetres — and no clause has been confirmed that treats
+  bars running off the trim as separate from a quiet-zone failure. And the Sunrise 2027 2D-placement notice:
+  the symbol adapter rejects two-dimensional symbologies outright, and the guidance needs a verifiable GS1
+  reference before it can carry one.
+- `rules` added to both export guards. Neither is a sweep — they are hand-maintained checklists, which is
+  exactly why the manifest subpath was missed twice before; the barrel guard was confirmed to fail, naming the
+  dropped symbols, before being relied on.
+
+Phase 3, stage 1 — making a label able to be wrong. The rule engine has nothing to catch unless the layout
+engine will draw a non-compliant label, and it would not.
+
+- **The engine resolves; it no longer refuses.** It used to throw when a symbol's quiet zone would not fit the
+  stock, or when the magnification fell outside the 0.8–2.0 the specification permits. The reasoning was
+  sound — silently shrinking a symbol produces a label that looks right and does not scan — but refusing is
+  worse, for a reason that only surfaces a layer up: a label that cannot be resolved cannot be measured, so
+  the quiet-zone rule had nothing to run against and could never fail. Every rule in this project ships with a
+  known-bad fixture, and there were no known-bad labels to write one from. The engine now draws what it was
+  asked for, off the edge of the stock if that is what the inputs describe, and `rules/` says what is wrong.
+  What still raises `LayoutError` is input that describes no drawing at all: a magnification of zero, stock
+  with no area, a GTIN that is not twelve digits.
+- **`ResolvedSymbol` now separates the requirement from the measurement.** `quietZoneLeftMm` was
+  `9 * xDimensionMm` — a restatement of the specification, true of every UPC-A ever drawn — under a name that
+  read like a measurement. A quiet-zone rule written against it would have passed every label put to it. It is
+  now `requiredQuietZoneLeftMm`, alongside `clearSpaceLeftMm`, which is what this label actually leaves blank.
+  Only the second can fail.
+- `layout/clearSpace.ts` measures that blank space to the nearest encroaching element or to the trim edge,
+  whichever is closer, and goes negative when the bars themselves run off the label — "the quiet zone is 0 mm"
+  and "the symbol is 1.35 mm off the edge of the stock" are different problems and the caller has to be able
+  to tell them apart. It excludes the symbol's own boxes, because an EAN/UPC prints its first digit in the
+  left quiet zone and its check digit in the right; counting those fails every conformant label.
+- **`ResolvedLayout.elements` — the box the engine allocated to each element.** Primitives are for drawing;
+  boxes are for measuring. It exists because a `TextPrimitive` has no width: deriving one needs font metrics,
+  which `label-core` deliberately does not carry, so measuring encroachment primitive-by-primitive would be
+  guesswork for exactly the elements most likely to encroach. The engine knows what box it set aside, so it
+  says so once instead of every consumer guessing. It also gives the finding-to-canvas highlight something to
+  outline and the text-equivalent view something to enumerate.
+- **`ResolvedLayout.omissions` — anything the engine could not draw, and why.** bwip-js rejects a UPC-A whose
+  check digit is wrong (`upcAbadCheckDigit`), and it is right to: a UPC-A's twelfth digit *is* the check
+  digit, so such a barcode cannot exist. Rather than throw, or quietly encode a corrected GTIN the user never
+  asked for, the engine omits the symbol and records why. The rest of the label still resolves. An omission is
+  a fact; the verdict and the citation belong to `rules/`.
+- **`UpcALabelData.gtin` takes the full twelve digits as printed**, replacing the eleven-digit `gtinPayload`
+  whose check digit was computed. Computing it sounds like a feature and is in fact the removal of a check:
+  the commonest real defect in a supplied GTIN is a transposed digit, and an engine that recomputes the check
+  digit silently accepts the wrong product. `completeGtin` remains for minting a new identifier.
+- An artwork block with a nine-position anchor, and the same anchoring for the symbol. A brand block crowding
+  a barcode is the ordinary way a real quiet zone gets lost, and without a second element on the label the
+  only thing that could ever violate one was the trim edge. Nothing is clamped: a box larger than the panel is
+  drawn hanging off the stock, because nudging it back inside would hide the defect.
+- `digitalLink` on the label data — held as data rather than a finished URI, so the rules can hand it to
+  `buildDigitalLinkUri` and report what that rejects instead of a second implementation of the same syntax
+  drifting away from the first.
+- The print-test sheet's sabotaged control now emits its obstructions as elements as well as ink, so the sheet
+  states in millimetres what it is asking the phone to fail on.
+
 Phase 2, stage 3 — design tokens, IBM Plex and the canvas. The label now reads as paper on a work surface,
 and the type in the export is the type on the screen.
 
@@ -120,6 +356,11 @@ That is what makes preview == print structural rather than something two code pa
   unguarded — stated in the test rather than left to look more complete than it is.
 
 ### Changed
+
+- `POST /api/labels/upc-a/export` takes `gtin` rather than `gtinPayload`, and no longer rejects a
+  non-compliant label. A 2.5x symbol or a quiet zone lost to artwork is a finding, not a malformed request;
+  refusing here would mean the export path and the preview disagreed about what a label is, which is the one
+  thing this architecture exists to prevent. A magnification of zero is still a 400.
 
 - Retargeted from Node 22 to **Node 24** (Active LTS; 22 is in maintenance)
 - Prettier now owns formatting outright — added `eslint-config-prettier` after

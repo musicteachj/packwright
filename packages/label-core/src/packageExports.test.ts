@@ -15,7 +15,16 @@ import manifest from '../package.json' with { type: 'json' }
  * module has to be added here, and the failure it prevents is the one where it
  * is added everywhere except the manifest.
  */
-const MODULES = ['gs1', 'geometry', 'layout', 'render', 'symbology', 'templates', 'types'] as const
+const MODULES = [
+  'gs1',
+  'geometry',
+  'layout',
+  'render',
+  'rules',
+  'symbology',
+  'templates',
+  'types',
+] as const
 
 describe('package exports', () => {
   it('exposes the package root', () => {

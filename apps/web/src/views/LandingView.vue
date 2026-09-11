@@ -12,11 +12,11 @@ import * as bwip from 'bwip-js/generic'
 import { DEFAULT_UPC_A_STOCK, layOutUpcALabel } from '@packwright/label-core'
 import LabelCanvas from '../components/LabelCanvas.vue'
 
-const GTIN_PAYLOAD = '03600029145'
+const GTIN = '036000291452'
 
 const layout = computed(() =>
   layOutUpcALabel(bwip as never, {
-    data: { gtinPayload: GTIN_PAYLOAD },
+    data: { gtin: GTIN },
     stock: DEFAULT_UPC_A_STOCK,
   }),
 )
@@ -51,6 +51,13 @@ const gtin = computed(() => layout.value.symbols[0]?.value ?? '')
         </p>
 
         <LabelCanvas :layout="layout" :title="`UPC-A label for GTIN ${gtin}`" />
+
+        <RouterLink
+          class="border-chrome-700 bg-chrome-900 text-chrome-100 hover:bg-chrome-800 focus-visible:outline-notice self-start border px-4 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          to="/labels/new"
+        >
+          Open the editor →
+        </RouterLink>
       </section>
 
       <section class="border-chrome-800 flex flex-col gap-4 border-t pt-8">

@@ -5,40 +5,80 @@
  * resolve a layout, and stream the PDF. It computes no geometry of its own —
  * every millimetre comes from the same engine the browser preview uses, which is
  * the entire reason the export can be trusted to match what the user saw.
+ *
+ * It deliberately does **not** refuse a non-compliant label. A 2.5x symbol or a
+ * quiet zone lost to artwork is a finding, not a bad request: the engine draws
+ * what it was asked for and the rules say what is wrong with it. Exporting a
+ * label you have been told is non-compliant is the user's call to make, and the
+ * client warns before it does. What still earns a 400 is a request that
+ * describes no drawing — a magnification of zero, stock with no area.
  */
 
 import {
+  ANCHORS,
   DEFAULT_UPC_A_STOCK,
   LayoutError,
-  MAX_MAGNIFICATION,
-  MIN_MAGNIFICATION,
   getSymbologyConstraints,
   layOutUpcALabel,
+  type ArtworkBlock,
+  type DigitalLinkData,
+  type UpcALabelData,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
-import { renderLayoutToPdf } from './renderPdf'
+import { EMBEDDED_FONT_FAMILIES, renderLayoutToPdf } from './renderPdf'
 
 /**
- * A UPC-A payload is the eleven digits a user types; the twelfth is computed.
- * Validated here as well as in the engine so a bad request is a 400 rather than
- * a 500 — the engine throws because it is a library, not because it is an API.
+ * A GTIN-12 as printed on the pack — the eleven digits a user types plus the
+ * check digit, which is now supplied rather than computed so that a wrong one
+ * can be caught instead of silently corrected.
+ *
+ * Both figures come from `label-core` rather than being restated. Each side used
+ * to carry its own copy of the payload length and the magnification range,
+ * tested against itself — so the two could drift apart without a single test
+ * failing.
  */
-// Bounds come from `label-core` rather than being restated. Each side used to
-// carry its own copy of the payload length and the magnification range, tested
-// against itself — so the two could drift apart without a single test failing.
-const UPC_A_PAYLOAD_LENGTH = getSymbologyConstraints('UPC-A')?.payloadLength.min ?? 11
+const UPC_A_CONSTRAINTS = getSymbologyConstraints('UPC-A')
+const GTIN_LENGTH =
+  (UPC_A_CONSTRAINTS?.payloadLength.min ?? 11) + (UPC_A_CONSTRAINTS?.appendsCheckDigit ? 1 : 0)
+
+const Artwork = z.object({
+  text: z.string().min(1),
+  anchor: z.enum(ANCHORS),
+  widthMm: z.number().positive(),
+  heightMm: z.number().positive(),
+  fontSizeMm: z.number().positive().optional(),
+  // Constrained to the faces the exporter actually embeds. Free text here
+  // reached PDFKit's `document.font()`, which resolves an unknown name as a
+  // filesystem path.
+  fontFamily: z.enum(EMBEDDED_FONT_FAMILIES as [string, ...string[]]).optional(),
+})
+
+const DigitalLink = z.object({
+  domain: z.string().min(1),
+  lot: z.string().optional(),
+  serial: z.string().optional(),
+  expiry: z.string().optional(),
+  useConvenienceAlphas: z.boolean().optional(),
+})
 
 const UpcARequest = z.object({
-  gtinPayload: z
+  gtin: z
     .string()
     .regex(
-      new RegExp(`^[0-9]{${UPC_A_PAYLOAD_LENGTH}}$`),
-      `A UPC-A payload is exactly ${UPC_A_PAYLOAD_LENGTH} digits`,
+      new RegExp(`^[0-9]{${GTIN_LENGTH}}$`),
+      `A GTIN-12 is exactly ${GTIN_LENGTH} digits, check digit included`,
     ),
-  magnification: z.number().min(MIN_MAGNIFICATION).max(MAX_MAGNIFICATION).optional(),
+  // Bounded below only. The specification's 0.8–2.0 range is a rule, reported
+  // with its citation against the resolved layout; zero or negative is not a
+  // symbol at all.
+  magnification: z.number().positive().optional(),
   barHeightMm: z.number().positive().optional(),
+  omitHri: z.boolean().optional(),
+  symbolPlacement: z.enum(ANCHORS).optional(),
+  artwork: Artwork.optional(),
+  digitalLink: DigitalLink.optional(),
   stock: z
     .object({
       widthMm: z.number().positive(),
@@ -47,6 +87,38 @@ const UpcARequest = z.object({
     })
     .optional(),
 })
+
+/**
+ * Zod describes an absent optional as `string | undefined`; `label-core` declares
+ * it as genuinely absent. Under `exactOptionalPropertyTypes` those are different
+ * types, so the two shapes are reconciled here, once, by construction.
+ *
+ * Verbose, and worth it. The previous version reached for `as never`, which did
+ * reconcile them — by switching off the only check that the request schema and
+ * the engine's input still describe the same thing.
+ */
+function toArtwork(artwork: z.infer<typeof Artwork>): ArtworkBlock {
+  return {
+    text: artwork.text,
+    anchor: artwork.anchor,
+    widthMm: artwork.widthMm,
+    heightMm: artwork.heightMm,
+    ...(artwork.fontSizeMm === undefined ? {} : { fontSizeMm: artwork.fontSizeMm }),
+    ...(artwork.fontFamily === undefined ? {} : { fontFamily: artwork.fontFamily }),
+  }
+}
+
+function toDigitalLink(link: z.infer<typeof DigitalLink>): DigitalLinkData {
+  return {
+    domain: link.domain,
+    ...(link.lot === undefined ? {} : { lot: link.lot }),
+    ...(link.serial === undefined ? {} : { serial: link.serial }),
+    ...(link.expiry === undefined ? {} : { expiry: link.expiry }),
+    ...(link.useConvenienceAlphas === undefined
+      ? {}
+      : { useConvenienceAlphas: link.useConvenienceAlphas }),
+  }
+}
 
 export function createLabelRouter(): Router {
   const router = Router()
@@ -64,34 +136,49 @@ export function createLabelRouter(): Router {
       return
     }
 
-    const { stock = DEFAULT_UPC_A_STOCK, gtinPayload, magnification, barHeightMm } = parsed.data
+    const { stock = DEFAULT_UPC_A_STOCK, ...rest } = parsed.data
 
-    // Built key by key rather than spread: under `exactOptionalPropertyTypes` an
+    // Built key by key rather than cast. Under `exactOptionalPropertyTypes` an
     // absent optional and one explicitly set to `undefined` are different types,
-    // and a spread produces the second.
-    const data = {
-      gtinPayload,
-      ...(magnification === undefined ? {} : { magnification }),
-      ...(barHeightMm === undefined ? {} : { barHeightMm }),
+    // so a spread does not satisfy `UpcALabelData` — and the `as never` that
+    // silenced it also switched off the only check that the request schema and
+    // the engine's input still agree on.
+    const data: UpcALabelData = {
+      gtin: rest.gtin,
+      ...(rest.magnification === undefined ? {} : { magnification: rest.magnification }),
+      ...(rest.barHeightMm === undefined ? {} : { barHeightMm: rest.barHeightMm }),
+      ...(rest.omitHri === undefined ? {} : { omitHri: rest.omitHri }),
+      ...(rest.symbolPlacement === undefined ? {} : { symbolPlacement: rest.symbolPlacement }),
+      ...(rest.artwork === undefined ? {} : { artwork: toArtwork(rest.artwork) }),
+      ...(rest.digitalLink === undefined ? {} : { digitalLink: toDigitalLink(rest.digitalLink) }),
     }
 
     try {
       const layout = layOutUpcALabel(bwip as never, { data, stock })
+
+      // A label whose barcode could not be drawn is a blank page, and a blank
+      // page is not an export. The browser warns before it gets here; a script
+      // or a partner integration got 200 and 1,145 bytes of nothing, with the
+      // reason recorded only in a field it never reads.
+      if (layout.omissions.length > 0) {
+        response.status(422).json({
+          error: 'Label cannot be exported',
+          detail: layout.omissions.map((omission) => omission.reason),
+        })
+        return
+      }
+
       const pdf = await renderLayoutToPdf(layout)
 
       response
         .status(200)
         .setHeader('Content-Type', 'application/pdf')
         .setHeader('Content-Length', String(pdf.length))
-        .setHeader(
-          'Content-Disposition',
-          `attachment; filename="${layout.symbols[0]?.value ?? 'label'}.pdf"`,
-        )
+        .setHeader('Content-Disposition', `attachment; filename="${data.gtin}.pdf"`)
       response.end(pdf)
     } catch (error) {
-      // A layout that cannot be produced is the caller's problem, not the
-      // server's — asking for a 2x symbol on stock too small to carry its quiet
-      // zone is a 422, and the message says exactly what would not fit.
+      // A layout that cannot be produced at all is the caller's problem, not the
+      // server's, and the message says exactly what could not be drawn.
       if (error instanceof LayoutError) {
         response.status(422).json({ error: 'Label cannot be laid out', detail: error.message })
         return

@@ -6,7 +6,7 @@
  * arithmetic of its own. That is what makes preview == print true by
  * construction rather than by two code paths happening to agree today.
  *
- * It is also what phase 3's rules run against. A rule like "the net quantity
+ * It is also what the rules run against. A rule like "the net quantity
  * declaration must sit within the bottom 30% of the principal display panel" is
  * checked against a resolved `yMm`, not against an intent expressed somewhere in
  * a template — so the rule and the printed artefact cannot drift apart.
@@ -16,15 +16,13 @@
  * renderer concerns, converted at the edge.
  */
 
-import type { SymbologyId } from '../types/index'
+import type { BoundingBox, SymbologyId } from '../types/index'
 
 /**
  * Identifies which label element a primitive came from.
  *
  * Carried on every primitive so a finding can point at geometry: click a
- * finding, and the offending element outlines on the canvas. Populated now,
- * before the rule engine exists, because retrofitting provenance through a
- * layout engine is far harder than emitting it from the start.
+ * finding, and the offending element outlines on the canvas.
  */
 export type ElementId = string
 
@@ -94,15 +92,54 @@ export interface TextPrimitive extends PrimitiveBase {
 export type LayoutPrimitive = RectPrimitive | LinePrimitive | TextPrimitive
 
 /**
- * A barcode's resolved geometry, kept alongside the primitives that draw it.
+ * The space the engine allocated to one label element.
  *
- * The bars are already in `primitives`; this records what they *mean* so a rule
- * can ask "is this quiet zone wide enough" without re-deriving it from a list of
- * rectangles. Measuring the drawn result rather than restating the intent is the
- * whole point — a rule that trusts the requested X-dimension would pass a symbol
- * the layout engine had silently scaled to fit.
+ * Primitives are for drawing; this is for measuring. Everything that needs to
+ * reason about where an element *is* — a quiet-zone rule, the canvas highlight,
+ * the text-equivalent view — reads a box rather than re-deriving one from a bag
+ * of rectangles.
+ *
+ * It exists because a `TextPrimitive` has no width. Deriving one needs font
+ * metrics, which `label-core` deliberately does not carry (see the note on
+ * `fontSizeMm` above), so measuring encroachment primitive-by-primitive would be
+ * guesswork for exactly the elements most likely to encroach — text blocks. The
+ * engine, on the other hand, knows precisely what box it set aside. So it says
+ * so, once, instead of every consumer guessing.
  */
-export interface ResolvedSymbol {
+export interface ResolvedElement {
+  elementId: ElementId
+  /** Human-readable name, for the findings rail and the canvas text equivalent. */
+  label: string
+  /** The space the engine allocated. */
+  box: BoundingBox
+}
+
+/**
+ * Something the engine could not draw, and why.
+ *
+ * An omission is a fact, not a verdict: it records that a GTIN whose check digit
+ * is wrong has no symbol because no encoder will produce one, and leaves the
+ * judging — and the citation — to `rules/`.
+ *
+ * It exists so that nothing is ever dropped silently. A label missing its
+ * barcode with no explanation is the worst artefact this engine could hand back,
+ * because it looks like a rendering bug rather than a compliance problem.
+ */
+export interface LayoutOmission {
+  elementId: ElementId
+  /** Plain sentence naming what could not be drawn and why. */
+  reason: string
+}
+
+/**
+ * A barcode's geometry as placed, before its surroundings are known.
+ *
+ * Split from `ResolvedSymbol` because clear space is not a property of a symbol
+ * — it is a property of a symbol *and everything around it*, which the symbol
+ * adapter cannot see. The adapter reports what it drew; the engine measures the
+ * neighbourhood and completes the record.
+ */
+export interface PlacedSymbol {
   elementId: ElementId
   symbology: SymbologyId
   /** The payload as encoded, check digit included. */
@@ -114,8 +151,66 @@ export interface ResolvedSymbol {
   /** Left edge of the bar pattern, so quiet-zone width is measurable either side. */
   xMm: number
   yMm: number
-  quietZoneLeftMm: number
-  quietZoneRightMm: number
+  /** Full drawn height — bars, guard-bar extension and the HRI band. */
+  drawnHeightMm: number
+  /**
+   * Vertical extent of the bar ink alone — data bars plus the guard-bar
+   * extension, excluding the human-readable band beneath.
+   *
+   * Distinct from `drawnHeightMm` because the two answer different questions and
+   * confusing them caused a real defect: artwork level with the printed digits
+   * was treated as artwork printed over the bars, which silenced every
+   * quiet-zone verdict on a label whose quiet zone was in fact zero.
+   */
+  guardBarHeightMm: number
+  /** What the specification demands, as a width in mm at this X-dimension. */
+  requiredQuietZoneLeftMm: number
+  requiredQuietZoneRightMm: number
+}
+
+/**
+ * A barcode's resolved geometry, kept alongside the primitives that draw it.
+ *
+ * The bars are already in `primitives`; this records what they *mean* so a rule
+ * can ask "is this quiet zone wide enough" without re-deriving it from a list of
+ * rectangles.
+ *
+ * The `required` and `clearSpace` pairs are the whole point, and conflating them
+ * is the mistake this type is shaped to prevent. `requiredQuietZoneLeftMm` is
+ * `9 * X` for a UPC-A — a restatement of the specification, true of every UPC-A
+ * ever drawn. `clearSpaceLeftMm` is what this label actually leaves blank. Only
+ * the second can fail, and an earlier version of this file carried only the
+ * first, under a name that read like a measurement — so a quiet-zone rule
+ * written against it would have passed every label put to it.
+ */
+export interface ResolvedSymbol extends PlacedSymbol {
+  /**
+   * Blank space actually available to the left of the bar pattern, measured to
+   * the nearest encroaching element box or to the trim edge, whichever is
+   * closer. Negative when the bars themselves run off the label.
+   */
+  clearSpaceLeftMm: number
+  clearSpaceRightMm: number
+  /**
+   * Elements drawn over the bar ink. Empty on a symbol nothing overprints.
+   *
+   * A measured fact, not a verdict: no rule here judges it, because no clause
+   * covering it has been verified against a source document. What it does is
+   * stop the quiet-zone rule *certifying* a symbol it cannot meaningfully
+   * certify. It must never suppress a violation — see `rules/gs1/quietZone.ts`.
+   */
+  overprintedBy: ElementId[]
+  /**
+   * How far the drawn symbol extends above the top or below the bottom of the
+   * stock, in millimetres. Zero when it sits entirely on the label.
+   *
+   * Vertical only. Horizontal overhang already shows up as negative clear space,
+   * which is why the changelog's claim that "clipped bars measure as negative
+   * clear space" held horizontally and was silently false the other way: a
+   * symbol drawn off the top and bottom of its stock reported every check
+   * passing.
+   */
+  verticalOverflowMm: number
 }
 
 export interface ResolvedLayout {
@@ -123,6 +218,10 @@ export interface ResolvedLayout {
   widthMm: number
   heightMm: number
   primitives: LayoutPrimitive[]
+  /** Every element the engine placed, with the box it was given. */
+  elements: ResolvedElement[]
   /** Every barcode on the label, with its measured geometry. */
   symbols: ResolvedSymbol[]
+  /** Anything the engine could not draw. Empty on a label that resolved fully. */
+  omissions: LayoutOmission[]
 }

@@ -92,6 +92,23 @@ function registerPlex(document: PDFKit.PDFDocument): void {
   }
 }
 
+/**
+ * The only font names this renderer will pass to PDFKit.
+ *
+ * `document.font(name)` treats anything it does not recognise as a **filesystem
+ * path**, so an unregistered family from a request body was an arbitrary local
+ * file read — `fontFamily: 'Arial'` returned a 500 naming the working directory,
+ * and a real path was opened. Everything unknown now falls back to the label's
+ * body face rather than reaching the filesystem.
+ */
+export const EMBEDDED_FONT_FAMILIES = Object.keys(PLEX_FACES)
+
+const FALLBACK_FAMILY = 'IBM Plex Sans'
+
+export function embeddedFontFor(family: string): string {
+  return family in PLEX_FACES ? family : FALLBACK_FAMILY
+}
+
 /** Exposed so a test can assert the fonts are reachable in this build. */
 export function plexFontDirectory(): string {
   return resolveFontDir()
@@ -129,7 +146,9 @@ export function renderLayoutToPdf(
   })
 
   registerPlex(document)
-  toPDF(layout, document as never)
+  // `fontFor` is the boundary: nothing from a request body reaches
+  // `document.font()` without passing through the registered-face allowlist.
+  toPDF(layout, document as never, { fontFor: embeddedFontFor })
   document.end()
 
   return finished
