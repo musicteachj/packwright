@@ -32,7 +32,7 @@ const props = defineProps<{
   scrollOnSelect?: boolean
 }>()
 
-const emit = defineEmits<{ select: [elementId: string | undefined] }>()
+const emit = defineEmits<{ select: [elementId: string] }>()
 
 const root = ref<HTMLElement | null>(null)
 
@@ -48,6 +48,19 @@ watch(
 )
 
 const isSelected = () => !!props.elementId && props.elementId === props.selectedElementId
+
+/**
+ * Only a section that owns an element speaks for the canvas.
+ *
+ * Stock and Digital Link own none, and emitting an undefined id from them
+ * cleared the selection rather than leaving it alone — so clicking a finding on
+ * the symbol, then tabbing into Stock to widen the label and fix it, erased the
+ * outline showing what needed to move. The two halves stopped agreeing about
+ * what was selected at exactly the moment the user was acting on it.
+ */
+const onFocusIn = () => {
+  if (props.elementId) emit('select', props.elementId)
+}
 </script>
 
 <template>
@@ -55,7 +68,7 @@ const isSelected = () => !!props.elementId && props.elementId === props.selected
     ref="root"
     class="border-chrome-800 border-b px-4 py-4"
     :class="isSelected() ? 'bg-chrome-800' : ''"
-    @focusin="emit('select', elementId)"
+    @focusin="onFocusIn"
   >
     <header class="mb-3 flex items-baseline justify-between gap-3">
       <h3 class="text-chrome-200 text-xs font-semibold tracking-wide uppercase">{{ title }}</h3>

@@ -17,6 +17,7 @@ import {
   LayoutError,
   compareSeverity,
   layOutUpcALabel,
+  mm,
   runRules,
   type ElementId,
   type Finding,
@@ -104,7 +105,7 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
       }
       if (symbol.verticalOverflowMm > 0) {
         reasons.push(
-          `The ${symbol.symbology} symbol runs ${symbol.verticalOverflowMm.toFixed(2)} mm off ` +
+          `The ${symbol.symbology} symbol runs ${mm(symbol.verticalOverflowMm)} off ` +
             'the top or bottom of the stock, so part of it will not be printed.',
         )
       }

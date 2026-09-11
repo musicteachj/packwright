@@ -65,6 +65,14 @@ const svg = computed(() => toSVG(props.layout, { title: props.title }))
 const hatchId = `quiet-zone-hatch-${useId()}`
 
 /**
+ * Unique for the same reason as `hatchId`. These were hardcoded, so two canvases
+ * sharing a page bound both sets of labels to the first one's checkboxes and the
+ * second's overlays could not be toggled by their label at all.
+ */
+const quietZonesId = `overlay-quiet-zones-${useId()}`
+const dimensionsId = `overlay-dimensions-${useId()}`
+
+/**
  * At 100% the SVG's own `mm` dimensions are used untouched — that is the whole
  * point of emitting them. Only the fit case overrides, and only in width.
  */
@@ -331,18 +339,18 @@ const symbolCallouts = computed(() =>
         </div>
 
         <div v-if="showOverlayControls" class="text-chrome-300 flex items-center gap-4 text-xs">
-          <label for="overlay-quiet-zones">
+          <label :for="quietZonesId">
             <input
-              id="overlay-quiet-zones"
+              :id="quietZonesId"
               v-model="showQuietZones"
               type="checkbox"
               class="accent-notice"
             />
             <span>Quiet zones</span>
           </label>
-          <label for="overlay-dimensions">
+          <label :for="dimensionsId">
             <input
-              id="overlay-dimensions"
+              :id="dimensionsId"
               v-model="showDimensions"
               type="checkbox"
               class="accent-notice"

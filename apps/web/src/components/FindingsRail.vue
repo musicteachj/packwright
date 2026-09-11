@@ -41,10 +41,15 @@ const summary = computed(() => {
     ? ` ${props.uncertifiable.length} symbol${props.uncertifiable.length === 1 ? '' : 's'} could not be checked.`
     : ''
 
+  // `checks` is pluralised for the same reason `findings` and `symbols` are: a
+  // live region that says "All 1 checks passed" reads as careless on a tool that
+  // will not paraphrase a single character of a regulated statement.
+  const checks = `${passed} ${passed === 1 ? 'check' : 'checks'} passed`
+
   if (failed === 0 && passed === 0) return 'No checks have run.'
-  if (failed === 0 && !declined) return `All ${passed} checks passed.`
-  if (failed === 0) return `${passed} checks passed.${declined}`
-  return `${failed} ${failed === 1 ? 'finding' : 'findings'}, ${passed} checks passed.${declined}`
+  if (failed === 0 && !declined) return `All ${checks}.`
+  if (failed === 0) return `${checks}.${declined}`
+  return `${failed} ${failed === 1 ? 'finding' : 'findings'}, ${checks}.${declined}`
 })
 </script>
 

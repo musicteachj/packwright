@@ -89,6 +89,32 @@ describe('the editor', () => {
     expect(wrapper.find('rect[stroke-dasharray]').exists()).toBe(true)
   })
 
+  it('keeps the selection when focus moves to a section that owns no element', async () => {
+    // The reason this matters: the user clicks a finding on the symbol, then goes
+    // to the stock fields to widen the label and fix it. If focusing those fields
+    // clears the selection, the outline showing what needs to move disappears at
+    // exactly the moment they are acting on it.
+    const store = useLabelDocumentStore()
+    store.data.artwork = { text: 'ACME', anchor: 'centre-left', widthMm: 10, heightMm: 8 }
+    const wrapper = mountEditor()
+    await nextTick()
+
+    const finding = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('quiet zone measures'))
+    await finding!.trigger('click')
+    await nextTick()
+    expect(store.selectedElementId).toBe(UPC_A_ELEMENTS.symbol)
+
+    // Stock and Digital Link drive no single element, so they must leave the
+    // selection alone rather than clearing it.
+    await wrapper.find('#field-stock-width').trigger('focusin')
+    await nextTick()
+
+    expect(store.selectedElementId).toBe(UPC_A_ELEMENTS.symbol)
+    expect(wrapper.find('rect[stroke-dasharray]').exists()).toBe(true)
+  })
+
   it('states why no barcode was drawn rather than showing an unexplained gap', async () => {
     const store = useLabelDocumentStore()
     store.data.gtin = '036000291453'

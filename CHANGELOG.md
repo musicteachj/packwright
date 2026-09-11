@@ -41,6 +41,33 @@ Phase 3, stage 3 — the editor. Three panes, and the link between them that is 
 
 ### Fixed
 
+Phase 3, third review. Four findings, all in the web layer — and the notable result is where they are *not*.
+The second round's fixes were the least-reviewed code in the phase and the ones with the worst track record,
+since the first round's fixes had introduced a regression. This pass found nothing wrong with them: the
+narrowed overprint suppression, the vertical-containment measurement, the font allowlist, the number
+validation and the 422 export path all came through clean, as did every rule and citation in `label-core`.
+
+- **Focusing a field could clear the highlight the user had just set.** `EditorSection` emitted its `select`
+  event on every `focusin`, passing an element id that Stock and Digital Link do not have — so the emit
+  carried `undefined` and the store read it as "nothing is selected". The cost lands on the one interaction
+  this phase exists for: click a quiet-zone finding, see the symbol outlined, then tab into Stock to widen the
+  label and fix it, and the outline showing what needs to move vanishes mid-edit. The canvas and the rail stop
+  agreeing about what is selected at exactly the moment it is being acted on. Only a section that owns an
+  element now speaks for the canvas, and the emit is typed `string` rather than `string | undefined` so the
+  invariant is stated rather than remembered. The existing test only ever focused a field that *did* own an
+  element, which is why it passed throughout.
+- The overlay checkbox ids were hardcoded, reintroducing the exact collision the hatch pattern had just been
+  fixed for — three lines below the comment explaining why hardcoding them was wrong. Two canvases on a page
+  bound both sets of labels to the first one's checkboxes, leaving the second's overlays untoggleable by their
+  label. Both ids are now seeded from `useId()`, like the hatch beside them.
+- The uncertifiable-symbol notice hand-rolled `.toFixed(2)` instead of the shared `mm()` helper. This is the
+  third instance of that pattern and the second time it has been recorded as fixed; `mm()` exists precisely
+  because raw `toFixed` skips `collapseFloatNoise`, which is what produced the "14.33 / 14.32" readout on a
+  label symmetric to the micrometre.
+- The live region announced "All 1 checks passed" — `findings` and `symbols` were both pluralised on the
+  neighbouring lines and `checks` was not. Small, but it is read aloud to the users least able to ignore it,
+  on a tool that will not paraphrase a single character of a regulated statement.
+
 Phase 3, second review. Fifteen findings from a full multi-agent pass, including a regression the first round
 of fixes had introduced — which is the argument for reviewing each stage rather than a whole phase at once.
 

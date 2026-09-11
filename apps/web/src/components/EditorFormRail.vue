@@ -84,7 +84,7 @@ const lot = optionalText('lot')
 const serial = optionalText('serial')
 const expiry = optionalText('expiry')
 
-const select = (elementId: string | undefined) => store.select(elementId ?? null)
+const select = (elementId: string) => store.select(elementId)
 </script>
 
 <template>
