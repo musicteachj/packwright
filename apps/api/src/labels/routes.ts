@@ -30,6 +30,7 @@ import {
   labelFilename,
   getSymbologyConstraints,
   INGREDIENT_THRESHOLD_PERCENTS,
+  MAJOR_FOOD_ALLERGEN_IDS,
   US_FOOD_PACKAGINGS,
   layOutGhsLabel,
   layOutUpcALabel,
@@ -41,6 +42,7 @@ import {
   type UpcALabelData,
   type UsFoodLabelData,
   type UsFoodNetQuantity,
+  type UsFoodIngredient,
   type UsFoodResponsibleFirm,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
@@ -228,6 +230,13 @@ const NetQuantitySchema = z.object({
 const IngredientSchema = z.object({
   name: z.string().min(1),
   percentByWeight: z.number().min(0).max(100),
+  // Derived from label-core's own list rather than restated. An allergen id one
+  // character off would be discarded silently and the label would declare
+  // nothing while reporting a clean allergen check — the exact false clearance
+  // the GHS hazard-class enum was tightened for.
+  allergen: z.enum(MAJOR_FOOD_ALLERGEN_IDS).optional(),
+  allergenSpecificType: z.string().optional(),
+  declareInline: z.boolean().optional(),
 })
 
 const ResponsibleFirmSchema = z.object({
@@ -240,6 +249,19 @@ const ResponsibleFirmSchema = z.object({
   state: z.string(),
   zip: z.string().optional(),
 })
+
+/** The same key-by-key reconciliation the other nested objects get. */
+function toIngredient(ingredient: z.infer<typeof IngredientSchema>): UsFoodIngredient {
+  return {
+    name: ingredient.name,
+    percentByWeight: ingredient.percentByWeight,
+    ...(ingredient.allergen === undefined ? {} : { allergen: ingredient.allergen }),
+    ...(ingredient.allergenSpecificType === undefined
+      ? {}
+      : { allergenSpecificType: ingredient.allergenSpecificType }),
+    ...(ingredient.declareInline === undefined ? {} : { declareInline: ingredient.declareInline }),
+  }
+}
 
 /** The same key-by-key reconciliation the other nested objects get. */
 function toResponsibleFirm(firm: z.infer<typeof ResponsibleFirmSchema>): UsFoodResponsibleFirm {
@@ -287,6 +309,9 @@ const UsFoodRequest = z
       })
       .optional(),
     ingredientsExempt: z.boolean().optional(),
+    containsStatement: z.array(z.enum(MAJOR_FOOD_ALLERGEN_IDS)).optional(),
+    containsStatementFontSizeMm: z.number().positive().optional(),
+    containsStatementGapMm: z.number().min(0).optional(),
     responsibleFirm: ResponsibleFirmSchema.optional(),
     stock: z
       .object({
@@ -504,13 +529,24 @@ export function createLabelRouter(): Router {
       ...(rest.informationPanelFontSizeMm === undefined
         ? {}
         : { informationPanelFontSizeMm: rest.informationPanelFontSizeMm }),
-      ...(rest.ingredients === undefined ? {} : { ingredients: rest.ingredients }),
+      ...(rest.ingredients === undefined
+        ? {}
+        : { ingredients: rest.ingredients.map(toIngredient) }),
       ...(rest.ingredientThreshold === undefined
         ? {}
         : { ingredientThreshold: rest.ingredientThreshold }),
       ...(rest.ingredientsExempt === undefined
         ? {}
         : { ingredientsExempt: rest.ingredientsExempt }),
+      ...(rest.containsStatement === undefined
+        ? {}
+        : { containsStatement: rest.containsStatement }),
+      ...(rest.containsStatementFontSizeMm === undefined
+        ? {}
+        : { containsStatementFontSizeMm: rest.containsStatementFontSizeMm }),
+      ...(rest.containsStatementGapMm === undefined
+        ? {}
+        : { containsStatementGapMm: rest.containsStatementGapMm }),
       ...(rest.responsibleFirm === undefined
         ? {}
         : { responsibleFirm: toResponsibleFirm(rest.responsibleFirm) }),

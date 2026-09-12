@@ -448,3 +448,101 @@ describe('the type-size override seeds a size that complies', () => {
     expect(store.foodData.ingredientThreshold?.count ?? 0).toBeLessThanOrEqual(1)
   })
 })
+
+describe('major food allergens in the editor', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('opens on a label that declares its allergen both ways', async () => {
+    const { store, wrapper } = await mountFood()
+    expect(store.failures).toEqual([])
+    // Belt and braces, which is what most real labels do: the parenthetical in
+    // the list and the statement after it.
+    expect(wrapper.text()).toContain('whole grain rolled oats (wheat)')
+    expect(wrapper.text()).toContain('Contains: wheat.')
+  })
+
+  it('reports an allergen the label declares neither way', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-ing-inline-0').setValue(false)
+    await nextTick()
+    await wrapper.find('#field-food-contains-wheat').setValue(false)
+    await nextTick()
+
+    const finding = store.findings.find((f) => f.code === 'FDA_ALLERGEN_NOT_DECLARED')
+    expect(finding, 'an undeclared allergen produced no finding').toBeDefined()
+    expect(finding!.citation.reference).toBe('FD&C Act §403(w)(1)')
+  })
+
+  it('asks for a species once an ingredient is marked as fish', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-ing-allergen-1').setValue('fish')
+    await nextTick()
+
+    // §403(w)(2): three of the nine need the specific type, six do not.
+    expect(wrapper.find('#field-food-ing-source-1').exists()).toBe(true)
+    expect(store.findings.some((f) => f.code === 'FDA_ALLERGEN_SOURCE_NOT_SPECIFIC')).toBe(true)
+
+    await wrapper.find('#field-food-ing-source-1').setValue('cod')
+    await nextTick()
+    expect(store.findings.some((f) => f.code === 'FDA_ALLERGEN_SOURCE_NOT_SPECIFIC')).toBe(false)
+  })
+
+  it('asks for no species for milk', async () => {
+    const { wrapper } = await mountFood()
+    await wrapper.find('#field-food-ing-allergen-1').setValue('milk')
+    await nextTick()
+    expect(wrapper.find('#field-food-ing-source-1').exists()).toBe(false)
+  })
+
+  it('offers a Contains checkbox only for allergens the recipe carries', async () => {
+    const { wrapper } = await mountFood()
+    expect(wrapper.find('#field-food-contains-wheat').exists()).toBe(true)
+    expect(wrapper.find('#field-food-contains-sesame').exists()).toBe(false)
+  })
+
+  it('names all nine, sesame included', async () => {
+    const { wrapper } = await mountFood()
+    const options = wrapper.find('#field-food-ing-allergen-0').findAll('option')
+    // Nine allergens plus the "no major food allergen" entry.
+    expect(options).toHaveLength(10)
+    expect(wrapper.find('#field-food-ing-allergen-0').text()).toContain('sesame')
+  })
+})
+
+describe('the form does not fabricate an allergen source', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('drops the specific type when the allergen changes', async () => {
+    // fish/"cod" then tree-nuts produced `walnut pieces (cod)` — a food source
+    // name for a species the ingredient is not, which the rule then accepted
+    // because as far as it could tell the label had declared one.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-ing-allergen-1').setValue('fish')
+    await nextTick()
+    await wrapper.find('#field-food-ing-source-1').setValue('cod')
+    await nextTick()
+    expect(store.foodData.ingredients![1]!.allergenSpecificType).toBe('cod')
+
+    await wrapper.find('#field-food-ing-allergen-1').setValue('tree-nuts')
+    await nextTick()
+    expect(store.foodData.ingredients![1]!.allergenSpecificType).toBeUndefined()
+  })
+
+  it('keeps an orphaned Contains checkbox visible so it can be unticked', async () => {
+    // Clearing the ingredient's allergen used to hide the checkbox while the id
+    // stayed in the statement, leaving the user no control over something the
+    // label went on naming.
+    const { store, wrapper } = await mountFood()
+    expect(store.foodData.containsStatement).toContain('wheat')
+
+    await wrapper.find('#field-food-ing-allergen-0').setValue('')
+    await nextTick()
+
+    const orphan = wrapper.find('#field-food-contains-wheat')
+    expect(orphan.exists(), 'the orphaned allergen lost its checkbox').toBe(true)
+
+    await orphan.setValue(false)
+    await nextTick()
+    expect(store.foodData.containsStatement).toBeUndefined()
+  })
+})

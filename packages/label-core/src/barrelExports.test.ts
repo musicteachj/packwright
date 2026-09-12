@@ -30,6 +30,8 @@ import * as ghsPictogramSetRule from './rules/ghs/pictogramSet'
 import * as ghsPictogramSizeRule from './rules/ghs/pictogramSize'
 import * as ghsSignalWordRule from './rules/ghs/signalWord'
 import * as ghsSmallContainerRule from './rules/ghs/smallContainer'
+import * as usFoodAllergenRule from './rules/usFood/allergens'
+import * as usFoodContainsStatementTypeRule from './rules/usFood/containsStatementType'
 import * as usFoodIngredientListRule from './rules/usFood/ingredientList'
 import * as usFoodInformationPanelTypeSizeRule from './rules/usFood/informationPanelTypeSize'
 import * as usFoodNetQuantityDualDeclarationRule from './rules/usFood/netQuantityDualDeclaration'
@@ -45,6 +47,8 @@ import * as ruleTypes from './rules/types'
 import * as constraints from './symbology/constraints'
 import * as symbologyBarrel from './symbology/index'
 import * as layOutSymbol from './symbology/layOutSymbol'
+import * as fdaBarrel from './fda/index'
+import * as fdaAllergens from './fda/allergens'
 import * as ghsBarrel from './ghs/index'
 import * as ghsClassification from './ghs/classification'
 import * as ghsLabelDimensions from './ghs/labelDimensions'
@@ -136,6 +140,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['layOutSymbol.ts', layOutSymbol],
     ],
   ],
+  ['fda', fdaBarrel, [['allergens.ts', fdaAllergens]]],
   [
     'rules',
     rulesBarrel,
@@ -161,6 +166,8 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['usFood/netQuantityPresent.ts', usFoodNetQuantityPresentRule],
       ['usFood/netQuantitySeparation.ts', usFoodNetQuantitySeparationRule],
       ['usFood/netQuantityTypeSize.ts', usFoodNetQuantityTypeSizeRule],
+      ['usFood/allergens.ts', usFoodAllergenRule],
+      ['usFood/containsStatementType.ts', usFoodContainsStatementTypeRule],
       ['usFood/ingredientList.ts', usFoodIngredientListRule],
       ['usFood/informationPanelTypeSize.ts', usFoodInformationPanelTypeSizeRule],
       ['usFood/responsibleFirm.ts', usFoodResponsibleFirmRule],

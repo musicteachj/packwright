@@ -134,3 +134,16 @@ export {
   FDA_PANEL_TYPE_TOO_SMALL,
   usFoodInformationPanelTypeSizeRule,
 } from './usFood/informationPanelTypeSize'
+
+export {
+  FDA_ALLERGEN_DECLARED_MET,
+  FDA_ALLERGEN_NOT_DECLARED,
+  FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
+  usFoodAllergenRule,
+} from './usFood/allergens'
+export {
+  FDA_CONTAINS_NOT_ADJACENT,
+  FDA_CONTAINS_TYPE_MET,
+  FDA_CONTAINS_TYPE_TOO_SMALL,
+  usFoodContainsStatementTypeRule,
+} from './usFood/containsStatementType'

@@ -20,10 +20,12 @@
  */
 
 import type { Container, NetQuantityMarkingMethod } from '../geometry/pdp'
+import type { MajorFoodAllergenId } from '../fda/allergens'
 import type { Anchor, LabelStock } from './stock'
 
 export const US_FOOD_ELEMENTS = {
   statementOfIdentity: 'food-statement-of-identity',
+  containsStatement: 'food-contains-statement',
   netQuantity: 'food-net-quantity',
   ingredients: 'food-ingredients',
   responsibleFirm: 'food-responsible-firm',
@@ -79,6 +81,30 @@ export interface UsFoodIngredient {
   name: string
   /** Share of the finished food by weight, as a percentage. */
   percentByWeight: number
+  /**
+   * The major food allergen this ingredient is, or contains protein from —
+   * FD&C Act §201(qq). A fact about the recipe, which is why it sits on the
+   * ingredient rather than being guessed from its name: "natural flavor" may
+   * contain milk protein and "cocoa butter" contains no dairy at all.
+   */
+  allergen?: MajorFoodAllergenId
+  /**
+   * The specific type or species, where §403(w)(2) demands one — the almond
+   * behind "tree nuts", the cod behind "fish". Ignored for the six allergens
+   * whose category name is itself the food source name.
+   */
+  allergenSpecificType?: string
+  /**
+   * Whether the label prints §403(w)(1)(B)'s parenthetical after this
+   * ingredient — `whey (milk)`.
+   *
+   * It has to be stated rather than derived. An engine that appended the
+   * parenthetical whenever it knew an allergen would make an undeclared
+   * allergen impossible to draw, and the rule that reports one could then never
+   * fail: it would clear every label put to it, which is the shape
+   * `ResolvedSymbol` was restructured to avoid.
+   */
+  declareInline?: boolean
 }
 
 /**
@@ -173,6 +199,26 @@ export interface UsFoodLabelData {
    * by the supplier and never inferred.
    */
   ingredientsExempt?: boolean
+  /**
+   * The allergens the label's "Contains" statement names — FD&C Act
+   * §403(w)(1)(A). Stated rather than derived, so a statement that omits an
+   * allergen the recipe contains can be drawn and reported. Omitted entirely
+   * means the label carries no such statement and relies on (w)(1)(B)'s
+   * parenthetical form instead.
+   */
+  containsStatement?: readonly MajorFoodAllergenId[]
+  /**
+   * Em size for the "Contains" statement. Omitted, it is set to match the
+   * ingredient list, which is what §403(w)(1)(A) asks for. Present, it is drawn
+   * as given — the only way type smaller than the list reaches the rule.
+   */
+  containsStatementFontSizeMm?: number
+  /**
+   * Extra space between the ingredient list and the "Contains" statement, for
+   * the same reason: §403(w)(1)(A) wants them adjacent, and a label that pushes
+   * them apart has to be drawable before it can be reported.
+   */
+  containsStatementGapMm?: number
   responsibleFirm?: UsFoodResponsibleFirm
   /**
    * Em size for the ingredient statement and the responsible firm. Omitted, the

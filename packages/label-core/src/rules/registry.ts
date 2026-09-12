@@ -24,6 +24,8 @@ import { ghsPictogramSetRule } from './ghs/pictogramSet'
 import { ghsPictogramSizeRule } from './ghs/pictogramSize'
 import { ghsSignalWordRule } from './ghs/signalWord'
 import { ghsSmallContainerRule } from './ghs/smallContainer'
+import { usFoodAllergenRule } from './usFood/allergens'
+import { usFoodContainsStatementTypeRule } from './usFood/containsStatementType'
 import { usFoodIngredientListRule, usFoodIngredientThresholdRule } from './usFood/ingredientList'
 import { usFoodInformationPanelTypeSizeRule } from './usFood/informationPanelTypeSize'
 import { usFoodNetQuantityDualDeclarationRule } from './usFood/netQuantityDualDeclaration'
@@ -107,6 +109,8 @@ export const US_FOOD_RULES: readonly UsFoodRule[] = [
   usFoodNetQuantityDualDeclarationRule,
   usFoodIngredientListRule,
   usFoodIngredientThresholdRule,
+  usFoodAllergenRule,
+  usFoodContainsStatementTypeRule,
   usFoodResponsibleFirmRule,
   usFoodInformationPanelTypeSizeRule,
 ]

@@ -3,10 +3,14 @@ import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import type { TextPrimitive } from '../layout/types'
 import { US_FOOD_ELEMENTS } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
-import type { UsFoodLabelData } from '../templates/usFood'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES, US_FOOD_SMALL_PANEL } from './fixtures/usFood'
 import { blockingOmissions } from '../layout/omissions'
+import { MAJOR_FOOD_ALLERGENS, majorFoodAllergen } from '../fda/allergens'
+import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
 import {
+  FDA_ALLERGEN_NOT_DECLARED,
+  FDA_CONTAINS_TYPE_TOO_SMALL,
+  FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
   FDA_INGREDIENTS_EXEMPT,
   FDA_INGREDIENTS_MISSING,
   FDA_INGREDIENTS_ORDER_MET,
@@ -198,7 +202,11 @@ describe('rules that decline rather than pass', () => {
     // Every neighbour has to go, not just the statement of identity: the panel
     // carries an ingredient statement and a responsible firm now, and a test
     // that cleared one of three would be back to passing for the wrong reason.
-    const { responsibleFirm: _firm, ...rest } = US_FOOD_CONFORMANT.data
+    const {
+      responsibleFirm: _firm,
+      containsStatement: _contains,
+      ...rest
+    } = US_FOOD_CONFORMANT.data
     const data = { ...rest, statementOfIdentity: '', ingredients: [] }
     const layout = layOutUsFoodLabel({ data, stock: US_FOOD_CONFORMANT.stock })
     for (const elementId of [
@@ -440,10 +448,12 @@ describe('findings from the phase 5 review', () => {
 
     it('reports the statement, not only the firm beside it', () => {
       const undersized = findingsFor(data, stock).filter((f) => f.code === FDA_PANEL_TYPE_TOO_SMALL)
-      expect(undersized.map((f) => f.elementId).sort()).toEqual([
-        US_FOOD_ELEMENTS.ingredients,
-        US_FOOD_ELEMENTS.responsibleFirm,
-      ])
+      // Two elements, not three: this data replaces the ingredients with
+      // entries carrying no allergen, so the conformant label's "Contains" ids
+      // match nothing and the engine draws no statement for them to be measured.
+      expect(undersized.map((f) => f.elementId).sort()).toEqual(
+        [US_FOOD_ELEMENTS.ingredients, US_FOOD_ELEMENTS.responsibleFirm].sort(),
+      )
       expect(undersized[0]!.measurement!.actual).toBe('1.35 mm')
     })
   })
@@ -509,5 +519,210 @@ describe('findings from the phase 5 review', () => {
       expect(codes).not.toContain(FDA_INGREDIENTS_EXEMPT)
       expect(codes).toContain(FDA_INGREDIENTS_OUT_OF_ORDER)
     })
+  })
+})
+
+describe('major food allergens', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const withIngredients = (ingredients: UsFoodIngredient[], containsStatement?: string[]) =>
+    findingsFor(
+      {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients,
+        ingredientThreshold: { percent: 2 as const, count: 0 },
+        ...(containsStatement === undefined
+          ? {}
+          : { containsStatement: containsStatement as never }),
+      },
+      stock,
+    ).map((f) => f.code)
+
+  it('accepts either form, and does not demand both', () => {
+    // §403(w)(1) says "(A) ... or (B) ...". Requiring both would report a
+    // violation against a label that complies by the route it chose.
+    const viaContains = withIngredients(
+      [{ name: 'whey', percentByWeight: 100, allergen: 'milk' }],
+      ['milk'],
+    )
+    const viaParenthetical = withIngredients([
+      { name: 'whey', percentByWeight: 100, allergen: 'milk', declareInline: true },
+    ])
+    expect(viaContains).not.toContain(FDA_ALLERGEN_NOT_DECLARED)
+    expect(viaParenthetical).not.toContain(FDA_ALLERGEN_NOT_DECLARED)
+  })
+
+  it('excuses the parenthetical where the ingredient name already carries the source', () => {
+    // §403(w)(1)(B)(i). "buttermilk" contains "milk", so nothing more is owed —
+    // and this falls out of reading the printed label rather than needing a
+    // clause of its own.
+    expect(
+      withIngredients([{ name: 'buttermilk', percentByWeight: 100, allergen: 'milk' }]),
+    ).not.toContain(FDA_ALLERGEN_NOT_DECLARED)
+  })
+
+  it('excuses it where the source appears elsewhere in the list', () => {
+    // §403(w)(1)(B)(ii).
+    expect(
+      withIngredients([
+        { name: 'whey', percentByWeight: 60, allergen: 'milk' },
+        { name: 'milk', percentByWeight: 40, allergen: 'milk', declareInline: true },
+      ]),
+    ).not.toContain(FDA_ALLERGEN_NOT_DECLARED)
+  })
+
+  it('does not let a non-allergen ingredient discharge the declaration', () => {
+    // The caveat on (B)(ii): the appearance must not be "part of the name of a
+    // food ingredient that is not a major food allergen". Coconut milk contains
+    // no dairy, so the word "milk" in it declares nothing about the whey.
+    expect(
+      withIngredients([
+        { name: 'whey', percentByWeight: 60, allergen: 'milk' },
+        { name: 'coconut milk', percentByWeight: 40 },
+      ]),
+    ).toContain(FDA_ALLERGEN_NOT_DECLARED)
+  })
+
+  it('demands the species for a fish and the type for a nut, but not for milk', () => {
+    // Three of the nine work this way under §403(w)(2) and six do not.
+    expect(
+      withIngredients([{ name: 'fish stock', percentByWeight: 100, allergen: 'fish' }]),
+    ).toContain(FDA_ALLERGEN_SOURCE_NOT_SPECIFIC)
+    expect(
+      withIngredients([
+        {
+          name: 'fish stock',
+          percentByWeight: 100,
+          allergen: 'fish',
+          allergenSpecificType: 'cod',
+          declareInline: true,
+        },
+      ]),
+    ).not.toContain(FDA_ALLERGEN_SOURCE_NOT_SPECIFIC)
+    expect(
+      withIngredients([
+        { name: 'whey', percentByWeight: 100, allergen: 'milk', declareInline: true },
+      ]),
+    ).not.toContain(FDA_ALLERGEN_SOURCE_NOT_SPECIFIC)
+  })
+
+  it('declines entirely on a recipe with no allergen in it', () => {
+    // Nothing to declare is not a declaration cleared.
+    const codes = withIngredients([{ name: 'sugar', percentByWeight: 100 }])
+    expect(codes.filter((code) => code.startsWith('FDA_ALLERGEN'))).toEqual([])
+  })
+
+  it('names sesame, which the FASTER Act added in 2021', () => {
+    expect(MAJOR_FOOD_ALLERGENS.map((a) => a.id)).toContain('sesame')
+    expect(MAJOR_FOOD_ALLERGENS).toHaveLength(9)
+  })
+
+  it("carries the statute's own wording, not a paraphrase", () => {
+    // §321(qq)(1) writes "Crustacean shellfish" capitalised and "tree nuts" and
+    // "soybeans" plural. A label reading "Contains: Shellfish" has not declared
+    // what the Act asks for, so the table may not quietly normalise them.
+    const byId = new Map(MAJOR_FOOD_ALLERGENS.map((a) => [a.id, a.name]))
+    expect(byId.get('crustacean-shellfish')).toBe('Crustacean shellfish')
+    expect(byId.get('tree-nuts')).toBe('tree nuts')
+    expect(byId.get('soybeans')).toBe('soybeans')
+  })
+
+  it('returns nothing for an id it does not carry', () => {
+    expect(majorFoodAllergen('shellfish')).toBeUndefined()
+    expect(majorFoodAllergen('toString')).toBeUndefined()
+  })
+})
+
+describe('findings from the stage 3 review', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const textOf = (layout: ReturnType<typeof layOutUsFoodLabel>, elementId: string) =>
+    layout.primitives
+      .filter((p): p is TextPrimitive => p.kind === 'text' && p.elementId === elementId)
+      .map((p) => p.text)
+      .join(' ')
+
+  describe('a relative type size is compared on one basis', () => {
+    // The most ordinary food layout there is: an all-caps ingredient list under
+    // a mixed-case "Contains" statement. Converting each through its own casing
+    // made 4 mm of em read as 2.79 mm against 2.16 mm and reported a violation
+    // against a label a typesetter had set to a single size.
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      ingredients: [
+        { name: 'ROLLED OATS', percentByWeight: 99, allergen: 'wheat', declareInline: false },
+      ],
+      ingredientThreshold: { percent: 2, count: 0 },
+      containsStatement: ['wheat'],
+      informationPanelFontSizeMm: 4,
+      containsStatementFontSizeMm: 4,
+    }
+
+    it('draws the casing the case depends on', () => {
+      const layout = layOutUsFoodLabel({ data, stock })
+      expect(/\p{Ll}/u.test(textOf(layout, US_FOOD_ELEMENTS.ingredients))).toBe(false)
+      expect(/\p{Ll}/u.test(textOf(layout, US_FOOD_ELEMENTS.containsStatement))).toBe(true)
+    })
+
+    it('passes two blocks set at the same em', () => {
+      expect(findingsFor(data, stock).map((f) => f.code)).not.toContain(FDA_CONTAINS_TYPE_TOO_SMALL)
+    })
+
+    it('still reports a statement genuinely set smaller', () => {
+      const smaller = { ...data, containsStatementFontSizeMm: 3 }
+      expect(findingsFor(smaller, stock).map((f) => f.code)).toContain(FDA_CONTAINS_TYPE_TOO_SMALL)
+    })
+  })
+
+  describe('the "Contains" statement is composed from the recipe', () => {
+    it('names every specific type, not the first of them', () => {
+      // Two tree nuts. Taking the first drew "Contains: almonds." and the
+      // allergen rule then reported walnuts undeclared, with no route through
+      // §403(w)(1)(A) that could fix it.
+      const data: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients: [
+          {
+            name: 'almond pieces',
+            percentByWeight: 60,
+            allergen: 'tree-nuts',
+            allergenSpecificType: 'almonds',
+          },
+          {
+            name: 'walnut pieces',
+            percentByWeight: 40,
+            allergen: 'tree-nuts',
+            allergenSpecificType: 'walnuts',
+          },
+        ],
+        ingredientThreshold: { percent: 2, count: 0 },
+        containsStatement: ['tree-nuts'],
+      }
+      const layout = layOutUsFoodLabel({ data, stock })
+      expect(textOf(layout, US_FOOD_ELEMENTS.containsStatement)).toBe('Contains: almonds, walnuts.')
+      expect(findingsFor(data, stock).map((f) => f.code)).not.toContain(FDA_ALLERGEN_NOT_DECLARED)
+    })
+
+    it('refuses to declare an allergen no ingredient carries', () => {
+      // "Contains: milk." on a food containing only sugar — the engine composing
+      // a regulated declaration the recipe does not support, with nothing
+      // reporting it because the allergen rule had no allergen to run on.
+      const data: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients: [{ name: 'sugar', percentByWeight: 100 }],
+        ingredientThreshold: { percent: 2, count: 0 },
+        containsStatement: ['milk'],
+      }
+      const layout = layOutUsFoodLabel({ data, stock })
+      expect(textOf(layout, US_FOOD_ELEMENTS.containsStatement)).toBe('')
+      expect(layout.omissions.map((o) => o.reason).join(' ')).toContain('no ingredient carries')
+    })
+  })
+
+  it('does not walk a prototype chain to find an allergen', () => {
+    // A Map does not, so the guard copied here from the plain-object tables in
+    // `text/metrics` allocated a nine-key object per lookup to prevent nothing —
+    // on every keystroke in the editor.
+    expect(majorFoodAllergen('toString')).toBeUndefined()
+    expect(majorFoodAllergen('constructor')).toBeUndefined()
+    expect(majorFoodAllergen('milk')?.name).toBe('milk')
   })
 })

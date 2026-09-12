@@ -10,6 +10,37 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 3 — the nine major food allergens. Two rules, from a statute rather than from 21 CFR 101.
+
+- **`fda/allergens.ts`, the §201(qq) table**, in a module named for the regulator the way `gs1/` and `ghs/`
+  are. The nine names are the Act's own words and are looked up, never composed: "Crustacean shellfish" is
+  capitalised as the Act capitalises it, "tree nuts" and "soybeans" are plural there and singular nowhere. A
+  label reading "Contains: Shellfish" has not declared what the Act asks for, so the table may not quietly
+  normalise them.
+- **§403(w)(2) is the trap, and three of the nine fall into it.** The food source name is §201(qq)(1)'s name
+  — except "in the case of a tree nut, fish, or Crustacean shellfish", where it means "the name of the
+  specific type of nut or species of fish or Crustacean shellfish". So "Contains: tree nuts" declares
+  nothing and "Contains: almonds" does, while milk, egg, wheat, peanuts, soybeans and sesame are named by
+  their category. `foodSourceName` returns **undefined** rather than falling back to the category when no
+  specific type is given, because inventing "almonds" for an unspecified tree nut would be this engine
+  composing the regulated string it exists to check.
+- **The rule reads the printed label, not the document**, and that collapses four clauses into one
+  measurement. §403(w)(1)(A)'s "Contains" statement, (B)'s parenthetical, (B)(i)'s ingredient whose own name
+  carries the source — `buttermilk` for milk — and (B)(ii)'s source appearing elsewhere in the list are all
+  just "the name is printed", and the statute treats them as equally sufficient. The one place they differ is
+  (B)(ii)'s caveat, that the appearance must not be "part of the name of a food ingredient that is not a
+  major food allergen": coconut milk contains no dairy, so non-allergen ingredient names are struck out of
+  the list before it is searched.
+- **The first *relative* type-size requirement in the project.** §403(w)(1)(A) sizes the "Contains" statement
+  against the ingredient list rather than against a figure in a table, which is why it needs the letter
+  heights `text/metrics` generates: comparing `fontSizeMm` to `fontSizeMm` would be right only while both
+  blocks shared a typeface, and would stop being right the moment one did not. Adjacency is measured too, with
+  an allowance taken off the list's own line advance rather than guessed.
+- Four clauses **deliberately not modelled**, recorded as decisions: §403(w)(3)'s finding that labeling may
+  substitute for the label, §403(w)(5)'s power to modify the two forms by regulation, and the §403(w)(6) and
+  (7) petition and notification exemptions. All four are facts about a Federal Register docket rather than
+  about a label.
+
 Phase 5, stage 2 — what the food is made of, and who is answerable for it. Four rules from 21 CFR 101.4 and
 101.5, and one from 101.2 that turned out to be the bridge between this stage and the next.
 
@@ -315,6 +346,143 @@ That is what makes preview == print structural rather than something two code pa
   was the one branch CI never watched. Pull requests were always covered; direct pushes were not.
 
 ### Fixed
+
+Phase 5, stage 3 review.
+
+- **The relative type-size comparison failed the most ordinary layout there is.** §403(w)(1)(A) sizes the
+  "Contains" statement against the ingredient list, and each block was converted through *its own* casing —
+  an all-caps list on cap height, a mixed-case statement on the "o" — so two blocks set at an identical 4 mm
+  em came out 2.79 mm against 2.16 mm and a typesetter who set both to one size got a violation. A comparison
+  between two blocks has to use one basis on both sides or it is not measuring type size.
+- **The engine composed an allergen declaration the recipe did not support.** A `containsStatement` id left
+  behind after its ingredient's allergen was cleared still printed `Contains: milk.` on a food containing only
+  sugar, because the source name fell back to the category. Nothing reported it either — the allergen rule
+  returns early when no ingredient bears one — so the label came back with nine findings, all passes. An
+  orphaned id now draws nothing and records an omission.
+- **Two tree nuts could never both be named.** The statement was composed per allergen *id*, taking the
+  specific type from the first matching ingredient, so almonds and walnuts drew `Contains: almonds.` and the
+  rule then reported walnuts undeclared with no route through §403(w)(1)(A) that could fix it.
+- **The form fabricated a food source name.** Changing an ingredient's allergen kept the specific type
+  belonging to the old one, so fish/"cod" followed by tree-nuts produced `walnut pieces (cod)` — which the
+  rule accepted, because as far as it could tell a source had been declared. And an allergen cleared from an
+  ingredient lost its "Contains" checkbox while staying in the statement, leaving no way to untick something
+  the label went on naming.
+- **A duplicate import dropped a whole test file and the run still read green**: 585 tests passed with no
+  failing test, because the 65 that could not load counted as nothing. `Test Files 1 failed | 34 passed` is
+  the line worth reading. Checking `Tests` alone is how a suite quietly stops covering what it claims to.
+- **Every phase 5 entry under this heading was written and silently lost, twice over.** The insert anchored on
+  `"### Fixed\n\nPhase 4, "` where the file reads `"Phase 4 review."`; `str.replace` returns the string
+  unchanged when it matches nothing, and every later anchor depended on the first having landed. Two commits
+  shipped with their Added entries and none of their Fixed ones, and one entry described a code fix that had
+  itself failed to apply. This changelog already records the same class of defect twice — "the patch to the
+  shared text helper silently failed to apply and was never checked". Third time. Every edit here now asserts
+  that it changed the file.
+
+Phase 5, stage 3.
+
+- **A rule that could not fail, caught before it shipped.** The engine appended §403(w)(1)(B)'s parenthetical
+  wherever it knew an allergen, so an undeclared allergen was undrawable and `FDA_ALLERGEN_NOT_DECLARED` was
+  unreachable — a check that clears every label put to it, the shape `ResolvedSymbol` was restructured to
+  avoid and the reason 101.7(h)(1) was not shipped at all. Whether the parenthetical prints is stated on the
+  ingredient now, the way both GHS signal words can be ticked.
+- **The adjacency allowance was guessed and was wrong.** Measuring "immediately after or adjacent to" against
+  the statement's em alone made it narrower than the gap the engine leaves between any two blocks, so every
+  conformant label came back non-adjacent. It is measured off the ingredient list's own line advance now.
+- The allergen table's lookup copied an `Object.hasOwn` guard out of habit and allocated a fresh nine-key
+  object on every call to prevent nothing: a `Map` does not walk a prototype chain. That guard belongs on the
+  plain-object tables in `text/metrics` and `ghs/statements` and nowhere else.
+- The reference module is `fda/`, not `usFood/`, after `packageExports.test.ts` rejected the camelCase
+  directory. The guard was right and the name was wrong — top-level modules are named for the body whose data
+  they carry, which is what `gs1/` and `ghs/` already do.
+
+Phase 5 review — findings across stages 1 and 2.
+
+- **A quantifying statement covering the whole list produced a false pass.** With the grouped count at or past
+  the length, the order rule sliced its list to nothing and reported "0 ingredients run in descending order of
+  predominance by weight" — a pass, with a citation, about a list it had not looked at. The engine drew
+  `INGREDIENTS: . Contains 2 percent or less of …` beside it. The form never lowered the count on removal and
+  the API set no upper bound; all three are fixed, and the API refuses rather than clamping silently.
+- **The 101.2(c) floor was read from one line of a wrapped element.** A statement breaking to an all-caps
+  first line and a lower-case second was judged on the first and cleared at 2.5 mm of em while the responsible
+  firm at the identical size failed at 1.35 mm. 101.7(h)(2) asks whether upper and lower case "are used" — of
+  the text, not of a line of it.
+- **Content ran off the stock and nothing said so.** Four hundred ingredients put two mandatory elements at
+  509 mm and 516 mm on a 170 mm label with zero omissions recorded. This is the phase 4 defect repeating,
+  where a product identifier set 88.9 mm on a 74 mm label ran off the substrate and was recorded nowhere.
+  Blocks now record a detail omission when partly cut and an element omission when they start past the bottom
+  edge, which gates the export.
+- **Rounding reintroduced the em/letter-height defect one decimal place down.** The stage 1 review fixed the
+  type-size override to seed from `fontSizeMmForGlyphHeight`; `toFixed(2)` then rounded 6.823066 to 6.82,
+  0.002 mm short and past the tolerance, so ticking the box still reported a compliant label too small. A fix
+  that is right to six places and wrong at two is still wrong.
+- **The §101.100 exemption was excusing more than it grants.** Claiming it short-circuited the rule while the
+  engine went on drawing the list, so a printed statement in the wrong order went unchecked. It relieves a
+  food of having to *bear* a list, not of ordering one it prints.
+
+Phase 5, stage 2.
+
+- **A mutation escaped the suite and the gap it found was real.** Fixing the 101.2(c) rule's glyph basis at
+  cap height instead of reading the casing left every test green, so nothing pinned the one clause that makes
+  the rule correct. An all-lowercase ingredient statement measured on capitals clears type 23% under the
+  floor.
+- Two stage 1 tests asserted a literal pass count, which stage 2 made wrong the moment it shipped a fourth
+  rule. They count against `US_FOOD_RULES.length` now — a total that has to be edited every time a rule lands
+  is a test nobody trusts by the fourth edit.
+- The "nothing else on the panel" separation test was passing for the wrong reason a second time, by the same
+  mechanism: it cleared the statement of identity while the panel had since gained two more elements.
+
+Phase 5, stage 1 review.
+
+- **A label with no net quantity declaration reported three passes and no findings.** The engine drew an empty
+  text primitive; the type-size rule measured the empty string, found it 4.76 mm "on capital letters", and
+  passed it with a real CFR citation. Blank text now draws nothing, so all three measuring rules decline, and
+  `netQuantityPresent` reports what is actually wrong. **Four rules declining is not four rules clearing.**
+- **An absent statement of identity still occupied 7.8 mm of the panel.** `wrapTextMm('')` returns one empty
+  line, so the engine pushed an invisible primitive and an element for it, and the separation rule measured
+  the declaration against ink that will never be printed.
+- **The form rail reintroduced the em/letter-height conflation this stage exists to remove.** Ticking "set the
+  type size by hand" seeded an em with a 101.7(i) letter height, so taking control of the size on a compliant
+  label wrote 4.76 mm and instantly produced a violation.
+- **The rail authored half of a regulated statement.** The SI declaration was a checkbox that wrote `(340 g)`
+  whatever the inch/pound half said, so `NET WT 5 LB (340 g)` passed with a conversion that is simply false.
+  It is a typed field now, and empty means absent.
+- **The metric exemption claimed a declaration "stands alone" when it did not.** Both exemptions are
+  permissions, so a label can carry both and still be exempt.
+
+Phase 5, stage 1 — found by reading 21 CFR 101 from the eCFR before building on `geometry/pdp.ts`.
+
+- **`21 CFR 101.105` does not exist, and this project was about to cite it.** It is the number this same
+  section carried until **81 FR 59129**, 29 Aug 2016, redesignated it as **101.7** — out of subpart G, where
+  FDA noted it had never belonged because it "contains no information pertaining to when a food is exempt".
+  Paragraph letters survived unchanged, and the 2016 edition of §101.105 is word-for-word identical to the
+  current §101.7 on the type-size table. Much of the secondary literature still points at the dead number.
+- **The measured letter depends on the casing, and `pdp.ts` said it was always the "o"**, citing 101.7(i),
+  which is only the table. The measurement rule is **101.7(h)(2)**: capitals are the default and the "o" is
+  the exception. `NET WT 12 OZ` is judged on its capitals, and assuming otherwise over-demands type by a
+  third.
+- **The em-to-letter ratio was assumed at about a half and is 0.540.** `text/metrics.ts` carried advance
+  widths only, so the ratio was not measurable and `layout/types.ts` carried a standing prohibition on judging
+  type size from `fontSizeMm`. An em is 1.852 lowercase "o"s and 1.433 capitals; comparing a requirement
+  against `fontSizeMm` directly clears type at **54 percent** of the legal minimum.
+- **The "o" is not the x-height**, and `OS/2.sxHeight` would have been wrong by 4.7 percent: a round letter
+  overshoots at top and baseline. The rejected reading is kept as a test.
+- **Dual metric/US units is not in 21 CFR 101.** FDA proposed SI declarations in 1993 and never took final
+  action. The requirement is **15 U.S.C. 1453(a)(2)**, with exceptions cited to their own paragraphs rather
+  than to the general clause.
+- **101.7(i)'s closing sentence was missing entirely**: a declaration blown, embossed or molded into a glass
+  or plastic surface needs a sixteenth of an inch more type. The CFR's own cross-reference in that sentence
+  points at "(h)(1) through (4)" where it means (i)(1) through (4) — an error in the official text, now noted
+  in a comment so a later reader does not "correct" it.
+- **Two rules deliberately not shipped, recorded as decisions.** 101.7(h)(1)'s 3:1 cap, because
+  `TextPrimitive` has no horizontal scale so the rule could not fail; and 101.7(h)(3)'s half-height allowance
+  for fraction numerals, because the declaration is set as one run. The engine records an omission for the
+  second.
+- **Three comments denied a capability the tree now has**, written before phase 4 added the advance-width
+  table and never updated when it did.
+- **A fixture that proved nothing**, caught by inspecting what the rules actually returned: the molded-bottle
+  case was sized on the reasoning that 6.823 mm gives capitals of exactly 4.7625 mm, but its declaration reads
+  `NET WT 12 OZ (340 g)` and that lowercase `g` puts the run on the "o" basis, so it failed the *printed* band
+  too and would have passed with the marking-method code deleted.
 
 Phase 4 review. Fifteen findings from a full pass over the branch, and the most serious is about how the
 regulatory data was checked rather than about any single line of it.

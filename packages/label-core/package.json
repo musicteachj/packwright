@@ -6,9 +6,10 @@
   "description": "Framework-free label engine: GS1 encoding, geometry, layout, compliance rules, rendering. Imports no UI or server framework, by design.",
   "exports": {
     ".": "./src/index.ts",
-    "./gs1": "./src/gs1/index.ts",
+    "./fda": "./src/fda/index.ts",
     "./geometry": "./src/geometry/index.ts",
     "./ghs": "./src/ghs/index.ts",
+    "./gs1": "./src/gs1/index.ts",
     "./layout": "./src/layout/index.ts",
     "./render": "./src/render/index.ts",
     "./rules": "./src/rules/index.ts",

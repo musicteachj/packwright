@@ -384,3 +384,51 @@ describe('the US food route bounds the quantifying statement', () => {
     expect(JSON.stringify(response.body)).toContain('none of it is printed')
   })
 })
+
+describe('the US food route on allergens', () => {
+  it('rejects an allergen id the Act does not define', async () => {
+    // "shellfish" is not one of the nine; §201(qq)(1) says "Crustacean
+    // shellfish". An id one character off used to be the shape of defect that
+    // silently declared nothing and reported a clean check.
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [{ name: 'shrimp paste', percentByWeight: 100, allergen: 'shellfish' }],
+      ingredientThreshold: { percent: 2, count: 0 },
+    })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('allergen')
+  })
+
+  it('accepts every id it does define', async () => {
+    for (const allergen of [
+      'milk',
+      'egg',
+      'fish',
+      'crustacean-shellfish',
+      'tree-nuts',
+      'wheat',
+      'peanuts',
+      'soybeans',
+      'sesame',
+    ]) {
+      const response = await postFood({
+        ...FOOD_BODY,
+        ingredients: [
+          { name: 'an ingredient', percentByWeight: 100, allergen, allergenSpecificType: 'cod' },
+        ],
+        ingredientThreshold: { percent: 2, count: 0 },
+        containsStatement: [allergen],
+      })
+      expect(response.status, `${allergen} was rejected`).toBe(200)
+    }
+  })
+
+  it('exports a label with an undeclared allergen rather than refusing it', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [{ name: 'whey', percentByWeight: 100, allergen: 'milk' }],
+      ingredientThreshold: { percent: 2, count: 0 },
+    })
+    expect(response.status).toBe(200)
+  })
+})

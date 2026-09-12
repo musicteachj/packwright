@@ -24,6 +24,7 @@
 import { minNetQuantityTypeHeightMm, regulatedGlyphBasis, pdpAreaSqInches } from '../geometry/pdp'
 import { fontSizeMmForGlyphHeight, measureTextMm, wrapTextMm } from '../text/measure'
 import { roundTo } from '../geometry/units'
+import { foodSourceName } from '../fda/allergens'
 import type { UsFoodLabelData } from '../templates/usFood'
 import { US_FOOD_ELEMENTS, US_FOOD_TYPE_DEFAULT } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
@@ -96,6 +97,9 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
   }
   if (data.informationPanelFontSizeMm !== undefined) {
     assertFinitePositive(data.informationPanelFontSizeMm, 'Information panel type size')
+  }
+  if (data.containsStatementFontSizeMm !== undefined) {
+    assertFinitePositive(data.containsStatementFontSizeMm, 'Contains statement type size')
   }
 
   const panel = panelFor(stock)
@@ -252,7 +256,24 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
   // here would make a list out of descending order impossible to draw, and that
   // list is precisely what the order rule exists to report.
   if (data.ingredients?.length) {
-    const names = data.ingredients.map((ingredient) => ingredient.name)
+    // §403(w)(1)(B)'s parenthetical is drawn *inside* the list, which is why it
+    // is composed here rather than by the rule that judges it: the rule reads
+    // what was printed, and something has to print it. The source name comes
+    // from the §201(qq) table — the one string on this label the engine is not
+    // permitted to invent — and an allergen with no specific type where one is
+    // required contributes no parenthetical at all, so the omission is visible
+    // on the artwork rather than silently patched with a category name.
+    //
+    // Only where the document says to print it. Appending it wherever an
+    // allergen was known would make an undeclared allergen undrawable, and the
+    // rule reporting one would then be a check that clears every label.
+    const names = data.ingredients.map((ingredient) => {
+      if (ingredient.allergen === undefined || ingredient.declareInline !== true) {
+        return ingredient.name
+      }
+      const source = foodSourceName(ingredient.allergen, ingredient.allergenSpecificType)
+      return source === undefined ? ingredient.name : `${ingredient.name} (${source})`
+    })
     const threshold = data.ingredientThreshold
     // 101.4(a)(2)'s quantifying statement sits between the ordered part of the
     // list and the grouped remainder, so it is built here rather than left to a
@@ -272,6 +293,51 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
             `Contains ${threshold.percent} percent or less of ${grouped.join(', ')}.`,
           ].join(' ')
     stackText(US_FOOD_ELEMENTS.ingredients, 'Ingredient statement', text, panelTypeMm)
+  }
+
+  // §403(w)(1)(A) — "the word 'Contains', followed by the name of the food
+  // source", printed "immediately after or [...] adjacent to the list of
+  // ingredients". Drawn straight after it for that reason, and at the ingredient
+  // list's own size, since the same clause requires no smaller.
+  if (data.containsStatement?.length) {
+    // Composed from **every** ingredient bearing the allergen, not the first.
+    // Taking one meant two tree nuts could never both be named — a label with
+    // almonds and walnuts drew "Contains: almonds." and the rule then reported
+    // walnuts undeclared, with no route through (w)(1)(A) that could fix it.
+    //
+    // And an id no ingredient bears contributes nothing at all. Falling back to
+    // the category name for it printed "Contains: milk." on a food containing
+    // no milk — the engine composing a regulated allergen declaration the recipe
+    // does not support, which is the one thing this layer must never do. It is
+    // recorded as an omission so the gap is visible rather than silent.
+    const sources: string[] = []
+    for (const id of data.containsStatement) {
+      const bearing = (data.ingredients ?? []).filter((entry) => entry.allergen === id)
+      if (bearing.length === 0) {
+        omissions.push({
+          elementId: US_FOOD_ELEMENTS.containsStatement,
+          reason:
+            `The "Contains" statement names an allergen no ingredient carries, so it was not ` +
+            "drawn. A declaration for an allergen that is not in the food is not this engine's " +
+            'to compose.',
+          scope: 'detail',
+        })
+        continue
+      }
+      for (const entry of bearing) {
+        const source = foodSourceName(id, entry.allergenSpecificType)
+        if (source !== undefined && !sources.includes(source)) sources.push(source)
+      }
+    }
+    if (sources.length > 0) {
+      cursorYMm += data.containsStatementGapMm ?? 0
+      stackText(
+        US_FOOD_ELEMENTS.containsStatement,
+        'Contains statement',
+        `Contains: ${sources.join(', ')}.`,
+        data.containsStatementFontSizeMm ?? panelTypeMm,
+      )
+    }
   }
 
   // 21 CFR 101.5 — name and place of business. The qualifying phrase is printed

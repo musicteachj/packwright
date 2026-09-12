@@ -27,9 +27,13 @@
  */
 
 import type { LabelStock } from '../../templates/stock'
-import type { UsFoodLabelData } from '../../templates/usFood'
+import type { UsFoodIngredient, UsFoodLabelData } from '../../templates/usFood'
 import type { Severity } from '../../types/index'
 import {
+  FDA_ALLERGEN_NOT_DECLARED,
+  FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
+  FDA_CONTAINS_NOT_ADJACENT,
+  FDA_CONTAINS_TYPE_TOO_SMALL,
   FDA_INGREDIENTS_MISSING,
   FDA_INGREDIENTS_OUT_OF_ORDER,
   FDA_INGREDIENT_THRESHOLD_EXCEEDED,
@@ -48,6 +52,24 @@ import {
 /** 120 × 170 mm — a front panel of 31.62 in², in 101.7(i)'s 3/16 inch band. */
 const CONFORMING_STOCK: LabelStock = { widthMm: 120, heightMm: 170, marginMm: 6 }
 
+/**
+ * Typed rather than inferred from `as const`. The literal tuple a const
+ * assertion produces has no common `allergen` property, so the fixtures below
+ * that map over it to remove one could not name the field they were removing.
+ */
+const BASE_INGREDIENTS: readonly UsFoodIngredient[] = [
+  { name: 'whole grain rolled oats', percentByWeight: 97, allergen: 'wheat', declareInline: true },
+  { name: 'sugar', percentByWeight: 2 },
+  {
+    name: 'chopped nuts',
+    percentByWeight: 0.7,
+    allergen: 'tree-nuts',
+    allergenSpecificType: 'almonds',
+    declareInline: true,
+  },
+  { name: 'natural flavor', percentByWeight: 0.3 },
+]
+
 const BASE = {
   statementOfIdentity: 'Rolled oats',
   container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
@@ -56,12 +78,24 @@ const BASE = {
   // statement at a permitted threshold — so every rule in the set runs against
   // the base label rather than declining on it.
   ingredients: [
-    { name: 'whole grain rolled oats', percentByWeight: 97 },
+    {
+      name: 'whole grain rolled oats',
+      percentByWeight: 97,
+      allergen: 'wheat',
+      declareInline: true,
+    },
     { name: 'sugar', percentByWeight: 2 },
-    { name: 'salt', percentByWeight: 0.7 },
+    {
+      name: 'chopped nuts',
+      percentByWeight: 0.7,
+      allergen: 'tree-nuts',
+      allergenSpecificType: 'almonds',
+      declareInline: true,
+    },
     { name: 'natural flavor', percentByWeight: 0.3 },
   ],
   ingredientThreshold: { percent: 2, count: 2 },
+  containsStatement: ['wheat', 'tree-nuts'],
   responsibleFirm: {
     name: 'Example Foods Inc',
     isManufacturer: true,
@@ -310,6 +344,77 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_PANEL_TYPE_TOO_SMALL,
       severity: 'violation',
       citation: '21 CFR 101.2(c)',
+    },
+  },
+  {
+    name: 'almonds present and declared nowhere',
+    defect:
+      'The recipe carries almonds and the label says so in neither form — no parenthetical after ' +
+      'the ingredient and nothing in the Contains statement. §403(w)(1) offers two ways and ' +
+      'requires one of them.',
+    data: {
+      ...BASE,
+      ingredients: BASE_INGREDIENTS.map((ingredient) =>
+        ingredient.allergen === 'tree-nuts'
+          ? { ...ingredient, declareInline: false }
+          : { ...ingredient },
+      ),
+      containsStatement: ['wheat'],
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_ALLERGEN_NOT_DECLARED,
+      severity: 'violation',
+      citation: 'FD&C Act §403(w)(1)',
+    },
+  },
+  {
+    name: 'a tree nut declared as "tree nuts"',
+    defect:
+      '§403(w)(2) wants the specific type of nut, not the category — "Contains: tree nuts" tells ' +
+      'an almond-allergic reader nothing they did not already fear. Three of the nine work this ' +
+      'way and six do not, which is the part easiest to miss.',
+    data: {
+      ...BASE,
+      ingredients: BASE_INGREDIENTS.map((ingredient) => {
+        if (ingredient.allergen !== 'tree-nuts') return { ...ingredient }
+        const { allergenSpecificType: _dropped, ...rest } = ingredient
+        return rest
+      }),
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
+      severity: 'violation',
+      citation: 'FD&C Act §403(w)(2)',
+    },
+  },
+  {
+    name: 'a Contains statement in smaller type than the list it follows',
+    defect:
+      '§403(w)(1)(A) allows the statement to be larger than the ingredient list and never ' +
+      'smaller. This is the first relative type-size requirement in the project — the figure ' +
+      'comes from the other block rather than from a table.',
+    data: { ...BASE, containsStatementFontSizeMm: 2 },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_CONTAINS_TYPE_TOO_SMALL,
+      severity: 'violation',
+      citation: 'FD&C Act §403(w)(1)(A)',
+    },
+  },
+  {
+    name: 'a Contains statement pushed away from the list',
+    defect:
+      'The statement must be "immediately after or [...] adjacent to the list of ingredients". ' +
+      'Adrift at the foot of the panel it reads as unrelated text, which is exactly what a ' +
+      'reader scanning for allergens will treat it as.',
+    data: { ...BASE, containsStatementGapMm: 40 },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_CONTAINS_NOT_ADJACENT,
+      severity: 'violation',
+      citation: 'FD&C Act §403(w)(1)(A)',
     },
   },
   {

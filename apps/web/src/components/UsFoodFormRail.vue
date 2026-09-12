@@ -24,6 +24,7 @@
 import {
   ANCHORS,
   INGREDIENT_THRESHOLD_PERCENTS,
+  MAJOR_FOOD_ALLERGENS,
   US_FOOD_ELEMENTS,
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
@@ -36,6 +37,7 @@ import {
   type Container,
   type ContainerShape,
   type IngredientThresholdPercent,
+  type MajorFoodAllergenId,
 } from '@packwright/label-core'
 import { computed } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
@@ -292,6 +294,82 @@ const streetInDirectory = computed({
     else delete data.responsibleFirm.streetAddressInDirectory
   },
 })
+
+/**
+ * The allergen sits on the ingredient because it is a fact about the recipe, not
+ * about the word. "Natural flavor" may carry milk protein and "cocoa butter"
+ * carries no dairy at all, so no amount of reading the name settles it.
+ */
+function setAllergen(index: number, allergen: string): void {
+  setIngredients(
+    ingredients.value.map((entry, i) => {
+      if (i !== index) return { ...entry }
+      if (allergen === '') {
+        const { allergen: _a, allergenSpecificType: _t, declareInline: _d, ...rest } = entry
+        return rest
+      }
+      // The specific type belongs to the allergen that was there, not the one
+      // arriving. Carried across, fish/"cod" followed by tree-nuts produced
+      // `walnut pieces (cod)` — a fabricated food source name that the rule then
+      // accepted, because as far as it could tell the label had declared one.
+      const { allergenSpecificType: _stale, ...rest } = entry
+      return { ...rest, allergen: allergen as MajorFoodAllergenId, declareInline: true }
+    }),
+  )
+}
+
+function setIngredientField(
+  index: number,
+  patch: Partial<(typeof ingredients.value)[number]>,
+): void {
+  setIngredients(
+    ingredients.value.map((entry, i) => (i === index ? { ...entry, ...patch } : { ...entry })),
+  )
+}
+
+const allergenOf = (index: number) => ingredients.value[index]?.allergen ?? ''
+
+/** Whether §403(w)(2) wants a specific type or species for this ingredient. */
+const needsSpecificType = (index: number): boolean =>
+  MAJOR_FOOD_ALLERGENS.find((a) => a.id === ingredients.value[index]?.allergen)
+    ?.requiresSpecificType === true
+
+const specificTypeExamples = (index: number): string =>
+  MAJOR_FOOD_ALLERGENS.find((a) => a.id === ingredients.value[index]?.allergen)?.examples.join(
+    ', ',
+  ) ?? ''
+
+/**
+ * What the "Contains" statement names, separate from what the recipe holds. The
+ * two being separate is what lets a statement that omits an allergen be drawn —
+ * the same split as the GHS rail's stated versus derived pictogram set.
+ */
+const containsStatement = computed(() => data.containsStatement ?? [])
+
+function toggleContains(id: MajorFoodAllergenId, on: boolean): void {
+  const next = on
+    ? [...containsStatement.value, id]
+    : containsStatement.value.filter((entry) => entry !== id)
+  if (next.length === 0) delete data.containsStatement
+  else data.containsStatement = next
+}
+
+/**
+ * The allergens the recipe carries, **plus any the statement still names**.
+ *
+ * Offering only the former made an orphaned id unrecoverable: clear an
+ * ingredient's allergen and its checkbox vanished while the id stayed in
+ * `containsStatement`, so the statement went on naming something the user had no
+ * control left over. A tickbox that cannot be unticked is worse than one that
+ * should not have been there.
+ */
+const allergensPresent = computed(() =>
+  MAJOR_FOOD_ALLERGENS.filter(
+    (allergen) =>
+      ingredients.value.some((entry) => entry.allergen === allergen.id) ||
+      containsStatement.value.includes(allergen.id),
+  ),
+)
 
 const packaging = computed({
   get: () => data.netQuantity.packaging ?? 'standard',
@@ -595,6 +673,69 @@ const packaging = computed({
         </button>
       </div>
 
+      <div v-for="(ingredient, index) in ingredients" :key="`allergen-${index}`">
+        <label :class="LABEL" :for="`field-food-ing-allergen-${index}`">
+          <span class="sr-only">
+            Major food allergen in {{ ingredient.name || `ingredient ${index + 1}` }}
+          </span>
+          <select
+            :id="`field-food-ing-allergen-${index}`"
+            :value="allergenOf(index)"
+            :class="INPUT"
+            @change="setAllergen(index, ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">
+              {{ ingredient.name || `Ingredient ${index + 1}` }} — no major food allergen
+            </option>
+            <option
+              v-for="allergen in MAJOR_FOOD_ALLERGENS"
+              :key="allergen.id"
+              :value="allergen.id"
+            >
+              {{ ingredient.name || `Ingredient ${index + 1}` }} — {{ allergen.name }}
+            </option>
+          </select>
+        </label>
+
+        <label
+          v-if="needsSpecificType(index)"
+          :class="LABEL"
+          :for="`field-food-ing-source-${index}`"
+        >
+          Specific type or species
+          <input
+            :id="`field-food-ing-source-${index}`"
+            :value="ingredient.allergenSpecificType ?? ''"
+            :class="INPUT"
+            type="text"
+            :placeholder="specificTypeExamples(index)"
+            @input="
+              setIngredientField(index, {
+                allergenSpecificType: ($event.target as HTMLInputElement).value,
+              })
+            "
+          />
+        </label>
+
+        <label
+          v-if="ingredient.allergen"
+          class="text-chrome-300 flex items-center gap-2 text-xs"
+          :for="`field-food-ing-inline-${index}`"
+        >
+          <input
+            :id="`field-food-ing-inline-${index}`"
+            type="checkbox"
+            :checked="ingredient.declareInline === true"
+            @change="
+              setIngredientField(index, {
+                declareInline: ($event.target as HTMLInputElement).checked,
+              })
+            "
+          />
+          Name the source in parentheses after this ingredient
+        </label>
+      </div>
+
       <button id="field-food-ing-add" :class="CHIP" type="button" @click="addIngredient">
         Add an ingredient
       </button>
@@ -623,6 +764,40 @@ const packaging = computed({
         The last {{ groupedCount }} may run out of order, and none of them may exceed the threshold.
         101.4(a)(2) permits only these four figures.
       </p>
+    </EditorSection>
+
+    <EditorSection
+      title="Contains statement"
+      :element-id="US_FOOD_ELEMENTS.containsStatement"
+      :selected-element-id="store.selectedElementId"
+      :status="containsStatement.length === 0 ? 'none' : `${containsStatement.length} named`"
+      @select="select"
+    >
+      <p v-if="allergensPresent.length === 0" class="text-chrome-400 text-xs">
+        No ingredient declares a major food allergen, so there is nothing for a “Contains” statement
+        to name.
+      </p>
+      <template v-else>
+        <p class="text-chrome-400 text-xs">
+          FD&amp;C Act §403(w)(1) takes either this or a parenthetical after the ingredient. What
+          the recipe holds and what the statement names are separate, so a statement that leaves one
+          out can be drawn — and reported.
+        </p>
+        <label
+          v-for="allergen in allergensPresent"
+          :key="allergen.id"
+          class="text-chrome-300 flex items-center gap-2 text-xs"
+          :for="`field-food-contains-${allergen.id}`"
+        >
+          <input
+            :id="`field-food-contains-${allergen.id}`"
+            type="checkbox"
+            :checked="containsStatement.includes(allergen.id)"
+            @change="toggleContains(allergen.id, ($event.target as HTMLInputElement).checked)"
+          />
+          {{ allergen.name }}
+        </label>
+      </template>
     </EditorSection>
 
     <EditorSection

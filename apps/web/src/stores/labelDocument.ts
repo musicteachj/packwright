@@ -73,12 +73,18 @@ const STARTING_FOOD: UsFoodLabelData = {
   container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
   netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
   ingredients: [
-    { name: 'whole grain rolled oats', percentByWeight: 97 },
+    {
+      name: 'whole grain rolled oats',
+      percentByWeight: 97,
+      allergen: 'wheat',
+      declareInline: true,
+    },
     { name: 'sugar', percentByWeight: 2 },
     { name: 'salt', percentByWeight: 0.7 },
     { name: 'natural flavor', percentByWeight: 0.3 },
   ],
   ingredientThreshold: { percent: 2, count: 2 },
+  containsStatement: ['wheat'],
   responsibleFirm: {
     name: 'Example Foods Inc',
     isManufacturer: true,
@@ -111,6 +117,9 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     ...(STARTING_FOOD.ingredientThreshold === undefined
       ? {}
       : { ingredientThreshold: { ...STARTING_FOOD.ingredientThreshold } }),
+    ...(STARTING_FOOD.containsStatement === undefined
+      ? {}
+      : { containsStatement: [...STARTING_FOOD.containsStatement] }),
     ...(STARTING_FOOD.responsibleFirm === undefined
       ? {}
       : { responsibleFirm: { ...STARTING_FOOD.responsibleFirm } }),
