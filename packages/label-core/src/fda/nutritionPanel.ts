@@ -69,6 +69,8 @@ export const NUTRITION_PANEL_RULES = {
  * not a chosen size — which is why the rules that check them read "no smaller
  * than" and why drawing at exactly these values puts the default label on the
  * line rather than comfortably above it.
+ *
+ * The reduced displays lower several of them; see `nutritionTypeFor`.
  */
 export const NUTRITION_PANEL_TYPE = {
   /** 101.9(d)(2): no smaller than all other print except the Calories figure.
@@ -115,3 +117,57 @@ export const NUTRITION_FOOTNOTE = {
     '*The % Daily Value tells you how much a nutrient in a serving of food contributes to a ' +
     'daily diet.',
 } as const
+
+/**
+ * The minimums each display answers to — 21 CFR 101.9(d)(1)(iii) and (d)(3).
+ *
+ * **The two Calories figures move independently, and that is the easy part to
+ * get wrong.** (d)(1)(iii): the word is "no smaller than 16 point except the
+ * type size for this information required in the tabular displays as shown in
+ * paragraphs (d)(11), (e)(6)(ii), and (j)(13)(ii)(A)(1) ... and the linear
+ * display ... shall be in a type size no smaller than **10 point**". The numeric
+ * amount is "no smaller than 22 point, except ... for the tabular display for
+ * **small packages** ... and for the linear display ... no smaller than **14
+ * point**". So (d)(11)'s ordinary tabular display keeps the 22 point numeral
+ * while dropping the word to 10 — one exception lists three paragraphs and the
+ * other lists two.
+ *
+ * (d)(3)(i) and (ii) drop the servings lines from 10 point to 9 in the reduced
+ * displays. The nutrient rows stay at 8 throughout, and (d)(4), (6) and (9) at
+ * 6, with no exception stated for either.
+ *
+ * FDA's illustrations annotate the linear display "all type sizes are 6 point",
+ * which cannot be squared with the 9, 10 and 14 point minimums above. The
+ * regulation governs; the annotation came out of a PDF that had to be decoded
+ * rather than read, and a fragment is not a reason to disbelieve the text.
+ */
+export const NUTRITION_TYPE_BY_FORMAT = {
+  vertical: {
+    servingsPerContainerPt: 10,
+    servingSizePt: 10,
+    caloriesWordPt: 16,
+    caloriesFigurePt: 22,
+  },
+  tabular: {
+    servingsPerContainerPt: 9,
+    servingSizePt: 9,
+    caloriesWordPt: 10,
+    caloriesFigurePt: 14,
+  },
+  linear: {
+    servingsPerContainerPt: 9,
+    servingSizePt: 9,
+    caloriesWordPt: 10,
+    caloriesFigurePt: 14,
+  },
+} as const
+
+/** Every minimum a display answers to, in points. */
+export type NutritionTypeSizes = Record<keyof typeof NUTRITION_PANEL_TYPE, number>
+
+/** The full set for a display, the reduced figures folded over the rest. */
+export function nutritionTypeFor(
+  format: keyof typeof NUTRITION_TYPE_BY_FORMAT,
+): NutritionTypeSizes {
+  return { ...NUTRITION_PANEL_TYPE, ...NUTRITION_TYPE_BY_FORMAT[format] }
+}

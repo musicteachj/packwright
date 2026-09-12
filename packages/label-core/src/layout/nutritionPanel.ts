@@ -18,15 +18,11 @@
  * failed in exactly the place a user would try it.
  */
 
-import {
-  NUTRITION_FOOTNOTE,
-  NUTRITION_PANEL_RULES,
-  NUTRITION_PANEL_TYPE,
-} from '../fda/nutritionPanel'
+import { NUTRITION_FOOTNOTE, NUTRITION_PANEL_RULES, nutritionTypeFor } from '../fda/nutritionPanel'
 import { NUTRIENTS, nutrient, percentDailyValue, roundNutrientAmount } from '../fda/nutrients'
 import type { NutrientId } from '../fda/nutrients'
 import { MM_PER_POINT } from '../geometry/units'
-import { measureTextMm } from '../text/measure'
+import { measureTextMm, wrapTextMm } from '../text/measure'
 import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../templates/usFood'
 import type { UsFoodNutritionFacts } from '../templates/usFood'
 import type { LayoutPrimitive, ResolvedElement } from './types'
@@ -48,6 +44,11 @@ export interface NutritionPanelResult {
   elements: ResolvedElement[]
   /** Total height, so the caller can stack whatever comes next. */
   heightMm: number
+}
+
+/** The nutrients this panel lists, in the order it lists them. */
+function listedIds(facts: UsFoodNutritionFacts): readonly NutrientId[] {
+  return facts.order ?? NUTRIENTS.map((entry) => entry.id)
 }
 
 /** What the panel prints for a nutrient: stated, or derived from the analysis. */
@@ -77,6 +78,11 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   // sets, which is what the type-size rule is there to report.
   const scale = facts.typeScale ?? 1
   const mm = (points: number): number => mmAt(points, scale)
+  // The display decides four of the minimums — 101.9(d)(1)(iii) and (d)(3) — so
+  // the panel is drawn to the ones its own format answers to rather than to the
+  // vertical set with the others bolted on afterwards.
+  const format = facts.format ?? 'vertical'
+  const NUTRITION_PANEL_TYPE = nutritionTypeFor(format)
   const primitives: LayoutPrimitive[] = []
   const elements: ResolvedElement[] = []
 
@@ -127,6 +133,271 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     })
   }
 
+  // 101.9(j)(13)(ii)(A)(2) — the linear display: "in a tabular or ... linear
+  // (i.e., string) fashion rather than in vertical columns". One run of text, so
+  // it is built here and returns early rather than threading a mode through
+  // every block below. Its footnote is dropped, which (j)(13)(i) permits for the
+  // two small-package displays: "do not require the information in paragraphs
+  // (d)(9) and (f)(5) related to the footnote, however the abbreviated footnote
+  // statement '% DV = % Daily Value' may be used."
+  if (format === 'linear') {
+    const parts: string[] = [
+      `Serving size ${facts.servingSize}`,
+      ...(facts.servingsPerContainer === undefined
+        ? []
+        : [`${facts.servingsPerContainer} servings per container`]),
+    ]
+    const caloriesValue = amountOf(facts, 'calories')
+    if (caloriesValue !== undefined) parts.push(`Calories ${caloriesValue}`)
+    for (const id of listedIds(facts)) {
+      const entry = nutrient(id)
+      if (entry === undefined || entry.id === 'calories') continue
+      const amount = amountOf(facts, id)
+      if (amount === undefined) continue
+      const percent = percentOf(facts, id)
+      parts.push(
+        `${entry.name} ${amount}${entry.unit}${percent === undefined ? '' : ` ${percent}%`}`,
+      )
+    }
+    parts.push('% DV = % Daily Value')
+
+    // (d)(2) still requires the heading. The reduced displays are excused from
+    // setting it "the full width of the information provided under paragraph
+    // (d)(7)" — not from carrying it. Drawn as its own primitive so it can be
+    // bold and so the type-size rule has something to identify in a display
+    // whose every other figure sits in one undifferentiated run.
+    const headingMm = mm(NUTRITION_PANEL_TYPE.servingSizePt)
+    primitives.push({
+      kind: 'text',
+      elementId: US_FOOD_ELEMENTS.nutritionHeading,
+      xMm: leftMm,
+      baselineYMm: yMm + headingMm,
+      text: 'Nutrition Facts',
+      fontSizeMm: headingMm,
+      fontFamily,
+      fontWeight: emphasisFontWeight,
+      fill: '000000',
+      anchor: 'start',
+    })
+    elements.push({
+      elementId: US_FOOD_ELEMENTS.nutritionHeading,
+      label: 'Nutrition Facts heading',
+      box: { xMm: leftMm, yMm, widthMm: rightMm - leftMm, heightMm: headingMm * 1.3 },
+    })
+    yMm += headingMm * 1.3
+
+    const startYMm = yMm
+    const sizeMm = mm(NUTRITION_PANEL_TYPE.nutrientPt)
+    const lines = wrapTextMm(parts.join(', ') + '.', rightMm - leftMm, sizeMm, fontFamily)
+    lines.forEach((line, index) => {
+      primitives.push({
+        kind: 'text',
+        elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        xMm: leftMm,
+        baselineYMm: startYMm + sizeMm + index * sizeMm * 1.3,
+        text: line,
+        fontSizeMm: sizeMm,
+        fontFamily,
+        fill: '000000',
+        anchor: 'start',
+      })
+    })
+    const heightMm = startYMm - request.yMm + lines.length * sizeMm * 1.3 + insetMm
+    elements.push({
+      elementId: US_FOOD_ELEMENTS.nutritionPanel,
+      label: 'Nutrition Facts',
+      box: { xMm, yMm: request.yMm, widthMm, heightMm },
+    })
+    primitives.unshift({
+      kind: 'rect',
+      elementId: US_FOOD_ELEMENTS.nutritionPanel,
+      xMm,
+      yMm: request.yMm,
+      widthMm,
+      heightMm,
+      fill: 'ffffff',
+      stroke: '000000',
+      strokeWidthMm: NUTRITION_PANEL_RULES.boxMm,
+    })
+    return { primitives, elements, heightMm }
+  }
+
+  // 101.9(d)(11) — the tabular display: the same information, arranged across
+  // the label instead of down it. It exists for a package with "not sufficient
+  // continuous vertical space (i.e., approximately 3 in)" under (d)(11)(iii),
+  // and for a small one under (j)(13)(ii)(A)(1), so the point of it is height:
+  // the serving information sits in a left-hand block and the nutrients run in
+  // columns beside it rather than stacking.
+  if (format === 'tabular') {
+    const sizeMm = mm(NUTRITION_PANEL_TYPE.nutrientPt)
+    const headingMm = mm(NUTRITION_PANEL_TYPE.caloriesWordPt)
+    const lineMm = sizeMm * 1.45
+    const gutterMm = measureTextMm('  ', sizeMm, fontFamily)
+
+    // The left block: heading, servings, serving size, Calories. (d)(3) keeps
+    // them together and immediately after the heading whatever the display.
+    const leftLines: Array<{ text: string; bold: boolean; sizeMm: number; elementId: string }> = [
+      {
+        text: 'Nutrition Facts',
+        bold: true,
+        sizeMm: headingMm,
+        elementId: US_FOOD_ELEMENTS.nutritionHeading,
+      },
+      ...(facts.servingsPerContainer === undefined
+        ? []
+        : [
+            {
+              text: `${facts.servingsPerContainer} servings per container`,
+              bold: false,
+              sizeMm: mm(NUTRITION_PANEL_TYPE.servingsPerContainerPt),
+              elementId: US_FOOD_ELEMENTS.nutritionServings,
+            },
+          ]),
+      {
+        text: `Serving size ${facts.servingSize}`,
+        bold: true,
+        sizeMm: mm(NUTRITION_PANEL_TYPE.servingSizePt),
+        elementId: US_FOOD_ELEMENTS.nutritionServingSize,
+      },
+    ]
+    const calories = amountOf(facts, 'calories')
+    if (calories !== undefined) {
+      leftLines.push({
+        text: `Calories ${calories}`,
+        bold: true,
+        sizeMm: mm(NUTRITION_PANEL_TYPE.caloriesFigurePt),
+        elementId: US_FOOD_ELEMENTS.nutritionCalories,
+      })
+    }
+
+    let leftYMm = yMm
+    let leftWidthMm = 0
+    for (const line of leftLines) {
+      primitives.push({
+        kind: 'text',
+        elementId: line.elementId,
+        xMm: leftMm,
+        baselineYMm: leftYMm + line.sizeMm,
+        text: line.text,
+        fontSizeMm: line.sizeMm,
+        fontFamily,
+        ...(line.bold ? { fontWeight: emphasisFontWeight } : {}),
+        fill: '000000',
+        anchor: 'start',
+      })
+      elements.push({
+        elementId: line.elementId,
+        label: line.text,
+        box: {
+          xMm: leftMm,
+          yMm: leftYMm,
+          widthMm: measureTextMm(line.text, line.sizeMm, fontFamily),
+          heightMm: line.sizeMm * 1.3,
+        },
+      })
+      leftWidthMm = Math.max(leftWidthMm, measureTextMm(line.text, line.sizeMm, fontFamily))
+      leftYMm += line.sizeMm * 1.3
+    }
+
+    // The nutrients, in as many columns as the remaining width takes. This is
+    // the arrangement (d)(11) is for; the regulation shows a sample and states
+    // no column count, so the count follows the space rather than a figure this
+    // engine would be inventing.
+    const rows = listedIds(facts).flatMap((id) => {
+      const entry = nutrient(id)
+      if (entry === undefined || entry.id === 'calories') return []
+      const amount = amountOf(facts, id)
+      if (amount === undefined) return []
+      const percent = percentOf(facts, id)
+      return [
+        {
+          id,
+          entry,
+          text: `${entry.name} ${amount}${entry.unit}${percent === undefined ? '' : ` ${percent}%`}`,
+        },
+      ]
+    })
+    const columnMm =
+      rows.length === 0
+        ? 0
+        : Math.max(...rows.map((r) => measureTextMm(r.text, sizeMm, fontFamily)))
+    const availableMm = rightMm - (leftMm + leftWidthMm + gutterMm)
+    const columns = Math.max(1, Math.floor(availableMm / (columnMm + gutterMm)))
+    const perColumn = Math.ceil(rows.length / columns)
+
+    rows.forEach((row, index) => {
+      const column = Math.floor(index / perColumn)
+      const rowInColumn = index % perColumn
+      const xRowMm = leftMm + leftWidthMm + gutterMm + column * (columnMm + gutterMm)
+      const yRowMm = yMm + rowInColumn * lineMm
+      const elementId = nutritionRowElementId(row.id)
+      primitives.push({
+        kind: 'text',
+        elementId,
+        xMm: xRowMm,
+        baselineYMm: yRowMm + sizeMm,
+        text: row.text,
+        fontSizeMm: sizeMm,
+        fontFamily,
+        ...(row.entry.indented ? {} : { fontWeight: emphasisFontWeight }),
+        fill: '000000',
+        anchor: 'start',
+      })
+      elements.push({
+        elementId,
+        label: row.entry.name,
+        box: { xMm: xRowMm, yMm: yRowMm, widthMm: columnMm, heightMm: lineMm },
+      })
+    })
+
+    const columnsHeightMm = perColumn * lineMm
+    const bodyBottomMm = yMm + Math.max(leftYMm - yMm, columnsHeightMm)
+
+    // (j)(13)(i) drops the footnote for the small-package displays; (d)(11)'s
+    // tabular display is not one of them, so it keeps the abbreviated statement
+    // rather than nothing.
+    const footnoteMm = mm(NUTRITION_PANEL_TYPE.footnotePt)
+    primitives.push({
+      kind: 'text',
+      elementId: US_FOOD_ELEMENTS.nutritionFootnote,
+      xMm: leftMm,
+      baselineYMm: bodyBottomMm + footnoteMm + NUTRITION_PANEL_RULES.hairlineLeadingMm,
+      text: '*% DV = % Daily Value',
+      fontSizeMm: footnoteMm,
+      fontFamily,
+      fill: '000000',
+      anchor: 'start',
+    })
+    const heightMm = bodyBottomMm + footnoteMm * 1.3 + insetMm * 2 - request.yMm
+    elements.push({
+      elementId: US_FOOD_ELEMENTS.nutritionFootnote,
+      label: 'Daily Value footnote',
+      box: {
+        xMm: leftMm,
+        yMm: bodyBottomMm,
+        widthMm: rightMm - leftMm,
+        heightMm: footnoteMm * 1.3,
+      },
+    })
+    primitives.unshift({
+      kind: 'rect',
+      elementId: US_FOOD_ELEMENTS.nutritionPanel,
+      xMm,
+      yMm: request.yMm,
+      widthMm,
+      heightMm,
+      fill: 'ffffff',
+      stroke: '000000',
+      strokeWidthMm: NUTRITION_PANEL_RULES.boxMm,
+    })
+    elements.unshift({
+      elementId: US_FOOD_ELEMENTS.nutritionPanel,
+      label: 'Nutrition Facts',
+      box: { xMm, yMm: request.yMm, widthMm, heightMm },
+    })
+    return { primitives, elements, heightMm }
+  }
+
   // 101.9(d)(2) — the heading, no smaller than all other print bar the Calories
   // figure.
   const headingStart = yMm
@@ -141,6 +412,23 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     headingStart,
     yMm - headingStart,
   )
+
+  // 101.9(d)(1)(v): "A hairline rule that is centered between the lines of text
+  // **shall** separate 'Nutrition Facts' from the servings per container
+  // statement". A requirement, and the panel was drawing nothing there — the
+  // same hairline it draws between nutrient rows, in the one other place the
+  // same sentence puts it.
+  yMm += NUTRITION_PANEL_RULES.hairlineLeadingMm
+  primitives.push({
+    kind: 'rect',
+    elementId: US_FOOD_ELEMENTS.nutritionPanel,
+    xMm: leftMm,
+    yMm,
+    widthMm: rightMm - leftMm,
+    heightMm: NUTRITION_PANEL_RULES.hairlineMm,
+    fill: '000000',
+  })
+  yMm += NUTRITION_PANEL_RULES.hairlineMm + NUTRITION_PANEL_RULES.hairlineLeadingMm
 
   // 101.9(d)(3)(i) and (ii).
   if (facts.servingsPerContainer !== undefined) {
@@ -206,7 +494,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   // 101.9(d)(7) — the nutrient rows, in the order the panel states or the order
   // 101.9(c) sets. Drawn in the stated order rather than sorted, because a panel
   // listing them wrongly is what the order rule exists to report.
-  const listed = facts.order ?? NUTRIENTS.map((entry) => entry.id)
+  const listed = listedIds(facts)
   const vitaminsStart = listed.findIndex((id) => nutrient(id)?.dailyValue?.kind === 'rdi')
 
   let drawnRows = 0

@@ -54,7 +54,14 @@ describe('the editor on a US food label', () => {
     // the order, rounding and percent-Daily-Value rules have nothing
     // independent to measure — checking a derived value would be checking the
     // engine against itself, and a rule that cannot fail must not pass either.
-    const declining = ['nutrition-order', 'nutrition-rounding', 'nutrition-percent-dv']
+    const declining = [
+      'nutrition-order',
+      'nutrition-rounding',
+      'nutrition-percent-dv',
+      // Every package may use the standard vertical display, so there is no
+      // entitlement to judge and the format rule says nothing.
+      'nutrition-format',
+    ]
     expect(store.passes.length).toBe(US_FOOD_RULES.length - declining.length)
     for (const code of ['FDA_NUTRITION_ORDER_MET', 'FDA_NUTRITION_ROUNDING_MET']) {
       expect(store.findings.map((f) => f.code)).not.toContain(code)

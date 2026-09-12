@@ -10,6 +10,53 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 6 (in progress) — which display a package may use. The selection rule first, because it is
+what makes five variants worth having rather than five ways to draw one panel; the reduced displays
+themselves follow.
+
+- **They are permissions, and the rule reports accordingly.** 21 CFR 101.9(j)(13)(ii) opens "Foods in
+  packages that have a total surface area available to bear labeling of 40 or less square inches **may**
+  modify the requirements". So `us-food/nutrition-format` reports a label using a display it is not entitled
+  to, and never demands that a small package use one — reading a permission as an obligation is what CLP
+  Article 26's "optional" clauses already taught this project.
+- **Two thresholds, and only one of them is inclusive.** A tabular or linear display is permitted where the
+  area is "less than 12 square inches", or where it is "40 or less square inches and the package shape or
+  size cannot accommodate a standard vertical column". Twelve itself falls to the second limb and needs the
+  declaration; forty does not.
+- **Linear is gated behind tabular.** "Nutrition information may be given in a linear fashion only if the
+  label will not accommodate a tabular display" — so a package entitled to tabular is still not entitled to
+  linear.
+- **The area (j)(13) measures is not the principal display panel.** 101.1 computes the panel for the net
+  quantity; (j)(13) measures the whole surface available to bear labeling. Two different numbers answering
+  two different questions, and a label now carries both rather than one standing in for the other.
+- **The linear display, drawn.** 101.9(j)(13)(ii)(A) puts the information "in a tabular or ... linear (i.e.,
+  string) fashion rather than in vertical columns", and that is the whole of what makes it linear — one run
+  of text at 35 mm where the vertical panel is 129, which is why a small package can carry it at all. It
+  keeps the heading (d)(2) requires and drops the footnote for the abbreviated "% DV = % Daily Value" that
+  (j)(13)(i) permits in its place.
+- **Per-format type minimums, and the two Calories figures move independently.** (d)(1)(iii) drops the
+  Calories *word* to 10 point in **every** tabular display — (d)(11), (e)(6)(ii) and (j)(13)(ii)(A)(1) — but
+  the *numeral* to 14 only on the small-package tabular and the linear one. One exception lists three
+  paragraphs and the other lists two, so (d)(11)'s ordinary tabular display keeps a 22 point numeral beside a
+  10 point word. Both servings lines drop from 10 to 9; the nutrient rows stay at 8 and the small print at 6,
+  with no exception stated for either.
+- **The tabular display, drawn** — the serving information in a left-hand block and the nutrients in columns
+  beside it. 188 x 26 mm against the vertical panel's 64 x 129, which is the whole of what it is for.
+- **A second entitlement to it that does not run through (j)(13) at all.** 101.9(d)(11)(iii): "If there is
+  not sufficient continuous vertical space (i.e., approximately 3 in) to accommodate the required components
+  of the nutrition label up to and including the mandatory declaration of potassium, the nutrition label may
+  be presented in a tabular display." A package of any size qualifies, so a rule knowing only the area route
+  would have reported a tall thin label squarely within this one. It reaches the tabular display and not the
+  linear one, which stays behind (j)(13)(ii)(A)'s areas and its own gate.
+
+- FDA's illustrations annotate the linear display "all type sizes are 6 point", which cannot be squared with
+  the 9, 10 and 14 point minimums the regulation states. The regulation governs — the annotation came out of
+  a PDF that had to be decoded rather than read, and a fragment is not a reason to disbelieve the text.
+
+- Whether a shape "cannot accommodate" a display and whether a label "will not accommodate" a tabular one are
+  facts about a package that no artwork shows, so they are declared and never inferred — the GHS
+  small-container call for the fourth time in this phase.
+
 Phase 5, stage 5 — the Nutrition Facts panel drawn. The standard vertical display only; the other five
 formats are stage 6, on the reasoning phase 2 used for label types.
 
@@ -409,6 +456,35 @@ That is what makes preview == print structural rather than something two code pa
   was the one branch CI never watched. Pull requests were always covered; direct pushes were not.
 
 ### Fixed
+
+Phase 5, stage 6.
+
+- The format rule's **pass cited the rule's own paragraph rather than the one that granted the permission**,
+  so a label entitled under (d)(11)(iii) was cleared under (j)(13)(ii)(A). `finding.ts` records this exact
+  mistake shipping once before — a passing GHS signal-word check reporting under the EU regulation on a US
+  label — which is why `passed()` takes a citation at all.
+- The tabular display was held to the vertical one's 2.5 inch width and **stacked into a single column**,
+  which is the shape it exists to avoid. The reduced displays take the whole panel now.
+
+- The linear display was drawn without the heading 101.9(d)(2) requires, **and a comment beside it claimed
+  the heading was there**. The reduced displays are excused from setting it "the full width of the
+  information provided under paragraph (d)(7)" — not from carrying it. A comment asserting what the code
+  does not do is the same defect the box-rule comment had one stage earlier.
+- The type-size rule reported "0 parts of the panel meet the type sizes" as a **pass** on a linear display,
+  where one undifferentiated run leaves no servings line, serving size or Calories element to measure. A rule
+  with nothing it can identify has declined, not cleared.
+- A mutation escaped: putting the tabular Calories numeral back to 22 point left the suite green, because
+  nothing tested the tabular column of the minimums table at all. It is pinned now, along with the property
+  that every reduced figure is lower than its vertical counterpart and none is higher.
+
+- **A "shall" the panel was not drawing.** 101.9(d)(1)(v): "A hairline rule that is centered between the
+  lines of text **shall** separate 'Nutrition Facts' from the servings per container statement and shall
+  separate each nutrient and its corresponding percent Daily Value ... from the nutrient and percent Daily
+  Value above and below it." One sentence, two places, and the panel drew the second and not the first —
+  which is exactly why it went unnoticed: the half that was present made the half that was missing look
+  handled. Found while reading (j)(13) for something else.
+- The test guarding the hairline placement said "no rule above the first nutrient row", which was true when
+  written and too broad the moment a required rule appeared higher up. It is scoped to the gap it meant.
 
 Phase 5, stage 5 review. Nine findings, and the two worth naming first are both cases of a *shall* and a
 *may* being treated alike.

@@ -1,0 +1,146 @@
+/**
+ * Which Nutrition Facts display a package may use.
+ *
+ * Source: **21 CFR 101.9(j)(13)**, read from the eCFR on 2026-09-12.
+ *
+ * **These are permissions, not requirements**, and the distinction decides what a
+ * rule may say. (j)(13)(ii) opens "Foods in packages that have a total surface
+ * area available to bear labeling of 40 or less square inches **may** modify the
+ * requirements of paragraphs (c) through (f) and (i) of this section by one or
+ * more of the following means". So a rule can report a label using a display it
+ * is not entitled to; it can never demand that a small package use one. Reading
+ * a permission as an obligation is the mistake CLP Article 26's "optional"
+ * clauses already taught this project once.
+ *
+ * The entitlement, verbatim from (j)(13)(ii)(A):
+ *
+ * > "Presenting the required nutrition information in a tabular or, as provided
+ * > below, linear (i.e., string) fashion rather than in vertical columns **if the
+ * > product has a total surface area available to bear labeling of less than 12
+ * > square inches**, or **if the product has a total surface area available to
+ * > bear labeling of 40 or less square inches and the package shape or size
+ * > cannot accommodate a standard vertical column or tabular display on any
+ * > label panel**. Nutrition information may be given in a linear fashion **only
+ * > if the label will not accommodate a tabular display**."
+ *
+ * The tabular display has a second entitlement that does not run through
+ * (j)(13) at all — see `TABULAR_VERTICAL_SPACE_INCHES`.
+ *
+ * Two of those conditions are facts about a package that no inspection of
+ * artwork can settle — whether a shape "cannot accommodate" a display, and
+ * whether a label "will not accommodate" a tabular one. They are declared by the
+ * supplier and never inferred, the same call the GHS small-container provision
+ * and §101.100 already get.
+ */
+
+export const NUTRITION_FORMATS = ['vertical', 'tabular', 'linear'] as const
+export type NutritionFormat = (typeof NUTRITION_FORMATS)[number]
+
+/**
+ * Below this, (j)(13)(i) exempts a package from nutrition labelling altogether —
+ * "Provided, That the labels for these foods bear no nutrition claims or other
+ * nutrition information" — and (j)(13)(ii)(A) lets any of the displays be used.
+ */
+export const SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES = 12
+
+/** At or below this, (j)(13)(ii) permits the reduced displays on conditions. */
+export const REDUCED_FORMAT_MAX_SQ_INCHES = 40
+
+/**
+ * 21 CFR 101.9(d)(11)(iii): "If there is not sufficient continuous vertical
+ * space (i.e., **approximately 3 in**) to accommodate the required components of
+ * the nutrition label up to and including the mandatory declaration of
+ * potassium, the nutrition label may be presented in a tabular display."
+ *
+ * A second entitlement to the tabular display, independent of (j)(13)'s areas —
+ * and the one a large package uses. A rule knowing only the (j)(13) route would
+ * report a tall thin label that is squarely within this one.
+ *
+ * "Approximately" is the regulation's own word, so this is a threshold to
+ * measure against rather than a line to be exact about.
+ */
+export const TABULAR_VERTICAL_SPACE_INCHES = 3
+
+export interface FormatEntitlement {
+  /** Total surface area available to bear labeling, in square inches. */
+  availableSqInches: number
+  /**
+   * 101.9(j)(13)(ii)(A): "the package shape or size cannot accommodate a
+   * standard vertical column or tabular display on any label panel". A fact
+   * about a package, declared rather than measured off a label.
+   */
+  cannotAccommodateVertical?: boolean
+  /** "the label will not accommodate a tabular display" — the linear gate. */
+  cannotAccommodateTabular?: boolean
+  /**
+   * Continuous vertical space available for the nutrition label, in inches.
+   * Under (d)(11)(iii), less than approximately 3 entitles a package of any size
+   * to the tabular display.
+   */
+  continuousVerticalSpaceInches?: number
+}
+
+export interface FormatVerdict {
+  permitted: boolean
+  /** One sentence, for the finding. Empty when permitted. */
+  reason: string
+  reference: string
+}
+
+/**
+ * Whether a package may present its nutrition information in this display.
+ *
+ * The vertical display is always available — it is the one (d) describes and
+ * everything else is a modification of it — so only the two reduced displays
+ * have anything to check.
+ */
+export function formatIsPermitted(
+  format: NutritionFormat,
+  entitlement: FormatEntitlement,
+): FormatVerdict {
+  const { availableSqInches, cannotAccommodateVertical, cannotAccommodateTabular } = entitlement
+
+  if (format === 'vertical') {
+    return { permitted: true, reason: '', reference: '21 CFR 101.9(d)' }
+  }
+
+  const under12 = availableSqInches < SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES
+  const under40 = availableSqInches <= REDUCED_FORMAT_MAX_SQ_INCHES
+  const reduced = under12 || (under40 && cannotAccommodateVertical === true)
+
+  // (d)(11)(iii) is a second route to the tabular display and does not run
+  // through (j)(13) at all: a package of any size may use it where there is not
+  // approximately 3 inches of continuous vertical space. It does not reach the
+  // linear display, which (j)(13)(ii)(A) alone permits.
+  const tooShort =
+    entitlement.continuousVerticalSpaceInches !== undefined &&
+    entitlement.continuousVerticalSpaceInches < TABULAR_VERTICAL_SPACE_INCHES
+  if (format === 'tabular' && tooShort) {
+    return { permitted: true, reason: '', reference: '21 CFR 101.9(d)(11)(iii)' }
+  }
+
+  if (!reduced) {
+    return {
+      permitted: false,
+      reason: under40
+        ? `the package is ${availableSqInches.toFixed(1)} in², which permits a reduced display ` +
+          'only where its shape or size cannot accommodate a standard vertical column, and the ' +
+          'label does not say so'
+        : `the package has ${availableSqInches.toFixed(1)} in² available to bear labeling, and a ` +
+          'reduced display is permitted only at 40 in² or less',
+      reference: '21 CFR 101.9(j)(13)(ii)(A)',
+    }
+  }
+
+  if (format === 'linear' && cannotAccommodateTabular !== true) {
+    return {
+      permitted: false,
+      reason:
+        'nutrition information may be given in a linear fashion only if the label will not ' +
+        'accommodate a tabular display, and the label does not say that it will not',
+      reference: '21 CFR 101.9(j)(13)(ii)(A)',
+    }
+  }
+
+  return { permitted: true, reason: '', reference: '21 CFR 101.9(j)(13)(ii)(A)' }
+}

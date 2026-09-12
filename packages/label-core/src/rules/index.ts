@@ -169,3 +169,8 @@ export {
   FDA_NUTRITION_TYPE_TOO_SMALL,
   usFoodNutritionTypeSizeRule,
 } from './usFood/nutritionTypeSize'
+export {
+  FDA_NUTRITION_FORMAT_MET,
+  FDA_NUTRITION_FORMAT_NOT_PERMITTED,
+  usFoodNutritionFormatRule,
+} from './usFood/nutritionFormat'

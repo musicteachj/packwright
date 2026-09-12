@@ -42,6 +42,7 @@ import {
   FDA_NUTRITION_PERCENT_DV_WRONG,
   FDA_NUTRITION_ROUNDING_WRONG,
   FDA_NUTRITION_TYPE_TOO_SMALL,
+  FDA_NUTRITION_FORMAT_NOT_PERMITTED,
   FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
   FDA_CONTAINS_NOT_ADJACENT,
   FDA_CONTAINS_TYPE_TOO_SMALL,
@@ -621,6 +622,28 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_NUTRITION_TYPE_TOO_SMALL,
       severity: 'violation',
       citation: '21 CFR 101.9(d)(3)(i)',
+    },
+  },
+  {
+    name: 'a tabular display on a package with room for a vertical one',
+    defect:
+      'A 60 in² package using a reduced display. 101.9(j)(13)(ii) permits them at 40 in² or ' +
+      'less, and the second limb — a shape that cannot take a vertical column — is capped at the ' +
+      'same 40, so nothing rescues a larger package.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        format: 'tabular',
+        availableSurfaceSqInches: 60,
+        cannotAccommodateVertical: true,
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_FORMAT_NOT_PERMITTED,
+      severity: 'violation',
+      citation: '21 CFR 101.9(j)(13)(ii)(A)',
     },
   },
   {

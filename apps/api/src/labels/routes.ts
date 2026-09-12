@@ -30,6 +30,7 @@ import {
   labelFilename,
   getSymbologyConstraints,
   INGREDIENT_THRESHOLD_PERCENTS,
+  NUTRITION_FORMATS,
   MAJOR_FOOD_ALLERGEN_IDS,
   NUTRIENT_IDS,
   US_FOOD_PACKAGINGS,
@@ -279,6 +280,19 @@ function toNutritionFacts(panel: z.infer<typeof NutritionFactsSchema>): UsFoodNu
       : { declaredPercentDv: panel.declaredPercentDv }),
     ...(panel.order === undefined ? {} : { order: panel.order }),
     ...(panel.typeScale === undefined ? {} : { typeScale: panel.typeScale }),
+    ...(panel.format === undefined ? {} : { format: panel.format }),
+    ...(panel.availableSurfaceSqInches === undefined
+      ? {}
+      : { availableSurfaceSqInches: panel.availableSurfaceSqInches }),
+    ...(panel.cannotAccommodateVertical === undefined
+      ? {}
+      : { cannotAccommodateVertical: panel.cannotAccommodateVertical }),
+    ...(panel.cannotAccommodateTabular === undefined
+      ? {}
+      : { cannotAccommodateTabular: panel.cannotAccommodateTabular }),
+    ...(panel.continuousVerticalSpaceInches === undefined
+      ? {}
+      : { continuousVerticalSpaceInches: panel.continuousVerticalSpaceInches }),
   }
 }
 
@@ -319,6 +333,11 @@ const NutritionFactsSchema = z.object({
   declaredPercentDv: NutrientAmounts,
   order: z.array(z.enum(NUTRIENT_IDS)).optional(),
   typeScale: z.number().positive().optional(),
+  format: z.enum(NUTRITION_FORMATS).optional(),
+  availableSurfaceSqInches: z.number().positive().optional(),
+  cannotAccommodateVertical: z.boolean().optional(),
+  cannotAccommodateTabular: z.boolean().optional(),
+  continuousVerticalSpaceInches: z.number().positive().optional(),
 })
 
 const UsFoodRequest = z

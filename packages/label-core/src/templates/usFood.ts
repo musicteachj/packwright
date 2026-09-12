@@ -22,6 +22,7 @@
 import type { Container, NetQuantityMarkingMethod } from '../geometry/pdp'
 import type { MajorFoodAllergenId } from '../fda/allergens'
 import type { NutrientId } from '../fda/nutrients'
+import type { NutritionFormat } from '../fda/nutritionFormats'
 import type { Anchor, LabelStock } from './stock'
 
 /**
@@ -209,6 +210,32 @@ export interface UsFoodNutritionFacts {
    * wrong, which is the other reason it is a scale rather than a per-line size.
    */
   typeScale?: number
+  /**
+   * Which display the panel uses — 21 CFR 101.9(d) for the vertical one,
+   * (j)(13)(ii)(A) for the two reduced ones. Omitted means vertical.
+   */
+  format?: NutritionFormat
+  /**
+   * Total surface area available to bear labeling, in square inches, which is
+   * what (j)(13) measures — **not** the principal display panel, which 101.1
+   * computes for the net quantity. Two different areas on one label, and using
+   * either for the other's question would be wrong in both directions.
+   */
+  availableSurfaceSqInches?: number
+  /**
+   * (j)(13)(ii)(A): "the package shape or size cannot accommodate a standard
+   * vertical column or tabular display on any label panel", and "the label will
+   * not accommodate a tabular display". Facts about a package that no artwork
+   * shows, so they are declared — the GHS small-container call again.
+   */
+  cannotAccommodateVertical?: boolean
+  cannotAccommodateTabular?: boolean
+  /**
+   * Continuous vertical space available for the nutrition label, in inches.
+   * 101.9(d)(11)(iii) entitles a package of any size to the tabular display
+   * where there is less than approximately 3.
+   */
+  continuousVerticalSpaceInches?: number
 }
 
 export interface UsFoodLabelData {

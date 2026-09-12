@@ -42,6 +42,12 @@ const mmText = (value: number): string => `${roundTo(value, 2).toFixed(2)} mm`
  * vertical display around 2.5 inches wide, and 101.9 sets no width anywhere —
  * so this is a legible default and no rule judges it, the same standing as the
  * bar weights it is drawn with.
+ *
+ * **The reduced displays take the whole panel.** A tabular display exists for a
+ * package without "sufficient continuous vertical space" under (d)(11)(iii), so
+ * being wide and short is the entire point of it — held to the vertical
+ * display's 2.5 inches it had no room for a second column and stacked into one,
+ * which is the shape it was chosen to avoid.
  */
 const NUTRITION_PANEL_WIDTH_MM = 64
 
@@ -265,7 +271,10 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
   // which is the order an information panel runs in. It is boxed and narrower
   // than the label, so it takes a width of its own rather than the panel's.
   if (data.nutritionFacts !== undefined) {
-    const panelWidthMm = Math.min(NUTRITION_PANEL_WIDTH_MM, panel.widthMm)
+    const panelWidthMm =
+      (data.nutritionFacts.format ?? 'vertical') === 'vertical'
+        ? Math.min(NUTRITION_PANEL_WIDTH_MM, panel.widthMm)
+        : panel.widthMm
     const drawn = layOutNutritionPanel({
       facts: data.nutritionFacts,
       xMm: panel.xMm,

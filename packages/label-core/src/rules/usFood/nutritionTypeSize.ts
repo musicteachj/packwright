@@ -30,7 +30,7 @@
  * 1.59 mm floor 101.2(c) sets for everything else.
  */
 
-import { NUTRITION_PANEL_TYPE } from '../../fda/nutritionPanel'
+import { nutritionTypeFor } from '../../fda/nutritionPanel'
 import { MM_PER_POINT } from '../../geometry/units'
 import type { TextPrimitive } from '../../layout/types'
 import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
@@ -47,28 +47,41 @@ const CITATION: Citation = {
   title: 'Minimum type sizes for the Nutrition Facts label',
 }
 
-/** Element, its stated minimum in points, and the paragraph that states it. */
-const MINIMUMS: ReadonlyArray<{ elementId: string; label: string; pt: number; reference: string }> =
-  [
+/**
+ * Element, its stated minimum in points, and the paragraph that states it —
+ * **for the display this panel actually uses**.
+ *
+ * The reduced displays lower four of the figures, and not by the same amounts:
+ * (d)(1)(iii) drops the Calories *word* to 10 point in every tabular display and
+ * the *numeral* to 14 only on the small-package ones, while (d)(3) drops both
+ * servings lines to 9. Checking a tabular panel against the vertical minimums
+ * would report a label the paragraph explicitly allows.
+ */
+const minimumsFor = (
+  format: 'vertical' | 'tabular' | 'linear',
+): ReadonlyArray<{ elementId: string; label: string; pt: number; reference: string }> => {
+  const type = nutritionTypeFor(format)
+  return [
     {
       elementId: US_FOOD_ELEMENTS.nutritionServings,
       label: 'the servings statement',
-      pt: NUTRITION_PANEL_TYPE.servingsPerContainerPt,
+      pt: type.servingsPerContainerPt,
       reference: '21 CFR 101.9(d)(3)(i)',
     },
     {
       elementId: US_FOOD_ELEMENTS.nutritionServingSize,
       label: '"Serving size"',
-      pt: NUTRITION_PANEL_TYPE.servingSizePt,
+      pt: type.servingSizePt,
       reference: '21 CFR 101.9(d)(3)(ii)',
     },
     {
       elementId: US_FOOD_ELEMENTS.nutritionCalories,
       label: '"Calories"',
-      pt: NUTRITION_PANEL_TYPE.caloriesWordPt,
+      pt: type.caloriesWordPt,
       reference: '21 CFR 101.9(d)(5)',
     },
   ]
+}
 
 // Imported rather than written out. It was spelled in three files, and a
 // change in one would have this rule reporting every compliant 8 point row.
@@ -81,7 +94,9 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
   codes: [FDA_NUTRITION_TYPE_TOO_SMALL, FDA_NUTRITION_TYPE_SIZE_MET],
   appliesTo: 'us-food',
 
-  check({ layout }: UsFoodContext): Finding[] {
+  check({ data, layout }: UsFoodContext): Finding[] {
+    const format = data.nutritionFacts?.format ?? 'vertical'
+    const type = nutritionTypeFor(format)
     const smallestOf = (predicate: (id: string) => boolean): number | undefined => {
       const sizes = layout.primitives
         .filter(
@@ -99,18 +114,24 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
     if (smallestOf((id) => id === US_FOOD_ELEMENTS.nutritionHeading) === undefined) return []
 
     const checks = [
-      ...MINIMUMS.map((entry) => ({
+      ...minimumsFor(format).map((entry) => ({
         ...entry,
         drawnMm: smallestOf((id) => id === entry.elementId),
       })),
       {
         elementId: US_FOOD_ELEMENTS.nutritionPanel,
         label: 'the nutrient rows',
-        pt: NUTRITION_PANEL_TYPE.nutrientPt,
+        pt: type.nutrientPt,
         reference: '21 CFR 101.9(d)(7)(iii)',
         drawnMm: smallestOf((id) => id.startsWith(NUTRITION_ROW_PREFIX)),
       },
     ].filter((entry): entry is typeof entry & { drawnMm: number } => entry.drawnMm !== undefined)
+
+    // A reduced display puts every figure in one run, so there is no servings
+    // line, serving size or Calories element to measure — and a pass saying "0
+    // parts of the panel meet the type sizes" is a rule declining and reporting
+    // that it cleared.
+    if (checks.length === 0) return []
 
     const undersized = checks.filter(
       (entry) => entry.drawnMm < entry.pt * MM_PER_POINT - MEASUREMENT_TOLERANCE_MM,

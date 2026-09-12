@@ -14,4 +14,19 @@ export {
   roundingIsCheckable,
 } from './nutrients'
 export type { DailyValueKind, Nutrient, NutrientId, NutrientRounding } from './nutrients'
-export { NUTRITION_FOOTNOTE, NUTRITION_PANEL_RULES, NUTRITION_PANEL_TYPE } from './nutritionPanel'
+export {
+  NUTRITION_FOOTNOTE,
+  NUTRITION_PANEL_RULES,
+  NUTRITION_PANEL_TYPE,
+  NUTRITION_TYPE_BY_FORMAT,
+  nutritionTypeFor,
+} from './nutritionPanel'
+export type { NutritionTypeSizes } from './nutritionPanel'
+export {
+  NUTRITION_FORMATS,
+  REDUCED_FORMAT_MAX_SQ_INCHES,
+  SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES,
+  TABULAR_VERTICAL_SPACE_INCHES,
+  formatIsPermitted,
+} from './nutritionFormats'
+export type { FormatEntitlement, FormatVerdict, NutritionFormat } from './nutritionFormats'

@@ -69,7 +69,12 @@ describe('the conformant control', () => {
     // "Reported nothing" and "everything passed" are different answers, and only
     // one of them means the rules ran. Four rules, one finding each.
     const passes = findings.filter((f) => f.severity === 'pass')
-    expect(passes).toHaveLength(US_FOOD_RULES.length)
+    // One short of the registry, and deliberately: the format rule declines on a
+    // panel using the standard vertical display, because every package may use
+    // it and there is no entitlement to judge. A pass there would be a check
+    // that clears every label carrying the default.
+    expect(passes).toHaveLength(US_FOOD_RULES.length - 1)
+    expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_FORMAT_MET')
   })
 
   it('derives a compliant type size when the label states none', () => {
@@ -932,16 +937,42 @@ describe('the drawn Nutrition Facts panel', () => {
     expect(weights).toContain(2.4694)
   })
 
+  it('separates the heading from the servings line with a hairline', () => {
+    // 101.9(d)(1)(v) says *shall*, and the panel drew nothing there — the same
+    // sentence puts a hairline between nutrient rows, which it did draw, so the
+    // half that was missing looked like the half that was present.
+    const heading = layout.elements.find((e) => e.elementId === US_FOOD_ELEMENTS.nutritionHeading)!
+    const servings = layout.elements.find(
+      (e) => e.elementId === US_FOOD_ELEMENTS.nutritionServings,
+    )!
+    const between = bars.filter(
+      (b) => b.yMm > heading.box.yMm + heading.box.heightMm && b.yMm < servings.box.yMm,
+    )
+    expect(between).toHaveLength(1)
+    expect(between[0]!.heightMm).toBeCloseTo(0.0882, 4)
+  })
+
   it('puts no rule above the first nutrient row', () => {
     // A hairline is "centered between nutrients" and the first has nothing above
     // it. Keying it off the loop index put one under the "% Daily Value"
     // heading, because Calories takes index 0 and is drawn further up — a rule
     // no printed Nutrition Facts label has.
+    // Scoped to the gap between Calories and the first row. A blanket "no
+    // hairline above the first row" was too broad the moment 101.9(d)(1)(v)'s
+    // hairline under the heading arrived — which is higher up and required.
     const firstRow = layout.elements.find(
       (e) => e.elementId === nutritionRowElementId('total-fat'),
     )!
-    const hairlines = bars.filter((b) => b.heightMm < 0.1)
-    expect(hairlines.every((b) => b.yMm > firstRow.box.yMm)).toBe(true)
+    const calories = layout.elements.find(
+      (e) => e.elementId === US_FOOD_ELEMENTS.nutritionCalories,
+    )!
+    const hairlines = bars.filter(
+      (b) =>
+        b.heightMm < 0.1 &&
+        b.yMm > calories.box.yMm + calories.box.heightMm &&
+        b.yMm < firstRow.box.yMm,
+    )
+    expect(hairlines).toEqual([])
   })
 
   it('gives every nutrient its own element, so a finding can point at the row', () => {
@@ -1089,5 +1120,148 @@ describe('findings from the stage 5 review', () => {
       order: [...panel.order!, 'calories'],
     }).map((f) => f.code)
     expect(codes).toContain('FDA_NUTRITION_OUT_OF_ORDER')
+  })
+})
+
+describe('the linear display', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const small = (patch: Record<string, unknown> = {}): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    nutritionFacts: {
+      ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      format: 'linear',
+      availableSurfaceSqInches: 9,
+      cannotAccommodateTabular: true,
+      ...patch,
+    },
+  })
+
+  it('presents the information in one run rather than vertical columns', () => {
+    // 101.9(j)(13)(ii)(A): "in a tabular or ... linear (i.e., string) fashion
+    // rather than in vertical columns". That is the whole of what makes it
+    // linear, and it is why a small package can carry it: 35 mm against 129.
+    const layout = layOutUsFoodLabel({ data: small(), stock })
+    const panel = layout.elements.find((e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel)!
+    const vertical = layOutUsFoodLabel(US_FOOD_CONFORMANT).elements.find(
+      (e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+    )!
+    expect(panel.box.heightMm).toBeLessThan(vertical.box.heightMm / 3)
+    expect(layout.elements.map((e) => e.elementId)).not.toContain(
+      nutritionRowElementId('total-fat'),
+    )
+  })
+
+  it('still carries the heading 101.9(d)(2) requires', () => {
+    // The reduced displays are excused from setting it "the full width of the
+    // information provided under paragraph (d)(7)" — not from carrying it.
+    const layout = layOutUsFoodLabel({ data: small(), stock })
+    const heading = layout.primitives.filter(
+      (p): p is TextPrimitive =>
+        p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionHeading,
+    )
+    expect(heading.map((h) => h.text)).toEqual(['Nutrition Facts'])
+  })
+
+  it('drops the footnote for the abbreviated statement (j)(13)(i) permits', () => {
+    // "do not require the information in paragraphs (d)(9) and (f)(5) related to
+    // the footnote, however the abbreviated footnote statement '% DV = % Daily
+    // Value' may be used."
+    const layout = layOutUsFoodLabel({ data: small(), stock })
+    const text = layout.primitives
+      .filter((p): p is TextPrimitive => p.kind === 'text')
+      .map((p) => p.text)
+      .join(' ')
+    expect(text).toContain('% DV = % Daily Value')
+    expect(text).not.toContain('2,000 calories a day')
+  })
+
+  it('is permitted on a package that cannot take a tabular display', () => {
+    expect(findingsFor(small(), stock).map((f) => f.code)).toContain('FDA_NUTRITION_FORMAT_MET')
+  })
+
+  it('is not permitted on the same package without that declaration', () => {
+    const { cannotAccommodateTabular: _drop, ...facts } = small().nutritionFacts!
+    const codes = findingsFor({ ...US_FOOD_CONFORMANT.data, nutritionFacts: facts }, stock).map(
+      (f) => f.code,
+    )
+    expect(codes).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+  })
+
+  it('says nothing about per-element type sizes it cannot identify', () => {
+    // One run means no servings line, serving size or Calories element to
+    // measure — and "0 parts of the panel meet the type sizes" would be a rule
+    // declining and reporting that it cleared.
+    const codes = findingsFor(small(), stock).map((f) => f.code)
+    expect(codes).not.toContain('FDA_NUTRITION_TYPE_SIZE_MET')
+    expect(codes).not.toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+  })
+})
+
+describe('the tabular display', () => {
+  const stock = { widthMm: 200, heightMm: 240, marginMm: 6 }
+  const tabular = (patch: Record<string, unknown> = {}): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    container: { shape: 'rectangular', widthMm: 200, heightMm: 240 },
+    nutritionFacts: {
+      ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      format: 'tabular',
+      availableSurfaceSqInches: 80,
+      continuousVerticalSpaceInches: 2,
+      ...patch,
+    },
+  })
+
+  it('runs the nutrients across the label instead of down it', () => {
+    // The point of (d)(11): a package "without sufficient continuous vertical
+    // space" gets the same information in a quarter of the height.
+    const layout = layOutUsFoodLabel({ data: tabular(), stock })
+    const panel = layout.elements.find((e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel)!
+    const rows = layout.elements.filter((e) => e.elementId.startsWith('food-nutrition-row-'))
+    const columns = new Set(rows.map((r) => Math.round(r.box.xMm)))
+    expect(columns.size).toBeGreaterThan(1)
+    expect(panel.box.heightMm).toBeLessThan(40)
+    expect(panel.box.widthMm).toBeGreaterThan(100)
+  })
+
+  it('keeps a row element per nutrient, as the vertical display does', () => {
+    const layout = layOutUsFoodLabel({ data: tabular(), stock })
+    for (const id of ['total-fat', 'added-sugars', 'potassium']) {
+      expect(layout.elements.map((e) => e.elementId)).toContain(nutritionRowElementId(id))
+    }
+  })
+
+  it('is permitted by 101.9(d)(11)(iii) on a package far above the (j)(13) areas', () => {
+    // 80 in² is twice the (j)(13) cap, and (d)(11)(iii) does not run through it:
+    // "If there is not sufficient continuous vertical space (i.e.,
+    // approximately 3 in) ... the nutrition label may be presented in a tabular
+    // display." A rule knowing only the area route would report this label.
+    const match = findingsFor(tabular(), stock).find((f) => f.code === 'FDA_NUTRITION_FORMAT_MET')
+    expect(match!.citation.reference).toBe('21 CFR 101.9(d)(11)(iii)')
+  })
+
+  it('is not permitted on the same package with room for a vertical column', () => {
+    const codes = findingsFor(tabular({ continuousVerticalSpaceInches: 6 }), stock).map(
+      (f) => f.code,
+    )
+    expect(codes).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+  })
+
+  it('does not let the vertical-space route reach the linear display', () => {
+    // (d)(11)(iii) names the tabular display only. Linear stays behind
+    // (j)(13)(ii)(A)'s areas and its own gate.
+    const codes = findingsFor(
+      tabular({ format: 'linear', cannotAccommodateTabular: true }),
+      stock,
+    ).map((f) => f.code)
+    expect(codes).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+  })
+
+  it('judges its type against the reduced minimums, not the vertical ones', () => {
+    // (d)(1)(iii) drops the Calories word to 10 point and the numeral to 14 on
+    // this display, so a panel drawn to them complies — judged against the
+    // vertical set it would not.
+    expect(findingsFor(tabular(), stock).map((f) => f.code)).not.toContain(
+      'FDA_NUTRITION_TYPE_TOO_SMALL',
+    )
   })
 })

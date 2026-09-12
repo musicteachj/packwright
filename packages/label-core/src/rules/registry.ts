@@ -34,6 +34,7 @@ import {
   usFoodNutritionPercentDvRule,
   usFoodNutritionRoundingRule,
 } from './usFood/nutritionFacts'
+import { usFoodNutritionFormatRule } from './usFood/nutritionFormat'
 import { usFoodNutritionTypeSizeRule } from './usFood/nutritionTypeSize'
 import { usFoodNetQuantityDualDeclarationRule } from './usFood/netQuantityDualDeclaration'
 import { usFoodNetQuantityPlacementRule } from './usFood/netQuantityPlacement'
@@ -123,6 +124,7 @@ export const US_FOOD_RULES: readonly UsFoodRule[] = [
   usFoodNutritionRoundingRule,
   usFoodNutritionPercentDvRule,
   usFoodNutritionTypeSizeRule,
+  usFoodNutritionFormatRule,
   usFoodResponsibleFirmRule,
   usFoodInformationPanelTypeSizeRule,
 ]
