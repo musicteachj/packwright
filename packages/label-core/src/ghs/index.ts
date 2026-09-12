@@ -9,9 +9,31 @@ export {
 } from './labelDimensions'
 export type { GhsLabelDimensionBand } from './labelDimensions'
 export {
+  EMPTY_FRAME_IS_NOT_A_PICTOGRAM,
+  GHS_PICTOGRAMS_BY_REGIME,
   GHS_PICTOGRAM_CODES,
   GHS_PICTOGRAM_STYLE_DEFAULT,
   GHS_PICTOGRAM_SYMBOLS,
+  isPictogramRecognised,
   pictogramFrameCommands,
 } from './pictograms'
 export type { GhsPictogramCode } from './pictograms'
+export {
+  EU_CLP_HAZARD_STATEMENTS,
+  EU_CLP_PRECAUTIONARY_STATEMENTS,
+  GHS_REGIMES,
+  US_OSHA_HAZARD_STATEMENTS,
+  US_OSHA_PRECAUTIONARY_STATEMENTS,
+  hazardStatementText,
+  knownHazardStatementCodes,
+  knownPrecautionaryStatementCodes,
+  precautionaryStatementText,
+} from './statements'
+export type { GhsRegime } from './statements'
+export {
+  ANNEX_V_ENTRIES,
+  hazardClassEntry,
+  hazardsRequiring,
+  requiredPictograms,
+} from './classification'
+export type { HazardClassEntry } from './classification'

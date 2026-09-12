@@ -29,6 +29,7 @@
  */
 
 import type { PathCommand } from '../layout/types'
+import type { GhsRegime } from './statements'
 
 /** Annex V's own codes, in the annex's order. */
 export const GHS_PICTOGRAM_CODES = [
@@ -114,3 +115,39 @@ export function pictogramFrameCommands(xMm: number, yMm: number, sideMm: number)
     { op: 'close' },
   ]
 }
+
+/**
+ * Which pictograms a regime recognises.
+ *
+ * **CLP has nine; OSHA has eight.** 29 CFR 1910.1200 Appendix C.2.3.2 is
+ * explicit — "One of eight standard hazard symbols shall be used in each
+ * pictogram" — and the one it leaves out is GHS09, the environment pictogram,
+ * which CLP Annex V requires for substances hazardous to the aquatic
+ * environment.
+ *
+ * This is the clearest reason the two regimes cannot share one table. Offering
+ * GHS09 as required on a US label would misstate the law, and silently dropping
+ * it from an EU label would omit a mandatory element.
+ */
+export const GHS_PICTOGRAMS_BY_REGIME: Readonly<Record<GhsRegime, readonly GhsPictogramCode[]>> = {
+  'eu-clp': GHS_PICTOGRAM_CODES,
+  'us-osha': GHS_PICTOGRAM_CODES.filter((code) => code !== 'GHS09'),
+}
+
+export function isPictogramRecognised(regime: GhsRegime, code: GhsPictogramCode): boolean {
+  return GHS_PICTOGRAMS_BY_REGIME[regime].includes(code)
+}
+
+/**
+ * OSHA 1910.1200 Appendix C.2.3.1, verbatim: "A square red frame set at a point
+ * without a hazard symbol is not a pictogram and is not permitted on the label."
+ *
+ * Recorded here because this engine currently draws exactly that — the frames
+ * resolve, the Annex V specimen artwork could not be verified, and each missing
+ * symbol is registered as a layout omission. That was the right call for
+ * provenance and it means a label drawn today carries something OSHA explicitly
+ * forbids. The glyphs are a blocker for a usable US label rather than a polish
+ * item, and a rule should say so rather than leaving it implicit.
+ */
+export const EMPTY_FRAME_IS_NOT_A_PICTOGRAM =
+  'A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.'

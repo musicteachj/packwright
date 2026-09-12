@@ -9,7 +9,7 @@ const STOCK: LabelStock = { widthMm: 74, heightMm: 105, marginMm: 4 }
 const DATA: GhsLabelData = {
   productIdentifier: 'Acetone',
   capacityL: 5,
-  signalWord: 'Danger',
+  signalWords: ['Danger'],
   pictograms: ['GHS02', 'GHS07'],
   hazardStatements: ['Highly flammable liquid and vapour.'],
   precautionaryStatements: ['Keep away from heat.'],

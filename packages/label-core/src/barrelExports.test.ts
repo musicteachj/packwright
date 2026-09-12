@@ -29,8 +29,10 @@ import * as constraints from './symbology/constraints'
 import * as symbologyBarrel from './symbology/index'
 import * as layOutSymbol from './symbology/layOutSymbol'
 import * as ghsBarrel from './ghs/index'
+import * as ghsClassification from './ghs/classification'
 import * as ghsLabelDimensions from './ghs/labelDimensions'
 import * as ghsPictograms from './ghs/pictograms'
+import * as ghsStatements from './ghs/statements'
 import * as templatesBarrel from './templates/index'
 import * as ghsTemplate from './templates/ghs'
 import * as stock from './templates/stock'
@@ -128,8 +130,10 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     'ghs',
     ghsBarrel,
     [
+      ['classification.ts', ghsClassification],
       ['labelDimensions.ts', ghsLabelDimensions],
       ['pictograms.ts', ghsPictograms],
+      ['statements.ts', ghsStatements],
     ],
   ],
   [

@@ -141,7 +141,10 @@ const GhsRequest = z.object({
   // Both enums are derived from `label-core`'s own lists rather than restated,
   // so a signal word or pictogram code cannot exist on one side and not the
   // other — the drift the UPC-A schema was already fixed for.
-  signalWord: z.enum(GHS_SIGNAL_WORDS).optional(),
+  // Plural, so a label carrying both Danger and Warning is representable and
+  // therefore checkable — see `GhsLabelData.signalWords`.
+  signalWords: z.array(z.enum(GHS_SIGNAL_WORDS)).optional(),
+  hazards: z.array(z.string()).optional(),
   pictograms: z.array(z.enum(GHS_PICTOGRAM_CODES)).optional(),
   hazardStatements: z.array(z.string()).optional(),
   precautionaryStatements: z.array(z.string()).optional(),
@@ -254,7 +257,8 @@ export function createLabelRouter(): Router {
     const data: GhsLabelData = {
       productIdentifier: rest.productIdentifier,
       capacityL: rest.capacityL,
-      ...(rest.signalWord === undefined ? {} : { signalWord: rest.signalWord }),
+      ...(rest.signalWords === undefined ? {} : { signalWords: rest.signalWords }),
+      ...(rest.hazards === undefined ? {} : { hazards: rest.hazards }),
       ...(rest.pictograms === undefined ? {} : { pictograms: rest.pictograms }),
       ...(rest.hazardStatements === undefined ? {} : { hazardStatements: rest.hazardStatements }),
       ...(rest.precautionaryStatements === undefined

@@ -47,7 +47,7 @@ const STARTING_GTIN = '036000291452'
 const STARTING_GHS: GhsLabelData = {
   productIdentifier: 'Example solvent',
   capacityL: 5,
-  signalWord: 'Danger',
+  signalWords: ['Danger'],
   pictograms: ['GHS02', 'GHS07'],
   hazardStatements: ['(hazard statement text is not yet looked up from the H-statement table)'],
   precautionaryStatements: ['(precautionary statement text likewise)'],

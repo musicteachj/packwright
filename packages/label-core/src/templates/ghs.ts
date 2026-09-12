@@ -61,7 +61,29 @@ export interface GhsLabelData {
    * Not the volume of the label, and not derivable from the stock.
    */
   capacityL: number
-  signalWord?: GhsSignalWord
+  /**
+   * Signal words present on the label, **plural**.
+   *
+   * One field holding one value made CLP Article 20(3) — "where the signal word
+   * 'Danger' is used, the signal word 'Warning' shall not appear" — impossible
+   * to violate, and therefore impossible to check. That is exactly the trap
+   * phase 3 documented: the quiet-zone rule could never fail because the engine
+   * would not draw a label that failed it.
+   *
+   * It is also the honest shape for phase 7. A photograph of a real label
+   * carrying both words is precisely what the audit path has to be able to
+   * report, and a single-valued field could only represent it by discarding half
+   * the evidence.
+   */
+  signalWords?: readonly GhsSignalWord[]
+  /**
+   * Hazard classifications, as `ANNEX_V_ENTRIES` ids.
+   *
+   * The input the regulation actually starts from. Pictograms are derived from
+   * these rather than asked for, which is what lets Article 26 precedence be
+   * enforced — those rules turn on *why* a pictogram is present.
+   */
+  hazards?: readonly string[]
   /** Annex V codes. Drawn in the order given; precedence is a rule, not a layout. */
   pictograms?: readonly GhsPictogramCode[]
   /**

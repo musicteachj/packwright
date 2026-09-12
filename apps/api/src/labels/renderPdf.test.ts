@@ -173,7 +173,7 @@ describe('the GHS label only asks for faces this build embeds', () => {
       data: {
         productIdentifier: 'Acetone',
         capacityL: 5,
-        signalWord: 'Danger',
+        signalWords: ['Danger'],
         pictograms: ['GHS02'],
         hazardStatements: ['Highly flammable liquid and vapour.'],
         supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way' },

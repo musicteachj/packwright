@@ -26,6 +26,7 @@ import {
   GHS_PICTOGRAM_SYMBOLS,
   pictogramFrameCommands,
 } from '../ghs/pictograms'
+import { requiredPictograms } from '../ghs/classification'
 import { dimensionBandFor, pictogramAreaSqMm } from '../ghs/labelDimensions'
 import type { GhsLabelData } from '../templates/ghs'
 import { GHS_ELEMENTS, GHS_TYPE_DEFAULT } from '../templates/ghs'
@@ -120,18 +121,32 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     type.productIdentifierMm,
   )
 
-  if (data.signalWord) {
-    pushText(GHS_ELEMENTS.signalWord, 'Signal word', data.signalWord, type.signalWordMm, true)
+  // Every signal word the document carries is drawn, including both. Drawing
+  // only the first would hide the very defect Article 20(3) exists to catch.
+  if (data.signalWords?.length) {
+    pushText(
+      GHS_ELEMENTS.signalWord,
+      'Signal word',
+      data.signalWords.join(' '),
+      type.signalWordMm,
+      true,
+    )
   }
 
-  if (data.pictograms?.length) {
+  // Derived from the classification where one is given, and taken as supplied
+  // otherwise. Deriving is the regulation's own direction of travel; an explicit
+  // list stays supported so a label can carry a pictogram set that is *wrong*,
+  // which is what the precedence rules need to have something to catch.
+  const pictogramCodes = data.pictograms ?? requiredPictograms(data.hazards ?? [])
+
+  if (pictogramCodes.length) {
     const boxMm = sideMm * Math.SQRT2
     // One formula, used by both the strip's own box and each frame's position.
     // They were two expressions of the same arithmetic, so a change to the
     // spacing could have moved the frames without moving the box that measures
     // them — and `length - 1` was non-negative only because of the guard above.
     const pictogramXMm = (index: number) => panel.xMm + index * (boxMm + type.blockGapMm)
-    const stripWidthMm = pictogramXMm(data.pictograms.length - 1) + boxMm - panel.xMm
+    const stripWidthMm = pictogramXMm(pictogramCodes.length - 1) + boxMm - panel.xMm
     elements.push({
       elementId: GHS_ELEMENTS.pictograms,
       label: 'Hazard pictograms',
@@ -143,7 +158,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       },
     })
 
-    data.pictograms.forEach((code, index) => {
+    pictogramCodes.forEach((code, index) => {
       const xMm = pictogramXMm(index)
       const elementId = `${GHS_ELEMENTS.pictograms}-${code}`
 

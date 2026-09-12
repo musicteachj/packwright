@@ -107,7 +107,7 @@ const postGhs = (body: object) => supertest(app()).post('/api/labels/ghs/export'
 const GHS_BODY = {
   productIdentifier: 'Acetone',
   capacityL: 5,
-  signalWord: 'Danger',
+  signalWords: ['Danger'],
   pictograms: ['GHS02', 'GHS07'],
   hazardStatements: ['Highly flammable liquid and vapour.'],
   precautionaryStatements: ['Keep away from heat.'],
@@ -153,7 +153,7 @@ describe('POST /api/labels/ghs/export', () => {
   })
 
   it('rejects a signal word outside the two CLP defines', async () => {
-    const response = await postGhs({ ...GHS_BODY, signalWord: 'CAUTION' })
+    const response = await postGhs({ ...GHS_BODY, signalWords: ['CAUTION'] })
     expect(response.status).toBe(400)
   })
 

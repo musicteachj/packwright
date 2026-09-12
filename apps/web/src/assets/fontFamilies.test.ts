@@ -77,7 +77,7 @@ describe('every font a layout asks for is declared in the stylesheet that ships'
           data: {
             productIdentifier: 'Acetone',
             capacityL: 5,
-            signalWord: 'Danger',
+            signalWords: ['Danger'],
             pictograms: ['GHS02'],
             hazardStatements: ['Highly flammable liquid and vapour.'],
             supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way' },
@@ -109,7 +109,7 @@ describe('every font a layout asks for is declared in the stylesheet that ships'
   it('asks for weight rather than naming a bold family, which the browser cannot resolve', () => {
     const faces = facesIn(
       layOutGhsLabel({
-        data: { productIdentifier: 'Acetone', capacityL: 5, signalWord: 'Danger' },
+        data: { productIdentifier: 'Acetone', capacityL: 5, signalWords: ['Danger'] },
         stock: DEFAULT_GHS_STOCK,
       }),
     )
