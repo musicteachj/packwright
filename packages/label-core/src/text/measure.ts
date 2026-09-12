@@ -12,13 +12,21 @@
  * could agree by luck, compute the number once instead.
  */
 
-import { FONT_METRICS } from './metrics'
+import { FONT_METRICS, type FaceMetrics } from './metrics'
 
 /** Faces this build carries metrics for. */
 export function hasMetrics(fontFamily: string): boolean {
   // `in` walks the prototype chain, so `hasMetrics('toString')` answered true
   // and the lookup below then resolved to a function.
   return Object.hasOwn(FONT_METRICS, fontFamily)
+}
+
+/** A face with no metrics falls back to `IBM Plex Sans`. */
+function faceFor(fontFamily: string): FaceMetrics {
+  return (
+    (hasMetrics(fontFamily) ? FONT_METRICS[fontFamily] : undefined) ??
+    FONT_METRICS['IBM Plex Sans']!
+  )
 }
 
 /**
@@ -30,14 +38,50 @@ export function hasMetrics(fontFamily: string): boolean {
  * only where it breaks.
  */
 export function measureTextMm(text: string, fontSizeMm: number, fontFamily: string): number {
-  const face =
-    (hasMetrics(fontFamily) ? FONT_METRICS[fontFamily] : undefined) ??
-    FONT_METRICS['IBM Plex Sans']!
+  const face = faceFor(fontFamily)
   let em = 0
   for (const character of text) {
     em += face.widths[character] ?? face.fallback
   }
   return em * fontSizeMm
+}
+
+/**
+ * Which letter a regulated type-size minimum is measured by.
+ *
+ * Both are printed heights, and neither is the em. Choosing between them is a
+ * reading of the regulation, not a property of the font, so callers decide —
+ * see `rules/usFood/netQuantityTypeSize.ts` for 21 CFR 101.7(h)(2)'s.
+ */
+export type GlyphBasis = 'cap-height' | 'lowercase-o'
+
+/**
+ * Printed height, in millimetres, of the letter a type-size rule measures.
+ *
+ * `fontSizeMm` is the em — the number a renderer is handed. It is roughly 1.85
+ * times the lowercase "o" and 1.43 times a capital, so a rule that compares a
+ * regulated minimum against it directly passes type at little over half the
+ * requirement. This converts, so that comparison can be made honestly.
+ */
+export function glyphHeightMm(fontSizeMm: number, fontFamily: string, basis: GlyphBasis): number {
+  const face = faceFor(fontFamily)
+  const ratio = basis === 'cap-height' ? face.capHeightEm : face.lowercaseOHeightEm
+  return ratio * fontSizeMm
+}
+
+/**
+ * The em size at which the given letter prints at least `heightMm` tall — the
+ * inverse of `glyphHeightMm`, for stating what a label would need rather than
+ * only that what it has is too small.
+ */
+export function fontSizeMmForGlyphHeight(
+  heightMm: number,
+  fontFamily: string,
+  basis: GlyphBasis,
+): number {
+  const face = faceFor(fontFamily)
+  const ratio = basis === 'cap-height' ? face.capHeightEm : face.lowercaseOHeightEm
+  return heightMm / ratio
 }
 
 /**

@@ -79,6 +79,36 @@ describe('minNetQuantityTypeHeightMm', () => {
   })
 })
 
+describe('a declaration formed in the surface rather than printed', () => {
+  // 21 CFR 101.7(i), closing sentence: "Where the declaration is blown,
+  // embossed, or molded on a glass or plastic surface rather than by printing,
+  // typing, or coloring, the lettering sizes specified [...] shall be increased
+  // by one-sixteenth of an inch."
+  it.each([
+    [3, 1 / 16 + 1 / 16],
+    [12, 1 / 8 + 1 / 16],
+    [30, 3 / 16 + 1 / 16],
+    [200, 1 / 4 + 1 / 16],
+    [500, 1 / 2 + 1 / 16],
+  ])('adds 1/16 inch to the %i in² band', (area, expected) => {
+    expect(minNetQuantityTypeHeightInches(area, 'blown-embossed-or-molded')).toBeCloseTo(
+      expected,
+      10,
+    )
+  })
+
+  it('defaults to printed, so the increase is opt-in rather than assumed', () => {
+    expect(minNetQuantityTypeHeightInches(30)).toBe(minNetQuantityTypeHeightInches(30, 'printed'))
+    expect(minNetQuantityTypeHeightInches(30)).toBe(3 / 16)
+  })
+
+  it('moves a molded 30 in² panel from 3/16 to 1/4 inch', () => {
+    // The practical consequence, in the units the label is drawn in: a molded
+    // HDPE bottle needs a third more type than the table alone would suggest.
+    expect(minNetQuantityTypeHeightMm(30, 'blown-embossed-or-molded')).toBeCloseTo(6.35, 4)
+  })
+})
+
 describe('netQuantityZoneTopMm', () => {
   it('starts the permitted zone 70% down the panel', () => {
     // The declaration must sit within the bottom 30% of the PDP.

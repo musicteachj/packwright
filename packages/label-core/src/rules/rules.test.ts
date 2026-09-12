@@ -6,7 +6,7 @@ import type { UpcALabelData } from '../templates/upcA'
 import type { Finding } from '../types/index'
 import { CONFORMANT_FIXTURE, GS1_RETAIL_FIXTURES } from './fixtures/gs1Retail'
 import { layOutGhsLabel } from '../layout/ghsEngine'
-import { GHS_RULES, GS1_RETAIL_RULES, listRules, runRules } from './registry'
+import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES, listRules, runRules } from './registry'
 import { compareSeverity } from './types'
 
 function findingsFor(data: UpcALabelData, stock: LabelStock): Finding[] {
@@ -345,6 +345,9 @@ describe('the registry runs the rules for the document’s own label type', () =
   it('filters the catalogue by label type, and lists everything without one', () => {
     expect(listRules('gs1-retail')).toHaveLength(GS1_RETAIL_RULES.length)
     expect(listRules('ghs-chemical')).toHaveLength(GHS_RULES.length)
-    expect(listRules()).toHaveLength(GS1_RETAIL_RULES.length + GHS_RULES.length)
+    expect(listRules('us-food')).toHaveLength(US_FOOD_RULES.length)
+    expect(listRules()).toHaveLength(
+      GS1_RETAIL_RULES.length + GHS_RULES.length + US_FOOD_RULES.length,
+    )
   })
 })

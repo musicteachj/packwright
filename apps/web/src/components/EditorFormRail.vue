@@ -11,6 +11,7 @@
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import GhsFormRail from './GhsFormRail.vue'
 import UpcAFormRail from './UpcAFormRail.vue'
+import UsFoodFormRail from './UsFoodFormRail.vue'
 
 const store = useLabelDocumentStore()
 </script>
@@ -24,6 +25,7 @@ const store = useLabelDocumentStore()
     </h2>
 
     <GhsFormRail v-if="store.labelType === 'ghs-chemical'" />
+    <UsFoodFormRail v-else-if="store.labelType === 'us-food'" />
     <UpcAFormRail v-else />
   </form>
 </template>

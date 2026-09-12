@@ -12,3 +12,10 @@ export {
   upcAHriFor,
 } from './upcA'
 export type { DigitalLinkData, UpcALabelData } from './upcA'
+export {
+  DEFAULT_US_FOOD_STOCK,
+  US_FOOD_ELEMENTS,
+  US_FOOD_PACKAGINGS,
+  US_FOOD_TYPE_DEFAULT,
+} from './usFood'
+export type { UsFoodLabelData, UsFoodNetQuantity, UsFoodPackaging } from './usFood'

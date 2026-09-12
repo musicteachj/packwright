@@ -10,6 +10,46 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 1 — the net quantity of contents declaration. The first thing in this project to call
+`geometry/pdp.ts`, written in phase 1 and unused by any label since.
+
+- **Four rules, each measuring the declaration as drawn.** Type size against the panel area
+  (`21 CFR 101.7(i)`), placement within the bottom 30 percent (`101.7(f)`), separation from other printed
+  label information (also `101.7(f)`), and the inch/pound-plus-SI declaration (`15 U.S.C. 1453(a)(2)`).
+  Six known-bad fixtures between them, each asserting code, severity and the exact citation string.
+- **A fifth rule, `us-food/net-quantity-present`** — 21 CFR 101.7(a), "The principal display panel of a food
+  in package form shall bear a declaration of the net quantity of contents." Added during the stage-1 review,
+  for the reason under Fixed: the other four each decline when nothing is drawn, and four honest declines add
+  up to a clean bill of health unless one rule owns the missing element. It reports `blocking`, the severity
+  reserved for non-compliant as drawn.
+
+- **The label stock and the package are now different geometries.** Earlier templates had one. A 120 × 170 mm
+  label can sit on a carton, on a bottle or on a wedge of cheese, and 21 CFR 101.1 computes a different panel
+  area for each — the full face, 40 percent of height × circumference, or 40 percent of total surface. The
+  type-size band comes from the container and the placement zone from the drawn panel, so `UsFoodLabelData`
+  carries both and the two are not interchangeable. A fixture makes the gap concrete: a 60 × 90 mm wrap on a
+  200 mm bottle is 8.37 in² of label around a 37.20 in² panel, and sizing type to the label understates the
+  requirement by a third.
+- **The compliant type size is derived; the wrong one has to be stated.** With no `netQuantityFontSizeMm` the
+  engine computes the em that meets 101.7(i) for this panel, this marking method and this casing, so the
+  default label passes — and the suite asserts that rather than the comment claiming it. Supplying the field
+  draws that size instead, which is the only way an undersized declaration reaches the rule. Same shape as the
+  GHS engine deriving a pictogram set unless one is stated.
+- **The editor, the rail and the export route, for a third label type.** `UsFoodFormRail.vue`, a third
+  branch in `EditorFormRail`, a `POST /api/labels/us-food/export` route and a `us-food` arm on the store.
+  The rail shows the panel area and the letter height the table demands as the container is typed, both read
+  from `label-core` rather than restated — the same discipline that has the GHS rail read its small-container
+  threshold from the rule that enforces it.
+- The container reaches the API as a **discriminated union**, not one object with every dimension optional.
+  A request carrying a circumference *and* a panel width describes two packages, and Zod rejects it at the
+  boundary rather than letting the engine choose which one was meant.
+
+- Vertical font metrics. `FaceMetrics` gains `lowercaseOHeightEm` and `capHeightEm`, generated from the
+  embedded TTFs alongside the advance widths that were already there, with `glyphHeightMm` and
+  `fontSizeMmForGlyphHeight` in `text/measure` to convert. The generator now fails rather than emits if the
+  cap height taken from the `H` outline disagrees with the font's own `OS/2.sCapHeight`, or if the `o` does
+  not exceed `OS/2.sxHeight` by a small overshoot — two bounds against tables it did not produce.
+
 Phase 4, stage 6 — small containers, which are two different rules rather than one.
 
 - `29 CFR 1910.1200(f)(12)` and CLP Annex I 1.5, both read from source. They are not the same provision with

@@ -82,12 +82,15 @@ export interface TextPrimitive extends PrimitiveBase {
    * `font-size`. **Not** cap height, and not the height of a lowercase letter.
    *
    * The distinction is load-bearing and this field was mis-documented at first.
-   * 21 CFR 101.7(i) sets the net-quantity minimum by the height of the lowercase
-   * "o", which for most faces is around half the em — so a rule that compared
-   * `minNetQuantityTypeHeightMm` against this number directly would pass type
-   * roughly a third under the legal minimum. Deriving x-height needs real font
-   * metrics, which `label-core` does not have; until it does, no rule may judge
-   * type size from this field alone.
+   * 21 CFR 101.7(i) sets the net-quantity minimum as a printed letter height and
+   * 101.7(h)(2) names which letter — a capital, or the lowercase "o" where any
+   * lower case is used. For IBM Plex Sans an em is 1.433 capitals or 1.852 "o"s,
+   * so a rule comparing `minNetQuantityTypeHeightMm` against this number
+   * directly would clear type at 54% of the legal minimum.
+   *
+   * **No rule may judge a regulated type size from this field alone.** Convert
+   * first, with `glyphHeightMm` from `text/measure`, which reads the per-face
+   * outline heights generated from the embedded TTFs.
    */
   fontSizeMm: number
   fontFamily: string
@@ -181,12 +184,13 @@ export type LayoutPrimitive = RectPrimitive | LinePrimitive | TextPrimitive | Pa
  * the text-equivalent view — reads a box rather than re-deriving one from a bag
  * of rectangles.
  *
- * It exists because a `TextPrimitive` has no width. Deriving one needs font
- * metrics, which `label-core` deliberately does not carry (see the note on
- * `fontSizeMm` above), so measuring encroachment primitive-by-primitive would be
- * guesswork for exactly the elements most likely to encroach — text blocks. The
- * engine, on the other hand, knows precisely what box it set aside. So it says
- * so, once, instead of every consumer guessing.
+ * It exists because a `TextPrimitive` has no width, and because a width derived
+ * from `text/metrics` is the width of the glyphs rather than the width of the
+ * space the engine set aside for them. Those differ — by the wrap width, by the
+ * trailing slack on a short last line — so measuring encroachment
+ * primitive-by-primitive would answer a subtly different question for exactly
+ * the elements most likely to encroach. The engine knows precisely what box it
+ * allocated. So it says so, once, instead of every consumer re-deriving it.
  */
 /**
  * A hazard pictogram as drawn, with the requirement it is judged against.

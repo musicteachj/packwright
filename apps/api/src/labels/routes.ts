@@ -18,6 +18,7 @@ import {
   ANCHORS,
   DEFAULT_GHS_STOCK,
   DEFAULT_UPC_A_STOCK,
+  DEFAULT_US_FOOD_STOCK,
   GHS_PICTOGRAM_CODES,
   GHS_REGIMES,
   HAZARD_CLASS_IDS,
@@ -28,13 +29,17 @@ import {
   blockingOmissions,
   labelFilename,
   getSymbologyConstraints,
+  US_FOOD_PACKAGINGS,
   layOutGhsLabel,
   layOutUpcALabel,
+  layOutUsFoodLabel,
   type ArtworkBlock,
   type DigitalLinkData,
   type GhsLabelData,
   type GhsSupplier,
   type UpcALabelData,
+  type UsFoodLabelData,
+  type UsFoodNetQuantity,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import { Router, type Request, type Response } from 'express'
@@ -185,6 +190,87 @@ function toSupplier(supplier: z.infer<typeof GhsSupplierSchema>): GhsSupplier {
   }
 }
 
+/**
+ * The container, as a discriminated union matching `geometry/pdp`'s own.
+ *
+ * Three shapes with different dimensions rather than one object with everything
+ * optional: 21 CFR 101.1 computes a different area for each, and a request
+ * carrying a circumference *and* a total surface area describes two containers.
+ * Zod's discriminated union rejects that at the boundary rather than letting the
+ * engine pick.
+ */
+const ContainerSchema = z.discriminatedUnion('shape', [
+  z.object({
+    shape: z.literal('rectangular'),
+    widthMm: z.number().positive(),
+    heightMm: z.number().positive(),
+  }),
+  z.object({
+    shape: z.literal('cylindrical'),
+    heightMm: z.number().positive(),
+    circumferenceMm: z.number().positive(),
+  }),
+  z.object({
+    shape: z.literal('other'),
+    totalSurfaceAreaSqMm: z.number().positive(),
+    obviousPanelAreaSqMm: z.number().positive().optional(),
+  }),
+])
+
+const NetQuantitySchema = z.object({
+  inchPound: z.string().min(1),
+  metric: z.string().optional(),
+  packaging: z.enum(US_FOOD_PACKAGINGS).optional(),
+})
+
+const UsFoodRequest = z.object({
+  statementOfIdentity: z.string().min(1),
+  netQuantity: NetQuantitySchema,
+  // Required, and not defaulted. The container selects the 101.7(i) type-size
+  // band; supplying one the caller never stated would invent the requirement
+  // every finding on this label is measured against.
+  container: ContainerSchema,
+  markingMethod: z.enum(['printed', 'blown-embossed-or-molded']).optional(),
+  netQuantityFontSizeMm: z.number().positive().optional(),
+  netQuantityAnchor: z.enum(ANCHORS).optional(),
+  stock: z
+    .object({
+      widthMm: z.number().positive(),
+      heightMm: z.number().positive(),
+      marginMm: z.number().min(0),
+    })
+    .optional(),
+})
+
+/** The same key-by-key reconciliation `toArtwork` and `toSupplier` do. */
+function toNetQuantity(netQuantity: z.infer<typeof NetQuantitySchema>): UsFoodNetQuantity {
+  return {
+    inchPound: netQuantity.inchPound,
+    ...(netQuantity.metric === undefined ? {} : { metric: netQuantity.metric }),
+    ...(netQuantity.packaging === undefined ? {} : { packaging: netQuantity.packaging }),
+  }
+}
+
+/**
+ * And again for the container, whose optional member sits one level deeper.
+ *
+ * Only the `other` branch has one. Spreading the parsed object wholesale would
+ * carry `obviousPanelAreaSqMm: undefined` into a type that says the property is
+ * either present with a number or absent — which is the distinction
+ * `exactOptionalPropertyTypes` exists to keep, and the one `as never` switched
+ * off the last time this boundary was crossed carelessly.
+ */
+function toContainer(container: z.infer<typeof ContainerSchema>): UsFoodLabelData['container'] {
+  if (container.shape !== 'other') return container
+  return {
+    shape: 'other',
+    totalSurfaceAreaSqMm: container.totalSurfaceAreaSqMm,
+    ...(container.obviousPanelAreaSqMm === undefined
+      ? {}
+      : { obviousPanelAreaSqMm: container.obviousPanelAreaSqMm }),
+  }
+}
+
 export function createLabelRouter(): Router {
   const router = Router()
 
@@ -312,6 +398,66 @@ export function createLabelRouter(): Router {
         .setHeader(
           'Content-Disposition',
           `attachment; filename="${labelFilename(data.productIdentifier)}"`,
+        )
+      response.end(pdf)
+    } catch (error) {
+      if (error instanceof LayoutError) {
+        response.status(422).json({ error: 'Label cannot be laid out', detail: error.message })
+        return
+      }
+      throw error
+    }
+  })
+
+  router.post('/us-food/export', async (request: Request, response: Response) => {
+    const parsed = UsFoodRequest.safeParse(request.body)
+    if (!parsed.success) {
+      response.status(400).json({
+        error: 'Invalid label request',
+        detail: parsed.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      })
+      return
+    }
+
+    const { stock = DEFAULT_US_FOOD_STOCK, ...rest } = parsed.data
+
+    const data: UsFoodLabelData = {
+      statementOfIdentity: rest.statementOfIdentity,
+      netQuantity: toNetQuantity(rest.netQuantity),
+      container: toContainer(rest.container),
+      ...(rest.markingMethod === undefined ? {} : { markingMethod: rest.markingMethod }),
+      ...(rest.netQuantityFontSizeMm === undefined
+        ? {}
+        : { netQuantityFontSizeMm: rest.netQuantityFontSizeMm }),
+      ...(rest.netQuantityAnchor === undefined
+        ? {}
+        : { netQuantityAnchor: rest.netQuantityAnchor }),
+    }
+
+    try {
+      const layout = layOutUsFoodLabel({ data, stock })
+
+      const blocking = blockingOmissions(layout)
+      if (blocking.length > 0) {
+        response.status(422).json({
+          error: 'Label cannot be exported',
+          detail: blocking.map((omission) => omission.reason),
+        })
+        return
+      }
+
+      const pdf = await renderLayoutToPdf(layout)
+
+      response
+        .status(200)
+        .setHeader('Content-Type', 'application/pdf')
+        .setHeader('Content-Length', String(pdf.length))
+        .setHeader(
+          'Content-Disposition',
+          `attachment; filename="${labelFilename(data.statementOfIdentity)}"`,
         )
       response.end(pdf)
     } catch (error) {

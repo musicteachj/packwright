@@ -20,6 +20,7 @@ import type { ResolvedLayout } from '../layout/types'
 import type { GhsLabelData } from '../templates/ghs'
 import type { LabelStock } from '../templates/stock'
 import type { UpcALabelData } from '../templates/upcA'
+import type { UsFoodLabelData } from '../templates/usFood'
 import type { Citation, Finding, Severity } from '../types/index'
 
 /**
@@ -48,6 +49,17 @@ export interface GhsChemicalContext extends RuleContextBase {
   data: GhsLabelData
 }
 
+export interface UsFoodContext extends RuleContextBase {
+  labelType: 'us-food'
+  /**
+   * Carries the `container` as well as the drawn stock. The two are different
+   * geometries and both are needed: 21 CFR 101.7(i) sizes type by the area of
+   * the *package's* principal display panel, while 101.7(f) places the
+   * declaration within the *drawn* panel.
+   */
+  data: UsFoodLabelData
+}
+
 /**
  * Discriminated rather than generic, so a rule cannot be handed the wrong
  * document.
@@ -59,7 +71,7 @@ export interface GhsChemicalContext extends RuleContextBase {
  * thing. `runRules` narrows on `labelType` and hands each rule set a context it
  * already matches, with no assertion anywhere.
  */
-export type RuleContext = Gs1RetailContext | GhsChemicalContext
+export type RuleContext = Gs1RetailContext | GhsChemicalContext | UsFoodContext
 
 export interface Rule<TContext extends RuleContext = RuleContext> {
   /** Stable identifier for the rule itself, e.g. `gs1/quiet-zone`. */
@@ -97,6 +109,7 @@ export interface Rule<TContext extends RuleContext = RuleContext> {
 
 export type Gs1RetailRule = Rule<Gs1RetailContext>
 export type GhsChemicalRule = Rule<GhsChemicalContext>
+export type UsFoodRule = Rule<UsFoodContext>
 
 /**
  * Most-severe first, matching the ANSI Z535.4 signal-word scale the findings

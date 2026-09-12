@@ -171,3 +171,117 @@ describe('POST /api/labels/ghs/export', () => {
     expect(response.status).toBe(400)
   })
 })
+
+const postFood = (body: object) => supertest(app()).post('/api/labels/us-food/export').send(body)
+
+const FOOD_BODY = {
+  statementOfIdentity: 'Rolled oats',
+  container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
+  netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
+  stock: { widthMm: 120, heightMm: 170, marginMm: 6 },
+}
+
+describe('POST /api/labels/us-food/export', () => {
+  it('exports a PDF sized to the requested stock', async () => {
+    const response = await postFood(FOOD_BODY)
+    expect(response.status).toBe(200)
+    expect(response.headers['content-type']).toBe('application/pdf')
+    expect(response.body.subarray(0, 5).toString()).toBe('%PDF-')
+  })
+
+  it('names the download after the food', async () => {
+    const response = await postFood(FOOD_BODY)
+    expect(response.headers['content-disposition']).toContain('Rolled-oats.pdf')
+  })
+
+  it('requires the container, which no label geometry can supply', async () => {
+    // The container selects the 21 CFR 101.7(i) type-size band. Defaulting it
+    // would invent the requirement every finding on the label is measured
+    // against — the same reason the GHS route refuses to default a capacity.
+    const { container: _omitted, ...withoutContainer } = FOOD_BODY
+    const response = await postFood(withoutContainer)
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('container')
+  })
+
+  it('refuses a container that describes two shapes at once', async () => {
+    // A circumference on a rectangular panel is not a container with a spare
+    // field; it is two containers. The discriminated union rejects it here
+    // rather than letting the engine pick one.
+    const response = await postFood({
+      ...FOOD_BODY,
+      container: { shape: 'rectangular', widthMm: 120, circumferenceMm: 300 },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('accepts a cylinder, whose panel is 40 percent of height x circumference', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      container: { shape: 'cylindrical', heightMm: 200, circumferenceMm: 300 },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('accepts the obvious-panel exception on an otherwise shaped container', async () => {
+    // 21 CFR 101.1(c) — the top of a triangular or circular package of cheese.
+    const response = await postFood({
+      ...FOOD_BODY,
+      container: {
+        shape: 'other',
+        totalSurfaceAreaSqMm: 40_000,
+        obviousPanelAreaSqMm: 20_000,
+      },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('exports a non-compliant label rather than refusing it', async () => {
+    // Type well under the 3/16 inch this panel demands, and the declaration in
+    // the wrong third of it. Both are findings the client has already shown the
+    // user; neither is a malformed request.
+    const response = await postFood({
+      ...FOOD_BODY,
+      netQuantityFontSizeMm: 2,
+      netQuantityAnchor: 'top-centre',
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('ships a label whose fraction allowance is unmodelled, since the label is real', async () => {
+    // `usFoodEngine` records a detail-scope omission for 21 CFR 101.7(h)(3).
+    // Detail omissions do not block, the way the GHS pictogram glyphs do not.
+    const response = await postFood({
+      ...FOOD_BODY,
+      netQuantity: { inchPound: 'NET WT 1½ LB', metric: '(680 g)' },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('refuses a container with no area, which describes no panel', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      container: { shape: 'rectangular', widthMm: 120, heightMm: 0 },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('rejects a packaging value it does not know', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      netQuantity: { inchPound: 'NET WT 12 OZ', packaging: 'mail-order' },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('keeps an absent metric declaration absent rather than undefined', async () => {
+    // `exactOptionalPropertyTypes` draws a distinction Zod does not, and the
+    // key-by-key reconciliation exists to preserve it. If it broke, the layout
+    // would draw "NET WT 12 OZ undefined".
+    const response = await postFood({
+      ...FOOD_BODY,
+      netQuantity: { inchPound: 'NET WT 12 OZ' },
+    })
+    expect(response.status).toBe(200)
+  })
+})

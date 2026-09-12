@@ -75,7 +75,8 @@ export interface SymbolRequest {
 export interface HriStyle {
   /**
    * Em size, the number a renderer is given — not cap height and not x-height.
-   * See the note on `TextPrimitive.fontSizeMm`.
+   * See the note on `TextPrimitive.fontSizeMm`, and `glyphHeightMm` in
+   * `text/measure` for converting between them.
    */
   fontSizeMm: number
   fontFamily: string
@@ -84,11 +85,14 @@ export interface HriStyle {
    * guard bars. The baseline is placed at the *bottom* of that band, so the
    * glyphs grow upward into space that has been set aside for them.
    *
-   * It must be at least the font's ascent. That is the caller's to know,
-   * because the caller chose the font — we have no metrics for it here. An
-   * earlier version positioned the baseline a fixed gap below the bars, which
-   * put the digits 1.3 mm *into* the bar pattern, since glyphs rise above their
-   * baseline rather than hanging below it.
+   * It must be at least the font's ascent. That stays the caller's to know: the
+   * generated table in `text/metrics` carries advance widths and the two letter
+   * heights a type-size rule needs, not an ascent, and a digit band sized from
+   * cap height alone would clip a face whose figures overshoot it — IBM Plex's
+   * do, at 0.722 em against a 0.698 em capital. An earlier version positioned
+   * the baseline a fixed gap below the bars, which put the digits 1.3 mm *into*
+   * the bar pattern, since glyphs rise above their baseline rather than hanging
+   * below it.
    */
   bandMm: number
 }

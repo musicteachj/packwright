@@ -18,6 +18,7 @@ export {
   isNetQuantityZoneRequired,
   minNetQuantityTypeHeightInches,
   minNetQuantityTypeHeightMm,
+  netQuantityGlyphBasis,
   netQuantityZoneTopMm,
   pdpAreaSqInches,
   pdpAreaSqMm,
@@ -26,6 +27,7 @@ export type {
   Container,
   ContainerShape,
   CylindricalContainer,
+  NetQuantityMarkingMethod,
   OtherContainer,
   RectangularPanel,
 } from './pdp'

@@ -12,6 +12,7 @@ import * as clearSpace from './layout/clearSpace'
 import * as layoutOmissions from './layout/omissions'
 import * as engine from './layout/engine'
 import * as ghsEngine from './layout/ghsEngine'
+import * as usFoodEngine from './layout/usFoodEngine'
 import * as layoutBarrel from './layout/index'
 import * as renderBarrel from './render/index'
 import * as toPDF from './render/toPDF'
@@ -29,6 +30,11 @@ import * as ghsPictogramSetRule from './rules/ghs/pictogramSet'
 import * as ghsPictogramSizeRule from './rules/ghs/pictogramSize'
 import * as ghsSignalWordRule from './rules/ghs/signalWord'
 import * as ghsSmallContainerRule from './rules/ghs/smallContainer'
+import * as usFoodNetQuantityDualDeclarationRule from './rules/usFood/netQuantityDualDeclaration'
+import * as usFoodNetQuantityPlacementRule from './rules/usFood/netQuantityPlacement'
+import * as usFoodNetQuantityPresentRule from './rules/usFood/netQuantityPresent'
+import * as usFoodNetQuantitySeparationRule from './rules/usFood/netQuantitySeparation'
+import * as usFoodNetQuantityTypeSizeRule from './rules/usFood/netQuantityTypeSize'
 import * as findingBuilders from './rules/finding'
 import * as rulesBarrel from './rules/index'
 import * as registry from './rules/registry'
@@ -50,6 +56,7 @@ import * as filename from './templates/filename'
 import * as ghsTemplate from './templates/ghs'
 import * as stock from './templates/stock'
 import * as upcA from './templates/upcA'
+import * as usFoodTemplate from './templates/usFood'
 
 /**
  * Every public symbol must be reachable from its module's barrel.
@@ -107,6 +114,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['omissions.ts', layoutOmissions],
       ['engine.ts', engine],
       ['ghsEngine.ts', ghsEngine],
+      ['usFoodEngine.ts', usFoodEngine],
     ],
   ],
   [
@@ -145,6 +153,11 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['ghs/pictogramSize.ts', ghsPictogramSizeRule],
       ['ghs/signalWord.ts', ghsSignalWordRule],
       ['ghs/smallContainer.ts', ghsSmallContainerRule],
+      ['usFood/netQuantityDualDeclaration.ts', usFoodNetQuantityDualDeclarationRule],
+      ['usFood/netQuantityPlacement.ts', usFoodNetQuantityPlacementRule],
+      ['usFood/netQuantityPresent.ts', usFoodNetQuantityPresentRule],
+      ['usFood/netQuantitySeparation.ts', usFoodNetQuantitySeparationRule],
+      ['usFood/netQuantityTypeSize.ts', usFoodNetQuantityTypeSizeRule],
     ],
   ],
   [
@@ -174,6 +187,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['ghs.ts', ghsTemplate],
       ['stock.ts', stock],
       ['upcA.ts', upcA],
+      ['usFood.ts', usFoodTemplate],
     ],
   ],
 ]

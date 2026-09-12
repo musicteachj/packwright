@@ -52,21 +52,55 @@ const canvasTitle = computed(() => {
   if (store.labelType === 'ghs-chemical') {
     return `GHS chemical label for ${store.ghsData.productIdentifier}`
   }
+  if (store.labelType === 'us-food') {
+    return `US food label for ${store.foodData.statementOfIdentity}`
+  }
   return store.layout?.symbols[0]
     ? `UPC-A label for GTIN ${store.layout.symbols[0].value}`
     : 'Label with no barcode drawn'
 })
 
 /** The route and filename follow the label type, so neither is hardcoded. */
-const exportPath = computed(() =>
-  store.labelType === 'ghs-chemical' ? '/api/labels/ghs/export' : '/api/labels/upc-a/export',
-)
+const EXPORT_PATHS = {
+  'gs1-retail': '/api/labels/upc-a/export',
+  'ghs-chemical': '/api/labels/ghs/export',
+  'us-food': '/api/labels/us-food/export',
+} as const
 
-const exportFilename = computed(() =>
-  store.labelType === 'ghs-chemical'
-    ? labelFilename(store.ghsData.productIdentifier)
-    : labelFilename(store.data.gtin),
-)
+const exportPath = computed(() => EXPORT_PATHS[store.labelType])
+
+const exportFilename = computed(() => {
+  switch (store.labelType) {
+    case 'ghs-chemical':
+      return labelFilename(store.ghsData.productIdentifier)
+    case 'us-food':
+      return labelFilename(store.foodData.statementOfIdentity)
+    case 'gs1-retail':
+      return labelFilename(store.data.gtin)
+    default: {
+      const unreachable: never = store.labelType
+      return unreachable
+    }
+  }
+})
+
+/** The body each route expects. Narrowed rather than cast, as everywhere else. */
+const exportBody = computed(() => {
+  switch (store.labelType) {
+    case 'ghs-chemical':
+      return { ...store.ghsData, stock: store.ghsStock }
+    case 'us-food':
+      return { ...store.foodData, stock: store.foodStock }
+    case 'gs1-retail':
+      return { ...store.data, stock: store.stock }
+    default: {
+      // The exhaustiveness guard `runRules` uses, for the reason the store
+      // records: the lint rule cannot see that this covers the union.
+      const unreachable: never = store.labelType
+      return unreachable
+    }
+  }
+})
 
 async function exportPdf() {
   // "Non-compliant as drawn" is what blocking means, and exporting anyway is the
@@ -85,11 +119,7 @@ async function exportPdf() {
     const response = await fetch(exportPath.value, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(
-        store.labelType === 'ghs-chemical'
-          ? { ...store.ghsData, stock: store.ghsStock }
-          : { ...store.data, stock: store.stock },
-      ),
+      body: JSON.stringify(exportBody.value),
     })
 
     if (!response.ok) {
@@ -130,6 +160,7 @@ async function exportPdf() {
           >
             <option value="gs1-retail">GS1 retail label</option>
             <option value="ghs-chemical">GHS chemical label</option>
+            <option value="us-food">US food label</option>
           </select>
         </label>
       </div>

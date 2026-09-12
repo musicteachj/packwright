@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { EU_CLP_HAZARD_STATEMENTS, EU_CLP_PRECAUTIONARY_STATEMENTS } from '../ghs/statements'
 import { FONT_METRICS } from './metrics'
-import { hasMetrics, measureTextMm, wrapTextMm } from './measure'
+import {
+  fontSizeMmForGlyphHeight,
+  glyphHeightMm,
+  hasMetrics,
+  measureTextMm,
+  wrapTextMm,
+} from './measure'
 
 describe('measuring', () => {
   it('carries metrics for every face the exporter embeds', () => {
@@ -88,5 +94,57 @@ describe('wrapping', () => {
     const twice = wrapTextMm(text, PANEL, SIZE, FACE)
     expect(once).toEqual(twice)
     expect(once.length).toBeGreaterThan(1)
+  })
+})
+
+describe('glyph heights', () => {
+  const FACE = 'IBM Plex Sans'
+
+  // 21 CFR 101.7(h)(2) measures a regulated type size by a printed letter, not
+  // by the em. These tests pin the gap between the two, because closing the gap
+  // by assumption is the defect the whole net-quantity rule set turns on.
+
+  it('reports a capital as taller than a lowercase "o", and both as well under the em', () => {
+    const em = 10
+    const cap = glyphHeightMm(em, FACE, 'cap-height')
+    const o = glyphHeightMm(em, FACE, 'lowercase-o')
+    expect(cap).toBeGreaterThan(o)
+    expect(cap).toBeLessThan(em)
+    // The number that matters: an em is 1.85 "o"s, so comparing a 4.7625 mm
+    // minimum against `fontSizeMm` directly would clear type at 54% of it.
+    expect(em / o).toBeCloseTo(1.852, 2)
+    expect(em / cap).toBeCloseTo(1.433, 2)
+  })
+
+  it('does not read the "o" as the x-height', () => {
+    // The rejected reading, kept so the decision stays visible. `OS/2.sxHeight`
+    // for IBM Plex Sans is 0.516 em, but a round letter overshoots the x-height
+    // line top and bottom, so the "o" actually prints at 0.540. The regulation
+    // names the letter, so the letter's outline is what is measured.
+    expect(FONT_METRICS[FACE]!.lowercaseOHeightEm).toBeCloseTo(0.54, 4)
+    expect(FONT_METRICS[FACE]!.lowercaseOHeightEm).toBeGreaterThan(0.516)
+  })
+
+  it('scales linearly with the em size', () => {
+    expect(glyphHeightMm(20, FACE, 'lowercase-o')).toBeCloseTo(
+      2 * glyphHeightMm(10, FACE, 'lowercase-o'),
+      10,
+    )
+  })
+
+  it('falls back to IBM Plex Sans for a face it has no metrics for', () => {
+    expect(glyphHeightMm(10, 'Comic Sans MS', 'cap-height')).toBe(
+      glyphHeightMm(10, 'IBM Plex Sans', 'cap-height'),
+    )
+  })
+
+  it('inverts, so a rule can state the em a compliant label would need', () => {
+    // 3/16 inch — the 21 CFR 101.7(i) minimum for a panel of more than 25 and
+    // not more than 100 square inches. 0.1875 x 25.4 = 4.7625 mm.
+    const requiredMm = 4.7625
+    const em = fontSizeMmForGlyphHeight(requiredMm, FACE, 'lowercase-o')
+    expect(em).toBeCloseTo(8.8194, 3)
+    expect(glyphHeightMm(em, FACE, 'lowercase-o')).toBeCloseTo(requiredMm, 10)
+    expect(fontSizeMmForGlyphHeight(requiredMm, FACE, 'cap-height')).toBeCloseTo(6.823, 3)
   })
 })
