@@ -19,6 +19,7 @@
  */
 
 import { requiredPictograms } from '../../ghs/classification'
+import { applyPrecedence } from '../../ghs/precedence'
 import type { GhsPictogramCode } from '../../ghs/pictograms'
 import { GHS_PICTOGRAM_SYMBOLS } from '../../ghs/pictograms'
 import { GHS_ELEMENTS } from '../../templates/ghs'
@@ -49,7 +50,11 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
     // not a pass — see the note on `Rule.check`.
     if (hazards.length === 0) return []
 
-    const required = new Set(requiredPictograms(hazards))
+    // Compared against the set *after* Article 26, not before it. Comparing
+    // against the raw requirement flagged GHS07 as missing on labels this tool
+    // had itself derived as compliant — reintroducing the derivation-versus-rule
+    // disagreement that `ghs/precedence.ts` was extracted to end.
+    const required = new Set(applyPrecedence(requiredPictograms(hazards), hazards, data.regime))
     const drawn = layout.pictograms.map((p) => ({
       code: p.code as GhsPictogramCode,
       elementId: p.elementId,

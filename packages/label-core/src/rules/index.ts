@@ -71,6 +71,9 @@ export {
   ghsPictogramSetRule,
 } from './ghs/pictogramSet'
 export {
+  CLP_SMALL_PACKAGE_MAX_L,
+  OSHA_SMALL_CONTAINER_MAX_L,
+  smallContainerThresholdL,
   GHS_SMALL_CONTAINER_AVAILABLE,
   GHS_SMALL_CONTAINER_COMPLETE,
   GHS_SMALL_CONTAINER_INCOMPLETE,

@@ -29,6 +29,7 @@
  */
 
 import { GHS_ELEMENTS } from '../../templates/ghs'
+import type { GhsRegime } from '../../ghs/statements'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passed } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
@@ -51,9 +52,14 @@ const EU: Citation = {
 }
 
 /** OSHA (f)(12)(ii): "a container less than or equal to 100 ml capacity". */
-const OSHA_MAX_L = 0.1
+export const OSHA_SMALL_CONTAINER_MAX_L = 0.1
 /** CLP 1.5.2.1.1(a): "the contents of the package do not exceed 125 ml". */
-const CLP_MAX_L = 0.125
+export const CLP_SMALL_PACKAGE_MAX_L = 0.125
+
+/** The threshold for a regime, so a form cannot state a different number than the rule applies. */
+export function smallContainerThresholdL(regime: GhsRegime): number {
+  return regime === 'us-osha' ? OSHA_SMALL_CONTAINER_MAX_L : CLP_SMALL_PACKAGE_MAX_L
+}
 
 export const ghsSmallContainerRule: GhsChemicalRule = {
   id: 'ghs/small-container',
@@ -70,7 +76,7 @@ export const ghsSmallContainerRule: GhsChemicalRule = {
   check({ data, layout }: GhsChemicalContext): Finding[] {
     const isUs = data.regime === 'us-osha'
     const citation = isUs ? US : EU
-    const maxL = isUs ? OSHA_MAX_L : CLP_MAX_L
+    const maxL = smallContainerThresholdL(data.regime)
     const eligible = data.capacityL <= maxL
 
     if (!data.smallContainerLabelling) {

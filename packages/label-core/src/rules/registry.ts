@@ -81,5 +81,13 @@ export function runRules(context: RuleContext): Finding[] {
       return GS1_RETAIL_RULES.flatMap((rule) => rule.check(context))
     case 'ghs-chemical':
       return GHS_RULES.flatMap((rule) => rule.check(context))
+    default: {
+      // `LABEL_TYPES` already declares `us-food`, which `RuleContext` does not
+      // yet cover. Without this the switch would fall off the end and return
+      // `undefined`, and every caller treats the result as an array. Adding the
+      // context makes this a compile error rather than a run-time one.
+      const unreachable: never = context
+      return unreachable
+    }
   }
 }

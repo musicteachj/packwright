@@ -18,6 +18,7 @@ import EditorFormRail from '../components/EditorFormRail.vue'
 import FindingsRail from '../components/FindingsRail.vue'
 import LabelCanvas from '../components/LabelCanvas.vue'
 import LabelTextView from '../components/LabelTextView.vue'
+import { blockingOmissions, labelFilename } from '@packwright/label-core'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 
 const store = useLabelDocumentStore()
@@ -30,14 +31,15 @@ const exportError = ref<string | null>(null)
  * refuses to export one. Offering the button and then showing a 422 would be a
  * worse way of saying the same thing.
  */
-// Matches the API's own gate: a missing *element* is a blank page, a missing
-// detail is not. The two must agree or the button offers an export the server
-// refuses, or hides one it would have served.
-const cannotExport = computed(
-  () => (store.layout?.omissions.filter((o) => o.scope === 'element').length ?? 0) > 0,
-)
+// The same predicate the API uses, imported rather than restated, so the button
+// and the server cannot disagree about what blocks an export.
+const blocking = computed(() => (store.layout ? blockingOmissions(store.layout) : []))
+const cannotExport = computed(() => blocking.value.length > 0)
 
-const exportBlockedReason = computed(() => store.layout?.omissions[0]?.reason ?? '')
+// The reason must come from the omission that actually blocks. Reading
+// `omissions[0]` explained whichever came first, which after the scope split
+// could be a detail the export ships happily.
+const exportBlockedReason = computed(() => blocking.value[0]?.reason ?? '')
 
 /**
  * Names what was actually drawn rather than assuming a barcode.
@@ -62,8 +64,8 @@ const exportPath = computed(() =>
 
 const exportFilename = computed(() =>
   store.labelType === 'ghs-chemical'
-    ? `${store.ghsData.productIdentifier.replace(/[^a-zA-Z0-9._-]+/g, '-')}.pdf`
-    : `${store.data.gtin}.pdf`,
+    ? labelFilename(store.ghsData.productIdentifier)
+    : labelFilename(store.data.gtin),
 )
 
 async function exportPdf() {

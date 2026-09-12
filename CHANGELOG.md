@@ -8,6 +8,50 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+Phase 4 review. Fifteen findings from a full pass over the branch, and the most serious is about how the
+regulatory data was checked rather than about any single line of it.
+
+- **Twelve statements carried corrupted regulatory text, and the verification could not have caught it.** The
+  check was "every extracted string appears verbatim in the source PDF" — computed with the same extractor on
+  both sides, so any artefact it introduced matched itself. That proved the parser was self-consistent, not
+  that the text matched the regulation, which is the shape `CLAUDE.md` explicitly warns against. EUR-Lex
+  typesets the degree sign as a raised letter `o` that the text layer emits as a separate character, so `P412`
+  stored *"50 o C/122 o F"* and would have printed that on a label; six more had a line break after a slash
+  welded into a space, giving *"vapours/ spray"*. Each was corrected by rendering that row of the PDF at
+  300 dpi and **reading it**, which is independent of the text layer in the way the original check was not. Two
+  apparent defects turned out to be real and were left alone: `P250` and `P401` genuinely set a space before
+  the closing full stop, and `P410 + P412` genuinely reads *"Do no expose"* where `P412` reads *"Do not
+  expose"* — the regulation's own typo, pinned by a test so nobody tidies it away.
+- **A mistyped hazard id produced a green pass.** `hazards` was accepted as free strings and unknown ids were
+  silently discarded, so an id one character off drew *no pictograms at all* and the rules reported
+  "every pictogram on the label is required by a declared hazard class" as a pass. The schema now validates
+  against `label-core`'s own list, as it already did for signal words and pictogram codes. It is a 400.
+- **A prototype key crashed the layout engine.** `hazardStatementText(regime, 'constructor')` returned a
+  function rather than `undefined`, sailed past the `!== undefined` guard and threw on `text.split` — a 500
+  from a well-formed request. The same defect class sat in the font metrics table and in the PDF exporter's
+  face allowlist, which its own comment calls a security boundary. All three use `Object.hasOwn` now.
+- **`pictogramSet` reintroduced the disagreement stage 5 removed.** It compared the drawn set against
+  `requiredPictograms` rather than `applyPrecedence`, so it raised "GHS07 is required and is not on the label"
+  for sets this tool had itself derived as Article 26-compliant.
+- **Only statements were wrapped.** The previous entry claimed text wrapping was in place; it was in place for
+  statements and nothing else, because the patch to the shared text helper silently failed to apply and was
+  never checked. A realistic product identifier — mandatory under CLP Article 18 — set 88.9 mm on a 74 mm
+  label and ran off the substrate with no omission recorded and no rule measuring it.
+- **The label-size finding pointed at an element that did not exist.** It anchored to `label-border`, which
+  neither engine ever put in `ResolvedLayout.elements`, so clicking it set the selection and drew nothing —
+  the same silent break this engine records having fixed for pictograms. The label is now an element in its
+  own right.
+- Several omissions shared one element id, which `LabelTextView` keys its list on.
+- The export button's explanation read `omissions[0]` while the button itself filtered on scope, so a disabled
+  button could explain a non-blocking omission.
+- Three copies of "which omissions block an export" and two of the download-filename sanitiser are now one
+  each, in `label-core` beside the types they interpret. The small-container thresholds are read from the rule
+  that enforces them rather than restated in the form — a regulatory figure written twice is one that drifts.
+- `runRules` fell off the end of its switch for a label type `LABEL_TYPES` already declares, returning
+  `undefined` where every caller expects an array. An exhaustiveness check makes that a compile error.
+
 ### Added
 
 Phase 4, stage 6 — small containers, which are two different rules rather than one.

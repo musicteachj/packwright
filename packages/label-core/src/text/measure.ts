@@ -16,7 +16,9 @@ import { FONT_METRICS } from './metrics'
 
 /** Faces this build carries metrics for. */
 export function hasMetrics(fontFamily: string): boolean {
-  return fontFamily in FONT_METRICS
+  // `in` walks the prototype chain, so `hasMetrics('toString')` answered true
+  // and the lookup below then resolved to a function.
+  return Object.hasOwn(FONT_METRICS, fontFamily)
 }
 
 /**
@@ -28,7 +30,9 @@ export function hasMetrics(fontFamily: string): boolean {
  * only where it breaks.
  */
 export function measureTextMm(text: string, fontSizeMm: number, fontFamily: string): number {
-  const face = FONT_METRICS[fontFamily] ?? FONT_METRICS['IBM Plex Sans']!
+  const face =
+    (hasMetrics(fontFamily) ? FONT_METRICS[fontFamily] : undefined) ??
+    FONT_METRICS['IBM Plex Sans']!
   let em = 0
   for (const character of text) {
     em += face.widths[character] ?? face.fallback

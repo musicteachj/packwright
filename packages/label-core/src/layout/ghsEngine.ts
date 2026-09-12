@@ -94,27 +94,38 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     fontSizeMm: number,
     bold = false,
   ): void {
-    const boxHeightMm = fontSizeMm * type.lineHeight
+    // Every block wraps, not only the statements. A product identifier is
+    // mandatory under CLP Article 18 and an ordinary chemical name sets wider
+    // than a 74 mm label, so leaving this unwrapped put a required element off
+    // the substrate with nothing recording it.
+    const lines = wrapTextMm(text, panel.widthMm, fontSizeMm, type.fontFamily)
+    const startYMm = cursorYMm
+
+    lines.forEach((line, index) => {
+      primitives.push({
+        kind: 'text',
+        elementId,
+        xMm: panel.xMm,
+        // The baseline sits at the lower edge of each reserved band, so glyphs
+        // grow upward into space set aside for them rather than into the line
+        // above.
+        baselineYMm: startYMm + fontSizeMm + index * fontSizeMm * type.lineHeight,
+        text: line,
+        fontSizeMm,
+        fontFamily: type.fontFamily,
+        ...(bold ? { fontWeight: type.emphasisFontWeight } : {}),
+        fill: '000000',
+        anchor: 'start',
+      })
+    })
+
+    const boxHeightMm = lines.length * fontSizeMm * type.lineHeight
     elements.push({
       elementId,
       label,
-      box: { xMm: panel.xMm, yMm: cursorYMm, widthMm: panel.widthMm, heightMm: boxHeightMm },
+      box: { xMm: panel.xMm, yMm: startYMm, widthMm: panel.widthMm, heightMm: boxHeightMm },
     })
-    primitives.push({
-      kind: 'text',
-      elementId,
-      xMm: panel.xMm,
-      // The baseline sits at the lower edge of the reserved band, so glyphs grow
-      // upward into space set aside for them rather than into the block above.
-      baselineYMm: cursorYMm + fontSizeMm,
-      text,
-      fontSizeMm,
-      fontFamily: type.fontFamily,
-      ...(bold ? { fontWeight: type.emphasisFontWeight } : {}),
-      fill: '000000',
-      anchor: 'start',
-    })
-    cursorYMm += boxHeightMm + type.blockGapMm
+    cursorYMm = startYMm + boxHeightMm + type.blockGapMm
   }
 
   pushText(
@@ -241,7 +252,9 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       const text = lookup(data.regime, code)
       if (text !== undefined) return [text]
       omissions.push({
-        elementId,
+        // Suffixed with the code: several statements can be omitted from one
+        // block, and `LabelTextView` keys its list on this id.
+        elementId: `${elementId}-${code}`,
         scope: 'detail',
         reason:
           `The statement ${code} is not drawn: no verified text for it exists under this ` +
@@ -298,6 +311,16 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       type.supplierMm,
     )
   }
+
+  // The label itself is an element, so a finding about its size has a box to
+  // outline. Without this the size rule anchored to an id nothing resolved, and
+  // clicking it set the selection and drew nothing — the same silent break this
+  // engine records having fixed for pictograms.
+  elements.unshift({
+    elementId: GHS_ELEMENTS.border,
+    label: 'Label',
+    box: { xMm: 0, yMm: 0, widthMm: stock.widthMm, heightMm: stock.heightMm },
+  })
 
   return {
     widthMm: stock.widthMm,

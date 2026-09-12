@@ -20,8 +20,13 @@ import {
   DEFAULT_UPC_A_STOCK,
   GHS_PICTOGRAM_CODES,
   GHS_REGIMES,
+  HAZARD_CLASS_IDS,
+  knownHazardStatementCodes,
+  knownPrecautionaryStatementCodes,
   GHS_SIGNAL_WORDS,
   LayoutError,
+  blockingOmissions,
+  labelFilename,
   getSymbologyConstraints,
   layOutGhsLabel,
   layOutUpcALabel,
@@ -146,10 +151,18 @@ const GhsRequest = z.object({
   // Plural, so a label carrying both Danger and Warning is representable and
   // therefore checkable — see `GhsLabelData.signalWords`.
   signalWords: z.array(z.enum(GHS_SIGNAL_WORDS)).optional(),
-  hazards: z.array(z.string()).optional(),
+  // Validated against label-core's own list rather than accepted as free
+  // strings. An id one character off used to be discarded silently, so a label
+  // drew no pictograms at all and the rules reported a green pass — a false
+  // clearance produced by a typo.
+  hazards: z.array(z.enum(HAZARD_CLASS_IDS as [string, ...string[]])).optional(),
   pictograms: z.array(z.enum(GHS_PICTOGRAM_CODES)).optional(),
-  hazardStatementCodes: z.array(z.string()).optional(),
-  precautionaryStatementCodes: z.array(z.string()).optional(),
+  hazardStatementCodes: z
+    .array(z.enum(knownHazardStatementCodes('eu-clp') as [string, ...string[]]))
+    .optional(),
+  precautionaryStatementCodes: z
+    .array(z.enum(knownPrecautionaryStatementCodes('eu-clp') as [string, ...string[]]))
+    .optional(),
   supplier: GhsSupplierSchema.optional(),
   smallContainerLabelling: z.boolean().optional(),
   outerPackageStatement: z.string().optional(),
@@ -212,10 +225,7 @@ export function createLabelRouter(): Router {
       // page is not an export. The browser warns before it gets here; a script
       // or a partner integration got 200 and 1,145 bytes of nothing, with the
       // reason recorded only in a field it never reads.
-      // Only an *absent element* makes the export worthless. A detail the
-      // engine could not draw is recorded and shipped, because the label around
-      // it is real — see `LayoutOmission.scope`.
-      const blocking = layout.omissions.filter((omission) => omission.scope === 'element')
+      const blocking = blockingOmissions(layout)
       if (blocking.length > 0) {
         response.status(422).json({
           error: 'Label cannot be exported',
@@ -284,7 +294,7 @@ export function createLabelRouter(): Router {
     try {
       const layout = layOutGhsLabel({ data, stock })
 
-      const blocking = layout.omissions.filter((omission) => omission.scope === 'element')
+      const blocking = blockingOmissions(layout)
       if (blocking.length > 0) {
         response.status(422).json({
           error: 'Label cannot be exported',
@@ -301,7 +311,7 @@ export function createLabelRouter(): Router {
         .setHeader('Content-Length', String(pdf.length))
         .setHeader(
           'Content-Disposition',
-          `attachment; filename="${data.productIdentifier.replace(/[^a-zA-Z0-9._-]+/g, '-')}.pdf"`,
+          `attachment; filename="${labelFilename(data.productIdentifier)}"`,
         )
       response.end(pdf)
     } catch (error) {

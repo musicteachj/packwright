@@ -32,6 +32,8 @@ export {
 export type { GhsRegime } from './statements'
 export {
   ANNEX_V_ENTRIES,
+  HAZARD_CLASS_IDS,
+  isHazardClassId,
   hazardClassEntry,
   hazardsRequiring,
   requiredPictograms,

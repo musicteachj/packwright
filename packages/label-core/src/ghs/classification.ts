@@ -357,3 +357,10 @@ export function hazardsRequiring(
     .map((id) => BY_ID.get(id))
     .filter((entry): entry is HazardClassEntry => entry?.pictogram === code)
 }
+
+/** Every id a document may reference. Exported so a schema can validate against it. */
+export const HAZARD_CLASS_IDS: readonly string[] = ANNEX_V_ENTRIES.map((entry) => entry.id)
+
+export function isHazardClassId(id: string): boolean {
+  return BY_ID.has(id)
+}

@@ -12,9 +12,29 @@
  * precautionary statements from Annex IV Part 2, except `P503` whose text
  * appears only in Annex IV Part 1 and is marked below.
  *
- * Extraction was verified two ways, because counting is not checking: every
- * string below appears verbatim in the source PDF, and every key appears in it
- * as a real heading. The second check is the one that matters — it caught a
+ * **The first verification of this file was circular, and it let corrupted text
+ * through.** It checked that every string appears verbatim in the source PDF —
+ * but computed both sides with the same extractor, so any artefact the extractor
+ * introduced matched itself. That proved the parser was self-consistent, not
+ * that the text matched the regulation. `CLAUDE.md` warns against exactly this
+ * shape: never compute an expected value by running the implementation.
+ *
+ * Twelve statements were wrong as a result. EUR-Lex typesets the degree sign as
+ * a raised letter `o`, which the PDF text layer emits as a separate character —
+ * so `50 °C` was stored as `50 o C` and would have printed that way on a label.
+ * Six more had a line break after a slash welded into a space, giving
+ * `vapours/ spray` for `vapours/spray`.
+ *
+ * Each was corrected by **rendering that row of the PDF at 300 dpi and reading
+ * it**, which is independent of the text layer in the way the original check was
+ * not. Two apparent defects turned out to be real and were left alone: `P250`
+ * and `P401` genuinely set a space before the closing full stop, and
+ * `P410 + P412` genuinely reads "Do no expose" where `P412` reads "Do not
+ * expose". That last one is the regulation's own typo, and reproducing the text
+ * means reproducing it — `statements.test.ts` pins it so nobody tidies it away.
+ *
+ * Extraction was also verified two ways at the time: every key appears in the
+ * source as a real heading, which is what caught a fabricated code. The second check is the one that matters — it caught a
  * fabricated code (`P370 + P380`) that the first had passed, created by a parser
  * that could not see CLP's bracketed optional components and so merged
  * `P370 + P380 + P375` with `P370 + P380 + P375 [+ P378]`, two different
@@ -145,14 +165,14 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   P234: 'Keep only in original packaging.',
   P235: 'Keep cool.',
   P240: 'Ground and bond container and receiving equipment.',
-  P241: 'Use explosion-proof [electrical/ventilating/ lighting/…] equipment.',
+  P241: 'Use explosion-proof [electrical/ventilating/lighting/…] equipment.',
   P242: 'Use non-sparking tools.',
   P243: 'Take action to prevent static discharges.',
   P244: 'Keep valves and fittings free from oil and grease.',
   P250: 'Do not subject to grinding/shock/friction/ … .',
   P251: 'Do not pierce or burn, even after use.',
-  P260: 'Do not breathe dust/fume/gas/mist/vapours/ spray.',
-  P261: 'Avoid breathing dust/fume/gas/mist/vapours/ spray.',
+  P260: 'Do not breathe dust/fume/gas/mist/vapours/spray.',
+  P261: 'Avoid breathing dust/fume/gas/mist/vapours/spray.',
   P262: 'Do not get in eyes, on skin, or on clothing.',
   P263: 'Avoid contact during pregnancy and while nursing.',
   P264: 'Wash … thoroughly after handling.',
@@ -166,7 +186,7 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   P284: '[In case of inadequate ventilation] wear respiratory protection.',
   P301: 'IF SWALLOWED:',
   'P301 + P310': 'IF SWALLOWED: Immediately call a POISON CENTER/doctor/ …',
-  'P301 + P312': 'IF SWALLOWED: Call a POISON CENTRE/ doctor/… if you feel unwell.',
+  'P301 + P312': 'IF SWALLOWED: Call a POISON CENTRE/doctor/… if you feel unwell.',
   'P301 + P330 + P331': 'IF SWALLOWED: Rinse mouth. Do NOT induce vomiting.',
   P302: 'IF ON SKIN:',
   'P302 + P334': 'IF ON SKIN: Immerse in cool water or wrap in wet bandages.',
@@ -186,7 +206,7 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
     'IF ON CLOTHING: rinse immediately contaminated clothing and skin with plenty of water before removing clothes.',
   P308: 'IF exposed or concerned:',
   'P308 + P311': 'IF exposed or concerned: Call a POISON CENTER/doctor/ …',
-  'P308 + P313': 'IF exposed or concerned: Get medical advice/ attention.',
+  'P308 + P313': 'IF exposed or concerned: Get medical advice/attention.',
   P310: 'Immediately call a POISON CENTER/doctor/ …',
   P311: 'Call a POISON CENTER/doctor/ …',
   P312: 'Call a POISON CENTRE/doctor/ … if you feel unwell.',
@@ -198,7 +218,7 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   P330: 'Rinse mouth.',
   P331: 'Do NOT induce vomiting.',
   P332: 'If skin irritation occurs:',
-  'P332 + P313': 'If skin irritation occurs: Get medical advice/ attention.',
+  'P332 + P313': 'If skin irritation occurs: Get medical advice/attention.',
   P333: 'If skin irritation or rash occurs:',
   'P333 + P313': 'If skin irritation or rash occurs: Get medical advice/attention.',
   P334: 'Immerse in cool water [or wrap in wet bandages].',
@@ -207,7 +227,7 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   'P336 + P315':
     'Thaw frosted parts with lukewarm water. Do not rub affected area. Get immediate medical advice/attention.',
   P337: 'If eye irritation persists:',
-  'P337 + P313': 'If eye irritation persists: Get medical advice/ attention.',
+  'P337 + P313': 'If eye irritation persists: Get medical advice/attention.',
   P338: 'Remove contact lenses, if present and easy to do. Continue rinsing.',
   P340: 'Remove person to fresh air and keep comfortable for breathing.',
   P342: 'If experiencing respiratory symptoms:',
@@ -256,10 +276,10 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   P407: 'Maintain air gap between stacks or pallets.',
   P410: 'Protect from sunlight.',
   'P410 + P403': 'Protect from sunlight. Store in a well-ventilated place.',
-  'P410 + P412': 'Protect from sunlight. Do no expose to temperatures exceeding 50 o C/122 o F.',
-  P411: 'Store at temperatures not exceeding … o C/… o F.',
-  P412: 'Do not expose to temperatures exceeding 50 o C/122 o F.',
-  P413: 'Store bulk masses greater than … kg/… lbs at temperatures not exceeding … o C/… o F.',
+  'P410 + P412': 'Protect from sunlight. Do no expose to temperatures exceeding 50 °C/122°F.',
+  P411: 'Store at temperatures not exceeding … °C/…°F.',
+  P412: 'Do not expose to temperatures exceeding 50 °C/122°F.',
+  P413: 'Store bulk masses greater than … kg/… lbs at temperatures not exceeding … °C/…°F.',
   P420: 'Store separately.',
   P501: 'Dispose of contents/container to …',
   P502: 'Refer to manufacturer or supplier for information on recovery or recycling.',
@@ -271,6 +291,19 @@ export const US_OSHA_HAZARD_STATEMENTS: Readonly<Record<string, string>> = {}
 
 /** 29 CFR 1910.1200 Appendix C.4 — not yet transcribed; see the file header. */
 export const US_OSHA_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> = {}
+
+/**
+ * Own properties only.
+ *
+ * A plain object literal inherits from `Object.prototype`, so `table['constructor']`
+ * returns a function rather than `undefined` — which sailed past the
+ * `!== undefined` guard downstream and crashed the layout engine on
+ * `text.split`. The API accepts statement codes as free strings, so that was a
+ * 500 from a well-formed request.
+ */
+function own(table: Readonly<Record<string, string>>, code: string): string | undefined {
+  return Object.hasOwn(table, code) ? table[code] : undefined
+}
 
 const HAZARD: Readonly<Record<GhsRegime, Readonly<Record<string, string>>>> = {
   'eu-clp': EU_CLP_HAZARD_STATEMENTS,
@@ -292,11 +325,11 @@ const PRECAUTIONARY: Readonly<Record<GhsRegime, Readonly<Record<string, string>>
  * statement could not be supplied.
  */
 export function hazardStatementText(regime: GhsRegime, code: string): string | undefined {
-  return HAZARD[regime][code]
+  return own(HAZARD[regime], code)
 }
 
 export function precautionaryStatementText(regime: GhsRegime, code: string): string | undefined {
-  return PRECAUTIONARY[regime][code]
+  return own(PRECAUTIONARY[regime], code)
 }
 
 /** Every code this build can supply text for, under the given regime. */

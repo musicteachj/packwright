@@ -117,10 +117,12 @@ const FALLBACK_FAMILY = 'IBM Plex Sans'
 const SEMIBOLD_FROM = 600
 
 export function embeddedFontFor(family: string, weight?: number): string {
-  const base = family in PLEX_FACES ? family : FALLBACK_FAMILY
+  // `in` would walk the prototype chain and let 'constructor' through a guard
+  // this file's own comment calls a security boundary.
+  const base = Object.hasOwn(PLEX_FACES, family) ? family : FALLBACK_FAMILY
   if (weight === undefined || weight < SEMIBOLD_FROM) return base
   const semibold = `${base} SemiBold`
-  return semibold in PLEX_FACES ? semibold : base
+  return Object.hasOwn(PLEX_FACES, semibold) ? semibold : base
 }
 
 /** Exposed so a test can assert the fonts are reachable in this build. */

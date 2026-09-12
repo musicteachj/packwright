@@ -114,3 +114,45 @@ describe('the tables are the size the source says they are', () => {
     }
   })
 })
+
+describe('the text carries no extraction artefacts', () => {
+  const ALL = Object.entries({
+    ...EU_CLP_HAZARD_STATEMENTS,
+    ...EU_CLP_PRECAUTIONARY_STATEMENTS,
+  })
+
+  /**
+   * These patterns are what the first extraction produced, and what the original
+   * verification could not see because it compared the extractor against itself.
+   */
+  it.each([
+    ['a degree sign flattened to a spaced letter o', /\so\s[CF]\b/],
+    ['a line break welded into a mid-token space', /[a-z]\/ [a-z]/],
+    ['a double space', / {2}/],
+    ['an amendment marker', /[►◄▼]/],
+  ])('carries no %s', (_what, pattern) => {
+    const offenders = ALL.filter(([, text]) => pattern.test(text)).map(([code]) => code)
+    expect(offenders).toEqual([])
+  })
+
+  it('renders temperatures with a real degree sign', () => {
+    expect(EU_CLP_PRECAUTIONARY_STATEMENTS['P412']).toBe(
+      'Do not expose to temperatures exceeding 50 °C/122°F.',
+    )
+  })
+
+  /**
+   * Two things that look like defects and are not. Both were checked against the
+   * rendered page; "fixing" either would be altering the regulation's text.
+   */
+  it('keeps the source’s own spacing before a closing full stop', () => {
+    expect(EU_CLP_PRECAUTIONARY_STATEMENTS['P401']).toBe('Store in accordance with… .')
+  })
+
+  it('keeps the source’s own typo in P410 + P412', () => {
+    // The regulation prints "Do no expose" here and "Do not expose" at P412.
+    // Reproducing the text means reproducing that, however much it reads wrong.
+    expect(EU_CLP_PRECAUTIONARY_STATEMENTS['P410 + P412']).toContain('Do no expose')
+    expect(EU_CLP_PRECAUTIONARY_STATEMENTS['P412']).toContain('Do not expose')
+  })
+})

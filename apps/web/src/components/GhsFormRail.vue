@@ -27,6 +27,7 @@ import {
   GHS_SIGNAL_WORDS,
   applyPrecedence,
   requiredPictograms,
+  smallContainerThresholdL,
   type GhsSignalWord,
 } from '@packwright/label-core'
 import { computed } from 'vue'
@@ -142,8 +143,12 @@ const smallContainer = computed({
   },
 })
 
-/** Each regime's own threshold, for the note beside the control. */
-const smallContainerThresholdL = computed(() => (data.regime === 'us-osha' ? 0.1 : 0.125))
+/**
+ * Read from the rule that enforces it rather than restated here. A regulatory
+ * figure written out twice is one that drifts silently — the rail would go on
+ * telling the user 100 ml after the rule had been corrected.
+ */
+const thresholdL = computed(() => smallContainerThresholdL(data.regime))
 
 const hasSupplier = computed({
   get: () => data.supplier !== undefined,
@@ -403,7 +408,7 @@ const hasSupplier = computed({
           data.regime === 'us-osha'
             ? 'OSHA, that full-information pull-out, fold-back or tag labelling is not feasible'
             : 'CLP, the conditions in Article 29'
-        }}. The threshold is {{ smallContainerThresholdL }} litres.
+        }}. The threshold is {{ thresholdL }} litres.
       </p>
 
       <label v-if="data.regime === 'us-osha'" :class="LABEL" for="field-outer-statement">

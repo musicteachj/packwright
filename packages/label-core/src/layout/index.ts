@@ -4,6 +4,7 @@ export type { UpcALayoutRequest } from './engine'
 export { layOutGhsLabel } from './ghsEngine'
 export type { GhsLayoutRequest } from './ghsEngine'
 
+export { blockingOmissions } from './omissions'
 export { measureClearSpace } from './clearSpace'
 export type { ClearSpace } from './clearSpace'
 

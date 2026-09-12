@@ -118,7 +118,9 @@ describe('layOutGhsLabel', () => {
       stock: STOCK,
     })
     const ids = layout.elements.map((e) => e.elementId)
-    expect(ids).toEqual([GHS_ELEMENTS.productIdentifier])
+    // The label itself is always an element, so a finding about its size has a
+    // box to outline; everything else appears only when the data carries it.
+    expect(ids).toEqual([GHS_ELEMENTS.border, GHS_ELEMENTS.productIdentifier])
     expect(layout.pictograms).toEqual([])
   })
 })

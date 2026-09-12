@@ -9,6 +9,7 @@ import * as digitalLink from './gs1/digitalLink'
 import * as elementString from './gs1/elementString'
 import * as gs1Barrel from './gs1/index'
 import * as clearSpace from './layout/clearSpace'
+import * as layoutOmissions from './layout/omissions'
 import * as engine from './layout/engine'
 import * as ghsEngine from './layout/ghsEngine'
 import * as layoutBarrel from './layout/index'
@@ -45,6 +46,7 @@ import * as templatesBarrel from './templates/index'
 import * as textBarrel from './text/index'
 import * as textMeasure from './text/measure'
 import * as textMetrics from './text/metrics'
+import * as filename from './templates/filename'
 import * as ghsTemplate from './templates/ghs'
 import * as stock from './templates/stock'
 import * as upcA from './templates/upcA'
@@ -102,6 +104,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     layoutBarrel,
     [
       ['clearSpace.ts', clearSpace],
+      ['omissions.ts', layoutOmissions],
       ['engine.ts', engine],
       ['ghsEngine.ts', ghsEngine],
     ],
@@ -167,6 +170,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     'templates',
     templatesBarrel,
     [
+      ['filename.ts', filename],
       ['ghs.ts', ghsTemplate],
       ['stock.ts', stock],
       ['upcA.ts', upcA],
