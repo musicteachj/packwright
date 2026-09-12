@@ -15,7 +15,7 @@ import {
 } from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passed, xDimensionMm } from '../finding'
-import type { Rule, RuleContext } from '../types'
+import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_MAGNIFICATION_OUT_OF_RANGE = 'GS1_MAGNIFICATION_OUT_OF_RANGE'
 export const GS1_MAGNIFICATION_IN_RANGE = 'GS1_MAGNIFICATION_IN_RANGE'
@@ -28,13 +28,14 @@ const CITATION: Citation = {
 
 const RANGE = `${MIN_MAGNIFICATION.toFixed(2)}x–${MAX_MAGNIFICATION.toFixed(2)}x`
 
-export const magnificationRule: Rule = {
+export const magnificationRule: Gs1RetailRule = {
   id: 'gs1/magnification',
   title: `An EAN/UPC symbol is drawn between ${RANGE} of its nominal size.`,
   citation: CITATION,
   codes: [GS1_MAGNIFICATION_OUT_OF_RANGE, GS1_MAGNIFICATION_IN_RANGE],
+  appliesTo: 'gs1-retail',
 
-  check({ layout }: RuleContext): Finding[] {
+  check({ layout }: Gs1RetailContext): Finding[] {
     return layout.symbols.map((symbol) => {
       const magnification = xDimensionMmToMagnification(symbol.xDimensionMm)
       const actual = `${magnification.toFixed(2)}x (X = ${xDimensionMm(symbol.xDimensionMm)})`

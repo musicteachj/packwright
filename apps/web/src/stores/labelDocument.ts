@@ -13,14 +13,17 @@
  */
 
 import {
+  DEFAULT_GHS_STOCK,
   DEFAULT_UPC_A_STOCK,
   LayoutError,
   compareSeverity,
+  layOutGhsLabel,
   layOutUpcALabel,
   mm,
   runRules,
   type ElementId,
   type Finding,
+  type GhsLabelData,
   type LabelStock,
   type ResolvedLayout,
   type Severity,
@@ -33,9 +36,39 @@ import { computed, reactive, ref } from 'vue'
 /** A real GTIN-12, so the editor opens on something that resolves. */
 const STARTING_GTIN = '036000291452'
 
+/**
+ * A GHS label that resolves, for the same reason the GTIN above is real.
+ *
+ * Fixed data rather than an editable form: the GHS form rail is a later stage,
+ * and the statements here are placeholder text rather than looked-up H- and
+ * P-statements, which is why nothing in this object may be presented as
+ * regulatory content. It exists so the canvas has a real GHS layout to draw.
+ */
+const STARTING_GHS: GhsLabelData = {
+  regime: 'eu-clp',
+  productIdentifier: 'Example solvent',
+  capacityL: 5,
+  signalWords: ['Danger'],
+  pictograms: ['GHS02', 'GHS07'],
+  hazardStatementCodes: ['H225'],
+  precautionaryStatementCodes: ['P210', 'P233'],
+  supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way, Leeds' },
+}
+
 export const useLabelDocumentStore = defineStore('labelDocument', () => {
+  /**
+   * Which label type the editor is showing.
+   *
+   * The store carries both documents rather than one polymorphic one, so
+   * switching type does not discard what the other was holding — and so the
+   * discriminated `runRules` context can be built without a cast.
+   */
+  const labelType = ref<'gs1-retail' | 'ghs-chemical'>('gs1-retail')
+
   const data = reactive<UpcALabelData>({ gtin: STARTING_GTIN })
   const stock = reactive<LabelStock>({ ...DEFAULT_UPC_A_STOCK })
+  const ghsData = reactive<GhsLabelData>({ ...STARTING_GHS })
+  const ghsStock = reactive<LabelStock>({ ...DEFAULT_GHS_STOCK })
 
   /**
    * The element a finding or a form field is currently pointing at.
@@ -56,7 +89,11 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    */
   const resolved = computed<{ layout: ResolvedLayout | null; error: string | null }>(() => {
     try {
-      return { layout: layOutUpcALabel(bwip as never, { data, stock }), error: null }
+      const layout =
+        labelType.value === 'gs1-retail'
+          ? layOutUpcALabel(bwip as never, { data, stock })
+          : layOutGhsLabel({ data: ghsData, stock: ghsStock })
+      return { layout, error: null }
     } catch (error) {
       if (error instanceof LayoutError) return { layout: null, error: error.message }
       throw error
@@ -66,9 +103,25 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   const layout = computed(() => resolved.value.layout)
   const layoutError = computed(() => resolved.value.error)
 
-  const findings = computed<Finding[]>(() =>
-    layout.value ? runRules({ data, stock, layout: layout.value }) : [],
-  )
+  /**
+   * Narrowed on `labelType` rather than cast, matching how `runRules` dispatches.
+   *
+   * A GHS label currently produces no findings, because no GHS rule has shipped.
+   * The rail already distinguishes "no check ran" from "everything passed", so
+   * an empty list reads correctly rather than as a clean bill of health.
+   */
+  const findings = computed<Finding[]>(() => {
+    const resolvedLayout = layout.value
+    if (!resolvedLayout) return []
+    return labelType.value === 'gs1-retail'
+      ? runRules({ labelType: 'gs1-retail', data, stock, layout: resolvedLayout })
+      : runRules({
+          labelType: 'ghs-chemical',
+          data: ghsData,
+          stock: ghsStock,
+          layout: resolvedLayout,
+        })
+  })
 
   /** Most severe first; passes last, where the rail collapses them. */
   const findingsBySeverity = computed<ReadonlyArray<[Severity, Finding[]]>>(() => {
@@ -124,8 +177,11 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   }
 
   return {
+    labelType,
     data,
     stock,
+    ghsData,
+    ghsStock,
     selectedElementId,
     layout,
     layoutError,

@@ -16,7 +16,7 @@
  * server for snapshot tests, and in Vitest unchanged.
  */
 
-import type { LayoutPrimitive, ResolvedLayout } from '../layout/types'
+import type { LayoutPrimitive, PathCommand, ResolvedLayout } from '../layout/types'
 
 /** Trims float noise without rounding away real precision. */
 function mm(value: number): string {
@@ -48,6 +48,35 @@ function attr(name: string, value: string | undefined): string {
   return value === undefined ? '' : ` ${name}="${escapeXml(value)}"`
 }
 
+/**
+ * Builds the `d` attribute from resolved commands.
+ *
+ * Nothing here is escaped because nothing here is a string: every token is a
+ * command letter this function chose or a number the engine resolved. That is
+ * the point of carrying commands rather than a `d` string — user input cannot
+ * reach the path data at all.
+ */
+function pathData(commands: readonly PathCommand[]): string {
+  return commands
+    .map((command) => {
+      switch (command.op) {
+        case 'move':
+          return `M${mm(command.xMm)} ${mm(command.yMm)}`
+        case 'line':
+          return `L${mm(command.xMm)} ${mm(command.yMm)}`
+        case 'cubic':
+          return (
+            `C${mm(command.c1xMm)} ${mm(command.c1yMm)} ` +
+            `${mm(command.c2xMm)} ${mm(command.c2yMm)} ` +
+            `${mm(command.xMm)} ${mm(command.yMm)}`
+          )
+        case 'close':
+          return 'Z'
+      }
+    })
+    .join(' ')
+}
+
 function renderPrimitive(primitive: LayoutPrimitive): string {
   const id = attr('data-element-id', primitive.elementId)
 
@@ -56,7 +85,12 @@ function renderPrimitive(primitive: LayoutPrimitive): string {
       return (
         `<rect x="${mm(primitive.xMm)}" y="${mm(primitive.yMm)}" ` +
         `width="${mm(primitive.widthMm)}" height="${mm(primitive.heightMm)}" ` +
-        `fill="#${escapeXml(primitive.fill)}"${id}/>`
+        `fill="#${escapeXml(primitive.fill)}"` +
+        (primitive.stroke === undefined ? '' : ` stroke="#${escapeXml(primitive.stroke)}"`) +
+        (primitive.strokeWidthMm === undefined
+          ? ''
+          : ` stroke-width="${mm(primitive.strokeWidthMm)}"`) +
+        `${id}/>`
       )
 
     case 'line':
@@ -68,11 +102,24 @@ function renderPrimitive(primitive: LayoutPrimitive): string {
         `${id}/>`
       )
 
+    case 'path':
+      return (
+        `<path d="${pathData(primitive.commands)}"` +
+        ` fill="${primitive.fill === undefined ? 'none' : `#${escapeXml(primitive.fill)}`}"` +
+        (primitive.fillRule === undefined ? '' : ` fill-rule="${primitive.fillRule}"`) +
+        (primitive.stroke === undefined ? '' : ` stroke="#${escapeXml(primitive.stroke)}"`) +
+        (primitive.strokeWidthMm === undefined
+          ? ''
+          : ` stroke-width="${mm(primitive.strokeWidthMm)}"`) +
+        `${id}/>`
+      )
+
     case 'text':
       return (
         `<text x="${mm(primitive.xMm)}" y="${mm(primitive.baselineYMm)}" ` +
         `font-family="${escapeXml(primitive.fontFamily)}" ` +
         `font-size="${mm(primitive.fontSizeMm)}" ` +
+        (primitive.fontWeight === undefined ? '' : `font-weight="${primitive.fontWeight}" `) +
         `fill="#${escapeXml(primitive.fill)}" text-anchor="${primitive.anchor}"${id}>` +
         `${escapeXml(primitive.text)}</text>`
       )

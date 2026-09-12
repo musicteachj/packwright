@@ -101,3 +101,73 @@ describe('POST /api/labels/upc-a/export', () => {
     expect((await post({})).status).toBe(400)
   })
 })
+
+const postGhs = (body: object) => supertest(app()).post('/api/labels/ghs/export').send(body)
+
+const GHS_BODY = {
+  regime: 'eu-clp',
+  productIdentifier: 'Acetone',
+  capacityL: 5,
+  signalWords: ['Danger'],
+  pictograms: ['GHS02', 'GHS07'],
+  hazardStatementCodes: ['H225'],
+  precautionaryStatementCodes: ['P210'],
+  supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way, Leeds' },
+}
+
+describe('POST /api/labels/ghs/export', () => {
+  it('exports a PDF sized to the requested stock', async () => {
+    const response = await postGhs(GHS_BODY)
+    expect(response.status).toBe(200)
+    expect(response.headers['content-type']).toBe('application/pdf')
+    expect(response.body.length).toBeGreaterThan(1000)
+  })
+
+  /**
+   * The distinction `LayoutOmission.scope` exists for.
+   *
+   * Every GHS label omits its pictogram glyphs, because no verified specimen
+   * artwork was available. Under the previous gate — any omission is a 422 —
+   * that would have made a GHS export impossible, while a UPC-A whose GTIN will
+   * not encode must still be refused because it really is a blank page.
+   */
+  it('ships a label whose pictogram glyphs are omitted, since the label is real', async () => {
+    const response = await postGhs(GHS_BODY)
+    expect(response.status).toBe(200)
+  })
+
+  it('still refuses a UPC-A whose symbol is absent entirely', async () => {
+    const response = await post({ gtin: '036000291453' })
+    expect(response.status).toBe(422)
+  })
+
+  it('requires the package capacity, which no geometry can supply', async () => {
+    const { capacityL: _omitted, ...withoutCapacity } = GHS_BODY
+    const response = await postGhs(withoutCapacity)
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('capacityL')
+  })
+
+  it('rejects a pictogram code that is not one of the nine', async () => {
+    const response = await postGhs({ ...GHS_BODY, pictograms: ['GHS10'] })
+    expect(response.status).toBe(400)
+  })
+
+  it('rejects a signal word outside the two CLP defines', async () => {
+    const response = await postGhs({ ...GHS_BODY, signalWords: ['CAUTION'] })
+    expect(response.status).toBe(400)
+  })
+
+  it('exports an undersized pictogram rather than refusing it', async () => {
+    // 8 mm is below the CLP minimum for this capacity band. That is a finding
+    // for the rules to report, not a malformed request — the same posture the
+    // UPC-A route takes toward a 2.5x symbol.
+    const response = await postGhs({ ...GHS_BODY, pictogramSideMm: 8 })
+    expect(response.status).toBe(200)
+  })
+
+  it('refuses stock that describes no drawing at all', async () => {
+    const response = await postGhs({ ...GHS_BODY, stock: { widthMm: 0, heightMm: 0, marginMm: 0 } })
+    expect(response.status).toBe(400)
+  })
+})

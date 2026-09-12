@@ -18,11 +18,13 @@ import manifest from '../package.json' with { type: 'json' }
 const MODULES = [
   'gs1',
   'geometry',
+  'ghs',
   'layout',
   'render',
   'rules',
   'symbology',
   'templates',
+  'text',
   'types',
 ] as const
 

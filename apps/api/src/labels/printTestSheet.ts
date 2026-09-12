@@ -185,6 +185,8 @@ export function buildPrintTestSheet(): ResolvedLayout {
     primitives,
     elements,
     symbols,
+    // The print-test sheet is barcodes only; it carries no hazard pictograms.
+    pictograms: [],
     omissions: [],
   }
 }

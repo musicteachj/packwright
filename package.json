@@ -27,7 +27,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify:build": "bash scripts/verify-build.sh"
+    "verify:build": "bash scripts/verify-build.sh",
+    "generate:font-metrics": "node scripts/generate-font-metrics.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

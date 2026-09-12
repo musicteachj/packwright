@@ -1,15 +1,17 @@
 import * as bwip from 'bwip-js/generic'
 import { describe, expect, it } from 'vitest'
 import { layOutUpcALabel } from '../layout/engine'
-import type { LabelStock, UpcALabelData } from '../templates/upcA'
+import type { LabelStock } from '../templates/stock'
+import type { UpcALabelData } from '../templates/upcA'
 import type { Finding } from '../types/index'
 import { CONFORMANT_FIXTURE, GS1_RETAIL_FIXTURES } from './fixtures/gs1Retail'
-import { GS1_RETAIL_RULES, listRules, runRules } from './registry'
+import { layOutGhsLabel } from '../layout/ghsEngine'
+import { GHS_RULES, GS1_RETAIL_RULES, listRules, runRules } from './registry'
 import { compareSeverity } from './types'
 
 function findingsFor(data: UpcALabelData, stock: LabelStock): Finding[] {
   const layout = layOutUpcALabel(bwip as never, { data, stock })
-  return runRules({ data, stock, layout })
+  return runRules({ labelType: 'gs1-retail', data, stock, layout })
 }
 
 describe('the rule registry', () => {
@@ -298,5 +300,51 @@ describe('compareSeverity', () => {
       compareSeverity(a as never, b as never),
     )
     expect(sorted).toEqual(['blocking', 'violation', 'advisory', 'guidance', 'pass'])
+  })
+})
+
+describe('the registry runs the rules for the document’s own label type', () => {
+  const ghsStock = { widthMm: 74, heightMm: 105, marginMm: 4 }
+  const ghsData = {
+    regime: 'eu-clp' as const,
+    productIdentifier: 'Acetone',
+    capacityL: 5,
+    pictograms: ['GHS02'],
+  } as const
+
+  it('runs the GHS rules, and only those, against a chemical label', () => {
+    const layout = layOutGhsLabel({ data: { ...ghsData }, stock: ghsStock })
+    const findings = runRules({
+      labelType: 'ghs-chemical',
+      data: { ...ghsData },
+      stock: ghsStock,
+      layout,
+    })
+
+    // An earlier version of this test asserted both of these were empty, which
+    // was true and useless: the rules existed as files but were never added to
+    // the registry, so they compiled, never ran, and the suite stayed green
+    // while nothing was being checked. Asserting they are non-empty is what
+    // makes that state impossible to reach again.
+    expect(GHS_RULES.length).toBeGreaterThan(0)
+    expect(findings.length).toBeGreaterThan(0)
+
+    // Every finding came from a GHS rule; no GS1 rule quietly no-opped its way
+    // into reporting on a chemical label.
+    const gs1Codes = new Set(GS1_RETAIL_RULES.flatMap((rule) => rule.codes))
+    expect(findings.filter((f) => gs1Codes.has(f.code))).toEqual([])
+  })
+
+  it('declares a label type on every rule, so none can no-op on the wrong document', () => {
+    for (const rule of listRules()) {
+      expect(rule.appliesTo, `${rule.id} declares no label type`).toBeDefined()
+    }
+    expect(GS1_RETAIL_RULES.every((rule) => rule.appliesTo === 'gs1-retail')).toBe(true)
+  })
+
+  it('filters the catalogue by label type, and lists everything without one', () => {
+    expect(listRules('gs1-retail')).toHaveLength(GS1_RETAIL_RULES.length)
+    expect(listRules('ghs-chemical')).toHaveLength(GHS_RULES.length)
+    expect(listRules()).toHaveLength(GS1_RETAIL_RULES.length + GHS_RULES.length)
   })
 })

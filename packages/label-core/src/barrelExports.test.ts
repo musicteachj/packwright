@@ -9,7 +9,9 @@ import * as digitalLink from './gs1/digitalLink'
 import * as elementString from './gs1/elementString'
 import * as gs1Barrel from './gs1/index'
 import * as clearSpace from './layout/clearSpace'
+import * as layoutOmissions from './layout/omissions'
 import * as engine from './layout/engine'
+import * as ghsEngine from './layout/ghsEngine'
 import * as layoutBarrel from './layout/index'
 import * as renderBarrel from './render/index'
 import * as toPDF from './render/toPDF'
@@ -20,6 +22,13 @@ import * as gtinCheckDigitRule from './rules/gs1/gtinCheckDigit'
 import * as humanReadableRule from './rules/gs1/humanReadable'
 import * as magnificationRule from './rules/gs1/magnification'
 import * as quietZoneRule from './rules/gs1/quietZone'
+import * as ghsLabelDimensionsRule from './rules/ghs/labelDimensions'
+import * as ghsPictogramIntegrityRule from './rules/ghs/pictogramIntegrity'
+import * as ghsPictogramPrecedenceRule from './rules/ghs/pictogramPrecedence'
+import * as ghsPictogramSetRule from './rules/ghs/pictogramSet'
+import * as ghsPictogramSizeRule from './rules/ghs/pictogramSize'
+import * as ghsSignalWordRule from './rules/ghs/signalWord'
+import * as ghsSmallContainerRule from './rules/ghs/smallContainer'
 import * as findingBuilders from './rules/finding'
 import * as rulesBarrel from './rules/index'
 import * as registry from './rules/registry'
@@ -27,7 +36,19 @@ import * as ruleTypes from './rules/types'
 import * as constraints from './symbology/constraints'
 import * as symbologyBarrel from './symbology/index'
 import * as layOutSymbol from './symbology/layOutSymbol'
+import * as ghsBarrel from './ghs/index'
+import * as ghsClassification from './ghs/classification'
+import * as ghsLabelDimensions from './ghs/labelDimensions'
+import * as ghsPictograms from './ghs/pictograms'
+import * as ghsPrecedence from './ghs/precedence'
+import * as ghsStatements from './ghs/statements'
 import * as templatesBarrel from './templates/index'
+import * as textBarrel from './text/index'
+import * as textMeasure from './text/measure'
+import * as textMetrics from './text/metrics'
+import * as filename from './templates/filename'
+import * as ghsTemplate from './templates/ghs'
+import * as stock from './templates/stock'
 import * as upcA from './templates/upcA'
 
 /**
@@ -83,7 +104,9 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     layoutBarrel,
     [
       ['clearSpace.ts', clearSpace],
+      ['omissions.ts', layoutOmissions],
       ['engine.ts', engine],
+      ['ghsEngine.ts', ghsEngine],
     ],
   ],
   [
@@ -115,9 +138,44 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['gs1/humanReadable.ts', humanReadableRule],
       ['gs1/magnification.ts', magnificationRule],
       ['gs1/quietZone.ts', quietZoneRule],
+      ['ghs/labelDimensions.ts', ghsLabelDimensionsRule],
+      ['ghs/pictogramIntegrity.ts', ghsPictogramIntegrityRule],
+      ['ghs/pictogramPrecedence.ts', ghsPictogramPrecedenceRule],
+      ['ghs/pictogramSet.ts', ghsPictogramSetRule],
+      ['ghs/pictogramSize.ts', ghsPictogramSizeRule],
+      ['ghs/signalWord.ts', ghsSignalWordRule],
+      ['ghs/smallContainer.ts', ghsSmallContainerRule],
     ],
   ],
-  ['templates', templatesBarrel, [['upcA.ts', upcA]]],
+  [
+    'ghs',
+    ghsBarrel,
+    [
+      ['classification.ts', ghsClassification],
+      ['labelDimensions.ts', ghsLabelDimensions],
+      ['pictograms.ts', ghsPictograms],
+      ['precedence.ts', ghsPrecedence],
+      ['statements.ts', ghsStatements],
+    ],
+  ],
+  [
+    'text',
+    textBarrel,
+    [
+      ['measure.ts', textMeasure],
+      ['metrics.ts', textMetrics],
+    ],
+  ],
+  [
+    'templates',
+    templatesBarrel,
+    [
+      ['filename.ts', filename],
+      ['ghs.ts', ghsTemplate],
+      ['stock.ts', stock],
+      ['upcA.ts', upcA],
+    ],
+  ],
 ]
 
 describe('barrel exports', () => {

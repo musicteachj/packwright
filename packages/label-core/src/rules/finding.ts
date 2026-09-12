@@ -42,13 +42,28 @@ export function finding(rule: Rule, input: FindingInput): Finding {
   }
 }
 
-/** A check that ran and cleared. */
-export function passed(rule: Rule, code: string, message: string, elementId?: string): Finding {
+/**
+ * A check that ran and cleared.
+ *
+ * `citation` overrides the rule's own, for the same reason `finding()` allows it
+ * — a rule that enforces the same requirement under two regulators must cite the
+ * one it actually judged against. Without it a *passing* GHS signal-word check
+ * on a US label reported against the EU regulation, which is a wrong citation on
+ * a finding a user is being asked to trust.
+ */
+export function passed(
+  rule: Rule,
+  code: string,
+  message: string,
+  elementId?: string,
+  citation?: Finding['citation'],
+): Finding {
   return finding(rule, {
     code,
     severity: 'pass',
     message,
     ...(elementId === undefined ? {} : { elementId }),
+    ...(citation === undefined ? {} : { citation }),
   })
 }
 

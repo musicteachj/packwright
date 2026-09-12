@@ -105,8 +105,24 @@ export const EMBEDDED_FONT_FAMILIES = Object.keys(PLEX_FACES)
 
 const FALLBACK_FAMILY = 'IBM Plex Sans'
 
-export function embeddedFontFor(family: string): string {
-  return family in PLEX_FACES ? family : FALLBACK_FAMILY
+/**
+ * The weight at which a request for a family switches to its SemiBold face.
+ *
+ * PDFKit registers one face per weight under its own name, while a layout — and
+ * a browser — speak family plus weight. This is where the two meet, so the
+ * layout never has to know that the exporter calls the bold face
+ * `'IBM Plex Sans SemiBold'`, and never names it as a family itself (which the
+ * browser cannot resolve).
+ */
+const SEMIBOLD_FROM = 600
+
+export function embeddedFontFor(family: string, weight?: number): string {
+  // `in` would walk the prototype chain and let 'constructor' through a guard
+  // this file's own comment calls a security boundary.
+  const base = Object.hasOwn(PLEX_FACES, family) ? family : FALLBACK_FAMILY
+  if (weight === undefined || weight < SEMIBOLD_FROM) return base
+  const semibold = `${base} SemiBold`
+  return Object.hasOwn(PLEX_FACES, semibold) ? semibold : base
 }
 
 /** Exposed so a test can assert the fonts are reachable in this build. */
