@@ -10,6 +10,33 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 4, stage 6 — small containers, which are two different rules rather than one.
+
+- `29 CFR 1910.1200(f)(12)` and CLP Annex I 1.5, both read from source. They are not the same provision with
+  different numbers: OSHA sets a **requirement** — at 100 ml or less, a reduced but mandatory minimum set —
+  while CLP grants a **permission**, allowing statements to be omitted at 125 ml or less for listed hazard
+  categories. Different thresholds, different contents, and only OSHA names a statement pointing at the outer
+  package.
+- **Neither applies on capacity alone, so the supplier declares it.** OSHA's applies only where the
+  manufacturer "can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags", and
+  CLP's hangs on Article 29. Both are determinations about packaging and process that no inspection of a label
+  can settle. A rule switching on capacity would be enforcing a provision nobody invoked — so a 50 ml label
+  that has not invoked it is still judged in full, and the rail says only that a lighter path exists.
+- The telephone number is checked, because both regimes name it explicitly and it is optional everywhere else
+  on the label — the element most easily left off.
+- The 3 ml tier in (f)(12)(iii) is **deliberately not encoded**. It turns on whether "any label interferes with
+  the normal use of the container", and encoding the relaxation without its condition would let a label drop
+  its pictograms on a capacity check alone.
+
+### Fixed
+
+- `docs/DESIGN.md` described the small-container provision, and was wrong in four ways: it had the rule
+  backwards (a permission to use fold-out labelling, where the regulation applies when fold-out labelling is
+  *not feasible*), used "under 100 mL" where the text says "less than or equal to", omitted two of the five
+  required elements — the manufacturer's phone number and the outer-package statement — and never mentioned
+  the second tier at 3 ml. CLP's own derogation, a different rule at a different threshold, was absent
+  entirely. Corrected against both sources.
+
 Phase 4, stage 5 — precedence applied, not only reported.
 
 - **The editor's own default output was non-compliant.** Deriving pictograms from a classification returned the

@@ -28,6 +28,8 @@ import {
   GHS_PICTOGRAM_PRECEDENCE_VIOLATED,
   GHS_PICTOGRAM_SYMBOL_MISSING,
   GHS_SIGNAL_WORD_CONFLICT,
+  GHS_SMALL_CONTAINER_INCOMPLETE,
+  GHS_SMALL_CONTAINER_NOT_ELIGIBLE,
 } from '../index'
 
 /** Annex V ids, named so the fixtures read as chemistry rather than as slugs. */
@@ -209,6 +211,45 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
       code: GHS_PICTOGRAM_SYMBOL_MISSING,
       severity: 'blocking',
       citation: '29 CFR 1910.1200, Appendix C, C.2.3.1',
+    },
+  },
+  {
+    name: 'a small container missing the phone number the provision names',
+    defect:
+      'A 50 ml US container relying on the small-container provision carries the supplier’s name ' +
+      'but no phone number, which 1910.1200(f)(12)(ii)(D) requires by name.',
+    data: {
+      ...BASE,
+      regime: 'us-osha',
+      capacityL: 0.05,
+      smallContainerLabelling: true,
+      signalWords: ['Danger'],
+      hazards: [HAZARDS.flammableLiquid],
+      supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way' },
+      outerPackageStatement: 'Full label information is on the outer package.',
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: GHS_SMALL_CONTAINER_INCOMPLETE,
+      severity: 'violation',
+      citation: '29 CFR 1910.1200(f)(12)',
+    },
+  },
+  {
+    name: 'a container too large for the provision it claims',
+    defect: 'A 500 ml container relies on a provision that stops at 100 ml.',
+    data: {
+      ...BASE,
+      regime: 'us-osha',
+      capacityL: 0.5,
+      smallContainerLabelling: true,
+      hazards: [HAZARDS.flammableLiquid],
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: GHS_SMALL_CONTAINER_NOT_ELIGIBLE,
+      severity: 'violation',
+      citation: '29 CFR 1910.1200(f)(12)',
     },
   },
 ]

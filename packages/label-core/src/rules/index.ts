@@ -70,3 +70,10 @@ export {
   GHS_PICTOGRAM_SET_MATCHES,
   ghsPictogramSetRule,
 } from './ghs/pictogramSet'
+export {
+  GHS_SMALL_CONTAINER_AVAILABLE,
+  GHS_SMALL_CONTAINER_COMPLETE,
+  GHS_SMALL_CONTAINER_INCOMPLETE,
+  GHS_SMALL_CONTAINER_NOT_ELIGIBLE,
+  ghsSmallContainerRule,
+} from './ghs/smallContainer'

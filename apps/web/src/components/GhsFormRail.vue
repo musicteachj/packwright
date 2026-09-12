@@ -134,6 +134,17 @@ function removeStatement(kind: 'hazard' | 'precautionary', code: string): void {
 const textFor = (kind: 'hazard' | 'precautionary', code: string) =>
   (kind === 'hazard' ? EU_CLP_HAZARD_STATEMENTS : EU_CLP_PRECAUTIONARY_STATEMENTS)[code] ?? ''
 
+const smallContainer = computed({
+  get: () => data.smallContainerLabelling === true,
+  set: (on: boolean) => {
+    if (on) data.smallContainerLabelling = true
+    else delete data.smallContainerLabelling
+  },
+})
+
+/** Each regime's own threshold, for the note beside the control. */
+const smallContainerThresholdL = computed(() => (data.regime === 'us-osha' ? 0.1 : 0.125))
+
 const hasSupplier = computed({
   get: () => data.supplier !== undefined,
   set: (on: boolean) => {
@@ -357,7 +368,54 @@ const hasSupplier = computed({
             type="text"
           />
         </label>
+        <label :class="LABEL" for="field-supplier-phone">
+          Telephone
+          <input
+            id="field-supplier-phone"
+            v-model="data.supplier.telephone"
+            :class="INPUT"
+            type="text"
+          />
+        </label>
       </template>
+    </EditorSection>
+
+    <EditorSection
+      title="Small container"
+      :element-id="GHS_ELEMENTS.outerPackageStatement"
+      :selected-element-id="store.selectedElementId"
+      :status="smallContainer ? 'in use' : 'not used'"
+      @select="select"
+    >
+      <label for="field-small-container" class="text-chrome-300 flex items-start gap-2 text-xs">
+        <input
+          id="field-small-container"
+          v-model="smallContainer"
+          type="checkbox"
+          class="accent-notice mt-0.5"
+        />
+        This container uses reduced labelling for small containers
+      </label>
+      <p class="text-chrome-400 text-xs">
+        Declared, not inferred from capacity. Both regimes make this conditional on a determination
+        about the packaging that no label can settle — for
+        {{
+          data.regime === 'us-osha'
+            ? 'OSHA, that full-information pull-out, fold-back or tag labelling is not feasible'
+            : 'CLP, the conditions in Article 29'
+        }}. The threshold is {{ smallContainerThresholdL }} litres.
+      </p>
+
+      <label v-if="data.regime === 'us-osha'" :class="LABEL" for="field-outer-statement">
+        Outer package statement
+        <input
+          id="field-outer-statement"
+          v-model="data.outerPackageStatement"
+          :class="INPUT"
+          type="text"
+          placeholder="Full label information is provided on the immediate outer package."
+        />
+      </label>
     </EditorSection>
 
     <EditorSection title="Stock" :selected-element-id="store.selectedElementId" @select="select">

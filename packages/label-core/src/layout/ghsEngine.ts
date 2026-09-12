@@ -280,6 +280,15 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     cursorYMm += type.blockGapMm
   }
 
+  if (data.outerPackageStatement) {
+    pushText(
+      GHS_ELEMENTS.outerPackageStatement,
+      'Outer package statement',
+      data.outerPackageStatement,
+      type.statementMm,
+    )
+  }
+
   if (data.supplier) {
     const { name, address, telephone } = data.supplier
     pushText(

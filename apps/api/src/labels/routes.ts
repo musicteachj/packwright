@@ -151,6 +151,8 @@ const GhsRequest = z.object({
   hazardStatementCodes: z.array(z.string()).optional(),
   precautionaryStatementCodes: z.array(z.string()).optional(),
   supplier: GhsSupplierSchema.optional(),
+  smallContainerLabelling: z.boolean().optional(),
+  outerPackageStatement: z.string().optional(),
   pictogramSideMm: z.number().positive().optional(),
   stock: z
     .object({
@@ -270,6 +272,12 @@ export function createLabelRouter(): Router {
         ? {}
         : { precautionaryStatementCodes: rest.precautionaryStatementCodes }),
       ...(rest.supplier === undefined ? {} : { supplier: toSupplier(rest.supplier) }),
+      ...(rest.smallContainerLabelling === undefined
+        ? {}
+        : { smallContainerLabelling: rest.smallContainerLabelling }),
+      ...(rest.outerPackageStatement === undefined
+        ? {}
+        : { outerPackageStatement: rest.outerPackageStatement }),
       ...(rest.pictogramSideMm === undefined ? {} : { pictogramSideMm: rest.pictogramSideMm }),
     }
 

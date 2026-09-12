@@ -32,6 +32,7 @@ export const GHS_ELEMENTS = {
   hazardStatements: 'ghs-hazard-statements',
   precautionaryStatements: 'ghs-precautionary-statements',
   supplier: 'ghs-supplier',
+  outerPackageStatement: 'ghs-outer-package-statement',
   border: 'label-border',
 } as const
 
@@ -112,6 +113,26 @@ export interface GhsLabelData {
   hazardStatementCodes?: readonly string[]
   precautionaryStatementCodes?: readonly string[]
   supplier?: GhsSupplier
+  /**
+   * The supplier is relying on the small-container provision.
+   *
+   * **Declared, not inferred.** Both regimes gate their reduced labelling on a
+   * determination this engine cannot make: OSHA 1910.1200(f)(12)(i) applies only
+   * where the manufacturer "can demonstrate that it is not feasible to use
+   * pull-out labels, fold-back labels, or tags", and CLP Annex I 1.5 hangs on
+   * Article 29. Capacity alone does not put a label on that path, so a rule that
+   * switched behaviour on capacity alone would be applying a provision nobody
+   * invoked.
+   */
+  smallContainerLabelling?: boolean
+  /**
+   * OSHA 1910.1200(f)(12)(ii)(E) — "a statement that the full label information
+   * for the hazardous chemical is provided on the immediate outer package".
+   *
+   * Free text rather than a lookup, because unlike an H- or P-statement the
+   * regulation describes what this must convey and does not codify its wording.
+   */
+  outerPackageStatement?: string
   /**
    * Overrides the drawn pictogram size. Omitted means the CLP minimum for the
    * capacity band, which is the smallest compliant label — and therefore the

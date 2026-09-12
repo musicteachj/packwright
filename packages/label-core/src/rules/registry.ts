@@ -23,6 +23,7 @@ import { ghsPictogramPrecedenceRule } from './ghs/pictogramPrecedence'
 import { ghsPictogramSetRule } from './ghs/pictogramSet'
 import { ghsPictogramSizeRule } from './ghs/pictogramSize'
 import { ghsSignalWordRule } from './ghs/signalWord'
+import { ghsSmallContainerRule } from './ghs/smallContainer'
 import type { GhsChemicalRule, Gs1RetailRule, LabelType, Rule, RuleContext } from './types'
 
 /**
@@ -53,6 +54,7 @@ export const GHS_RULES: readonly GhsChemicalRule[] = [
   ghsPictogramPrecedenceRule,
   ghsLabelDimensionsRule,
   ghsPictogramSizeRule,
+  ghsSmallContainerRule,
 ]
 
 /**

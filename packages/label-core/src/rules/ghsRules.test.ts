@@ -27,7 +27,7 @@ describe('every GHS rule ships with a label that provokes it', () => {
       (code) =>
         !covered.has(code) &&
         // Pass codes and the advisory-only precedence code are not failures.
-        !/_MET$|_SINGLE$|_COMPLETE$|_OPTIONAL$|_MATCHES$/.test(code),
+        !/_MET$|_SINGLE$|_COMPLETE$|_OPTIONAL$|_MATCHES$|_AVAILABLE$/.test(code),
     )
     expect(uncovered, 'these failure codes have no known-bad fixture').toEqual([])
   })

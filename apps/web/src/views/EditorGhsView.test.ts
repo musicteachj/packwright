@@ -200,3 +200,42 @@ describe('the GHS form rail', () => {
     expect(store.findings.some((f) => f.code === 'GHS_SIGNAL_WORD_CONFLICT')).toBe(true)
   })
 })
+
+describe('the small container path is reachable from the editor', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('is declared by the user, never inferred from capacity', async () => {
+    const store = useLabelDocumentStore()
+    store.labelType = 'ghs-chemical'
+    store.ghsData.regime = 'us-osha'
+    store.ghsData.capacityL = 0.05
+    const wrapper = mountEditor()
+    await nextTick()
+
+    // A 50 ml container that has not invoked the provision is still judged in
+    // full; the rail only notes that a lighter path exists.
+    expect(store.findings.some((f) => f.code === 'GHS_SMALL_CONTAINER_AVAILABLE')).toBe(true)
+    expect(store.findings.some((f) => f.code === 'GHS_SMALL_CONTAINER_INCOMPLETE')).toBe(false)
+
+    await wrapper.find('#field-small-container').setValue(true)
+    await nextTick()
+
+    expect(store.ghsData.smallContainerLabelling).toBe(true)
+    // Now the reduced minimum applies, and the seeded document does not meet it.
+    expect(store.findings.some((f) => f.code === 'GHS_SMALL_CONTAINER_INCOMPLETE')).toBe(true)
+  })
+
+  it('offers the outer-package statement only where OSHA requires one', async () => {
+    const store = useLabelDocumentStore()
+    store.labelType = 'ghs-chemical'
+    store.ghsData.regime = 'us-osha'
+    const wrapper = mountEditor()
+    await nextTick()
+    expect(wrapper.find('#field-outer-statement').exists()).toBe(true)
+
+    store.ghsData.regime = 'eu-clp'
+    await nextTick()
+    // CLP 1.5.1.2 names no such statement, so the field is not offered.
+    expect(wrapper.find('#field-outer-statement').exists()).toBe(false)
+  })
+})

@@ -220,8 +220,21 @@ statements, supplier identification.
     32 × 32 to 500 L, 46 × 46 above. Read as the **square's own edge**, not the bounding box of the rotated
     square — §1.2.1.3's 1 cm² floor and the table's 10 × 10 agree exactly on that reading and differ by a
     factor of two on the other. See `ghs/labelDimensions.ts`.
-- OSHA's May 2024 final rule aligning to GHS Rev. 7: containers **under 100 mL** may use a fold-out label, but
-  product identifier, pictograms, signal word and supplier info must remain on the immediate container
+- **Small containers. Corrected 2026-09-12** — the summary here was wrong in four ways. Read from the eCFR
+  text of **29 CFR 1910.1200(f)(12)** and from **CLP Annex I 1.5**:
+  - It is not a permission to use a fold-out label. It applies the other way round: (f)(12)(i) applies only
+    where the manufacturer "can demonstrate that it is **not feasible** to use pull-out labels, fold-back
+    labels, or tags containing the full label information".
+  - The threshold is "**less than or equal to** 100 ml", not "under 100 mL".
+  - The required set is the product identifier, pictogram(s), signal word, the **manufacturer's name and phone
+    number**, and **a statement that the full label information is on the immediate outer package** — the last
+    two were missing here entirely.
+  - There is a second tier at **≤ 3 ml** that this summary never mentioned, where any label interfering with
+    normal use means no label is required beyond the product identifier.
+  - CLP is a different rule, not the same one renumbered: Annex I 1.5.2.1 grants a **permission** to omit
+    statements at **≤ 125 ml** for listed hazard categories, and 1.5.1.2 sets a minimum inner-package set of
+    pictograms, product identifier and the supplier's name and telephone number — with no signal word and no
+    outer-package statement.
 - Surface the compliance deadlines in the UI. **Corrected 2026-09-11** — the dates previously given here
   ("substances 19 Jul 2026, mixtures 19 Jan 2028") were wrong, and were in any case superseded by an
   extension. Read from the eCFR text of **29 CFR 1910.1200(j)**, issue date 2026-09-09:

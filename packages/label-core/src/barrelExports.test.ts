@@ -27,6 +27,7 @@ import * as ghsPictogramPrecedenceRule from './rules/ghs/pictogramPrecedence'
 import * as ghsPictogramSetRule from './rules/ghs/pictogramSet'
 import * as ghsPictogramSizeRule from './rules/ghs/pictogramSize'
 import * as ghsSignalWordRule from './rules/ghs/signalWord'
+import * as ghsSmallContainerRule from './rules/ghs/smallContainer'
 import * as findingBuilders from './rules/finding'
 import * as rulesBarrel from './rules/index'
 import * as registry from './rules/registry'
@@ -140,6 +141,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['ghs/pictogramSet.ts', ghsPictogramSetRule],
       ['ghs/pictogramSize.ts', ghsPictogramSizeRule],
       ['ghs/signalWord.ts', ghsSignalWordRule],
+      ['ghs/smallContainer.ts', ghsSmallContainerRule],
     ],
   ],
   [
