@@ -25,7 +25,7 @@
  * where CLP's has no qualifier. Each regime is checked against its own text.
  */
 
-import { hazardsRequiring } from '../../ghs/classification'
+import { precedenceSuppressions } from '../../ghs/precedence'
 import type { GhsPictogramCode } from '../../ghs/pictograms'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passed } from '../finding'
@@ -47,18 +47,6 @@ const US: Citation = {
   title: 'Precedence of hazard information',
 }
 
-/**
- * Annex V puts respiratory and skin sensitisation in the same section (3.4), so
- * the section alone cannot tell them apart and the description has to. Both
- * strings are verbatim from the annex.
- */
-const isSkinOrEyeIrritation = (description: string) =>
-  /skin irritation|eye irritation/i.test(description)
-const isSkinSensitisation = (description: string) => /skin sensitisation/i.test(description)
-const isRespiratorySensitisation = (description: string) =>
-  /respiratory sensitisation/i.test(description)
-const isAcuteToxicity = (description: string) => /acute toxicity/i.test(description)
-
 export const ghsPictogramPrecedenceRule: GhsChemicalRule = {
   id: 'ghs/pictogram-precedence',
   title: 'Pictograms are reduced according to the precedence rules for the regime.',
@@ -72,106 +60,37 @@ export const ghsPictogramPrecedenceRule: GhsChemicalRule = {
 
   check({ data, layout }: GhsChemicalContext): Finding[] {
     const hazards = data.hazards ?? []
-    // Without a classification there is no "why", and every conditional rule
-    // below is unanswerable. Declining is not a pass.
+    // Without a classification there is no "why", and every conditional clause
+    // is unanswerable. Declining is not a pass.
     if (hazards.length === 0) return []
 
-    const drawn = new Set(layout.pictograms.map((p) => p.code as GhsPictogramCode))
-    const has = (code: GhsPictogramCode) => drawn.has(code)
+    const drawn = layout.pictograms.map((p) => p.code as GhsPictogramCode)
     const elementOf = (code: GhsPictogramCode) =>
       layout.pictograms.find((p) => p.code === code)?.elementId
 
     const citation = data.regime === 'us-osha' ? US : EU
+    // The same function the derivation uses, so a set the form produced cannot
+    // be one this rule rejects.
+    const suppressions = precedenceSuppressions(drawn, hazards, data.regime)
     const findings: Finding[] = []
-    const violate = (clause: string, message: string, code: GhsPictogramCode) =>
+
+    for (const suppression of suppressions) {
+      const elementId = elementOf(suppression.code)
       findings.push(
         finding(ghsPictogramPrecedenceRule, {
-          code: GHS_PICTOGRAM_PRECEDENCE_VIOLATED,
-          severity: 'violation',
-          message: `${message} (${clause})`,
-          ...(elementOf(code) === undefined ? {} : { elementId: elementOf(code)! }),
+          code:
+            suppression.kind === 'mandatory'
+              ? GHS_PICTOGRAM_PRECEDENCE_VIOLATED
+              : GHS_PICTOGRAM_PRECEDENCE_OPTIONAL,
+          // "Shall be optional" is not "shall not appear". Reporting the second
+          // as a violation would misstate the regulation in the stricter
+          // direction, which is no more correct than missing it.
+          severity: suppression.kind === 'mandatory' ? 'violation' : 'guidance',
+          message: `${suppression.reason} (${suppression.clause})`,
+          ...(elementId === undefined ? {} : { elementId }),
           citation,
         }),
       )
-
-    const why07 = hazardsRequiring(hazards, 'GHS07')
-
-    // Skull and crossbones over the exclamation mark.
-    if (has('GHS06') && has('GHS07')) {
-      if (data.regime === 'us-osha') {
-        // OSHA narrows this to the exclamation mark used for acute toxicity.
-        if (why07.some((entry) => isAcuteToxicity(entry.description))) {
-          violate(
-            'C.2.1.2',
-            'The skull and crossbones pictogram is present, so the exclamation mark may not ' +
-              'appear where it is used for acute toxicity.',
-            'GHS07',
-          )
-        }
-      } else {
-        violate(
-          'Article 26(1)(b)',
-          'The GHS06 pictogram applies, so GHS07 may not appear on the label.',
-          'GHS07',
-        )
-      }
-    }
-
-    // Corrosion over the exclamation mark, for skin or eye irritation only.
-    if (has('GHS05') && why07.some((entry) => isSkinOrEyeIrritation(entry.description))) {
-      violate(
-        data.regime === 'us-osha' ? 'C.2.1.3' : 'Article 26(1)(c)',
-        'The corrosion pictogram applies, so the exclamation mark may not appear for skin or ' +
-          'eye irritation.',
-        'GHS07',
-      )
-    }
-
-    // Health hazard for respiratory sensitisation, over the exclamation mark
-    // used for skin sensitisation or skin and eye irritation.
-    const why08 = hazardsRequiring(hazards, 'GHS08')
-    if (
-      has('GHS08') &&
-      why08.some((entry) => isRespiratorySensitisation(entry.description)) &&
-      why07.some(
-        (entry) =>
-          isSkinSensitisation(entry.description) || isSkinOrEyeIrritation(entry.description),
-      )
-    ) {
-      violate(
-        data.regime === 'us-osha' ? 'C.2.1.4' : 'Article 26(1)(d)',
-        'The health hazard pictogram applies for respiratory sensitisation, so the exclamation ' +
-          'mark may not appear for skin sensitisation or skin and eye irritation.',
-        'GHS07',
-      )
-    }
-
-    // The two CLP clauses that make a pictogram optional rather than forbidden.
-    // OSHA has no equivalent, so they are not raised under it.
-    if (data.regime === 'eu-clp') {
-      if (has('GHS01') && (has('GHS02') || has('GHS03'))) {
-        findings.push(
-          finding(ghsPictogramPrecedenceRule, {
-            code: GHS_PICTOGRAM_PRECEDENCE_OPTIONAL,
-            // Guidance, not a violation: the regulation says "shall be optional".
-            severity: 'guidance',
-            message:
-              'GHS01 applies, so GHS02 and GHS03 are optional and may be omitted ' +
-              '(Article 26(1)(a)).',
-            citation: EU,
-          }),
-        )
-      }
-      if ((has('GHS02') || has('GHS06')) && has('GHS04')) {
-        findings.push(
-          finding(ghsPictogramPrecedenceRule, {
-            code: GHS_PICTOGRAM_PRECEDENCE_OPTIONAL,
-            severity: 'guidance',
-            message: 'GHS02 or GHS06 applies, so GHS04 is optional (Article 26(1)(e)).',
-            citation: EU,
-          }),
-        )
-      }
     }
 
     if (!findings.some((f) => f.code === GHS_PICTOGRAM_PRECEDENCE_VIOLATED)) {

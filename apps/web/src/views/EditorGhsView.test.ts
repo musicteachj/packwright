@@ -60,9 +60,9 @@ describe('the editor on a GHS label', () => {
     const store = useLabelDocumentStore()
     store.labelType = 'ghs-chemical'
     store.ghsData.hazards = PRECEDENCE_HAZARDS
-    // The seeded document lists pictograms explicitly, which overrides the
-    // classification; clearing it lets them derive, as a real document would.
-    delete store.ghsData.pictograms
+    // Stated rather than derived: the rail now reduces the set by Article 26, so
+    // a label carrying the forbidden pictogram has to say so explicitly.
+    store.ghsData.pictograms = ['GHS05', 'GHS07']
     const wrapper = mountEditor()
     await nextTick()
 

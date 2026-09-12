@@ -10,6 +10,36 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 4, stage 5 — precedence applied, not only reported.
+
+- **The editor's own default output was non-compliant.** Deriving pictograms from a classification returned the
+  raw Annex V set, so a chemical classified for serious eye damage and skin irritation produced the corrosion
+  pictogram *and* the exclamation mark — and the precedence rule immediately flagged it. The form produced a
+  label its own rules rejected. `docs/DESIGN.md` asks that overlapping hazard classes "resolve to the correct
+  pictogram set"; they now do.
+- **Article 26 lives in one place, and both consumers read it.** The derivation needs it to build a compliant
+  set and the rule needs it to judge one, and two implementations are how a form comes to disagree with its own
+  checker. `ghs/precedence.ts` returns the clauses that apply; the rule turns them into findings and the
+  derivation removes what they forbid. A test pins the consequence: a set the derivation produced has no
+  mandatory suppression left for the rule to find, across both regimes.
+- **Clauses that make a pictogram optional are deliberately not applied.** "Shall be optional" means a supplier
+  may omit it, not that they must, and silently removing a hazard symbol would be this tool making a labelling
+  decision on someone else's behalf — while hiding a hazard while doing it. They stay on the label and the rule
+  raises them as guidance.
+
+### Fixed
+
+- **Two precedence clauses reported a violation on labels that were correct.** Article 26(1)(c) and (d) were
+  checked against the corrosion and health-hazard pictograms being present and against the *classification*
+  that would require the exclamation mark — but never against the exclamation mark actually being on the
+  label. So a label that properly omitted GHS07 was told that GHS07 may not appear on it. Reachable from the
+  editor as soon as the derivation started removing it, and shipped in the stage 2 rules commit. Found by
+  writing the test that asserts the derivation and the rule cannot disagree, which is the only thing that
+  would have looked.
+- The precedence fixtures now state their offending pictogram set explicitly rather than relying on the
+  derivation to produce one. That makes each a genuinely wrong label rather than a reflection of the engine's
+  own bad default — which is what a known-bad fixture is supposed to be.
+
 Phase 4, stage 4 — text that stays on the label.
 
 - **Statements wrap, and they wrap at layout time.** Measured against the embedded typeface, 58 of the 199

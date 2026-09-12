@@ -38,6 +38,7 @@ import * as ghsBarrel from './ghs/index'
 import * as ghsClassification from './ghs/classification'
 import * as ghsLabelDimensions from './ghs/labelDimensions'
 import * as ghsPictograms from './ghs/pictograms'
+import * as ghsPrecedence from './ghs/precedence'
 import * as ghsStatements from './ghs/statements'
 import * as templatesBarrel from './templates/index'
 import * as textBarrel from './text/index'
@@ -148,6 +149,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['classification.ts', ghsClassification],
       ['labelDimensions.ts', ghsLabelDimensions],
       ['pictograms.ts', ghsPictograms],
+      ['precedence.ts', ghsPrecedence],
       ['statements.ts', ghsStatements],
     ],
   ],

@@ -27,6 +27,7 @@ import {
   pictogramFrameCommands,
 } from '../ghs/pictograms'
 import { requiredPictograms } from '../ghs/classification'
+import { applyPrecedence } from '../ghs/precedence'
 import { hazardStatementText, precautionaryStatementText } from '../ghs/statements'
 import { wrapTextMm } from '../text/measure'
 import { dimensionBandFor, pictogramAreaSqMm } from '../ghs/labelDimensions'
@@ -139,7 +140,9 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
   // otherwise. Deriving is the regulation's own direction of travel; an explicit
   // list stays supported so a label can carry a pictogram set that is *wrong*,
   // which is what the precedence rules need to have something to catch.
-  const pictogramCodes = data.pictograms ?? requiredPictograms(data.hazards ?? [])
+  const pictogramCodes =
+    data.pictograms ??
+    applyPrecedence(requiredPictograms(data.hazards ?? []), data.hazards ?? [], data.regime)
 
   if (pictogramCodes.length) {
     const boxMm = sideMm * Math.SQRT2

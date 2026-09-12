@@ -25,6 +25,7 @@ import {
   GHS_ELEMENTS,
   GHS_REGIMES,
   GHS_SIGNAL_WORDS,
+  applyPrecedence,
   requiredPictograms,
   type GhsSignalWord,
 } from '@packwright/label-core'
@@ -62,13 +63,24 @@ function toggleHazard(id: string, on: boolean): void {
   const next = on ? [...hazards.value, id] : hazards.value.filter((h) => h !== id)
   if (next.length === 0) delete data.hazards
   else data.hazards = next
-  // Pictograms follow the classification. An explicit list would override the
-  // derivation and is only there so a wrong set can be drawn and caught.
+  // Pictograms follow the classification, reduced by precedence. An explicit
+  // list overrides the derivation and exists only so a wrong set can still be
+  // drawn and caught.
   delete data.pictograms
 }
 
-/** What the classification currently demands, before Article 26 reduces it. */
-const derivedPictograms = computed(() => requiredPictograms(hazards.value))
+/**
+ * What the classification demands, **after** Article 26 removes what it forbids.
+ *
+ * Reducing it here is what makes the editor's default output compliant. Before
+ * this, the rail derived the raw set and the precedence rule immediately flagged
+ * it — the form produced a label its own rules rejected. Clauses that make a
+ * pictogram *optional* are deliberately left in: omitting a hazard symbol is the
+ * supplier's decision, not this tool's, and the rule raises those as guidance.
+ */
+const derivedPictograms = computed(() =>
+  applyPrecedence(requiredPictograms(hazards.value), hazards.value, data.regime),
+)
 
 const signalWords = computed(() => data.signalWords ?? [])
 

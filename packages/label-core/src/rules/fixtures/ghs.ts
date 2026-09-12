@@ -84,6 +84,11 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
     data: {
       ...BASE,
       hazards: [HAZARDS.seriousEyeDamage, HAZARDS.skinIrritation],
+      // Stated explicitly: the derivation now removes GHS07 here, so a label
+      // carrying it is one somebody drew that way rather than one this engine
+      // produced. That is a better fixture — it provokes the rule with a
+      // genuinely wrong label instead of with the engine's own bad default.
+      pictograms: ['GHS05', 'GHS07'],
     },
     stock: CONFORMING_STOCK,
     expected: {
@@ -98,6 +103,7 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
     data: {
       ...BASE,
       hazards: [HAZARDS.acuteToxicity, HAZARDS.skinIrritation],
+      pictograms: ['GHS06', 'GHS07'],
     },
     stock: CONFORMING_STOCK,
     expected: {
@@ -114,6 +120,7 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
     data: {
       ...BASE,
       hazards: [HAZARDS.respiratorySensitisation, HAZARDS.skinSensitisation],
+      pictograms: ['GHS08', 'GHS07'],
     },
     stock: CONFORMING_STOCK,
     expected: {
