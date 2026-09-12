@@ -25,6 +25,8 @@ import type { Anchor, LabelStock } from './stock'
 export const US_FOOD_ELEMENTS = {
   statementOfIdentity: 'food-statement-of-identity',
   netQuantity: 'food-net-quantity',
+  ingredients: 'food-ingredients',
+  responsibleFirm: 'food-responsible-firm',
   principalDisplayPanel: 'food-pdp',
   border: 'label-border',
 } as const
@@ -64,6 +66,67 @@ export interface UsFoodNetQuantity {
   packaging?: UsFoodPackaging
 }
 
+/**
+ * One entry in the ingredient statement.
+ *
+ * The weight share is carried because 21 CFR 101.4(a)(1) orders the list "in
+ * descending order of predominance by weight", and an order can only be checked
+ * against the weights it claims to reflect. A list of names in an order is a
+ * claim; a list of names with weights is a claim that can be wrong.
+ */
+export interface UsFoodIngredient {
+  /** Common or usual name, and a specific one — 21 CFR 101.4(b). */
+  name: string
+  /** Share of the finished food by weight, as a percentage. */
+  percentByWeight: number
+}
+
+/**
+ * The 21 CFR 101.4(a)(2) exception, where it is claimed.
+ *
+ * Ingredients at or below the threshold may be grouped at the end of the list,
+ * out of order, behind a quantifying statement. The permitted thresholds are a
+ * closed set — "2 percent, or, if desired, 1.5 percent, 1.0 percent, or 0.5
+ * percent" — and nothing behind the statement may exceed the one chosen.
+ */
+export const INGREDIENT_THRESHOLD_PERCENTS = [2, 1.5, 1.0, 0.5] as const
+export type IngredientThresholdPercent = (typeof INGREDIENT_THRESHOLD_PERCENTS)[number]
+
+/**
+ * The firm whose name appears on the label — 21 CFR 101.5.
+ *
+ * Two things here are facts about the world rather than about the label, so the
+ * supplier declares them and no rule infers them. Whether this firm actually
+ * made the food decides whether 101.5(c) demands a qualifying phrase, and
+ * whether the street address appears in a current city or telephone directory
+ * decides whether 101.5(d) demands it on the label. Neither is answerable by
+ * inspecting artwork — the same reasoning that made GHS small-container
+ * labelling a declaration rather than a capacity check.
+ */
+export interface UsFoodResponsibleFirm {
+  /**
+   * 21 CFR 101.5(b): for a corporation, the actual corporate name; for an
+   * individual, partnership or association, the name the business is conducted
+   * under.
+   */
+  name: string
+  /** Whether this firm manufactured the food. */
+  isManufacturer: boolean
+  /**
+   * The phrase printed before the name where it did not — "Manufactured for",
+   * "Distributed by". Free text, because 101.5(c) permits "any other wording
+   * that expresses the facts" and an enum here would reject a compliant label.
+   */
+  qualifyingPhrase?: string
+  streetAddress?: string
+  /** Declared, because whether an address is in a current directory is not
+   *  visible on the label. 101.5(d) drops the street address when it is. */
+  streetAddressInDirectory?: boolean
+  city: string
+  state: string
+  zip?: string
+}
+
 export interface UsFoodLabelData {
   /** 21 CFR 101.3 — what the food *is*. Drawn so there is something for the
    *  net quantity to be separated from, which 101.7(f) measures. */
@@ -87,6 +150,36 @@ export interface UsFoodLabelData {
    * prevents.
    */
   netQuantityAnchor?: Anchor
+  /**
+   * The ingredient statement, in the order it will be printed. The engine draws
+   * this order as given — it does not sort — because a list printed out of
+   * descending order is exactly the defect 101.4(a)(1) exists to catch, and an
+   * engine that quietly sorted would make that defect undrawable.
+   */
+  ingredients?: readonly UsFoodIngredient[]
+  /**
+   * Where the 101.4(a)(2) grouping is claimed: the threshold on the quantifying
+   * statement, and how many entries at the end of the list sit behind it.
+   */
+  ingredientThreshold?: {
+    percent: IngredientThresholdPercent
+    /** Count of trailing entries the quantifying statement covers. */
+    count: number
+  }
+  /**
+   * Declared where § 101.100 exempts the food from ingredient labelling. Those
+   * exemptions turn on facts about the product and its packaging rather than on
+   * anything drawable, so like the GHS small-container provision this is stated
+   * by the supplier and never inferred.
+   */
+  ingredientsExempt?: boolean
+  responsibleFirm?: UsFoodResponsibleFirm
+  /**
+   * Em size for the ingredient statement and the responsible firm. Omitted, the
+   * engine uses a default set at the 21 CFR 101.2(c) floor. Present, it draws
+   * what it is given — which is how type below the floor reaches the rule.
+   */
+  informationPanelFontSizeMm?: number
 }
 
 /**
@@ -98,6 +191,14 @@ export const US_FOOD_TYPE_DEFAULT = {
   fontFamily: 'IBM Plex Sans',
   emphasisFontWeight: 600,
   statementOfIdentityMm: 6,
+  /**
+   * The ingredient statement and the responsible firm. Set at the 21 CFR 101.2(c)
+   * floor of 1/16 inch measured on the lowercase "o" — 1.5875 / 0.540 = 2.94 mm
+   * of em — so the default label sits exactly on the line the rule checks rather
+   * than comfortably above it. A default that cleared by a wide margin would mean
+   * the rule never ran against anything close to its own threshold.
+   */
+  informationPanelMm: 2.94,
   /** Leading between stacked lines, as a multiple of the type size. */
   lineHeight: 1.3,
   blockGapMm: 3,

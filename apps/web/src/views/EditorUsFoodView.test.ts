@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { US_FOOD_RULES } from '@packwright/label-core'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
 
@@ -45,9 +46,12 @@ describe('the editor on a US food label', () => {
     // The seeded document states no type size, so the engine derives the em
     // 21 CFR 101.7(i) requires. A default label its own rules reject would be a
     // bad first impression and a worse advertisement for the engine.
+    // Counted against the registry rather than against a literal, because a
+    // hard-coded total is a test that has to be edited every time a rule ships
+    // and is therefore a test nobody trusts by the fourth edit.
     const { store } = await mountFood()
     expect(store.failures).toEqual([])
-    expect(store.passes.length).toBe(5)
+    expect(store.passes.length).toBe(US_FOOD_RULES.length)
   })
 
   it('shows FDA citations, not GS1 or CLP ones', async () => {
@@ -271,8 +275,10 @@ describe('the form does not author label content', () => {
     await nextTick()
 
     expect(store.hasBlocking).toBe(true)
-    // Nothing was drawn, so nothing was measured, so nothing passed.
-    expect(store.passes).toEqual([])
+    // Nothing was drawn, so no net quantity check measured anything. Scoped to
+    // those, because the ingredient and firm rules on this label ran and
+    // legitimately passed — and that distinction is the point.
+    expect(store.passes.filter((f) => f.code.startsWith('FDA_NET_QUANTITY'))).toEqual([])
     const match = store.findings.find((f) => f.code === 'FDA_NET_QUANTITY_MISSING')
     expect(match!.citation.reference).toBe('21 CFR 101.7(a)')
   })
@@ -289,5 +295,156 @@ describe('the form does not author label content', () => {
     expect(store.hasBlocking).toBe(true)
     expect(store.findings.some((f) => f.code === 'FDA_NET_QUANTITY_MISSING')).toBe(true)
     expect(store.findings.some((f) => f.code === 'FDA_NET_QUANTITY_TYPE_SIZE_MET')).toBe(true)
+  })
+})
+
+describe('the ingredient statement, from the form to the rail', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('reports a list moved out of descending order', async () => {
+    const { store, wrapper } = await mountFood()
+    expect(store.failures).toEqual([])
+
+    // Sugar is 2% of the food and the oats 97%. Putting sugar first is the
+    // defect 101.4(a)(1) exists to catch, and the form has to be able to make
+    // it. Moving *salt* up would not: salt is inside the grouped tail, which
+    // 101.4(a)(2) releases from the ordering requirement altogether, so the
+    // label would still be compliant — which it is, and the rules say so.
+    await wrapper.find('[aria-label="Move sugar up"]').trigger('click')
+    await nextTick()
+
+    const finding = store.findings.find((f) => f.code === 'FDA_INGREDIENTS_OUT_OF_ORDER')
+    expect(finding, 'reordering produced no finding').toBeDefined()
+    expect(finding!.citation.reference).toBe('21 CFR 101.4(a)(1)')
+  })
+
+  it('offers only the four thresholds 101.4(a)(2) permits', async () => {
+    const { wrapper } = await mountFood()
+    const options = wrapper.find('#field-food-threshold').findAll('option')
+    expect(options.map((o) => o.attributes('value'))).toEqual(['2', '1.5', '1', '0.5'])
+  })
+
+  it('reports a missing statement rather than passing an empty one', async () => {
+    const { store, wrapper } = await mountFood()
+    for (let i = store.foodData.ingredients!.length; i > 0; i -= 1) {
+      await wrapper.find(`[aria-label^="Remove "]`).trigger('click')
+      await nextTick()
+    }
+    expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_MISSING')).toBe(true)
+    expect(store.hasBlocking).toBe(true)
+  })
+
+  it('stops asking once an exemption is claimed and nothing is listed', async () => {
+    // §101.100's exemptions turn on facts about the product, so the label
+    // declares one and no rule infers it — the GHS small-container call again.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-ing-exempt').setValue(true)
+    await nextTick()
+    for (let i = store.foodData.ingredients!.length; i > 0; i -= 1) {
+      await wrapper.find('[aria-label^="Remove "]').trigger('click')
+      await nextTick()
+    }
+    expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_EXEMPT')).toBe(true)
+    expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_MISSING')).toBe(false)
+  })
+
+  it('still checks a list printed despite the exemption', async () => {
+    // The exemption excuses the absence of a statement, not the disorder of one
+    // printed anyway. A consumer reading a printed list has no way of knowing it
+    // was voluntary, so what is on the label is checked like any other list.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-ing-exempt').setValue(true)
+    await nextTick()
+    await wrapper.find('[aria-label="Move sugar up"]').trigger('click')
+    await nextTick()
+
+    expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_EXEMPT')).toBe(false)
+    expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_OUT_OF_ORDER')).toBe(true)
+  })
+})
+
+describe('the responsible firm', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('demands a qualifying phrase once the firm says it did not make the food', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-is-mfr').setValue(false)
+    await nextTick()
+
+    const finding = store.findings.find((f) => f.code === 'FDA_RESPONSIBLE_FIRM_UNQUALIFIED')
+    expect(finding!.citation.reference).toBe('21 CFR 101.5(c)')
+
+    await wrapper.find('#field-food-qualifier').setValue('Distributed by')
+    await nextTick()
+    expect(store.findings.some((f) => f.code === 'FDA_RESPONSIBLE_FIRM_UNQUALIFIED')).toBe(false)
+  })
+
+  it('drops the street address requirement only when the label says it is on file', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-street').setValue('')
+    await nextTick()
+    expect(store.findings.some((f) => f.code === 'FDA_RESPONSIBLE_FIRM_ADDRESS_INCOMPLETE')).toBe(
+      true,
+    )
+
+    // 101.5(d)'s own escape, and a fact about a directory rather than a label.
+    await wrapper.find('#field-food-directory').setValue(true)
+    await nextTick()
+    expect(store.findings.some((f) => f.code === 'FDA_RESPONSIBLE_FIRM_ADDRESS_INCOMPLETE')).toBe(
+      false,
+    )
+  })
+
+  it('reports a label that names nobody as blocking', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-has-firm').setValue(false)
+    await nextTick()
+    const finding = store.findings.find((f) => f.code === 'FDA_RESPONSIBLE_FIRM_MISSING')
+    expect(finding!.severity).toBe('blocking')
+  })
+})
+
+describe('the type-size override seeds a size that complies', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('rounds the seeded em up, never down', async () => {
+    // An all-caps declaration needs 6.823066 mm. `toFixed(2)` gave 6.82, which is
+    // 0.002 mm short — past the measurement tolerance — so ticking the box
+    // reported the label too small the instant the user took control of it.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-inch-pound').setValue('NET WT 12 OZ')
+    await nextTick()
+    await wrapper.find('#field-food-metric').setValue('(340 G)')
+    await nextTick()
+    expect(store.failures).toEqual([])
+
+    await wrapper.find('#field-food-override-type').setValue(true)
+    await nextTick()
+
+    expect(store.foodData.netQuantityFontSizeMm).toBe(6.83)
+    expect(store.failures).toEqual([])
+  })
+
+  it('does the same for a mixed-case declaration', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-override-type').setValue(true)
+    await nextTick()
+    // 4.7625 / 0.540 = 8.819444, so 8.82 rounds up and clears.
+    expect(store.foodData.netQuantityFontSizeMm).toBe(8.82)
+    expect(store.failures).toEqual([])
+  })
+
+  it('lowers the grouped count when the list it covers shrinks', async () => {
+    const { store, wrapper } = await mountFood()
+    expect(store.foodData.ingredientThreshold!.count).toBe(2)
+
+    for (let i = store.foodData.ingredients!.length; i > 1; i -= 1) {
+      await wrapper.find('[aria-label^="Remove "]').trigger('click')
+      await nextTick()
+    }
+
+    // One entry left, so the statement can cover at most one.
+    expect(store.foodData.ingredients!.length).toBe(1)
+    expect(store.foodData.ingredientThreshold?.count ?? 0).toBeLessThanOrEqual(1)
   })
 })

@@ -29,6 +29,7 @@ import {
   blockingOmissions,
   labelFilename,
   getSymbologyConstraints,
+  INGREDIENT_THRESHOLD_PERCENTS,
   US_FOOD_PACKAGINGS,
   layOutGhsLabel,
   layOutUpcALabel,
@@ -40,6 +41,7 @@ import {
   type UpcALabelData,
   type UsFoodLabelData,
   type UsFoodNetQuantity,
+  type UsFoodResponsibleFirm,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import { Router, type Request, type Response } from 'express'
@@ -223,24 +225,88 @@ const NetQuantitySchema = z.object({
   packaging: z.enum(US_FOOD_PACKAGINGS).optional(),
 })
 
-const UsFoodRequest = z.object({
-  statementOfIdentity: z.string().min(1),
-  netQuantity: NetQuantitySchema,
-  // Required, and not defaulted. The container selects the 101.7(i) type-size
-  // band; supplying one the caller never stated would invent the requirement
-  // every finding on this label is measured against.
-  container: ContainerSchema,
-  markingMethod: z.enum(['printed', 'blown-embossed-or-molded']).optional(),
-  netQuantityFontSizeMm: z.number().positive().optional(),
-  netQuantityAnchor: z.enum(ANCHORS).optional(),
-  stock: z
-    .object({
-      widthMm: z.number().positive(),
-      heightMm: z.number().positive(),
-      marginMm: z.number().min(0),
-    })
-    .optional(),
+const IngredientSchema = z.object({
+  name: z.string().min(1),
+  percentByWeight: z.number().min(0).max(100),
 })
+
+const ResponsibleFirmSchema = z.object({
+  name: z.string().min(1),
+  isManufacturer: z.boolean(),
+  qualifyingPhrase: z.string().optional(),
+  streetAddress: z.string().optional(),
+  streetAddressInDirectory: z.boolean().optional(),
+  city: z.string(),
+  state: z.string(),
+  zip: z.string().optional(),
+})
+
+/** The same key-by-key reconciliation the other nested objects get. */
+function toResponsibleFirm(firm: z.infer<typeof ResponsibleFirmSchema>): UsFoodResponsibleFirm {
+  return {
+    name: firm.name,
+    isManufacturer: firm.isManufacturer,
+    city: firm.city,
+    state: firm.state,
+    ...(firm.qualifyingPhrase === undefined ? {} : { qualifyingPhrase: firm.qualifyingPhrase }),
+    ...(firm.streetAddress === undefined ? {} : { streetAddress: firm.streetAddress }),
+    ...(firm.streetAddressInDirectory === undefined
+      ? {}
+      : { streetAddressInDirectory: firm.streetAddressInDirectory }),
+    ...(firm.zip === undefined ? {} : { zip: firm.zip }),
+  }
+}
+
+const UsFoodRequest = z
+  .object({
+    statementOfIdentity: z.string().min(1),
+    netQuantity: NetQuantitySchema,
+    // Required, and not defaulted. The container selects the 101.7(i) type-size
+    // band; supplying one the caller never stated would invent the requirement
+    // every finding on this label is measured against.
+    container: ContainerSchema,
+    markingMethod: z.enum(['printed', 'blown-embossed-or-molded']).optional(),
+    netQuantityFontSizeMm: z.number().positive().optional(),
+    netQuantityAnchor: z.enum(ANCHORS).optional(),
+    informationPanelFontSizeMm: z.number().positive().optional(),
+    ingredients: z.array(IngredientSchema).optional(),
+    // The four figures 21 CFR 101.4(a)(2) permits, derived from label-core's own
+    // list rather than restated — a fifth would be a compliance defect, so it is
+    // rejected at the boundary rather than drawn and reported.
+    ingredientThreshold: z
+      .object({
+        percent: z.union(
+          INGREDIENT_THRESHOLD_PERCENTS.map((p) => z.literal(p)) as unknown as [
+            z.ZodLiteral<2>,
+            z.ZodLiteral<1.5>,
+            z.ZodLiteral<1>,
+            z.ZodLiteral<0.5>,
+          ],
+        ),
+        count: z.number().int().min(0),
+      })
+      .optional(),
+    ingredientsExempt: z.boolean().optional(),
+    responsibleFirm: ResponsibleFirmSchema.optional(),
+    stock: z
+      .object({
+        widthMm: z.number().positive(),
+        heightMm: z.number().positive(),
+        marginMm: z.number().min(0),
+      })
+      .optional(),
+  })
+  // A quantifying statement cannot cover entries that are not on the list. An
+  // unbounded count drew a leading empty sentence and left the order rule with
+  // nothing to examine, which it reported as a pass — so it is refused here
+  // rather than clamped silently, the way an impermissible threshold is.
+  .refine(
+    (request) => (request.ingredientThreshold?.count ?? 0) <= (request.ingredients?.length ?? 0),
+    {
+      path: ['ingredientThreshold', 'count'],
+      message: 'cannot cover more entries than the ingredient list contains',
+    },
+  )
 
 /** The same key-by-key reconciliation `toArtwork` and `toSupplier` do. */
 function toNetQuantity(netQuantity: z.infer<typeof NetQuantitySchema>): UsFoodNetQuantity {
@@ -435,6 +501,19 @@ export function createLabelRouter(): Router {
       ...(rest.netQuantityAnchor === undefined
         ? {}
         : { netQuantityAnchor: rest.netQuantityAnchor }),
+      ...(rest.informationPanelFontSizeMm === undefined
+        ? {}
+        : { informationPanelFontSizeMm: rest.informationPanelFontSizeMm }),
+      ...(rest.ingredients === undefined ? {} : { ingredients: rest.ingredients }),
+      ...(rest.ingredientThreshold === undefined
+        ? {}
+        : { ingredientThreshold: rest.ingredientThreshold }),
+      ...(rest.ingredientsExempt === undefined
+        ? {}
+        : { ingredientsExempt: rest.ingredientsExempt }),
+      ...(rest.responsibleFirm === undefined
+        ? {}
+        : { responsibleFirm: toResponsibleFirm(rest.responsibleFirm) }),
     }
 
     try {

@@ -30,11 +30,14 @@ import * as ghsPictogramSetRule from './rules/ghs/pictogramSet'
 import * as ghsPictogramSizeRule from './rules/ghs/pictogramSize'
 import * as ghsSignalWordRule from './rules/ghs/signalWord'
 import * as ghsSmallContainerRule from './rules/ghs/smallContainer'
+import * as usFoodIngredientListRule from './rules/usFood/ingredientList'
+import * as usFoodInformationPanelTypeSizeRule from './rules/usFood/informationPanelTypeSize'
 import * as usFoodNetQuantityDualDeclarationRule from './rules/usFood/netQuantityDualDeclaration'
 import * as usFoodNetQuantityPlacementRule from './rules/usFood/netQuantityPlacement'
 import * as usFoodNetQuantityPresentRule from './rules/usFood/netQuantityPresent'
 import * as usFoodNetQuantitySeparationRule from './rules/usFood/netQuantitySeparation'
 import * as usFoodNetQuantityTypeSizeRule from './rules/usFood/netQuantityTypeSize'
+import * as usFoodResponsibleFirmRule from './rules/usFood/responsibleFirm'
 import * as findingBuilders from './rules/finding'
 import * as rulesBarrel from './rules/index'
 import * as registry from './rules/registry'
@@ -158,6 +161,9 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['usFood/netQuantityPresent.ts', usFoodNetQuantityPresentRule],
       ['usFood/netQuantitySeparation.ts', usFoodNetQuantitySeparationRule],
       ['usFood/netQuantityTypeSize.ts', usFoodNetQuantityTypeSizeRule],
+      ['usFood/ingredientList.ts', usFoodIngredientListRule],
+      ['usFood/informationPanelTypeSize.ts', usFoodInformationPanelTypeSizeRule],
+      ['usFood/responsibleFirm.ts', usFoodResponsibleFirmRule],
     ],
   ],
   [

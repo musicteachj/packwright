@@ -24,11 +24,14 @@ import { ghsPictogramSetRule } from './ghs/pictogramSet'
 import { ghsPictogramSizeRule } from './ghs/pictogramSize'
 import { ghsSignalWordRule } from './ghs/signalWord'
 import { ghsSmallContainerRule } from './ghs/smallContainer'
+import { usFoodIngredientListRule, usFoodIngredientThresholdRule } from './usFood/ingredientList'
+import { usFoodInformationPanelTypeSizeRule } from './usFood/informationPanelTypeSize'
 import { usFoodNetQuantityDualDeclarationRule } from './usFood/netQuantityDualDeclaration'
 import { usFoodNetQuantityPlacementRule } from './usFood/netQuantityPlacement'
 import { usFoodNetQuantityPresentRule } from './usFood/netQuantityPresent'
 import { usFoodNetQuantitySeparationRule } from './usFood/netQuantitySeparation'
 import { usFoodNetQuantityTypeSizeRule } from './usFood/netQuantityTypeSize'
+import { usFoodResponsibleFirmRule } from './usFood/responsibleFirm'
 import type {
   GhsChemicalRule,
   Gs1RetailRule,
@@ -72,9 +75,11 @@ export const GHS_RULES: readonly GhsChemicalRule[] = [
 /**
  * The US food rule set.
  *
- * Ordered as a person would check the declaration: is it there at all, is it big
- * enough, is it in the right part of the panel, does it stand clear of
- * everything else, and does it say the quantity in both measurement systems.
+ * Ordered as a person would read the label: the net quantity first — is it there
+ * at all, is it big enough, is it in the right part of the panel, does it stand
+ * clear of everything else, does it say the quantity in both measurement systems
+ * — then what the food is made of, then who is answerable for it, and finally
+ * whether any of it is legible.
  *
  * The first of those was added after the other four shipped. Each of them
  * declines when nothing is drawn, which is right individually and produced
@@ -100,6 +105,10 @@ export const US_FOOD_RULES: readonly UsFoodRule[] = [
   usFoodNetQuantityPlacementRule,
   usFoodNetQuantitySeparationRule,
   usFoodNetQuantityDualDeclarationRule,
+  usFoodIngredientListRule,
+  usFoodIngredientThresholdRule,
+  usFoodResponsibleFirmRule,
+  usFoodInformationPanelTypeSizeRule,
 ]
 
 /**

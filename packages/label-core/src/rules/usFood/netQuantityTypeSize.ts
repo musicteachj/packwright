@@ -25,7 +25,7 @@
 
 import {
   minNetQuantityTypeHeightMm,
-  netQuantityGlyphBasis,
+  regulatedGlyphBasis,
   pdpAreaSqInches,
 } from '../../geometry/pdp'
 import { glyphHeightMm } from '../../text/measure'
@@ -69,7 +69,7 @@ export const usFoodNetQuantityTypeSizeRule: UsFoodRule = {
     const markingMethod = data.markingMethod ?? 'printed'
     const requiredMm = minNetQuantityTypeHeightMm(pdpSqInches, markingMethod)
 
-    const basis = netQuantityGlyphBasis(drawn.text)
+    const basis = regulatedGlyphBasis(drawn.text)
     const actualMm = glyphHeightMm(drawn.fontSizeMm, drawn.fontFamily, basis)
 
     const panelText = `${pdpSqInches.toFixed(1)} in² panel`

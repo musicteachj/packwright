@@ -23,22 +23,24 @@
  */
 import {
   ANCHORS,
+  INGREDIENT_THRESHOLD_PERCENTS,
   US_FOOD_ELEMENTS,
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
   fontSizeMmForGlyphHeight,
   mm,
   minNetQuantityTypeHeightMm,
-  netQuantityGlyphBasis,
+  regulatedGlyphBasis,
   pdpAreaSqInches,
   type Anchor,
   type Container,
   type ContainerShape,
+  type IngredientThresholdPercent,
 } from '@packwright/label-core'
 import { computed } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorSection from './EditorSection.vue'
-import { INPUT, LABEL } from './formStyles'
+import { CHIP, CHIP_REMOVE, INPUT, LABEL } from './formStyles'
 
 const store = useLabelDocumentStore()
 const data = store.foodData
@@ -98,7 +100,7 @@ const requiredLetterText = computed(() => mm(requiredLetterMm.value))
 
 /** 21 CFR 101.7(h)(2) — which letter that height is measured on. */
 const glyphBasis = computed(() =>
-  netQuantityGlyphBasis(
+  regulatedGlyphBasis(
     [data.netQuantity.inchPound, data.netQuantity.metric].filter(Boolean).join(' '),
   ),
 )
@@ -158,7 +160,11 @@ const metric = computed({
 const overrideTypeSize = computed({
   get: () => data.netQuantityFontSizeMm !== undefined,
   set: (on: boolean) => {
-    if (on) data.netQuantityFontSizeMm = Number(compliantFontSizeMm.value.toFixed(2))
+    // Rounded *up*. `toFixed` rounds to nearest, so an all-caps declaration
+    // needing 6.823066 mm was seeded at 6.82 and reported too small the instant
+    // the box was ticked — the same "taking control of the size breaks a
+    // compliant label" defect as before, reintroduced by two decimal places.
+    if (on) data.netQuantityFontSizeMm = Math.ceil(compliantFontSizeMm.value * 100) / 100
     else delete data.netQuantityFontSizeMm
   },
 })
@@ -167,6 +173,123 @@ const anchor = computed({
   get: (): Anchor => data.netQuantityAnchor ?? 'bottom-centre',
   set: (next: Anchor) => {
     data.netQuantityAnchor = next
+  },
+})
+
+/**
+ * Ingredients are stored in the order they are printed, and the weight beside
+ * each is what makes the order checkable. A rail that only collected names would
+ * be asking the user to assert descending predominance and then be unable to
+ * test the assertion — 101.4(a)(1) would become a rule with nothing to run on.
+ */
+const ingredients = computed(() => data.ingredients ?? [])
+
+function setIngredients(next: { name: string; percentByWeight: number }[]): void {
+  if (next.length === 0) delete data.ingredients
+  else data.ingredients = next
+}
+
+function addIngredient(): void {
+  setIngredients([...ingredients.value.map((i) => ({ ...i })), { name: '', percentByWeight: 0 }])
+}
+
+function removeIngredient(index: number): void {
+  const next = ingredients.value.filter((_, i) => i !== index).map((i) => ({ ...i }))
+  setIngredients(next)
+  // The grouped count has to come down with the list. Left alone it could cover
+  // more entries than exist, which drew "INGREDIENTS: ." and left the order rule
+  // examining nothing and calling it a pass.
+  const grouped = data.ingredientThreshold?.count ?? 0
+  if (grouped > next.length) groupedCount.value = next.length
+}
+
+/** Moving an entry is how a compliant list is made non-compliant, deliberately. */
+function moveIngredient(index: number, by: number): void {
+  const next = ingredients.value.map((i) => ({ ...i }))
+  const target = index + by
+  if (target < 0 || target >= next.length) return
+  const [moved] = next.splice(index, 1)
+  next.splice(target, 0, moved!)
+  setIngredients(next)
+}
+
+const groupedCount = computed({
+  get: () => data.ingredientThreshold?.count ?? 0,
+  set: (count: number) => {
+    const percent = data.ingredientThreshold?.percent ?? 2
+    // Bounded by the list itself: a statement cannot cover entries that are not
+    // there, and a count past the end is a nonsense the engine should not draw.
+    const bounded = Math.min(Math.max(0, count), ingredients.value.length)
+    if (bounded <= 0) delete data.ingredientThreshold
+    else data.ingredientThreshold = { percent, count: bounded }
+  },
+})
+
+const thresholdPercent = computed({
+  get: (): IngredientThresholdPercent => data.ingredientThreshold?.percent ?? 2,
+  set: (percent: IngredientThresholdPercent) => {
+    const count = data.ingredientThreshold?.count ?? 0
+    if (count > 0) data.ingredientThreshold = { percent, count }
+  },
+})
+
+const ingredientsExempt = computed({
+  get: () => data.ingredientsExempt === true,
+  set: (on: boolean) => {
+    if (on) data.ingredientsExempt = true
+    else delete data.ingredientsExempt
+  },
+})
+
+/**
+ * The firm, and the two facts about it that no inspection of a label can settle.
+ * Both are ticked by the user and neither is inferred, the same call the GHS rail
+ * makes about small-container labelling.
+ */
+const firm = computed(() => data.responsibleFirm)
+
+const hasFirm = computed({
+  get: () => data.responsibleFirm !== undefined,
+  set: (on: boolean) => {
+    if (on) {
+      data.responsibleFirm = { name: '', isManufacturer: true, city: '', state: '' }
+    } else delete data.responsibleFirm
+  },
+})
+
+const qualifyingPhrase = computed({
+  get: () => data.responsibleFirm?.qualifyingPhrase ?? '',
+  set: (next: string) => {
+    if (data.responsibleFirm === undefined) return
+    if (next.trim() === '') delete data.responsibleFirm.qualifyingPhrase
+    else data.responsibleFirm.qualifyingPhrase = next
+  },
+})
+
+const streetAddress = computed({
+  get: () => data.responsibleFirm?.streetAddress ?? '',
+  set: (next: string) => {
+    if (data.responsibleFirm === undefined) return
+    if (next.trim() === '') delete data.responsibleFirm.streetAddress
+    else data.responsibleFirm.streetAddress = next
+  },
+})
+
+const zip = computed({
+  get: () => data.responsibleFirm?.zip ?? '',
+  set: (next: string) => {
+    if (data.responsibleFirm === undefined) return
+    if (next.trim() === '') delete data.responsibleFirm.zip
+    else data.responsibleFirm.zip = next
+  },
+})
+
+const streetInDirectory = computed({
+  get: () => data.responsibleFirm?.streetAddressInDirectory === true,
+  set: (on: boolean) => {
+    if (data.responsibleFirm === undefined) return
+    if (on) data.responsibleFirm.streetAddressInDirectory = true
+    else delete data.responsibleFirm.streetAddressInDirectory
   },
 })
 
@@ -375,6 +498,189 @@ const packaging = computed({
         21 CFR 101.7(f) wants the declaration in the bottom 30% of the panel, on all but the
         smallest packages.
       </p>
+    </EditorSection>
+
+    <EditorSection
+      title="Ingredients"
+      :element-id="US_FOOD_ELEMENTS.ingredients"
+      :selected-element-id="store.selectedElementId"
+      :status="ingredientsExempt ? 'exempt' : `${ingredients.length} listed`"
+      @select="select"
+    >
+      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-ing-exempt">
+        <input id="field-food-ing-exempt" v-model="ingredientsExempt" type="checkbox" />
+        Exempt from ingredient labelling under § 101.100
+      </label>
+      <p v-if="ingredientsExempt" class="text-chrome-400 text-xs">
+        The statement is not required. Listing one anyway is allowed — and a list that is printed
+        still runs in descending order, because a reader has no way of knowing it was voluntary.
+      </p>
+
+      <p class="text-chrome-400 text-xs">
+        Listed in the order printed. The weight beside each is what makes that order checkable — 21
+        CFR 101.4(a)(1) runs the statement in descending order of predominance by weight.
+      </p>
+
+      <div
+        v-for="(ingredient, index) in ingredients"
+        :key="index"
+        class="border-chrome-800 flex items-end gap-1 border-b pb-2"
+      >
+        <label :class="LABEL" class="flex-1" :for="`field-food-ing-name-${index}`">
+          <span class="sr-only">Ingredient {{ index + 1 }} name</span>
+          <input
+            :id="`field-food-ing-name-${index}`"
+            :value="ingredient.name"
+            :class="INPUT"
+            type="text"
+            placeholder="common or usual name"
+            @input="
+              setIngredients(
+                ingredients.map((entry, i) =>
+                  i === index
+                    ? { ...entry, name: ($event.target as HTMLInputElement).value }
+                    : { ...entry },
+                ),
+              )
+            "
+          />
+        </label>
+        <label :class="LABEL" class="w-20" :for="`field-food-ing-pct-${index}`">
+          <span class="sr-only">Ingredient {{ index + 1 }} percent by weight</span>
+          <input
+            :id="`field-food-ing-pct-${index}`"
+            :value="ingredient.percentByWeight"
+            :class="INPUT"
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            @input="
+              setIngredients(
+                ingredients.map((entry, i) =>
+                  i === index
+                    ? {
+                        ...entry,
+                        percentByWeight: Number(($event.target as HTMLInputElement).value),
+                      }
+                    : { ...entry },
+                ),
+              )
+            "
+          />
+        </label>
+        <button
+          :class="CHIP_REMOVE"
+          type="button"
+          :aria-label="`Move ${ingredient.name || 'ingredient ' + (index + 1)} up`"
+          @click="moveIngredient(index, -1)"
+        >
+          ↑
+        </button>
+        <button
+          :class="CHIP_REMOVE"
+          type="button"
+          :aria-label="`Move ${ingredient.name || 'ingredient ' + (index + 1)} down`"
+          @click="moveIngredient(index, 1)"
+        >
+          ↓
+        </button>
+        <button
+          :class="CHIP_REMOVE"
+          type="button"
+          :aria-label="`Remove ${ingredient.name || 'ingredient ' + (index + 1)}`"
+          @click="removeIngredient(index)"
+        >
+          ×
+        </button>
+      </div>
+
+      <button id="field-food-ing-add" :class="CHIP" type="button" @click="addIngredient">
+        Add an ingredient
+      </button>
+
+      <label :class="LABEL" for="field-food-grouped">
+        Entries grouped behind a quantifying statement
+        <input
+          id="field-food-grouped"
+          v-model.number="groupedCount"
+          :class="INPUT"
+          type="number"
+          min="0"
+          :max="ingredients.length"
+        />
+      </label>
+
+      <label v-if="groupedCount > 0" :class="LABEL" for="field-food-threshold">
+        Threshold
+        <select id="field-food-threshold" v-model.number="thresholdPercent" :class="INPUT">
+          <option v-for="percent in INGREDIENT_THRESHOLD_PERCENTS" :key="percent" :value="percent">
+            {{ percent }} percent or less
+          </option>
+        </select>
+      </label>
+      <p v-if="groupedCount > 0" class="text-chrome-400 text-xs">
+        The last {{ groupedCount }} may run out of order, and none of them may exceed the threshold.
+        101.4(a)(2) permits only these four figures.
+      </p>
+    </EditorSection>
+
+    <EditorSection
+      title="Responsible firm"
+      :element-id="US_FOOD_ELEMENTS.responsibleFirm"
+      :selected-element-id="store.selectedElementId"
+      @select="select"
+    >
+      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-has-firm">
+        <input id="field-food-has-firm" v-model="hasFirm" type="checkbox" />
+        The label names a manufacturer, packer or distributor
+      </label>
+
+      <template v-if="firm">
+        <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-is-mfr">
+          <input id="field-food-is-mfr" v-model="firm.isManufacturer" type="checkbox" />
+          This firm manufactured the food
+        </label>
+
+        <label v-if="!firm.isManufacturer" :class="LABEL" for="field-food-qualifier">
+          Qualifying phrase
+          <input
+            id="field-food-qualifier"
+            v-model="qualifyingPhrase"
+            :class="INPUT"
+            type="text"
+            placeholder="Distributed by"
+          />
+        </label>
+        <p v-if="!firm.isManufacturer" class="text-chrome-400 text-xs">
+          Free text, because 101.5(c) permits “any other wording that expresses the facts”.
+        </p>
+
+        <label :class="LABEL" for="field-food-firm-name">
+          Name
+          <input id="field-food-firm-name" v-model="firm.name" :class="INPUT" type="text" />
+        </label>
+        <label :class="LABEL" for="field-food-street">
+          Street address
+          <input id="field-food-street" v-model="streetAddress" :class="INPUT" type="text" />
+        </label>
+        <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-directory">
+          <input id="field-food-directory" v-model="streetInDirectory" type="checkbox" />
+          The address is in a current city or telephone directory
+        </label>
+        <label :class="LABEL" for="field-food-city">
+          City
+          <input id="field-food-city" v-model="firm.city" :class="INPUT" type="text" />
+        </label>
+        <label :class="LABEL" for="field-food-state">
+          State
+          <input id="field-food-state" v-model="firm.state" :class="INPUT" type="text" />
+        </label>
+        <label :class="LABEL" for="field-food-zip">
+          ZIP code
+          <input id="field-food-zip" v-model="zip" :class="INPUT" type="text" />
+        </label>
+      </template>
     </EditorSection>
 
     <EditorSection title="Stock" :selected-element-id="store.selectedElementId" @select="select">

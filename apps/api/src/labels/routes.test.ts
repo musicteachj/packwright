@@ -178,6 +178,20 @@ const FOOD_BODY = {
   statementOfIdentity: 'Rolled oats',
   container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
   netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
+  ingredients: [
+    { name: 'whole grain rolled oats', percentByWeight: 97 },
+    { name: 'sugar', percentByWeight: 2 },
+    { name: 'salt', percentByWeight: 1 },
+  ],
+  ingredientThreshold: { percent: 2, count: 1 },
+  responsibleFirm: {
+    name: 'Example Foods Inc',
+    isManufacturer: true,
+    streetAddress: '1 Example Way',
+    city: 'Portland',
+    state: 'OR',
+    zip: '97201',
+  },
   stock: { widthMm: 120, heightMm: 170, marginMm: 6 },
 }
 
@@ -283,5 +297,90 @@ describe('POST /api/labels/us-food/export', () => {
       netQuantity: { inchPound: 'NET WT 12 OZ' },
     })
     expect(response.status).toBe(200)
+  })
+})
+
+describe('the US food route on stage 2 content', () => {
+  it('rejects a quantifying statement at a figure 101.4(a)(2) does not permit', async () => {
+    // The permitted set is closed. A fifth figure is a compliance defect rather
+    // than a drawing this engine should make, so it is refused at the boundary.
+    const response = await postFood({ ...FOOD_BODY, ingredientThreshold: { percent: 3, count: 1 } })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('ingredientThreshold')
+  })
+
+  it('accepts each figure it does permit', async () => {
+    for (const percent of [2, 1.5, 1, 0.5]) {
+      const response = await postFood({ ...FOOD_BODY, ingredientThreshold: { percent, count: 1 } })
+      expect(response.status, `${percent} percent was rejected`).toBe(200)
+    }
+  })
+
+  it('exports a label whose ingredients run out of order rather than refusing it', async () => {
+    // A finding, not a malformed request — the same call the route already makes
+    // about an undersized net quantity.
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [
+        { name: 'salt', percentByWeight: 1 },
+        { name: 'whole grain rolled oats', percentByWeight: 97 },
+      ],
+      ingredientThreshold: { percent: 2, count: 0 },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('keeps an absent qualifying phrase absent rather than undefined', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      responsibleFirm: {
+        name: 'Example Foods Inc',
+        isManufacturer: true,
+        city: 'Portland',
+        state: 'OR',
+      },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('rejects an ingredient with no name', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [{ name: '', percentByWeight: 50 }],
+    })
+    expect(response.status).toBe(400)
+  })
+})
+
+describe('the US food route bounds the quantifying statement', () => {
+  it('refuses a count covering more entries than the list has', async () => {
+    // Unbounded, this drew a leading empty sentence and left the order rule with
+    // nothing to examine, which it then reported as a pass.
+    const response = await postFood({ ...FOOD_BODY, ingredientThreshold: { percent: 2, count: 9 } })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('more entries than')
+  })
+
+  it('accepts a count equal to the list length', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [{ name: 'salt', percentByWeight: 1 }],
+      ingredientThreshold: { percent: 2, count: 1 },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('refuses to export a label whose content runs off the stock entirely', async () => {
+    // An element-scope omission, the same gate that stops a UPC-A with no symbol.
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: Array.from({ length: 400 }, (_, i) => ({
+        name: `ingredient number ${i}`,
+        percentByWeight: 100 - i * 0.1,
+      })),
+      ingredientThreshold: { percent: 2, count: 0 },
+    })
+    expect(response.status).toBe(422)
+    expect(JSON.stringify(response.body)).toContain('none of it is printed')
   })
 })

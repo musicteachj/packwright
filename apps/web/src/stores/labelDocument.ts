@@ -72,6 +72,21 @@ const STARTING_FOOD: UsFoodLabelData = {
   statementOfIdentity: 'Rolled oats',
   container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
   netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
+  ingredients: [
+    { name: 'whole grain rolled oats', percentByWeight: 97 },
+    { name: 'sugar', percentByWeight: 2 },
+    { name: 'salt', percentByWeight: 0.7 },
+    { name: 'natural flavor', percentByWeight: 0.3 },
+  ],
+  ingredientThreshold: { percent: 2, count: 2 },
+  responsibleFirm: {
+    name: 'Example Foods Inc',
+    isManufacturer: true,
+    streetAddress: '1 Example Way',
+    city: 'Portland',
+    state: 'OR',
+    zip: '97201',
+  },
 }
 
 export const useLabelDocumentStore = defineStore('labelDocument', () => {
@@ -92,6 +107,13 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     ...STARTING_FOOD,
     container: { ...STARTING_FOOD.container },
     netQuantity: { ...STARTING_FOOD.netQuantity },
+    ingredients: (STARTING_FOOD.ingredients ?? []).map((i) => ({ ...i })),
+    ...(STARTING_FOOD.ingredientThreshold === undefined
+      ? {}
+      : { ingredientThreshold: { ...STARTING_FOOD.ingredientThreshold } }),
+    ...(STARTING_FOOD.responsibleFirm === undefined
+      ? {}
+      : { responsibleFirm: { ...STARTING_FOOD.responsibleFirm } }),
   })
   const foodStock = reactive<LabelStock>({ ...DEFAULT_US_FOOD_STOCK })
 

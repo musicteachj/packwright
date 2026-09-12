@@ -10,6 +10,37 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 2 — what the food is made of, and who is answerable for it. Four rules from 21 CFR 101.4 and
+101.5, and one from 101.2 that turned out to be the bridge between this stage and the next.
+
+- **21 CFR 101.2(c) is the keystone, and it was not in the build list.** It sets the floor for everything on
+  the panel — "in no case may the letters and/or numbers be less than one-sixteenth inch in height" — and
+  then says "The requirements for conspicuousness and legibility shall include the specifications of
+  §§ 101.7(h)(1) and (2)". That second sentence incorporates the casing rule stage 1 built for the net
+  quantity, so the same function answers which letter is measured for the ingredient statement and the
+  responsible firm. `netQuantityGlyphBasis` is `regulatedGlyphBasis` now, because it never was specific to
+  the net quantity — it only looked that way from where it was first needed.
+- **Ingredient order is checked against declared weights, not asserted.** A list of names in an order is a
+  claim about predominance that nothing can test, so `UsFoodIngredient` carries a weight share and
+  101.4(a)(1) becomes a rule with something to run on. The engine draws the order it is given and never
+  sorts: a list sorted on the way to the canvas is a defect that cannot be drawn, and therefore one that
+  cannot be reported.
+- **The 101.4(a)(2) grouping is a closed set of four figures** — "2 percent, or, if desired, 1.5 percent,
+  1.0 percent, or 0.5 percent" — and nothing behind the quantifying statement may exceed the one chosen.
+  Both halves are checked, and the API rejects a fifth figure at the boundary rather than drawing it: an
+  impermissible threshold is a defect in the request, not a label this engine should render.
+- **Two facts about the world are declared, never inferred**, following the GHS small-container precedent.
+  Whether the named firm actually made the food decides whether 101.5(c) demands a qualifying phrase, and
+  whether its address appears in a current city or telephone directory decides whether 101.5(d) demands a
+  street address. Neither is answerable by looking at artwork. §101.100's ingredient exemptions are the same
+  shape and get the same treatment.
+- 101.5(c)'s qualifying phrase is **free text and deliberately not an enum**. The regulation gives
+  "Manufactured for" and "Distributed by" as examples and then permits "any other wording that expresses the
+  facts", so a closed list would reject compliant labels.
+- 101.5(b) is **deliberately not enforced**, recorded as a decision. Whether a string is a corporation's
+  actual registered name is a question about a companies register, and a rule guessing at it from the
+  presence of "Inc" or "Ltd" would report confident nonsense about sole traders.
+
 Phase 5, stage 1 — the net quantity of contents declaration. The first thing in this project to call
 `geometry/pdp.ts`, written in phase 1 and unused by any label since.
 

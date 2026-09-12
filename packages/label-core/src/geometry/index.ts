@@ -14,11 +14,13 @@ export {
 } from './units'
 
 export {
+  INFORMATION_PANEL_MIN_TYPE_HEIGHT_INCHES,
+  INFORMATION_PANEL_MIN_TYPE_HEIGHT_MM,
   NET_QUANTITY_ZONE_EXEMPT_MAX_SQ_INCHES,
   isNetQuantityZoneRequired,
   minNetQuantityTypeHeightInches,
   minNetQuantityTypeHeightMm,
-  netQuantityGlyphBasis,
+  regulatedGlyphBasis,
   netQuantityZoneTopMm,
   pdpAreaSqInches,
   pdpAreaSqMm,

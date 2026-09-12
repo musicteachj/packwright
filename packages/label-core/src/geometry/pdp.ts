@@ -16,7 +16,7 @@
  */
 
 import type { GlyphBasis } from '../text/measure'
-import { squareInchesToSquareMm } from './units'
+import { MM_PER_INCH, squareInchesToSquareMm } from './units'
 
 export type ContainerShape = 'rectangular' | 'cylindrical' | 'other'
 
@@ -135,12 +135,12 @@ export function minNetQuantityTypeHeightMm(
   pdpSqInches: number,
   markingMethod: NetQuantityMarkingMethod = 'printed',
 ): number {
-  return minNetQuantityTypeHeightInches(pdpSqInches, markingMethod) * 25.4
+  return minNetQuantityTypeHeightInches(pdpSqInches, markingMethod) * MM_PER_INCH
 }
 
 /**
- * Which letter a net quantity declaration's type size is measured by, given the
- * text that will be printed. 21 CFR 101.7(h)(2), verbatim:
+ * Which letter a regulated type size is measured by, given the text that will be
+ * printed. 21 CFR 101.7(h)(2), verbatim:
  *
  * > "Letter heights pertain to upper case or capital letters. When upper and
  * > lower case or all lower case letters are used, it is the lower case letter
@@ -154,10 +154,34 @@ export function minNetQuantityTypeHeightMm(
  * A declaration with no letters at all — a bare count, say — falls to the
  * capital basis. That is the conservative choice: IBM Plex's figures stand
  * 0.722 em, taller than its capitals, so they clear a bar set by cap height.
+ *
+ * **Not specific to the net quantity, despite living beside its table.**
+ * 21 CFR 101.2(c) sets the floor for everything on the principal display or
+ * information panel and then says "The requirements for conspicuousness and
+ * legibility shall include the specifications of §§ 101.7(h)(1) and (2) and
+ * 101.15" — so (h)(2) is incorporated by reference for the ingredient list, the
+ * responsible firm and the allergen statement too. One reading, one function.
  */
-export function netQuantityGlyphBasis(text: string): GlyphBasis {
+export function regulatedGlyphBasis(text: string): GlyphBasis {
   return /\p{Ll}/u.test(text) ? 'lowercase-o' : 'cap-height'
 }
+
+/**
+ * The floor for everything printed on the principal display or information
+ * panel, in inches. 21 CFR 101.2(c): "in no case may the letters and/or numbers
+ * be less than one-sixteenth inch in height unless an exemption pursuant to
+ * paragraph (f) of this section is established."
+ *
+ * A floor, not a requirement in its own right. Where 101.7(i) demands more of
+ * the net quantity than this, more is what applies; this binds the ingredient
+ * list, the responsible firm and everything else the panel carries, for which no
+ * larger figure is set anywhere.
+ */
+export const INFORMATION_PANEL_MIN_TYPE_HEIGHT_INCHES = 1 / 16
+
+/** The same floor in millimetres: 1/16 inch is 1.5875 mm. */
+export const INFORMATION_PANEL_MIN_TYPE_HEIGHT_MM =
+  INFORMATION_PANEL_MIN_TYPE_HEIGHT_INCHES * MM_PER_INCH
 
 /**
  * Panel area at or below which the bottom-30% placement rule does not apply.

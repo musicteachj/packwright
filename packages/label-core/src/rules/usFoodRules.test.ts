@@ -5,7 +5,15 @@ import { US_FOOD_ELEMENTS } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
 import type { UsFoodLabelData } from '../templates/usFood'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES, US_FOOD_SMALL_PANEL } from './fixtures/usFood'
+import { blockingOmissions } from '../layout/omissions'
 import {
+  FDA_INGREDIENTS_EXEMPT,
+  FDA_INGREDIENTS_MISSING,
+  FDA_INGREDIENTS_ORDER_MET,
+  FDA_INGREDIENTS_OUT_OF_ORDER,
+  FDA_INGREDIENT_THRESHOLD_EXCEEDED,
+  FDA_PANEL_TYPE_SIZE_MET,
+  FDA_PANEL_TYPE_TOO_SMALL,
   FDA_NET_QUANTITY_CROWDED,
   FDA_NET_QUANTITY_DUAL_MET,
   FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
@@ -36,7 +44,7 @@ describe('every US food rule ships with a label that provokes it', () => {
   it('declares a fixture for every code a rule can emit as a failure', () => {
     const covered = new Set(US_FOOD_FIXTURES.map((f) => f.expected.code))
     const uncovered = US_FOOD_RULES.flatMap((rule) => rule.codes).filter(
-      (code) => !covered.has(code) && !/_MET$|_NOT_REQUIRED$/.test(code),
+      (code) => !covered.has(code) && !/_MET$|_NOT_REQUIRED$|_EXEMPT$/.test(code),
     )
     expect(uncovered, 'these failure codes have no known-bad fixture').toEqual([])
   })
@@ -187,11 +195,19 @@ describe('rules that decline rather than pass', () => {
     // identity still produced an invisible element, and the declaration merely
     // happened to sit far enough from it. The separation rule must return
     // *nothing at all*, not merely no violation, and the element must not exist.
-    const data = { ...US_FOOD_CONFORMANT.data, statementOfIdentity: '' }
+    // Every neighbour has to go, not just the statement of identity: the panel
+    // carries an ingredient statement and a responsible firm now, and a test
+    // that cleared one of three would be back to passing for the wrong reason.
+    const { responsibleFirm: _firm, ...rest } = US_FOOD_CONFORMANT.data
+    const data = { ...rest, statementOfIdentity: '', ingredients: [] }
     const layout = layOutUsFoodLabel({ data, stock: US_FOOD_CONFORMANT.stock })
-    expect(layout.elements.map((e) => e.elementId)).not.toContain(
+    for (const elementId of [
       US_FOOD_ELEMENTS.statementOfIdentity,
-    )
+      US_FOOD_ELEMENTS.ingredients,
+      US_FOOD_ELEMENTS.responsibleFirm,
+    ]) {
+      expect(layout.elements.map((e) => e.elementId)).not.toContain(elementId)
+    }
 
     const findings = findingsFor(data, US_FOOD_CONFORMANT.stock)
     expect(findings.filter((f) => f.code.startsWith('FDA_NET_QUANTITY_SEPARATION'))).toEqual([])
@@ -285,10 +301,213 @@ describe('a label with no declaration is not a label that passed', () => {
     expect(match!.citation.reference).toBe('21 CFR 101.7(a)')
   })
 
-  it('passes nothing, because nothing was measured', () => {
-    // The whole point. Four rules declining is not four rules clearing, and
-    // before `netQuantityPresent` existed this label came back with three
-    // passes, each carrying a real CFR citation.
-    expect(findings.filter((f) => f.severity === 'pass')).toEqual([])
+  it('passes no net-quantity check, because nothing was measured', () => {
+    // The whole point. Rules declining is not rules clearing, and before
+    // `netQuantityPresent` existed this label came back with three passes, each
+    // carrying a real CFR citation. Scoped to the net quantity because the
+    // ingredient and firm rules on this label ran and legitimately passed —
+    // which is itself the distinction worth keeping visible.
+    const passes = findings.filter((f) => f.severity === 'pass')
+    expect(passes.filter((f) => f.code.startsWith('FDA_NET_QUANTITY'))).toEqual([])
+    expect(passes.length).toBeGreaterThan(0)
+  })
+})
+
+describe('the 101.2(c) floor is measured the way 101.7(h)(2) says', () => {
+  // 101.2(c) sets a height and then incorporates 101.7(h)(2) by reference —
+  // "The requirements for conspicuousness and legibility shall include the
+  // specifications of §§ 101.7(h)(1) and (2)" — so the floor is measured on a
+  // capital or on the lowercase "o" depending on the casing, exactly as the net
+  // quantity is. A rule fixing the basis at cap height would clear an
+  // all-lowercase ingredient statement 23% under the floor.
+  //
+  // 1.5875 mm needs 2.274 mm of em on capitals and 2.940 mm on the "o", so an em
+  // between the two passes under the wrong reading and fails under the right one.
+  const at = (name: string, informationPanelFontSizeMm: number) =>
+    findingsFor(
+      {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients: [{ name, percentByWeight: 100 }],
+        ingredientThreshold: { percent: 2, count: 0 },
+        informationPanelFontSizeMm,
+      },
+      US_FOOD_CONFORMANT.stock,
+    ).map((f) => f.code)
+
+  it('rejects lower-case type that a capital-height reading would clear', () => {
+    expect(at('rolled oats', 2.5)).toContain(FDA_PANEL_TYPE_TOO_SMALL)
+  })
+
+  it('clears the same text once the em reaches 2.94 mm', () => {
+    expect(at('rolled oats', 2.95)).toContain(FDA_PANEL_TYPE_SIZE_MET)
+  })
+
+  it('reports the height of the letter it measured, not the em', () => {
+    const match = findingsFor(
+      {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients: [{ name: 'rolled oats', percentByWeight: 100 }],
+        ingredientThreshold: { percent: 2, count: 0 },
+        informationPanelFontSizeMm: 2.5,
+      },
+      US_FOOD_CONFORMANT.stock,
+    ).find((f) => f.code === FDA_PANEL_TYPE_TOO_SMALL)
+    // 2.5 x 0.540 = 1.35, not 2.50 and not 1.745.
+    expect(match!.measurement).toEqual({ actual: '1.35 mm', required: '1.59 mm' })
+  })
+})
+
+describe('findings from the phase 5 review', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+
+  describe('a quantifying statement covering the whole list', () => {
+    const data = {
+      ...US_FOOD_CONFORMANT.data,
+      ingredients: [
+        { name: 'salt', percentByWeight: 0.7 },
+        { name: 'sugar', percentByWeight: 90 },
+      ],
+      ingredientThreshold: { percent: 2 as const, count: 2 },
+    }
+
+    it('does not report an order it never examined', () => {
+      // This returned "0 ingredients run in descending order" as a pass, about a
+      // list it had sliced to nothing. A rule with no entries left to order has
+      // declined; it has not cleared the label.
+      const codes = findingsFor(data, stock).map((f) => f.code)
+      expect(codes).not.toContain(FDA_INGREDIENTS_ORDER_MET)
+      expect(codes).not.toContain(FDA_INGREDIENTS_OUT_OF_ORDER)
+    })
+
+    it('still reports the ingredient that exceeds the threshold', () => {
+      // Declining on order must not take the threshold rule down with it —
+      // sugar at 90% behind a 2 percent statement is the real defect here.
+      expect(findingsFor(data, stock).map((f) => f.code)).toContain(
+        FDA_INGREDIENT_THRESHOLD_EXCEEDED,
+      )
+    })
+
+    it('draws no leading empty sentence', () => {
+      // "INGREDIENTS: . Contains 2 percent or less of salt, sugar."
+      const layout = layOutUsFoodLabel({ data, stock })
+      const text = layout.primitives
+        .filter(
+          (p): p is TextPrimitive =>
+            p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.ingredients,
+        )
+        .map((p) => p.text)
+        .join(' ')
+      expect(text).not.toContain('INGREDIENTS: .')
+      expect(text).toContain('Contains 2 percent or less of')
+    })
+
+    it('survives a count past the end of the list', () => {
+      const wild = { ...data, ingredientThreshold: { percent: 2 as const, count: 99 } }
+      expect(() => layOutUsFoodLabel({ data: wild, stock })).not.toThrow()
+      expect(findingsFor(wild, stock).map((f) => f.code)).toContain(
+        FDA_INGREDIENT_THRESHOLD_EXCEEDED,
+      )
+    })
+  })
+
+  describe('the panel floor reads the whole element, not one line of it', () => {
+    // 2.5 mm of em clears the 1.5875 mm floor on capitals (1.745) and fails on
+    // the "o" (1.35). An ingredient statement wrapping to an all-caps first line
+    // and a lower-case second was judged on the first and passed, while the firm
+    // block at the identical size failed. Same rule, same size, two verdicts.
+    const data = {
+      ...US_FOOD_CONFORMANT.data,
+      ingredients: [
+        {
+          name: 'WHOLE GRAIN ROLLED OATS AND MANY OTHER CAPITALISED THINGS TO FORCE A WRAP HERE NOW',
+          percentByWeight: 99,
+        },
+        { name: 'natural flavor', percentByWeight: 1 },
+      ],
+      ingredientThreshold: { percent: 2 as const, count: 0 },
+      informationPanelFontSizeMm: 2.5,
+    }
+
+    it('wraps to an all-caps first line and a lower-case second', () => {
+      const lines = layOutUsFoodLabel({ data, stock }).primitives.filter(
+        (p): p is TextPrimitive =>
+          p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.ingredients,
+      )
+      expect(lines.length).toBeGreaterThan(1)
+      expect(/\p{Ll}/u.test(lines[0]!.text)).toBe(false)
+      expect(lines.some((line) => /\p{Ll}/u.test(line.text))).toBe(true)
+    })
+
+    it('reports the statement, not only the firm beside it', () => {
+      const undersized = findingsFor(data, stock).filter((f) => f.code === FDA_PANEL_TYPE_TOO_SMALL)
+      expect(undersized.map((f) => f.elementId).sort()).toEqual([
+        US_FOOD_ELEMENTS.ingredients,
+        US_FOOD_ELEMENTS.responsibleFirm,
+      ])
+      expect(undersized[0]!.measurement!.actual).toBe('1.35 mm')
+    })
+  })
+
+  describe('content that runs off the stock says so', () => {
+    // Phase 4 shipped this hole once, with a product identifier set 88.9 mm on a
+    // 74 mm label: it ran off the substrate, nothing recorded it, and the label
+    // reported clean with a mandatory element missing from the artifact.
+    const data = {
+      ...US_FOOD_CONFORMANT.data,
+      ingredients: Array.from({ length: 400 }, (_, i) => ({
+        name: `ingredient number ${i}`,
+        percentByWeight: 100 - i * 0.1,
+      })),
+      ingredientThreshold: { percent: 2 as const, count: 0 },
+    }
+
+    it('records an omission for a block that is only partly printed', () => {
+      const layout = layOutUsFoodLabel({ data, stock })
+      const cut = layout.omissions.find((o) => o.elementId === US_FOOD_ELEMENTS.ingredients)
+      expect(cut, 'a block running off the stock recorded nothing').toBeDefined()
+      expect(cut!.scope).toBe('detail')
+      expect(cut!.reason).toContain('not printed')
+    })
+
+    it('blocks the export of a block that is not printed at all', () => {
+      // The responsible firm starts below the bottom edge, so none of it exists
+      // on the artifact. That is an element-scope omission, which gates export.
+      const layout = layOutUsFoodLabel({ data, stock })
+      const gone = layout.omissions.find((o) => o.elementId === US_FOOD_ELEMENTS.responsibleFirm)
+      expect(gone!.scope).toBe('element')
+      expect(blockingOmissions(layout).length).toBeGreaterThan(0)
+    })
+
+    it('records nothing for a label that fits', () => {
+      expect(layOutUsFoodLabel(US_FOOD_CONFORMANT).omissions).toEqual([])
+    })
+  })
+
+  describe('the §101.100 exemption excuses absence, not disorder', () => {
+    it('clears a label that lists nothing', () => {
+      const codes = findingsFor(
+        { ...US_FOOD_CONFORMANT.data, ingredients: [], ingredientsExempt: true },
+        stock,
+      ).map((f) => f.code)
+      expect(codes).toContain(FDA_INGREDIENTS_EXEMPT)
+      expect(codes).not.toContain(FDA_INGREDIENTS_MISSING)
+    })
+
+    it('still judges a list printed anyway', () => {
+      const codes = findingsFor(
+        {
+          ...US_FOOD_CONFORMANT.data,
+          ingredientsExempt: true,
+          ingredients: [
+            { name: 'sugar', percentByWeight: 2 },
+            { name: 'oats', percentByWeight: 97 },
+          ],
+          ingredientThreshold: { percent: 2 as const, count: 0 },
+        },
+        stock,
+      ).map((f) => f.code)
+      expect(codes).not.toContain(FDA_INGREDIENTS_EXEMPT)
+      expect(codes).toContain(FDA_INGREDIENTS_OUT_OF_ORDER)
+    })
   })
 })

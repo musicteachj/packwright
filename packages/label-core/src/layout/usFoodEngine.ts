@@ -21,14 +21,19 @@
  * shape as the GHS engine deriving a pictogram set unless one is stated.
  */
 
-import { minNetQuantityTypeHeightMm, netQuantityGlyphBasis, pdpAreaSqInches } from '../geometry/pdp'
+import { minNetQuantityTypeHeightMm, regulatedGlyphBasis, pdpAreaSqInches } from '../geometry/pdp'
 import { fontSizeMmForGlyphHeight, measureTextMm, wrapTextMm } from '../text/measure'
+import { roundTo } from '../geometry/units'
 import type { UsFoodLabelData } from '../templates/usFood'
 import { US_FOOD_ELEMENTS, US_FOOD_TYPE_DEFAULT } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
 import { anchorBox, panelFor } from '../templates/stock'
 import { LayoutError } from './engine'
 import type { LayoutOmission, LayoutPrimitive, ResolvedElement, ResolvedLayout } from './types'
+
+/** Millimetres for an omission's prose. `rules/finding` owns the same format for
+ *  findings, and `label-core`'s layout layer must not import from `rules`. */
+const mmText = (value: number): string => `${roundTo(value, 2).toFixed(2)} mm`
 
 export interface UsFoodLayoutRequest {
   data: UsFoodLabelData
@@ -89,6 +94,9 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
   if (data.netQuantityFontSizeMm !== undefined) {
     assertFinitePositive(data.netQuantityFontSizeMm, 'Net quantity type size')
   }
+  if (data.informationPanelFontSizeMm !== undefined) {
+    assertFinitePositive(data.informationPanelFontSizeMm, 'Information panel type size')
+  }
 
   const panel = panelFor(stock)
   const type = US_FOOD_TYPE_DEFAULT
@@ -96,6 +104,8 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
   const primitives: LayoutPrimitive[] = []
   const elements: ResolvedElement[] = []
   const omissions: LayoutOmission[] = []
+  // Top-to-bottom stack for everything but the net quantity, which is anchored.
+  let cursorYMm = panel.yMm
 
   // The panel the placement rule measures against. It is the drawn stock's
   // panel, not a face of the container: 101.7(f) confines the declaration within
@@ -148,6 +158,10 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     })
   })
   if (identityLines.length > 0) {
+    cursorYMm =
+      panel.yMm +
+      identityLines.length * type.statementOfIdentityMm * type.lineHeight +
+      type.blockGapMm
     elements.push({
       elementId: US_FOOD_ELEMENTS.statementOfIdentity,
       label: 'Statement of identity',
@@ -169,13 +183,118 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     .filter((part) => part !== '')
     .join(' ')
 
-  const basis = netQuantityGlyphBasis(declaration)
+  const basis = regulatedGlyphBasis(declaration)
   const requiredHeightMm = minNetQuantityTypeHeightMm(
     pdpAreaSqInches(data.container),
     data.markingMethod ?? 'printed',
   )
   const fontSizeMm =
     data.netQuantityFontSizeMm ?? fontSizeMmForGlyphHeight(requiredHeightMm, type.fontFamily, basis)
+
+  const panelTypeMm = data.informationPanelFontSizeMm ?? type.informationPanelMm
+
+  // Both of the blocks below stack under the statement of identity in the order
+  // 21 CFR 101.2(b) lists them. They share this, rather than each repeating the
+  // loop above: three copies of a wrap-and-stack would be three places for the
+  // baseline arithmetic to drift, and the baseline formula is the one thing in
+  // this engine that a renderer cannot second-guess.
+  function stackText(elementId: string, label: string, text: string, fontSizeMm: number): void {
+    if (text.trim() === '') return
+    const lines = wrapTextMm(text, panel.widthMm, fontSizeMm, type.fontFamily)
+    const startYMm = cursorYMm
+    lines.forEach((line, index) => {
+      primitives.push({
+        kind: 'text',
+        elementId,
+        xMm: panel.xMm,
+        baselineYMm: startYMm + fontSizeMm + index * fontSizeMm * type.lineHeight,
+        text: line,
+        fontSizeMm,
+        fontFamily: type.fontFamily,
+        fill: '000000',
+        anchor: 'start',
+      })
+    })
+    const boxHeightMm = lines.length * fontSizeMm * type.lineHeight
+    elements.push({
+      elementId,
+      label,
+      box: { xMm: panel.xMm, yMm: startYMm, widthMm: panel.widthMm, heightMm: boxHeightMm },
+    })
+    cursorYMm = startYMm + boxHeightMm + type.blockGapMm
+
+    // Nothing is clamped — a block too long for the stock is drawn running off
+    // it, because moving it would hide the defect. But it must *say* so. Phase 4
+    // shipped this exact hole once: a product identifier set 88.9 mm on a 74 mm
+    // label, ran off the substrate, and nothing recorded it, so the label
+    // reported clean while a mandatory element was missing from the artifact.
+    const bottomMm = startYMm + boxHeightMm
+    if (startYMm >= stock.heightMm) {
+      omissions.push({
+        elementId,
+        reason:
+          `${label} begins ${mmText(startYMm)} down a ${mmText(stock.heightMm)} label, past its ` +
+          'bottom edge, so none of it is printed.',
+        scope: 'element',
+      })
+    } else if (bottomMm > stock.heightMm) {
+      omissions.push({
+        elementId,
+        reason:
+          `${label} runs ${mmText(bottomMm - stock.heightMm)} past the bottom of a ` +
+          `${mmText(stock.heightMm)} label, so part of it is not printed.`,
+        scope: 'detail',
+      })
+    }
+  }
+
+  // 21 CFR 101.4(a)(1) — the list is drawn in the order it was given. Sorting it
+  // here would make a list out of descending order impossible to draw, and that
+  // list is precisely what the order rule exists to report.
+  if (data.ingredients?.length) {
+    const names = data.ingredients.map((ingredient) => ingredient.name)
+    const threshold = data.ingredientThreshold
+    // 101.4(a)(2)'s quantifying statement sits between the ordered part of the
+    // list and the grouped remainder, so it is built here rather than left to a
+    // caller to type — its wording is the regulation's own example.
+    // Clamped to the list. A count past its end produced
+    // "INGREDIENTS: . Contains 2 percent or less of ..." — a leading empty
+    // sentence — and left the order rule with nothing to examine, which it then
+    // reported as a pass.
+    const groupedCount = Math.min(Math.max(0, threshold?.count ?? 0), names.length)
+    const ordered = names.slice(0, names.length - groupedCount)
+    const grouped = names.slice(names.length - groupedCount)
+    const text =
+      threshold === undefined || groupedCount === 0
+        ? `INGREDIENTS: ${names.join(', ')}.`
+        : [
+            ordered.length > 0 ? `INGREDIENTS: ${ordered.join(', ')}.` : 'INGREDIENTS:',
+            `Contains ${threshold.percent} percent or less of ${grouped.join(', ')}.`,
+          ].join(' ')
+    stackText(US_FOOD_ELEMENTS.ingredients, 'Ingredient statement', text, panelTypeMm)
+  }
+
+  // 21 CFR 101.5 — name and place of business. The qualifying phrase is printed
+  // where the document carries one and omitted where it does not, so a label
+  // that owes one and lacks it is drawn exactly as specified.
+  if (data.responsibleFirm !== undefined) {
+    const firm = data.responsibleFirm
+    const named = [firm.qualifyingPhrase?.trim(), firm.name.trim()].filter(Boolean).join(' ')
+    const place = [
+      firm.streetAddress?.trim(),
+      firm.city.trim(),
+      firm.state.trim(),
+      firm.zip?.trim(),
+    ]
+      .filter(Boolean)
+      .join(', ')
+    stackText(
+      US_FOOD_ELEMENTS.responsibleFirm,
+      'Name and place of business',
+      [named, place].filter(Boolean).join(' · '),
+      panelTypeMm,
+    )
+  }
 
   // A label with nothing declared draws nothing, for the reason above and for a
   // sharper one: an empty primitive measured 4.76 mm "on capital letters" and

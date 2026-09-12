@@ -30,11 +30,19 @@ import type { LabelStock } from '../../templates/stock'
 import type { UsFoodLabelData } from '../../templates/usFood'
 import type { Severity } from '../../types/index'
 import {
+  FDA_INGREDIENTS_MISSING,
+  FDA_INGREDIENTS_OUT_OF_ORDER,
+  FDA_INGREDIENT_THRESHOLD_EXCEEDED,
+  FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED,
   FDA_NET_QUANTITY_CROWDED,
   FDA_NET_QUANTITY_METRIC_MISSING,
   FDA_NET_QUANTITY_MISSING,
   FDA_NET_QUANTITY_OUTSIDE_ZONE,
   FDA_NET_QUANTITY_TYPE_TOO_SMALL,
+  FDA_PANEL_TYPE_TOO_SMALL,
+  FDA_RESPONSIBLE_FIRM_ADDRESS_INCOMPLETE,
+  FDA_RESPONSIBLE_FIRM_MISSING,
+  FDA_RESPONSIBLE_FIRM_UNQUALIFIED,
 } from '../index'
 
 /** 120 × 170 mm — a front panel of 31.62 in², in 101.7(i)'s 3/16 inch band. */
@@ -44,6 +52,24 @@ const BASE = {
   statementOfIdentity: 'Rolled oats',
   container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
   netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
+  // Descending by weight, with the last two grouped behind a 101.4(a)(2)
+  // statement at a permitted threshold — so every rule in the set runs against
+  // the base label rather than declining on it.
+  ingredients: [
+    { name: 'whole grain rolled oats', percentByWeight: 97 },
+    { name: 'sugar', percentByWeight: 2 },
+    { name: 'salt', percentByWeight: 0.7 },
+    { name: 'natural flavor', percentByWeight: 0.3 },
+  ],
+  ingredientThreshold: { percent: 2, count: 2 },
+  responsibleFirm: {
+    name: 'Example Foods Inc',
+    isManufacturer: true,
+    streetAddress: '1 Example Way',
+    city: 'Portland',
+    state: 'OR',
+    zip: '97201',
+  },
 } as const
 
 export interface UsFoodRuleFixture {
@@ -59,6 +85,8 @@ export interface UsFoodRuleFixture {
     citation: string
   }
 }
+
+const { responsibleFirm: _firm, ...WITHOUT_FIRM } = BASE
 
 export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
   {
@@ -144,6 +172,144 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_NET_QUANTITY_CROWDED,
       severity: 'violation',
       citation: '21 CFR 101.7(f)',
+    },
+  },
+  {
+    name: 'salt listed before the sugar there is more of',
+    defect:
+      'Sugar is 2% of the food and salt 0.7%, and the list names salt first. 101.4(a)(1) runs the ' +
+      'statement in descending order of predominance by weight, and only the declared weights ' +
+      'make that checkable — a list of names in an order asserts nothing a rule can test.',
+    data: {
+      ...BASE,
+      ingredients: [
+        { name: 'whole grain rolled oats', percentByWeight: 97 },
+        { name: 'salt', percentByWeight: 0.7 },
+        { name: 'sugar', percentByWeight: 2 },
+      ],
+      ingredientThreshold: { percent: 2, count: 0 },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_INGREDIENTS_OUT_OF_ORDER,
+      severity: 'violation',
+      citation: '21 CFR 101.4(a)(1)',
+    },
+  },
+  {
+    name: 'no ingredient statement, and no exemption claimed',
+    defect:
+      'A packaged food listing nothing it is made of. §101.100 exempts some foods, but the ' +
+      'exemption turns on facts about the product rather than the label and this one does not ' +
+      'claim it — so silence here is a missing statement, not an exempt one.',
+    data: { ...BASE, ingredients: [] },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_INGREDIENTS_MISSING,
+      severity: 'blocking',
+      citation: '21 CFR 101.4(a)(1)',
+    },
+  },
+  {
+    name: 'sugar hidden behind a 2 percent statement it exceeds',
+    defect:
+      'Sugar at 8% sits behind "Contains 2 percent or less of". 101.4(a)(2) is explicit that no ' +
+      'ingredient the phrase applies to may exceed the stated threshold, which is what stops the ' +
+      'grouping being used to bury a major ingredient out of order.',
+    data: {
+      ...BASE,
+      ingredients: [
+        { name: 'whole grain rolled oats', percentByWeight: 91 },
+        { name: 'salt', percentByWeight: 1 },
+        { name: 'sugar', percentByWeight: 8 },
+      ],
+      ingredientThreshold: { percent: 2, count: 2 },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_INGREDIENT_THRESHOLD_EXCEEDED,
+      severity: 'violation',
+      citation: '21 CFR 101.4(a)(2)',
+    },
+  },
+  {
+    name: 'a quantifying statement at 3 percent',
+    defect:
+      'The permitted thresholds are a closed set — "2 percent, or, if desired, 1.5 percent, 1.0 ' +
+      'percent, or 0.5 percent". 3 percent is not among them, however reasonable it looks.',
+    data: {
+      ...BASE,
+      ingredientThreshold: { percent: 3 as unknown as 2, count: 2 },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED,
+      severity: 'violation',
+      citation: '21 CFR 101.4(a)(2)',
+    },
+  },
+  {
+    name: 'nobody answerable for the food',
+    defect:
+      'No manufacturer, packer or distributor named. 101.5(a) requires one on every packaged ' +
+      'food, and without it a consumer has nobody to go to.',
+    // Absent, not undefined: `exactOptionalPropertyTypes` draws the distinction
+    // and this project keeps it, so the fixture omits the key rather than
+    // setting it to nothing.
+    data: WITHOUT_FIRM,
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_RESPONSIBLE_FIRM_MISSING,
+      severity: 'blocking',
+      citation: '21 CFR 101.5(a)',
+    },
+  },
+  {
+    name: 'a distributor passing as the manufacturer',
+    defect:
+      'The firm did not make the food and its name stands unqualified, so the label reads as ' +
+      'though it did. 101.5(c) wants a phrase revealing the connection — and cites its own ' +
+      'examples as examples, which is why the phrase is free text rather than a closed list.',
+    data: {
+      ...BASE,
+      responsibleFirm: { ...BASE.responsibleFirm, isManufacturer: false },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_RESPONSIBLE_FIRM_UNQUALIFIED,
+      severity: 'violation',
+      citation: '21 CFR 101.5(c)',
+    },
+  },
+  {
+    name: 'a place of business with no ZIP code',
+    defect:
+      'Street, city and State but no ZIP. 101.5(d) names all four, and only the street address ' +
+      'has an escape — it may be dropped where it appears in a current directory, which is a ' +
+      'fact about a directory rather than about the label.',
+    data: {
+      ...BASE,
+      responsibleFirm: { ...BASE.responsibleFirm, zip: '' },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_RESPONSIBLE_FIRM_ADDRESS_INCOMPLETE,
+      severity: 'violation',
+      citation: '21 CFR 101.5(d)',
+    },
+  },
+  {
+    name: 'an ingredient statement in two-point type',
+    defect:
+      'An em of 2 mm puts the lowercase "o" at 1.08 mm, under the 1.5875 mm floor 101.2(c) sets ' +
+      'for everything on the panel. The floor is measured the same way the net quantity is, ' +
+      'because 101.2(c) incorporates 101.7(h)(2) by reference.',
+    data: { ...BASE, informationPanelFontSizeMm: 2 },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_PANEL_TYPE_TOO_SMALL,
+      severity: 'violation',
+      citation: '21 CFR 101.2(c)',
     },
   },
   {

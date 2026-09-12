@@ -26,7 +26,7 @@
  */
 
 import { glyphHeightMm, measureTextMm } from '../../text/measure'
-import { netQuantityGlyphBasis } from '../../geometry/pdp'
+import { regulatedGlyphBasis } from '../../geometry/pdp'
 import type { BoundingBox, Citation, Finding } from '../../types/index'
 import type { TextPrimitive } from '../../layout/types'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
@@ -83,7 +83,7 @@ export const usFoodNetQuantitySeparationRule: UsFoodRule = {
     // label; it has declined.
     if (neighbours.length === 0) return []
 
-    const basis = netQuantityGlyphBasis(drawn.text)
+    const basis = regulatedGlyphBasis(drawn.text)
     const requiredVerticalMm = glyphHeightMm(drawn.fontSizeMm, drawn.fontFamily, basis)
     const requiredHorizontalMm = 2 * measureTextMm('N', drawn.fontSizeMm, drawn.fontFamily)
 
