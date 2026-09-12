@@ -8,50 +8,6 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
-### Fixed
-
-Phase 4 review. Fifteen findings from a full pass over the branch, and the most serious is about how the
-regulatory data was checked rather than about any single line of it.
-
-- **Twelve statements carried corrupted regulatory text, and the verification could not have caught it.** The
-  check was "every extracted string appears verbatim in the source PDF" — computed with the same extractor on
-  both sides, so any artefact it introduced matched itself. That proved the parser was self-consistent, not
-  that the text matched the regulation, which is the shape `CLAUDE.md` explicitly warns against. EUR-Lex
-  typesets the degree sign as a raised letter `o` that the text layer emits as a separate character, so `P412`
-  stored *"50 o C/122 o F"* and would have printed that on a label; six more had a line break after a slash
-  welded into a space, giving *"vapours/ spray"*. Each was corrected by rendering that row of the PDF at
-  300 dpi and **reading it**, which is independent of the text layer in the way the original check was not. Two
-  apparent defects turned out to be real and were left alone: `P250` and `P401` genuinely set a space before
-  the closing full stop, and `P410 + P412` genuinely reads *"Do no expose"* where `P412` reads *"Do not
-  expose"* — the regulation's own typo, pinned by a test so nobody tidies it away.
-- **A mistyped hazard id produced a green pass.** `hazards` was accepted as free strings and unknown ids were
-  silently discarded, so an id one character off drew *no pictograms at all* and the rules reported
-  "every pictogram on the label is required by a declared hazard class" as a pass. The schema now validates
-  against `label-core`'s own list, as it already did for signal words and pictogram codes. It is a 400.
-- **A prototype key crashed the layout engine.** `hazardStatementText(regime, 'constructor')` returned a
-  function rather than `undefined`, sailed past the `!== undefined` guard and threw on `text.split` — a 500
-  from a well-formed request. The same defect class sat in the font metrics table and in the PDF exporter's
-  face allowlist, which its own comment calls a security boundary. All three use `Object.hasOwn` now.
-- **`pictogramSet` reintroduced the disagreement stage 5 removed.** It compared the drawn set against
-  `requiredPictograms` rather than `applyPrecedence`, so it raised "GHS07 is required and is not on the label"
-  for sets this tool had itself derived as Article 26-compliant.
-- **Only statements were wrapped.** The previous entry claimed text wrapping was in place; it was in place for
-  statements and nothing else, because the patch to the shared text helper silently failed to apply and was
-  never checked. A realistic product identifier — mandatory under CLP Article 18 — set 88.9 mm on a 74 mm
-  label and ran off the substrate with no omission recorded and no rule measuring it.
-- **The label-size finding pointed at an element that did not exist.** It anchored to `label-border`, which
-  neither engine ever put in `ResolvedLayout.elements`, so clicking it set the selection and drew nothing —
-  the same silent break this engine records having fixed for pictograms. The label is now an element in its
-  own right.
-- Several omissions shared one element id, which `LabelTextView` keys its list on.
-- The export button's explanation read `omissions[0]` while the button itself filtered on scope, so a disabled
-  button could explain a non-blocking omission.
-- Three copies of "which omissions block an export" and two of the download-filename sanitiser are now one
-  each, in `label-core` beside the types they interpret. The small-container thresholds are read from the rule
-  that enforces them rather than restated in the form — a regulatory figure written twice is one that drifts.
-- `runRules` fell off the end of its switch for a label type `LABEL_TYPES` already declares, returning
-  `undefined` where every caller expects an array. An exhaustiveness check makes that a compile error.
-
 ### Added
 
 Phase 4, stage 6 — small containers, which are two different rules rather than one.
@@ -71,382 +27,6 @@ Phase 4, stage 6 — small containers, which are two different rules rather than
 - The 3 ml tier in (f)(12)(iii) is **deliberately not encoded**. It turns on whether "any label interferes with
   the normal use of the container", and encoding the relaxation without its condition would let a label drop
   its pictograms on a capacity check alone.
-
-### Fixed
-
-- `docs/DESIGN.md` described the small-container provision, and was wrong in four ways: it had the rule
-  backwards (a permission to use fold-out labelling, where the regulation applies when fold-out labelling is
-  *not feasible*), used "under 100 mL" where the text says "less than or equal to", omitted two of the five
-  required elements — the manufacturer's phone number and the outer-package statement — and never mentioned
-  the second tier at 3 ml. CLP's own derogation, a different rule at a different threshold, was absent
-  entirely. Corrected against both sources.
-
-Phase 4, stage 5 — precedence applied, not only reported.
-
-- **The editor's own default output was non-compliant.** Deriving pictograms from a classification returned the
-  raw Annex V set, so a chemical classified for serious eye damage and skin irritation produced the corrosion
-  pictogram *and* the exclamation mark — and the precedence rule immediately flagged it. The form produced a
-  label its own rules rejected. `docs/DESIGN.md` asks that overlapping hazard classes "resolve to the correct
-  pictogram set"; they now do.
-- **Article 26 lives in one place, and both consumers read it.** The derivation needs it to build a compliant
-  set and the rule needs it to judge one, and two implementations are how a form comes to disagree with its own
-  checker. `ghs/precedence.ts` returns the clauses that apply; the rule turns them into findings and the
-  derivation removes what they forbid. A test pins the consequence: a set the derivation produced has no
-  mandatory suppression left for the rule to find, across both regimes.
-- **Clauses that make a pictogram optional are deliberately not applied.** "Shall be optional" means a supplier
-  may omit it, not that they must, and silently removing a hazard symbol would be this tool making a labelling
-  decision on someone else's behalf — while hiding a hazard while doing it. They stay on the label and the rule
-  raises them as guidance.
-
-### Fixed
-
-- **Two precedence clauses reported a violation on labels that were correct.** Article 26(1)(c) and (d) were
-  checked against the corrosion and health-hazard pictograms being present and against the *classification*
-  that would require the exclamation mark — but never against the exclamation mark actually being on the
-  label. So a label that properly omitted GHS07 was told that GHS07 may not appear on it. Reachable from the
-  editor as soon as the derivation started removing it, and shipped in the stage 2 rules commit. Found by
-  writing the test that asserts the derivation and the rule cannot disagree, which is the only thing that
-  would have looked.
-- The precedence fixtures now state their offending pictogram set explicitly rather than relying on the
-  derivation to produce one. That makes each a genuinely wrong label rather than a reflection of the engine's
-  own bad default — which is what a known-bad fixture is supposed to be.
-
-Phase 4, stage 4 — text that stays on the label.
-
-- **Statements wrap, and they wrap at layout time.** Measured against the embedded typeface, 58 of the 199
-  statements were wider than the panel they were drawn on and ran off the edge, the worst nearly four times its
-  width. Every drawn line now fits: across all 70 hazard statements, zero lines exceed the panel, with the
-  widest at 65.74 mm of 66.
-- **A shared advance-width table, not a measurer injected per renderer.** The obvious fix — let each renderer
-  measure with what it has — would have the browser using canvas metrics and the server using PDFKit's, and two
-  measurements that agree today and diverge on one character tomorrow move a line break in the preview and not
-  in the print. `text/metrics.ts` is generated once from the TTFs by
-  `npm run generate:font-metrics`, and both consumers read identical numbers. Line breaks are geometry, and
-  this engine computes geometry once.
-- Checked against what will actually be drawn rather than assumed: the table agrees with PDFKit's own
-  measurement of all 199 statements to within 0.28% at worst, and is the wider of the two in 190 of them.
-  Kerning is deliberately excluded — it narrows a pair, so omitting it overestimates and wraps marginally
-  early, which is the safe direction to be wrong in.
-- A single word wider than the line overflows rather than being hyphenated. Hyphenation is language-specific,
-  and breaking a hazard statement in the wrong place would read wrong rather than merely look wrong.
-- Element boxes grow to the wrapped height, so a rule measuring a statement block measures what was drawn
-  rather than what one line would have been.
-
-Phase 4, stage 3 — the GHS form rail, and the end of free-text regulatory strings.
-
-- **Classification is the input; the pictograms follow.** The rail asks what the substance *is* — its hazard
-  classes, from CLP Annex V — and derives the pictograms. Asking a user to choose pictograms directly is asking
-  them to apply Article 26 by hand and then checking their arithmetic. The 44 classifications are grouped by
-  Annex I part so they read as four lists rather than one.
-- **Statements are chosen by code and never typed.** The dropdown shows `H225 — Highly flammable liquid and
-  vapour.`; what is stored is `H225`, and the text is looked up. There is no longer any path by which a
-  paraphrase can reach a label.
-- `GhsLabelData` now carries `hazardStatementCodes` rather than statement text. Stage 1 held these as free
-  strings and said the lookup would replace them once the tables existed; this is that replacement, and it
-  closes the last route by which regulatory text could be authored rather than retrieved.
-- **A code with no verified text for the label's market is omitted, not substituted.** Asked for H225 on a US
-  label, the engine draws nothing and records why — the OSHA wording is untranscribed, and printing the EU
-  wording would produce a label that looks complete and is not. The rail does the same thing visually: it
-  offers no statement dropdown for that market and says why, rather than presenting an empty one.
-- The form rail split by label type, with `EditorSection` — which owns half the finding ↔ form link — staying
-  common to both. A rail per type with its own section wrapper would let the signature interaction work on one
-  label type and silently not on the other, which is exactly the defect the stage 2 verification found.
-- The signal word is still chosen rather than derived, and **both words can be selected at once**, so a label
-  violating Article 20(3) can be drawn and reported. Deriving it needs CLP Annex I Parts 2–5 — 28 tables across
-  157 pages — which stays deferred. Enforcing it by rule rather than by disabling the control is the right way
-  round anyway: a form that cannot express a wrong label leaves the rule with nothing to catch.
-
-Phase 4, stage 2 — the GHS rules. Six of them, each citing a clause that was read rather than recalled, and
-each shipping with a label that provokes it.
-
-- **Pictogram precedence, enforced properly rather than approximately.** Three of CLP Article 26's five rules
-  turn on *why* a pictogram is on the label, not merely that it is: 26(c) suppresses the exclamation mark under
-  the corrosion pictogram only where it is there for skin or eye irritation, and 26(d) only where the health
-  hazard pictogram is there for respiratory sensitisation. A rule firing on "GHS05 and GHS07 are both present"
-  would report a violation on a label whose exclamation mark came from acute toxicity category 4 — a false
-  verdict under a real citation. Reading the classification is what makes the difference, and the rule
-  **declines** when a label lists pictograms without hazards, because without the cause the article is
-  unanswerable.
-- Two of Article 26's clauses say a second pictogram "shall be optional", not that it is forbidden. Those are
-  **guidance**, not violations. Flattening all five into violations would misstate the law in the stricter
-  direction, which is no more correct than missing them.
-- Signal-word precedence, label dimensions against Table 1.3, pictogram dimensions, pictogram integrity, and
-  the regime's recognised pictogram set. Each cites the regulator it actually judged against — the dimensional
-  rules **decline entirely under OSHA**, which sets no minimum size anywhere, because nothing to measure
-  against is not a pass.
-- **An empty frame is not a pictogram**, and the engine currently draws nothing else. OSHA C.2.3.1 forbids a
-  frame without its hazard symbol outright, so every US label this engine produces now carries a blocking
-  finding saying so. That is the honest state of things while the Annex V specimen artwork is unverified, and
-  far better said by a rule than left implicit in a source comment.
-- Eight known-bad fixtures asserting the exact code, severity **and citation string**, plus a conformant
-  control. The precedence fixtures classify each label so the exclamation mark is present *for the right
-  reason* — a fixture that merely listed two pictogram codes would pass against the broken rule this project
-  nearly shipped.
-
-### Fixed
-
-- **Clicking a pictogram finding set the selection and then drew nothing.** The signature interaction —
-  click a finding, see the offending element outlined — was extended to a second label type without anything
-  ever pointing it at one. GHS findings carry element ids like `ghs-pictograms-GHS05`, but the engine recorded
-  only the pictogram *strip* in `ResolvedLayout.elements` and left the individual pictograms in
-  `layout.pictograms`, which is not where the canvas, the text-equivalent view or the form ring look for a box.
-  So the store held the right element id and the canvas silently had nothing to draw. Each pictogram is now an
-  element in its own right. Found by driving the real editor rather than by reading, which is the only way this
-  class of defect surfaces.
-- **A label could contradict its own classification and be reported as passing.** The precedence rule judges
-  the pictograms that were *drawn*, which is correct, but nothing compared that set against the hazards the
-  document declared. A label declaring serious eye damage and skin irritation while drawing the flame came back
-  with precedence "met" — a green tick on a pictogram set no declared hazard justifies. A new rule compares the
-  two: firm where it can be certain (a pictogram nothing requires is a violation) and deliberately soft where it
-  cannot (a missing pictogram is an advisory, because Article 26 legitimately removes some and this rule does
-  not model which).
-- **Two of CLP's own pictogram minimums fail CLP's own one-fifteenth rule, and the rule as first written
-  reported them as violations.** The regulation states the requirement twice — a dimension per capacity band in
-  Table 1.3, and in 1.2.1.3 a floor of one fifteenth of the label's information area. Checking both looked
-  obviously right. They are the same requirement written twice: the tabulated dimension is
-  `sqrt(labelArea / 15)` rounded to the nearest millimetre, and all four bands match. Two of those roundings go
-  *down*, so applying the fraction as well made a 32 mm pictogram on a 200 litre drum miss by 12 mm² — 1.2%,
-  entirely an artefact of rounding, and reported against the regulator's own tabulated figure. The dimension
-  check now enforces both provisions, and the arithmetic is pinned by a test so it cannot quietly stop being
-  true.
-- **Every OSHA citation in the tree was written from memory and has now been verified.** Twelve subsection
-  references across the rules and the reference data — C.2.1.1 through C.2.1.4, C.2.3.1, C.2.3.2, C.2.3.4 and
-  C.2.4.7 — were read from the eCFR API on 2026-09-12 against title 29 as issued on 2026-09-09. All twelve are
-  correct, including a quotation of C.2.3.1 that claimed to be verbatim and is. Getting them right from memory
-  is not the same as having sourced them, and `CLAUDE.md` is explicit that an unverifiable citation is worse
-  than no rule; the provenance is now recorded beside them.
-- **The rules were dead code.** Four rule files were written, compiled and committed to a branch while
-  `GHS_RULES` remained an empty array and nothing exported them, so the suite stayed green at 436 tests with
-  nothing being checked. Worse, two tests asserted the emptiness — pinning the broken state as though it were
-  the specification. They now assert the opposite, and the count rose to 458 the moment the rules were wired.
-- `passed()` could not carry a citation, so a *passing* signal-word check on a US label was reported against
-  the EU regulation. It takes the same override `finding()` already had.
-
-Phase 4, stage 1 — a GHS chemical label that draws. No rule ships in this stage: the point is to make a
-chemical label able to be **wrong**, the same way phase 3 stage 1 had to make a barcode label able to be wrong
-before the rule engine had anything to catch.
-
-- **A path primitive, and both renderers grew a fourth case.** Rectangles and lines drew a barcode label
-  completely; a GHS pictogram is a red square set at a point around a glyph, and no composition of rectangles
-  makes one. `PathPrimitive` carries **structured commands in millimetres**, not an SVG `d` string — the plan
-  said `d` and PDFKit's parser, and that was wrong. It would have made preview == print depend on two
-  independent SVG path parsers agreeing, which is the trade this project already declined once when it threw
-  away bwip-js's vertical output rather than let a library's metrics feed back into bar positions. Each
-  renderer emits its own form from the same numbers. The cross-renderer equivalence test was extended to cover
-  paths and confirmed to fail when the PDF side skipped its millimetre conversion.
-- `ghs/` — CLP label and pictogram dimensions, and the nine Annex V codes with their symbol names, read from
-  the consolidated regulation rather than recalled. **Every figure traces to `02008R1272 — EN — 01.09.2025 —
-  029.003`**, retrieved 2026-09-11.
-- **The pictogram dimension was ambiguous in the source, and the source resolved it.** Table 1.3 says "not
-  smaller than 10 × 10" and §1.2.1.1 says a pictogram is "a square set at a point" — so is 10 mm the square's
-  edge or its bounding box? They differ by a factor of two in area. §1.2.1.3 sets a floor of 1 cm², and a
-  10 mm edge is exactly 100 mm² while the bounding-box reading gives half that. Only one leaves the regulation
-  consistent with itself. The rejected reading is kept as a test so the decision stays visible rather than
-  becoming folklore.
-- `layOutGhsLabel`, a sibling of `layOutUpcALabel` rather than a branch inside it. It takes no barcode encoder,
-  because a chemical label has no symbol to encode. It resolves rather than refuses: an undersized pictogram
-  or undersized stock is drawn as asked, because a label that cannot be resolved cannot be measured.
-- `ResolvedPictogram` keeps `drawnSideMm` and `requiredSideMm` apart, for the reason phase 3 learned the hard
-  way — `quietZoneLeftMm` was a restatement of the specification under a name that read like a measurement,
-  and a rule written against it passed every label put to it. Only the drawn figure can fail.
-- **The pictogram glyphs are deliberately not drawn.** CLP Annex V requires conformance to specimen artwork
-  published with the standard, and no verified vector of it could be retrieved. Each frame is drawn to its
-  resolved size and each missing glyph records a `LayoutOmission` saying so. An approximated flame would look
-  compliant without being so, which is the failure this project exists to prevent.
-- `LayoutOmission.scope` distinguishes an **absent element** from a **missing detail**. The export gate was
-  "any omission is a 422", which was correct while one label type existed and would have made every GHS export
-  a 422, since every GHS label omits its glyphs. A UPC-A with no symbol is still refused; a GHS label with
-  frames and no glyphs still ships.
-- **The label-type seam.** `RuleContext` is now a discriminated union and every rule declares `appliesTo`, so
-  `runRules` narrows on the type and hands each rule set a context it already matches — no cast anywhere. The
-  alternative was one widened context and an assertion at the dispatch, and this project has been bitten by
-  exactly that: the export route's `as never` switched off the only check that the request schema and
-  `UpcALabelData` still described the same thing.
-- `POST /api/labels/ghs/export`, and the editor renders either label type. Both enums in the request schema are
-  derived from `label-core`'s own lists rather than restated.
-
-### Fixed
-
-- **The signal word would have printed in a different typeface than it previewed — and the first fix moved the
-  bug instead of closing it.** Worth recording in full, because it took three attempts and the first two both
-  looked correct.
-
-  The GHS template first asked for `IBM Plex Sans Bold`, which the PDF exporter does not embed, so its
-  allowlist quietly substituted the regular weight in print while the browser rendered bold. That was caught
-  and "fixed" by renaming to `IBM Plex Sans SemiBold` — a face the exporter *does* embed. But the browser
-  declares one family at two weights, not two families, so there is no `@font-face` by that name at all: the
-  preview fell back to the system sans instead, and the divergence simply changed sides. The word `DANGER` on
-  a hazard label, in a different typeface in preview than in print, through a fallback designed not to
-  complain.
-
-  The reason it survived a fix is that the only guard read the exporter's allowlist. A font is a contract
-  between the layout and **two** renderers, and a test that reads one of them cannot see a mismatch with the
-  other. `TextPrimitive` now carries `fontWeight`, which is what both renderers actually understand — SVG
-  emits `font-weight`, and the exporter resolves family plus weight onto its registered face — so the layout
-  never names a bold family again. Weight is expressed as intent and satisfied differently by each renderer,
-  exactly as `anchor` already was.
-
-  Two tests now, one per side, and the new one was confirmed to fail on the flagged state **while the old one
-  passed it**, which is the whole point. Verified in a real export: the PDF embeds `IBMPlexSans-SmBld` and uses
-  it for the signal word alone, and the SVG asks for `IBM Plex Sans` at `font-weight="600"`.
-- `PathCommand` and `PathPrimitive` were declared but never re-exported from the layout barrel, so a consumer
-  authoring pictogram artwork could not name either without deep-importing `layout/types`. The barrel guard
-  sees only runtime values and types are erased before it runs — a limit it documents about itself, and the
-  second time that limit has let something through.
-- The pictogram strip computed its own width and each frame's position from two separate expressions of one
-  formula, so a change to the spacing could have moved the frames without moving the box that measures them.
-  Its `length - 1` was also non-negative only by grace of the guard above it. One expression now, used by both.
-- `docs/DESIGN.md`'s OSHA compliance dates were wrong and superseded. It gave "substances 19 Jul 2026,
-  mixtures 19 Jan 2028"; 29 CFR 1910.1200(j) as of the 2026-09-09 eCFR issue gives 19 May 2026 and 20 Nov 2026
-  for substances and 19 Nov 2027 and 19 May 2028 for mixtures — manufacturers and employers respectively, a
-  distinction the old summary lost entirely. The first has already passed.
-- `docs/DESIGN.md` summarised CLP Article 26 as two suppression rules. There are five, and two of them make
-  the second pictogram **optional** rather than forbidden — a rule engine built on the summary would report
-  violations that do not exist.
-
-Phase 3, stage 3 — the editor. Three panes, and the link between them that is the whole point.
-
-- `/labels/new` — the form rail, the canvas and the findings rail, on an in-memory document. `/labels/:id` and
-  persistence are a later phase; inventing an id now would mean either a fake route parameter or a
-  browser-storage layer built to be thrown away, and the route shape is the cheaper of the two to change.
-- **Click a finding and the offending element outlines on the canvas and its form section rings. Focus a field
-  and the same element outlines.** One piece of store state carries both directions, so the two halves cannot
-  drift into disagreeing about what is selected. It is tested by driving the real components rather than the
-  store alone — the store holding the right element id proves nothing about whether the canvas draws anything
-  — and the test was confirmed to fail when the outline was disabled.
-- Findings grouped by the ANSI Z535.4 signal-word scale, passes collapsed at the bottom. Every severity
-  carries an icon and a word; `theme.test.ts` already pins why, since warning and pass are within 1.06 of each
-  other in luminance on this chrome and all but identical in greyscale.
-- The rail announces through a **polite** live region carrying a summary, not `role="alert"` per finding. The
-  findings recompute on every keystroke, and an assertive region per item would interrupt a screen-reader user
-  continuously while they typed a GTIN. The summary is what changed; the detail is there to navigate to.
-- Overlays drawn into a second SVG sharing the label's `viewBox`, so an annotation sits in the same millimetre
-  space as the thing it annotates and stays registered at any zoom: hatched quiet-zone bands, symbol dimension
-  callouts, and the selection outline. Selection is dashed and inset so it cannot be read as a severity —
-  it is transient interface state and says nothing about the label.
-- "Label contents as text" — every element with its position and size, and every omission with its reason. An
-  accessibility requirement for an SVG canvas that turns out to be the fastest way for anyone to see what the
-  layout engine actually produced.
-- Export warns rather than refuses when a blocking finding is present. "Non-compliant as drawn" is what that
-  severity means, and exporting anyway is the user's call — the confirmation only makes sure the finding was
-  seen.
-- A half-typed GTIN reads as a form state, not a compliance verdict. Inventing a finding for it would fire on
-  every keystroke.
-
-### Fixed
-
-Phase 3, third review. Four findings, all in the web layer — and the notable result is where they are *not*.
-The second round's fixes were the least-reviewed code in the phase and the ones with the worst track record,
-since the first round's fixes had introduced a regression. This pass found nothing wrong with them: the
-narrowed overprint suppression, the vertical-containment measurement, the font allowlist, the number
-validation and the 422 export path all came through clean, as did every rule and citation in `label-core`.
-
-- **Focusing a field could clear the highlight the user had just set.** `EditorSection` emitted its `select`
-  event on every `focusin`, passing an element id that Stock and Digital Link do not have — so the emit
-  carried `undefined` and the store read it as "nothing is selected". The cost lands on the one interaction
-  this phase exists for: click a quiet-zone finding, see the symbol outlined, then tab into Stock to widen the
-  label and fix it, and the outline showing what needs to move vanishes mid-edit. The canvas and the rail stop
-  agreeing about what is selected at exactly the moment it is being acted on. Only a section that owns an
-  element now speaks for the canvas, and the emit is typed `string` rather than `string | undefined` so the
-  invariant is stated rather than remembered. The existing test only ever focused a field that *did* own an
-  element, which is why it passed throughout.
-- The overlay checkbox ids were hardcoded, reintroducing the exact collision the hatch pattern had just been
-  fixed for — three lines below the comment explaining why hardcoding them was wrong. Two canvases on a page
-  bound both sets of labels to the first one's checkboxes, leaving the second's overlays untoggleable by their
-  label. Both ids are now seeded from `useId()`, like the hatch beside them.
-- The uncertifiable-symbol notice hand-rolled `.toFixed(2)` instead of the shared `mm()` helper. This is the
-  third instance of that pattern and the second time it has been recorded as fixed; `mm()` exists precisely
-  because raw `toFixed` skips `collapseFloatNoise`, which is what produced the "14.33 / 14.32" readout on a
-  label symmetric to the micrometre.
-- The live region announced "All 1 checks passed" — `findings` and `symbols` were both pluralised on the
-  neighbouring lines and `checks` was not. Small, but it is read aloud to the users least able to ignore it,
-  on a tool that will not paraphrase a single character of a regulated statement.
-
-Phase 3, second review. Fifteen findings from a full multi-agent pass, including a regression the first round
-of fixes had introduced — which is the argument for reviewing each stage rather than a whole phase at once.
-
-- **The overprint fix from the first round had manufactured a second false pass.** Suppressing the whole
-  symbol when artwork crossed it also suppressed real, measured violations: a brand block anchored bottom-left
-  produced a quiet zone of 0.00 mm against a required 2.97 mm with every verdict reading "pass". The rule now
-  withholds only the **pass**, never the finding. Two mistakes compounded: the overprint band was the symbol's
-  full drawn height, so artwork merely level with the printed digits — which touches no bar — tripped the
-  suppression. `PlacedSymbol.guardBarHeightMm` now gives the bar ink its own extent.
-- **Nothing measured vertical containment.** `measureClearSpace` was only ever told the label's *width*, so a
-  symbol drawn off the top and bottom of its stock reported six passes and no findings. The changelog's
-  justification for not shipping a clipped-by-trim rule — "clipped bars measure as negative clear space" — was
-  true horizontally and silently false the other way. `ResolvedSymbol.verticalOverflowMm` records it, and the
-  quiet-zone rule declines to certify a symbol that is not entirely on the label.
-- **A quiet zone exactly at the minimum was reported as a violation.** The comparison had no tolerance, unlike
-  the bar-height rule beside it, so on stock exactly one symbol footprint wide the two sides reached 2.97 mm
-  by different arithmetic and one landed a fraction under: *"The right quiet zone measures 2.97 mm; UPC-A
-  requires 2.97 mm"* — a violation contradicting its own message under a real GS1 citation. The tolerance is
-  now declared once and shared.
-- **`artwork.fontFamily` was an arbitrary local file read.** It reached PDFKit's `document.font()`, which
-  resolves an unregistered name as a filesystem path — `'Arial'` returned a 500, and a real path was opened by
-  the server process. The API now accepts only the faces the exporter embeds, and the renderer passes
-  everything through that allowlist before it reaches PDFKit.
-- **The export handed out blank PDFs.** A GTIN with a bad check digit — newly reachable, since the check digit
-  is supplied rather than computed — returned 200 and 1,145 bytes of empty page, with the reason recorded only
-  in a field no HTTP client reads. It is now a 422 carrying the omission, and the editor does not offer the
-  button.
-- **A Digital Link with no valid resolver passed.** `buildDigitalLinkUri` never inspects the domain, so "it did
-  not throw" was being read as conformance: an empty string, `not a url` and `javascript:alert(1)` each came
-  back as a green pass under a GS1 citation. It also emitted a `pass` and an advisory for the *same* URI when
-  the convenience alphas were used, so the rail counted a check as cleared that the rule had just faulted.
-- **Blank and negative numbers corrupted the layout instead of being refused.** A cleared margin field arrived
-  as `''` and string-concatenated through every coordinate — `symbol.xMm` became `"11.3552.97"`, the rail
-  printed "the left quiet zone measures NaN mm" under a real citation, and the renderer threw on a coordinate
-  that was not a number. A negative bar height inverted the band used to detect encroachment, turning a real
-  violation into two passes. The engine now validates every number it is given.
-- **The quiet-zone hatch was invisible.** `currentColor` inside a `<pattern>` inherits from the pattern's own
-  ancestors — `<defs>` — never from the element referencing it, so the overlay resolved to the body text
-  colour and rendered at roughly 1.1:1 on paper. Ticking "Quiet zones" appeared to do nothing. The pattern id
-  is also unique per instance now, rather than colliding as soon as two canvases share a page.
-- The canvas caption hand-rolled `.toFixed()` and reproduced the exact `14.33 / 14.32` asymmetry
-  `collapseFloatNoise` had just been written to kill — while the rail three inches away, formatting through
-  the shared helper, printed 14.33 for both. Both now use the same helper.
-- Smaller: a finding with no geometry is no longer a button, since clicking it *cleared* the canvas highlight
-  instead of setting one; findings use phrasing content, as `<p>` and `<dl>` are not permitted inside a
-  `<button>` and ARIA flattened them into one unreadable name; only the first form section owning an element
-  scrolls, so a shared selection no longer races two `scrollIntoView` calls; and an API test asserting
-  `expect([200, 422]).toContain(status)` — which no behaviour could fail — now asserts one status.
-- `scripts/verify-build.sh` still posted the removed `gtinPayload`, so CI was red on this branch. It was the
-  only surviving reference and it sat in a shell script, which a `--include='*.ts'` sweep never looked at.
-
-**Reviewed and not changed.** `measureClearSpace` ignores artwork lying entirely outside the trim. That was
-raised as a dropped obstruction; it is the correct answer, because ink outside the trim is never printed and so
-obstructs nothing. Artwork straddling the edge still counts, via its right edge landing inside. Also left
-alone: re-encoding the symbol on every magnification change. It is 92% of the keystroke pipeline and the
-pipeline is 0.4 ms, so caching it would add state to a pure module to buy nothing measurable.
-
-
-Phase 3 review. Four defects, two of them false passes — the failure class this project exists to prevent.
-
-- **A label with artwork printed through the barcode reported six passes and no findings.** `measureClearSpace`
-  only considered elements extending past the left or right edge of the bar pattern, so a block sitting
-  entirely inside it was neither and got skipped; both quiet zones measured clean. Reachable from the editor in
-  two clicks. `ResolvedSymbol.overprintedBy` now records it, and the quiet-zone rule **declines to certify**
-  such a symbol rather than passing it — a pass would be true in the narrow sense and gravely misleading in
-  every other. No violation is raised either: no clause covering overprinting has been verified against a
-  source document, and this project does not ship rules it cannot cite. The editor states the fact in words
-  instead, under "Cannot be checked", and suppresses the all-clear banner while it stands.
-- **The findings rail claimed "Every check passed" when no check had run.** The guard tested only that nothing
-  had failed. With a half-typed GTIN there is no resolvable layout, so there are no findings at all — and the
-  rail rendered a green tick beside a live region correctly announcing that no checks had run. It now requires
-  a check to have actually passed, and says so plainly when none has.
-- **The landing page drew hatched quiet-zone bands over the label with no way to remove them.** The overlay
-  defaulted on regardless of whether the toggles were offered, so the one page whose entire point is "this is a
-  real label, not a picture of one" covered it in apparatus. The default is now seeded from whether the
-  controls are shown.
-- **The Digital Link rule blamed the URI for a fault in the GTIN.** `buildDigitalLinkUri` validates the check
-  digit and throws, so a transposed digit produced two findings for one cause — the second of them
-  misattributed to a Digital Link that was perfectly well formed. It now declines when the key it builds from
-  is unsound, and leaves that defect to the rule that owns it.
-- The API export route no longer casts past its own type checker. `z.enum(ANCHORS)` widened to `string`, which
-  forced an `as never` on the engine call — and that cast switched off the only check that the request schema
-  and `UpcALabelData` still describe the same thing. `Anchor` is now derived from `ANCHORS` so the enum stays
-  typed, and the nested Zod optionals are reconciled with `exactOptionalPropertyTypes` by construction rather
-  than by assertion.
 
 ### Changed
 
@@ -649,8 +229,6 @@ That is what makes preview == print structural rather than something two code pa
   and is verified to fail when an export is removed. It only sees runtime values, so type-only exports remain
   unguarded — stated in the test rather than left to look more complete than it is.
 
-### Changed
-
 - `POST /api/labels/upc-a/export` takes `gtin` rather than `gtinPayload`, and no longer rejects a
   non-compliant label. A 2.5x symbol or a quiet zone lost to artwork is a finding, not a malformed request;
   refusing here would mean the export path and the preview disagreed about what a label is, which is the one
@@ -666,6 +244,421 @@ That is what makes preview == print structural rather than something two code pa
   was the one branch CI never watched. Pull requests were always covered; direct pushes were not.
 
 ### Fixed
+
+Phase 4 review. Fifteen findings from a full pass over the branch, and the most serious is about how the
+regulatory data was checked rather than about any single line of it.
+
+- **The duplicate-heading defect came back.** `## [Unreleased]` had accumulated seven `### Fixed` headings and
+  two `### Changed` ones, because each stage's entry was inserted above the last rather than merged into the
+  section that already existed. This changelog records fixing exactly that once before — "Duplicate `### Added`
+  and `### Fixed` headings under one `## [Unreleased]`, created by an earlier insert". Same cause, same file,
+  a second time. Consolidated to one heading per category in Keep a Changelog's order, with the content
+  verified line-for-line against the previous version.
+
+- **Twelve statements carried corrupted regulatory text, and the verification could not have caught it.** The
+  check was "every extracted string appears verbatim in the source PDF" — computed with the same extractor on
+  both sides, so any artefact it introduced matched itself. That proved the parser was self-consistent, not
+  that the text matched the regulation, which is the shape `CLAUDE.md` explicitly warns against. EUR-Lex
+  typesets the degree sign as a raised letter `o` that the text layer emits as a separate character, so `P412`
+  stored *"50 o C/122 o F"* and would have printed that on a label; six more had a line break after a slash
+  welded into a space, giving *"vapours/ spray"*. Each was corrected by rendering that row of the PDF at
+  300 dpi and **reading it**, which is independent of the text layer in the way the original check was not. Two
+  apparent defects turned out to be real and were left alone: `P250` and `P401` genuinely set a space before
+  the closing full stop, and `P410 + P412` genuinely reads *"Do no expose"* where `P412` reads *"Do not
+  expose"* — the regulation's own typo, pinned by a test so nobody tidies it away.
+- **A mistyped hazard id produced a green pass.** `hazards` was accepted as free strings and unknown ids were
+  silently discarded, so an id one character off drew *no pictograms at all* and the rules reported
+  "every pictogram on the label is required by a declared hazard class" as a pass. The schema now validates
+  against `label-core`'s own list, as it already did for signal words and pictogram codes. It is a 400.
+- **A prototype key crashed the layout engine.** `hazardStatementText(regime, 'constructor')` returned a
+  function rather than `undefined`, sailed past the `!== undefined` guard and threw on `text.split` — a 500
+  from a well-formed request. The same defect class sat in the font metrics table and in the PDF exporter's
+  face allowlist, which its own comment calls a security boundary. All three use `Object.hasOwn` now.
+- **`pictogramSet` reintroduced the disagreement stage 5 removed.** It compared the drawn set against
+  `requiredPictograms` rather than `applyPrecedence`, so it raised "GHS07 is required and is not on the label"
+  for sets this tool had itself derived as Article 26-compliant.
+- **Only statements were wrapped.** The previous entry claimed text wrapping was in place; it was in place for
+  statements and nothing else, because the patch to the shared text helper silently failed to apply and was
+  never checked. A realistic product identifier — mandatory under CLP Article 18 — set 88.9 mm on a 74 mm
+  label and ran off the substrate with no omission recorded and no rule measuring it.
+- **The label-size finding pointed at an element that did not exist.** It anchored to `label-border`, which
+  neither engine ever put in `ResolvedLayout.elements`, so clicking it set the selection and drew nothing —
+  the same silent break this engine records having fixed for pictograms. The label is now an element in its
+  own right.
+- Several omissions shared one element id, which `LabelTextView` keys its list on.
+- The export button's explanation read `omissions[0]` while the button itself filtered on scope, so a disabled
+  button could explain a non-blocking omission.
+- Three copies of "which omissions block an export" and two of the download-filename sanitiser are now one
+  each, in `label-core` beside the types they interpret. The small-container thresholds are read from the rule
+  that enforces them rather than restated in the form — a regulatory figure written twice is one that drifts.
+- `runRules` fell off the end of its switch for a label type `LABEL_TYPES` already declares, returning
+  `undefined` where every caller expects an array. An exhaustiveness check makes that a compile error.
+
+- `docs/DESIGN.md` described the small-container provision, and was wrong in four ways: it had the rule
+  backwards (a permission to use fold-out labelling, where the regulation applies when fold-out labelling is
+  *not feasible*), used "under 100 mL" where the text says "less than or equal to", omitted two of the five
+  required elements — the manufacturer's phone number and the outer-package statement — and never mentioned
+  the second tier at 3 ml. CLP's own derogation, a different rule at a different threshold, was absent
+  entirely. Corrected against both sources.
+
+Phase 4, stage 5 — precedence applied, not only reported.
+
+- **The editor's own default output was non-compliant.** Deriving pictograms from a classification returned the
+  raw Annex V set, so a chemical classified for serious eye damage and skin irritation produced the corrosion
+  pictogram *and* the exclamation mark — and the precedence rule immediately flagged it. The form produced a
+  label its own rules rejected. `docs/DESIGN.md` asks that overlapping hazard classes "resolve to the correct
+  pictogram set"; they now do.
+- **Article 26 lives in one place, and both consumers read it.** The derivation needs it to build a compliant
+  set and the rule needs it to judge one, and two implementations are how a form comes to disagree with its own
+  checker. `ghs/precedence.ts` returns the clauses that apply; the rule turns them into findings and the
+  derivation removes what they forbid. A test pins the consequence: a set the derivation produced has no
+  mandatory suppression left for the rule to find, across both regimes.
+- **Clauses that make a pictogram optional are deliberately not applied.** "Shall be optional" means a supplier
+  may omit it, not that they must, and silently removing a hazard symbol would be this tool making a labelling
+  decision on someone else's behalf — while hiding a hazard while doing it. They stay on the label and the rule
+  raises them as guidance.
+
+- **Two precedence clauses reported a violation on labels that were correct.** Article 26(1)(c) and (d) were
+  checked against the corrosion and health-hazard pictograms being present and against the *classification*
+  that would require the exclamation mark — but never against the exclamation mark actually being on the
+  label. So a label that properly omitted GHS07 was told that GHS07 may not appear on it. Reachable from the
+  editor as soon as the derivation started removing it, and shipped in the stage 2 rules commit. Found by
+  writing the test that asserts the derivation and the rule cannot disagree, which is the only thing that
+  would have looked.
+- The precedence fixtures now state their offending pictogram set explicitly rather than relying on the
+  derivation to produce one. That makes each a genuinely wrong label rather than a reflection of the engine's
+  own bad default — which is what a known-bad fixture is supposed to be.
+
+Phase 4, stage 4 — text that stays on the label.
+
+- **Statements wrap, and they wrap at layout time.** Measured against the embedded typeface, 58 of the 199
+  statements were wider than the panel they were drawn on and ran off the edge, the worst nearly four times its
+  width. Every drawn line now fits: across all 70 hazard statements, zero lines exceed the panel, with the
+  widest at 65.74 mm of 66.
+- **A shared advance-width table, not a measurer injected per renderer.** The obvious fix — let each renderer
+  measure with what it has — would have the browser using canvas metrics and the server using PDFKit's, and two
+  measurements that agree today and diverge on one character tomorrow move a line break in the preview and not
+  in the print. `text/metrics.ts` is generated once from the TTFs by
+  `npm run generate:font-metrics`, and both consumers read identical numbers. Line breaks are geometry, and
+  this engine computes geometry once.
+- Checked against what will actually be drawn rather than assumed: the table agrees with PDFKit's own
+  measurement of all 199 statements to within 0.28% at worst, and is the wider of the two in 190 of them.
+  Kerning is deliberately excluded — it narrows a pair, so omitting it overestimates and wraps marginally
+  early, which is the safe direction to be wrong in.
+- A single word wider than the line overflows rather than being hyphenated. Hyphenation is language-specific,
+  and breaking a hazard statement in the wrong place would read wrong rather than merely look wrong.
+- Element boxes grow to the wrapped height, so a rule measuring a statement block measures what was drawn
+  rather than what one line would have been.
+
+Phase 4, stage 3 — the GHS form rail, and the end of free-text regulatory strings.
+
+- **Classification is the input; the pictograms follow.** The rail asks what the substance *is* — its hazard
+  classes, from CLP Annex V — and derives the pictograms. Asking a user to choose pictograms directly is asking
+  them to apply Article 26 by hand and then checking their arithmetic. The 44 classifications are grouped by
+  Annex I part so they read as four lists rather than one.
+- **Statements are chosen by code and never typed.** The dropdown shows `H225 — Highly flammable liquid and
+  vapour.`; what is stored is `H225`, and the text is looked up. There is no longer any path by which a
+  paraphrase can reach a label.
+- `GhsLabelData` now carries `hazardStatementCodes` rather than statement text. Stage 1 held these as free
+  strings and said the lookup would replace them once the tables existed; this is that replacement, and it
+  closes the last route by which regulatory text could be authored rather than retrieved.
+- **A code with no verified text for the label's market is omitted, not substituted.** Asked for H225 on a US
+  label, the engine draws nothing and records why — the OSHA wording is untranscribed, and printing the EU
+  wording would produce a label that looks complete and is not. The rail does the same thing visually: it
+  offers no statement dropdown for that market and says why, rather than presenting an empty one.
+- The form rail split by label type, with `EditorSection` — which owns half the finding ↔ form link — staying
+  common to both. A rail per type with its own section wrapper would let the signature interaction work on one
+  label type and silently not on the other, which is exactly the defect the stage 2 verification found.
+- The signal word is still chosen rather than derived, and **both words can be selected at once**, so a label
+  violating Article 20(3) can be drawn and reported. Deriving it needs CLP Annex I Parts 2–5 — 28 tables across
+  157 pages — which stays deferred. Enforcing it by rule rather than by disabling the control is the right way
+  round anyway: a form that cannot express a wrong label leaves the rule with nothing to catch.
+
+Phase 4, stage 2 — the GHS rules. Six of them, each citing a clause that was read rather than recalled, and
+each shipping with a label that provokes it.
+
+- **Pictogram precedence, enforced properly rather than approximately.** Three of CLP Article 26's five rules
+  turn on *why* a pictogram is on the label, not merely that it is: 26(c) suppresses the exclamation mark under
+  the corrosion pictogram only where it is there for skin or eye irritation, and 26(d) only where the health
+  hazard pictogram is there for respiratory sensitisation. A rule firing on "GHS05 and GHS07 are both present"
+  would report a violation on a label whose exclamation mark came from acute toxicity category 4 — a false
+  verdict under a real citation. Reading the classification is what makes the difference, and the rule
+  **declines** when a label lists pictograms without hazards, because without the cause the article is
+  unanswerable.
+- Two of Article 26's clauses say a second pictogram "shall be optional", not that it is forbidden. Those are
+  **guidance**, not violations. Flattening all five into violations would misstate the law in the stricter
+  direction, which is no more correct than missing them.
+- Signal-word precedence, label dimensions against Table 1.3, pictogram dimensions, pictogram integrity, and
+  the regime's recognised pictogram set. Each cites the regulator it actually judged against — the dimensional
+  rules **decline entirely under OSHA**, which sets no minimum size anywhere, because nothing to measure
+  against is not a pass.
+- **An empty frame is not a pictogram**, and the engine currently draws nothing else. OSHA C.2.3.1 forbids a
+  frame without its hazard symbol outright, so every US label this engine produces now carries a blocking
+  finding saying so. That is the honest state of things while the Annex V specimen artwork is unverified, and
+  far better said by a rule than left implicit in a source comment.
+- Eight known-bad fixtures asserting the exact code, severity **and citation string**, plus a conformant
+  control. The precedence fixtures classify each label so the exclamation mark is present *for the right
+  reason* — a fixture that merely listed two pictogram codes would pass against the broken rule this project
+  nearly shipped.
+
+- **Clicking a pictogram finding set the selection and then drew nothing.** The signature interaction —
+  click a finding, see the offending element outlined — was extended to a second label type without anything
+  ever pointing it at one. GHS findings carry element ids like `ghs-pictograms-GHS05`, but the engine recorded
+  only the pictogram *strip* in `ResolvedLayout.elements` and left the individual pictograms in
+  `layout.pictograms`, which is not where the canvas, the text-equivalent view or the form ring look for a box.
+  So the store held the right element id and the canvas silently had nothing to draw. Each pictogram is now an
+  element in its own right. Found by driving the real editor rather than by reading, which is the only way this
+  class of defect surfaces.
+- **A label could contradict its own classification and be reported as passing.** The precedence rule judges
+  the pictograms that were *drawn*, which is correct, but nothing compared that set against the hazards the
+  document declared. A label declaring serious eye damage and skin irritation while drawing the flame came back
+  with precedence "met" — a green tick on a pictogram set no declared hazard justifies. A new rule compares the
+  two: firm where it can be certain (a pictogram nothing requires is a violation) and deliberately soft where it
+  cannot (a missing pictogram is an advisory, because Article 26 legitimately removes some and this rule does
+  not model which).
+- **Two of CLP's own pictogram minimums fail CLP's own one-fifteenth rule, and the rule as first written
+  reported them as violations.** The regulation states the requirement twice — a dimension per capacity band in
+  Table 1.3, and in 1.2.1.3 a floor of one fifteenth of the label's information area. Checking both looked
+  obviously right. They are the same requirement written twice: the tabulated dimension is
+  `sqrt(labelArea / 15)` rounded to the nearest millimetre, and all four bands match. Two of those roundings go
+  *down*, so applying the fraction as well made a 32 mm pictogram on a 200 litre drum miss by 12 mm² — 1.2%,
+  entirely an artefact of rounding, and reported against the regulator's own tabulated figure. The dimension
+  check now enforces both provisions, and the arithmetic is pinned by a test so it cannot quietly stop being
+  true.
+- **Every OSHA citation in the tree was written from memory and has now been verified.** Twelve subsection
+  references across the rules and the reference data — C.2.1.1 through C.2.1.4, C.2.3.1, C.2.3.2, C.2.3.4 and
+  C.2.4.7 — were read from the eCFR API on 2026-09-12 against title 29 as issued on 2026-09-09. All twelve are
+  correct, including a quotation of C.2.3.1 that claimed to be verbatim and is. Getting them right from memory
+  is not the same as having sourced them, and `CLAUDE.md` is explicit that an unverifiable citation is worse
+  than no rule; the provenance is now recorded beside them.
+- **The rules were dead code.** Four rule files were written, compiled and committed to a branch while
+  `GHS_RULES` remained an empty array and nothing exported them, so the suite stayed green at 436 tests with
+  nothing being checked. Worse, two tests asserted the emptiness — pinning the broken state as though it were
+  the specification. They now assert the opposite, and the count rose to 458 the moment the rules were wired.
+- `passed()` could not carry a citation, so a *passing* signal-word check on a US label was reported against
+  the EU regulation. It takes the same override `finding()` already had.
+
+Phase 4, stage 1 — a GHS chemical label that draws. No rule ships in this stage: the point is to make a
+chemical label able to be **wrong**, the same way phase 3 stage 1 had to make a barcode label able to be wrong
+before the rule engine had anything to catch.
+
+- **A path primitive, and both renderers grew a fourth case.** Rectangles and lines drew a barcode label
+  completely; a GHS pictogram is a red square set at a point around a glyph, and no composition of rectangles
+  makes one. `PathPrimitive` carries **structured commands in millimetres**, not an SVG `d` string — the plan
+  said `d` and PDFKit's parser, and that was wrong. It would have made preview == print depend on two
+  independent SVG path parsers agreeing, which is the trade this project already declined once when it threw
+  away bwip-js's vertical output rather than let a library's metrics feed back into bar positions. Each
+  renderer emits its own form from the same numbers. The cross-renderer equivalence test was extended to cover
+  paths and confirmed to fail when the PDF side skipped its millimetre conversion.
+- `ghs/` — CLP label and pictogram dimensions, and the nine Annex V codes with their symbol names, read from
+  the consolidated regulation rather than recalled. **Every figure traces to `02008R1272 — EN — 01.09.2025 —
+  029.003`**, retrieved 2026-09-11.
+- **The pictogram dimension was ambiguous in the source, and the source resolved it.** Table 1.3 says "not
+  smaller than 10 × 10" and §1.2.1.1 says a pictogram is "a square set at a point" — so is 10 mm the square's
+  edge or its bounding box? They differ by a factor of two in area. §1.2.1.3 sets a floor of 1 cm², and a
+  10 mm edge is exactly 100 mm² while the bounding-box reading gives half that. Only one leaves the regulation
+  consistent with itself. The rejected reading is kept as a test so the decision stays visible rather than
+  becoming folklore.
+- `layOutGhsLabel`, a sibling of `layOutUpcALabel` rather than a branch inside it. It takes no barcode encoder,
+  because a chemical label has no symbol to encode. It resolves rather than refuses: an undersized pictogram
+  or undersized stock is drawn as asked, because a label that cannot be resolved cannot be measured.
+- `ResolvedPictogram` keeps `drawnSideMm` and `requiredSideMm` apart, for the reason phase 3 learned the hard
+  way — `quietZoneLeftMm` was a restatement of the specification under a name that read like a measurement,
+  and a rule written against it passed every label put to it. Only the drawn figure can fail.
+- **The pictogram glyphs are deliberately not drawn.** CLP Annex V requires conformance to specimen artwork
+  published with the standard, and no verified vector of it could be retrieved. Each frame is drawn to its
+  resolved size and each missing glyph records a `LayoutOmission` saying so. An approximated flame would look
+  compliant without being so, which is the failure this project exists to prevent.
+- `LayoutOmission.scope` distinguishes an **absent element** from a **missing detail**. The export gate was
+  "any omission is a 422", which was correct while one label type existed and would have made every GHS export
+  a 422, since every GHS label omits its glyphs. A UPC-A with no symbol is still refused; a GHS label with
+  frames and no glyphs still ships.
+- **The label-type seam.** `RuleContext` is now a discriminated union and every rule declares `appliesTo`, so
+  `runRules` narrows on the type and hands each rule set a context it already matches — no cast anywhere. The
+  alternative was one widened context and an assertion at the dispatch, and this project has been bitten by
+  exactly that: the export route's `as never` switched off the only check that the request schema and
+  `UpcALabelData` still described the same thing.
+- `POST /api/labels/ghs/export`, and the editor renders either label type. Both enums in the request schema are
+  derived from `label-core`'s own lists rather than restated.
+
+- **The signal word would have printed in a different typeface than it previewed — and the first fix moved the
+  bug instead of closing it.** Worth recording in full, because it took three attempts and the first two both
+  looked correct.
+
+  The GHS template first asked for `IBM Plex Sans Bold`, which the PDF exporter does not embed, so its
+  allowlist quietly substituted the regular weight in print while the browser rendered bold. That was caught
+  and "fixed" by renaming to `IBM Plex Sans SemiBold` — a face the exporter *does* embed. But the browser
+  declares one family at two weights, not two families, so there is no `@font-face` by that name at all: the
+  preview fell back to the system sans instead, and the divergence simply changed sides. The word `DANGER` on
+  a hazard label, in a different typeface in preview than in print, through a fallback designed not to
+  complain.
+
+  The reason it survived a fix is that the only guard read the exporter's allowlist. A font is a contract
+  between the layout and **two** renderers, and a test that reads one of them cannot see a mismatch with the
+  other. `TextPrimitive` now carries `fontWeight`, which is what both renderers actually understand — SVG
+  emits `font-weight`, and the exporter resolves family plus weight onto its registered face — so the layout
+  never names a bold family again. Weight is expressed as intent and satisfied differently by each renderer,
+  exactly as `anchor` already was.
+
+  Two tests now, one per side, and the new one was confirmed to fail on the flagged state **while the old one
+  passed it**, which is the whole point. Verified in a real export: the PDF embeds `IBMPlexSans-SmBld` and uses
+  it for the signal word alone, and the SVG asks for `IBM Plex Sans` at `font-weight="600"`.
+- `PathCommand` and `PathPrimitive` were declared but never re-exported from the layout barrel, so a consumer
+  authoring pictogram artwork could not name either without deep-importing `layout/types`. The barrel guard
+  sees only runtime values and types are erased before it runs — a limit it documents about itself, and the
+  second time that limit has let something through.
+- The pictogram strip computed its own width and each frame's position from two separate expressions of one
+  formula, so a change to the spacing could have moved the frames without moving the box that measures them.
+  Its `length - 1` was also non-negative only by grace of the guard above it. One expression now, used by both.
+- `docs/DESIGN.md`'s OSHA compliance dates were wrong and superseded. It gave "substances 19 Jul 2026,
+  mixtures 19 Jan 2028"; 29 CFR 1910.1200(j) as of the 2026-09-09 eCFR issue gives 19 May 2026 and 20 Nov 2026
+  for substances and 19 Nov 2027 and 19 May 2028 for mixtures — manufacturers and employers respectively, a
+  distinction the old summary lost entirely. The first has already passed.
+- `docs/DESIGN.md` summarised CLP Article 26 as two suppression rules. There are five, and two of them make
+  the second pictogram **optional** rather than forbidden — a rule engine built on the summary would report
+  violations that do not exist.
+
+Phase 3, stage 3 — the editor. Three panes, and the link between them that is the whole point.
+
+- `/labels/new` — the form rail, the canvas and the findings rail, on an in-memory document. `/labels/:id` and
+  persistence are a later phase; inventing an id now would mean either a fake route parameter or a
+  browser-storage layer built to be thrown away, and the route shape is the cheaper of the two to change.
+- **Click a finding and the offending element outlines on the canvas and its form section rings. Focus a field
+  and the same element outlines.** One piece of store state carries both directions, so the two halves cannot
+  drift into disagreeing about what is selected. It is tested by driving the real components rather than the
+  store alone — the store holding the right element id proves nothing about whether the canvas draws anything
+  — and the test was confirmed to fail when the outline was disabled.
+- Findings grouped by the ANSI Z535.4 signal-word scale, passes collapsed at the bottom. Every severity
+  carries an icon and a word; `theme.test.ts` already pins why, since warning and pass are within 1.06 of each
+  other in luminance on this chrome and all but identical in greyscale.
+- The rail announces through a **polite** live region carrying a summary, not `role="alert"` per finding. The
+  findings recompute on every keystroke, and an assertive region per item would interrupt a screen-reader user
+  continuously while they typed a GTIN. The summary is what changed; the detail is there to navigate to.
+- Overlays drawn into a second SVG sharing the label's `viewBox`, so an annotation sits in the same millimetre
+  space as the thing it annotates and stays registered at any zoom: hatched quiet-zone bands, symbol dimension
+  callouts, and the selection outline. Selection is dashed and inset so it cannot be read as a severity —
+  it is transient interface state and says nothing about the label.
+- "Label contents as text" — every element with its position and size, and every omission with its reason. An
+  accessibility requirement for an SVG canvas that turns out to be the fastest way for anyone to see what the
+  layout engine actually produced.
+- Export warns rather than refuses when a blocking finding is present. "Non-compliant as drawn" is what that
+  severity means, and exporting anyway is the user's call — the confirmation only makes sure the finding was
+  seen.
+- A half-typed GTIN reads as a form state, not a compliance verdict. Inventing a finding for it would fire on
+  every keystroke.
+
+Phase 3, third review. Four findings, all in the web layer — and the notable result is where they are *not*.
+The second round's fixes were the least-reviewed code in the phase and the ones with the worst track record,
+since the first round's fixes had introduced a regression. This pass found nothing wrong with them: the
+narrowed overprint suppression, the vertical-containment measurement, the font allowlist, the number
+validation and the 422 export path all came through clean, as did every rule and citation in `label-core`.
+
+- **Focusing a field could clear the highlight the user had just set.** `EditorSection` emitted its `select`
+  event on every `focusin`, passing an element id that Stock and Digital Link do not have — so the emit
+  carried `undefined` and the store read it as "nothing is selected". The cost lands on the one interaction
+  this phase exists for: click a quiet-zone finding, see the symbol outlined, then tab into Stock to widen the
+  label and fix it, and the outline showing what needs to move vanishes mid-edit. The canvas and the rail stop
+  agreeing about what is selected at exactly the moment it is being acted on. Only a section that owns an
+  element now speaks for the canvas, and the emit is typed `string` rather than `string | undefined` so the
+  invariant is stated rather than remembered. The existing test only ever focused a field that *did* own an
+  element, which is why it passed throughout.
+- The overlay checkbox ids were hardcoded, reintroducing the exact collision the hatch pattern had just been
+  fixed for — three lines below the comment explaining why hardcoding them was wrong. Two canvases on a page
+  bound both sets of labels to the first one's checkboxes, leaving the second's overlays untoggleable by their
+  label. Both ids are now seeded from `useId()`, like the hatch beside them.
+- The uncertifiable-symbol notice hand-rolled `.toFixed(2)` instead of the shared `mm()` helper. This is the
+  third instance of that pattern and the second time it has been recorded as fixed; `mm()` exists precisely
+  because raw `toFixed` skips `collapseFloatNoise`, which is what produced the "14.33 / 14.32" readout on a
+  label symmetric to the micrometre.
+- The live region announced "All 1 checks passed" — `findings` and `symbols` were both pluralised on the
+  neighbouring lines and `checks` was not. Small, but it is read aloud to the users least able to ignore it,
+  on a tool that will not paraphrase a single character of a regulated statement.
+
+Phase 3, second review. Fifteen findings from a full multi-agent pass, including a regression the first round
+of fixes had introduced — which is the argument for reviewing each stage rather than a whole phase at once.
+
+- **The overprint fix from the first round had manufactured a second false pass.** Suppressing the whole
+  symbol when artwork crossed it also suppressed real, measured violations: a brand block anchored bottom-left
+  produced a quiet zone of 0.00 mm against a required 2.97 mm with every verdict reading "pass". The rule now
+  withholds only the **pass**, never the finding. Two mistakes compounded: the overprint band was the symbol's
+  full drawn height, so artwork merely level with the printed digits — which touches no bar — tripped the
+  suppression. `PlacedSymbol.guardBarHeightMm` now gives the bar ink its own extent.
+- **Nothing measured vertical containment.** `measureClearSpace` was only ever told the label's *width*, so a
+  symbol drawn off the top and bottom of its stock reported six passes and no findings. The changelog's
+  justification for not shipping a clipped-by-trim rule — "clipped bars measure as negative clear space" — was
+  true horizontally and silently false the other way. `ResolvedSymbol.verticalOverflowMm` records it, and the
+  quiet-zone rule declines to certify a symbol that is not entirely on the label.
+- **A quiet zone exactly at the minimum was reported as a violation.** The comparison had no tolerance, unlike
+  the bar-height rule beside it, so on stock exactly one symbol footprint wide the two sides reached 2.97 mm
+  by different arithmetic and one landed a fraction under: *"The right quiet zone measures 2.97 mm; UPC-A
+  requires 2.97 mm"* — a violation contradicting its own message under a real GS1 citation. The tolerance is
+  now declared once and shared.
+- **`artwork.fontFamily` was an arbitrary local file read.** It reached PDFKit's `document.font()`, which
+  resolves an unregistered name as a filesystem path — `'Arial'` returned a 500, and a real path was opened by
+  the server process. The API now accepts only the faces the exporter embeds, and the renderer passes
+  everything through that allowlist before it reaches PDFKit.
+- **The export handed out blank PDFs.** A GTIN with a bad check digit — newly reachable, since the check digit
+  is supplied rather than computed — returned 200 and 1,145 bytes of empty page, with the reason recorded only
+  in a field no HTTP client reads. It is now a 422 carrying the omission, and the editor does not offer the
+  button.
+- **A Digital Link with no valid resolver passed.** `buildDigitalLinkUri` never inspects the domain, so "it did
+  not throw" was being read as conformance: an empty string, `not a url` and `javascript:alert(1)` each came
+  back as a green pass under a GS1 citation. It also emitted a `pass` and an advisory for the *same* URI when
+  the convenience alphas were used, so the rail counted a check as cleared that the rule had just faulted.
+- **Blank and negative numbers corrupted the layout instead of being refused.** A cleared margin field arrived
+  as `''` and string-concatenated through every coordinate — `symbol.xMm` became `"11.3552.97"`, the rail
+  printed "the left quiet zone measures NaN mm" under a real citation, and the renderer threw on a coordinate
+  that was not a number. A negative bar height inverted the band used to detect encroachment, turning a real
+  violation into two passes. The engine now validates every number it is given.
+- **The quiet-zone hatch was invisible.** `currentColor` inside a `<pattern>` inherits from the pattern's own
+  ancestors — `<defs>` — never from the element referencing it, so the overlay resolved to the body text
+  colour and rendered at roughly 1.1:1 on paper. Ticking "Quiet zones" appeared to do nothing. The pattern id
+  is also unique per instance now, rather than colliding as soon as two canvases share a page.
+- The canvas caption hand-rolled `.toFixed()` and reproduced the exact `14.33 / 14.32` asymmetry
+  `collapseFloatNoise` had just been written to kill — while the rail three inches away, formatting through
+  the shared helper, printed 14.33 for both. Both now use the same helper.
+- Smaller: a finding with no geometry is no longer a button, since clicking it *cleared* the canvas highlight
+  instead of setting one; findings use phrasing content, as `<p>` and `<dl>` are not permitted inside a
+  `<button>` and ARIA flattened them into one unreadable name; only the first form section owning an element
+  scrolls, so a shared selection no longer races two `scrollIntoView` calls; and an API test asserting
+  `expect([200, 422]).toContain(status)` — which no behaviour could fail — now asserts one status.
+- `scripts/verify-build.sh` still posted the removed `gtinPayload`, so CI was red on this branch. It was the
+  only surviving reference and it sat in a shell script, which a `--include='*.ts'` sweep never looked at.
+
+**Reviewed and not changed.** `measureClearSpace` ignores artwork lying entirely outside the trim. That was
+raised as a dropped obstruction; it is the correct answer, because ink outside the trim is never printed and so
+obstructs nothing. Artwork straddling the edge still counts, via its right edge landing inside. Also left
+alone: re-encoding the symbol on every magnification change. It is 92% of the keystroke pipeline and the
+pipeline is 0.4 ms, so caching it would add state to a pure module to buy nothing measurable.
+
+
+Phase 3 review. Four defects, two of them false passes — the failure class this project exists to prevent.
+
+- **A label with artwork printed through the barcode reported six passes and no findings.** `measureClearSpace`
+  only considered elements extending past the left or right edge of the bar pattern, so a block sitting
+  entirely inside it was neither and got skipped; both quiet zones measured clean. Reachable from the editor in
+  two clicks. `ResolvedSymbol.overprintedBy` now records it, and the quiet-zone rule **declines to certify**
+  such a symbol rather than passing it — a pass would be true in the narrow sense and gravely misleading in
+  every other. No violation is raised either: no clause covering overprinting has been verified against a
+  source document, and this project does not ship rules it cannot cite. The editor states the fact in words
+  instead, under "Cannot be checked", and suppresses the all-clear banner while it stands.
+- **The findings rail claimed "Every check passed" when no check had run.** The guard tested only that nothing
+  had failed. With a half-typed GTIN there is no resolvable layout, so there are no findings at all — and the
+  rail rendered a green tick beside a live region correctly announcing that no checks had run. It now requires
+  a check to have actually passed, and says so plainly when none has.
+- **The landing page drew hatched quiet-zone bands over the label with no way to remove them.** The overlay
+  defaulted on regardless of whether the toggles were offered, so the one page whose entire point is "this is a
+  real label, not a picture of one" covered it in apparatus. The default is now seeded from whether the
+  controls are shown.
+- **The Digital Link rule blamed the URI for a fault in the GTIN.** `buildDigitalLinkUri` validates the check
+  digit and throws, so a transposed digit produced two findings for one cause — the second of them
+  misattributed to a Digital Link that was perfectly well formed. It now declines when the key it builds from
+  is unsound, and leaves that defect to the rule that owns it.
+- The API export route no longer casts past its own type checker. `z.enum(ANCHORS)` widened to `string`, which
+  forced an `as never` on the engine call — and that cast switched off the only check that the request schema
+  and `UpcALabelData` still describe the same thing. `Anchor` is now derived from `ANCHORS` so the enum stays
+  typed, and the nested Zod optionals are reconciled with `exactOptionalPropertyTypes` by construction rather
+  than by assertion.
 
 Findings from the stage 3 review.
 
