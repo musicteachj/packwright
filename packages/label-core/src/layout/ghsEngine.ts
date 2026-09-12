@@ -27,6 +27,7 @@ import {
   pictogramFrameCommands,
 } from '../ghs/pictograms'
 import { requiredPictograms } from '../ghs/classification'
+import { hazardStatementText, precautionaryStatementText } from '../ghs/statements'
 import { dimensionBandFor, pictogramAreaSqMm } from '../ghs/labelDimensions'
 import type { GhsLabelData } from '../templates/ghs'
 import { GHS_ELEMENTS, GHS_TYPE_DEFAULT } from '../templates/ghs'
@@ -214,16 +215,38 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     cursorYMm += boxMm + type.blockGapMm
   }
 
-  for (const [elementId, label, statements] of [
-    [GHS_ELEMENTS.hazardStatements, 'Hazard statements', data.hazardStatements],
+  for (const [elementId, label, codes, lookup] of [
+    [
+      GHS_ELEMENTS.hazardStatements,
+      'Hazard statements',
+      data.hazardStatementCodes,
+      hazardStatementText,
+    ],
     [
       GHS_ELEMENTS.precautionaryStatements,
       'Precautionary statements',
-      data.precautionaryStatements,
+      data.precautionaryStatementCodes,
+      precautionaryStatementText,
     ],
   ] as const) {
-    if (!statements?.length) continue
+    if (!codes?.length) continue
     const startYMm = cursorYMm
+    // Resolved before drawing, so a code with no verified text for this regime
+    // becomes a recorded omission rather than a blank line on the label.
+    const statements = codes.flatMap((code) => {
+      const text = lookup(data.regime, code)
+      if (text !== undefined) return [text]
+      omissions.push({
+        elementId,
+        scope: 'detail',
+        reason:
+          `The statement ${code} is not drawn: no verified text for it exists under this ` +
+          'label’s regime. Printing another regime’s wording would produce a label that looks ' +
+          'complete and is not.',
+      })
+      return []
+    })
+    if (statements.length === 0) continue
     statements.forEach((statement) => {
       primitives.push({
         kind: 'text',

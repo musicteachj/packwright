@@ -110,8 +110,8 @@ const GHS_BODY = {
   capacityL: 5,
   signalWords: ['Danger'],
   pictograms: ['GHS02', 'GHS07'],
-  hazardStatements: ['Highly flammable liquid and vapour.'],
-  precautionaryStatements: ['Keep away from heat.'],
+  hazardStatementCodes: ['H225'],
+  precautionaryStatementCodes: ['P210'],
   supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way, Leeds' },
 }
 

@@ -148,8 +148,8 @@ const GhsRequest = z.object({
   signalWords: z.array(z.enum(GHS_SIGNAL_WORDS)).optional(),
   hazards: z.array(z.string()).optional(),
   pictograms: z.array(z.enum(GHS_PICTOGRAM_CODES)).optional(),
-  hazardStatements: z.array(z.string()).optional(),
-  precautionaryStatements: z.array(z.string()).optional(),
+  hazardStatementCodes: z.array(z.string()).optional(),
+  precautionaryStatementCodes: z.array(z.string()).optional(),
   supplier: GhsSupplierSchema.optional(),
   pictogramSideMm: z.number().positive().optional(),
   stock: z
@@ -263,10 +263,12 @@ export function createLabelRouter(): Router {
       ...(rest.signalWords === undefined ? {} : { signalWords: rest.signalWords }),
       ...(rest.hazards === undefined ? {} : { hazards: rest.hazards }),
       ...(rest.pictograms === undefined ? {} : { pictograms: rest.pictograms }),
-      ...(rest.hazardStatements === undefined ? {} : { hazardStatements: rest.hazardStatements }),
-      ...(rest.precautionaryStatements === undefined
+      ...(rest.hazardStatementCodes === undefined
         ? {}
-        : { precautionaryStatements: rest.precautionaryStatements }),
+        : { hazardStatementCodes: rest.hazardStatementCodes }),
+      ...(rest.precautionaryStatementCodes === undefined
+        ? {}
+        : { precautionaryStatementCodes: rest.precautionaryStatementCodes }),
       ...(rest.supplier === undefined ? {} : { supplier: toSupplier(rest.supplier) }),
       ...(rest.pictogramSideMm === undefined ? {} : { pictogramSideMm: rest.pictogramSideMm }),
     }

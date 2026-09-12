@@ -126,3 +126,77 @@ describe('the editor on a GHS label', () => {
     expect(exportButton!.attributes('disabled')).toBeUndefined()
   })
 })
+
+describe('the GHS form rail', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  const mountGhs = async () => {
+    const store = useLabelDocumentStore()
+    store.labelType = 'ghs-chemical'
+    const wrapper = mountEditor()
+    await nextTick()
+    return { store, wrapper }
+  }
+
+  it('shows the chemical form, not the barcode one', async () => {
+    const { wrapper } = await mountGhs()
+    expect(wrapper.find('#field-ghs-product').exists()).toBe(true)
+    // The GTIN field belongs to the other label type and must not be mounted.
+    expect(wrapper.find('#field-gtin').exists()).toBe(false)
+  })
+
+  it('derives pictograms from the classification rather than asking for them', async () => {
+    const { store, wrapper } = await mountGhs()
+    delete store.ghsData.pictograms
+    delete store.ghsData.hazards
+    await nextTick()
+
+    const flammable = wrapper.find('#field-hazard-2\\.6\\/flammable-liquids-1-2-3')
+    expect(flammable.exists(), 'the flammable-liquids classification was not offered').toBe(true)
+
+    await flammable.setValue(true)
+    await nextTick()
+
+    expect(store.ghsData.hazards).toContain('2.6/flammable-liquids-1-2-3')
+    // GHS02 appears because the classification requires it, not because it was picked.
+    expect(store.layout!.pictograms.map((p) => p.code)).toContain('GHS02')
+  })
+
+  it('stores a statement as a code, never as text', async () => {
+    const { store, wrapper } = await mountGhs()
+    const add = wrapper.find('#field-add-h')
+    expect(add.exists()).toBe(true)
+
+    await add.setValue('H225')
+    await nextTick()
+
+    // The code is what is stored; the exact wording is looked up. This is the
+    // whole reason the field holds codes — a typed H225 could be paraphrased.
+    expect(store.ghsData.hazardStatementCodes).toEqual(['H225'])
+    const drawn = store.layout!.primitives.flatMap((p) =>
+      p.kind === 'text' ? [(p as { text: string }).text] : [],
+    )
+    expect(drawn).toContain('Highly flammable liquid and vapour.')
+  })
+
+  it('offers no statements for a market whose text is not verified', async () => {
+    const { store, wrapper } = await mountGhs()
+    store.ghsData.regime = 'us-osha'
+    await nextTick()
+
+    // An empty dropdown would imply there are none; the rail says why instead.
+    expect(wrapper.find('#field-add-h').exists()).toBe(false)
+    expect(wrapper.text()).toContain('No verified statement text exists for this market')
+  })
+
+  it('lets both signal words be selected, so a wrong label can be drawn', async () => {
+    const { store, wrapper } = await mountGhs()
+    await wrapper.find('#field-signal-Danger').setValue(true)
+    await wrapper.find('#field-signal-Warning').setValue(true)
+    await nextTick()
+
+    expect(store.ghsData.signalWords).toEqual(['Danger', 'Warning'])
+    // And the rule catches it, which is the point of the form permitting it.
+    expect(store.findings.some((f) => f.code === 'GHS_SIGNAL_WORD_CONFLICT')).toBe(true)
+  })
+})

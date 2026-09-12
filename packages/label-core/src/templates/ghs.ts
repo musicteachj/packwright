@@ -98,16 +98,19 @@ export interface GhsLabelData {
   /** Annex V codes. Drawn in the order given; precedence is a rule, not a layout. */
   pictograms?: readonly GhsPictogramCode[]
   /**
-   * Hazard statement text, verbatim.
+   * Hazard statements, **as codes**.
    *
-   * Supplied rather than looked up **for now**. When the H-statement table lands
-   * these become codes and the text comes from the table — which is the only
-   * acceptable long-term shape, because a paraphrased H225 is a non-compliant
-   * label. Until then the caller owns the exactness and this field is honest
-   * about carrying text rather than pretending to carry a verified lookup.
+   * Codes rather than text, because a paraphrased H225 is a non-compliant label
+   * and the only way to guarantee exactness is to never let the text be typed.
+   * The engine looks each one up in the table for the label's regime; a code
+   * with no verified text for that regime is recorded as a layout omission
+   * rather than rendered from another regime's wording.
+   *
+   * Stage 1 carried these as free strings and said the lookup would replace
+   * them once the tables existed. This is that replacement.
    */
-  hazardStatements?: readonly string[]
-  precautionaryStatements?: readonly string[]
+  hazardStatementCodes?: readonly string[]
+  precautionaryStatementCodes?: readonly string[]
   supplier?: GhsSupplier
   /**
    * Overrides the drawn pictogram size. Omitted means the CLP minimum for the

@@ -10,6 +10,30 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 4, stage 3 — the GHS form rail, and the end of free-text regulatory strings.
+
+- **Classification is the input; the pictograms follow.** The rail asks what the substance *is* — its hazard
+  classes, from CLP Annex V — and derives the pictograms. Asking a user to choose pictograms directly is asking
+  them to apply Article 26 by hand and then checking their arithmetic. The 44 classifications are grouped by
+  Annex I part so they read as four lists rather than one.
+- **Statements are chosen by code and never typed.** The dropdown shows `H225 — Highly flammable liquid and
+  vapour.`; what is stored is `H225`, and the text is looked up. There is no longer any path by which a
+  paraphrase can reach a label.
+- `GhsLabelData` now carries `hazardStatementCodes` rather than statement text. Stage 1 held these as free
+  strings and said the lookup would replace them once the tables existed; this is that replacement, and it
+  closes the last route by which regulatory text could be authored rather than retrieved.
+- **A code with no verified text for the label's market is omitted, not substituted.** Asked for H225 on a US
+  label, the engine draws nothing and records why — the OSHA wording is untranscribed, and printing the EU
+  wording would produce a label that looks complete and is not. The rail does the same thing visually: it
+  offers no statement dropdown for that market and says why, rather than presenting an empty one.
+- The form rail split by label type, with `EditorSection` — which owns half the finding ↔ form link — staying
+  common to both. A rail per type with its own section wrapper would let the signature interaction work on one
+  label type and silently not on the other, which is exactly the defect the stage 2 verification found.
+- The signal word is still chosen rather than derived, and **both words can be selected at once**, so a label
+  violating Article 20(3) can be drawn and reported. Deriving it needs CLP Annex I Parts 2–5 — 28 tables across
+  157 pages — which stays deferred. Enforcing it by rule rather than by disabling the control is the right way
+  round anyway: a form that cannot express a wrong label leaves the rule with nothing to catch.
+
 Phase 4, stage 2 — the GHS rules. Six of them, each citing a clause that was read rather than recalled, and
 each shipping with a label that provokes it.
 

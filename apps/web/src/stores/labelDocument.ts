@@ -50,8 +50,8 @@ const STARTING_GHS: GhsLabelData = {
   capacityL: 5,
   signalWords: ['Danger'],
   pictograms: ['GHS02', 'GHS07'],
-  hazardStatements: ['(hazard statement text is not yet looked up from the H-statement table)'],
-  precautionaryStatements: ['(precautionary statement text likewise)'],
+  hazardStatementCodes: ['H225'],
+  precautionaryStatementCodes: ['P210', 'P233'],
   supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way, Leeds' },
 }
 

@@ -176,7 +176,7 @@ describe('the GHS label only asks for faces this build embeds', () => {
         capacityL: 5,
         signalWords: ['Danger'],
         pictograms: ['GHS02'],
-        hazardStatements: ['Highly flammable liquid and vapour.'],
+        hazardStatementCodes: ['H225'],
         supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way' },
       },
       stock: DEFAULT_GHS_STOCK,
