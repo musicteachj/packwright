@@ -10,6 +10,27 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 4, stage 4 — text that stays on the label.
+
+- **Statements wrap, and they wrap at layout time.** Measured against the embedded typeface, 58 of the 199
+  statements were wider than the panel they were drawn on and ran off the edge, the worst nearly four times its
+  width. Every drawn line now fits: across all 70 hazard statements, zero lines exceed the panel, with the
+  widest at 65.74 mm of 66.
+- **A shared advance-width table, not a measurer injected per renderer.** The obvious fix — let each renderer
+  measure with what it has — would have the browser using canvas metrics and the server using PDFKit's, and two
+  measurements that agree today and diverge on one character tomorrow move a line break in the preview and not
+  in the print. `text/metrics.ts` is generated once from the TTFs by
+  `npm run generate:font-metrics`, and both consumers read identical numbers. Line breaks are geometry, and
+  this engine computes geometry once.
+- Checked against what will actually be drawn rather than assumed: the table agrees with PDFKit's own
+  measurement of all 199 statements to within 0.28% at worst, and is the wider of the two in 190 of them.
+  Kerning is deliberately excluded — it narrows a pair, so omitting it overestimates and wraps marginally
+  early, which is the safe direction to be wrong in.
+- A single word wider than the line overflows rather than being hyphenated. Hyphenation is language-specific,
+  and breaking a hazard statement in the wrong place would read wrong rather than merely look wrong.
+- Element boxes grow to the wrapped height, so a rule measuring a statement block measures what was drawn
+  rather than what one line would have been.
+
 Phase 4, stage 3 — the GHS form rail, and the end of free-text regulatory strings.
 
 - **Classification is the input; the pictograms follow.** The rail asks what the substance *is* — its hazard

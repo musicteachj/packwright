@@ -28,6 +28,7 @@ import {
 } from '../ghs/pictograms'
 import { requiredPictograms } from '../ghs/classification'
 import { hazardStatementText, precautionaryStatementText } from '../ghs/statements'
+import { wrapTextMm } from '../text/measure'
 import { dimensionBandFor, pictogramAreaSqMm } from '../ghs/labelDimensions'
 import type { GhsLabelData } from '../templates/ghs'
 import { GHS_ELEMENTS, GHS_TYPE_DEFAULT } from '../templates/ghs'
@@ -248,18 +249,20 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     })
     if (statements.length === 0) continue
     statements.forEach((statement) => {
-      primitives.push({
-        kind: 'text',
-        elementId,
-        xMm: panel.xMm,
-        baselineYMm: cursorYMm + type.statementMm,
-        text: statement,
-        fontSizeMm: type.statementMm,
-        fontFamily: type.fontFamily,
-        fill: '000000',
-        anchor: 'start',
-      })
-      cursorYMm += type.statementMm * type.lineHeight
+      for (const line of wrapTextMm(statement, panel.widthMm, type.statementMm, type.fontFamily)) {
+        primitives.push({
+          kind: 'text',
+          elementId,
+          xMm: panel.xMm,
+          baselineYMm: cursorYMm + type.statementMm,
+          text: line,
+          fontSizeMm: type.statementMm,
+          fontFamily: type.fontFamily,
+          fill: '000000',
+          anchor: 'start',
+        })
+        cursorYMm += type.statementMm * type.lineHeight
+      }
     })
     elements.push({
       elementId,

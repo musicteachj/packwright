@@ -40,6 +40,9 @@ import * as ghsLabelDimensions from './ghs/labelDimensions'
 import * as ghsPictograms from './ghs/pictograms'
 import * as ghsStatements from './ghs/statements'
 import * as templatesBarrel from './templates/index'
+import * as textBarrel from './text/index'
+import * as textMeasure from './text/measure'
+import * as textMetrics from './text/metrics'
 import * as ghsTemplate from './templates/ghs'
 import * as stock from './templates/stock'
 import * as upcA from './templates/upcA'
@@ -146,6 +149,14 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['labelDimensions.ts', ghsLabelDimensions],
       ['pictograms.ts', ghsPictograms],
       ['statements.ts', ghsStatements],
+    ],
+  ],
+  [
+    'text',
+    textBarrel,
+    [
+      ['measure.ts', textMeasure],
+      ['metrics.ts', textMetrics],
     ],
   ],
   [

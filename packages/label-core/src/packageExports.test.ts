@@ -24,6 +24,7 @@ const MODULES = [
   'rules',
   'symbology',
   'templates',
+  'text',
   'types',
 ] as const
 

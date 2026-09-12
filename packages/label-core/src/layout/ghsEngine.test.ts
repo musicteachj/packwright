@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { measureTextMm } from '../text/measure'
 import { GHS_ELEMENTS, type GhsLabelData } from '../templates/ghs'
 import type { LabelStock } from '../templates/stock'
 import { LayoutError } from './engine'
@@ -119,5 +120,39 @@ describe('layOutGhsLabel', () => {
     const ids = layout.elements.map((e) => e.elementId)
     expect(ids).toEqual([GHS_ELEMENTS.productIdentifier])
     expect(layout.pictograms).toEqual([])
+  })
+})
+
+describe('statements are wrapped at layout time', () => {
+  it('breaks a long statement into several lines that each fit the panel', () => {
+    const layout = layOutGhsLabel({
+      data: { ...DATA, hazardStatementCodes: [], precautionaryStatementCodes: ['P210'] },
+      stock: STOCK,
+    })
+    const lines = layout.primitives.filter(
+      (p) => p.kind === 'text' && p.elementId === GHS_ELEMENTS.precautionaryStatements,
+    )
+    // P210 is 111 mm of text on a 66 mm panel; unwrapped it ran off the label.
+    expect(lines.length).toBeGreaterThan(1)
+    for (const line of lines) {
+      if (line.kind !== 'text') continue
+      expect(measureTextMm(line.text, line.fontSizeMm, line.fontFamily)).toBeLessThanOrEqual(
+        STOCK.widthMm - STOCK.marginMm * 2,
+      )
+    }
+  })
+
+  it('grows the element box to the wrapped height, so a rule measures what is drawn', () => {
+    const oneLine = layOutGhsLabel({
+      data: { ...DATA, hazardStatementCodes: ['H200'], precautionaryStatementCodes: [] },
+      stock: STOCK,
+    })
+    const manyLines = layOutGhsLabel({
+      data: { ...DATA, hazardStatementCodes: ['H373'], precautionaryStatementCodes: [] },
+      stock: STOCK,
+    })
+    const box = (l: typeof oneLine) =>
+      l.elements.find((e) => e.elementId === GHS_ELEMENTS.hazardStatements)!.box.heightMm
+    expect(box(manyLines)).toBeGreaterThan(box(oneLine))
   })
 })
