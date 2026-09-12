@@ -31,6 +31,7 @@ import {
   getSymbologyConstraints,
   INGREDIENT_THRESHOLD_PERCENTS,
   MAJOR_FOOD_ALLERGEN_IDS,
+  NUTRIENT_IDS,
   US_FOOD_PACKAGINGS,
   layOutGhsLabel,
   layOutUpcALabel,
@@ -43,6 +44,7 @@ import {
   type UsFoodLabelData,
   type UsFoodNetQuantity,
   type UsFoodIngredient,
+  type UsFoodNutritionFacts,
   type UsFoodResponsibleFirm,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
@@ -264,6 +266,22 @@ function toIngredient(ingredient: z.infer<typeof IngredientSchema>): UsFoodIngre
 }
 
 /** The same key-by-key reconciliation the other nested objects get. */
+function toNutritionFacts(panel: z.infer<typeof NutritionFactsSchema>): UsFoodNutritionFacts {
+  return {
+    servingSize: panel.servingSize,
+    amounts: panel.amounts,
+    ...(panel.servingsPerContainer === undefined
+      ? {}
+      : { servingsPerContainer: panel.servingsPerContainer }),
+    ...(panel.declaredAmounts === undefined ? {} : { declaredAmounts: panel.declaredAmounts }),
+    ...(panel.declaredPercentDv === undefined
+      ? {}
+      : { declaredPercentDv: panel.declaredPercentDv }),
+    ...(panel.order === undefined ? {} : { order: panel.order }),
+  }
+}
+
+/** The same key-by-key reconciliation the other nested objects get. */
 function toResponsibleFirm(firm: z.infer<typeof ResponsibleFirmSchema>): UsFoodResponsibleFirm {
   return {
     name: firm.name,
@@ -278,6 +296,28 @@ function toResponsibleFirm(firm: z.infer<typeof ResponsibleFirmSchema>): UsFoodR
     ...(firm.zip === undefined ? {} : { zip: firm.zip }),
   }
 }
+
+/**
+ * Amounts keyed by nutrient id, with the ids derived from label-core's own list.
+ * A key one character off would be dropped silently and the completeness rule
+ * would then report the nutrient missing — a confusing finding produced by a
+ * typo rather than by the label.
+ */
+const NutrientAmounts = z.partialRecord(z.enum(NUTRIENT_IDS), z.number()).optional()
+
+const NutritionFactsSchema = z.object({
+  servingSize: z.string().min(1),
+  servingsPerContainer: z.number().positive().optional(),
+  // `partialRecord`, not `record`. Zod 4 makes a record over an enum key
+  // **exhaustive**, so `z.record` here demanded all fifteen nutrients and
+  // rejected a panel declaring fourteen with a 400 — which is a compliance
+  // finding the rules exist to report, not a malformed request. The same
+  // mistake on `declaredAmounts` rejected any single-nutrient override.
+  amounts: z.partialRecord(z.enum(NUTRIENT_IDS), z.number()),
+  declaredAmounts: NutrientAmounts,
+  declaredPercentDv: NutrientAmounts,
+  order: z.array(z.enum(NUTRIENT_IDS)).optional(),
+})
 
 const UsFoodRequest = z
   .object({
@@ -312,6 +352,8 @@ const UsFoodRequest = z
     containsStatement: z.array(z.enum(MAJOR_FOOD_ALLERGEN_IDS)).optional(),
     containsStatementFontSizeMm: z.number().positive().optional(),
     containsStatementGapMm: z.number().min(0).optional(),
+    nutritionFacts: NutritionFactsSchema.optional(),
+    nutritionFactsExempt: z.boolean().optional(),
     responsibleFirm: ResponsibleFirmSchema.optional(),
     stock: z
       .object({
@@ -547,6 +589,12 @@ export function createLabelRouter(): Router {
       ...(rest.containsStatementGapMm === undefined
         ? {}
         : { containsStatementGapMm: rest.containsStatementGapMm }),
+      ...(rest.nutritionFacts === undefined
+        ? {}
+        : { nutritionFacts: toNutritionFacts(rest.nutritionFacts) }),
+      ...(rest.nutritionFactsExempt === undefined
+        ? {}
+        : { nutritionFactsExempt: rest.nutritionFactsExempt }),
       ...(rest.responsibleFirm === undefined
         ? {}
         : { responsibleFirm: toResponsibleFirm(rest.responsibleFirm) }),

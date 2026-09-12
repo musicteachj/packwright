@@ -10,6 +10,43 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 4 — the Nutrition Facts panel as content: what is declared, in what order, rounded how, and
+against which Daily Value. Four rules and the reference table they are measured against. The panel's geometry
+is stage 5; these rules read the document, because whether 8.7 grams of fat was rounded to 9 is a fact about a
+number rather than about where ink lands.
+
+- **Two different rounding rules share the one % Daily Value column**, which is the trap in 21 CFR 101.9.
+  **(d)(7)(ii)** rounds a nutrient with a DRV "to the nearest whole percent"; **(c)(8)(iii)** rounds a vitamin
+  or mineral "to the nearest 2-percent increment up to and including the 10-percent level, the nearest
+  5-percent increment above 10 percent and up to and including the 50-percent level, and the nearest
+  10-percent increment above the 50-percent level". Applying either to both is wrong in a way nobody notices,
+  because the two agree often enough to look correct — iron at 8 mg of an 18 mg RDI is 44.4 percent, which is
+  **44** under one rule and **45** under the other, and only one of those is what the label prints.
+- **The regulation works four examples and they are the strongest golden vectors available.** 101.9(d)(8)
+  prints "(e.g., Vitamin D 2 mcg 10%, Calcium 260 mg 20%, Iron 8 mg 45%, Potassium 235 mg 6%)". The last is
+  the useful one: 235 of 4,700 is *exactly* 5.0 percent, halfway between the 4 and the 6 that the 2-percent
+  banding allows, and nothing in the text says which way a tie goes. The printed 6 does. Round half down and
+  that example breaks, which is why it is a test.
+- **Order comes from the regulation, not from the sample label.** 101.9(c) requires the nutrients "in the
+  following order", so the order is (c)(1) through (c)(8) and their subparagraphs; (c)(8)(ii) fixes the four
+  vitamins and minerals separately as "vitamin D, calcium, iron, and potassium in that order".
+- **Trans fat and total sugars carry no Daily Value and their cells stay blank.** Neither appears in the
+  (c)(9) DRV table, and inventing a figure would fill a cell the regulation leaves empty.
+- **Either basis is permitted for the percentage, and they often disagree.** 101.9(d)(7)(ii): "The percent
+  shall be calculated by dividing **either** the amount declared on the label for each nutrient **or** the
+  actual amount of each nutrient (i.e., before rounding) by the DRV". 8.7 g of fat declared as 9 g is 11
+  percent one way and 12 the other, and both are proper. A rule computing one of them would report a violation
+  against a label that took the other.
+- **Protein's percentage is not checked**, and that is recorded rather than quietly skipped. The same
+  paragraph says it "may be omitted", and where it is given, (c)(7)(ii) corrects the amount by a digestibility
+  score no label carries.
+- The conditional exemptions inside (c)(2)(i), (c)(3) and the two sugars paragraphs are **not applied**: each
+  relieves a nutrient below a threshold "if no claims are made" about it, claims are 21 CFR 101.13, and this
+  label carries none — so the condition cannot be evaluated and the relaxation is not taken.
+
+- `DESIGN.md` calls these "13 mandatory nutrients". The regulation produces **fifteen** declared lines, and
+  fifteen is what ships — the count in the plan was a recollection and this is the section.
+
 Phase 5, stage 3 — the nine major food allergens. Two rules, from a statute rather than from 21 CFR 101.
 
 - **`fda/allergens.ts`, the §201(qq) table**, in a module named for the regulator the way `gs1/` and `ghs/`
@@ -346,6 +383,58 @@ That is what makes preview == print structural rather than something two code pa
   was the one branch CI never watched. Pull requests were always covered; direct pushes were not.
 
 ### Fixed
+
+Phase 5, stage 4 review.
+
+- **One blank ingredient row undeclared every allergen on the label.** §403(w)(1)(B)(ii)'s caveat is
+  implemented by striking non-allergen ingredient names out of the printed list before searching it, and
+  `split('')` splits between every character — so a single empty name turned the list into spaced-out letters
+  and nothing was ever found in it again. The rail's "Add an ingredient" button inserts exactly that row, so a
+  label printing `whey (milk)` reported milk undeclared the moment a user clicked it, and went back to clean
+  when the row was filled in.
+- **A nutrient the panel held but did not print was reported by nobody.** The order rule narrows its
+  expectation to what `order` lists and leaves omissions to the completeness rule; the completeness rule was
+  reading `amounts`. A panel listing 14 of 15 came back "All 15 mandatory nutrients are declared" beside
+  "14 nutrients run in the order 101.9(c) sets" and no failures at all. Completeness judges what is printed
+  now — where an order is stated, that order is the panel.
+- **The example label declared an allergen the food does not contain.** The seeded document marked
+  `whole grain rolled oats` as wheat, so the first label anyone opens printed `whole grain rolled oats
+  (wheat)` and `Contains: wheat.` Oats are not wheat and are not one of the nine. On a tool whose only value
+  is being right, the demo being wrong is the worst place for it to be. The example is oat and almond granola
+  now, which is true and exercises §403(w)(2)'s specific-type requirement into the bargain.
+- The fixture carried **two copies of the ingredient list** — a `BASE_INGREDIENTS` const and an inline array
+  inside `BASE` that was never switched over — so the corrected allergen data landed in one of them and not
+  the other, and a test written to catch exactly that caught it. Collapsed to one.
+- Renaming the example's nut ingredient to `almonds` made two fixtures stop provoking their rules, because an
+  ingredient whose own name carries the food source satisfies §403(w)(1)(B)(i) by itself. They use a name that
+  says nothing now, which is the case worth testing anyway.
+
+Phase 5, stage 4.
+
+- **I invented the rounding increments for the vitamin and mineral weights, and the regulation's own worked
+  example caught it.** The (c)(8)(iv) table sets units and Daily Values but no increments, and I filled the
+  gap with 0.1 mg and 10 mg figures that looked reasonable. 101.9(c)(8)(ii) actually says the amounts use "the
+  levels of significance given in paragraph (c)(8)(iv) ... except that zeros following decimal points may be
+  dropped, and **additional levels of significance may be used**". So whole units is a baseline and not a
+  requirement, 235 mg and 235.4 mg of potassium are both proper declarations, and no single value can be
+  demanded. The invented 10 mg increment turned 101.9(d)(8)'s printed "Potassium 235 mg 6%" into 240 mg — the
+  conformant fixture disagreeing with the regulation is what surfaced it. Those weights are no longer checked
+  for rounding; their percentages still are.
+- **Zod 4 makes a record over an enum key exhaustive**, so the API demanded all fifteen nutrients and answered
+  400 to a panel declaring fourteen — the boundary refusing the very label the completeness rule exists to
+  judge. It also rejected any single-nutrient override. `z.partialRecord` is the one that means what was
+  meant.
+- **Two mutations escaped, both on clauses I had gone to the source to get right.** Accepting only one basis
+  for the percentage, and forcing the mineral weights to a single value, each left the suite green — the code
+  was correct and nothing held it there. The subtle clause and the untested clause turn out to be the same
+  clause, because subtlety is what makes a case easy to leave out of a fixture.
+- A script asserted only that it had changed the file, so a two-replacement edit passed while one half of it
+  silently missed its anchor and a value import was never added. Each replacement is asserted separately now.
+- **A golden vector that could not fail.** The sodium rounding test asserted 148 mg rounds to 150, and its own
+  comment said the point was to prove the band above 140 mg is 10 rather than 5 — but 148 rounds to 150 under
+  either, so the vector proved nothing. A mutation collapsing the three sodium bands into one left the suite
+  green. It asserts 163 → 160 and 145 → 150 now, which the 5 mg band cannot produce. The comment had described
+  the right test and the assertion had not implemented it.
 
 Phase 5, stage 3 review.
 

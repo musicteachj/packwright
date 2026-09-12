@@ -69,22 +69,46 @@ const STARTING_GHS: GhsLabelData = {
  * 101.1 get exercised.
  */
 const STARTING_FOOD: UsFoodLabelData = {
-  statementOfIdentity: 'Rolled oats',
+  statementOfIdentity: 'Oat and almond granola',
   container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
   netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
+  // Oats are not wheat. The editor opens on this label, so a false allergen
+  // declaration here would be the first thing a user learns from the tool.
   ingredients: [
+    { name: 'whole grain rolled oats', percentByWeight: 90 },
     {
-      name: 'whole grain rolled oats',
-      percentByWeight: 97,
-      allergen: 'wheat',
+      name: 'almonds',
+      percentByWeight: 7,
+      allergen: 'tree-nuts',
+      allergenSpecificType: 'almonds',
       declareInline: true,
     },
     { name: 'sugar', percentByWeight: 2 },
-    { name: 'salt', percentByWeight: 0.7 },
-    { name: 'natural flavor', percentByWeight: 0.3 },
+    { name: 'salt', percentByWeight: 1 },
   ],
   ingredientThreshold: { percent: 2, count: 2 },
-  containsStatement: ['wheat'],
+  containsStatement: ['tree-nuts'],
+  nutritionFacts: {
+    servingSize: '1/2 cup (40g)',
+    servingsPerContainer: 8,
+    amounts: {
+      calories: 150,
+      'total-fat': 3,
+      'saturated-fat': 0.5,
+      'trans-fat': 0,
+      cholesterol: 0,
+      sodium: 0,
+      'total-carbohydrate': 27,
+      'dietary-fiber': 4,
+      'total-sugars': 1,
+      'added-sugars': 0,
+      protein: 5,
+      'vitamin-d': 2,
+      calcium: 260,
+      iron: 8,
+      potassium: 235,
+    },
+  },
   responsibleFirm: {
     name: 'Example Foods Inc',
     isManufacturer: true,
@@ -117,6 +141,14 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     ...(STARTING_FOOD.ingredientThreshold === undefined
       ? {}
       : { ingredientThreshold: { ...STARTING_FOOD.ingredientThreshold } }),
+    ...(STARTING_FOOD.nutritionFacts === undefined
+      ? {}
+      : {
+          nutritionFacts: {
+            ...STARTING_FOOD.nutritionFacts,
+            amounts: { ...STARTING_FOOD.nutritionFacts.amounts },
+          },
+        }),
     ...(STARTING_FOOD.containsStatement === undefined
       ? {}
       : { containsStatement: [...STARTING_FOOD.containsStatement] }),

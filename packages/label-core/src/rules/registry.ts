@@ -28,6 +28,12 @@ import { usFoodAllergenRule } from './usFood/allergens'
 import { usFoodContainsStatementTypeRule } from './usFood/containsStatementType'
 import { usFoodIngredientListRule, usFoodIngredientThresholdRule } from './usFood/ingredientList'
 import { usFoodInformationPanelTypeSizeRule } from './usFood/informationPanelTypeSize'
+import {
+  usFoodNutritionCompletenessRule,
+  usFoodNutritionOrderRule,
+  usFoodNutritionPercentDvRule,
+  usFoodNutritionRoundingRule,
+} from './usFood/nutritionFacts'
 import { usFoodNetQuantityDualDeclarationRule } from './usFood/netQuantityDualDeclaration'
 import { usFoodNetQuantityPlacementRule } from './usFood/netQuantityPlacement'
 import { usFoodNetQuantityPresentRule } from './usFood/netQuantityPresent'
@@ -111,6 +117,10 @@ export const US_FOOD_RULES: readonly UsFoodRule[] = [
   usFoodIngredientThresholdRule,
   usFoodAllergenRule,
   usFoodContainsStatementTypeRule,
+  usFoodNutritionCompletenessRule,
+  usFoodNutritionOrderRule,
+  usFoodNutritionRoundingRule,
+  usFoodNutritionPercentDvRule,
   usFoodResponsibleFirmRule,
   usFoodInformationPanelTypeSizeRule,
 ]

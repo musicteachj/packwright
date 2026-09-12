@@ -24,6 +24,7 @@ export type {
   UsFoodIngredient,
   UsFoodLabelData,
   UsFoodNetQuantity,
+  UsFoodNutritionFacts,
   UsFoodPackaging,
   UsFoodResponsibleFirm,
 } from './usFood'

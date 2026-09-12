@@ -21,6 +21,7 @@
 
 import type { Container, NetQuantityMarkingMethod } from '../geometry/pdp'
 import type { MajorFoodAllergenId } from '../fda/allergens'
+import type { NutrientId } from '../fda/nutrients'
 import type { Anchor, LabelStock } from './stock'
 
 export const US_FOOD_ELEMENTS = {
@@ -153,6 +154,33 @@ export interface UsFoodResponsibleFirm {
   zip?: string
 }
 
+/**
+ * The Nutrition Facts panel, as content. Its geometry is a later stage.
+ *
+ * The split that matters is between **what the food contains** and **what the
+ * label prints**. `amounts` carries the analysed value per serving; everything
+ * else is what the artwork says about it, and is derived from `amounts` unless
+ * stated. Deriving-unless-stated is the only arrangement in which a panel that
+ * rounds wrongly, prints a wrong percentage, or lists the nutrients out of order
+ * can exist at all — and those are three of the four things 21 CFR 101.9 is
+ * checked for.
+ */
+export interface UsFoodNutritionFacts {
+  /** 21 CFR 101.9(d)(3)(ii), e.g. `2/3 cup (55g)`. */
+  servingSize: string
+  /** 21 CFR 101.9(d)(3)(i). */
+  servingsPerContainer?: number
+  /** Analysed amount per serving, before rounding. Calories are in calories;
+   *  everything else is in the unit its table entry states. */
+  amounts: Partial<Record<NutrientId, number>>
+  /** What the panel prints, where it differs from the rounded `amounts`. */
+  declaredAmounts?: Partial<Record<NutrientId, number>>
+  /** What the panel prints in the % Daily Value column, where it differs. */
+  declaredPercentDv?: Partial<Record<NutrientId, number>>
+  /** The order the panel lists them in. Omitted means 101.9(c)'s own order. */
+  order?: readonly NutrientId[]
+}
+
 export interface UsFoodLabelData {
   /** 21 CFR 101.3 — what the food *is*. Drawn so there is something for the
    *  net quantity to be separated from, which 101.7(f) measures. */
@@ -219,6 +247,15 @@ export interface UsFoodLabelData {
    * them apart has to be drawable before it can be reported.
    */
   containsStatementGapMm?: number
+  nutritionFacts?: UsFoodNutritionFacts
+  /**
+   * Declared where 21 CFR 101.9(j) exempts the food from nutrition labelling.
+   * That paragraph runs to eighteen subparagraphs turning on business size,
+   * units sold, and what the food is — facts about a company and a product
+   * rather than about a label, so this is stated and never inferred, the way
+   * §101.100 and the GHS small-container provision are.
+   */
+  nutritionFactsExempt?: boolean
   responsibleFirm?: UsFoodResponsibleFirm
   /**
    * Em size for the ingredient statement and the responsible firm. Omitted, the

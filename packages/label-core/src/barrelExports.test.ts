@@ -35,6 +35,7 @@ import * as usFoodContainsStatementTypeRule from './rules/usFood/containsStateme
 import * as usFoodIngredientListRule from './rules/usFood/ingredientList'
 import * as usFoodInformationPanelTypeSizeRule from './rules/usFood/informationPanelTypeSize'
 import * as usFoodNetQuantityDualDeclarationRule from './rules/usFood/netQuantityDualDeclaration'
+import * as usFoodNutritionFactsRule from './rules/usFood/nutritionFacts'
 import * as usFoodNetQuantityPlacementRule from './rules/usFood/netQuantityPlacement'
 import * as usFoodNetQuantityPresentRule from './rules/usFood/netQuantityPresent'
 import * as usFoodNetQuantitySeparationRule from './rules/usFood/netQuantitySeparation'
@@ -49,6 +50,7 @@ import * as symbologyBarrel from './symbology/index'
 import * as layOutSymbol from './symbology/layOutSymbol'
 import * as fdaBarrel from './fda/index'
 import * as fdaAllergens from './fda/allergens'
+import * as fdaNutrients from './fda/nutrients'
 import * as ghsBarrel from './ghs/index'
 import * as ghsClassification from './ghs/classification'
 import * as ghsLabelDimensions from './ghs/labelDimensions'
@@ -140,7 +142,14 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['layOutSymbol.ts', layOutSymbol],
     ],
   ],
-  ['fda', fdaBarrel, [['allergens.ts', fdaAllergens]]],
+  [
+    'fda',
+    fdaBarrel,
+    [
+      ['allergens.ts', fdaAllergens],
+      ['nutrients.ts', fdaNutrients],
+    ],
+  ],
   [
     'rules',
     rulesBarrel,
@@ -169,6 +178,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['usFood/allergens.ts', usFoodAllergenRule],
       ['usFood/containsStatementType.ts', usFoodContainsStatementTypeRule],
       ['usFood/ingredientList.ts', usFoodIngredientListRule],
+      ['usFood/nutritionFacts.ts', usFoodNutritionFactsRule],
       ['usFood/informationPanelTypeSize.ts', usFoodInformationPanelTypeSizeRule],
       ['usFood/responsibleFirm.ts', usFoodResponsibleFirmRule],
     ],

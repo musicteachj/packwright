@@ -87,7 +87,13 @@ function declaresSource(
 
   let searchable = printedList.toLowerCase()
   for (const ingredient of ingredients) {
-    if (ingredient.allergen !== undefined) continue
+    // A blank name is skipped, and not as a tidiness measure: `split('')` splits
+    // between every character, so one empty ingredient turned the whole printed
+    // list into spaced-out letters and nothing was ever found in it again. The
+    // rail's "Add an ingredient" button inserts exactly that row, so a label
+    // printing `whey (milk)` reported milk undeclared the moment a user clicked
+    // it — and went back to clean when the row was filled in.
+    if (ingredient.allergen !== undefined || ingredient.name.trim() === '') continue
     searchable = searchable.split(ingredient.name.toLowerCase()).join(' ')
   }
   return searchable.includes(needle)

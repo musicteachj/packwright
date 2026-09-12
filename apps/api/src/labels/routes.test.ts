@@ -432,3 +432,74 @@ describe('the US food route on allergens', () => {
     expect(response.status).toBe(200)
   })
 })
+
+describe('the US food route on the nutrition label', () => {
+  const PANEL = {
+    servingSize: '1/2 cup (40g)',
+    servingsPerContainer: 8,
+    amounts: {
+      calories: 150,
+      'total-fat': 3,
+      'saturated-fat': 0.5,
+      'trans-fat': 0,
+      cholesterol: 0,
+      sodium: 0,
+      'total-carbohydrate': 27,
+      'dietary-fiber': 4,
+      'total-sugars': 1,
+      'added-sugars': 0,
+      protein: 5,
+      'vitamin-d': 2,
+      calcium: 260,
+      iron: 8,
+      potassium: 235,
+    },
+  }
+
+  it('accepts a complete panel', async () => {
+    expect((await postFood({ ...FOOD_BODY, nutritionFacts: PANEL })).status).toBe(200)
+  })
+
+  it('rejects a nutrient id 101.9(c) does not name', async () => {
+    // "vitamin-b12" is in the (c)(8)(iv) table but is not one of the four
+    // mandatory ones this engine carries. Accepted silently it would be dropped,
+    // and the completeness rule would then report a nutrient missing for a
+    // reason that is really a typo.
+    const response = await postFood({
+      ...FOOD_BODY,
+      nutritionFacts: { ...PANEL, amounts: { ...PANEL.amounts, 'vitamin-b12': 2 } },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('requires a serving size, which no geometry can supply', async () => {
+    const { servingSize: _omitted, ...withoutServing } = PANEL
+    const response = await postFood({ ...FOOD_BODY, nutritionFacts: withoutServing })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('servingSize')
+  })
+
+  it('accepts a panel that omits a nutrient, so the rules can report it', async () => {
+    // Missing potassium is a finding, not a malformed request. Zod 4 makes a
+    // record over an enum key exhaustive, so this was a 400 until the schema
+    // said `partialRecord` — the boundary refusing the very label the rule set
+    // exists to judge.
+    const { potassium: _dropped, ...amounts } = PANEL.amounts
+    const response = await postFood({ ...FOOD_BODY, nutritionFacts: { ...PANEL, amounts } })
+    expect(response.status).toBe(200)
+  })
+
+  it('exports a panel that rounds wrongly rather than refusing it', async () => {
+    // 163 mg of sodium rounds to 160 under 101.9(c)(4). Declaring 165 is a
+    // finding the client has already shown the user, not a malformed request.
+    const response = await postFood({
+      ...FOOD_BODY,
+      nutritionFacts: {
+        ...PANEL,
+        amounts: { ...PANEL.amounts, sodium: 163 },
+        declaredAmounts: { sodium: 165 },
+      },
+    })
+    expect(response.status).toBe(200)
+  })
+})

@@ -26,11 +26,21 @@
  *   101.7(f) stops requiring the bottom-30 percent placement altogether.
  */
 
+import { NUTRIENT_IDS } from '../../fda/nutrients'
 import type { LabelStock } from '../../templates/stock'
-import type { UsFoodIngredient, UsFoodLabelData } from '../../templates/usFood'
+import type {
+  UsFoodIngredient,
+  UsFoodLabelData,
+  UsFoodNutritionFacts,
+} from '../../templates/usFood'
 import type { Severity } from '../../types/index'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
+  FDA_NUTRITION_MISSING,
+  FDA_NUTRITION_NUTRIENT_MISSING,
+  FDA_NUTRITION_OUT_OF_ORDER,
+  FDA_NUTRITION_PERCENT_DV_WRONG,
+  FDA_NUTRITION_ROUNDING_WRONG,
   FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
   FDA_CONTAINS_NOT_ADJACENT,
   FDA_CONTAINS_TYPE_TOO_SMALL,
@@ -58,44 +68,98 @@ const CONFORMING_STOCK: LabelStock = { widthMm: 120, heightMm: 170, marginMm: 6 
  * that map over it to remove one could not name the field they were removing.
  */
 const BASE_INGREDIENTS: readonly UsFoodIngredient[] = [
-  { name: 'whole grain rolled oats', percentByWeight: 97, allergen: 'wheat', declareInline: true },
-  { name: 'sugar', percentByWeight: 2 },
+  // Oats are not wheat, and are not one of the nine. Marking them `wheat` made
+  // the example label declare an allergen the food does not contain — on a tool
+  // whose whole value is being right, and on the first label anyone sees. The
+  // almonds are genuine and exercise §403(w)(2)'s specific-type requirement,
+  // which is the more interesting of the two paths anyway.
+  { name: 'whole grain rolled oats', percentByWeight: 90 },
   {
-    name: 'chopped nuts',
-    percentByWeight: 0.7,
+    name: 'almonds',
+    percentByWeight: 7,
     allergen: 'tree-nuts',
     allergenSpecificType: 'almonds',
     declareInline: true,
   },
-  { name: 'natural flavor', percentByWeight: 0.3 },
+  { name: 'sugar', percentByWeight: 2 },
+  { name: 'salt', percentByWeight: 1 },
 ]
 
+/**
+ * A panel whose analysed amounts round cleanly and whose percentages match.
+ *
+ * The four vitamin and mineral figures are 101.9(d)(8)'s own worked example —
+ * "Vitamin D 2 mcg 10%, Calcium 260 mg 20%, Iron 8 mg 45%, Potassium 235 mg 6%"
+ * — so the conformant label is checked against numbers the regulation printed
+ * rather than numbers this project chose.
+ */
+const BASE_NUTRITION: UsFoodNutritionFacts = {
+  servingSize: '1/2 cup (40g)',
+  servingsPerContainer: 8,
+  amounts: {
+    calories: 150,
+    'total-fat': 3,
+    'saturated-fat': 0.5,
+    'trans-fat': 0,
+    cholesterol: 0,
+    sodium: 0,
+    'total-carbohydrate': 27,
+    'dietary-fiber': 4,
+    'total-sugars': 1,
+    'added-sugars': 0,
+    protein: 5,
+    'vitamin-d': 2,
+    calcium: 260,
+    iron: 8,
+    potassium: 235,
+  },
+  // Stated rather than left to derive, so all four rules have something
+  // independent to measure. Every figure is worked from the paragraph that sets
+  // it: 150 calories is above 50 so it rounds in tens; 3 g of fat is below 5 so
+  // it rounds in half-grams; 0 sodium is under the 5 mg floor. The four
+  // percentages are 101.9(d)(8)'s own worked answers.
+  declaredAmounts: {
+    calories: 150,
+    'total-fat': 3,
+    'saturated-fat': 0.5,
+    'trans-fat': 0,
+    cholesterol: 0,
+    sodium: 0,
+    'total-carbohydrate': 27,
+    'dietary-fiber': 4,
+    'total-sugars': 1,
+    'added-sugars': 0,
+    protein: 5,
+  },
+  declaredPercentDv: {
+    'total-fat': 4,
+    'saturated-fat': 3,
+    cholesterol: 0,
+    sodium: 0,
+    'total-carbohydrate': 10,
+    'dietary-fiber': 14,
+    'added-sugars': 0,
+    'vitamin-d': 10,
+    calcium: 20,
+    iron: 45,
+    potassium: 6,
+  },
+  order: [...NUTRIENT_IDS],
+}
+
 const BASE = {
-  statementOfIdentity: 'Rolled oats',
+  statementOfIdentity: 'Oat and almond granola',
   container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
   netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
   // Descending by weight, with the last two grouped behind a 101.4(a)(2)
   // statement at a permitted threshold — so every rule in the set runs against
-  // the base label rather than declining on it.
-  ingredients: [
-    {
-      name: 'whole grain rolled oats',
-      percentByWeight: 97,
-      allergen: 'wheat',
-      declareInline: true,
-    },
-    { name: 'sugar', percentByWeight: 2 },
-    {
-      name: 'chopped nuts',
-      percentByWeight: 0.7,
-      allergen: 'tree-nuts',
-      allergenSpecificType: 'almonds',
-      declareInline: true,
-    },
-    { name: 'natural flavor', percentByWeight: 0.3 },
-  ],
+  // the base label rather than declining on it. Shared with the fixtures that
+  // vary it: a second copy here is how the corrected allergen data was applied
+  // to one of them and not the other.
+  ingredients: BASE_INGREDIENTS,
   ingredientThreshold: { percent: 2, count: 2 },
-  containsStatement: ['wheat', 'tree-nuts'],
+  containsStatement: ['tree-nuts'],
+  nutritionFacts: BASE_NUTRITION,
   responsibleFirm: {
     name: 'Example Foods Inc',
     isManufacturer: true,
@@ -121,6 +185,7 @@ export interface UsFoodRuleFixture {
 }
 
 const { responsibleFirm: _firm, ...WITHOUT_FIRM } = BASE
+const { nutritionFacts: _panel, ...WITHOUT_NUTRITION } = BASE
 
 export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
   {
@@ -354,12 +419,16 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       'requires one of them.',
     data: {
       ...BASE,
+      // Renamed as well as undeclared. "almonds" carries its own food source
+      // name, which §403(w)(1)(B)(i) accepts on its own — so the base label is
+      // compliant by that route and this fixture has to use an ingredient whose
+      // name says nothing, which is the realistic case anyway.
       ingredients: BASE_INGREDIENTS.map((ingredient) =>
         ingredient.allergen === 'tree-nuts'
-          ? { ...ingredient, declareInline: false }
+          ? { ...ingredient, name: 'nut pieces', declareInline: false }
           : { ...ingredient },
       ),
-      containsStatement: ['wheat'],
+      containsStatement: [],
     },
     stock: CONFORMING_STOCK,
     expected: {
@@ -379,7 +448,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       ingredients: BASE_INGREDIENTS.map((ingredient) => {
         if (ingredient.allergen !== 'tree-nuts') return { ...ingredient }
         const { allergenSpecificType: _dropped, ...rest } = ingredient
-        return rest
+        return { ...rest, name: 'nut pieces' }
       }),
     },
     stock: CONFORMING_STOCK,
@@ -415,6 +484,115 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_CONTAINS_NOT_ADJACENT,
       severity: 'violation',
       citation: 'FD&C Act §403(w)(1)(A)',
+    },
+  },
+  {
+    name: 'a food with no nutrition label and no exemption claimed',
+    defect:
+      'A packaged food carrying no nutrition label. §101.9(j) exempts many foods, but its ' +
+      'eighteen subparagraphs turn on business size, units sold and what the food is — facts ' +
+      'about a firm rather than a label — and this one claims none of them.',
+    data: WITHOUT_NUTRITION,
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_MISSING,
+      severity: 'blocking',
+      citation: '21 CFR 101.9(j)'.replace('(j)', '(c)'),
+    },
+  },
+  {
+    name: 'a panel with no potassium on it',
+    defect:
+      'Potassium is one of the four 101.9(c)(8)(ii) names explicitly, and the last of them, which ' +
+      'is exactly where a panel quietly stops.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        amounts: Object.fromEntries(
+          Object.entries(BASE_NUTRITION.amounts).filter(([id]) => id !== 'potassium'),
+        ),
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_NUTRIENT_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(c)',
+    },
+  },
+  {
+    name: 'sugars listed before the fibre they follow',
+    defect:
+      '101.9(c) fixes the order and the label may not choose its own. Total Sugars sits at ' +
+      '(c)(6)(ii) and Dietary Fiber at (c)(6)(i), so a panel that swaps them is listing the ' +
+      'subparagraphs backwards.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        order: [
+          'calories',
+          'total-fat',
+          'saturated-fat',
+          'trans-fat',
+          'cholesterol',
+          'sodium',
+          'total-carbohydrate',
+          'total-sugars',
+          'dietary-fiber',
+          'added-sugars',
+          'protein',
+          'vitamin-d',
+          'calcium',
+          'iron',
+          'potassium',
+        ],
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_OUT_OF_ORDER,
+      severity: 'violation',
+      citation: '21 CFR 101.9(c)',
+    },
+  },
+  {
+    name: 'sodium rounded in the wrong band',
+    defect:
+      '163 mg is above 140, so 101.9(c)(4) rounds it in 10 mg increments to 160. Rounded in the ' +
+      '5 mg band that applies below 140 it comes out 165 — a figure that looks entirely ' +
+      'reasonable and is not the one the paragraph permits.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        amounts: { ...BASE_NUTRITION.amounts, sodium: 163 },
+        declaredAmounts: { sodium: 165 },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_ROUNDING_WRONG,
+      severity: 'violation',
+      citation: '21 CFR 101.9(c)(4)',
+    },
+  },
+  {
+    name: 'iron shown at the whole percent instead of the 5 percent band',
+    defect:
+      '8 mg of an 18 mg RDI is 44.4 percent. 101.9(c)(8)(iii) rounds a vitamin or mineral to the ' +
+      'nearest 5 percent above 10, giving 45; the whole-percent rule that governs the DRV ' +
+      'nutrients gives 44. Both look right and only one is.',
+    data: {
+      ...BASE,
+      nutritionFacts: { ...BASE_NUTRITION, declaredPercentDv: { iron: 44 } },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_PERCENT_DV_WRONG,
+      severity: 'violation',
+      citation: '21 CFR 101.9(c)(8)(iii)',
     },
   },
   {

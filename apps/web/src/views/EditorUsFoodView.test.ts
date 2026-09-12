@@ -46,12 +46,19 @@ describe('the editor on a US food label', () => {
     // The seeded document states no type size, so the engine derives the em
     // 21 CFR 101.7(i) requires. A default label its own rules reject would be a
     // bad first impression and a worse advertisement for the engine.
-    // Counted against the registry rather than against a literal, because a
-    // hard-coded total is a test that has to be edited every time a rule ships
-    // and is therefore a test nobody trusts by the fourth edit.
     const { store } = await mountFood()
     expect(store.failures).toEqual([])
-    expect(store.passes.length).toBe(US_FOOD_RULES.length)
+
+    // Not every rule *passes*, and that is the design rather than a gap. The
+    // seeded panel states its analysis and lets the printed figures derive, so
+    // the order, rounding and percent-Daily-Value rules have nothing
+    // independent to measure — checking a derived value would be checking the
+    // engine against itself, and a rule that cannot fail must not pass either.
+    const declining = ['nutrition-order', 'nutrition-rounding', 'nutrition-percent-dv']
+    expect(store.passes.length).toBe(US_FOOD_RULES.length - declining.length)
+    for (const code of ['FDA_NUTRITION_ORDER_MET', 'FDA_NUTRITION_ROUNDING_MET']) {
+      expect(store.findings.map((f) => f.code)).not.toContain(code)
+    }
   })
 
   it('shows FDA citations, not GS1 or CLP ones', async () => {
@@ -305,12 +312,12 @@ describe('the ingredient statement, from the form to the rail', () => {
     const { store, wrapper } = await mountFood()
     expect(store.failures).toEqual([])
 
-    // Sugar is 2% of the food and the oats 97%. Putting sugar first is the
+    // Almonds are 7% of the food and the oats 90%. Putting almonds first is the
     // defect 101.4(a)(1) exists to catch, and the form has to be able to make
-    // it. Moving *salt* up would not: salt is inside the grouped tail, which
+    // it. Moving *sugar* up would not: sugar is inside the grouped tail, which
     // 101.4(a)(2) releases from the ordering requirement altogether, so the
     // label would still be compliant — which it is, and the rules say so.
-    await wrapper.find('[aria-label="Move sugar up"]').trigger('click')
+    await wrapper.find('[aria-label="Move almonds up"]').trigger('click')
     await nextTick()
 
     const finding = store.findings.find((f) => f.code === 'FDA_INGREDIENTS_OUT_OF_ORDER')
@@ -355,7 +362,7 @@ describe('the ingredient statement, from the form to the rail', () => {
     const { store, wrapper } = await mountFood()
     await wrapper.find('#field-food-ing-exempt').setValue(true)
     await nextTick()
-    await wrapper.find('[aria-label="Move sugar up"]').trigger('click')
+    await wrapper.find('[aria-label="Move almonds up"]').trigger('click')
     await nextTick()
 
     expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_EXEMPT')).toBe(false)
@@ -457,15 +464,20 @@ describe('major food allergens in the editor', () => {
     expect(store.failures).toEqual([])
     // Belt and braces, which is what most real labels do: the parenthetical in
     // the list and the statement after it.
-    expect(wrapper.text()).toContain('whole grain rolled oats (wheat)')
-    expect(wrapper.text()).toContain('Contains: wheat.')
+    expect(wrapper.text()).toContain('almonds (almonds)')
+    expect(wrapper.text()).toContain('Contains: almonds.')
   })
 
   it('reports an allergen the label declares neither way', async () => {
     const { store, wrapper } = await mountFood()
-    await wrapper.find('#field-food-ing-inline-0').setValue(false)
+    // The allergen sits on the almonds, at index 1. Its own name carries the
+    // food source, which §403(w)(1)(B)(i) accepts by itself — so the ingredient
+    // has to be renamed as well as undeclared before the rule can fire.
+    await wrapper.find('#field-food-ing-name-1').setValue('nut pieces')
     await nextTick()
-    await wrapper.find('#field-food-contains-wheat').setValue(false)
+    await wrapper.find('#field-food-ing-inline-1').setValue(false)
+    await nextTick()
+    await wrapper.find('#field-food-contains-tree-nuts').setValue(false)
     await nextTick()
 
     const finding = store.findings.find((f) => f.code === 'FDA_ALLERGEN_NOT_DECLARED')
@@ -496,7 +508,7 @@ describe('major food allergens in the editor', () => {
 
   it('offers a Contains checkbox only for allergens the recipe carries', async () => {
     const { wrapper } = await mountFood()
-    expect(wrapper.find('#field-food-contains-wheat').exists()).toBe(true)
+    expect(wrapper.find('#field-food-contains-tree-nuts').exists()).toBe(true)
     expect(wrapper.find('#field-food-contains-sesame').exists()).toBe(false)
   })
 
@@ -533,12 +545,12 @@ describe('the form does not fabricate an allergen source', () => {
     // stayed in the statement, leaving the user no control over something the
     // label went on naming.
     const { store, wrapper } = await mountFood()
-    expect(store.foodData.containsStatement).toContain('wheat')
+    expect(store.foodData.containsStatement).toContain('tree-nuts')
 
-    await wrapper.find('#field-food-ing-allergen-0').setValue('')
+    await wrapper.find('#field-food-ing-allergen-1').setValue('')
     await nextTick()
 
-    const orphan = wrapper.find('#field-food-contains-wheat')
+    const orphan = wrapper.find('#field-food-contains-tree-nuts')
     expect(orphan.exists(), 'the orphaned allergen lost its checkbox').toBe(true)
 
     await orphan.setValue(false)

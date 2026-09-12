@@ -147,3 +147,20 @@ export {
   FDA_CONTAINS_TYPE_TOO_SMALL,
   usFoodContainsStatementTypeRule,
 } from './usFood/containsStatementType'
+
+export {
+  FDA_NUTRITION_COMPLETE,
+  FDA_NUTRITION_EXEMPT,
+  FDA_NUTRITION_MISSING,
+  FDA_NUTRITION_NUTRIENT_MISSING,
+  FDA_NUTRITION_ORDER_MET,
+  FDA_NUTRITION_OUT_OF_ORDER,
+  FDA_NUTRITION_PERCENT_DV_MET,
+  FDA_NUTRITION_PERCENT_DV_WRONG,
+  FDA_NUTRITION_ROUNDING_MET,
+  FDA_NUTRITION_ROUNDING_WRONG,
+  usFoodNutritionCompletenessRule,
+  usFoodNutritionOrderRule,
+  usFoodNutritionPercentDvRule,
+  usFoodNutritionRoundingRule,
+} from './usFood/nutritionFacts'

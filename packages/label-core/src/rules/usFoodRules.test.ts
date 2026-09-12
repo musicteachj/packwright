@@ -7,8 +7,11 @@ import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES, US_FOOD_SMALL_PANEL } from './fix
 import { blockingOmissions } from '../layout/omissions'
 import { MAJOR_FOOD_ALLERGENS, majorFoodAllergen } from '../fda/allergens'
 import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
+import { roundNutrientAmount } from '../fda/nutrients'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
+  FDA_NUTRITION_PERCENT_DV_WRONG,
+  FDA_NUTRITION_ROUNDING_WRONG,
   FDA_CONTAINS_TYPE_TOO_SMALL,
   FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
   FDA_INGREDIENTS_EXEMPT,
@@ -48,7 +51,7 @@ describe('every US food rule ships with a label that provokes it', () => {
   it('declares a fixture for every code a rule can emit as a failure', () => {
     const covered = new Set(US_FOOD_FIXTURES.map((f) => f.expected.code))
     const uncovered = US_FOOD_RULES.flatMap((rule) => rule.codes).filter(
-      (code) => !covered.has(code) && !/_MET$|_NOT_REQUIRED$|_EXEMPT$/.test(code),
+      (code) => !covered.has(code) && !/_MET$|_NOT_REQUIRED$|_EXEMPT$|_COMPLETE$/.test(code),
     )
     expect(uncovered, 'these failure codes have no known-bad fixture').toEqual([])
   })
@@ -724,5 +727,179 @@ describe('findings from the stage 3 review', () => {
     expect(majorFoodAllergen('toString')).toBeUndefined()
     expect(majorFoodAllergen('constructor')).toBeUndefined()
     expect(majorFoodAllergen('milk')?.name).toBe('milk')
+  })
+})
+
+describe('the two clauses the Nutrition Facts rules turn on', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+  const withPanel = (patch: Partial<typeof panel>) =>
+    findingsFor({ ...US_FOOD_CONFORMANT.data, nutritionFacts: { ...panel, ...patch } }, stock).map(
+      (f) => f.code,
+    )
+
+  describe('101.9(d)(7)(ii) permits either basis for the percentage', () => {
+    // "The percent shall be calculated by dividing **either** the amount
+    // declared on the label for each nutrient **or** the actual amount of each
+    // nutrient (i.e., before rounding) by the DRV". 8.7 g of fat declared as
+    // 9 g is 11 percent from the actual and 12 from the declared — two
+    // permitted answers, and a rule accepting one reports a violation against a
+    // label that took the other.
+    const amounts = { ...panel.amounts, 'total-fat': 8.7 }
+    const declaredAmounts = { ...panel.declaredAmounts, 'total-fat': 9 }
+
+    it('the two bases really do disagree here', () => {
+      expect(Math.round((9 / 78) * 100)).toBe(12)
+      expect(Math.round((8.7 / 78) * 100)).toBe(11)
+    })
+
+    it('accepts the percentage computed from the declared amount', () => {
+      expect(
+        withPanel({
+          amounts,
+          declaredAmounts,
+          declaredPercentDv: { ...panel.declaredPercentDv, 'total-fat': 12 },
+        }),
+      ).not.toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+    })
+
+    it('accepts the percentage computed from the actual amount', () => {
+      expect(
+        withPanel({
+          amounts,
+          declaredAmounts,
+          declaredPercentDv: { ...panel.declaredPercentDv, 'total-fat': 11 },
+        }),
+      ).not.toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+    })
+
+    it('still rejects a percentage neither basis gives', () => {
+      expect(
+        withPanel({
+          amounts,
+          declaredAmounts,
+          declaredPercentDv: { ...panel.declaredPercentDv, 'total-fat': 13 },
+        }),
+      ).toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+    })
+  })
+
+  describe('101.9(c)(8)(ii) permits additional significance on a mineral weight', () => {
+    // "additional levels of significance may be used when the number of decimal
+    // places indicated is not sufficient". 235 mg of potassium and 235.4 mg are
+    // both proper declarations, so no single value can be demanded — which is
+    // how an invented 10 mg increment was caught turning 101.9(d)(8)'s own
+    // worked example into 240 mg.
+    it('does not report a weight declared more precisely than whole units', () => {
+      expect(
+        withPanel({
+          amounts: { ...panel.amounts, potassium: 235.4 },
+          declaredAmounts: { ...panel.declaredAmounts, potassium: 235.4 },
+        }),
+      ).not.toContain(FDA_NUTRITION_ROUNDING_WRONG)
+    })
+
+    it("reproduces the regulation's own worked weight rather than rounding past it", () => {
+      expect(roundNutrientAmount('potassium', 235)).toBe(235)
+      expect(roundNutrientAmount('calcium', 260)).toBe(260)
+    })
+
+    it('still reports a macronutrient rounded wrongly', () => {
+      // The skip is scoped to the vitamins and minerals and nothing else.
+      expect(
+        withPanel({
+          amounts: { ...panel.amounts, sodium: 163 },
+          declaredAmounts: { ...panel.declaredAmounts, sodium: 165 },
+        }),
+      ).toContain(FDA_NUTRITION_ROUNDING_WRONG)
+    })
+  })
+})
+
+describe('findings from the stage 4 review', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+
+  it('a blank ingredient row does not undeclare every allergen on the label', () => {
+    // §403(w)(1)(B)(ii)'s caveat is implemented by striking non-allergen
+    // ingredient names out of the printed list before searching it. `split('')`
+    // splits between every character, so one empty name turned the list into
+    // spaced-out letters and nothing was ever found in it again — and the rail's
+    // "Add an ingredient" button inserts exactly that row.
+    const { containsStatement: _drop, ...rest } = US_FOOD_CONFORMANT.data
+    const whey = {
+      name: 'whey',
+      percentByWeight: 100,
+      allergen: 'milk' as const,
+      declareInline: true,
+    }
+    const codesFor = (ingredients: UsFoodIngredient[]) =>
+      findingsFor(
+        { ...rest, ingredients, ingredientThreshold: { percent: 2 as const, count: 0 } },
+        stock,
+      ).map((f) => f.code)
+
+    expect(codesFor([whey])).toContain('FDA_ALLERGEN_DECLARED_MET')
+    expect(codesFor([whey, { name: '', percentByWeight: 0 }])).toContain(
+      'FDA_ALLERGEN_DECLARED_MET',
+    )
+    expect(codesFor([whey, { name: '   ', percentByWeight: 0 }])).not.toContain(
+      FDA_ALLERGEN_NOT_DECLARED,
+    )
+  })
+
+  it('still strikes out a real non-allergen name, which is the point of the loop', () => {
+    // Coconut milk contains no dairy, so the word "milk" in it declares nothing
+    // about the whey. Skipping blanks must not have skipped this.
+    const { containsStatement: _drop, ...rest } = US_FOOD_CONFORMANT.data
+    const codes = findingsFor(
+      {
+        ...rest,
+        ingredients: [
+          { name: 'whey', percentByWeight: 60, allergen: 'milk' },
+          { name: 'coconut milk', percentByWeight: 40 },
+          { name: '', percentByWeight: 0 },
+        ],
+        ingredientThreshold: { percent: 2, count: 0 },
+      },
+      stock,
+    ).map((f) => f.code)
+    expect(codes).toContain(FDA_ALLERGEN_NOT_DECLARED)
+  })
+
+  it('reports a nutrient the panel holds but does not print', () => {
+    // The order rule narrows its expectation to what `order` lists and leaves
+    // omissions to the completeness rule; the completeness rule was reading
+    // `amounts`. A panel listing 14 of 15 came back "All 15 mandatory nutrients
+    // are declared" beside "14 nutrients run in the order 101.9(c) sets", with
+    // nobody owning the dropped line.
+    const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+    const codes = findingsFor(
+      {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionFacts: {
+          ...panel,
+          order: panel.order!.filter((id) => id !== 'potassium'),
+        },
+      },
+      stock,
+    )
+    const missing = codes.find((f) => f.code === 'FDA_NUTRITION_NUTRIENT_MISSING')
+    expect(
+      missing,
+      'a nutrient dropped from the printed order was reported by nobody',
+    ).toBeDefined()
+    expect(missing!.message).toContain('Potassium')
+    expect(codes.map((f) => f.code)).not.toContain('FDA_NUTRITION_COMPLETE')
+  })
+
+  it('the example label declares only allergens the food contains', () => {
+    // Oats are not wheat and are not one of the nine. The shipped example
+    // marked them `wheat`, so the first label anyone sees declared an allergen
+    // the food does not contain — on a tool whose only value is being right.
+    const declared = (US_FOOD_CONFORMANT.data.ingredients ?? []).flatMap((i) =>
+      i.allergen === undefined ? [] : [i.allergen],
+    )
+    expect(declared).toEqual(['tree-nuts'])
+    expect(US_FOOD_CONFORMANT.data.containsStatement).toEqual(['tree-nuts'])
   })
 })
