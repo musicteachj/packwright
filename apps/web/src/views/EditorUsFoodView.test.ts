@@ -117,9 +117,10 @@ describe('the type-size rule, from the form to the rail to the canvas', () => {
 
   it('echoes the requirement from label-core rather than restating it', async () => {
     // The rail prints the panel area and the letter height the table demands.
-    // A 120 x 170 mm panel is 31.62 in², whose band is 3/16 inch = 4.7625 mm.
+    // A 120 x 240 mm panel is 44.64 in², still in the "more than 25 but not
+    // more than 100" band, so the requirement is the same 3/16 inch = 4.7625 mm.
     const { wrapper } = await mountFood()
-    expect(wrapper.text()).toContain('31.62 in²')
+    expect(wrapper.text()).toContain('44.64 in²')
     expect(wrapper.text()).toContain('4.76 mm')
   })
 
@@ -163,7 +164,7 @@ describe('the package is declared separately from the label', () => {
 
     expect(store.foodData.container).toEqual({
       shape: 'other',
-      totalSurfaceAreaSqMm: 120 * 170 * 2,
+      totalSurfaceAreaSqMm: 120 * 240 * 2,
     })
   })
 })
@@ -556,5 +557,97 @@ describe('the form does not fabricate an allergen source', () => {
     await orphan.setValue(false)
     await nextTick()
     expect(store.foodData.containsStatement).toBeUndefined()
+  })
+})
+
+describe('the Nutrition Facts panel in the editor', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('shows the panel and its findings', async () => {
+    const { store, wrapper } = await mountFood()
+    expect(store.failures).toEqual([])
+    expect(wrapper.text()).toContain('Nutrition Facts')
+    // The panel's own text, drawn on the canvas rather than typed in the form.
+    expect(wrapper.text()).toContain('8 servings per container')
+    expect(wrapper.text()).toContain('Potassium 235mg')
+  })
+
+  it('shows what the panel will print, rounded as 101.9(c) requires', async () => {
+    // 163 mg of sodium is above 140, so (c)(4) rounds it in tens to 160. The rail
+    // shows the rounding as it happens rather than waiting for a finding.
+    const { wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-sodium').setValue('163')
+    await nextTick()
+    expect(wrapper.text()).toContain('160mg')
+  })
+
+  it('reports a panel scaled below the minimums', async () => {
+    const { store, wrapper } = await mountFood()
+    expect(store.failures).toEqual([])
+
+    await wrapper.find('#field-food-nf-scale').setValue('80')
+    await nextTick()
+
+    const finding = store.findings.find((f) => f.code === 'FDA_NUTRITION_TYPE_TOO_SMALL')
+    expect(finding, 'a shrunken panel produced no finding').toBeDefined()
+    expect(finding!.citation.reference).toContain('21 CFR 101.9(d)')
+  })
+
+  it('lets the panel print a figure the analysis does not give', async () => {
+    // The override is what makes the rounding and percentage rules reachable
+    // from the editor at all — without it the printed figures derive and are
+    // correct by construction.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-override').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-nf-amt-sodium').setValue('165')
+    await nextTick()
+    await wrapper.find('#field-food-nf-sodium').setValue('163')
+    await nextTick()
+
+    expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_ROUNDING_WRONG')).toBe(true)
+  })
+
+  it('reports a wrong percentage under the rule that governs that nutrient', async () => {
+    // Iron at 8 mg of an 18 mg RDI is 44.4 percent: 45 under 101.9(c)(8)(iii)'s
+    // banding, 44 under the whole-percent rule that governs the DRV nutrients.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-override').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-nf-dv-iron').setValue('44')
+    await nextTick()
+
+    const finding = store.findings.find((f) => f.code === 'FDA_NUTRITION_PERCENT_DV_WRONG')
+    expect(finding!.citation.reference).toBe('21 CFR 101.9(c)(8)(iii)')
+  })
+
+  it('clicking a nutrient finding outlines that row, not the whole label', async () => {
+    // The debt stage 4 carried: every nutrition finding pointed at the principal
+    // display panel because no smaller element existed.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-override').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-nf-dv-iron').setValue('44')
+    await nextTick()
+
+    const button = wrapper.findAll('button').find((b) => b.text().includes('Iron shows 44%'))
+    expect(button, 'the percentage finding was not rendered as a button').toBeDefined()
+    await button!.trigger('click')
+    await nextTick()
+
+    expect(store.selectedElementId).toBe('food-nutrition-row-iron')
+    expect(wrapper.find('rect[stroke-dasharray]').exists()).toBe(true)
+  })
+
+  it('stops asking for a panel once the exemption is claimed', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-present').setValue(false)
+    await nextTick()
+    expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_MISSING')).toBe(true)
+
+    await wrapper.find('#field-food-nf-exempt').setValue(true)
+    await nextTick()
+    expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_EXEMPT')).toBe(true)
+    expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_MISSING')).toBe(false)
   })
 })

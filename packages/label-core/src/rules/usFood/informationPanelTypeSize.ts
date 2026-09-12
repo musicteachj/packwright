@@ -27,7 +27,7 @@
 
 import { INFORMATION_PANEL_MIN_TYPE_HEIGHT_MM, regulatedGlyphBasis } from '../../geometry/pdp'
 import type { TextPrimitive } from '../../layout/types'
-import { US_FOOD_ELEMENTS } from '../../templates/usFood'
+import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { glyphHeightMm } from '../../text/measure'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
@@ -42,9 +42,43 @@ const CITATION: Citation = {
   title: 'No letter or numeral on the panel may be less than one-sixteenth inch in height',
 }
 
-/** Judged under 101.7(i), which is stricter. Measuring it here too would report
- *  one dimension as two defects under two citations. */
-const JUDGED_ELSEWHERE = new Set<string>([US_FOOD_ELEMENTS.netQuantity])
+/**
+ * Elements whose type size a different paragraph governs.
+ *
+ * The net quantity answers to 101.7(i), which demands more on all but the
+ * smallest panels; measuring it here too would report one dimension as two
+ * defects under two citations.
+ *
+ * **The Nutrition Facts panel answers to 101.9, and that is not a nicety.**
+ * 101.2(b) does list 101.9 among the sections whose information belongs on these
+ * panels, so a literal reading of (c) would put the 1/16 inch floor over the
+ * nutrition label too. It cannot be the reading: 101.9(d)(7)(iii) sets the
+ * nutrient rows at "no smaller than 8 point" and (d)(9) the footnote at 6, and
+ * neither clears 1/16 inch measured the way 101.7(h)(2) measures — 8 point of
+ * IBM Plex puts the lowercase "o" at 1.52 mm against a 1.59 mm floor. Applying
+ * it here would report every compliant Nutrition Facts label in the country.
+ * The specific provision governs, 101.2(d)(1) already defers to 101.9 by name
+ * elsewhere, and stage 5's own rules check the sizes 101.9 does set.
+ */
+const JUDGED_ELSEWHERE = new Set<string>([
+  US_FOOD_ELEMENTS.netQuantity,
+  US_FOOD_ELEMENTS.nutritionPanel,
+  US_FOOD_ELEMENTS.nutritionHeading,
+  US_FOOD_ELEMENTS.nutritionServings,
+  US_FOOD_ELEMENTS.nutritionServingSize,
+  US_FOOD_ELEMENTS.nutritionCalories,
+  US_FOOD_ELEMENTS.nutritionFootnote,
+])
+
+/**
+ * Rows carry a generated id per nutrient, so they are matched by prefix — and
+ * the prefix names the rows and only the rows. A bare `food-nutrition-` also
+ * matched the heading, the servings lines and the footnote, which is harmless
+ * here (they are listed above anyway) and was not harmless in the rule that
+ * checks 101.9's own sizes: it picked up the 6 point footnote and reported it
+ * against the 8 point minimum for nutrient rows.
+ */
+// Imported rather than written out, for the reason `nutritionTypeSize` gives.
 
 export const usFoodInformationPanelTypeSizeRule: UsFoodRule = {
   id: 'us-food/information-panel-type-size',
@@ -58,7 +92,8 @@ export const usFoodInformationPanelTypeSizeRule: UsFoodRule = {
       (primitive): primitive is TextPrimitive =>
         primitive.kind === 'text' &&
         primitive.elementId !== undefined &&
-        !JUDGED_ELSEWHERE.has(primitive.elementId),
+        !JUDGED_ELSEWHERE.has(primitive.elementId) &&
+        !primitive.elementId.startsWith(NUTRITION_ROW_PREFIX),
     )
     // Nothing else on the panel is nothing to measure, which is not a pass.
     if (drawn.length === 0) return []

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import type { TextPrimitive } from '../layout/types'
-import { US_FOOD_ELEMENTS } from '../templates/usFood'
+import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES, US_FOOD_SMALL_PANEL } from './fixtures/usFood'
 import { blockingOmissions } from '../layout/omissions'
@@ -208,14 +208,21 @@ describe('rules that decline rather than pass', () => {
     const {
       responsibleFirm: _firm,
       containsStatement: _contains,
+      nutritionFacts: _panel,
       ...rest
     } = US_FOOD_CONFORMANT.data
-    const data = { ...rest, statementOfIdentity: '', ingredients: [] }
+    const data = {
+      ...rest,
+      statementOfIdentity: '',
+      ingredients: [],
+      nutritionFactsExempt: true,
+    }
     const layout = layOutUsFoodLabel({ data, stock: US_FOOD_CONFORMANT.stock })
     for (const elementId of [
       US_FOOD_ELEMENTS.statementOfIdentity,
       US_FOOD_ELEMENTS.ingredients,
       US_FOOD_ELEMENTS.responsibleFirm,
+      US_FOOD_ELEMENTS.nutritionPanel,
     ]) {
       expect(layout.elements.map((e) => e.elementId)).not.toContain(elementId)
     }
@@ -901,5 +908,186 @@ describe('findings from the stage 4 review', () => {
     )
     expect(declared).toEqual(['tree-nuts'])
     expect(US_FOOD_CONFORMANT.data.containsStatement).toEqual(['tree-nuts'])
+  })
+})
+
+describe('the drawn Nutrition Facts panel', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const layout = layOutUsFoodLabel(US_FOOD_CONFORMANT)
+  const bars = layout.primitives
+    .filter(
+      (p): p is Extract<typeof p, { kind: 'rect' }> =>
+        p.kind === 'rect' && p.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+    )
+    .sort((a, b) => a.yMm - b.yMm)
+
+  it('draws the rule weights FDA states, to the micrometre', () => {
+    // 7 pt = 2.4694 mm, 3 pt = 1.0583, ¼ pt = 0.0882. Transcribed figures, so
+    // they are checked as transcriptions rather than trusted.
+    const weights = [...new Set(bars.map((b) => Number(b.heightMm.toFixed(4))))].sort(
+      (a, b) => a - b,
+    )
+    expect(weights).toContain(0.0882)
+    expect(weights).toContain(1.0583)
+    expect(weights).toContain(2.4694)
+  })
+
+  it('puts no rule above the first nutrient row', () => {
+    // A hairline is "centered between nutrients" and the first has nothing above
+    // it. Keying it off the loop index put one under the "% Daily Value"
+    // heading, because Calories takes index 0 and is drawn further up — a rule
+    // no printed Nutrition Facts label has.
+    const firstRow = layout.elements.find(
+      (e) => e.elementId === nutritionRowElementId('total-fat'),
+    )!
+    const hairlines = bars.filter((b) => b.heightMm < 0.1)
+    expect(hairlines.every((b) => b.yMm > firstRow.box.yMm)).toBe(true)
+  })
+
+  it('gives every nutrient its own element, so a finding can point at the row', () => {
+    for (const id of ['total-fat', 'added-sugars', 'potassium']) {
+      expect(layout.elements.map((e) => e.elementId)).toContain(nutritionRowElementId(id))
+    }
+  })
+
+  it('counts the panel once when measuring what the net quantity stands clear of', () => {
+    // The box and its rows are one block of ink. Counting both read "stands
+    // clear of the 24 other elements" on a label carrying five printed blocks:
+    // the statement of identity, the panel, the ingredient statement, the
+    // "Contains" statement and the responsible firm. A single crowding could
+    // also have produced a finding per row.
+    const pass = findingsFor(US_FOOD_CONFORMANT.data, stock).find(
+      (f) => f.code === 'FDA_NET_QUANTITY_SEPARATION_MET',
+    )
+    expect(pass!.message).toContain('5 other elements')
+  })
+
+  it('reports a panel scaled below the minimums 101.9(d) sets', () => {
+    const codes = findingsFor(
+      {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionFacts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!, typeScale: 0.8 },
+      },
+      stock,
+    ).map((f) => f.code)
+    expect(codes).toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+  })
+
+  it('passes the panel drawn at the minimums themselves', () => {
+    expect(findingsFor(US_FOOD_CONFORMANT.data, stock).map((f) => f.code)).toContain(
+      'FDA_NUTRITION_TYPE_SIZE_MET',
+    )
+  })
+})
+
+describe('the §101.9(j) nutrition exemption', () => {
+  // Shipped since stage 4 and never once asserted — it appeared in a test only
+  // as setup for something else, which is how a documented branch ends up with
+  // no coverage while every code it emits looks accounted for.
+  const stock = US_FOOD_CONFORMANT.stock
+  const { nutritionFacts: _panel, ...withoutPanel } = US_FOOD_CONFORMANT.data
+
+  it('reports a missing panel as blocking when nothing is claimed', () => {
+    const match = findingsFor(withoutPanel, stock).find((f) => f.code === 'FDA_NUTRITION_MISSING')
+    expect(match!.severity).toBe('blocking')
+    expect(match!.citation.reference).toBe('21 CFR 101.9(c)')
+  })
+
+  it('clears it when the label claims the exemption, citing 101.9(j)', () => {
+    const findings = findingsFor({ ...withoutPanel, nutritionFactsExempt: true }, stock)
+    const match = findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')
+    expect(match!.severity).toBe('pass')
+    expect(match!.citation.reference).toBe('21 CFR 101.9(j)')
+    expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_MISSING')
+  })
+
+  it('does not let the claim excuse a panel that is present and wrong', () => {
+    // The exemption relieves a food of bearing a panel. A panel printed anyway
+    // is judged — the same reading as §101.100 and the ingredient list.
+    const codes = findingsFor(
+      {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionFactsExempt: true,
+        nutritionFacts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!, typeScale: 0.8 },
+      },
+      stock,
+    ).map((f) => f.code)
+    expect(codes).toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+  })
+})
+
+describe('findings from the stage 5 review', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+  const withPanel = (patch: Partial<typeof panel>) =>
+    findingsFor({ ...US_FOOD_CONFORMANT.data, nutritionFacts: { ...panel, ...patch } }, stock)
+
+  it('expresses fat under half a gram as zero, which 101.9(c)(2) requires', () => {
+    // "If the serving contains less than 0.5 gram, the content **shall** be
+    // expressed as zero." A *shall*, where the gram nutrients at (c)(6) and
+    // (c)(7) get a *may* — and the two were treated alike, so 0.4 g rounded up
+    // to 0.5 and a compliant "Total Fat 0g" was reported as a violation.
+    expect(roundNutrientAmount('total-fat', 0.4)).toBe(0)
+    const codes = withPanel({
+      amounts: { ...panel.amounts, 'total-fat': 0.4 },
+      declaredAmounts: { ...panel.declaredAmounts, 'total-fat': 0 },
+    }).map((f) => f.code)
+    expect(codes).not.toContain('FDA_NUTRITION_ROUNDING_WRONG')
+  })
+
+  it('names the declared amount in a percentage finding, not the Daily Value', () => {
+    // The message read "12% is what 78 g gives", and 78 g is the Daily Value —
+    // which gives 100%.
+    const match = withPanel({
+      declaredPercentDv: { ...panel.declaredPercentDv, 'total-fat': 15 },
+    }).find((f) => f.code === 'FDA_NUTRITION_PERCENT_DV_WRONG')
+    expect(match!.message).toContain('3g of a 78g Daily Value')
+  })
+
+  it('does not count a percentage it could not check', () => {
+    // A declared percentage with no amount behind it is neither reported nor
+    // checked, and the pass counted it anyway.
+    const { calcium: _drop, ...amounts } = panel.amounts
+    const pass = withPanel({
+      amounts,
+      declaredAmounts: { ...panel.declaredAmounts },
+      declaredPercentDv: { ...panel.declaredPercentDv },
+    }).find((f) => f.code === 'FDA_NUTRITION_PERCENT_DV_MET')
+    expect(pass!.message).toContain('10 percentages')
+  })
+
+  it('does not report the heading of a panel scaled in proportion', () => {
+    // 101.9(d)(2) asks only that the heading be no smaller than the rest, which
+    // a uniform scale preserves. Enforcing the 22 points the illustrations draw
+    // it at reported a compliant panel under a citation saying no such thing —
+    // and the relative requirement itself is satisfied by construction here, so
+    // it gets a note in the rule rather than a check that could never fail.
+    expect(withPanel({ typeScale: 0.8 }).map((f) => f.elementId)).not.toContain(
+      US_FOOD_ELEMENTS.nutritionHeading,
+    )
+  })
+
+  it('omits a protein percentage rather than printing one it cannot check', () => {
+    // 101.9(c)(7)(ii) corrects protein by a digestibility score no label
+    // carries, so the rule declines — and the panel was printing one anyway.
+    const layout = layOutUsFoodLabel(US_FOOD_CONFORMANT)
+    const proteinRow = layout.primitives
+      .filter(
+        (p): p is TextPrimitive =>
+          p.kind === 'text' && p.elementId === nutritionRowElementId('protein'),
+      )
+      .map((p) => p.text)
+    expect(proteinRow.some((t) => t.includes('%'))).toBe(false)
+    expect(proteinRow.some((t) => t.startsWith('Protein'))).toBe(true)
+  })
+
+  it('inspects every entry the order lists, including a duplicated one', () => {
+    // `expected` is the regulation's order narrowed to what appears, so a
+    // duplicate makes it shorter — and walking only that far left the trailing
+    // entry uninspected.
+    const codes = withPanel({
+      order: [...panel.order!, 'calories'],
+    }).map((f) => f.code)
+    expect(codes).toContain('FDA_NUTRITION_OUT_OF_ORDER')
   })
 })

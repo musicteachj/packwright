@@ -41,6 +41,7 @@ import {
   FDA_NUTRITION_OUT_OF_ORDER,
   FDA_NUTRITION_PERCENT_DV_WRONG,
   FDA_NUTRITION_ROUNDING_WRONG,
+  FDA_NUTRITION_TYPE_TOO_SMALL,
   FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
   FDA_CONTAINS_NOT_ADJACENT,
   FDA_CONTAINS_TYPE_TOO_SMALL,
@@ -59,8 +60,16 @@ import {
   FDA_RESPONSIBLE_FIRM_UNQUALIFIED,
 } from '../index'
 
-/** 120 × 170 mm — a front panel of 31.62 in², in 101.7(i)'s 3/16 inch band. */
-const CONFORMING_STOCK: LabelStock = { widthMm: 120, heightMm: 170, marginMm: 6 }
+/**
+ * 120 × 240 mm — 44.64 in², in 101.7(i)'s "more than 25 but not more than 100"
+ * band, so the 3/16 inch requirement is the same one as before.
+ *
+ * It grew from 170 mm when the Nutrition Facts panel was drawn for the first
+ * time: the panel alone is 129 mm tall, and everything else on the label has to
+ * fit above and below it. That the previous stock could not carry a compliant
+ * label is the sort of thing only drawing it reveals.
+ */
+const CONFORMING_STOCK: LabelStock = { widthMm: 120, heightMm: 240, marginMm: 6 }
 
 /**
  * Typed rather than inferred from `as const`. The literal tuple a const
@@ -149,7 +158,7 @@ const BASE_NUTRITION: UsFoodNutritionFacts = {
 
 const BASE = {
   statementOfIdentity: 'Oat and almond granola',
-  container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
+  container: { shape: 'rectangular', widthMm: 120, heightMm: 240 },
   netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
   // Descending by weight, with the last two grouped behind a 101.4(a)(2)
   // statement at a permitted threshold — so every rule in the set runs against
@@ -593,6 +602,25 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_NUTRITION_PERCENT_DV_WRONG,
       severity: 'violation',
       citation: '21 CFR 101.9(c)(8)(iii)',
+    },
+  },
+  {
+    name: 'a Nutrition Facts panel shrunk to fit',
+    defect:
+      'Every size in the panel is a minimum 101.9(d) states, so scaling the whole thing to 80 ' +
+      'percent puts all of them under — which is how this goes wrong in practice, a designer ' +
+      'squeezing the panel into the space left rather than choosing a bad size on purpose. The ' +
+      'heading is *not* among them: 101.9(d)(2) asks only that it be no smaller than the rest, ' +
+      'and a panel scaled in proportion still satisfies that.',
+    data: {
+      ...BASE,
+      nutritionFacts: { ...BASE_NUTRITION, typeScale: 0.8 },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_TYPE_TOO_SMALL,
+      severity: 'violation',
+      citation: '21 CFR 101.9(d)(3)(i)',
     },
   },
   {

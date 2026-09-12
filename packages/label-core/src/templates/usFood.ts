@@ -24,8 +24,27 @@ import type { MajorFoodAllergenId } from '../fda/allergens'
 import type { NutrientId } from '../fda/nutrients'
 import type { Anchor, LabelStock } from './stock'
 
+/**
+ * One id per nutrient row, so a finding outlines the line it is about.
+ *
+ * The `-row-` segment is load-bearing. With a bare `food-nutrition-` prefix the
+ * generated ids collided with the fixed ones — `food-nutrition-heading`,
+ * `-servings`, `-footnote` — so a rule selecting "the nutrient rows" by prefix
+ * picked up the 6 point footnote and reported it against the 8 point minimum
+ * 101.9(d)(7)(iii) sets for rows.
+ */
+export const NUTRITION_ROW_PREFIX = 'food-nutrition-row-'
+
+export const nutritionRowElementId = (id: string): string => `${NUTRITION_ROW_PREFIX}${id}`
+
 export const US_FOOD_ELEMENTS = {
   statementOfIdentity: 'food-statement-of-identity',
+  nutritionPanel: 'food-nutrition-panel',
+  nutritionHeading: 'food-nutrition-heading',
+  nutritionServings: 'food-nutrition-servings',
+  nutritionServingSize: 'food-nutrition-serving-size',
+  nutritionCalories: 'food-nutrition-calories',
+  nutritionFootnote: 'food-nutrition-footnote',
   containsStatement: 'food-contains-statement',
   netQuantity: 'food-net-quantity',
   ingredients: 'food-ingredients',
@@ -179,6 +198,17 @@ export interface UsFoodNutritionFacts {
   declaredPercentDv?: Partial<Record<NutrientId, number>>
   /** The order the panel lists them in. Omitted means 101.9(c)'s own order. */
   order?: readonly NutrientId[]
+  /**
+   * A multiplier on every type size in the panel, where the label sets one.
+   *
+   * It exists so the panel can be drawn *wrong*. Every size in
+   * `NUTRITION_PANEL_TYPE` is a minimum 101.9 states, so a panel drawn from them
+   * complies by construction and the type-size rule could never fail — the same
+   * shape as the parenthetical the GHS engine used to append unconditionally.
+   * A designer shrinking the panel to fit is also the realistic way this goes
+   * wrong, which is the other reason it is a scale rather than a per-line size.
+   */
+  typeScale?: number
 }
 
 export interface UsFoodLabelData {
@@ -288,9 +318,12 @@ export const US_FOOD_TYPE_DEFAULT = {
 } as const
 
 /**
- * A 120 x 170 mm front panel — 31.6 in², which lands in 21 CFR 101.7(i)'s
- * "more than 25 but not more than 100 square inches" band and so demands
- * 3/16 inch type. That is DESIGN.md's own done-when case, made the default so
- * the interesting rule is live the moment the label loads.
+ * A 120 x 240 mm panel — 44.6 in², which lands in 21 CFR 101.7(i)'s "more than
+ * 25 but not more than 100 square inches" band and so demands 3/16 inch type.
+ * That is DESIGN.md's own done-when case, made the default so the interesting
+ * rule is live the moment the label loads.
+ *
+ * The height is what a Nutrition Facts panel needs. At 129 mm the panel is most
+ * of a label on its own, and everything else has to fit around it.
  */
-export const DEFAULT_US_FOOD_STOCK: LabelStock = { widthMm: 120, heightMm: 170, marginMm: 6 }
+export const DEFAULT_US_FOOD_STOCK: LabelStock = { widthMm: 120, heightMm: 240, marginMm: 6 }

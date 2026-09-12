@@ -25,6 +25,7 @@ import { minNetQuantityTypeHeightMm, regulatedGlyphBasis, pdpAreaSqInches } from
 import { fontSizeMmForGlyphHeight, measureTextMm, wrapTextMm } from '../text/measure'
 import { roundTo } from '../geometry/units'
 import { foodSourceName } from '../fda/allergens'
+import { layOutNutritionPanel } from './nutritionPanel'
 import type { UsFoodLabelData } from '../templates/usFood'
 import { US_FOOD_ELEMENTS, US_FOOD_TYPE_DEFAULT } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
@@ -35,6 +36,14 @@ import type { LayoutOmission, LayoutPrimitive, ResolvedElement, ResolvedLayout }
 /** Millimetres for an omission's prose. `rules/finding` owns the same format for
  *  findings, and `label-core`'s layout layer must not import from `rules`. */
 const mmText = (value: number): string => `${roundTo(value, 2).toFixed(2)} mm`
+
+/**
+ * Width of the Nutrition Facts box. FDA's illustrations draw the standard
+ * vertical display around 2.5 inches wide, and 101.9 sets no width anywhere —
+ * so this is a legible default and no rule judges it, the same standing as the
+ * bar weights it is drawn with.
+ */
+const NUTRITION_PANEL_WIDTH_MM = 64
 
 export interface UsFoodLayoutRequest {
   data: UsFoodLabelData
@@ -250,6 +259,47 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
         scope: 'detail',
       })
     }
+  }
+
+  // 21 CFR 101.9(d) — the Nutrition Facts panel, above the ingredient statement,
+  // which is the order an information panel runs in. It is boxed and narrower
+  // than the label, so it takes a width of its own rather than the panel's.
+  if (data.nutritionFacts !== undefined) {
+    const panelWidthMm = Math.min(NUTRITION_PANEL_WIDTH_MM, panel.widthMm)
+    const drawn = layOutNutritionPanel({
+      facts: data.nutritionFacts,
+      xMm: panel.xMm,
+      yMm: cursorYMm,
+      widthMm: panelWidthMm,
+      fontFamily: type.fontFamily,
+      emphasisFontWeight: type.emphasisFontWeight,
+    })
+    primitives.push(...drawn.primitives)
+    elements.push(...drawn.elements)
+
+    // The same overflow check `stackText` makes, for the same reason: a panel
+    // running off the substrate is content that will not be printed, and it has
+    // to say so rather than be silently absent from the artefact.
+    const bottomMm = cursorYMm + drawn.heightMm
+    if (cursorYMm >= stock.heightMm) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        reason:
+          `The Nutrition Facts panel begins ${mmText(cursorYMm)} down a ` +
+          `${mmText(stock.heightMm)} label, past its bottom edge, so none of it is printed.`,
+        scope: 'element',
+      })
+    } else if (bottomMm > stock.heightMm) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        reason:
+          `The Nutrition Facts panel runs ${mmText(bottomMm - stock.heightMm)} past the bottom ` +
+          `of a ${mmText(stock.heightMm)} label, so part of it is not printed.`,
+        scope: 'detail',
+      })
+    }
+
+    cursorYMm = bottomMm + type.blockGapMm
   }
 
   // 21 CFR 101.4(a)(1) — the list is drawn in the order it was given. Sorting it

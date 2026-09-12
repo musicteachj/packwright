@@ -14,3 +14,4 @@ export {
   roundingIsCheckable,
 } from './nutrients'
 export type { DailyValueKind, Nutrient, NutrientId, NutrientRounding } from './nutrients'
+export { NUTRITION_FOOTNOTE, NUTRITION_PANEL_RULES, NUTRITION_PANEL_TYPE } from './nutritionPanel'

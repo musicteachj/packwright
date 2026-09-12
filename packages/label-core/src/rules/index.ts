@@ -164,3 +164,8 @@ export {
   usFoodNutritionPercentDvRule,
   usFoodNutritionRoundingRule,
 } from './usFood/nutritionFacts'
+export {
+  FDA_NUTRITION_TYPE_SIZE_MET,
+  FDA_NUTRITION_TYPE_TOO_SMALL,
+  usFoodNutritionTypeSizeRule,
+} from './usFood/nutritionTypeSize'

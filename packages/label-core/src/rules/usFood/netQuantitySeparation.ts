@@ -53,6 +53,18 @@ const NOT_PRINTED_INFORMATION = new Set<string>([
   US_FOOD_ELEMENTS.netQuantity,
 ])
 
+/**
+ * The Nutrition Facts panel's own parts, which the panel box already stands for.
+ *
+ * Counting the box *and* its fifteen rows measures one block of ink sixteen
+ * times: the pass read "stands clear of the 24 other elements on the panel" on a
+ * label carrying five, and a single crowding could have produced a finding per
+ * row. One defect, one finding — so the box is the neighbour and its contents
+ * are not.
+ */
+const INSIDE_THE_NUTRITION_PANEL = (elementId: string): boolean =>
+  elementId.startsWith('food-nutrition-') && elementId !== US_FOOD_ELEMENTS.nutritionPanel
+
 /** Gap along one axis. Negative where the two boxes overlap on that axis. */
 function gap(aStart: number, aSize: number, bStart: number, bSize: number): number {
   return Math.max(bStart - (aStart + aSize), aStart - (bStart + bSize))
@@ -76,7 +88,9 @@ export const usFoodNetQuantitySeparationRule: UsFoodRule = {
     if (declaration === undefined || drawn === undefined) return []
 
     const neighbours = layout.elements.filter(
-      (element) => !NOT_PRINTED_INFORMATION.has(element.elementId),
+      (element) =>
+        !NOT_PRINTED_INFORMATION.has(element.elementId) &&
+        !INSIDE_THE_NUTRITION_PANEL(element.elementId),
     )
     // Nothing else is printed on this panel, so there is nothing the declaration
     // could be crowded by. A rule with nothing to measure has not cleared the

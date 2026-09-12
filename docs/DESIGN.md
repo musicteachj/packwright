@@ -280,16 +280,27 @@ statements, supplier identification.
   101.9 states type sizes numerically — ≥16 pt bold for Calories except in the tabular displays, ≥10 pt bold
   for Serving size (≥9 pt tabular), ≥8 pt for the nutrient block, ≥6 pt or all upper case at 1/16 inch
   minimum on small packages, ≥1 pt leading and ≥4 pt for the nutrient rows. Those can ship as rules.
-  The **bar and rule thicknesses cannot**, for two independent reasons. 101.9 defers to the graphic fifteen
-  times ("as shown in paragraph (d)(12)") and says only that "for uniformity of presentation, FDA **strongly
-  recommends** that the nutrition information be presented using the graphic specifications set forth in
-  appendix B to part 101" — a recommendation, not a requirement. And Appendix B is two images and 55 words of
-  boilerplate. The figures are stated nowhere in text: checked against 101.9, against Appendix B, against the
-  292,000-word preamble to the 2016 final rule (81 FR 33742, which mentions "hairline" once and defines it as
-  "a thin line"), and against the 2018 technical amendment (83 FR 65493, type sizes only). So the renderer
-  follows the recommended geometry as a documented house default the way `GHS_TYPE_DEFAULT` and
-  `UPC_A_HRI_DEFAULT` already are, and **no rule judges a bar weight**. Same shape as the GHS pictogram
-  artwork: draw what can be verified, record what cannot.
+  The **bar and rule thicknesses cannot**, because they are recommended rather than required. 101.9 defers to
+  the graphic fifteen times ("as shown in paragraph (d)(12)") and says only that "for uniformity of
+  presentation, FDA **strongly recommends** that the nutrition information be presented using the graphic
+  specifications set forth in appendix B to part 101". Appendix B is two images and 55 words of boilerplate,
+  and the figures are in neither the regulation, the 292,000-word preamble to the 2016 final rule (81 FR
+  33742, which mentions "hairline" once and defines it as "a thin line"), nor the 2018 technical amendment
+  (83 FR 65493, type sizes only).
+
+  **Corrected 2026-09-12.** This entry previously concluded the figures were "stated nowhere" and that the
+  renderer would have to use house defaults. They are stated — in FDA's own illustrations, [The New Nutrition
+  Facts Label — Examples of Different Label Formats](https://www.fda.gov/media/99151/download): "All labels
+  enclosed by ½ point box rule within 3 point of text measure", "7 pt rule", "3 pt rule", "¼ pt rule centered
+  between nutrients (2 pt leading above and below)". That document had been fetched while reaching the
+  original conclusion and could not be read, and "I could not read it" was recorded as "it does not say".
+  The renderer follows those figures and cites them; because the document is guidance, **no rule judges a bar
+  weight**. Same shape as the GHS pictogram artwork: draw what can be verified, record what cannot.
+
+  The illustrations also specify Helvetica — "Text in bold font is Helvetica Black; text not bolded is
+  Helvetica Regular". That one is **not** followed. 101.9 requires only an "easy-to-read type style", and
+  this project embeds IBM Plex, whose letter heights `text/metrics.ts` measures and every type-size rule
+  depends on. A face this build cannot measure would turn those rules into guesses.
 - **Nine** major allergens including sesame — "Contains" statement or in-line parenthetical
 - Ingredient list in descending order by weight; manufacturer/packer/distributor name and address
 - FDA's front-of-pack "Nutrition Info box" is **proposed, not final. Re-checked 2026-09-12** against the

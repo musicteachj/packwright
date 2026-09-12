@@ -278,6 +278,7 @@ function toNutritionFacts(panel: z.infer<typeof NutritionFactsSchema>): UsFoodNu
       ? {}
       : { declaredPercentDv: panel.declaredPercentDv }),
     ...(panel.order === undefined ? {} : { order: panel.order }),
+    ...(panel.typeScale === undefined ? {} : { typeScale: panel.typeScale }),
   }
 }
 
@@ -317,6 +318,7 @@ const NutritionFactsSchema = z.object({
   declaredAmounts: NutrientAmounts,
   declaredPercentDv: NutrientAmounts,
   order: z.array(z.enum(NUTRIENT_IDS)).optional(),
+  typeScale: z.number().positive().optional(),
 })
 
 const UsFoodRequest = z

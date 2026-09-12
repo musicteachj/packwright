@@ -25,6 +25,9 @@ import {
   ANCHORS,
   INGREDIENT_THRESHOLD_PERCENTS,
   MAJOR_FOOD_ALLERGENS,
+  NUTRIENTS,
+  percentDailyValue,
+  roundNutrientAmount,
   US_FOOD_ELEMENTS,
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
@@ -38,8 +41,9 @@ import {
   type ContainerShape,
   type IngredientThresholdPercent,
   type MajorFoodAllergenId,
+  type NutrientId,
 } from '@packwright/label-core'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorSection from './EditorSection.vue'
 import { CHIP, CHIP_REMOVE, INPUT, LABEL } from './formStyles'
@@ -370,6 +374,98 @@ const allergensPresent = computed(() =>
       containsStatement.value.includes(allergen.id),
   ),
 )
+
+/**
+ * The Nutrition Facts panel.
+ *
+ * The amounts are what the food contains; everything the panel *prints* derives
+ * from them unless stated. That split is what lets a wrong panel exist at all,
+ * so the overrides are offered rather than hidden — behind one toggle, because
+ * three inputs on every one of fifteen rows is not a form anyone reads.
+ */
+const nutritionExempt = computed({
+  get: () => data.nutritionFactsExempt === true,
+  set: (on: boolean) => {
+    if (on) data.nutritionFactsExempt = true
+    else delete data.nutritionFactsExempt
+  },
+})
+
+const hasPanel = computed({
+  get: () => data.nutritionFacts !== undefined,
+  set: (on: boolean) => {
+    if (on) data.nutritionFacts = { servingSize: '', amounts: {} }
+    else delete data.nutritionFacts
+  },
+})
+
+const panelRows = NUTRIENTS
+
+const amountOf = (id: NutrientId): number | '' => data.nutritionFacts?.amounts[id] ?? ''
+
+function setAmount(id: NutrientId, raw: string): void {
+  const facts = data.nutritionFacts
+  if (facts === undefined) return
+  if (raw.trim() === '') delete facts.amounts[id]
+  else facts.amounts[id] = Number(raw)
+}
+
+/** What the panel will print, so the form shows the rounding as it happens. */
+const printedAmount = (id: NutrientId): string => {
+  const facts = data.nutritionFacts
+  if (facts === undefined) return ''
+  const stated = facts.declaredAmounts?.[id]
+  if (stated !== undefined) return String(stated)
+  const analysed = facts.amounts[id]
+  return analysed === undefined ? '' : String(roundNutrientAmount(id, analysed))
+}
+
+const printedPercent = (id: NutrientId): string => {
+  const facts = data.nutritionFacts
+  if (facts === undefined) return ''
+  const stated = facts.declaredPercentDv?.[id]
+  if (stated !== undefined) return `${stated}%`
+  const printed = printedAmount(id)
+  if (printed === '') return ''
+  const value = percentDailyValue(id, Number(printed))
+  return value === undefined ? '—' : `${value}%`
+}
+
+const showOverrides = ref(false)
+
+function setOverride(
+  kind: 'declaredAmounts' | 'declaredPercentDv',
+  id: NutrientId,
+  raw: string,
+): void {
+  const facts = data.nutritionFacts
+  if (facts === undefined) return
+  const existing = facts[kind] ?? {}
+  if (raw.trim() === '') delete existing[id]
+  else existing[id] = Number(raw)
+  if (Object.keys(existing).length === 0) delete facts[kind]
+  else facts[kind] = existing
+}
+
+const overrideOf = (kind: 'declaredAmounts' | 'declaredPercentDv', id: NutrientId): number | '' =>
+  data.nutritionFacts?.[kind]?.[id] ?? ''
+
+/**
+ * A multiplier on every size in the panel. Every figure in 101.9(d) is a
+ * minimum, so a panel drawn from them complies by construction — shrinking it is
+ * how a real one goes wrong, and the only way the type-size rule can fail.
+ */
+const typeScalePercent = computed({
+  get: () => Math.round((data.nutritionFacts?.typeScale ?? 1) * 100),
+  set: (percent: number) => {
+    const facts = data.nutritionFacts
+    if (facts === undefined) return
+    // An emptied number field arrives as `''`, and `'' / 100` is 0 — which drew
+    // the whole panel at zero-size type. A blank means "no scale", not "none".
+    if (!Number.isFinite(percent) || percent <= 0 || percent === 100) delete facts.typeScale
+    else facts.typeScale = percent / 100
+  },
+})
 
 const packaging = computed({
   get: () => data.netQuantity.packaging ?? 'standard',
@@ -797,6 +893,141 @@ const packaging = computed({
           />
           {{ allergen.name }}
         </label>
+      </template>
+    </EditorSection>
+
+    <EditorSection
+      title="Nutrition Facts"
+      :element-id="US_FOOD_ELEMENTS.nutritionPanel"
+      :selected-element-id="store.selectedElementId"
+      :status="nutritionExempt ? 'exempt' : hasPanel ? 'present' : 'none'"
+      @select="select"
+    >
+      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-exempt">
+        <input id="field-food-nf-exempt" v-model="nutritionExempt" type="checkbox" />
+        Exempt from nutrition labelling under § 101.9(j)
+      </label>
+
+      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-present">
+        <input id="field-food-nf-present" v-model="hasPanel" type="checkbox" />
+        The label bears a Nutrition Facts panel
+      </label>
+
+      <template v-if="data.nutritionFacts">
+        <label :class="LABEL" for="field-food-nf-serving">
+          Serving size
+          <input
+            id="field-food-nf-serving"
+            v-model="data.nutritionFacts.servingSize"
+            :class="INPUT"
+            type="text"
+            placeholder="1/2 cup (40g)"
+          />
+        </label>
+        <label :class="LABEL" for="field-food-nf-servings">
+          Servings per container
+          <input
+            id="field-food-nf-servings"
+            v-model.number="data.nutritionFacts.servingsPerContainer"
+            :class="INPUT"
+            type="number"
+            min="1"
+          />
+        </label>
+
+        <p class="text-chrome-400 text-xs">
+          The amounts are what the food contains. What the panel prints is rounded from them by 21
+          CFR 101.9(c), and the percentages by (d)(7)(ii) and (c)(8)(iii) — two different rules on
+          one column.
+        </p>
+
+        <div
+          v-for="entry in panelRows"
+          :key="entry.id"
+          class="border-chrome-800 flex items-end gap-1 border-b pb-1"
+        >
+          <label :class="LABEL" class="flex-1" :for="`field-food-nf-${entry.id}`">
+            {{ entry.name }}
+            <input
+              :id="`field-food-nf-${entry.id}`"
+              :value="amountOf(entry.id)"
+              :class="INPUT"
+              type="number"
+              step="0.1"
+              min="0"
+              @input="setAmount(entry.id, ($event.target as HTMLInputElement).value)"
+            />
+          </label>
+          <p class="text-chrome-400 numeric w-24 pb-2 text-right text-xs">
+            {{ printedAmount(entry.id) }}{{ entry.id === 'calories' ? '' : entry.unit }}
+            <span class="text-chrome-300">{{ printedPercent(entry.id) }}</span>
+          </p>
+        </div>
+
+        <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-override">
+          <input id="field-food-nf-override" v-model="showOverrides" type="checkbox" />
+          Print figures other than the ones derived
+        </label>
+
+        <template v-if="showOverrides">
+          <p class="text-chrome-400 text-xs">
+            What the panel says, where it differs from what the food contains. This is how a panel
+            that rounds wrongly or shows the wrong percentage gets drawn — and reported.
+          </p>
+          <div v-for="entry in panelRows" :key="`ovr-${entry.id}`" class="flex items-end gap-1">
+            <label :class="LABEL" class="flex-1" :for="`field-food-nf-amt-${entry.id}`">
+              <span class="sr-only">{{ entry.name }} as printed</span>
+              <input
+                :id="`field-food-nf-amt-${entry.id}`"
+                :value="overrideOf('declaredAmounts', entry.id)"
+                :class="INPUT"
+                type="number"
+                step="0.1"
+                :placeholder="`${entry.name} as printed`"
+                @input="
+                  setOverride(
+                    'declaredAmounts',
+                    entry.id,
+                    ($event.target as HTMLInputElement).value,
+                  )
+                "
+              />
+            </label>
+            <label :class="LABEL" class="w-20" :for="`field-food-nf-dv-${entry.id}`">
+              <span class="sr-only">{{ entry.name }} percent Daily Value as printed</span>
+              <input
+                :id="`field-food-nf-dv-${entry.id}`"
+                :value="overrideOf('declaredPercentDv', entry.id)"
+                :class="INPUT"
+                type="number"
+                placeholder="% DV"
+                @input="
+                  setOverride(
+                    'declaredPercentDv',
+                    entry.id,
+                    ($event.target as HTMLInputElement).value,
+                  )
+                "
+              />
+            </label>
+          </div>
+        </template>
+
+        <label :class="LABEL" for="field-food-nf-scale">
+          Panel type size (% of the minimum)
+          <input
+            id="field-food-nf-scale"
+            v-model.number="typeScalePercent"
+            :class="INPUT"
+            type="number"
+            min="10"
+            max="300"
+            step="5"
+          />
+        </label>
+        <p class="text-chrome-400 text-xs">
+          Every size in 101.9(d) is a minimum, so anything under 100% puts the panel below one.
+        </p>
       </template>
     </EditorSection>
 

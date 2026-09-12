@@ -89,7 +89,12 @@ describe('rounding a declared amount', () => {
     expect(roundNutrientAmount('total-fat', 4.9)).toBe(5)
     expect(roundNutrientAmount('total-fat', 7.4)).toBe(7)
     expect(roundNutrientAmount('saturated-fat', 1.2)).toBe(1)
-    expect(roundNutrientAmount('trans-fat', 0.3)).toBe(0.5)
+    // "If the serving contains less than 0.5 gram, the content **shall** be
+    // expressed as zero" — a requirement for the fats, where the gram nutrients
+    // at (c)(6) and (c)(7) get a *may*. This vector asserted 0.5 and was wrong.
+    expect(roundNutrientAmount('trans-fat', 0.3)).toBe(0)
+    expect(roundNutrientAmount('total-fat', 0.4)).toBe(0)
+    expect(roundNutrientAmount('total-fat', 0.5)).toBe(0.5)
   })
 
   it('rounds cholesterol to 5 mg — 101.9(c)(3)', () => {

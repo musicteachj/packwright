@@ -296,8 +296,16 @@ export function roundNutrientAmount(id: NutrientId, value: number): number {
       return value <= 50 ? toNearest(value, 5) : toNearest(value, 10)
 
     case 'fat-grams':
-      // "to the nearest 0.5 (1/2) gram increment below 5 grams and to the
-      // nearest gram increment above 5 grams."
+      // "Amounts shall be expressed to the nearest 0.5 (1/2) gram increment
+      // below 5 grams and to the nearest gram increment above 5 grams. **If the
+      // serving contains less than 0.5 gram, the content shall be expressed as
+      // zero.**"
+      //
+      // That last sentence says *shall*, where the gram nutrients at (c)(6) and
+      // (c)(7) say *may*. Treating the two alike rounded 0.4 g of fat up to 0.5
+      // and reported a compliant "Total Fat 0g" as a violation — while a derived
+      // panel printed the 0.5 g the regulation forbids.
+      if (value < 0.5) return 0
       return value < 5 ? toNearest(value, 0.5) : toNearest(value, 1)
 
     case 'sodium':

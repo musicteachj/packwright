@@ -39,7 +39,7 @@ import {
   roundingIsCheckable,
 } from '../../fda/nutrients'
 import type { NutrientId } from '../../fda/nutrients'
-import { US_FOOD_ELEMENTS } from '../../templates/usFood'
+import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../../templates/usFood'
 import type { UsFoodNutritionFacts } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passed } from '../finding'
@@ -163,7 +163,7 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
         usFoodNutritionCompletenessRule,
         FDA_NUTRITION_COMPLETE,
         `All ${NUTRIENTS.length} mandatory nutrients are declared.`,
-        US_FOOD_ELEMENTS.principalDisplayPanel,
+        US_FOOD_ELEMENTS.nutritionPanel,
       ),
     ]
   },
@@ -187,10 +187,14 @@ export const usFoodNutritionOrderRule: UsFoodRule = {
     // — one defect, one finding.
     const listed = panel.order
     const expected = NUTRIENT_IDS.filter((id) => listed.includes(id))
-    const firstWrong = expected.findIndex((id, index) => listed[index] !== id)
+    // Walked over the *listed* entries, not the expected ones. `expected` is the
+    // regulation's order narrowed to what appears, so a panel naming a nutrient
+    // twice makes it shorter — and walking only that far left everything past
+    // the end uninspected, so a duplicated trailing row passed.
+    const firstWrong = listed.findIndex((id, index) => expected[index] !== id)
 
     if (firstWrong >= 0) {
-      const shouldBe = nutrient(expected[firstWrong]!)
+      const shouldBe = nutrient(expected[firstWrong] ?? '')
       const isThere = nutrient(listed[firstWrong]!)
       return [
         finding(usFoodNutritionOrderRule, {
@@ -198,13 +202,13 @@ export const usFoodNutritionOrderRule: UsFoodRule = {
           severity: 'violation',
           message:
             `The panel lists ${isThere?.name ?? listed[firstWrong]} where ` +
-            `${shouldBe?.name ?? expected[firstWrong]} should be. 101.9(c) fixes the order of ` +
-            'the nutrients, and the label may not choose its own.',
+            `${shouldBe?.name ?? 'nothing'} should be. 101.9(c) fixes the order of the ` +
+            'nutrients, and the label may not choose its own.',
           measurement: {
             actual: listed.map((id) => nutrient(id)?.name ?? id).join(', '),
             required: expected.map((id) => nutrient(id)?.name ?? id).join(', '),
           },
-          elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+          elementId: US_FOOD_ELEMENTS.nutritionPanel,
         }),
       ]
     }
@@ -214,7 +218,7 @@ export const usFoodNutritionOrderRule: UsFoodRule = {
         usFoodNutritionOrderRule,
         FDA_NUTRITION_ORDER_MET,
         `${listed.length} nutrients run in the order 101.9(c) sets.`,
-        US_FOOD_ELEMENTS.principalDisplayPanel,
+        US_FOOD_ELEMENTS.nutritionPanel,
       ),
     ]
   },
@@ -260,7 +264,9 @@ export const usFoodNutritionRoundingRule: UsFoodRule = {
             `${entry.name} is ${panel.amounts[entry.id]} and the panel declares ${declared}. ` +
             `${entry.reference} rounds it to ${required}.`,
           measurement: { actual: String(declared), required: String(required) },
-          elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+          // The row, not the whole panel. Stage 5 gave every nutrient an element
+          // for exactly this; a defect on one line should outline that line.
+          elementId: nutritionRowElementId(entry.id),
           citation: { ...CONTENT, reference: entry.reference },
         }),
       )
@@ -272,7 +278,7 @@ export const usFoodNutritionRoundingRule: UsFoodRule = {
         FDA_NUTRITION_ROUNDING_MET,
         `${checked.length} declared amount${checked.length === 1 ? '' : 's'} round as 101.9(c) ` +
           'requires.',
-        US_FOOD_ELEMENTS.principalDisplayPanel,
+        US_FOOD_ELEMENTS.nutritionPanel,
       ),
     ]
   },
@@ -316,6 +322,16 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
       return permitted.includes(declared) ? [] : [{ entry, declared, permitted }]
     })
 
+    // A declared percentage with no amount behind it could not be recomputed, so
+    // it was neither reported nor checked — and the pass counted it anyway.
+    // "11 percentages match the Daily Values" about ten is a rule declining and
+    // reporting that it cleared.
+    const measured = checked.filter(
+      (entry) =>
+        declaredAmount(panel, entry.id) !== undefined || panel.amounts[entry.id] !== undefined,
+    )
+    if (measured.length === 0 && wrong.length === 0) return []
+
     if (wrong.length > 0) {
       return wrong.map(({ entry, declared, permitted }) =>
         finding(usFoodNutritionPercentDvRule, {
@@ -324,7 +340,8 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
           message:
             `${entry.name} shows ${declared}% of the Daily Value; ` +
             `${[...new Set(permitted)].sort((a, b) => a - b).join('% or ')}% is what ` +
-            `${entry.dailyValue!.amount} ${entry.unit} gives.`,
+            `${declaredAmount(panel, entry.id) ?? panel.amounts[entry.id]}${entry.unit} of a ` +
+            `${entry.dailyValue!.amount}${entry.unit} Daily Value gives.`,
           measurement: {
             actual: `${declared}%`,
             required: [...new Set(permitted)]
@@ -332,7 +349,7 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
               .map((p) => `${p}%`)
               .join(' or '),
           },
-          elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+          elementId: nutritionRowElementId(entry.id),
           citation: entry.dailyValue!.kind === 'rdi' ? VITAMIN_PERCENT : PERCENT,
         }),
       )
@@ -342,9 +359,9 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
       passed(
         usFoodNutritionPercentDvRule,
         FDA_NUTRITION_PERCENT_DV_MET,
-        `${checked.length} percentage${checked.length === 1 ? '' : 's'} match the Daily Values, ` +
+        `${measured.length} percentage${measured.length === 1 ? '' : 's'} match the Daily Values, ` +
           'rounded as each nutrient’s own paragraph requires.',
-        US_FOOD_ELEMENTS.principalDisplayPanel,
+        US_FOOD_ELEMENTS.nutritionPanel,
       ),
     ]
   },

@@ -18,6 +18,8 @@ export {
   US_FOOD_ELEMENTS,
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
+  NUTRITION_ROW_PREFIX,
+  nutritionRowElementId,
 } from './usFood'
 export type {
   IngredientThresholdPercent,

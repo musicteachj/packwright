@@ -10,6 +10,32 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 5 — the Nutrition Facts panel drawn. The standard vertical display only; the other five
+formats are stage 6, on the reasoning phase 2 used for label types.
+
+- **The rule weights are cited, not invented.** `fda/nutritionPanel.ts` carries the ½ pt box, the 7 pt
+  section bars, the 3 pt bar under Calories and the ¼ pt hairline between nutrients, each with the FDA
+  sentence it came from. They survive to the PDF exactly — a 7 pt bar measures 2.469 mm in the exported
+  file, a hairline 0.088 mm.
+- **The footnote is quoted.** 21 CFR 101.9(d)(9) states it verbatim, so it is looked up like an H-statement
+  and never composed, with both variants the paragraph gives: 1,000 calories for a food for children 1
+  through 3, and the first sentence alone for a food that may bear the §101.60(b) calorie-free terms.
+- **Every nutrient row is its own element**, so a finding about Added Sugars outlines the Added Sugars line.
+  Ten finding sites were anchored to the whole principal display panel until this stage, which is the GHS
+  pictogram lesson repeating: a finding pointing at an id nothing resolved sets the selection and draws
+  nothing.
+- **The form rail for the panel**, and it is where the fact/print split earns itself. The amounts are what
+  the food contains; the rail shows beside each what will actually be printed, rounded by 101.9(c) and
+  percented by (d)(7)(ii) or (c)(8)(iii) as the nutrient requires — so the rounding is visible as it happens
+  rather than arriving later as a finding. Behind one toggle sit the overrides that let the panel print
+  something else, which is the only way the rounding and percentage rules can be reached from the editor at
+  all.
+- A sixteenth rule, `us-food/nutrition-type-size`, for the sizes 101.9(d) *does* state — 22 point heading,
+  16 point Calories, 10 point serving size, 8 point nutrient rows. It measures in **points, not letter
+  heights**: every other type-size rule here converts through `glyphHeightMm` because 101.7(i) and 101.2(c)
+  state a letter height and 101.7(h)(2) says which letter, but 101.9 states a *type size* and never mentions
+  a letter, so converting would answer a question the paragraph does not ask.
+
 Phase 5, stage 4 — the Nutrition Facts panel as content: what is declared, in what order, rounded how, and
 against which Daily Value. Four rules and the reference table they are measured against. The panel's geometry
 is stage 5; these rules read the document, because whether 8.7 grams of fat was rounded to 9 is a fact about a
@@ -383,6 +409,70 @@ That is what makes preview == print structural rather than something two code pa
   was the one branch CI never watched. Pull requests were always covered; direct pushes were not.
 
 ### Fixed
+
+Phase 5, stage 5 review. Nine findings, and the two worth naming first are both cases of a *shall* and a
+*may* being treated alike.
+
+- **Fat under half a gram must be declared as zero, and was being rounded up to 0.5.** 21 CFR 101.9(c)(2):
+  "If the serving contains less than 0.5 gram, the content **shall** be expressed as zero." The gram
+  nutrients at (c)(6) and (c)(7) get a *may* for the same threshold, and the two were implemented alike — so
+  0.4 g of fat came back 0.5, a compliant "Total Fat 0g" was reported as a violation, and a derived panel
+  printed the figure the regulation forbids. A test asserted the wrong answer, which is how it survived.
+- **The heading was enforced at 22 points under a citation that says nothing of the sort.** 101.9(d)(2) is a
+  *relative* requirement — "no smaller than all other print size in the nutrition label except for the
+  numerical information for 'Calories'" — and the 22 points comes from FDA's nonbinding illustrations. A
+  panel scaled down in proportion complies and was being reported. The relative requirement is now not
+  checked either: this engine always draws the heading largest, so a rule for it could never fail — the same
+  call 101.7(f)'s "lines generally parallel to the base" already gets.
+- **The percentage finding printed the Daily Value where it meant the declared amount**: "12% is what 78 g
+  gives". 78 g is the Daily Value, which gives 100%.
+- **The percentage pass counted nutrients it never checked.** A declared percentage with no amount behind it
+  could not be recomputed, so it was neither reported nor verified — and the pass said it matched.
+- **The panel printed a protein percentage the rule deliberately declines to check.** 101.9(c)(7)(ii)
+  corrects protein by a digestibility score no label carries, and (d)(7)(ii) says the percentage "may be
+  omitted" — so printing an uncheckable figure was the worst of the three options.
+- Clearing the type-scale field set `typeScale` to **zero** — `'' / 100` — and drew the whole panel at
+  zero-size type.
+- The order rule walked the *expected* entries rather than the listed ones, so everything past the end went
+  uninspected and a duplicated trailing nutrient passed.
+- `'food-nutrition-row-'` was spelled out in three files. It is exported from one now; drift would have had
+  the 101.2(c) rule reporting every compliant 8 point nutrient row.
+- A comment said the box rule is "drawn last" where `unshift` draws it first. The code was right and the
+  comment would have talked a reader into breaking it.
+
+Phase 5, stage 5.
+
+- **The row elements existed and no rule used them.** Stage 5 gave every nutrient its own element to pay off
+  the debt stage 4 recorded, and the four nutrition rules went on anchoring their findings to the principal
+  display panel — so clicking a finding about Iron outlined the entire label. The web test that clicks it is
+  what caught it, which is the argument for driving the editor rather than asserting on rule output alone.
+  Findings about one nutrient point at that nutrient now; findings about the panel point at the panel.
+- **21 CFR 101.2(c) does not govern the Nutrition Facts panel, and applying it would have condemned every
+  compliant label in the country.** 101.2(b) does list 101.9 among the sections whose information belongs on
+  these panels, so a literal reading puts the 1/16 inch floor over the nutrition label too. It cannot be the
+  reading: 101.9(d)(7)(iii) sets the nutrient rows at "no smaller than 8 point", and 8 point of IBM Plex puts
+  the lowercase "o" at 1.52 mm against a 1.59 mm floor. The specific provision governs, and 101.2(d)(1)
+  already defers to 101.9 by name elsewhere. The panel is excluded, and stage 5's own rule checks the sizes
+  101.9 sets.
+- **The default stock could not carry a compliant label.** The panel alone is 129 mm tall, so on the previous
+  120 × 170 mm stock everything below it ran off the substrate — caught by the overflow omissions added in
+  the phase 5 review rather than by anyone noticing. It is 120 × 240 mm now, still 44.64 in² and still in the
+  same 3/16 inch band. That the old stock was too small is the sort of thing only drawing it reveals.
+- **A prefix collision made the panel fail its own rule.** Generated row ids read `food-nutrition-<id>` and
+  the fixed ones `food-nutrition-heading`, `-servings`, `-footnote`, so a rule selecting "the nutrient rows"
+  by prefix picked up the 6 point footnote and reported it against the 8 point row minimum. Rows are
+  `food-nutrition-row-*` now.
+- **A rule was drawn where no printed label has one.** The hairline between nutrients was keyed off the loop
+  index, and Calories occupies index 0 while being drawn in its own block further up — so a hairline landed
+  under the "% Daily Value" heading. It counts rows actually drawn.
+- **The separation rule counted one block of ink sixteen times.** Both the panel box and its fifteen rows
+  were neighbours, so the pass read "stands clear of the 24 other elements" on a label carrying five printed
+  blocks, and a single crowding could have produced a finding per row. The box stands for its contents.
+- **`typeScale` was unreachable through the API**, and it is the only way to draw a panel under the minimums
+  — so the type-size rule could not be exercised from there at all.
+- **The §101.9(j) exemption had shipped in stage 4 with no test.** It appeared in the suite only as *setup*
+  for a separation case, which is how a documented branch ends up uncovered while every code it emits looks
+  accounted for. It is asserted now, including that claiming it does not excuse a panel printed anyway.
 
 Phase 5, stage 4 review.
 
@@ -1171,7 +1261,16 @@ session would otherwise redo the search.
   extended by 90 FR 19664 (9 May 2025), no final rule twenty months on. `DESIGN.md` said to build it behind a
   forward-looking flag; it is now deferred outright instead. A proposed rule changes before it is finalised,
   so a UI built against this one is work that will need redoing, and the deferral reverses the day it lands.
-- **The Nutrition Facts bar weights are not stated numerically in any binding source**, and four were checked:
+- **Corrected 2026-09-12, same day:** the entry below concluded the bar weights were stated nowhere. They are
+  stated, in FDA's own illustrations — [Examples of Different Label
+  Formats](https://www.fda.gov/media/99151/download): "All labels enclosed by ½ point box rule within 3 point
+  of text measure", "7 pt rule", "3 pt rule", "¼ pt rule centered between nutrients (2 pt leading above and
+  below)". That PDF was fetched while reaching the original conclusion and came back as unreadable binary, and
+  **"I could not read it" was written down as "it does not say it"**. The figures are transcribed into
+  `fda/nutritionPanel.ts` with the quotation beside each. Nothing else changes: the document is guidance, so
+  the renderer follows it and no rule judges a bar weight.
+- **The Nutrition Facts bar weights are not stated numerically in any *binding* source**, and four were
+  checked:
   21 CFR 101.9 defers to the graphic fifteen times; Appendix B to Part 101 — the "graphic specifications" 101.9
   points at — is two images and 55 words of boilerplate; the 292,000-word preamble to the 2016 final rule
   (81 FR 33742) mentions "hairline" once and defines it as "a thin line"; and the 2018 technical amendment

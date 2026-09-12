@@ -70,7 +70,7 @@ const STARTING_GHS: GhsLabelData = {
  */
 const STARTING_FOOD: UsFoodLabelData = {
   statementOfIdentity: 'Oat and almond granola',
-  container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
+  container: { shape: 'rectangular', widthMm: 120, heightMm: 240 },
   netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
   // Oats are not wheat. The editor opens on this label, so a false allergen
   // declaration here would be the first thing a user learns from the tool.
