@@ -253,15 +253,50 @@ statements, supplier identification.
 
 - **PDP area calculation** — rectangular: `h × w`; cylindrical: `40% × (h × circumference)`; other shapes:
   `40% of total surface`
-- **Net quantity type size by PDP area**, measured by the lowercase "o": ≤5 in² → 1/16"; >5–25 in² → 1/8";
-  >25–100 in² → 3/16"; >100 in² → 1/4"; >400 in² → 1/2"
-- Net quantity in the **bottom 30% of the PDP**, dual metric/US customary units
+- **Net quantity type size by PDP area** — 21 CFR 101.7(i): ≤5 in² → 1/16"; >5–25 in² → 1/8";
+  >25–100 in² → 3/16"; >100–400 in² → 1/4"; >400 in² → 1/2". Add 1/16" where the declaration is blown,
+  embossed or molded into the surface rather than printed on it.
+- **Which letter is measured is 101.7(h)(2), and it is conditional. Corrected 2026-09-12** — this line
+  previously said "measured by the lowercase 'o'" flatly, and cited 101.7(i), which is only the table. The
+  text reads: "Letter heights pertain to upper case or capital letters. When upper and lower case or all lower
+  case letters are used, it is the lower case letter 'o' or its equivalent that shall meet the minimum
+  standards." Capitals are the default; the "o" is the exception. `NET WT 12 OZ` is judged on its capitals,
+  and assuming the "o" always applies over-demands type by a third. Neither is the em: for IBM Plex Sans an em
+  is 1.433 capitals or 1.852 "o"s, so a rule comparing a requirement against `TextPrimitive.fontSizeMm`
+  directly clears type at 54% of the legal minimum.
+- **21 CFR 101.105 does not exist.** Much of the secondary literature cites it for net quantity; it was this
+  same section's number until **81 FR 59129** (29 Aug 2016) redesignated it as 101.7, out of subpart G, where
+  FDA noted it had never belonged. Paragraph letters survived unchanged. Cite 101.7, always.
+- Net quantity in the **bottom 30% of the PDP** — 101.7(f), with its own exemption for panels of 5 in² or
+  less.
+- **Dual metric and inch/pound units are statutory, not 21 CFR 101. Corrected 2026-09-12** — this line filed
+  them under part 101. FDA proposed SI declarations in 1993 and never took final action; 81 FR 59129 says so
+  while renumbering the section. The requirement is **15 U.S.C. 1453(a)(2)**, from the Fair Packaging and
+  Labeling Act as amended in 1992, with exceptions for random packages at (a)(3)(A)(ii) and foods packaged at
+  the retail store level at (a)(6).
 - Nutrition Facts panel — format selected by package size across the six approved variants (vertical,
   dual-column, tabular, linear, aggregate, bilingual); 13 mandatory nutrients; %DV column
+- **The Nutrition Facts type scale is binding; its rule weights are not. Established 2026-09-12.** 21 CFR
+  101.9 states type sizes numerically — ≥16 pt bold for Calories except in the tabular displays, ≥10 pt bold
+  for Serving size (≥9 pt tabular), ≥8 pt for the nutrient block, ≥6 pt or all upper case at 1/16 inch
+  minimum on small packages, ≥1 pt leading and ≥4 pt for the nutrient rows. Those can ship as rules.
+  The **bar and rule thicknesses cannot**, for two independent reasons. 101.9 defers to the graphic fifteen
+  times ("as shown in paragraph (d)(12)") and says only that "for uniformity of presentation, FDA **strongly
+  recommends** that the nutrition information be presented using the graphic specifications set forth in
+  appendix B to part 101" — a recommendation, not a requirement. And Appendix B is two images and 55 words of
+  boilerplate. The figures are stated nowhere in text: checked against 101.9, against Appendix B, against the
+  292,000-word preamble to the 2016 final rule (81 FR 33742, which mentions "hairline" once and defines it as
+  "a thin line"), and against the 2018 technical amendment (83 FR 65493, type sizes only). So the renderer
+  follows the recommended geometry as a documented house default the way `GHS_TYPE_DEFAULT` and
+  `UPC_A_HRI_DEFAULT` already are, and **no rule judges a bar weight**. Same shape as the GHS pictogram
+  artwork: draw what can be verified, record what cannot.
 - **Nine** major allergens including sesame — "Contains" statement or in-line parenthetical
 - Ingredient list in descending order by weight; manufacturer/packer/distributor name and address
-- FDA's front-of-pack "Nutrition Info Box" is **proposed, not final** — build it behind a clearly-labelled
-  forward-looking flag rather than presenting it as current law
+- FDA's front-of-pack "Nutrition Info box" is **proposed, not final. Re-checked 2026-09-12** against the
+  Federal Register: proposed at **90 FR 5426** (16 Jan 2025), comment period extended by 90 FR 19664 (9 May
+  2025), and no final rule twenty months on. **Decision: defer it entirely** rather than build it behind a
+  flag. A proposed rule changes materially before finalisation, so a UI built against this one is speculative
+  work that will need redoing; recording the deferral costs nothing and reverses the day it is finalised.
 
 ---
 
@@ -560,6 +595,24 @@ fold-out handling.
 *Build:* PDP area wired to stock geometry, the net-quantity type-size table, the Nutrition Facts renderer
 across its six format variants, ingredient list, nine-allergen handling.
 
+*Stages, in this order.* Nutrition Facts moves to the end, which is not the order this list was written in:
+
+1. **Net quantity on the principal display panel** — `geometry/pdp.ts` wired to a real label at last, five
+   rules under 21 CFR 101.7 and 15 U.S.C. 1453. **Complete.**
+2. Ingredient list (101.4) and manufacturer, packer or distributor (101.5).
+3. The nine major allergens — FD&C Act §201(qq) for what they are, §403(w) for how they are declared.
+4. Nutrition Facts *content* — 13 nutrients, order, rounding, Daily Values, %DV.
+5. The standard vertical format rendered. One variant only.
+6. The remaining five variants and the format-selection rule at 101.9(j)(13).
+
+Two reasons for that order. **Allergens depend on the ingredient list**: §403(w)(1)(A) sizes the "Contains"
+statement against the ingredient list's own type and requires it adjacent, and (w)(1)(B) is a parenthetical
+*inside* the list. And Nutrition Facts depends on nothing while nothing depends on it — so if the largest
+piece overruns, what exists is still a complete food label with net quantity, ingredients, allergens and a
+responsible firm on it, rather than a nutrition panel with no label around it. Stage 5 renders one variant
+before stage 6 renders six, for the reason phase 2 built one label type: if the first is wrong, the other
+five are built on sand.
+
 *Done when:*
 - A 30 in² PDP demands ≥ 3/16" net-quantity type and flags anything smaller
 - All six Nutrition Facts variants render with correct type scale and rule weights
@@ -650,8 +703,8 @@ copy-adapt from the old repo.
 | 1 · Foundation | **Complete** — 146 tests, CI green; reviewed and remediated |
 | 2 · Rendering spine + design tokens | **Complete** — preview == print asserted against a real exported PDF |
 | 3 · Rule engine + findings rail | **Complete** — six GS1 rules, each with a known-bad fixture |
-| 4 · GHS chemical label | **In progress** — stage 1 (a GHS label that draws) complete |
-| 5 · US food label | Not started |
+| 4 · GHS chemical label | **Complete** — seven rules, reviewed and remediated; merged in #4 |
+| 5 · US food label | **In progress** — stage 1 (net quantity on the PDP) complete and reviewed |
 | 6 · Scanning, persistence, catalogue | Not started |
 | 7 · Label audit from a photo | Not started |
 | 8 · Deployment | Not started |

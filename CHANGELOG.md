@@ -876,6 +876,28 @@ Findings from the phase 1 review, each confirmed against a primary source rather
 
 ### Notes
 
+Phase 5 research, 2026-09-12 — recorded because two of these are decisions rather than findings, and a later
+session would otherwise redo the search.
+
+- **FDA's front-of-package "Nutrition Info box" is still proposed.** 90 FR 5426 (16 Jan 2025), comment period
+  extended by 90 FR 19664 (9 May 2025), no final rule twenty months on. `DESIGN.md` said to build it behind a
+  forward-looking flag; it is now deferred outright instead. A proposed rule changes before it is finalised,
+  so a UI built against this one is work that will need redoing, and the deferral reverses the day it lands.
+- **The Nutrition Facts bar weights are not stated numerically in any binding source**, and four were checked:
+  21 CFR 101.9 defers to the graphic fifteen times; Appendix B to Part 101 — the "graphic specifications" 101.9
+  points at — is two images and 55 words of boilerplate; the 292,000-word preamble to the 2016 final rule
+  (81 FR 33742) mentions "hairline" once and defines it as "a thin line"; and the 2018 technical amendment
+  (83 FR 65493) gives type sizes only. 101.9 also says FDA "strongly recommends" Appendix B, which is a
+  recommendation and not a requirement. So the renderer will follow the recommended geometry as a documented
+  house default, the way `GHS_TYPE_DEFAULT` and `UPC_A_HRI_DEFAULT` already are, and no rule will judge a bar
+  weight. The type *scale* is a different matter and is binding — 101.9 states it in points.
+- **21 U.S.C. 343(w) carries a type-size requirement**, which was not expected: a "Contains" statement must be
+  "in a type size no smaller than the type size used in the list of ingredients". Measurable with the glyph
+  metrics stage 1 added. 343(w)(2) also requires the specific type of tree nut or species of fish or
+  Crustacean shellfish, not the category.
+- Out of scope but current law, so worth not rediscovering: the "healthy" nutrient content claim definition
+  was finalised at 89 FR 106064 (27 Dec 2024).
+
 - Requires npm ≥ 11. npm 10.9.2 fails to resolve this dependency graph, crashing in arborist with
   `Cannot read properties of null (reading 'edgesOut')` while walking Vitest 4's peer set.
 - The phase 1 review resolved most of the outstanding `TODO(verify)` markers against General Specifications
