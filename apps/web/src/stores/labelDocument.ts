@@ -45,6 +45,7 @@ const STARTING_GTIN = '036000291452'
  * regulatory content. It exists so the canvas has a real GHS layout to draw.
  */
 const STARTING_GHS: GhsLabelData = {
+  regime: 'eu-clp',
   productIdentifier: 'Example solvent',
   capacityL: 5,
   signalWords: ['Danger'],

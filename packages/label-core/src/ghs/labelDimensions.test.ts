@@ -76,3 +76,41 @@ describe('the pictogram dimension is the square’s edge', () => {
     }
   })
 })
+
+describe('Table 1.3’s pictogram column is the one-fifteenth rule, rounded', () => {
+  /**
+   * Derived, and pinned so it cannot quietly stop being true.
+   *
+   * CLP states the pictogram requirement twice — a dimension per band, and one
+   * fifteenth of the label's information area. They are the same requirement:
+   * the tabulated dimension is the square root of (label area / 15) rounded to
+   * the nearest millimetre. Two of the four roundings go *down*, so a rule that
+   * applied the fraction on top of the table would report the regulator's own
+   * minimum as non-compliant.
+   */
+  it.each(GHS_LABEL_DIMENSION_BANDS.map((b) => [b.capacityText, b] as const))(
+    '%s',
+    (_name, band) => {
+      const exact = Math.sqrt((band.labelWidthMm * band.labelHeightMm) / 15)
+      // The smallest band tabulates the 1 cm² absolute floor in the dimension
+      // column and puts the rounded fraction in its "if possible" figure.
+      const tabulated = band.pictogramPreferredSideMm ?? band.pictogramSideMm
+      expect(Math.round(exact)).toBe(tabulated)
+    },
+  )
+
+  it('makes the smallest band’s hard floor exactly 1 cm², not the fraction', () => {
+    const [smallest] = GHS_LABEL_DIMENSION_BANDS
+    expect(pictogramAreaSqMm(smallest!.pictogramSideMm)).toBe(PICTOGRAM_MIN_AREA_SQ_MM)
+  })
+
+  it('rounds down in two bands, which is why the fraction is not checked separately', () => {
+    const shortfalls = GHS_LABEL_DIMENSION_BANDS.filter(
+      (band) =>
+        pictogramAreaSqMm(band.pictogramPreferredSideMm ?? band.pictogramSideMm) <
+        (band.labelWidthMm * band.labelHeightMm) / 15,
+    )
+    // <= 3 L (16 mm, short by 0.5 mm²) and > 50-500 L (32 mm, short by 12 mm²).
+    expect(shortfalls).toHaveLength(2)
+  })
+})

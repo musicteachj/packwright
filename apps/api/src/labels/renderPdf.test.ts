@@ -171,6 +171,7 @@ describe('the GHS label only asks for faces this build embeds', () => {
   it('emits no font family outside EMBEDDED_FONT_FAMILIES', () => {
     const layout = layOutGhsLabel({
       data: {
+        regime: 'eu-clp',
         productIdentifier: 'Acetone',
         capacityL: 5,
         signalWords: ['Danger'],

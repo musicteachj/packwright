@@ -172,6 +172,20 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       })
 
       const symbolName = GHS_PICTOGRAM_SYMBOLS[code]
+
+      // Each pictogram is an element in its own right, not only a member of the
+      // strip. A finding points at one by id, and `ResolvedLayout.elements` is
+      // where every consumer looks for the box to draw or enumerate — the canvas
+      // highlight, the text-equivalent view, the form-section ring. Recording
+      // the strip alone meant clicking a pictogram finding set the selection and
+      // then silently drew nothing, which is the signature interaction failing
+      // quietly on the label type it was extended for.
+      elements.push({
+        elementId,
+        label: `${code} pictogram (${symbolName})`,
+        box: { xMm, yMm: cursorYMm, widthMm: boxMm, heightMm: boxMm },
+      })
+
       pictograms.push({
         elementId,
         code,

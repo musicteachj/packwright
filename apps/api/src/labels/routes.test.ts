@@ -105,6 +105,7 @@ describe('POST /api/labels/upc-a/export', () => {
 const postGhs = (body: object) => supertest(app()).post('/api/labels/ghs/export').send(body)
 
 const GHS_BODY = {
+  regime: 'eu-clp',
   productIdentifier: 'Acetone',
   capacityL: 5,
   signalWords: ['Danger'],

@@ -75,6 +75,7 @@ describe('every font a layout asks for is declared in the stylesheet that ships'
       () =>
         layOutGhsLabel({
           data: {
+            regime: 'eu-clp',
             productIdentifier: 'Acetone',
             capacityL: 5,
             signalWords: ['Danger'],
@@ -109,7 +110,12 @@ describe('every font a layout asks for is declared in the stylesheet that ships'
   it('asks for weight rather than naming a bold family, which the browser cannot resolve', () => {
     const faces = facesIn(
       layOutGhsLabel({
-        data: { productIdentifier: 'Acetone', capacityL: 5, signalWords: ['Danger'] },
+        data: {
+          regime: 'eu-clp',
+          productIdentifier: 'Acetone',
+          capacityL: 5,
+          signalWords: ['Danger'],
+        },
         stock: DEFAULT_GHS_STOCK,
       }),
     )

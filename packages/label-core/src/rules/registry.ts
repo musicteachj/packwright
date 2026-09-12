@@ -17,6 +17,12 @@ import { gtinCheckDigitRule } from './gs1/gtinCheckDigit'
 import { humanReadableRule } from './gs1/humanReadable'
 import { magnificationRule } from './gs1/magnification'
 import { quietZoneRule } from './gs1/quietZone'
+import { ghsLabelDimensionsRule } from './ghs/labelDimensions'
+import { ghsPictogramIntegrityRule } from './ghs/pictogramIntegrity'
+import { ghsPictogramPrecedenceRule } from './ghs/pictogramPrecedence'
+import { ghsPictogramSetRule } from './ghs/pictogramSet'
+import { ghsPictogramSizeRule } from './ghs/pictogramSize'
+import { ghsSignalWordRule } from './ghs/signalWord'
 import type { GhsChemicalRule, Gs1RetailRule, LabelType, Rule, RuleContext } from './types'
 
 /**
@@ -36,13 +42,18 @@ export const GS1_RETAIL_RULES: readonly Gs1RetailRule[] = [
 /**
  * The GHS rule set, empty until its stage.
  *
- * Declared now rather than when the first rule arrives, because an absent entry
- * here and an empty one are indistinguishable to `runRules` and only one of them
- * is a decision. A GHS label currently runs no checks, and the findings rail
- * already says "no checks have run" rather than "everything passed" — a
- * distinction phase 3's review established the hard way.
+ * Ordered as a person would check a chemical label: is the warning right, are
+ * the pictograms real ones, is there the right *set* of them, and is any of it
+ * big enough to read.
  */
-export const GHS_RULES: readonly GhsChemicalRule[] = []
+export const GHS_RULES: readonly GhsChemicalRule[] = [
+  ghsSignalWordRule,
+  ghsPictogramIntegrityRule,
+  ghsPictogramSetRule,
+  ghsPictogramPrecedenceRule,
+  ghsLabelDimensionsRule,
+  ghsPictogramSizeRule,
+]
 
 /**
  * Every rule, or every rule for one label type.

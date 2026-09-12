@@ -119,6 +119,8 @@ export function pictogramFrameCommands(xMm: number, yMm: number, sideMm: number)
 /**
  * Which pictograms a regime recognises.
  *
+ * 29 CFR 1910.1200 Appendix C was read from the eCFR API on 2026-09-12 (title 29 issue date 2026-09-09); every subsection cited below was checked against that text.
+ *
  * **CLP has nine; OSHA has eight.** 29 CFR 1910.1200 Appendix C.2.3.2 is
  * explicit — "One of eight standard hazard symbols shall be used in each
  * pictogram" — and the one it leaves out is GHS09, the environment pictogram,

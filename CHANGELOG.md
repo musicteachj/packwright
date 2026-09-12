@@ -10,6 +10,72 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 4, stage 2 — the GHS rules. Six of them, each citing a clause that was read rather than recalled, and
+each shipping with a label that provokes it.
+
+- **Pictogram precedence, enforced properly rather than approximately.** Three of CLP Article 26's five rules
+  turn on *why* a pictogram is on the label, not merely that it is: 26(c) suppresses the exclamation mark under
+  the corrosion pictogram only where it is there for skin or eye irritation, and 26(d) only where the health
+  hazard pictogram is there for respiratory sensitisation. A rule firing on "GHS05 and GHS07 are both present"
+  would report a violation on a label whose exclamation mark came from acute toxicity category 4 — a false
+  verdict under a real citation. Reading the classification is what makes the difference, and the rule
+  **declines** when a label lists pictograms without hazards, because without the cause the article is
+  unanswerable.
+- Two of Article 26's clauses say a second pictogram "shall be optional", not that it is forbidden. Those are
+  **guidance**, not violations. Flattening all five into violations would misstate the law in the stricter
+  direction, which is no more correct than missing them.
+- Signal-word precedence, label dimensions against Table 1.3, pictogram dimensions, pictogram integrity, and
+  the regime's recognised pictogram set. Each cites the regulator it actually judged against — the dimensional
+  rules **decline entirely under OSHA**, which sets no minimum size anywhere, because nothing to measure
+  against is not a pass.
+- **An empty frame is not a pictogram**, and the engine currently draws nothing else. OSHA C.2.3.1 forbids a
+  frame without its hazard symbol outright, so every US label this engine produces now carries a blocking
+  finding saying so. That is the honest state of things while the Annex V specimen artwork is unverified, and
+  far better said by a rule than left implicit in a source comment.
+- Eight known-bad fixtures asserting the exact code, severity **and citation string**, plus a conformant
+  control. The precedence fixtures classify each label so the exclamation mark is present *for the right
+  reason* — a fixture that merely listed two pictogram codes would pass against the broken rule this project
+  nearly shipped.
+
+### Fixed
+
+- **Clicking a pictogram finding set the selection and then drew nothing.** The signature interaction —
+  click a finding, see the offending element outlined — was extended to a second label type without anything
+  ever pointing it at one. GHS findings carry element ids like `ghs-pictograms-GHS05`, but the engine recorded
+  only the pictogram *strip* in `ResolvedLayout.elements` and left the individual pictograms in
+  `layout.pictograms`, which is not where the canvas, the text-equivalent view or the form ring look for a box.
+  So the store held the right element id and the canvas silently had nothing to draw. Each pictogram is now an
+  element in its own right. Found by driving the real editor rather than by reading, which is the only way this
+  class of defect surfaces.
+- **A label could contradict its own classification and be reported as passing.** The precedence rule judges
+  the pictograms that were *drawn*, which is correct, but nothing compared that set against the hazards the
+  document declared. A label declaring serious eye damage and skin irritation while drawing the flame came back
+  with precedence "met" — a green tick on a pictogram set no declared hazard justifies. A new rule compares the
+  two: firm where it can be certain (a pictogram nothing requires is a violation) and deliberately soft where it
+  cannot (a missing pictogram is an advisory, because Article 26 legitimately removes some and this rule does
+  not model which).
+- **Two of CLP's own pictogram minimums fail CLP's own one-fifteenth rule, and the rule as first written
+  reported them as violations.** The regulation states the requirement twice — a dimension per capacity band in
+  Table 1.3, and in 1.2.1.3 a floor of one fifteenth of the label's information area. Checking both looked
+  obviously right. They are the same requirement written twice: the tabulated dimension is
+  `sqrt(labelArea / 15)` rounded to the nearest millimetre, and all four bands match. Two of those roundings go
+  *down*, so applying the fraction as well made a 32 mm pictogram on a 200 litre drum miss by 12 mm² — 1.2%,
+  entirely an artefact of rounding, and reported against the regulator's own tabulated figure. The dimension
+  check now enforces both provisions, and the arithmetic is pinned by a test so it cannot quietly stop being
+  true.
+- **Every OSHA citation in the tree was written from memory and has now been verified.** Twelve subsection
+  references across the rules and the reference data — C.2.1.1 through C.2.1.4, C.2.3.1, C.2.3.2, C.2.3.4 and
+  C.2.4.7 — were read from the eCFR API on 2026-09-12 against title 29 as issued on 2026-09-09. All twelve are
+  correct, including a quotation of C.2.3.1 that claimed to be verbatim and is. Getting them right from memory
+  is not the same as having sourced them, and `CLAUDE.md` is explicit that an unverifiable citation is worse
+  than no rule; the provenance is now recorded beside them.
+- **The rules were dead code.** Four rule files were written, compiled and committed to a branch while
+  `GHS_RULES` remained an empty array and nothing exported them, so the suite stayed green at 436 tests with
+  nothing being checked. Worse, two tests asserted the emptiness — pinning the broken state as though it were
+  the specification. They now assert the opposite, and the count rose to 458 the moment the rules were wired.
+- `passed()` could not carry a citation, so a *passing* signal-word check on a US label was reported against
+  the EU regulation. It takes the same override `finding()` already had.
+
 Phase 4, stage 1 — a GHS chemical label that draws. No rule ships in this stage: the point is to make a
 chemical label able to be **wrong**, the same way phase 3 stage 1 had to make a barcode label able to be wrong
 before the rule engine had anything to catch.

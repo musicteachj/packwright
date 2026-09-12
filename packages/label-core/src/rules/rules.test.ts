@@ -305,9 +305,14 @@ describe('compareSeverity', () => {
 
 describe('the registry runs the rules for the document’s own label type', () => {
   const ghsStock = { widthMm: 74, heightMm: 105, marginMm: 4 }
-  const ghsData = { productIdentifier: 'Acetone', capacityL: 5, pictograms: ['GHS02'] } as const
+  const ghsData = {
+    regime: 'eu-clp' as const,
+    productIdentifier: 'Acetone',
+    capacityL: 5,
+    pictograms: ['GHS02'],
+  } as const
 
-  it('runs no GS1 rule against a chemical label', () => {
+  it('runs the GHS rules, and only those, against a chemical label', () => {
     const layout = layOutGhsLabel({ data: { ...ghsData }, stock: ghsStock })
     const findings = runRules({
       labelType: 'ghs-chemical',
@@ -316,11 +321,18 @@ describe('the registry runs the rules for the document’s own label type', () =
       layout,
     })
 
-    // No GHS rule exists yet, so this is empty — and empty must read as "no check
-    // ran", never as "everything passed". The findings rail already draws that
-    // distinction; this pins that the registry does too.
-    expect(findings).toEqual([])
-    expect(GHS_RULES).toEqual([])
+    // An earlier version of this test asserted both of these were empty, which
+    // was true and useless: the rules existed as files but were never added to
+    // the registry, so they compiled, never ran, and the suite stayed green
+    // while nothing was being checked. Asserting they are non-empty is what
+    // makes that state impossible to reach again.
+    expect(GHS_RULES.length).toBeGreaterThan(0)
+    expect(findings.length).toBeGreaterThan(0)
+
+    // Every finding came from a GHS rule; no GS1 rule quietly no-opped its way
+    // into reporting on a chemical label.
+    const gs1Codes = new Set(GS1_RETAIL_RULES.flatMap((rule) => rule.codes))
+    expect(findings.filter((f) => gs1Codes.has(f.code))).toEqual([])
   })
 
   it('declares a label type on every rule, so none can no-op on the wrong document', () => {
@@ -332,7 +344,7 @@ describe('the registry runs the rules for the document’s own label type', () =
 
   it('filters the catalogue by label type, and lists everything without one', () => {
     expect(listRules('gs1-retail')).toHaveLength(GS1_RETAIL_RULES.length)
-    expect(listRules('ghs-chemical')).toHaveLength(0)
+    expect(listRules('ghs-chemical')).toHaveLength(GHS_RULES.length)
     expect(listRules()).toHaveLength(GS1_RETAIL_RULES.length + GHS_RULES.length)
   })
 })

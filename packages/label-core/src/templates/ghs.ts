@@ -21,6 +21,7 @@
  */
 
 import type { GhsPictogramCode } from '../ghs/pictograms'
+import type { GhsRegime } from '../ghs/statements'
 import type { LabelStock } from './stock'
 
 /** Stable element identifiers, so a finding can point at geometry. */
@@ -54,6 +55,16 @@ export interface GhsSupplier {
 }
 
 export interface GhsLabelData {
+  /**
+   * Which market this label is for. **Required, and deliberately not defaulted.**
+   *
+   * It selects the rules, not just the wording: OSHA recognises eight pictograms
+   * to CLP's nine, its precedence rules are fewer and one is narrower, and only
+   * CLP sets any dimensional minimum at all. Defaulting it would mean a label
+   * silently judged against the wrong regulator — the kind of quiet wrong answer
+   * this project exists to avoid.
+   */
+  regime: GhsRegime
   /** CLP Article 18 — the product identifier. */
   productIdentifier: string
   /**

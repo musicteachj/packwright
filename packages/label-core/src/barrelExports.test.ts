@@ -21,6 +21,12 @@ import * as gtinCheckDigitRule from './rules/gs1/gtinCheckDigit'
 import * as humanReadableRule from './rules/gs1/humanReadable'
 import * as magnificationRule from './rules/gs1/magnification'
 import * as quietZoneRule from './rules/gs1/quietZone'
+import * as ghsLabelDimensionsRule from './rules/ghs/labelDimensions'
+import * as ghsPictogramIntegrityRule from './rules/ghs/pictogramIntegrity'
+import * as ghsPictogramPrecedenceRule from './rules/ghs/pictogramPrecedence'
+import * as ghsPictogramSetRule from './rules/ghs/pictogramSet'
+import * as ghsPictogramSizeRule from './rules/ghs/pictogramSize'
+import * as ghsSignalWordRule from './rules/ghs/signalWord'
 import * as findingBuilders from './rules/finding'
 import * as rulesBarrel from './rules/index'
 import * as registry from './rules/registry'
@@ -124,6 +130,12 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['gs1/humanReadable.ts', humanReadableRule],
       ['gs1/magnification.ts', magnificationRule],
       ['gs1/quietZone.ts', quietZoneRule],
+      ['ghs/labelDimensions.ts', ghsLabelDimensionsRule],
+      ['ghs/pictogramIntegrity.ts', ghsPictogramIntegrityRule],
+      ['ghs/pictogramPrecedence.ts', ghsPictogramPrecedenceRule],
+      ['ghs/pictogramSet.ts', ghsPictogramSetRule],
+      ['ghs/pictogramSize.ts', ghsPictogramSizeRule],
+      ['ghs/signalWord.ts', ghsSignalWordRule],
     ],
   ],
   [

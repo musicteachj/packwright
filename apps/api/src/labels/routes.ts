@@ -19,6 +19,7 @@ import {
   DEFAULT_GHS_STOCK,
   DEFAULT_UPC_A_STOCK,
   GHS_PICTOGRAM_CODES,
+  GHS_REGIMES,
   GHS_SIGNAL_WORDS,
   LayoutError,
   getSymbologyConstraints,
@@ -133,6 +134,7 @@ const GhsSupplierSchema = z.object({
 })
 
 const GhsRequest = z.object({
+  regime: z.enum(GHS_REGIMES),
   productIdentifier: z.string().min(1),
   // Bounded below only, and required. Capacity selects the CLP Table 1.3 band
   // that every dimensional rule is measured against; defaulting it would invent
@@ -255,6 +257,7 @@ export function createLabelRouter(): Router {
     const { stock = DEFAULT_GHS_STOCK, ...rest } = parsed.data
 
     const data: GhsLabelData = {
+      regime: rest.regime,
       productIdentifier: rest.productIdentifier,
       capacityL: rest.capacityL,
       ...(rest.signalWords === undefined ? {} : { signalWords: rest.signalWords }),

@@ -20,6 +20,8 @@
  * `P370 + P380 + P375` with `P370 + P380 + P375 [+ P378]`, two different
  * statements with different text.
  *
+ * **OSHA provenance.** 29 CFR 1910.1200 Appendix C was read from the eCFR API on 2026-09-12 (title 29 issue date 2026-09-09); every subsection cited below was checked against that text.
+ *
  * **Why this is keyed by regime rather than shared.** The two regimes are not
  * the same standard with different spellings; they differ structurally, and the
  * differences are verified rather than assumed:

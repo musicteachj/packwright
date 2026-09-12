@@ -7,6 +7,7 @@ import { layOutGhsLabel } from './ghsEngine'
 const STOCK: LabelStock = { widthMm: 74, heightMm: 105, marginMm: 4 }
 
 const DATA: GhsLabelData = {
+  regime: 'eu-clp',
   productIdentifier: 'Acetone',
   capacityL: 5,
   signalWords: ['Danger'],
@@ -112,7 +113,7 @@ describe('layOutGhsLabel', () => {
 
   it('omits blocks the data does not carry, rather than drawing empty ones', () => {
     const layout = layOutGhsLabel({
-      data: { productIdentifier: 'Water', capacityL: 1 },
+      data: { regime: 'eu-clp', productIdentifier: 'Water', capacityL: 1 },
       stock: STOCK,
     })
     const ids = layout.elements.map((e) => e.elementId)
