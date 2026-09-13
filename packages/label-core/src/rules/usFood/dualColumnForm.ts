@@ -11,7 +11,7 @@
  * label has already chosen to carry one, which is what "When such dual labeling
  * is provided" means.
  *
- * Four requirements, and three of them are geometry:
+ * Five requirements, and three of them are geometry:
  *
  * - **(e)** "When such dual labeling is provided, **equal prominence shall** be
  *   given to both sets of values." Measured as type size, which is the dimension
@@ -47,6 +47,7 @@ import { MM_PER_POINT } from '../../geometry/units'
 export const FDA_DUAL_COLUMN_HEADINGS_MISSING = 'FDA_DUAL_COLUMN_HEADINGS_MISSING'
 export const FDA_DUAL_COLUMN_NOT_SEPARATED = 'FDA_DUAL_COLUMN_NOT_SEPARATED'
 export const FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE = 'FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE'
+export const FDA_DUAL_COLUMN_INCOMPLETE = 'FDA_DUAL_COLUMN_INCOMPLETE'
 export const FDA_DUAL_COLUMN_FORM_MET = 'FDA_DUAL_COLUMN_FORM_MET'
 
 const CITATION: Citation = {
@@ -67,14 +68,22 @@ const SEPARATED: Citation = {
   title: 'The two columns are separated by vertical lines',
 }
 
+const BOTH_FORMS: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(e)(2)',
+  title: 'The quantitative information is presented for each form declared',
+}
+
 export const usFoodDualColumnFormRule: UsFoodRule = {
   id: 'us-food/dual-column-form',
-  title: 'A dual-column panel heads its columns, separates them and gives both equal prominence.',
+  title:
+    'A dual-column panel declares both forms, heads its columns, separates them and gives both equal prominence.',
   citation: CITATION,
   codes: [
     FDA_DUAL_COLUMN_HEADINGS_MISSING,
     FDA_DUAL_COLUMN_NOT_SEPARATED,
     FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE,
+    FDA_DUAL_COLUMN_INCOMPLETE,
     FDA_DUAL_COLUMN_FORM_MET,
   ],
   appliesTo: 'us-food',
@@ -115,6 +124,82 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
           },
           elementId: US_FOOD_ELEMENTS.nutritionPanel,
           citation: HEADINGS,
+        }),
+      )
+    }
+
+    /**
+     * (e)(2) — the quantitative information is presented for *each* form.
+     *
+     * "The quantitative information by weight as required in paragraph (d)(7)(i)
+     * and the information required in paragraph (d)(7)(ii) of this section
+     * **shall** be presented for the form of the product as packaged **and for
+     * any other form** of the product." So a second column is not a place to put
+     * one figure; it is a second declaration of the nutrients the first one
+     * declares.
+     *
+     * The engine draws the second-column band as soon as any single nutrient
+     * carries a second amount, which is right — it draws what it was asked for —
+     * and left this rule reporting `FDA_DUAL_COLUMN_FORM_MET` on a panel with one
+     * figure in a column of fourteen. (b)(12)(i)'s mandate satisfied by a
+     * fifteenth of a column.
+     *
+     * Counted off the end-anchored runs on each nutrient row, which is what a
+     * value cell is: one per column. A row with a value in the first column and
+     * none in the second has declared that nutrient for one form only. A row with
+     * neither is a different question — whether the nutrient should be there at
+     * all is `us-food/nutrition-completeness`, under 101.9(c).
+     */
+    // Which column a lone value cell sits in is read off the headings, which are
+    // end-anchored at their own column's right edge. Counting cells alone said
+    // "declares a quantity in the first column only" about a nutrient declared
+    // only in the *second* — a message a user cannot act on, and exactly the kind
+    // of confidently wrong sentence this project treats as worse than silence.
+    const headingXs = textOf(US_FOOD_ELEMENTS.nutritionColumnHeading)
+      .map((primitive) => primitive.xMm)
+      .sort((a, b) => a - b)
+    const secondColumnRightMm = headingXs[headingXs.length - 1]
+
+    const rows = layout.elements.filter((element) =>
+      element.elementId.startsWith(NUTRITION_ROW_PREFIX),
+    )
+    const missing = { first: [] as string[], second: [] as string[] }
+
+    for (const row of rows) {
+      const cells = textOf(row.elementId).filter((primitive) => primitive.anchor === 'end')
+      if (cells.length !== 1) continue
+      const inSecondColumn =
+        secondColumnRightMm !== undefined &&
+        Math.abs(cells[0]!.xMm - secondColumnRightMm) < MEASUREMENT_TOLERANCE_MM
+      if (inSecondColumn) missing.first.push(row.label)
+      else missing.second.push(row.label)
+    }
+
+    const shortRows = [...missing.first, ...missing.second]
+    if (shortRows.length > 0) {
+      const clause = (names: string[], column: string) =>
+        names.length === 0
+          ? ''
+          : `${names.length === 1 ? 'one nutrient declares' : `${names.length} nutrients declare`} ` +
+            `a quantity in the ${column} column only — ${names.join(', ')}`
+      const clauses = [clause(missing.second, 'first'), clause(missing.first, 'second')].filter(
+        (part) => part !== '',
+      )
+
+      findings.push(
+        finding(usFoodDualColumnFormRule, {
+          code: FDA_DUAL_COLUMN_INCOMPLETE,
+          severity: 'violation',
+          message:
+            `The panel carries two columns, but ${clauses.join('; and ')}. ` +
+            '101.9(e)(2) requires the quantitative information for the form as packaged and for ' +
+            'any other form the label declares.',
+          measurement: {
+            actual: `${shortRows.length} of ${rows.length} rows carry one column`,
+            required: 'both columns on every row that declares a quantity',
+          },
+          elementId: US_FOOD_ELEMENTS.nutritionPanel,
+          citation: BOTH_FORMS,
         }),
       )
     }
@@ -172,9 +257,10 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
       passed(
         usFoodDualColumnFormRule,
         FDA_DUAL_COLUMN_FORM_MET,
-        `The panel heads both columns, separates them by a vertical line and gives both sets of ` +
-          'values equal prominence. Whether each heading accurately describes what its column ' +
-          'declares is a question about the food, not about the label, and is not checked here.',
+        'The panel declares every nutrient in both columns, heads them, separates them by a ' +
+          'vertical line and gives both sets of values equal prominence. Whether each heading ' +
+          'accurately describes what its column declares is a question about the food, not about ' +
+          'the label, and is not checked here.',
         US_FOOD_ELEMENTS.nutritionPanel,
       ),
     ]

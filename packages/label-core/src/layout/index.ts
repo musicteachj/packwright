@@ -11,6 +11,7 @@ export { layOutNutritionPanel } from './nutritionPanel'
 export type { NutritionPanelRequest, NutritionPanelResult } from './nutritionPanel'
 
 export { blockingOmissions, omissionsForElement, wasFullyDrawn } from './omissions'
+export { willDrawSecondColumn } from './nutritionPanel'
 export { measureClearSpace } from './clearSpace'
 export type { ClearSpace } from './clearSpace'
 

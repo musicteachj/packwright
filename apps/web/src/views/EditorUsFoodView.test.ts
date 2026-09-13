@@ -554,19 +554,47 @@ describe('the Nutrition Facts displays, from the editor', () => {
     expect(store.findings.map((f) => f.code)).toContain('FDA_NUTRITION_FORMAT_MET')
   })
 
-  it('draws a second column and judges its form', async () => {
+  /** Every second-column box the rail shows, filled at 250 percent of the serving. */
+  const fillSecondColumn = async (wrapper: Awaited<ReturnType<typeof mountFood>>['wrapper']) => {
+    const store = useLabelDocumentStore()
+    const amounts = store.foodData.nutritionFacts!.amounts
+    for (const [id, value] of Object.entries(amounts)) {
+      if (id === 'calories' || value === undefined) continue
+      const field = wrapper.find(`#field-food-nf2-${id}`)
+      if (field.exists()) await field.setValue(String(value * 2.5))
+    }
+    await nextTick()
+  }
+
+  it('reports a second column carrying one figure out of fourteen', async () => {
     const { store, wrapper } = await mountFood()
     await wrapper.find('#field-food-nf-dual').setValue(true)
     await nextTick()
     // The figures have to be typed — there is no "x2" button, because deriving
-    // them would mean this tool authoring part of a regulated statement.
+    // them would mean this tool authoring part of a regulated statement. So a
+    // partly filled column is a state every dual-column label passes through.
     await wrapper.find('#field-food-nf2-total-fat').setValue('7.5')
     await nextTick()
 
     expect(store.foodData.nutritionFacts!.columns!.mode).toBe('dual')
-    expect(store.failures).toEqual([])
     // Drawn, not merely declared — the rules read the layout.
     expect(store.layout!.elements.map((e) => e.elementId)).toContain('food-nutrition-second-column')
+
+    // This test previously asserted `store.failures` was empty here, which is
+    // how a column of fourteen rows carrying one figure passed for compliant.
+    const incomplete = store.failures.find((f) => f.code === 'FDA_DUAL_COLUMN_INCOMPLETE')
+    expect(incomplete, 'one figure is not a second declaration').toBeDefined()
+    expect(incomplete!.citation.reference).toBe('21 CFR 101.9(e)(2)')
+  })
+
+  it('clears a second column once every nutrient carries one', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-dual').setValue(true)
+    await nextTick()
+    await fillSecondColumn(wrapper)
+
+    expect(store.layout!.elements.map((e) => e.elementId)).toContain('food-nutrition-second-column')
+    expect(store.failures.map((f) => f.code)).toEqual([])
     expect(store.findings.map((f) => f.code)).toContain('FDA_DUAL_COLUMN_FORM_MET')
   })
 

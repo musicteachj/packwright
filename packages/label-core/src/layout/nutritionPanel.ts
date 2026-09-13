@@ -69,6 +69,32 @@ function amountOf(facts: UsFoodNutritionFacts, id: NutrientId): number | undefin
   return analysed === undefined ? undefined : roundNutrientAmount(id, analysed)
 }
 
+/**
+ * Whether this panel will actually be drawn with two columns of figures.
+ *
+ * Exported because two places have to agree about it and did not: the engine
+ * sizes the panel — a dual-column panel takes the information panel's full width
+ * where a single-column one takes the illustrations' 2.5 inches — and this module
+ * decides how many columns to draw. The engine keyed its width on
+ * `columns.mode === 'dual'`, the request, while the drawing keys on the figures,
+ * so a dual panel with nothing to put in it was drawn as one column at the width
+ * of two.
+ *
+ * Calories is excluded because the dual branch draws it in its own block above
+ * the rows rather than as one of them. A `secondAmounts.calories` figure is not
+ * drawn at all, and `usFoodEngine` records an omission saying so rather than
+ * letting it disappear.
+ */
+export function willDrawSecondColumn(facts: UsFoodNutritionFacts): boolean {
+  if (facts.columns?.mode !== 'dual') return false
+  return listedIds(facts).some(
+    (id) =>
+      id !== 'calories' &&
+      nutrient(id) !== undefined &&
+      facts.columns?.secondAmounts?.[id] !== undefined,
+  )
+}
+
 function percentOf(facts: UsFoodNutritionFacts, id: NutrientId): number | undefined {
   const stated = facts.declaredPercentDv?.[id]
   if (stated !== undefined) return stated
@@ -765,7 +791,30 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
    * the regulation's own examples — so they are printed as given and never
    * composed here.
    */
-  const dual = facts.columns?.mode === 'dual'
+  /**
+   * Two columns are drawn where there are two columns of figures to draw.
+   *
+   * `columns.mode === 'dual'` is a request, and this used to be read as the
+   * answer. Ticking the editor's checkbox seeds `headings` and `basis` and
+   * reveals a second-column box beside every nutrient — all of them empty until
+   * someone types in them, because the figures cannot be derived without this
+   * tool authoring part of a regulated statement. So the state between ticking
+   * the box and filling it in is both reachable and ordinary, and it produced a
+   * panel with "Per serving" and "Per container" set side by side above a single
+   * column of numbers.
+   *
+   * That is not a cosmetic complaint. (e)(1) requires headings "accurately
+   * describing the amount per serving size ... **that are being declared**", and
+   * a heading over a column that does not exist describes nothing that is being
+   * declared. The opening of (e) says the same thing from the other side — "equal
+   * prominence shall be given to **both sets of values**" presupposes two sets.
+   *
+   * So a panel with nothing to put in a second column is drawn as what it is, a
+   * single-column panel, and `usFoodEngine` records the omission that says a
+   * second column was asked for and not drawn. Source: 21 CFR 101.9(e) and
+   * (e)(1), read from the eCFR on 2026-09-13.
+   */
+  const dual = willDrawSecondColumn(facts)
   const valueColumnMm = dual ? (rightMm - leftMm) * 0.26 : 0
   const columnRightMm = dual ? [rightMm - valueColumnMm - mm(2), rightMm] : [rightMm]
   const columnLeftMm = columnRightMm.map((right) => right - valueColumnMm)
@@ -857,7 +906,22 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       declared.forEach((value, column) => {
         if (value === undefined) return
         if (column === 1) secondColumnDrawn = true
-        const percent = printedPercentDailyValue(id, value)
+        /**
+         * The first column honours a declared percentage; the second derives one.
+         *
+         * This called `printedPercentDailyValue` for both, which ignores
+         * `declaredPercentDv` — so a dual-column panel silently printed the
+         * *correct* percentage while `us-food/nutrition-percent-dv` read the
+         * document and reported the wrong one. The artefact and the finding
+         * contradicted each other, and the mis-declared-percentage defect became
+         * undrawable on every dual-column label: the rule could not be right
+         * about that panel in either direction.
+         *
+         * The second column has no declared equivalent to honour — nothing in
+         * `UsFoodNutritionFacts` states a percentage for it — so it is derived,
+         * and that asymmetry is real rather than an oversight.
+         */
+        const percent = column === 0 ? percentOf(facts, id) : printedPercentDailyValue(id, value)
         // (e)'s "equal prominence" is a requirement, so the second column is set
         // at the first's size unless the label asks for something else.
         const columnPt =
@@ -889,12 +953,22 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
 
   // **Emitted for a column that was drawn, not for one that was asked for.**
   // This read `dual` alone, so a panel declaring `columns: dual` with no second
-  // amounts — which is exactly what the rail's checkbox produces, since it seeds
-  // headings and has no field for the figures — emitted the element, cleared the
-  // form rule and suppressed the engine's "asked for and not drawn" omission. The
-  // comment below already said "drawn"; the condition beside it said otherwise,
-  // which is the third time on this branch that a comment has described code that
-  // does something else.
+  // amounts emitted the element, cleared the form rule and suppressed the
+  // engine's "asked for and not drawn" omission. The comment here already said
+  // "drawn"; the condition beside it said otherwise, which is the third time on
+  // this branch that a comment has described code that does something else.
+  //
+  // It went on to say that state was "exactly what the rail's checkbox produces,
+  // since it seeds headings and has no field for the figures". The rail has had a
+  // box per nutrient since the displays were made reachable from the editor; they
+  // are simply empty until typed in. The state is reachable for a duller reason
+  // than the comment claimed, and a wrong reason recorded confidently is worse
+  // than none — it is the sentence a later reader trusts instead of checking.
+  //
+  // `dual` now means a column was drawn rather than asked for, so this condition
+  // is belt and braces. It is kept because `secondColumnDrawn` is set inside the
+  // row loop and is the direct observation, where `dual` is a prediction made
+  // before the loop runs.
   if (dual && secondColumnDrawn) {
     // The band itself, **independent of the lines beside it**. A rule asks the layout what the
     // panel carries; conflating "there are two columns" with "they are separated"

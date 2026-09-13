@@ -38,11 +38,29 @@ test('draws a single-column vertical panel with its rows aligned', async ({ page
   await label.screenshot({ path: 'e2e/__screenshots__/panel-vertical-single.png' })
 })
 
+/**
+ * Fills every second-column box the rail shows.
+ *
+ * The figures cannot be derived — doing so would mean this tool authoring part of
+ * a regulated statement — so a dual-column panel is only a dual-column panel once
+ * someone has typed fourteen numbers into it.
+ */
+async function fillSecondColumn(page: Page) {
+  const boxes = page.locator('input[id^="field-food-nf2-"]')
+  const count = await boxes.count()
+  expect(count, 'the rail must offer a second-column box per nutrient').toBeGreaterThan(10)
+  for (let index = 0; index < count; index += 1) {
+    await boxes.nth(index).fill('12')
+  }
+}
+
 test('draws the two column headings side by side, not on top of each other', async ({ page }) => {
   await openFoodEditor(page)
 
   await page.check('#field-food-nf-dual')
   await expect(page.locator('#field-food-nf-basis')).toBeVisible()
+  // Headings are drawn for columns that exist, so the column has to exist first.
+  await fillSecondColumn(page)
 
   const label = canvas(page)
   await label.screenshot({ path: 'e2e/__screenshots__/panel-vertical-dual.png' })
@@ -93,6 +111,12 @@ test('reports the second column as not drawn when it has no figures to draw', as
 test('keeps the panel inside the label it is drawn on', async ({ page }) => {
   await openFoodEditor(page)
   await page.check('#field-food-nf-dual')
+  // The case this was written for is the *wide* panel: a dual-column panel takes
+  // the information panel's full width where a single-column one takes the
+  // illustrations' 2.5 inches. Ticking the box alone no longer produces one, so
+  // without filling the column this measured the narrow panel and proved nothing
+  // about the case it exists for.
+  await fillSecondColumn(page)
 
   const label = canvas(page)
   const box = await label.boundingBox()

@@ -8,6 +8,55 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+Phase 6, stage 2b — the dual column, corrected on three counts. Source: 21 CFR 101.9(e), (e)(1), (e)(2) and
+(e)(3), read from the eCFR on 2026-09-13.
+
+- **A second column is drawn where there are figures to put in it.** `columns.mode === 'dual'` is a request
+  and was being read as the answer, so a panel with no second amounts was drawn with both headings above a
+  single column of numbers. (e)(1) requires headings "accurately describing the amount per serving size …
+  **that are being declared**", and a heading over a column that does not exist describes nothing that is
+  being declared; the opening of (e) says it from the other side, since "equal prominence shall be given to
+  **both sets of values**" presupposes two sets. Such a panel is now drawn as the single-column panel it is,
+  and the engine's omission reports the column that was asked for and not drawn.
+- **The first column prints the percentage the label declares.** The dual branch called
+  `printedPercentDailyValue` for both columns, which ignores `declaredPercentDv` — so the panel printed the
+  *correct* percentage while `us-food/nutrition-percent-dv` read the document and reported the wrong one. The
+  artefact and the finding contradicted each other, and the mis-declared-percentage defect was undrawable on
+  every dual-column label: the rule could not be right about that panel in either direction. The second
+  column derives its own, because nothing in `UsFoodNutritionFacts` declares one for it.
+- **`us-food/dual-column-form` reports a column carrying one figure of fourteen** — `FDA_DUAL_COLUMN_INCOMPLETE`
+  under **(e)(2)**, which requires the quantitative information "for the form of the product as packaged **and
+  for any other form**". The engine emits the second-column band as soon as any single nutrient carries a
+  second amount, which is correct, and left the form rule clearing a panel whose second column was a
+  fourteenth full. (b)(12)(i)'s mandate satisfied by one number.
+- **All four dual-column fixtures were themselves that defect.** Each carried `secondAmounts: { 'total-fat':
+  7.5 }` and nothing else, so every fixture proving the dual-column rules work was built on a panel declaring
+  a second form for one nutrient. Each is written to provoke one defect in the *form* of the panel, and a
+  fixture wrong about anything other than its own defect can pass for the wrong reason.
+- **A second-column Calories figure is no longer lost in silence.** The dual branch draws Calories in its own
+  block above the nutrient rows, and that block carries one figure — so `secondAmounts.calories`, which the
+  rail offers a box for, was accepted, stored and dropped, while the new (e)(2) check scanned only nutrient
+  rows and cleared the panel as complete. Whether a dual panel should carry two Calories figures is a question
+  for 101.9(e)(6)(i)'s display, which is an illustration rather than a paragraph and has not been read, so the
+  engine does not invent the drawing — it records the omission.
+- **The engine and the panel now agree about how wide the panel is.** The engine sized it on
+  `columns.mode === 'dual'`, the request, while the drawing decides on the figures — so an unfilled dual
+  request was drawn as a single column at the width of two. Both ask `willDrawSecondColumn`.
+- **An omission that blamed the wrong thing.** Two causes reach "a second column was asked for and not drawn"
+  — a tabular panel the engine cannot draw, and any panel given no figures — and one reason was written for
+  both, citing (e)(6)(ii)'s unbuilt tabular display at a vertical panel that simply had no amounts in it. An
+  omission exists to explain itself, so the wrong explanation is worse than a vague one.
+- **The (e)(2) finding said "first column only" about a nutrient declared only in the second.** It counted
+  value cells per row and never asked which column the survivor was in, pointing the reader at the one column
+  that did carry the figure. The column edges are read off the headings, which are anchored at them.
+- **A comment that had been repeated without being checked.** `nutritionPanel.ts` recorded that a dual panel
+  with no second amounts is "exactly what the rail's checkbox produces, since it seeds headings and has no
+  field for the figures". The rail has had a box per nutrient since the displays were made reachable from the
+  editor. The state is reachable for a duller reason — the boxes start empty — and the wrong reason had been
+  copied into four further places before anyone looked at the rail. Corrected at all five.
+
 ### Added
 
 Phase 6, stage 2a — a browser, at last.
