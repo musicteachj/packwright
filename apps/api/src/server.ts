@@ -6,10 +6,21 @@ import 'dotenv/config'
 
 import { createApp } from './app'
 import { loadEnv } from './env'
+import { resolveWebRoot } from './static'
 
 const env = loadEnv()
-const app = createApp({ enableLogging: env.NODE_ENV !== 'test' })
+const webRoot = resolveWebRoot()
+const app = createApp({ enableLogging: env.NODE_ENV !== 'test', webRoot })
 
 app.listen(env.PORT, () => {
   console.log(`packwright api listening on :${env.PORT} (${env.NODE_ENV})`)
+  // Said out loud because the two modes look identical from the outside until a
+  // request arrives. In production the absence of a client build is the whole
+  // deployment being wrong, and a line in the log is how that gets noticed
+  // before a user does.
+  console.log(
+    webRoot === undefined
+      ? 'no client build found — serving the API only'
+      : `serving the client from ${webRoot}`,
+  )
 })

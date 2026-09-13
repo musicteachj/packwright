@@ -10,6 +10,42 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 6, stage 1 — one artifact, verified by running it.
+
+- **`apps/api` serves `apps/web`'s build.** `npm run build` now produces a single deployable thing: the
+  client is copied into `apps/api/dist/public` and the server serves it from the same origin as the API it
+  calls. This is the one assumption phase 8's deployment rests on — one ECS service rather than two — and
+  confirming it locally cost nothing, where discovering it on a first deploy would not have.
+- **The copy happens after tsup, not before.** `clean: true` empties `dist/` when tsup starts, so a client
+  copied in earlier is deleted by the build that was meant to ship it. `publicDir` takes a single path and
+  the fonts already have it, so the client travels by `onSuccess` instead.
+- **The static root is resolved from a candidate list**, the same shape as `renderPdf.ts`'s `resolveFontDir`
+  and for the same reason: one relative path cannot serve both the source tree and the bundle. Resolving
+  `../../web/dist` at runtime would work from a checkout and find nothing in a container shipping `dist/`
+  alone. `undefined` is an ordinary answer — the API is a working JSON server without a client in front of
+  it, which is what `npm run dev` serves while Vite proxies across.
+- **`createApp` takes the client root rather than finding it.** Resolving inside would make every route test
+  depend on whether `apps/web/dist` happened to exist: `GET /nope` would 404 as JSON on a clean checkout and
+  return the client after a build. `server.ts` decides, tests state it, and `verify-build.sh` exercises the
+  real resolution against the real artifact.
+- **The history fallback declines three things.** `createWebHistory` makes a deep link a real navigation, so
+  `/rules` has to return the client — but not `/api/labels/nope`, which needs its JSON 404 rather than a page
+  of HTML carrying a 200; not a non-GET; and not a path whose last segment has a dot, because answering a
+  missing asset with `index.html` turns a broken reference into a page that half-loads and reports nothing.
+- **What it declines is matched by path segment, not by string prefix**, which the first cut got wrong in
+  both directions at once: `startsWith('/api/')` missed bare `/api`, so the path most likely to be typed by
+  hand came back as the client with a 200 on it, while `startsWith('/health')` would have swallowed any later
+  client route beginning with those letters and 404'd `/health-report` instead of serving the page.
+- **Fingerprinted assets are cached for a year and immutably; the entry point is not.** Vite changes the
+  filename whenever the bytes change, which is the whole point of content hashing and is what makes the long
+  cache safe — serving them at the default `max-age=0` spends a revalidation round trip per asset per load to
+  be told nothing changed. `index.html` names the current bundles, so a stale copy would pin a browser to a
+  deployment that no longer exists.
+- **`verify:build` builds the repository root**, not the api workspace alone — which verified a bundle whose
+  client was whatever an earlier run had left behind, or nothing at all. It now also asserts that `/`, two
+  deep links and the client's own hashed bundle come back, and that the API still 404s as JSON. CI already
+  runs this step, so the single-artifact assumption is checked on every pull request from here on.
+
 Phase 5, stage 6 (in progress) — the dual-column display, drawn and judged.
 
 - **`us-food/dual-column-form` — 101.9(e).** Three of its four requirements are geometry and were
