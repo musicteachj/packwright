@@ -12,3 +12,22 @@ export {
   upcAHriFor,
 } from './upcA'
 export type { DigitalLinkData, UpcALabelData } from './upcA'
+export {
+  DEFAULT_US_FOOD_STOCK,
+  INGREDIENT_THRESHOLD_PERCENTS,
+  US_FOOD_ELEMENTS,
+  US_FOOD_PACKAGINGS,
+  US_FOOD_TYPE_DEFAULT,
+  NUTRITION_ELEMENT_PREFIX,
+  NUTRITION_ROW_PREFIX,
+  nutritionRowElementId,
+} from './usFood'
+export type {
+  IngredientThresholdPercent,
+  UsFoodIngredient,
+  UsFoodLabelData,
+  UsFoodNetQuantity,
+  UsFoodNutritionFacts,
+  UsFoodPackaging,
+  UsFoodResponsibleFirm,
+} from './usFood'

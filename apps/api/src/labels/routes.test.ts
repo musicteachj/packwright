@@ -171,3 +171,437 @@ describe('POST /api/labels/ghs/export', () => {
     expect(response.status).toBe(400)
   })
 })
+
+const postFood = (body: object) => supertest(app()).post('/api/labels/us-food/export').send(body)
+
+const FOOD_BODY = {
+  statementOfIdentity: 'Rolled oats',
+  container: { shape: 'rectangular', widthMm: 120, heightMm: 170 },
+  netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
+  ingredients: [
+    { name: 'whole grain rolled oats', percentByWeight: 97 },
+    { name: 'sugar', percentByWeight: 2 },
+    { name: 'salt', percentByWeight: 1 },
+  ],
+  ingredientThreshold: { percent: 2, count: 1 },
+  responsibleFirm: {
+    name: 'Example Foods Inc',
+    isManufacturer: true,
+    streetAddress: '1 Example Way',
+    city: 'Portland',
+    state: 'OR',
+    zip: '97201',
+  },
+  stock: { widthMm: 120, heightMm: 170, marginMm: 6 },
+}
+
+describe('POST /api/labels/us-food/export', () => {
+  it('exports a PDF sized to the requested stock', async () => {
+    const response = await postFood(FOOD_BODY)
+    expect(response.status).toBe(200)
+    expect(response.headers['content-type']).toBe('application/pdf')
+    expect(response.body.subarray(0, 5).toString()).toBe('%PDF-')
+  })
+
+  it('exports a label whose blanks are findings rather than malformed input', async () => {
+    // The editor's own "Add an ingredient" button writes `{ name: '',
+    // percentByWeight: 0 }`, so a `min(1)` on the name turned Export into a raw
+    // JSON 400 on the one screen a user meets it. Every blank below is reported
+    // by a rule — 101.3(a), 101.4(a)(1), 101.5(a), 101.7(a) and 101.9(d)(3)(ii) —
+    // which is what makes rejecting them the API's mistake rather than its job.
+    const response = await postFood({
+      ...FOOD_BODY,
+      statementOfIdentity: '',
+      netQuantity: { inchPound: '' },
+      ingredients: [...FOOD_BODY.ingredients, { name: '', percentByWeight: 0 }],
+      responsibleFirm: { ...FOOD_BODY.responsibleFirm, name: '' },
+      nutritionFacts: { servingSize: '', amounts: { calories: 150 } },
+    })
+    expect(response.status).toBe(200)
+    expect(response.body.subarray(0, 5).toString()).toBe('%PDF-')
+  })
+
+  it('still refuses a request that is malformed rather than non-compliant', async () => {
+    // The distinction the relaxation turns on. A missing container is not a
+    // label defect a rule could report — it is a request the engine cannot lay
+    // out at all.
+    const { container: _drop, ...withoutContainer } = FOOD_BODY
+    expect((await postFood(withoutContainer)).status).toBe(400)
+  })
+
+  it('accepts a dual-column panel on a tabular display', async () => {
+    // The two axes combine, which is the point of separating them: 101.9(e)(6)(ii)
+    // illustrates exactly this label. A flat `format` enum could not carry it.
+    const response = await postFood({
+      ...FOOD_BODY,
+      nutritionFacts: {
+        servingSize: '1/2 cup (40g)',
+        amounts: { calories: 150 },
+        format: 'tabular',
+        availableSurfaceSqInches: 80,
+        continuousVerticalSpaceInches: 2,
+        columns: { mode: 'dual', basis: 'as-prepared', headings: ['As packaged', 'As prepared'] },
+      },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('carries the second column’s figures through to the export', async () => {
+    // Zod strips unknown keys rather than rejecting them, and the reconciliation
+    // below it rebuilds the object key by key — so a field missing from either was
+    // dropped in silence, and a document previewed with a populated second column
+    // in the browser exported a blank one. That divergence is the single thing
+    // this architecture exists to prevent.
+    const body = {
+      ...FOOD_BODY,
+      nutritionFacts: {
+        servingSize: '1/2 cup (40g)',
+        amounts: { calories: 150, 'total-fat': 3 },
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { 'total-fat': 7.5 },
+          separated: false,
+          secondColumnTypeScale: 0.7,
+        },
+        referenceAmount: { amount: 22, unit: 'g', category: 'Snacks' },
+        packageContent: 55,
+        packagedAndSoldIndividually: true,
+        dualColumnExemption: { variedWeight: true },
+      },
+    }
+    const withColumn = await postFood(body)
+    expect(withColumn.status).toBe(200)
+
+    // Proved by the artefact rather than by the status code. The same document
+    // with the second column's figures removed draws fewer glyphs, so a shorter
+    // PDF is evidence the figures reached the renderer — which is exactly what a
+    // silently stripped field would not produce.
+    const { secondAmounts: _dropped, ...columnsWithoutFigures } = body.nutritionFacts.columns
+    const without = await postFood({
+      ...body,
+      nutritionFacts: { ...body.nutritionFacts, columns: columnsWithoutFigures },
+    })
+    expect(without.status).toBe(200)
+    expect(withColumn.body.length).toBeGreaterThan(without.body.length)
+  })
+
+  it('refuses a column basis the regulation does not name', async () => {
+    // The union comes from `DUAL_COLUMN_BASES`, so the boundary cannot drift from
+    // the paragraphs behind it.
+    const response = await postFood({
+      ...FOOD_BODY,
+      nutritionFacts: {
+        servingSize: '1/2 cup (40g)',
+        amounts: { calories: 150 },
+        columns: { mode: 'dual', basis: 'per-fortnight' },
+      },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('names the download after the food', async () => {
+    const response = await postFood(FOOD_BODY)
+    expect(response.headers['content-disposition']).toContain('Rolled-oats.pdf')
+  })
+
+  it('requires the container, which no label geometry can supply', async () => {
+    // The container selects the 21 CFR 101.7(i) type-size band. Defaulting it
+    // would invent the requirement every finding on the label is measured
+    // against — the same reason the GHS route refuses to default a capacity.
+    const { container: _omitted, ...withoutContainer } = FOOD_BODY
+    const response = await postFood(withoutContainer)
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('container')
+  })
+
+  it('refuses a container that describes two shapes at once', async () => {
+    // A circumference on a rectangular panel is not a container with a spare
+    // field; it is two containers. The discriminated union rejects it here
+    // rather than letting the engine pick one.
+    const response = await postFood({
+      ...FOOD_BODY,
+      container: { shape: 'rectangular', widthMm: 120, circumferenceMm: 300 },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('accepts a cylinder, whose panel is 40 percent of height x circumference', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      container: { shape: 'cylindrical', heightMm: 200, circumferenceMm: 300 },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('accepts the obvious-panel exception on an otherwise shaped container', async () => {
+    // 21 CFR 101.1(c) — the top of a triangular or circular package of cheese.
+    const response = await postFood({
+      ...FOOD_BODY,
+      container: {
+        shape: 'other',
+        totalSurfaceAreaSqMm: 40_000,
+        obviousPanelAreaSqMm: 20_000,
+      },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('exports a non-compliant label rather than refusing it', async () => {
+    // Type well under the 3/16 inch this panel demands, and the declaration in
+    // the wrong third of it. Both are findings the client has already shown the
+    // user; neither is a malformed request.
+    const response = await postFood({
+      ...FOOD_BODY,
+      netQuantityFontSizeMm: 2,
+      netQuantityAnchor: 'top-centre',
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('ships a label whose fraction allowance is unmodelled, since the label is real', async () => {
+    // `usFoodEngine` records a detail-scope omission for 21 CFR 101.7(h)(3).
+    // Detail omissions do not block, the way the GHS pictogram glyphs do not.
+    const response = await postFood({
+      ...FOOD_BODY,
+      netQuantity: { inchPound: 'NET WT 1½ LB', metric: '(680 g)' },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('refuses a container with no area, which describes no panel', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      container: { shape: 'rectangular', widthMm: 120, heightMm: 0 },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('rejects a packaging value it does not know', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      netQuantity: { inchPound: 'NET WT 12 OZ', packaging: 'mail-order' },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('keeps an absent metric declaration absent rather than undefined', async () => {
+    // `exactOptionalPropertyTypes` draws a distinction Zod does not, and the
+    // key-by-key reconciliation exists to preserve it. If it broke, the layout
+    // would draw "NET WT 12 OZ undefined".
+    const response = await postFood({
+      ...FOOD_BODY,
+      netQuantity: { inchPound: 'NET WT 12 OZ' },
+    })
+    expect(response.status).toBe(200)
+  })
+})
+
+describe('the US food route on stage 2 content', () => {
+  it('rejects a quantifying statement at a figure 101.4(a)(2) does not permit', async () => {
+    // The permitted set is closed. A fifth figure is a compliance defect rather
+    // than a drawing this engine should make, so it is refused at the boundary.
+    const response = await postFood({ ...FOOD_BODY, ingredientThreshold: { percent: 3, count: 1 } })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('ingredientThreshold')
+  })
+
+  it('accepts each figure it does permit', async () => {
+    for (const percent of [2, 1.5, 1, 0.5]) {
+      const response = await postFood({ ...FOOD_BODY, ingredientThreshold: { percent, count: 1 } })
+      expect(response.status, `${percent} percent was rejected`).toBe(200)
+    }
+  })
+
+  it('exports a label whose ingredients run out of order rather than refusing it', async () => {
+    // A finding, not a malformed request — the same call the route already makes
+    // about an undersized net quantity.
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [
+        { name: 'salt', percentByWeight: 1 },
+        { name: 'whole grain rolled oats', percentByWeight: 97 },
+      ],
+      ingredientThreshold: { percent: 2, count: 0 },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('keeps an absent qualifying phrase absent rather than undefined', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      responsibleFirm: {
+        name: 'Example Foods Inc',
+        isManufacturer: true,
+        city: 'Portland',
+        state: 'OR',
+      },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('reports an ingredient with no name instead of rejecting it', async () => {
+    // This asserted a 400 until 101.4(a)(1) had a rule behind it. Rejecting the
+    // document was the schema answering a regulatory question in the one place a
+    // user cannot see a citation — and it was reachable from the editor's own
+    // "Add an ingredient" button, which writes exactly this entry.
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [{ name: '', percentByWeight: 50 }],
+    })
+    expect(response.status).toBe(200)
+  })
+})
+
+describe('the US food route bounds the quantifying statement', () => {
+  it('refuses a count covering more entries than the list has', async () => {
+    // Unbounded, this drew a leading empty sentence and left the order rule with
+    // nothing to examine, which it then reported as a pass.
+    const response = await postFood({ ...FOOD_BODY, ingredientThreshold: { percent: 2, count: 9 } })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('more entries than')
+  })
+
+  it('accepts a count equal to the list length', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [{ name: 'salt', percentByWeight: 1 }],
+      ingredientThreshold: { percent: 2, count: 1 },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('refuses to export a label whose content runs off the stock entirely', async () => {
+    // An element-scope omission, the same gate that stops a UPC-A with no symbol.
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: Array.from({ length: 400 }, (_, i) => ({
+        name: `ingredient number ${i}`,
+        percentByWeight: 100 - i * 0.1,
+      })),
+      ingredientThreshold: { percent: 2, count: 0 },
+    })
+    expect(response.status).toBe(422)
+    expect(JSON.stringify(response.body)).toContain('none of it is printed')
+  })
+})
+
+describe('the US food route on allergens', () => {
+  it('rejects an allergen id the Act does not define', async () => {
+    // "shellfish" is not one of the nine; §201(qq)(1) says "Crustacean
+    // shellfish". An id one character off used to be the shape of defect that
+    // silently declared nothing and reported a clean check.
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [{ name: 'shrimp paste', percentByWeight: 100, allergen: 'shellfish' }],
+      ingredientThreshold: { percent: 2, count: 0 },
+    })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('allergen')
+  })
+
+  it('accepts every id it does define', async () => {
+    for (const allergen of [
+      'milk',
+      'egg',
+      'fish',
+      'crustacean-shellfish',
+      'tree-nuts',
+      'wheat',
+      'peanuts',
+      'soybeans',
+      'sesame',
+    ]) {
+      const response = await postFood({
+        ...FOOD_BODY,
+        ingredients: [
+          { name: 'an ingredient', percentByWeight: 100, allergen, allergenSpecificType: 'cod' },
+        ],
+        ingredientThreshold: { percent: 2, count: 0 },
+        containsStatement: [allergen],
+      })
+      expect(response.status, `${allergen} was rejected`).toBe(200)
+    }
+  })
+
+  it('exports a label with an undeclared allergen rather than refusing it', async () => {
+    const response = await postFood({
+      ...FOOD_BODY,
+      ingredients: [{ name: 'whey', percentByWeight: 100, allergen: 'milk' }],
+      ingredientThreshold: { percent: 2, count: 0 },
+    })
+    expect(response.status).toBe(200)
+  })
+})
+
+describe('the US food route on the nutrition label', () => {
+  const PANEL = {
+    servingSize: '1/2 cup (40g)',
+    servingsPerContainer: 8,
+    amounts: {
+      calories: 150,
+      'total-fat': 3,
+      'saturated-fat': 0.5,
+      'trans-fat': 0,
+      cholesterol: 0,
+      sodium: 0,
+      'total-carbohydrate': 27,
+      'dietary-fiber': 4,
+      'total-sugars': 1,
+      'added-sugars': 0,
+      protein: 5,
+      'vitamin-d': 2,
+      calcium: 260,
+      iron: 8,
+      potassium: 235,
+    },
+  }
+
+  it('accepts a complete panel', async () => {
+    expect((await postFood({ ...FOOD_BODY, nutritionFacts: PANEL })).status).toBe(200)
+  })
+
+  it('rejects a nutrient id 101.9(c) does not name', async () => {
+    // "vitamin-b12" is in the (c)(8)(iv) table but is not one of the four
+    // mandatory ones this engine carries. Accepted silently it would be dropped,
+    // and the completeness rule would then report a nutrient missing for a
+    // reason that is really a typo.
+    const response = await postFood({
+      ...FOOD_BODY,
+      nutritionFacts: { ...PANEL, amounts: { ...PANEL.amounts, 'vitamin-b12': 2 } },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('requires a serving size, which no geometry can supply', async () => {
+    const { servingSize: _omitted, ...withoutServing } = PANEL
+    const response = await postFood({ ...FOOD_BODY, nutritionFacts: withoutServing })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('servingSize')
+  })
+
+  it('accepts a panel that omits a nutrient, so the rules can report it', async () => {
+    // Missing potassium is a finding, not a malformed request. Zod 4 makes a
+    // record over an enum key exhaustive, so this was a 400 until the schema
+    // said `partialRecord` — the boundary refusing the very label the rule set
+    // exists to judge.
+    const { potassium: _dropped, ...amounts } = PANEL.amounts
+    const response = await postFood({ ...FOOD_BODY, nutritionFacts: { ...PANEL, amounts } })
+    expect(response.status).toBe(200)
+  })
+
+  it('exports a panel that rounds wrongly rather than refusing it', async () => {
+    // 163 mg of sodium rounds to 160 under 101.9(c)(4). Declaring 165 is a
+    // finding the client has already shown the user, not a malformed request.
+    const response = await postFood({
+      ...FOOD_BODY,
+      nutritionFacts: {
+        ...PANEL,
+        amounts: { ...PANEL.amounts, sodium: 163 },
+        declaredAmounts: { sodium: 165 },
+      },
+    })
+    expect(response.status).toBe(200)
+  })
+})

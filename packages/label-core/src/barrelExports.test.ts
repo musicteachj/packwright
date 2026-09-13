@@ -12,6 +12,8 @@ import * as clearSpace from './layout/clearSpace'
 import * as layoutOmissions from './layout/omissions'
 import * as engine from './layout/engine'
 import * as ghsEngine from './layout/ghsEngine'
+import * as nutritionPanel from './layout/nutritionPanel'
+import * as usFoodEngine from './layout/usFoodEngine'
 import * as layoutBarrel from './layout/index'
 import * as renderBarrel from './render/index'
 import * as toPDF from './render/toPDF'
@@ -29,6 +31,23 @@ import * as ghsPictogramSetRule from './rules/ghs/pictogramSet'
 import * as ghsPictogramSizeRule from './rules/ghs/pictogramSize'
 import * as ghsSignalWordRule from './rules/ghs/signalWord'
 import * as ghsSmallContainerRule from './rules/ghs/smallContainer'
+import * as usFoodAllergenRule from './rules/usFood/allergens'
+import * as usFoodContainsStatementTypeRule from './rules/usFood/containsStatementType'
+import * as usFoodIngredientListRule from './rules/usFood/ingredientList'
+import * as usFoodInformationPanelTypeSizeRule from './rules/usFood/informationPanelTypeSize'
+import * as usFoodNetQuantityDualDeclarationRule from './rules/usFood/netQuantityDualDeclaration'
+import * as usFoodNutritionFactsRule from './rules/usFood/nutritionFacts'
+import * as usFoodNutritionFormatRule from './rules/usFood/nutritionFormat'
+import * as usFoodNutritionTypeSizeRule from './rules/usFood/nutritionTypeSize'
+import * as usFoodNetQuantityPlacementRule from './rules/usFood/netQuantityPlacement'
+import * as usFoodNetQuantityPresentRule from './rules/usFood/netQuantityPresent'
+import * as usFoodNetQuantitySeparationRule from './rules/usFood/netQuantitySeparation'
+import * as usFoodNetQuantityTypeSizeRule from './rules/usFood/netQuantityTypeSize'
+import * as usFoodResponsibleFirmRule from './rules/usFood/responsibleFirm'
+import * as usFoodDualColumnRule from './rules/usFood/dualColumn'
+import * as usFoodDualColumnFormRule from './rules/usFood/dualColumnForm'
+import * as usFoodStatementOfIdentityRule from './rules/usFood/statementOfIdentity'
+import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES } from './rules/registry'
 import * as findingBuilders from './rules/finding'
 import * as rulesBarrel from './rules/index'
 import * as registry from './rules/registry'
@@ -36,6 +55,11 @@ import * as ruleTypes from './rules/types'
 import * as constraints from './symbology/constraints'
 import * as symbologyBarrel from './symbology/index'
 import * as layOutSymbol from './symbology/layOutSymbol'
+import * as fdaBarrel from './fda/index'
+import * as fdaAllergens from './fda/allergens'
+import * as fdaNutrients from './fda/nutrients'
+import * as fdaNutritionPanel from './fda/nutritionPanel'
+import * as fdaNutritionFormats from './fda/nutritionFormats'
 import * as ghsBarrel from './ghs/index'
 import * as ghsClassification from './ghs/classification'
 import * as ghsLabelDimensions from './ghs/labelDimensions'
@@ -50,6 +74,7 @@ import * as filename from './templates/filename'
 import * as ghsTemplate from './templates/ghs'
 import * as stock from './templates/stock'
 import * as upcA from './templates/upcA'
+import * as usFoodTemplate from './templates/usFood'
 
 /**
  * Every public symbol must be reachable from its module's barrel.
@@ -107,6 +132,8 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['omissions.ts', layoutOmissions],
       ['engine.ts', engine],
       ['ghsEngine.ts', ghsEngine],
+      ['usFoodEngine.ts', usFoodEngine],
+      ['nutritionPanel.ts', nutritionPanel],
     ],
   ],
   [
@@ -123,6 +150,16 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     [
       ['constraints.ts', constraints],
       ['layOutSymbol.ts', layOutSymbol],
+    ],
+  ],
+  [
+    'fda',
+    fdaBarrel,
+    [
+      ['allergens.ts', fdaAllergens],
+      ['nutrients.ts', fdaNutrients],
+      ['nutritionPanel.ts', fdaNutritionPanel],
+      ['nutritionFormats.ts', fdaNutritionFormats],
     ],
   ],
   [
@@ -145,6 +182,22 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['ghs/pictogramSize.ts', ghsPictogramSizeRule],
       ['ghs/signalWord.ts', ghsSignalWordRule],
       ['ghs/smallContainer.ts', ghsSmallContainerRule],
+      ['usFood/netQuantityDualDeclaration.ts', usFoodNetQuantityDualDeclarationRule],
+      ['usFood/netQuantityPlacement.ts', usFoodNetQuantityPlacementRule],
+      ['usFood/netQuantityPresent.ts', usFoodNetQuantityPresentRule],
+      ['usFood/netQuantitySeparation.ts', usFoodNetQuantitySeparationRule],
+      ['usFood/netQuantityTypeSize.ts', usFoodNetQuantityTypeSizeRule],
+      ['usFood/allergens.ts', usFoodAllergenRule],
+      ['usFood/containsStatementType.ts', usFoodContainsStatementTypeRule],
+      ['usFood/ingredientList.ts', usFoodIngredientListRule],
+      ['usFood/nutritionFacts.ts', usFoodNutritionFactsRule],
+      ['usFood/nutritionTypeSize.ts', usFoodNutritionTypeSizeRule],
+      ['usFood/nutritionFormat.ts', usFoodNutritionFormatRule],
+      ['usFood/informationPanelTypeSize.ts', usFoodInformationPanelTypeSizeRule],
+      ['usFood/responsibleFirm.ts', usFoodResponsibleFirmRule],
+      ['usFood/dualColumn.ts', usFoodDualColumnRule],
+      ['usFood/dualColumnForm.ts', usFoodDualColumnFormRule],
+      ['usFood/statementOfIdentity.ts', usFoodStatementOfIdentityRule],
     ],
   ],
   [
@@ -174,6 +227,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['ghs.ts', ghsTemplate],
       ['stock.ts', stock],
       ['upcA.ts', upcA],
+      ['usFood.ts', usFoodTemplate],
     ],
   ],
 ]
@@ -194,4 +248,22 @@ describe('barrel exports', () => {
       expect(missing).toEqual([])
     },
   )
+
+  it('lists a module for every rule the registries run', () => {
+    // The table above can only check what it lists, so a rule module left out of
+    // it is unguarded precisely because it is missing — which is how
+    // `usFood/statementOfIdentity.ts` shipped outside the invariant while every
+    // other rule module sat inside it. Driven from the registries instead, so a
+    // new rule cannot be registered without being covered here.
+    const listed = MODULES.flatMap(([, , members]) => members.map(([, module]) => module))
+    const covered = new Set(
+      listed.flatMap((module) => Object.values(module as Record<string, unknown>)),
+    )
+    const uncovered = [...GS1_RETAIL_RULES, ...GHS_RULES, ...US_FOOD_RULES]
+      .filter((rule) => !covered.has(rule))
+      .map((rule) => rule.id)
+      .sort()
+
+    expect(uncovered, 'these rules are in no module the barrel test checks').toEqual([])
+  })
 })

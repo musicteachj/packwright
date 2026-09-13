@@ -15,10 +15,12 @@
 import {
   DEFAULT_GHS_STOCK,
   DEFAULT_UPC_A_STOCK,
+  DEFAULT_US_FOOD_STOCK,
   LayoutError,
   compareSeverity,
   layOutGhsLabel,
   layOutUpcALabel,
+  layOutUsFoodLabel,
   mm,
   runRules,
   type ElementId,
@@ -28,6 +30,7 @@ import {
   type ResolvedLayout,
   type Severity,
   type UpcALabelData,
+  type UsFoodLabelData,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import { defineStore } from 'pinia'
@@ -55,6 +58,67 @@ const STARTING_GHS: GhsLabelData = {
   supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way, Leeds' },
 }
 
+/**
+ * A US food label that resolves, and that complies.
+ *
+ * It states no `netQuantityFontSizeMm`, so the engine derives the em that meets
+ * 21 CFR 101.7(i) for this panel — which means the editor opens on a label the
+ * rules pass, and shrinking the type in the form is what makes it fail. The
+ * container matches the stock because a rectangular carton's front *is* its
+ * principal display panel; changing the shape is how the other two branches of
+ * 101.1 get exercised.
+ */
+const STARTING_FOOD: UsFoodLabelData = {
+  statementOfIdentity: 'Oat and almond granola',
+  container: { shape: 'rectangular', widthMm: 120, heightMm: 240 },
+  netQuantity: { inchPound: 'NET WT 12 OZ', metric: '(340 g)' },
+  // Oats are not wheat. The editor opens on this label, so a false allergen
+  // declaration here would be the first thing a user learns from the tool.
+  ingredients: [
+    { name: 'whole grain rolled oats', percentByWeight: 90 },
+    {
+      name: 'almonds',
+      percentByWeight: 7,
+      allergen: 'tree-nuts',
+      allergenSpecificType: 'almonds',
+      declareInline: true,
+    },
+    { name: 'sugar', percentByWeight: 2 },
+    { name: 'salt', percentByWeight: 1 },
+  ],
+  ingredientThreshold: { percent: 2, count: 2 },
+  containsStatement: ['tree-nuts'],
+  nutritionFacts: {
+    servingSize: '1/2 cup (40g)',
+    servingsPerContainer: 8,
+    amounts: {
+      calories: 150,
+      'total-fat': 3,
+      'saturated-fat': 0.5,
+      'trans-fat': 0,
+      cholesterol: 0,
+      sodium: 0,
+      'total-carbohydrate': 27,
+      'dietary-fiber': 4,
+      'total-sugars': 1,
+      'added-sugars': 0,
+      protein: 5,
+      'vitamin-d': 2,
+      calcium: 260,
+      iron: 8,
+      potassium: 235,
+    },
+  },
+  responsibleFirm: {
+    name: 'Example Foods Inc',
+    isManufacturer: true,
+    streetAddress: '1 Example Way',
+    city: 'Portland',
+    state: 'OR',
+    zip: '97201',
+  },
+}
+
 export const useLabelDocumentStore = defineStore('labelDocument', () => {
   /**
    * Which label type the editor is showing.
@@ -63,12 +127,36 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    * switching type does not discard what the other was holding — and so the
    * discriminated `runRules` context can be built without a cast.
    */
-  const labelType = ref<'gs1-retail' | 'ghs-chemical'>('gs1-retail')
+  const labelType = ref<'gs1-retail' | 'ghs-chemical' | 'us-food'>('gs1-retail')
 
   const data = reactive<UpcALabelData>({ gtin: STARTING_GTIN })
   const stock = reactive<LabelStock>({ ...DEFAULT_UPC_A_STOCK })
   const ghsData = reactive<GhsLabelData>({ ...STARTING_GHS })
   const ghsStock = reactive<LabelStock>({ ...DEFAULT_GHS_STOCK })
+  const foodData = reactive<UsFoodLabelData>({
+    ...STARTING_FOOD,
+    container: { ...STARTING_FOOD.container },
+    netQuantity: { ...STARTING_FOOD.netQuantity },
+    ingredients: (STARTING_FOOD.ingredients ?? []).map((i) => ({ ...i })),
+    ...(STARTING_FOOD.ingredientThreshold === undefined
+      ? {}
+      : { ingredientThreshold: { ...STARTING_FOOD.ingredientThreshold } }),
+    ...(STARTING_FOOD.nutritionFacts === undefined
+      ? {}
+      : {
+          nutritionFacts: {
+            ...STARTING_FOOD.nutritionFacts,
+            amounts: { ...STARTING_FOOD.nutritionFacts.amounts },
+          },
+        }),
+    ...(STARTING_FOOD.containsStatement === undefined
+      ? {}
+      : { containsStatement: [...STARTING_FOOD.containsStatement] }),
+    ...(STARTING_FOOD.responsibleFirm === undefined
+      ? {}
+      : { responsibleFirm: { ...STARTING_FOOD.responsibleFirm } }),
+  })
+  const foodStock = reactive<LabelStock>({ ...DEFAULT_US_FOOD_STOCK })
 
   /**
    * The element a finding or a form field is currently pointing at.
@@ -92,7 +180,9 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
       const layout =
         labelType.value === 'gs1-retail'
           ? layOutUpcALabel(bwip as never, { data, stock })
-          : layOutGhsLabel({ data: ghsData, stock: ghsStock })
+          : labelType.value === 'ghs-chemical'
+            ? layOutGhsLabel({ data: ghsData, stock: ghsStock })
+            : layOutUsFoodLabel({ data: foodData, stock: foodStock })
       return { layout, error: null }
     } catch (error) {
       if (error instanceof LayoutError) return { layout: null, error: error.message }
@@ -106,21 +196,39 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   /**
    * Narrowed on `labelType` rather than cast, matching how `runRules` dispatches.
    *
-   * A GHS label currently produces no findings, because no GHS rule has shipped.
-   * The rail already distinguishes "no check ran" from "everything passed", so
-   * an empty list reads correctly rather than as a clean bill of health.
+   * All three label types have rules now. The rail still distinguishes "no check
+   * ran" from "everything passed", because a rule that declines returns nothing
+   * and an empty list must not read as a clean bill of health.
    */
   const findings = computed<Finding[]>(() => {
     const resolvedLayout = layout.value
     if (!resolvedLayout) return []
-    return labelType.value === 'gs1-retail'
-      ? runRules({ labelType: 'gs1-retail', data, stock, layout: resolvedLayout })
-      : runRules({
+    switch (labelType.value) {
+      case 'gs1-retail':
+        return runRules({ labelType: 'gs1-retail', data, stock, layout: resolvedLayout })
+      case 'ghs-chemical':
+        return runRules({
           labelType: 'ghs-chemical',
           data: ghsData,
           stock: ghsStock,
           layout: resolvedLayout,
         })
+      case 'us-food':
+        return runRules({
+          labelType: 'us-food',
+          data: foodData,
+          stock: foodStock,
+          layout: resolvedLayout,
+        })
+      default: {
+        // The same exhaustiveness guard `runRules` uses. The lint rule cannot
+        // see that the switch covers the union, and a fourth label type should
+        // fail to compile here rather than return `undefined` to a rail that
+        // would render it as "everything passed".
+        const unreachable: never = labelType.value
+        return unreachable
+      }
+    }
   })
 
   /** Most severe first; passes last, where the rail collapses them. */
@@ -182,6 +290,8 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     stock,
     ghsData,
     ghsStock,
+    foodData,
+    foodStock,
     selectedElementId,
     layout,
     layoutError,

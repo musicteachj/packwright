@@ -18,6 +18,7 @@ import {
   ANCHORS,
   DEFAULT_GHS_STOCK,
   DEFAULT_UPC_A_STOCK,
+  DEFAULT_US_FOOD_STOCK,
   GHS_PICTOGRAM_CODES,
   GHS_REGIMES,
   HAZARD_CLASS_IDS,
@@ -28,13 +29,26 @@ import {
   blockingOmissions,
   labelFilename,
   getSymbologyConstraints,
+  INGREDIENT_THRESHOLD_PERCENTS,
+  DUAL_COLUMN_BASES,
+  NUTRITION_COLUMN_MODES,
+  NUTRITION_FORMATS,
+  MAJOR_FOOD_ALLERGEN_IDS,
+  NUTRIENT_IDS,
+  US_FOOD_PACKAGINGS,
   layOutGhsLabel,
   layOutUpcALabel,
+  layOutUsFoodLabel,
   type ArtworkBlock,
   type DigitalLinkData,
   type GhsLabelData,
   type GhsSupplier,
   type UpcALabelData,
+  type UsFoodLabelData,
+  type UsFoodNetQuantity,
+  type UsFoodIngredient,
+  type UsFoodNutritionFacts,
+  type UsFoodResponsibleFirm,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import { Router, type Request, type Response } from 'express'
@@ -185,6 +199,327 @@ function toSupplier(supplier: z.infer<typeof GhsSupplierSchema>): GhsSupplier {
   }
 }
 
+/**
+ * The container, as a discriminated union matching `geometry/pdp`'s own.
+ *
+ * Three shapes with different dimensions rather than one object with everything
+ * optional: 21 CFR 101.1 computes a different area for each, and a request
+ * carrying a circumference *and* a total surface area describes two containers.
+ * Zod's discriminated union rejects that at the boundary rather than letting the
+ * engine pick.
+ */
+const ContainerSchema = z.discriminatedUnion('shape', [
+  z.object({
+    shape: z.literal('rectangular'),
+    widthMm: z.number().positive(),
+    heightMm: z.number().positive(),
+  }),
+  z.object({
+    shape: z.literal('cylindrical'),
+    heightMm: z.number().positive(),
+    circumferenceMm: z.number().positive(),
+  }),
+  z.object({
+    shape: z.literal('other'),
+    totalSurfaceAreaSqMm: z.number().positive(),
+    obviousPanelAreaSqMm: z.number().positive().optional(),
+  }),
+])
+
+/**
+ * **A blank here is a compliance finding, not a malformed request.**
+ *
+ * These five fields were `z.string().min(1)`, which made the API reject label
+ * documents the engine is built to draw and the rules to report — the editor's
+ * own "Add an ingredient" button writes an entry with an empty name, so clicking
+ * it turned Export into a raw-JSON 400. A `min(1)` standing in for a rule is a
+ * schema deciding a regulatory question, and it decides it in the one place a
+ * user cannot see a citation.
+ *
+ * Relaxed only once each had a rule behind it. Before this stage a blank
+ * `statementOfIdentity`, ingredient name or `servingSize` was reported by
+ * *nothing*, so relaxing them then would have traded a visible 400 for a silent
+ * pass, which is the worse of the two failures by a long way. The GS1 and GHS
+ * `min(1)`s stay: a blank `DigitalLink.domain` or `Artwork.text` is a malformed
+ * request rather than a non-compliant label, and the schema is the right place
+ * for those.
+ */
+const NON_COMPLIANT_BUT_WELL_FORMED = z.string()
+
+const NetQuantitySchema = z.object({
+  inchPound: NON_COMPLIANT_BUT_WELL_FORMED,
+  metric: z.string().optional(),
+  packaging: z.enum(US_FOOD_PACKAGINGS).optional(),
+})
+
+const IngredientSchema = z.object({
+  name: NON_COMPLIANT_BUT_WELL_FORMED,
+  percentByWeight: z.number().min(0).max(100),
+  // Derived from label-core's own list rather than restated. An allergen id one
+  // character off would be discarded silently and the label would declare
+  // nothing while reporting a clean allergen check — the exact false clearance
+  // the GHS hazard-class enum was tightened for.
+  allergen: z.enum(MAJOR_FOOD_ALLERGEN_IDS).optional(),
+  allergenSpecificType: z.string().optional(),
+  declareInline: z.boolean().optional(),
+})
+
+const ResponsibleFirmSchema = z.object({
+  name: NON_COMPLIANT_BUT_WELL_FORMED,
+  isManufacturer: z.boolean(),
+  qualifyingPhrase: z.string().optional(),
+  streetAddress: z.string().optional(),
+  streetAddressInDirectory: z.boolean().optional(),
+  city: z.string(),
+  state: z.string(),
+  zip: z.string().optional(),
+})
+
+/**
+ * The same key-by-key reconciliation the other nested objects get.
+ *
+ * Zod infers an optional key as `T | undefined`, and `exactOptionalPropertyTypes`
+ * distinguishes "absent" from "present and undefined" — so the object is rebuilt
+ * rather than spread.
+ */
+function toColumns(
+  columns: NonNullable<z.infer<typeof NutritionFactsSchema>['columns']>,
+): NonNullable<UsFoodNutritionFacts['columns']> {
+  return {
+    mode: columns.mode,
+    ...(columns.basis === undefined ? {} : { basis: columns.basis }),
+    ...(columns.headings === undefined ? {} : { headings: columns.headings }),
+    ...(columns.secondAmounts === undefined ? {} : { secondAmounts: columns.secondAmounts }),
+    ...(columns.separated === undefined ? {} : { separated: columns.separated }),
+    ...(columns.secondColumnTypeScale === undefined
+      ? {}
+      : { secondColumnTypeScale: columns.secondColumnTypeScale }),
+  }
+}
+
+/** The same key-by-key reconciliation the other nested objects get. */
+function toIngredient(ingredient: z.infer<typeof IngredientSchema>): UsFoodIngredient {
+  return {
+    name: ingredient.name,
+    percentByWeight: ingredient.percentByWeight,
+    ...(ingredient.allergen === undefined ? {} : { allergen: ingredient.allergen }),
+    ...(ingredient.allergenSpecificType === undefined
+      ? {}
+      : { allergenSpecificType: ingredient.allergenSpecificType }),
+    ...(ingredient.declareInline === undefined ? {} : { declareInline: ingredient.declareInline }),
+  }
+}
+
+/** The same key-by-key reconciliation the other nested objects get. */
+function toNutritionFacts(panel: z.infer<typeof NutritionFactsSchema>): UsFoodNutritionFacts {
+  return {
+    servingSize: panel.servingSize,
+    amounts: panel.amounts,
+    ...(panel.servingsPerContainer === undefined
+      ? {}
+      : { servingsPerContainer: panel.servingsPerContainer }),
+    ...(panel.declaredAmounts === undefined ? {} : { declaredAmounts: panel.declaredAmounts }),
+    ...(panel.declaredPercentDv === undefined
+      ? {}
+      : { declaredPercentDv: panel.declaredPercentDv }),
+    ...(panel.order === undefined ? {} : { order: panel.order }),
+    ...(panel.typeScale === undefined ? {} : { typeScale: panel.typeScale }),
+    ...(panel.format === undefined ? {} : { format: panel.format }),
+    ...(panel.columns === undefined ? {} : { columns: toColumns(panel.columns) }),
+    ...(panel.availableSurfaceSqInches === undefined
+      ? {}
+      : { availableSurfaceSqInches: panel.availableSurfaceSqInches }),
+    ...(panel.cannotAccommodateVertical === undefined
+      ? {}
+      : { cannotAccommodateVertical: panel.cannotAccommodateVertical }),
+    ...(panel.cannotAccommodateTabular === undefined
+      ? {}
+      : { cannotAccommodateTabular: panel.cannotAccommodateTabular }),
+    ...(panel.continuousVerticalSpaceInches === undefined
+      ? {}
+      : { continuousVerticalSpaceInches: panel.continuousVerticalSpaceInches }),
+    ...(panel.referenceAmount === undefined ? {} : { referenceAmount: panel.referenceAmount }),
+    ...(panel.packageContent === undefined ? {} : { packageContent: panel.packageContent }),
+    ...(panel.unitContent === undefined ? {} : { unitContent: panel.unitContent }),
+    ...(panel.packagedAndSoldIndividually === undefined
+      ? {}
+      : { packagedAndSoldIndividually: panel.packagedAndSoldIndividually }),
+    ...(panel.dualColumnExemption === undefined
+      ? {}
+      : {
+          dualColumnExemption: {
+            ...(panel.dualColumnExemption.rawCommodityVoluntary === undefined
+              ? {}
+              : { rawCommodityVoluntary: panel.dualColumnExemption.rawCommodityVoluntary }),
+            ...(panel.dualColumnExemption.variedWeight === undefined
+              ? {}
+              : { variedWeight: panel.dualColumnExemption.variedWeight }),
+          },
+        }),
+  }
+}
+
+/** The same key-by-key reconciliation the other nested objects get. */
+function toResponsibleFirm(firm: z.infer<typeof ResponsibleFirmSchema>): UsFoodResponsibleFirm {
+  return {
+    name: firm.name,
+    isManufacturer: firm.isManufacturer,
+    city: firm.city,
+    state: firm.state,
+    ...(firm.qualifyingPhrase === undefined ? {} : { qualifyingPhrase: firm.qualifyingPhrase }),
+    ...(firm.streetAddress === undefined ? {} : { streetAddress: firm.streetAddress }),
+    ...(firm.streetAddressInDirectory === undefined
+      ? {}
+      : { streetAddressInDirectory: firm.streetAddressInDirectory }),
+    ...(firm.zip === undefined ? {} : { zip: firm.zip }),
+  }
+}
+
+/**
+ * Amounts keyed by nutrient id, with the ids derived from label-core's own list.
+ * A key one character off would be dropped silently and the completeness rule
+ * would then report the nutrient missing — a confusing finding produced by a
+ * typo rather than by the label.
+ */
+const NutrientAmounts = z.partialRecord(z.enum(NUTRIENT_IDS), z.number()).optional()
+
+const NutritionFactsSchema = z.object({
+  servingSize: NON_COMPLIANT_BUT_WELL_FORMED,
+  servingsPerContainer: z.number().positive().optional(),
+  // `partialRecord`, not `record`. Zod 4 makes a record over an enum key
+  // **exhaustive**, so `z.record` here demanded all fifteen nutrients and
+  // rejected a panel declaring fourteen with a 400 — which is a compliance
+  // finding the rules exist to report, not a malformed request. The same
+  // mistake on `declaredAmounts` rejected any single-nutrient override.
+  amounts: z.partialRecord(z.enum(NUTRIENT_IDS), z.number()),
+  declaredAmounts: NutrientAmounts,
+  declaredPercentDv: NutrientAmounts,
+  order: z.array(z.enum(NUTRIENT_IDS)).optional(),
+  typeScale: z.number().positive().optional(),
+  format: z.enum(NUTRITION_FORMATS).optional(),
+  // The second axis, derived from the same consts so a new column mode or basis
+  // reaches the boundary without being restated. `headings` is a fixed pair
+  // because 101.9(e)(3) presents the values "in two columns"; (e)(1)'s "two or
+  // more" belongs to the aggregate display, which is not modelled yet.
+  columns: z
+    .object({
+      mode: z.enum(NUTRITION_COLUMN_MODES),
+      basis: z.enum(DUAL_COLUMN_BASES).optional(),
+      headings: z.tuple([z.string(), z.string()]).optional(),
+      // Zod **strips** unknown keys rather than rejecting them, so a field missing
+      // here is silently dropped: a document carrying `secondAmounts` previewed
+      // with a populated second column in the browser and exported a blank one,
+      // which is the single thing this architecture exists to prevent. Omitting
+      // `separated` also made `FDA_DUAL_COLUMN_NOT_SEPARATED` unprovokable through
+      // the API — a rule with a fixture and no route to it.
+      secondAmounts: NutrientAmounts,
+      separated: z.boolean().optional(),
+      secondColumnTypeScale: z.number().positive().optional(),
+    })
+    .optional(),
+  referenceAmount: z
+    .object({ amount: z.number().positive(), unit: z.enum(['g', 'mL']), category: z.string() })
+    .optional(),
+  packageContent: z.number().positive().optional(),
+  unitContent: z.number().positive().optional(),
+  packagedAndSoldIndividually: z.boolean().optional(),
+  dualColumnExemption: z
+    .object({
+      rawCommodityVoluntary: z.boolean().optional(),
+      variedWeight: z.boolean().optional(),
+    })
+    .optional(),
+  availableSurfaceSqInches: z.number().positive().optional(),
+  cannotAccommodateVertical: z.boolean().optional(),
+  cannotAccommodateTabular: z.boolean().optional(),
+  continuousVerticalSpaceInches: z.number().positive().optional(),
+})
+
+const UsFoodRequest = z
+  .object({
+    statementOfIdentity: NON_COMPLIANT_BUT_WELL_FORMED,
+    netQuantity: NetQuantitySchema,
+    // Required, and not defaulted. The container selects the 101.7(i) type-size
+    // band; supplying one the caller never stated would invent the requirement
+    // every finding on this label is measured against.
+    container: ContainerSchema,
+    markingMethod: z.enum(['printed', 'blown-embossed-or-molded']).optional(),
+    netQuantityFontSizeMm: z.number().positive().optional(),
+    netQuantityAnchor: z.enum(ANCHORS).optional(),
+    informationPanelFontSizeMm: z.number().positive().optional(),
+    ingredients: z.array(IngredientSchema).optional(),
+    // The four figures 21 CFR 101.4(a)(2) permits, derived from label-core's own
+    // list rather than restated — a fifth would be a compliance defect, so it is
+    // rejected at the boundary rather than drawn and reported.
+    ingredientThreshold: z
+      .object({
+        percent: z.union(
+          INGREDIENT_THRESHOLD_PERCENTS.map((p) => z.literal(p)) as unknown as [
+            z.ZodLiteral<2>,
+            z.ZodLiteral<1.5>,
+            z.ZodLiteral<1>,
+            z.ZodLiteral<0.5>,
+          ],
+        ),
+        count: z.number().int().min(0),
+      })
+      .optional(),
+    ingredientsExempt: z.boolean().optional(),
+    containsStatement: z.array(z.enum(MAJOR_FOOD_ALLERGEN_IDS)).optional(),
+    containsStatementFontSizeMm: z.number().positive().optional(),
+    containsStatementGapMm: z.number().min(0).optional(),
+    nutritionFacts: NutritionFactsSchema.optional(),
+    nutritionFactsExempt: z.boolean().optional(),
+    responsibleFirm: ResponsibleFirmSchema.optional(),
+    stock: z
+      .object({
+        widthMm: z.number().positive(),
+        heightMm: z.number().positive(),
+        marginMm: z.number().min(0),
+      })
+      .optional(),
+  })
+  // A quantifying statement cannot cover entries that are not on the list. An
+  // unbounded count drew a leading empty sentence and left the order rule with
+  // nothing to examine, which it reported as a pass — so it is refused here
+  // rather than clamped silently, the way an impermissible threshold is.
+  .refine(
+    (request) => (request.ingredientThreshold?.count ?? 0) <= (request.ingredients?.length ?? 0),
+    {
+      path: ['ingredientThreshold', 'count'],
+      message: 'cannot cover more entries than the ingredient list contains',
+    },
+  )
+
+/** The same key-by-key reconciliation `toArtwork` and `toSupplier` do. */
+function toNetQuantity(netQuantity: z.infer<typeof NetQuantitySchema>): UsFoodNetQuantity {
+  return {
+    inchPound: netQuantity.inchPound,
+    ...(netQuantity.metric === undefined ? {} : { metric: netQuantity.metric }),
+    ...(netQuantity.packaging === undefined ? {} : { packaging: netQuantity.packaging }),
+  }
+}
+
+/**
+ * And again for the container, whose optional member sits one level deeper.
+ *
+ * Only the `other` branch has one. Spreading the parsed object wholesale would
+ * carry `obviousPanelAreaSqMm: undefined` into a type that says the property is
+ * either present with a number or absent — which is the distinction
+ * `exactOptionalPropertyTypes` exists to keep, and the one `as never` switched
+ * off the last time this boundary was crossed carelessly.
+ */
+function toContainer(container: z.infer<typeof ContainerSchema>): UsFoodLabelData['container'] {
+  if (container.shape !== 'other') return container
+  return {
+    shape: 'other',
+    totalSurfaceAreaSqMm: container.totalSurfaceAreaSqMm,
+    ...(container.obviousPanelAreaSqMm === undefined
+      ? {}
+      : { obviousPanelAreaSqMm: container.obviousPanelAreaSqMm }),
+  }
+}
+
 export function createLabelRouter(): Router {
   const router = Router()
 
@@ -312,6 +647,96 @@ export function createLabelRouter(): Router {
         .setHeader(
           'Content-Disposition',
           `attachment; filename="${labelFilename(data.productIdentifier)}"`,
+        )
+      response.end(pdf)
+    } catch (error) {
+      if (error instanceof LayoutError) {
+        response.status(422).json({ error: 'Label cannot be laid out', detail: error.message })
+        return
+      }
+      throw error
+    }
+  })
+
+  router.post('/us-food/export', async (request: Request, response: Response) => {
+    const parsed = UsFoodRequest.safeParse(request.body)
+    if (!parsed.success) {
+      response.status(400).json({
+        error: 'Invalid label request',
+        detail: parsed.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      })
+      return
+    }
+
+    const { stock = DEFAULT_US_FOOD_STOCK, ...rest } = parsed.data
+
+    const data: UsFoodLabelData = {
+      statementOfIdentity: rest.statementOfIdentity,
+      netQuantity: toNetQuantity(rest.netQuantity),
+      container: toContainer(rest.container),
+      ...(rest.markingMethod === undefined ? {} : { markingMethod: rest.markingMethod }),
+      ...(rest.netQuantityFontSizeMm === undefined
+        ? {}
+        : { netQuantityFontSizeMm: rest.netQuantityFontSizeMm }),
+      ...(rest.netQuantityAnchor === undefined
+        ? {}
+        : { netQuantityAnchor: rest.netQuantityAnchor }),
+      ...(rest.informationPanelFontSizeMm === undefined
+        ? {}
+        : { informationPanelFontSizeMm: rest.informationPanelFontSizeMm }),
+      ...(rest.ingredients === undefined
+        ? {}
+        : { ingredients: rest.ingredients.map(toIngredient) }),
+      ...(rest.ingredientThreshold === undefined
+        ? {}
+        : { ingredientThreshold: rest.ingredientThreshold }),
+      ...(rest.ingredientsExempt === undefined
+        ? {}
+        : { ingredientsExempt: rest.ingredientsExempt }),
+      ...(rest.containsStatement === undefined
+        ? {}
+        : { containsStatement: rest.containsStatement }),
+      ...(rest.containsStatementFontSizeMm === undefined
+        ? {}
+        : { containsStatementFontSizeMm: rest.containsStatementFontSizeMm }),
+      ...(rest.containsStatementGapMm === undefined
+        ? {}
+        : { containsStatementGapMm: rest.containsStatementGapMm }),
+      ...(rest.nutritionFacts === undefined
+        ? {}
+        : { nutritionFacts: toNutritionFacts(rest.nutritionFacts) }),
+      ...(rest.nutritionFactsExempt === undefined
+        ? {}
+        : { nutritionFactsExempt: rest.nutritionFactsExempt }),
+      ...(rest.responsibleFirm === undefined
+        ? {}
+        : { responsibleFirm: toResponsibleFirm(rest.responsibleFirm) }),
+    }
+
+    try {
+      const layout = layOutUsFoodLabel({ data, stock })
+
+      const blocking = blockingOmissions(layout)
+      if (blocking.length > 0) {
+        response.status(422).json({
+          error: 'Label cannot be exported',
+          detail: blocking.map((omission) => omission.reason),
+        })
+        return
+      }
+
+      const pdf = await renderLayoutToPdf(layout)
+
+      response
+        .status(200)
+        .setHeader('Content-Type', 'application/pdf')
+        .setHeader('Content-Length', String(pdf.length))
+        .setHeader(
+          'Content-Disposition',
+          `attachment; filename="${labelFilename(data.statementOfIdentity)}"`,
         )
       response.end(pdf)
     } catch (error) {

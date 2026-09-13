@@ -35,6 +35,17 @@ rule does not ship. An unverifiable citation is worse than no rule.
 **Every rule ships with a fixture** — a known-bad label document asserting the exact finding code and citation
 it produces. A rule without a fixture is a claim, not a check.
 
+**Read the modal verb and the scope, not just the number.** About a third of phase 5's defects were one
+error: a figure enforced without reading what it was attached to. A guidance figure made a requirement — the
+bar weights, the vitamin rounding increments, the 22 pt heading. A permission made an obligation — the fat
+zero-floor, where `shall` and `may` sit at the same 0.5 g threshold; the §101.100 exemption; the format
+entitlements. And a figure applied past the paragraphs it names — the 14 pt Calories numeral, which belongs to
+two of the five displays and was given to all three the table then knew about. Before writing a rule, record
+whether the source says *shall*, *may* or *strongly recommends*, whether the figure is in the CFR or in FDA
+guidance, and **which paragraphs the exception actually lists**. A rule that reports a label for exercising a
+permission is a false positive its user cannot argue with; a table keyed on something coarser than the
+regulation's own exceptions is wrong in both directions at once.
+
 **Golden vectors come from source documents.** Never compute an expected value by running the implementation
 and pasting the result — that proves only that the function is deterministic. Work it through by hand from the
 published algorithm, and record where the vector came from.

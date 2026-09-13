@@ -10,6 +10,463 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 6 (in progress) — the dual-column display, drawn and judged.
+
+- **`us-food/dual-column-form` — 101.9(e).** Three of its four requirements are geometry and were
+  unmeasurable until the display was drawn: (e)'s "equal prominence **shall** be given to both sets of
+  values", (e)(1)'s column headings, and (e)(3)'s vertical lines between the columns. It says nothing about
+  *whether* to carry two columns — (e) opens "Nutrition information **may** be presented", and only the
+  (b)(12)(i) rule is entitled to demand one.
+- Equal prominence is measured as **type size, not horizontal extent**. "Sodium 0mg 0%" and "Sodium 1,250mg
+  54%" are different widths and equally prominent; a rule comparing column widths would report the arithmetic.
+- (e)(1)'s headings are checked for presence **and distinctness**. Two columns both headed "Per serving" pass
+  a presence check and still leave a reader unable to tell the package figure from the serving one. Whether a
+  heading *accurately* describes what its column declares is a question about the food, and the passing
+  finding says so rather than implying a check that did not happen.
+- **(e)(4) is deliberately not checked here.** It puts the vitamins and minerals in the order Vitamin D,
+  calcium, iron, potassium, which `us-food/nutrition-order` already measures over the whole panel under
+  101.9(c). Two rules reporting one defect under two citations is the mistake the net-quantity family was
+  untangled to avoid. (e)(4) and (e)(6)(i) also differ by one parenthetical — "(except sodium)" — which
+  changes nothing about the order, recorded because a later reader will wonder.
+
+- **The displays are reachable from the editor at last.** `format`, the surface area (j)(13) measures, the
+  continuous vertical space (d)(11)(iii) turns on, the two declared facts no artwork can show, and the second
+  column with its basis and headings all had no control in the rail — so the tabular and linear displays
+  committed earlier in this stage could not be selected, and `us-food/nutrition-format` was a rule nobody
+  could provoke from the app it ships in. Four tests now drive the entitlement and the dual column through
+  the real editor rather than through a constructed document.
+
+### Fixed
+
+- **The net quantity was the only drawn element with no overflow check.** 101.7(i) sizes the declaration from
+  the *package*, not from the label, so a container far larger than the artwork derives type wider than the
+  substrate: a 1800 mm carton on the default 120 mm stock put it at x −57.5 mm, entirely off the label, with
+  no omission recorded and all five net-quantity rules reporting it compliant. A mandatory 101.7(a) element
+  absent from the printed artefact and clean in the findings is the hole every other block here already
+  plugs.
+- **A second column was marked drawn on the strength of the declaration.** The element that tells a rule the
+  panel carries two sets of values was emitted whenever `columns.mode` was `dual`, while the comment beside
+  it said "emitted whenever a second set of values was drawn". So a panel declaring two columns with no
+  figures in the second — which is exactly what the editor's own checkbox produced, since it seeds headings
+  and had no field for the amounts — drew one column, cleared the form rule, and suppressed the engine's
+  "asked for and not drawn" omission, because that omission keys off the same element. The rail now has a
+  field per nutrient for the second column, and there is no button to derive them: multiplying by the
+  servings per container is arithmetic this tool has no business doing, and (c) rounds each declared amount
+  in its own right.
+- **Four fields were stripped silently at the API boundary.** `secondAmounts`, `separated`,
+  `secondColumnTypeScale` and the dual-column duty facts were missing from the schema, and Zod strips unknown
+  keys rather than rejecting them — so a document previewed with a populated second column in the browser
+  exported a blank one. Adding them to the schema was half the fix: the reconciliation below it rebuilds the
+  object key by key, so a field present in the schema and absent there is dropped just as quietly. The test
+  asserts on the exported artefact rather than on the status code.
+- `dualColumnForm` spelled `'food-nutrition-row-'` as a literal where every sibling imports
+  `NUTRITION_ROW_PREFIX`. A rename would have emptied its row set, and the `length > 0` guard would have
+  turned the equal-prominence check into a silent pass rather than an error.
+- **A denylist that had to be maintained in step with another file, and was wrong three times.** The 101.2(c)
+  rule excludes the Nutrition Facts panel from the 1/16 inch information-panel floor, for the reason its own
+  note gives at length: 101.9 sets 8 point nutrient rows whose lowercase "o" is 1.52 mm, so applying the floor
+  would report every compliant nutrition label in the country. It did that by listing the panel's element ids
+  one by one — so splitting the Calories numeral off its word put the numeral outside the exclusion, and
+  adding (e)(1)'s column headings put those outside it too, each reported under a citation saying nothing
+  about them. It excludes the panel by prefix now, which is what the note said all along.
+- **A rule certified a column the engine never drew.** `us-food/dual-column-required` read `columns.mode` off
+  the document and reported `FDA_DUAL_COLUMN_MET` on a tabular panel, which draws a single column — the exact
+  failure `layout/types.ts` records learning the hard way with the GHS pictograms, where a rule must not
+  clear a symbol that was never printed. It reads the resolved layout now, which is the standing convention
+  and which makes it right for any display that fails to draw the column rather than for this one only.
+- A second column asked for and not drawn is now **recorded as a `LayoutOmission`** rather than passing in
+  silence. 101.9(e)(6)(ii)'s dual-column tabular display has its type row and its display id wired and its
+  drawing is in `BACKLOG.md`; without the omission the label looked finished and the finding said the column
+  was missing without anything saying why. Every GHS label omits its pictogram glyphs and says so; this is
+  the same admission.
+- `separated` and `secondColumnTypeScale` exist so the panel can be drawn **wrong**, which is why `typeScale`
+  exists too: the vertical lines and equal prominence are requirements, so a panel that always satisfies them
+  complies by construction and the rules checking them could never fail. Both are also the realistic defects —
+  lines dropped to save width on a crowded panel, and the package column set smaller than the serving one so
+  a reader skips it.
+- Emitting the second column's element inside the same branch as its vertical lines made a panel drawn
+  without the lines look like a panel with one column: the mandate rule reported the column missing and the
+  form rule that should have reported the lines declined. Two questions, two conditions.
+
+### Added
+
+Phase 5, stage 6 (in progress) — the dual-column display, drawn.
+
+- **(e)(3) puts the weight *in* the column, beside the percentage.** "The quantitative information by weight
+  and the percent Daily Value **shall** be presented in two columns and the columns **shall** be separated by
+  vertical lines." So the weight comes off the nutrient name, where the single-column display carries it, and
+  the row reads `Total Fat | 3g 4% | 8g 10%`. This is not the one-column row with a figure appended.
+- **The second column's amounts are declared, never derived.** Multiplying the serving figures by the servings
+  per container is the obvious arithmetic and exactly the kind this engine refuses on a labeller's behalf, for
+  the reason the SI net quantity is typed rather than converted. Rounding under (c) also applies to each
+  declared amount in its own right rather than to a product of two, which a derived column would get wrong at
+  every half-gram boundary.
+- (e)(1)'s column headings — "two or more column headings accurately describing the amount per serving size" —
+  are printed as given. "Per 1/4 cup mix" and "Per prepared portion" are the regulation's own examples, so
+  their wording is the labeller's and nothing here composes it.
+- **The panel takes the information panel's width rather than 2.5 inches.** No paragraph sets a panel width at
+  all; 2.5 inches is the illustrations' figure for a panel carrying *one* column of values. A second column
+  has to come from somewhere, and taking it out of the nutrient names is how the tabular display once ended up
+  stacked into the single column it exists to avoid.
+
+Phase 5, stage 6 (in progress) — the first rule here that reports a label for **not** using a display.
+
+- **`us-food/dual-column-required` — 21 CFR 101.9(b)(12)(i) and (b)(2)(i)(D).** Every format rule so far is
+  deliberately careful never to demand a display, because (j)(13)(ii) opens "may modify the requirements" and
+  101.9(e) opens "Nutrition information **may** be presented for two or more forms". These two are the other
+  kind: a package "packaged and sold individually" holding 200–300% of its reference amount "**must** provide
+  an additional column", and where a *unit* weighs the same the manufacturer "**shall** provide" one. A rule
+  silent about those clears a label the regulation does not.
+- **The band is inclusive at both ends** — "at least 200 percent and up to and including 300 percent" — so
+  200.0 and 300.0 are inside it. Two exclusive comparisons would have cleared the two labels sitting exactly
+  on the boundaries.
+- **It fires only on facts the label has asserted.** The trigger is a percentage of "the applicable reference
+  amount" from §101.12(b), a table of roughly 140 food categories that this project does not carry, so the
+  figure is declared on the label and the rule declines entirely without it. Reporting a missing column
+  against an inferred reference amount would be a demand the user cannot check resting on a number the engine
+  invented.
+- **All three exemptions are implemented, and they are load-bearing.** (b)(2)(i)(D) closes with "The
+  exemptions in paragraphs (b)(12)(i)(A), (B), and (C) of this section apply to this provision", so one set
+  serves both. (A) turns on **entitlement** — "products that **meet the requirements to use** the tabular
+  format", not products that use it — so any package small enough for the reduced displays is excused
+  whatever display it carries, which is a large share of those that would otherwise qualify. (C) is
+  **conjunctive**: it excuses a product that has the named property *and already provides* a second column
+  under (e), so most of it falls out of the declared basis rather than needing to be asserted. Each exemption
+  reports as a pass naming the paragraph that granted it, because a rule that declines invisibly cannot be
+  told from one that is broken — and each has a test on a label that would otherwise be reported.
+
+Phase 5, stage 6 (in progress) — the columns axis, which dual-column needs before it can be drawn.
+
+- **The panel has two axes, not one list of variants.** `format` says how the information is *arranged* —
+  standard vertical, tabular, linear — and the new `columns` says how many sets of values it *carries*. They
+  are separate because the regulation draws labels that combine them: 101.9(e)(6)(ii) is "the provisions of
+  (b)(2)(i)(D) and (b)(12)(i) ... **for labels that use the tabular display**", a dual-column tabular panel,
+  with (e)(6)(i) showing the vertical one beside it. A fourth member of `NUTRITION_FORMATS` would make both
+  inexpressible — and (d)(1)(iii) names (e)(6)(ii) separately from (d)(11), so the engine has to tell them
+  apart. `aggregate` will extend this same union when (d)(13) is built.
+- **`DUAL_COLUMN_BASES` carries what the second column counts, and the modality differs across it.** Four are
+  permissions under (e) — as prepared, common combinations, different units, RDI groups — and two are
+  mandates: (b)(12)(i)'s per-container and (b)(2)(i)(D)'s per-unit. Keeping the basis rather than a boolean is
+  also what will make (b)(12)(i)(C)'s exemptions computable, since that carve-out excuses a product already
+  providing a second column for one of the other reasons.
+- `nutritionDisplayFor` takes the panel itself now, structurally, rather than an object each caller builds by
+  hand. The renderer and the type-size rule had begun spelling the same mapping twice — and a mutation
+  proved it: severing the new axis in the renderer failed no test, because nothing observed the difference.
+- **The panel-box epilogue is one helper instead of three copies**, done before a fourth display lands on it.
+  The three had already drifted: the linear branch pushed the panel element where the other two unshifted it,
+  so a linear label listed the panel in the middle of the reading order `LabelTextView` renders rather than at
+  its head.
+- `docs/BACKLOG.md` — findings that are real and deliberately not being done, with the reason. Reviews on
+  this branch have each turned up three to five genuine defects in already-committed territory, and fixing all
+  of them immediately turned four planned items into three unplanned commits. The aggregate display, the
+  bilingual one and the permitted abbreviations are recorded there too, deferred so phase 5 can reach `dev`.
+
+Phase 5, stage 6 (in progress) — three rules for three things the engine drew and nothing checked, found by
+asking why the API was rejecting documents the engine is built to draw.
+
+- **`us-food/statement-of-identity` — 21 CFR 101.3(a).** "The principal display panel of a food in package
+  form **shall** bear as one of its principal features a statement of the identity of the commodity." No
+  exception is stated anywhere in the section. It was the one mandatory element of a US food label this engine
+  drew and no rule examined: a blank reached the renderer, which drew no primitive for it, and every rule
+  reported a clean label. Only (a) is checked. (b)'s "common or usual name" is a question about 21 CFR part
+  102 and about usage rather than about a label; (d)'s "bold type" is satisfied by construction, so a rule for
+  it could never fail; (d)'s "size reasonably related to the most prominent printed matter" states no
+  measurable standard; and its "lines generally parallel to the base" is the clause `netQuantityPlacement`
+  already declines for the identical wording in 101.7(f).
+- **`FDA_INGREDIENT_NAME_MISSING` — 21 CFR 101.4(a)(1).** The paragraph does not merely require a list:
+  ingredients "**shall** be listed by **common or usual name** in descending order of predominance by weight".
+  An entry with no name is not one, and the engine draws it — "INGREDIENTS: whole grain rolled oats, sugar,
+  salt, ." — which is the shape the rail's removal handler already carries a comment about.
+- **`us-food/serving-size` — 21 CFR 101.9(d)(3)(ii).** "Information on servings per container and serving size
+  **shall** immediately follow the heading ... Such information **shall** include ... (ii) 'Serving size'".
+  **Only one of the two is unconditional**, and that asymmetry is why they are not checked as one requirement:
+  (d)(3)(i) excuses the servings count "on single serving containers as defined in paragraph (b)(6) ... or on
+  other food containers when this information is stated in the net quantity of contents declaration", while
+  (ii) states no exception at all. The rule checks that a serving size is *declared* and not that it is the
+  right one — the amount comes from the reference amount in §101.12(b), a table this project does not carry,
+  and the passing finding says so rather than implying a check that did not happen.
+
+### Fixed
+
+Phase 5, stage 6.
+
+- **Five `min(1)`s in the API were deciding regulatory questions.** `statementOfIdentity`, `netQuantity.
+  inchPound`, `ingredients[].name`, `responsibleFirm.name` and `nutritionFacts.servingSize` were all
+  `z.string().min(1)`, so the export route rejected label documents the engine exists to draw and the rules to
+  report. It was reachable from the editor: "Add an ingredient" writes `{ name: '', percentByWeight: 0 }`, so
+  clicking it turned Export into a raw-JSON 400 — a compliance finding delivered as a schema error, in the one
+  place a user cannot see a citation.
+  **The order of the fix was the whole of it.** Of the five, only two were reported by any rule; a blank
+  statement of identity, ingredient name or serving size was reported by *nothing*. Relaxing them first would
+  have traded a visible 400 for a silent pass, which is much the worse failure, so the three rules above came
+  first and the schema was relaxed after. The GS1 and GHS `min(1)`s stay: a blank `DigitalLink.domain` or
+  `Artwork.text` is a malformed request rather than a non-compliant label, and the schema is the right place
+  for those.
+- **A food-source word inside one allergen's ingredient name cleared a different allergen.**
+  §403(w)(1)(B)(ii) excuses the parenthetical where "the name of the food source ... appears elsewhere in
+  the ingredient list", except where that appearance is "part of the name of a food ingredient that is **not**
+  a major food allergen". `declaresSource` struck out the names of ingredients bearing *no* allergen and left
+  every other name standing — so `coconut milk`, which carries tree nuts, stayed in the searched text and the
+  word "milk" inside it discharged the **dairy** declaration of an undeclared `whey` beside it. The label came
+  back with no findings at all. The function's own note names coconut milk as the example it handles, and
+  handled it the other way round.
+  The search runs once per allergen, so the test is now "is this ingredient *this* allergen" rather than "does
+  this ingredient have an allergen at all": only names that identify the source being searched for survive,
+  and a food-source word can settle only the question it belongs to. This is the most serious kind of defect
+  this project can have — a false clearance on an allergen — and it had no fixture, which is why it lasted.
+- **The engine's own tightest layout failed its own adjacency rule.** §403(w)(1)(A) puts the "Contains"
+  statement "immediately after or [...] adjacent to the list of ingredients", and the rule allows a gap of one
+  line of the list. The engine placed it with the generic 3 mm it leaves between any two blocks, so below an
+  ingredient em of about 2.3 mm the gap exceeded the allowance and a conformant label reported itself
+  non-adjacent — which the project's own 2 mm information-panel fixture did, alongside the type-size findings
+  it was written for. These two blocks are specified as adjacent and are no longer spaced as though unrelated.
+  `containsStatementGapMm` is still how a label is drawn adrift on purpose, so the rule can still fail.
+- The separation rule spelled `'food-nutrition-'` as a literal where its siblings import a prefix constant.
+  It has one now, `NUTRITION_ELEMENT_PREFIX`, beside `NUTRITION_ROW_PREFIX` — a rename would otherwise have
+  quietly re-admitted every nutrient row as a neighbour and turned one crowding back into a finding per row,
+  which is the defect that constant's own note records fixing.
+- A fixture asserted its expected citation as `'21 CFR 101.9(j)'.replace('(j)', '(c)')`, which evaluates
+  correctly and hides the string from grep in the one file whose purpose is asserting exact citations.
+- **A permission enforced as a requirement, in the function whose own doc says not to.**
+  `roundNutrientAmount`'s header reads: "Where the regulation offers a *permission* rather than a requirement
+  — 'amounts less than 5 calories **may** be expressed as zero' — this returns the permitted value, because
+  that is what a label that takes the permission declares **and a rule has to accept both**." No rule accepted
+  both. `us-food/nutrition-rounding` compared `declared === required` against the single value the function
+  returns, so an analysed 3 calories declared as the 5 that 101.9(c)(1)'s main clause gives — "expressed to
+  the nearest 5-calorie increment" — was reported as a violation against a lawful label. `roundNutrientAmount`
+  has to pick one number because the renderer has to draw one; the rule does not, and now compares against
+  `permittedNutrientAmounts`. The divergence is only across `[2.5, 5)` — below 2.5 the nearest 5-calorie
+  increment is already zero — which is why obvious test values never showed it. No other nutrient needs it:
+  fat's floor says *shall*, sodium's states the zero as part of the declaration, and the gram nutrients round
+  to zero and permit zero at the same threshold.
+- **Clearing an optional number in the rail wrote an empty string into the document.** `v-model.number` runs
+  Vue's `looseToNumber`, which returns the *string* when `parseFloat` gives NaN, so emptying "Servings per
+  container" put `''` where a number goes — drawing " servings per container" with a hole in it and making
+  Export return the same raw 400 this stage set out to remove, by a different route. `typeScale` had carried a
+  guard since the panel was once drawn at zero-size type; the other two optional numbers had not. The
+  container and stock dimensions are deliberately left out: they are required, a blank has no defined meaning
+  there, and deciding what one should do is a different question.
+- The barrel test could only check the modules it listed, so a rule module left out of the table was unguarded
+  *because* it was missing — which is how `usFood/statementOfIdentity.ts` shipped outside an invariant every
+  other rule module sits inside. It is driven from the registries now, so a rule cannot be registered without
+  being covered.
+- Three tests indexed into `US_FOOD_FIXTURES` **positionally**, so adding a fixture at the front of the list
+  silently repointed them at a different label — two failed loudly and one went on asserting the wrong thing
+  about the wrong document. They look fixtures up by name now. A fixture's name is its identity; its position
+  is not.
+
+Phase 5, stage 6 (in progress) — which display a package may use. The selection rule first, because it is
+what makes five variants worth having rather than five ways to draw one panel; the reduced displays
+themselves follow.
+
+- **They are permissions, and the rule reports accordingly.** 21 CFR 101.9(j)(13)(ii) opens "Foods in
+  packages that have a total surface area available to bear labeling of 40 or less square inches **may**
+  modify the requirements". So `us-food/nutrition-format` reports a label using a display it is not entitled
+  to, and never demands that a small package use one — reading a permission as an obligation is what CLP
+  Article 26's "optional" clauses already taught this project.
+- **Two thresholds, and only one of them is inclusive.** A tabular or linear display is permitted where the
+  area is "less than 12 square inches", or where it is "40 or less square inches and the package shape or
+  size cannot accommodate a standard vertical column". Twelve itself falls to the second limb and needs the
+  declaration; forty does not.
+- **Linear is gated behind tabular.** "Nutrition information may be given in a linear fashion only if the
+  label will not accommodate a tabular display" — so a package entitled to tabular is still not entitled to
+  linear.
+- **The area (j)(13) measures is not the principal display panel.** 101.1 computes the panel for the net
+  quantity; (j)(13) measures the whole surface available to bear labeling. Two different numbers answering
+  two different questions, and a label now carries both rather than one standing in for the other.
+- **The linear display, drawn.** 101.9(j)(13)(ii)(A) puts the information "in a tabular or ... linear (i.e.,
+  string) fashion rather than in vertical columns", and that is the whole of what makes it linear — one run
+  of text at 35 mm where the vertical panel is 129, which is why a small package can carry it at all. It
+  keeps the heading (d)(2) requires and drops the footnote for the abbreviated "% DV = % Daily Value" that
+  (j)(13)(i) permits in its place.
+- **Per-format type minimums, and the two Calories figures move independently.** (d)(1)(iii) drops the
+  Calories *word* to 10 point in **every** tabular display — (d)(11), (e)(6)(ii) and (j)(13)(ii)(A)(1) — but
+  the *numeral* to 14 only on the small-package tabular and the linear one. One exception lists three
+  paragraphs and the other lists two, so (d)(11)'s ordinary tabular display keeps a 22 point numeral beside a
+  10 point word. Both servings lines drop from 10 to 9; the nutrient rows stay at 8 and the small print at 6,
+  with no exception stated for either.
+- **The tabular display, drawn** — the serving information in a left-hand block and the nutrients in columns
+  beside it. 188 x 26 mm against the vertical panel's 64 x 129, which is the whole of what it is for.
+- **A second entitlement to it that does not run through (j)(13) at all.** 101.9(d)(11)(iii): "If there is
+  not sufficient continuous vertical space (i.e., approximately 3 in) to accommodate the required components
+  of the nutrition label up to and including the mandatory declaration of potassium, the nutrition label may
+  be presented in a tabular display." A package of any size qualifies, so a rule knowing only the area route
+  would have reported a tall thin label squarely within this one. It reaches the tabular display and not the
+  linear one, which stays behind (j)(13)(ii)(A)'s areas and its own gate.
+
+- FDA's illustrations annotate the linear display "all type sizes are 6 point", which cannot be squared with
+  the 9, 10 and 14 point minimums the regulation states. The regulation governs — the annotation came out of
+  a PDF that had to be decoded rather than read, and a fragment is not a reason to disbelieve the text.
+
+- Whether a shape "cannot accommodate" a display and whether a label "will not accommodate" a tabular one are
+  facts about a package that no artwork shows, so they are declared and never inferred — the GHS
+  small-container call for the fourth time in this phase.
+
+Phase 5, stage 5 — the Nutrition Facts panel drawn. The standard vertical display only; the other five
+formats are stage 6, on the reasoning phase 2 used for label types.
+
+- **The rule weights are cited, not invented.** `fda/nutritionPanel.ts` carries the ½ pt box, the 7 pt
+  section bars, the 3 pt bar under Calories and the ¼ pt hairline between nutrients, each with the FDA
+  sentence it came from. They survive to the PDF exactly — a 7 pt bar measures 2.469 mm in the exported
+  file, a hairline 0.088 mm.
+- **The footnote is quoted.** 21 CFR 101.9(d)(9) states it verbatim, so it is looked up like an H-statement
+  and never composed, with both variants the paragraph gives: 1,000 calories for a food for children 1
+  through 3, and the first sentence alone for a food that may bear the §101.60(b) calorie-free terms.
+- **Every nutrient row is its own element**, so a finding about Added Sugars outlines the Added Sugars line.
+  Ten finding sites were anchored to the whole principal display panel until this stage, which is the GHS
+  pictogram lesson repeating: a finding pointing at an id nothing resolved sets the selection and draws
+  nothing.
+- **The form rail for the panel**, and it is where the fact/print split earns itself. The amounts are what
+  the food contains; the rail shows beside each what will actually be printed, rounded by 101.9(c) and
+  percented by (d)(7)(ii) or (c)(8)(iii) as the nutrient requires — so the rounding is visible as it happens
+  rather than arriving later as a finding. Behind one toggle sit the overrides that let the panel print
+  something else, which is the only way the rounding and percentage rules can be reached from the editor at
+  all.
+- A sixteenth rule, `us-food/nutrition-type-size`, for the sizes 101.9(d) *does* state — 22 point heading,
+  16 point Calories, 10 point serving size, 8 point nutrient rows. It measures in **points, not letter
+  heights**: every other type-size rule here converts through `glyphHeightMm` because 101.7(i) and 101.2(c)
+  state a letter height and 101.7(h)(2) says which letter, but 101.9 states a *type size* and never mentions
+  a letter, so converting would answer a question the paragraph does not ask.
+
+Phase 5, stage 4 — the Nutrition Facts panel as content: what is declared, in what order, rounded how, and
+against which Daily Value. Four rules and the reference table they are measured against. The panel's geometry
+is stage 5; these rules read the document, because whether 8.7 grams of fat was rounded to 9 is a fact about a
+number rather than about where ink lands.
+
+- **Two different rounding rules share the one % Daily Value column**, which is the trap in 21 CFR 101.9.
+  **(d)(7)(ii)** rounds a nutrient with a DRV "to the nearest whole percent"; **(c)(8)(iii)** rounds a vitamin
+  or mineral "to the nearest 2-percent increment up to and including the 10-percent level, the nearest
+  5-percent increment above 10 percent and up to and including the 50-percent level, and the nearest
+  10-percent increment above the 50-percent level". Applying either to both is wrong in a way nobody notices,
+  because the two agree often enough to look correct — iron at 8 mg of an 18 mg RDI is 44.4 percent, which is
+  **44** under one rule and **45** under the other, and only one of those is what the label prints.
+- **The regulation works four examples and they are the strongest golden vectors available.** 101.9(d)(8)
+  prints "(e.g., Vitamin D 2 mcg 10%, Calcium 260 mg 20%, Iron 8 mg 45%, Potassium 235 mg 6%)". The last is
+  the useful one: 235 of 4,700 is *exactly* 5.0 percent, halfway between the 4 and the 6 that the 2-percent
+  banding allows, and nothing in the text says which way a tie goes. The printed 6 does. Round half down and
+  that example breaks, which is why it is a test.
+- **Order comes from the regulation, not from the sample label.** 101.9(c) requires the nutrients "in the
+  following order", so the order is (c)(1) through (c)(8) and their subparagraphs; (c)(8)(ii) fixes the four
+  vitamins and minerals separately as "vitamin D, calcium, iron, and potassium in that order".
+- **Trans fat and total sugars carry no Daily Value and their cells stay blank.** Neither appears in the
+  (c)(9) DRV table, and inventing a figure would fill a cell the regulation leaves empty.
+- **Either basis is permitted for the percentage, and they often disagree.** 101.9(d)(7)(ii): "The percent
+  shall be calculated by dividing **either** the amount declared on the label for each nutrient **or** the
+  actual amount of each nutrient (i.e., before rounding) by the DRV". 8.7 g of fat declared as 9 g is 11
+  percent one way and 12 the other, and both are proper. A rule computing one of them would report a violation
+  against a label that took the other.
+- **Protein's percentage is not checked**, and that is recorded rather than quietly skipped. The same
+  paragraph says it "may be omitted", and where it is given, (c)(7)(ii) corrects the amount by a digestibility
+  score no label carries.
+- The conditional exemptions inside (c)(2)(i), (c)(3) and the two sugars paragraphs are **not applied**: each
+  relieves a nutrient below a threshold "if no claims are made" about it, claims are 21 CFR 101.13, and this
+  label carries none — so the condition cannot be evaluated and the relaxation is not taken.
+
+- `DESIGN.md` calls these "13 mandatory nutrients". The regulation produces **fifteen** declared lines, and
+  fifteen is what ships — the count in the plan was a recollection and this is the section.
+
+Phase 5, stage 3 — the nine major food allergens. Two rules, from a statute rather than from 21 CFR 101.
+
+- **`fda/allergens.ts`, the §201(qq) table**, in a module named for the regulator the way `gs1/` and `ghs/`
+  are. The nine names are the Act's own words and are looked up, never composed: "Crustacean shellfish" is
+  capitalised as the Act capitalises it, "tree nuts" and "soybeans" are plural there and singular nowhere. A
+  label reading "Contains: Shellfish" has not declared what the Act asks for, so the table may not quietly
+  normalise them.
+- **§403(w)(2) is the trap, and three of the nine fall into it.** The food source name is §201(qq)(1)'s name
+  — except "in the case of a tree nut, fish, or Crustacean shellfish", where it means "the name of the
+  specific type of nut or species of fish or Crustacean shellfish". So "Contains: tree nuts" declares
+  nothing and "Contains: almonds" does, while milk, egg, wheat, peanuts, soybeans and sesame are named by
+  their category. `foodSourceName` returns **undefined** rather than falling back to the category when no
+  specific type is given, because inventing "almonds" for an unspecified tree nut would be this engine
+  composing the regulated string it exists to check.
+- **The rule reads the printed label, not the document**, and that collapses four clauses into one
+  measurement. §403(w)(1)(A)'s "Contains" statement, (B)'s parenthetical, (B)(i)'s ingredient whose own name
+  carries the source — `buttermilk` for milk — and (B)(ii)'s source appearing elsewhere in the list are all
+  just "the name is printed", and the statute treats them as equally sufficient. The one place they differ is
+  (B)(ii)'s caveat, that the appearance must not be "part of the name of a food ingredient that is not a
+  major food allergen": coconut milk contains no dairy, so non-allergen ingredient names are struck out of
+  the list before it is searched.
+- **The first *relative* type-size requirement in the project.** §403(w)(1)(A) sizes the "Contains" statement
+  against the ingredient list rather than against a figure in a table, which is why it needs the letter
+  heights `text/metrics` generates: comparing `fontSizeMm` to `fontSizeMm` would be right only while both
+  blocks shared a typeface, and would stop being right the moment one did not. Adjacency is measured too, with
+  an allowance taken off the list's own line advance rather than guessed.
+- Four clauses **deliberately not modelled**, recorded as decisions: §403(w)(3)'s finding that labeling may
+  substitute for the label, §403(w)(5)'s power to modify the two forms by regulation, and the §403(w)(6) and
+  (7) petition and notification exemptions. All four are facts about a Federal Register docket rather than
+  about a label.
+
+Phase 5, stage 2 — what the food is made of, and who is answerable for it. Four rules from 21 CFR 101.4 and
+101.5, and one from 101.2 that turned out to be the bridge between this stage and the next.
+
+- **21 CFR 101.2(c) is the keystone, and it was not in the build list.** It sets the floor for everything on
+  the panel — "in no case may the letters and/or numbers be less than one-sixteenth inch in height" — and
+  then says "The requirements for conspicuousness and legibility shall include the specifications of
+  §§ 101.7(h)(1) and (2)". That second sentence incorporates the casing rule stage 1 built for the net
+  quantity, so the same function answers which letter is measured for the ingredient statement and the
+  responsible firm. `netQuantityGlyphBasis` is `regulatedGlyphBasis` now, because it never was specific to
+  the net quantity — it only looked that way from where it was first needed.
+- **Ingredient order is checked against declared weights, not asserted.** A list of names in an order is a
+  claim about predominance that nothing can test, so `UsFoodIngredient` carries a weight share and
+  101.4(a)(1) becomes a rule with something to run on. The engine draws the order it is given and never
+  sorts: a list sorted on the way to the canvas is a defect that cannot be drawn, and therefore one that
+  cannot be reported.
+- **The 101.4(a)(2) grouping is a closed set of four figures** — "2 percent, or, if desired, 1.5 percent,
+  1.0 percent, or 0.5 percent" — and nothing behind the quantifying statement may exceed the one chosen.
+  Both halves are checked, and the API rejects a fifth figure at the boundary rather than drawing it: an
+  impermissible threshold is a defect in the request, not a label this engine should render.
+- **Two facts about the world are declared, never inferred**, following the GHS small-container precedent.
+  Whether the named firm actually made the food decides whether 101.5(c) demands a qualifying phrase, and
+  whether its address appears in a current city or telephone directory decides whether 101.5(d) demands a
+  street address. Neither is answerable by looking at artwork. §101.100's ingredient exemptions are the same
+  shape and get the same treatment.
+- 101.5(c)'s qualifying phrase is **free text and deliberately not an enum**. The regulation gives
+  "Manufactured for" and "Distributed by" as examples and then permits "any other wording that expresses the
+  facts", so a closed list would reject compliant labels.
+- 101.5(b) is **deliberately not enforced**, recorded as a decision. Whether a string is a corporation's
+  actual registered name is a question about a companies register, and a rule guessing at it from the
+  presence of "Inc" or "Ltd" would report confident nonsense about sole traders.
+
+Phase 5, stage 1 — the net quantity of contents declaration. The first thing in this project to call
+`geometry/pdp.ts`, written in phase 1 and unused by any label since.
+
+- **Four rules, each measuring the declaration as drawn.** Type size against the panel area
+  (`21 CFR 101.7(i)`), placement within the bottom 30 percent (`101.7(f)`), separation from other printed
+  label information (also `101.7(f)`), and the inch/pound-plus-SI declaration (`15 U.S.C. 1453(a)(2)`).
+  Six known-bad fixtures between them, each asserting code, severity and the exact citation string.
+- **A fifth rule, `us-food/net-quantity-present`** — 21 CFR 101.7(a), "The principal display panel of a food
+  in package form shall bear a declaration of the net quantity of contents." Added during the stage-1 review,
+  for the reason under Fixed: the other four each decline when nothing is drawn, and four honest declines add
+  up to a clean bill of health unless one rule owns the missing element. It reports `blocking`, the severity
+  reserved for non-compliant as drawn.
+
+- **The label stock and the package are now different geometries.** Earlier templates had one. A 120 × 170 mm
+  label can sit on a carton, on a bottle or on a wedge of cheese, and 21 CFR 101.1 computes a different panel
+  area for each — the full face, 40 percent of height × circumference, or 40 percent of total surface. The
+  type-size band comes from the container and the placement zone from the drawn panel, so `UsFoodLabelData`
+  carries both and the two are not interchangeable. A fixture makes the gap concrete: a 60 × 90 mm wrap on a
+  200 mm bottle is 8.37 in² of label around a 37.20 in² panel, and sizing type to the label understates the
+  requirement by a third.
+- **The compliant type size is derived; the wrong one has to be stated.** With no `netQuantityFontSizeMm` the
+  engine computes the em that meets 101.7(i) for this panel, this marking method and this casing, so the
+  default label passes — and the suite asserts that rather than the comment claiming it. Supplying the field
+  draws that size instead, which is the only way an undersized declaration reaches the rule. Same shape as the
+  GHS engine deriving a pictogram set unless one is stated.
+- **The editor, the rail and the export route, for a third label type.** `UsFoodFormRail.vue`, a third
+  branch in `EditorFormRail`, a `POST /api/labels/us-food/export` route and a `us-food` arm on the store.
+  The rail shows the panel area and the letter height the table demands as the container is typed, both read
+  from `label-core` rather than restated — the same discipline that has the GHS rail read its small-container
+  threshold from the rule that enforces it.
+- The container reaches the API as a **discriminated union**, not one object with every dimension optional.
+  A request carrying a circumference *and* a panel width describes two packages, and Zod rejects it at the
+  boundary rather than letting the engine choose which one was meant.
+
+- Vertical font metrics. `FaceMetrics` gains `lowercaseOHeightEm` and `capHeightEm`, generated from the
+  embedded TTFs alongside the advance widths that were already there, with `glyphHeightMm` and
+  `fontSizeMmForGlyphHeight` in `text/measure` to convert. The generator now fails rather than emits if the
+  cap height taken from the `H` outline disagrees with the font's own `OS/2.sCapHeight`, or if the `o` does
+  not exceed `OS/2.sxHeight` by a small overshoot — two bounds against tables it did not produce.
+
 Phase 4, stage 6 — small containers, which are two different rules rather than one.
 
 - `29 CFR 1910.1200(f)(12)` and CLP Annex I 1.5, both read from source. They are not the same provision with
@@ -244,6 +701,368 @@ That is what makes preview == print structural rather than something two code pa
   was the one branch CI never watched. Pull requests were always covered; direct pushes were not.
 
 ### Fixed
+
+Phase 5, stage 6.
+
+- The format rule's **pass cited the rule's own paragraph rather than the one that granted the permission**,
+  so a label entitled under (d)(11)(iii) was cleared under (j)(13)(ii)(A). `finding.ts` records this exact
+  mistake shipping once before — a passing GHS signal-word check reporting under the EU regulation on a US
+  label — which is why `passed()` takes a citation at all.
+- The tabular display was held to the vertical one's 2.5 inch width and **stacked into a single column**,
+  which is the shape it exists to avoid. The reduced displays take the whole panel now.
+
+- The linear display was drawn without the heading 101.9(d)(2) requires, **and a comment beside it claimed
+  the heading was there**. The reduced displays are excused from setting it "the full width of the
+  information provided under paragraph (d)(7)" — not from carrying it. A comment asserting what the code
+  does not do is the same defect the box-rule comment had one stage earlier.
+- The type-size rule reported "0 parts of the panel meet the type sizes" as a **pass** on a linear display,
+  where one undifferentiated run leaves no servings line, serving size or Calories element to measure. A rule
+  with nothing it can identify has declined, not cleared.
+- **Declining was the right answer to the wrong question.** With it, *nothing* measured any type size on the
+  linear display: a panel at `typeScale: 0.05` — 0.4 point type — came back with ten passes and no violation.
+  The premise underneath was the defect. The linear display is **named in every one of the exceptions**:
+  (d)(3)(i) and (ii) put both servings lines at 9 point "in ... the linear display for small packages as shown
+  in paragraph (j)(13)(ii)(A)(2)", (d)(1)(iii) puts the Calories word at 10 and its numeral at 14 in the same
+  sentence, and (d)(7)(iii) puts the nutrients at 8. One run at one size cannot satisfy four different
+  minimums, so the display was being drawn non-compliant by default — its Calories numeral set at 8 point
+  where the paragraph requires 14 — and the rule that would have said so had been taught to look away. The run
+  is a flow of spans now, each set at its own minimum and carrying its own id, which is what makes the drawing
+  right and the check possible at once. The same 0.4 point panel reports five violations under five
+  paragraphs.
+- **The heading had been borrowing a figure that stopped being the largest.** (d)(2) asks for "no smaller than
+  all other print size in the nutrition label except for the numerical information for 'Calories'" — a
+  relative requirement the engine satisfies by construction, which the type-size rule therefore declines to
+  check. It took the serving-size figure, true only while every part was one size; with the Calories word at
+  10 and serving size at 9 it would have been the smaller of the two. It is computed from the spans now, so
+  "by construction" is something the code does rather than something a comment claims.
+- Each nutrient in the linear run also gets an element of its own, so a finding about Sodium outlines the
+  words that say Sodium. The whole run was one `nutritionPanel` before, which is the shape that once had a
+  finding about Iron outlining the entire label.
+- **The abbreviated footnote was printed on every tabular display, and the comment above it reasoned its way
+  there backwards.** 101.9(j)(13)(i) relieves "foods in packages **subject to requirements of paragraphs
+  (j)(13)(ii)(A)(1) and (2)**" of the (d)(9) footnote and lets them use "% DV = % Daily Value" instead. Two
+  named paragraphs again. The comment read "(d)(11)'s tabular display is not one of them, so it keeps the
+  abbreviated statement rather than nothing" — but not being one of them is exactly what makes the full
+  footnote due. (d)(11) is a set of space accommodations; it permits the arrangement and relieves nothing.
+  Nothing caught it because no rule checks the footnote at all.
+- **Two `shall`s the tabular display was not drawing.** (d)(4) requires the subheading "Amount per serving"
+  and states one exception — "the dual column formats shown in paragraphs (e)(5), (e)(6)(i), and (e)(6)(ii)"
+  — which no tabular display is. (d)(6) requires the "% Daily Value" column heading and states no exception at
+  all. The display drew neither.
+- **The rail told the user a percentage the panel would not print.** 101.9(d)(7)(ii) lets protein's percentage
+  be omitted and sends it to (c)(7)(ii), where the amount is corrected by a digestibility score no label
+  carries, so the renderer omits it — and the editor's "what the panel will print" column, which spelled the
+  same rule separately and missed that branch, showed Protein at 10% beside a panel showing none. The decision
+  is one exported function now, `printedPercentDailyValue`, which both the renderer and the rail call.
+- A mutation escaped: putting the tabular Calories numeral back to 22 point left the suite green, because
+  nothing tested the tabular column of the minimums table at all. It is pinned now, along with the property
+  that every reduced figure is lower than its vertical counterpart and none is higher.
+
+- **The entry above has its premise backwards, and the table it pinned was wrong.** 22 point *is* what
+  (d)(11)'s tabular display requires; the mutation that escaped was the correct figure, and pinning 14 in
+  place fixed the test and not the defect. The minimums table was keyed on the base display — vertical,
+  tabular, linear — while **every exception in (d)(1)(iii) and (d)(3) is keyed on a paragraph**, and the four
+  exceptions name four different sets of them. The Calories word drops to 10 point in the displays "shown in
+  paragraphs (d)(11), (e)(6)(ii), and (j)(13)(ii)(A)(1)" and the linear one; the numeral drops to 14 only "for
+  the tabular display for small packages as shown in paragraph (j)(13)(ii)(A)(1)" and the linear display;
+  (d)(3)(i)'s servings statement drops to 9 on that same small-package pair alone; and (d)(3)(ii)'s "Serving
+  size" drops to 9 on all four. No two of the figures move together, and only "Serving size" and the Calories
+  word share a list. One `tabular` row cannot satisfy four lists that disagree, and the one that tried put a
+  14 point numeral and a 9 point servings statement on (d)(11)'s display, where the regulation requires 22 and
+  10 — drawn that way by the renderer and unreportable by the rule, wrong in both directions at once. The
+  table is now keyed on the paragraph that illustrates each display, which is the axis the exceptions are
+  written on.
+- **The Calories numeral was never measured at all.** It shared the word's element id, and the rule takes the
+  smallest primitive under an id, so the word's 16 point always won and an undersized numeral beside a correct
+  word could not be seen — the 22 point minimum had no check behind it in any display. It is drawn under its
+  own id now and measured separately, while a finding about it still outlines the Calories row a reader can
+  point at rather than a bare numeral.
+- **The tabular display drew "Calories" and its numeral as one string at one size**, which is the conflation
+  that hid the paragraph split: (d)(1)(iii) gives the word and the numeral separate minimums, so a single run
+  at a single size cannot satisfy both and misdraws the line besides. They are two primitives on one baseline,
+  the taller setting the leading.
+- This is the fourth defect in phase 5 of one kind — a figure enforced without reading what it was attached to
+  — so the kind is now written down in `CLAUDE.md` rather than rediscovered a fifth time.
+- **The tabular display drew its nutrients off the label and reported them present.** The columns were placed
+  from the right-hand edge of the serving block unconditionally. On a 60 mm label whose block took 42 of them
+  the remaining width was negative, the column count clamped to one, and all fourteen rows were drawn from
+  x 42 rightward — past the panel and past the substrate — while `us-food/nutrition-completeness` reported
+  `FDA_NUTRITION_COMPLETE`. The nutrients now go beneath the serving block where there is not room for a
+  column beside it, and the panel box grows to enclose them, which it did not when its height was measured
+  from the top of a block the columns no longer start level with.
+- **Overflow was only ever measured downward.** The engine checked the panel against the bottom edge of the
+  label and never against the right, which is why the case above was silent rather than reported. It checks
+  both now — the reduced displays are the ones wide enough to need it — and a panel that still cannot fit says
+  so instead of being drawn away. The column arithmetic was also off by one column: *n* columns occupy *n*
+  widths and *n−1* gutters, so the gutter belongs on both sides of the division.
+- **The Calories numeral, newly given an id of its own, fell into the 101.2(c) rule.** That rule's own note
+  explains at length why the Nutrition Facts panel must be excluded from the 1/16 inch information-panel floor
+  — 101.9 sets 8 point rows whose lowercase "o" is 1.52 mm against a 1.59 mm floor, and applying it would
+  report every compliant nutrition label in the country. The numeral was not in the exclusion set, so it was
+  judged twice under two citations, and having no `ResolvedElement` it reported under a raw element id that
+  highlighted nothing when clicked. Splitting an element for one rule put it in reach of another.
+
+- **A "shall" the panel was not drawing.** 101.9(d)(1)(v): "A hairline rule that is centered between the
+  lines of text **shall** separate 'Nutrition Facts' from the servings per container statement and shall
+  separate each nutrient and its corresponding percent Daily Value ... from the nutrient and percent Daily
+  Value above and below it." One sentence, two places, and the panel drew the second and not the first —
+  which is exactly why it went unnoticed: the half that was present made the half that was missing look
+  handled. Found while reading (j)(13) for something else.
+- The test guarding the hairline placement said "no rule above the first nutrient row", which was true when
+  written and too broad the moment a required rule appeared higher up. It is scoped to the gap it meant.
+
+Phase 5, stage 5 review. Nine findings, and the two worth naming first are both cases of a *shall* and a
+*may* being treated alike.
+
+- **Fat under half a gram must be declared as zero, and was being rounded up to 0.5.** 21 CFR 101.9(c)(2):
+  "If the serving contains less than 0.5 gram, the content **shall** be expressed as zero." The gram
+  nutrients at (c)(6) and (c)(7) get a *may* for the same threshold, and the two were implemented alike — so
+  0.4 g of fat came back 0.5, a compliant "Total Fat 0g" was reported as a violation, and a derived panel
+  printed the figure the regulation forbids. A test asserted the wrong answer, which is how it survived.
+- **The heading was enforced at 22 points under a citation that says nothing of the sort.** 101.9(d)(2) is a
+  *relative* requirement — "no smaller than all other print size in the nutrition label except for the
+  numerical information for 'Calories'" — and the 22 points comes from FDA's nonbinding illustrations. A
+  panel scaled down in proportion complies and was being reported. The relative requirement is now not
+  checked either: this engine always draws the heading largest, so a rule for it could never fail — the same
+  call 101.7(f)'s "lines generally parallel to the base" already gets.
+- **The percentage finding printed the Daily Value where it meant the declared amount**: "12% is what 78 g
+  gives". 78 g is the Daily Value, which gives 100%.
+- **The percentage pass counted nutrients it never checked.** A declared percentage with no amount behind it
+  could not be recomputed, so it was neither reported nor verified — and the pass said it matched.
+- **The panel printed a protein percentage the rule deliberately declines to check.** 101.9(c)(7)(ii)
+  corrects protein by a digestibility score no label carries, and (d)(7)(ii) says the percentage "may be
+  omitted" — so printing an uncheckable figure was the worst of the three options.
+- Clearing the type-scale field set `typeScale` to **zero** — `'' / 100` — and drew the whole panel at
+  zero-size type.
+- The order rule walked the *expected* entries rather than the listed ones, so everything past the end went
+  uninspected and a duplicated trailing nutrient passed.
+- `'food-nutrition-row-'` was spelled out in three files. It is exported from one now; drift would have had
+  the 101.2(c) rule reporting every compliant 8 point nutrient row.
+- A comment said the box rule is "drawn last" where `unshift` draws it first. The code was right and the
+  comment would have talked a reader into breaking it.
+
+Phase 5, stage 5.
+
+- **The row elements existed and no rule used them.** Stage 5 gave every nutrient its own element to pay off
+  the debt stage 4 recorded, and the four nutrition rules went on anchoring their findings to the principal
+  display panel — so clicking a finding about Iron outlined the entire label. The web test that clicks it is
+  what caught it, which is the argument for driving the editor rather than asserting on rule output alone.
+  Findings about one nutrient point at that nutrient now; findings about the panel point at the panel.
+- **21 CFR 101.2(c) does not govern the Nutrition Facts panel, and applying it would have condemned every
+  compliant label in the country.** 101.2(b) does list 101.9 among the sections whose information belongs on
+  these panels, so a literal reading puts the 1/16 inch floor over the nutrition label too. It cannot be the
+  reading: 101.9(d)(7)(iii) sets the nutrient rows at "no smaller than 8 point", and 8 point of IBM Plex puts
+  the lowercase "o" at 1.52 mm against a 1.59 mm floor. The specific provision governs, and 101.2(d)(1)
+  already defers to 101.9 by name elsewhere. The panel is excluded, and stage 5's own rule checks the sizes
+  101.9 sets.
+- **The default stock could not carry a compliant label.** The panel alone is 129 mm tall, so on the previous
+  120 × 170 mm stock everything below it ran off the substrate — caught by the overflow omissions added in
+  the phase 5 review rather than by anyone noticing. It is 120 × 240 mm now, still 44.64 in² and still in the
+  same 3/16 inch band. That the old stock was too small is the sort of thing only drawing it reveals.
+- **A prefix collision made the panel fail its own rule.** Generated row ids read `food-nutrition-<id>` and
+  the fixed ones `food-nutrition-heading`, `-servings`, `-footnote`, so a rule selecting "the nutrient rows"
+  by prefix picked up the 6 point footnote and reported it against the 8 point row minimum. Rows are
+  `food-nutrition-row-*` now.
+- **A rule was drawn where no printed label has one.** The hairline between nutrients was keyed off the loop
+  index, and Calories occupies index 0 while being drawn in its own block further up — so a hairline landed
+  under the "% Daily Value" heading. It counts rows actually drawn.
+- **The separation rule counted one block of ink sixteen times.** Both the panel box and its fifteen rows
+  were neighbours, so the pass read "stands clear of the 24 other elements" on a label carrying five printed
+  blocks, and a single crowding could have produced a finding per row. The box stands for its contents.
+- **`typeScale` was unreachable through the API**, and it is the only way to draw a panel under the minimums
+  — so the type-size rule could not be exercised from there at all.
+- **The §101.9(j) exemption had shipped in stage 4 with no test.** It appeared in the suite only as *setup*
+  for a separation case, which is how a documented branch ends up uncovered while every code it emits looks
+  accounted for. It is asserted now, including that claiming it does not excuse a panel printed anyway.
+
+Phase 5, stage 4 review.
+
+- **One blank ingredient row undeclared every allergen on the label.** §403(w)(1)(B)(ii)'s caveat is
+  implemented by striking non-allergen ingredient names out of the printed list before searching it, and
+  `split('')` splits between every character — so a single empty name turned the list into spaced-out letters
+  and nothing was ever found in it again. The rail's "Add an ingredient" button inserts exactly that row, so a
+  label printing `whey (milk)` reported milk undeclared the moment a user clicked it, and went back to clean
+  when the row was filled in.
+- **A nutrient the panel held but did not print was reported by nobody.** The order rule narrows its
+  expectation to what `order` lists and leaves omissions to the completeness rule; the completeness rule was
+  reading `amounts`. A panel listing 14 of 15 came back "All 15 mandatory nutrients are declared" beside
+  "14 nutrients run in the order 101.9(c) sets" and no failures at all. Completeness judges what is printed
+  now — where an order is stated, that order is the panel.
+- **The example label declared an allergen the food does not contain.** The seeded document marked
+  `whole grain rolled oats` as wheat, so the first label anyone opens printed `whole grain rolled oats
+  (wheat)` and `Contains: wheat.` Oats are not wheat and are not one of the nine. On a tool whose only value
+  is being right, the demo being wrong is the worst place for it to be. The example is oat and almond granola
+  now, which is true and exercises §403(w)(2)'s specific-type requirement into the bargain.
+- The fixture carried **two copies of the ingredient list** — a `BASE_INGREDIENTS` const and an inline array
+  inside `BASE` that was never switched over — so the corrected allergen data landed in one of them and not
+  the other, and a test written to catch exactly that caught it. Collapsed to one.
+- Renaming the example's nut ingredient to `almonds` made two fixtures stop provoking their rules, because an
+  ingredient whose own name carries the food source satisfies §403(w)(1)(B)(i) by itself. They use a name that
+  says nothing now, which is the case worth testing anyway.
+
+Phase 5, stage 4.
+
+- **I invented the rounding increments for the vitamin and mineral weights, and the regulation's own worked
+  example caught it.** The (c)(8)(iv) table sets units and Daily Values but no increments, and I filled the
+  gap with 0.1 mg and 10 mg figures that looked reasonable. 101.9(c)(8)(ii) actually says the amounts use "the
+  levels of significance given in paragraph (c)(8)(iv) ... except that zeros following decimal points may be
+  dropped, and **additional levels of significance may be used**". So whole units is a baseline and not a
+  requirement, 235 mg and 235.4 mg of potassium are both proper declarations, and no single value can be
+  demanded. The invented 10 mg increment turned 101.9(d)(8)'s printed "Potassium 235 mg 6%" into 240 mg — the
+  conformant fixture disagreeing with the regulation is what surfaced it. Those weights are no longer checked
+  for rounding; their percentages still are.
+- **Zod 4 makes a record over an enum key exhaustive**, so the API demanded all fifteen nutrients and answered
+  400 to a panel declaring fourteen — the boundary refusing the very label the completeness rule exists to
+  judge. It also rejected any single-nutrient override. `z.partialRecord` is the one that means what was
+  meant.
+- **Two mutations escaped, both on clauses I had gone to the source to get right.** Accepting only one basis
+  for the percentage, and forcing the mineral weights to a single value, each left the suite green — the code
+  was correct and nothing held it there. The subtle clause and the untested clause turn out to be the same
+  clause, because subtlety is what makes a case easy to leave out of a fixture.
+- A script asserted only that it had changed the file, so a two-replacement edit passed while one half of it
+  silently missed its anchor and a value import was never added. Each replacement is asserted separately now.
+- **A golden vector that could not fail.** The sodium rounding test asserted 148 mg rounds to 150, and its own
+  comment said the point was to prove the band above 140 mg is 10 rather than 5 — but 148 rounds to 150 under
+  either, so the vector proved nothing. A mutation collapsing the three sodium bands into one left the suite
+  green. It asserts 163 → 160 and 145 → 150 now, which the 5 mg band cannot produce. The comment had described
+  the right test and the assertion had not implemented it.
+
+Phase 5, stage 3 review.
+
+- **The relative type-size comparison failed the most ordinary layout there is.** §403(w)(1)(A) sizes the
+  "Contains" statement against the ingredient list, and each block was converted through *its own* casing —
+  an all-caps list on cap height, a mixed-case statement on the "o" — so two blocks set at an identical 4 mm
+  em came out 2.79 mm against 2.16 mm and a typesetter who set both to one size got a violation. A comparison
+  between two blocks has to use one basis on both sides or it is not measuring type size.
+- **The engine composed an allergen declaration the recipe did not support.** A `containsStatement` id left
+  behind after its ingredient's allergen was cleared still printed `Contains: milk.` on a food containing only
+  sugar, because the source name fell back to the category. Nothing reported it either — the allergen rule
+  returns early when no ingredient bears one — so the label came back with nine findings, all passes. An
+  orphaned id now draws nothing and records an omission.
+- **Two tree nuts could never both be named.** The statement was composed per allergen *id*, taking the
+  specific type from the first matching ingredient, so almonds and walnuts drew `Contains: almonds.` and the
+  rule then reported walnuts undeclared with no route through §403(w)(1)(A) that could fix it.
+- **The form fabricated a food source name.** Changing an ingredient's allergen kept the specific type
+  belonging to the old one, so fish/"cod" followed by tree-nuts produced `walnut pieces (cod)` — which the
+  rule accepted, because as far as it could tell a source had been declared. And an allergen cleared from an
+  ingredient lost its "Contains" checkbox while staying in the statement, leaving no way to untick something
+  the label went on naming.
+- **A duplicate import dropped a whole test file and the run still read green**: 585 tests passed with no
+  failing test, because the 65 that could not load counted as nothing. `Test Files 1 failed | 34 passed` is
+  the line worth reading. Checking `Tests` alone is how a suite quietly stops covering what it claims to.
+- **Every phase 5 entry under this heading was written and silently lost, twice over.** The insert anchored on
+  `"### Fixed\n\nPhase 4, "` where the file reads `"Phase 4 review."`; `str.replace` returns the string
+  unchanged when it matches nothing, and every later anchor depended on the first having landed. Two commits
+  shipped with their Added entries and none of their Fixed ones, and one entry described a code fix that had
+  itself failed to apply. This changelog already records the same class of defect twice — "the patch to the
+  shared text helper silently failed to apply and was never checked". Third time. Every edit here now asserts
+  that it changed the file.
+
+Phase 5, stage 3.
+
+- **A rule that could not fail, caught before it shipped.** The engine appended §403(w)(1)(B)'s parenthetical
+  wherever it knew an allergen, so an undeclared allergen was undrawable and `FDA_ALLERGEN_NOT_DECLARED` was
+  unreachable — a check that clears every label put to it, the shape `ResolvedSymbol` was restructured to
+  avoid and the reason 101.7(h)(1) was not shipped at all. Whether the parenthetical prints is stated on the
+  ingredient now, the way both GHS signal words can be ticked.
+- **The adjacency allowance was guessed and was wrong.** Measuring "immediately after or adjacent to" against
+  the statement's em alone made it narrower than the gap the engine leaves between any two blocks, so every
+  conformant label came back non-adjacent. It is measured off the ingredient list's own line advance now.
+- The allergen table's lookup copied an `Object.hasOwn` guard out of habit and allocated a fresh nine-key
+  object on every call to prevent nothing: a `Map` does not walk a prototype chain. That guard belongs on the
+  plain-object tables in `text/metrics` and `ghs/statements` and nowhere else.
+- The reference module is `fda/`, not `usFood/`, after `packageExports.test.ts` rejected the camelCase
+  directory. The guard was right and the name was wrong — top-level modules are named for the body whose data
+  they carry, which is what `gs1/` and `ghs/` already do.
+
+Phase 5 review — findings across stages 1 and 2.
+
+- **A quantifying statement covering the whole list produced a false pass.** With the grouped count at or past
+  the length, the order rule sliced its list to nothing and reported "0 ingredients run in descending order of
+  predominance by weight" — a pass, with a citation, about a list it had not looked at. The engine drew
+  `INGREDIENTS: . Contains 2 percent or less of …` beside it. The form never lowered the count on removal and
+  the API set no upper bound; all three are fixed, and the API refuses rather than clamping silently.
+- **The 101.2(c) floor was read from one line of a wrapped element.** A statement breaking to an all-caps
+  first line and a lower-case second was judged on the first and cleared at 2.5 mm of em while the responsible
+  firm at the identical size failed at 1.35 mm. 101.7(h)(2) asks whether upper and lower case "are used" — of
+  the text, not of a line of it.
+- **Content ran off the stock and nothing said so.** Four hundred ingredients put two mandatory elements at
+  509 mm and 516 mm on a 170 mm label with zero omissions recorded. This is the phase 4 defect repeating,
+  where a product identifier set 88.9 mm on a 74 mm label ran off the substrate and was recorded nowhere.
+  Blocks now record a detail omission when partly cut and an element omission when they start past the bottom
+  edge, which gates the export.
+- **Rounding reintroduced the em/letter-height defect one decimal place down.** The stage 1 review fixed the
+  type-size override to seed from `fontSizeMmForGlyphHeight`; `toFixed(2)` then rounded 6.823066 to 6.82,
+  0.002 mm short and past the tolerance, so ticking the box still reported a compliant label too small. A fix
+  that is right to six places and wrong at two is still wrong.
+- **The §101.100 exemption was excusing more than it grants.** Claiming it short-circuited the rule while the
+  engine went on drawing the list, so a printed statement in the wrong order went unchecked. It relieves a
+  food of having to *bear* a list, not of ordering one it prints.
+
+Phase 5, stage 2.
+
+- **A mutation escaped the suite and the gap it found was real.** Fixing the 101.2(c) rule's glyph basis at
+  cap height instead of reading the casing left every test green, so nothing pinned the one clause that makes
+  the rule correct. An all-lowercase ingredient statement measured on capitals clears type 23% under the
+  floor.
+- Two stage 1 tests asserted a literal pass count, which stage 2 made wrong the moment it shipped a fourth
+  rule. They count against `US_FOOD_RULES.length` now — a total that has to be edited every time a rule lands
+  is a test nobody trusts by the fourth edit.
+- The "nothing else on the panel" separation test was passing for the wrong reason a second time, by the same
+  mechanism: it cleared the statement of identity while the panel had since gained two more elements.
+
+Phase 5, stage 1 review.
+
+- **A label with no net quantity declaration reported three passes and no findings.** The engine drew an empty
+  text primitive; the type-size rule measured the empty string, found it 4.76 mm "on capital letters", and
+  passed it with a real CFR citation. Blank text now draws nothing, so all three measuring rules decline, and
+  `netQuantityPresent` reports what is actually wrong. **Four rules declining is not four rules clearing.**
+- **An absent statement of identity still occupied 7.8 mm of the panel.** `wrapTextMm('')` returns one empty
+  line, so the engine pushed an invisible primitive and an element for it, and the separation rule measured
+  the declaration against ink that will never be printed.
+- **The form rail reintroduced the em/letter-height conflation this stage exists to remove.** Ticking "set the
+  type size by hand" seeded an em with a 101.7(i) letter height, so taking control of the size on a compliant
+  label wrote 4.76 mm and instantly produced a violation.
+- **The rail authored half of a regulated statement.** The SI declaration was a checkbox that wrote `(340 g)`
+  whatever the inch/pound half said, so `NET WT 5 LB (340 g)` passed with a conversion that is simply false.
+  It is a typed field now, and empty means absent.
+- **The metric exemption claimed a declaration "stands alone" when it did not.** Both exemptions are
+  permissions, so a label can carry both and still be exempt.
+
+Phase 5, stage 1 — found by reading 21 CFR 101 from the eCFR before building on `geometry/pdp.ts`.
+
+- **`21 CFR 101.105` does not exist, and this project was about to cite it.** It is the number this same
+  section carried until **81 FR 59129**, 29 Aug 2016, redesignated it as **101.7** — out of subpart G, where
+  FDA noted it had never belonged because it "contains no information pertaining to when a food is exempt".
+  Paragraph letters survived unchanged, and the 2016 edition of §101.105 is word-for-word identical to the
+  current §101.7 on the type-size table. Much of the secondary literature still points at the dead number.
+- **The measured letter depends on the casing, and `pdp.ts` said it was always the "o"**, citing 101.7(i),
+  which is only the table. The measurement rule is **101.7(h)(2)**: capitals are the default and the "o" is
+  the exception. `NET WT 12 OZ` is judged on its capitals, and assuming otherwise over-demands type by a
+  third.
+- **The em-to-letter ratio was assumed at about a half and is 0.540.** `text/metrics.ts` carried advance
+  widths only, so the ratio was not measurable and `layout/types.ts` carried a standing prohibition on judging
+  type size from `fontSizeMm`. An em is 1.852 lowercase "o"s and 1.433 capitals; comparing a requirement
+  against `fontSizeMm` directly clears type at **54 percent** of the legal minimum.
+- **The "o" is not the x-height**, and `OS/2.sxHeight` would have been wrong by 4.7 percent: a round letter
+  overshoots at top and baseline. The rejected reading is kept as a test.
+- **Dual metric/US units is not in 21 CFR 101.** FDA proposed SI declarations in 1993 and never took final
+  action. The requirement is **15 U.S.C. 1453(a)(2)**, with exceptions cited to their own paragraphs rather
+  than to the general clause.
+- **101.7(i)'s closing sentence was missing entirely**: a declaration blown, embossed or molded into a glass
+  or plastic surface needs a sixteenth of an inch more type. The CFR's own cross-reference in that sentence
+  points at "(h)(1) through (4)" where it means (i)(1) through (4) — an error in the official text, now noted
+  in a comment so a later reader does not "correct" it.
+- **Two rules deliberately not shipped, recorded as decisions.** 101.7(h)(1)'s 3:1 cap, because
+  `TextPrimitive` has no horizontal scale so the rule could not fail; and 101.7(h)(3)'s half-height allowance
+  for fraction numerals, because the declaration is set as one run. The engine records an omission for the
+  second.
+- **Three comments denied a capability the tree now has**, written before phase 4 added the advance-width
+  table and never updated when it did.
+- **A fixture that proved nothing**, caught by inspecting what the rules actually returned: the molded-bottle
+  case was sized on the reasoning that 6.823 mm gives capitals of exactly 4.7625 mm, but its declaration reads
+  `NET WT 12 OZ (340 g)` and that lowercase `g` puts the run on the "o" basis, so it failed the *printed* band
+  too and would have passed with the marking-method code deleted.
 
 Phase 4 review. Fifteen findings from a full pass over the branch, and the most serious is about how the
 regulatory data was checked rather than about any single line of it.
@@ -835,6 +1654,37 @@ Findings from the phase 1 review, each confirmed against a primary source rather
 - Removed `baseUrl` from the web tsconfig — deprecated in TypeScript 6 and an error under `vue-tsc`.
 
 ### Notes
+
+Phase 5 research, 2026-09-12 — recorded because two of these are decisions rather than findings, and a later
+session would otherwise redo the search.
+
+- **FDA's front-of-package "Nutrition Info box" is still proposed.** 90 FR 5426 (16 Jan 2025), comment period
+  extended by 90 FR 19664 (9 May 2025), no final rule twenty months on. `DESIGN.md` said to build it behind a
+  forward-looking flag; it is now deferred outright instead. A proposed rule changes before it is finalised,
+  so a UI built against this one is work that will need redoing, and the deferral reverses the day it lands.
+- **Corrected 2026-09-12, same day:** the entry below concluded the bar weights were stated nowhere. They are
+  stated, in FDA's own illustrations — [Examples of Different Label
+  Formats](https://www.fda.gov/media/99151/download): "All labels enclosed by ½ point box rule within 3 point
+  of text measure", "7 pt rule", "3 pt rule", "¼ pt rule centered between nutrients (2 pt leading above and
+  below)". That PDF was fetched while reaching the original conclusion and came back as unreadable binary, and
+  **"I could not read it" was written down as "it does not say it"**. The figures are transcribed into
+  `fda/nutritionPanel.ts` with the quotation beside each. Nothing else changes: the document is guidance, so
+  the renderer follows it and no rule judges a bar weight.
+- **The Nutrition Facts bar weights are not stated numerically in any *binding* source**, and four were
+  checked:
+  21 CFR 101.9 defers to the graphic fifteen times; Appendix B to Part 101 — the "graphic specifications" 101.9
+  points at — is two images and 55 words of boilerplate; the 292,000-word preamble to the 2016 final rule
+  (81 FR 33742) mentions "hairline" once and defines it as "a thin line"; and the 2018 technical amendment
+  (83 FR 65493) gives type sizes only. 101.9 also says FDA "strongly recommends" Appendix B, which is a
+  recommendation and not a requirement. So the renderer will follow the recommended geometry as a documented
+  house default, the way `GHS_TYPE_DEFAULT` and `UPC_A_HRI_DEFAULT` already are, and no rule will judge a bar
+  weight. The type *scale* is a different matter and is binding — 101.9 states it in points.
+- **21 U.S.C. 343(w) carries a type-size requirement**, which was not expected: a "Contains" statement must be
+  "in a type size no smaller than the type size used in the list of ingredients". Measurable with the glyph
+  metrics stage 1 added. 343(w)(2) also requires the specific type of tree nut or species of fish or
+  Crustacean shellfish, not the category.
+- Out of scope but current law, so worth not rediscovering: the "healthy" nutrient content claim definition
+  was finalised at 89 FR 106064 (27 Dec 2024).
 
 - Requires npm ≥ 11. npm 10.9.2 fails to resolve this dependency graph, crashing in arborist with
   `Cannot read properties of null (reading 'edgesOut')` while walking Vitest 4's peer set.

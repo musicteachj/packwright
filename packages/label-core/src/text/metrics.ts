@@ -1,5 +1,5 @@
 /**
- * Advance widths for the faces this project embeds, in em units.
+ * Metrics for the faces this project embeds, in em units.
  *
  * **Generated — do not edit.** Produced by `scripts/generate-font-metrics.mjs`
  * from the TTFs in `assets/fonts`; run `npm run generate:font-metrics` after
@@ -19,6 +19,21 @@
 export interface FaceMetrics {
   /** Advance for a character the table does not carry, in em. */
   fallback: number
+  /**
+   * Printed height of the lowercase "o", in em — the glyph's bounding box, so it
+   * includes the overshoot a round letter carries above the x-height line and
+   * below the baseline. Larger than `OS/2.sxHeight` for that reason.
+   *
+   * 21 CFR 101.7(h)(2) makes this the measured dimension whenever a net quantity
+   * declaration is set with any lower case.
+   */
+  lowercaseOHeightEm: number
+  /**
+   * Printed height of a capital letter, in em. The default basis under
+   * 21 CFR 101.7(h)(2): "Letter heights pertain to upper case or capital
+   * letters."
+   */
+  capHeightEm: number
   /** Advance per character, in em. */
   widths: Readonly<Record<string, number>>
 }
@@ -26,6 +41,8 @@ export interface FaceMetrics {
 export const FONT_METRICS: Readonly<Record<string, FaceMetrics>> = {
   'IBM Plex Sans': {
     fallback: 0.568,
+    lowercaseOHeightEm: 0.54,
+    capHeightEm: 0.698,
     widths: {
       '0': 0.6,
       '1': 0.6,
@@ -229,6 +246,8 @@ export const FONT_METRICS: Readonly<Record<string, FaceMetrics>> = {
   },
   'IBM Plex Sans SemiBold': {
     fallback: 0.588,
+    lowercaseOHeightEm: 0.546,
+    capHeightEm: 0.698,
     widths: {
       '0': 0.6,
       '1': 0.6,
@@ -432,6 +451,8 @@ export const FONT_METRICS: Readonly<Record<string, FaceMetrics>> = {
   },
   'IBM Plex Mono': {
     fallback: 0.6,
+    lowercaseOHeightEm: 0.54,
+    capHeightEm: 0.698,
     widths: {
       '0': 0.6,
       '1': 0.6,
@@ -635,6 +656,8 @@ export const FONT_METRICS: Readonly<Record<string, FaceMetrics>> = {
   },
   'IBM Plex Mono SemiBold': {
     fallback: 0.6,
+    lowercaseOHeightEm: 0.54,
+    capHeightEm: 0.698,
     widths: {
       '0': 0.6,
       '1': 0.6,
