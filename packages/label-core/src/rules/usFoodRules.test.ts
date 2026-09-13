@@ -89,7 +89,7 @@ describe('the conformant control', () => {
     // panel using the standard vertical display, because every package may use
     // it and there is no entitlement to judge. A pass there would be a check
     // that clears every label carrying the default.
-    expect(passes).toHaveLength(US_FOOD_RULES.length - 1)
+    expect(passes).toHaveLength(US_FOOD_RULES.length - 2)
     expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_FORMAT_MET')
   })
 
@@ -1139,6 +1139,113 @@ describe('findings from the stage 5 review', () => {
     }).map((f) => f.code)
     expect(codes).toContain('FDA_NUTRITION_OUT_OF_ORDER')
   })
+})
+
+describe('the second column (b)(12)(i) and (b)(2)(i)(D) make mandatory', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const panel = (patch: Record<string, unknown>): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    nutritionFacts: {
+      ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      availableSurfaceSqInches: 60,
+      referenceAmount: { amount: 22, unit: 'g', category: 'Snacks' },
+      ...patch,
+    },
+  })
+  const codesFor = (patch: Record<string, unknown>) =>
+    findingsFor(panel(patch), stock).map((f) => f.code)
+
+  const individually = { packagedAndSoldIndividually: true }
+
+  it('declines entirely where the label states no reference amount', () => {
+    // The trigger is a percentage of §101.12(b)'s figure, and this project does
+    // not carry that table. A rule that reports a label for *not* carrying a
+    // column must not do it on a number the engine invented.
+    const { referenceAmount: _drop, ...facts } = panel({
+      ...individually,
+      packageContent: 55,
+    }).nutritionFacts!
+    const codes = findingsFor({ ...US_FOOD_CONFORMANT.data, nutritionFacts: facts }, stock).map(
+      (f) => f.code,
+    )
+    expect(codes).not.toContain('FDA_DUAL_COLUMN_MISSING')
+    expect(codes).not.toContain('FDA_DUAL_COLUMN_MET')
+    expect(codes).not.toContain('FDA_DUAL_COLUMN_EXEMPT')
+  })
+
+  it('is inclusive at both ends of the 200 to 300 percent band', () => {
+    // "at least 200 percent and up to and including 300 percent" — so both
+    // boundaries are inside it, and a rule using two exclusive comparisons would
+    // clear the two labels that sit exactly on them.
+    expect(codesFor({ ...individually, packageContent: 44 })).toContain('FDA_DUAL_COLUMN_MISSING')
+    expect(codesFor({ ...individually, packageContent: 66 })).toContain('FDA_DUAL_COLUMN_MISSING')
+  })
+
+  it('says nothing about a package outside the band', () => {
+    for (const packageContent of [43.9, 66.1]) {
+      expect(codesFor({ ...individually, packageContent }), String(packageContent)).not.toContain(
+        'FDA_DUAL_COLUMN_MISSING',
+      )
+    }
+  })
+
+  it('reaches a package only where it is packaged and sold individually', () => {
+    expect(codesFor({ packageContent: 55 })).not.toContain('FDA_DUAL_COLUMN_MISSING')
+  })
+
+  it('reports the per-unit duty (b)(2)(i)(D) sets on a heavy unit', () => {
+    const match = findingsFor(panel({ unitContent: 55 }), stock).find(
+      (f) => f.code === 'FDA_DUAL_COLUMN_MISSING',
+    )
+    expect(match).toBeDefined()
+    expect(match!.citation.reference).toBe('21 CFR 101.9(b)(2)(i)(D)')
+    expect(match!.message).toContain('the individual unit')
+  })
+
+  it('clears a package that carries the column', () => {
+    const codes = codesFor({
+      ...individually,
+      packageContent: 55,
+      columns: { mode: 'dual', basis: 'per-container' },
+    })
+    expect(codes).toContain('FDA_DUAL_COLUMN_MET')
+    expect(codes).not.toContain('FDA_DUAL_COLUMN_MISSING')
+  })
+
+  // The exemptions, each asserted on a label that would otherwise be reported.
+  // An exemption that silently stops working is the failure mode for a rule that
+  // reports an absence, and only a case that would fire without it can catch that.
+  const exempt = (patch: Record<string, unknown>, reference: string, name: string) => {
+    it(`is excused by ${reference} — ${name}`, () => {
+      const findings = findingsFor(panel({ ...individually, packageContent: 55, ...patch }), stock)
+      const match = findings.find((f) => f.code === 'FDA_DUAL_COLUMN_EXEMPT')
+      expect(match, 'the exemption produced no finding at all').toBeDefined()
+      expect(match!.citation.reference).toBe(reference)
+      expect(findings.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_MISSING')
+    })
+  }
+
+  // (A) turns on entitlement — "products that meet the requirements to use the
+  // tabular format", not products that use it — so a small package is excused
+  // whatever display it actually carries. This one is the widest of the three.
+  exempt({ availableSurfaceSqInches: 9 }, '21 CFR 101.9(b)(12)(i)(A)', 'a small package')
+  exempt(
+    { dualColumnExemption: { rawCommodityVoluntary: true } },
+    '21 CFR 101.9(b)(12)(i)(B)',
+    'a raw commodity labelled voluntarily',
+  )
+  // (C) is conjunctive — it excuses a product that *already provides* a second
+  // column for another reason — so most of it falls out of the declared basis.
+  exempt(
+    { columns: { mode: 'dual', basis: 'as-prepared' } },
+    '21 CFR 101.9(b)(12)(i)(C)',
+    'a second column already given as prepared',
+  )
+  exempt(
+    { dualColumnExemption: { variedWeight: true } },
+    '21 CFR 101.9(b)(12)(i)(C)',
+    'a varied-weight product',
+  )
 })
 
 describe('the columns axis is orthogonal to the display', () => {

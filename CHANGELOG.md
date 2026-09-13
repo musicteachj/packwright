@@ -10,6 +10,32 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 6 (in progress) — the first rule here that reports a label for **not** using a display.
+
+- **`us-food/dual-column-required` — 21 CFR 101.9(b)(12)(i) and (b)(2)(i)(D).** Every format rule so far is
+  deliberately careful never to demand a display, because (j)(13)(ii) opens "may modify the requirements" and
+  101.9(e) opens "Nutrition information **may** be presented for two or more forms". These two are the other
+  kind: a package "packaged and sold individually" holding 200–300% of its reference amount "**must** provide
+  an additional column", and where a *unit* weighs the same the manufacturer "**shall** provide" one. A rule
+  silent about those clears a label the regulation does not.
+- **The band is inclusive at both ends** — "at least 200 percent and up to and including 300 percent" — so
+  200.0 and 300.0 are inside it. Two exclusive comparisons would have cleared the two labels sitting exactly
+  on the boundaries.
+- **It fires only on facts the label has asserted.** The trigger is a percentage of "the applicable reference
+  amount" from §101.12(b), a table of roughly 140 food categories that this project does not carry, so the
+  figure is declared on the label and the rule declines entirely without it. Reporting a missing column
+  against an inferred reference amount would be a demand the user cannot check resting on a number the engine
+  invented.
+- **All three exemptions are implemented, and they are load-bearing.** (b)(2)(i)(D) closes with "The
+  exemptions in paragraphs (b)(12)(i)(A), (B), and (C) of this section apply to this provision", so one set
+  serves both. (A) turns on **entitlement** — "products that **meet the requirements to use** the tabular
+  format", not products that use it — so any package small enough for the reduced displays is excused
+  whatever display it carries, which is a large share of those that would otherwise qualify. (C) is
+  **conjunctive**: it excuses a product that has the named property *and already provides* a second column
+  under (e), so most of it falls out of the declared basis rather than needing to be asserted. Each exemption
+  reports as a pass naming the paragraph that granted it, because a rule that declines invisibly cannot be
+  told from one that is broken — and each has a test on a label that would otherwise be reported.
+
 Phase 5, stage 6 (in progress) — the columns axis, which dual-column needs before it can be drawn.
 
 - **The panel has two axes, not one list of variants.** `format` says how the information is *arranged* —

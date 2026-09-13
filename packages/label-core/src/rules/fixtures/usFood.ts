@@ -36,6 +36,7 @@ import type {
 import type { Severity } from '../../types/index'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
+  FDA_DUAL_COLUMN_MISSING,
   FDA_NUTRITION_MISSING,
   FDA_SERVING_SIZE_MISSING,
   FDA_STATEMENT_OF_IDENTITY_MISSING,
@@ -248,6 +249,33 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_ALLERGEN_NOT_DECLARED,
       severity: 'violation',
       citation: 'FD&C Act §403(w)(1)',
+    },
+  },
+  {
+    name: 'a 250 percent package carrying one column',
+    defect:
+      'A 55 g bag against a 22 g reference amount is 250 percent of it, packaged and sold ' +
+      'individually — squarely inside (b)(12)(i)’s "at least 200 percent and up to and including ' +
+      '300 percent", which says such a product **must** provide a second column for the entire ' +
+      'package. None of the three shared exemptions reaches it: the package is far above the ' +
+      'small-package areas (A), it is not a raw commodity (B), and it provides no other second ' +
+      'column (C). This is the one rule here that reports a label for *not* using a display, so ' +
+      'it fires only where the label has stated the reference amount itself.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        availableSurfaceSqInches: 60,
+        referenceAmount: { amount: 22, unit: 'g', category: 'Snacks — chips, pretzels' },
+        packageContent: 55,
+        packagedAndSoldIndividually: true,
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_DUAL_COLUMN_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(b)(12)(i)',
     },
   },
   {

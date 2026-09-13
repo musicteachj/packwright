@@ -226,3 +226,135 @@ export function formatIsPermitted(
 
   return { permitted: true, reason: '', reference: '21 CFR 101.9(j)(13)(ii)(A)' }
 }
+
+/**
+ * The two provisions that make a second column **mandatory**, and the exemptions
+ * they share.
+ *
+ * Source: 21 CFR 101.9(b)(12)(i) and (b)(2)(i)(D), read from the eCFR on
+ * 2026-09-13. Everything else about the Nutrition Facts displays in this module
+ * is a permission; these two are not, and they are the only provisions in this
+ * project that can report a label for **not** doing something optional-looking.
+ *
+ * (b)(12)(i), verbatim: "Products that are packaged and sold individually and
+ * that contain **at least 200 percent and up to and including 300 percent** of
+ * the applicable reference amount **must** provide an additional column within
+ * the Nutrition Facts label that lists the quantitative amounts and percent Daily
+ * Values for the entire package, as well as a column listing the quantitative
+ * amounts and percent Daily Values for a serving that is less than the entire
+ * package."
+ *
+ * (b)(2)(i)(D): "If a unit weighs at least 200 percent and up to and including
+ * 300 percent of the applicable reference amount ... the manufacturer **shall**
+ * provide a column within the Nutrition Facts label that lists the quantitative
+ * amounts and percent Daily Values **per individual unit**." It closes with "The
+ * exemptions in paragraphs (b)(12)(i)(A), (B), and (C) of this section apply to
+ * this provision", which is why one exemption set serves both.
+ *
+ * **The band is inclusive at both ends.** "At least 200 ... up to and including
+ * 300" — so 200.0 and 300.0 are inside it and 199.9 and 300.1 are not.
+ */
+export const DUAL_COLUMN_MIN_PERCENT = 200
+export const DUAL_COLUMN_MAX_PERCENT = 300
+
+/**
+ * The two bases a label can be *obliged* to carry, as opposed to permitted.
+ *
+ * Narrower than `DualColumnBasis` on purpose: a duty can only ever arise from
+ * (b)(12)(i) or (b)(2)(i)(D), and typing it as the wide set would let a rule
+ * write a message about an obligation to declare "per 100 grams".
+ */
+export type MandatoryDualColumnBasis = Extract<DualColumnBasis, 'per-container' | 'per-unit'>
+
+export interface DualColumnDuty {
+  /** The basis the label owes a second column on, or undefined where it owes none. */
+  basis?: MandatoryDualColumnBasis
+  /** The percentage of the reference amount that triggered it. */
+  percentOfReferenceAmount?: number
+  /** Which paragraph excused it, where one did. */
+  exemption?: string
+}
+
+export interface DualColumnInput {
+  referenceAmount?: { amount: number }
+  packageContent?: number
+  unitContent?: number
+  packagedAndSoldIndividually?: boolean
+  columns?: { mode: NutritionColumnMode; basis?: DualColumnBasis }
+  rawCommodityVoluntary?: boolean
+  variedWeight?: boolean
+  /**
+   * Whether (j)(13)(ii)(A) reaches this package — exemption (A). Note its wording:
+   * "products that **meet the requirements to use** the tabular format", not
+   * products that use it. A package entitled to the small-package displays is
+   * excused whatever display it actually carries.
+   */
+  meetsSmallPackageRequirements?: boolean
+}
+
+/**
+ * (b)(12)(i)(C) excuses a product that **already provides** a second column for
+ * one of these reasons — the clause is conjunctive, naming the property *and* the
+ * additional column together. So most of the carve-out falls out of the basis the
+ * label declares rather than needing to be asserted separately.
+ */
+const EXEMPT_BASES: readonly DualColumnBasis[] = [
+  'as-prepared',
+  'combination',
+  'rdi-groups',
+  'per-cup-popped',
+]
+
+/** Whether a content sits in the inclusive 200–300% band. */
+function inBand(content: number, referenceAmount: number): number | undefined {
+  if (!(referenceAmount > 0) || !Number.isFinite(content)) return undefined
+  const percent = (content / referenceAmount) * 100
+  return percent >= DUAL_COLUMN_MIN_PERCENT && percent <= DUAL_COLUMN_MAX_PERCENT
+    ? percent
+    : undefined
+}
+
+/**
+ * What second column, if any, this label is obliged to carry.
+ *
+ * Returns an empty duty where the reference amount is absent: without it the
+ * question is unanswerable, and guessing would mean reporting a label for
+ * omitting something on facts it never stated.
+ */
+export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
+  const referenceAmount = input.referenceAmount?.amount
+  if (referenceAmount === undefined) return {}
+
+  // (b)(12)(i) reaches the package; (b)(2)(i)(D) reaches the unit. Both can be
+  // true, and the package provision is the one named first.
+  const perContainer =
+    input.packagedAndSoldIndividually === true && input.packageContent !== undefined
+      ? inBand(input.packageContent, referenceAmount)
+      : undefined
+  const perUnit =
+    input.unitContent === undefined ? undefined : inBand(input.unitContent, referenceAmount)
+
+  const basis: MandatoryDualColumnBasis | undefined =
+    perContainer !== undefined ? 'per-container' : perUnit !== undefined ? 'per-unit' : undefined
+  if (basis === undefined) return {}
+
+  const percentOfReferenceAmount = perContainer ?? perUnit!
+
+  const exemption =
+    input.meetsSmallPackageRequirements === true
+      ? '21 CFR 101.9(b)(12)(i)(A)'
+      : input.rawCommodityVoluntary === true
+        ? '21 CFR 101.9(b)(12)(i)(B)'
+        : input.variedWeight === true ||
+            (input.columns?.mode === 'dual' &&
+              input.columns.basis !== undefined &&
+              EXEMPT_BASES.includes(input.columns.basis))
+          ? '21 CFR 101.9(b)(12)(i)(C)'
+          : undefined
+
+  return {
+    basis,
+    percentOfReferenceAmount,
+    ...(exemption === undefined ? {} : { exemption }),
+  }
+}

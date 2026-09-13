@@ -44,6 +44,7 @@ import * as usFoodNetQuantityPresentRule from './rules/usFood/netQuantityPresent
 import * as usFoodNetQuantitySeparationRule from './rules/usFood/netQuantitySeparation'
 import * as usFoodNetQuantityTypeSizeRule from './rules/usFood/netQuantityTypeSize'
 import * as usFoodResponsibleFirmRule from './rules/usFood/responsibleFirm'
+import * as usFoodDualColumnRule from './rules/usFood/dualColumn'
 import * as usFoodStatementOfIdentityRule from './rules/usFood/statementOfIdentity'
 import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES } from './rules/registry'
 import * as findingBuilders from './rules/finding'
@@ -193,6 +194,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['usFood/nutritionFormat.ts', usFoodNutritionFormatRule],
       ['usFood/informationPanelTypeSize.ts', usFoodInformationPanelTypeSizeRule],
       ['usFood/responsibleFirm.ts', usFoodResponsibleFirmRule],
+      ['usFood/dualColumn.ts', usFoodDualColumnRule],
       ['usFood/statementOfIdentity.ts', usFoodStatementOfIdentityRule],
     ],
   ],

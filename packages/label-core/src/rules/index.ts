@@ -124,6 +124,12 @@ export {
   usFoodIngredientThresholdRule,
 } from './usFood/ingredientList'
 export {
+  FDA_DUAL_COLUMN_EXEMPT,
+  FDA_DUAL_COLUMN_MET,
+  FDA_DUAL_COLUMN_MISSING,
+  usFoodDualColumnRule,
+} from './usFood/dualColumn'
+export {
   FDA_RESPONSIBLE_FIRM_ADDRESS_INCOMPLETE,
   FDA_RESPONSIBLE_FIRM_MET,
   FDA_RESPONSIBLE_FIRM_MISSING,

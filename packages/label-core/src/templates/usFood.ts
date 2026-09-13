@@ -254,6 +254,39 @@ export interface UsFoodNutritionFacts {
     headings?: readonly [string, string]
   }
   /**
+   * The applicable reference amount from **§101.12(b)**, where the label states
+   * it.
+   *
+   * Declared, never inferred. The Reference Amounts Customarily Consumed table is
+   * roughly 140 food categories and this project does not carry it, so the two
+   * mandatory dual-column provisions take the figure from the label the same way
+   * `cannotAccommodateVertical` and the §101.100 exemption are taken — and the
+   * rules that use it decline entirely when it is absent, because a rule that
+   * reports a label for *not* carrying a second column must only fire on facts
+   * the label has asserted.
+   *
+   * `category` is recorded so a finding can say which row of the table the figure
+   * claims to come from.
+   */
+  referenceAmount?: { amount: number; unit: 'g' | 'mL'; category: string }
+  /** What the whole package holds, in the reference amount's unit — (b)(12)(i). */
+  packageContent?: number
+  /** What one individual unit weighs, in the same unit — (b)(2)(i)(D). */
+  unitContent?: number
+  /** (b)(12)(i) reaches only products "packaged and sold individually". */
+  packagedAndSoldIndividually?: boolean
+  /**
+   * The two (b)(12)(i) exemptions that are facts about a product rather than
+   * about a label. (A) is computed from the package's own format entitlement and
+   * most of (C) falls out of `columns.basis`, so neither is declared here.
+   */
+  dualColumnExemption?: {
+    /** (B) — raw fruits, vegetables and seafood under voluntary labelling. */
+    rawCommodityVoluntary?: boolean
+    /** (C)'s closing limb — varied-weight products under (b)(8)(iii). */
+    variedWeight?: boolean
+  }
+  /**
    * Total surface area available to bear labeling, in square inches, which is
    * what (j)(13) measures — **not** the principal display panel, which 101.1
    * computes for the net quantity. Two different areas on one label, and using

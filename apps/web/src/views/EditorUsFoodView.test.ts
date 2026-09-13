@@ -61,6 +61,10 @@ describe('the editor on a US food label', () => {
       // Every package may use the standard vertical display, so there is no
       // entitlement to judge and the format rule says nothing.
       'nutrition-format',
+      // (b)(12)(i) turns on a reference amount from §101.12(b), which the seeded
+      // document does not state — and a rule that reports a label for *not*
+      // carrying a second column must not fire on a figure nobody supplied.
+      'dual-column-required',
     ]
     expect(store.passes.length).toBe(US_FOOD_RULES.length - declining.length)
     for (const code of ['FDA_NUTRITION_ORDER_MET', 'FDA_NUTRITION_ROUNDING_MET']) {
