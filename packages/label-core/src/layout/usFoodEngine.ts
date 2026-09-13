@@ -25,7 +25,7 @@ import { minNetQuantityTypeHeightMm, regulatedGlyphBasis, pdpAreaSqInches } from
 import { fontSizeMmForGlyphHeight, measureTextMm, wrapTextMm } from '../text/measure'
 import { roundTo } from '../geometry/units'
 import { foodSourceName } from '../fda/allergens'
-import { layOutNutritionPanel } from './nutritionPanel'
+import { layOutNutritionPanel, willDrawSecondColumn } from './nutritionPanel'
 import type { UsFoodLabelData } from '../templates/usFood'
 import { US_FOOD_ELEMENTS, US_FOOD_TYPE_DEFAULT } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
@@ -304,9 +304,12 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     // is how the tabular display once ended up stacked into a single column — so a
     // dual-column panel takes the width the information panel gives it, as the
     // reduced displays do.
+    // Keyed on what will be *drawn*, not on what was asked for. Reading
+    // `columns.mode` here while `nutritionPanel` reads the figures left an
+    // unfilled dual request drawn as a single column at the width of two.
     const singleColumnVertical =
       (data.nutritionFacts.format ?? 'vertical') === 'vertical' &&
-      data.nutritionFacts.columns?.mode !== 'dual'
+      !willDrawSecondColumn(data.nutritionFacts)
     const panelWidthMm = singleColumnVertical
       ? Math.min(NUTRITION_PANEL_WIDTH_MM, panel.widthMm)
       : panel.widthMm
@@ -357,12 +360,45 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
         (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
       )
     ) {
+      // Two different reasons reach here and they are not interchangeable. One
+      // said "101.9(e)(6)(ii)'s dual-column tabular display is not yet built" for
+      // both, which is true of a tabular panel and simply wrong about a vertical
+      // one that was given no figures — and an omission exists to explain itself,
+      // so the wrong explanation is worse than a vague one.
+      const noFiguresGiven = !willDrawSecondColumn(data.nutritionFacts)
       omissions.push({
         elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        reason: noFiguresGiven
+          ? 'The label asks for a second column of nutrition information and states no amounts ' +
+            'for it, so the panel is drawn with the one column it has figures for. The second ' +
+            'column’s amounts have to be entered; they cannot be derived from the first.'
+          : 'The label asks for a second column of nutrition information, which this engine draws ' +
+            'only on the standard vertical display. The panel is drawn with one column, and 21 CFR ' +
+            '101.9(e)(6)(ii)’s dual-column tabular display is not yet built.',
+        scope: 'detail',
+      })
+    }
+
+    /**
+     * A Calories figure for the second column is never drawn, and says so.
+     *
+     * The dual branch draws Calories in its own block above the nutrient rows
+     * rather than as one of them, and that block carries a single figure. So
+     * `secondAmounts.calories` — which the rail offers a box for, since it lists
+     * every nutrient — is accepted, stored, and silently dropped.
+     *
+     * Whether a dual panel should carry two Calories figures is a question for
+     * 101.9(e)(6)(i)'s display, which is an illustration rather than a paragraph
+     * and has not been read. So this does not invent the drawing; it refuses to
+     * lose the number without saying so, which is the whole reason `LayoutOmission`
+     * exists.
+     */
+    if (data.nutritionFacts.columns?.secondAmounts?.calories !== undefined) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.nutritionCalories,
         reason:
-          'The label asks for a second column of nutrition information, which this engine draws ' +
-          'only on the standard vertical display. The panel is drawn with one column, and 21 CFR ' +
-          '101.9(e)(6)(ii)’s dual-column tabular display is not yet built.',
+          'The label states a second-column Calories figure, and this engine draws Calories as a ' +
+          'single figure above the nutrient rows. It is not printed.',
         scope: 'detail',
       })
     }

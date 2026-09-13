@@ -1975,3 +1975,84 @@ describe('the tabular display', () => {
     )
   })
 })
+
+/**
+ * Which column a lone figure is in, said correctly.
+ *
+ * The (e)(2) completeness check counted value cells per row and never asked
+ * which column the survivor was in, so a nutrient declared only in the *second*
+ * column was reported as declaring "a quantity in the first column only" — a
+ * sentence pointing the reader at the one column that does carry it.
+ */
+describe('the second column, reported in the right direction', () => {
+  const HEADINGS = ['Per serving', 'Per container'] as [string, string]
+  const FULL_SECOND = {
+    'total-fat': 7.5,
+    'saturated-fat': 1.25,
+    'trans-fat': 0,
+    cholesterol: 0,
+    sodium: 0,
+    'total-carbohydrate': 67.5,
+    'dietary-fiber': 10,
+    'total-sugars': 2.5,
+    'added-sugars': 0,
+    protein: 12.5,
+    'vitamin-d': 5,
+    calcium: 650,
+    iron: 20,
+    potassium: 587.5,
+  }
+
+  const incompleteFinding = (data: UsFoodLabelData) =>
+    findingsFor(data, US_FOOD_CONFORMANT.stock).find((f) => f.code === 'FDA_DUAL_COLUMN_INCOMPLETE')
+
+  it('names the first column when the second is the one carrying the figure', () => {
+    const facts = US_FOOD_CONFORMANT.data.nutritionFacts!
+    const without = <T extends object>(source: T, key: string) =>
+      Object.fromEntries(Object.entries(source).filter(([k]) => k !== key))
+
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: {
+        ...facts,
+        amounts: without(facts.amounts, 'iron') as typeof facts.amounts,
+        ...(facts.declaredAmounts === undefined
+          ? {}
+          : { declaredAmounts: without(facts.declaredAmounts, 'iron') as never }),
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: HEADINGS,
+          secondAmounts: FULL_SECOND,
+        },
+      },
+    }
+
+    const match = incompleteFinding(data)
+    expect(match, 'a row declared in one column only must be reported').toBeDefined()
+    expect(match!.message).toMatch(/second column only — Iron/)
+    expect(match!.message).not.toMatch(/first column only — Iron/)
+  })
+
+  it('names the second column when the first is the one carrying the figure', () => {
+    const facts = US_FOOD_CONFORMANT.data.nutritionFacts!
+    const { iron: _dropped, ...secondWithoutIron } = FULL_SECOND
+
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: {
+        ...facts,
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: HEADINGS,
+          secondAmounts: secondWithoutIron,
+        },
+      },
+    }
+
+    const match = incompleteFinding(data)
+    expect(match, 'a row declared in one column only must be reported').toBeDefined()
+    expect(match!.message).toMatch(/first column only — Iron/)
+  })
+})

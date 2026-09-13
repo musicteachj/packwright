@@ -37,6 +37,7 @@ import type { Severity } from '../../types/index'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_DUAL_COLUMN_HEADINGS_MISSING,
+  FDA_DUAL_COLUMN_INCOMPLETE,
   FDA_DUAL_COLUMN_NOT_SEPARATED,
   FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE,
   FDA_DUAL_COLUMN_MISSING,
@@ -164,6 +165,39 @@ const BASE_NUTRITION: UsFoodNutritionFacts = {
   order: [...NUTRIENT_IDS],
 }
 
+/**
+ * A complete second column, at 250 percent of the serving figures.
+ *
+ * Every dual-column fixture below carried `{ 'total-fat': 7.5 }` and nothing
+ * else — one nutrient in a column of fourteen. Each was written to provoke one
+ * defect in the *form* of the panel (its headings, its separating line, its
+ * relative type size), and none of them noticed that the panel underneath was
+ * itself declaring a second form for a single nutrient.
+ *
+ * 101.9(e)(2) requires the quantitative information "for the form of the product
+ * as packaged **and for any other form**", so those fixtures were non-compliant
+ * in a way no rule looked at, and a fixture that is wrong about something other
+ * than its own defect is a fixture that can pass for the wrong reason. Calories
+ * is absent because it is drawn in its own block above the rows rather than as
+ * one of them.
+ */
+const SECOND_COLUMN_AMOUNTS = {
+  'total-fat': 7.5,
+  'saturated-fat': 1.25,
+  'trans-fat': 0,
+  cholesterol: 0,
+  sodium: 0,
+  'total-carbohydrate': 67.5,
+  'dietary-fiber': 10,
+  'total-sugars': 2.5,
+  'added-sugars': 0,
+  protein: 12.5,
+  'vitamin-d': 5,
+  calcium: 650,
+  iron: 20,
+  potassium: 587.5,
+} as const
+
 const BASE = {
   statementOfIdentity: 'Oat and almond granola',
   container: { shape: 'rectangular', widthMm: 120, heightMm: 240 },
@@ -266,7 +300,11 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       ...BASE,
       nutritionFacts: {
         ...BASE_NUTRITION,
-        columns: { mode: 'dual', basis: 'per-container', secondAmounts: { 'total-fat': 7.5 } },
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
+        },
       },
     },
     stock: CONFORMING_STOCK,
@@ -274,6 +312,35 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_DUAL_COLUMN_HEADINGS_MISSING,
       severity: 'violation',
       citation: '21 CFR 101.9(e)(1)',
+    },
+  },
+  {
+    name: 'a second column carrying one figure out of fourteen',
+    defect:
+      'The panel heads two columns, separates them, gives them equal prominence — and declares a ' +
+      'second quantity for Total Fat alone. 101.9(e)(2): the quantitative information by weight ' +
+      '"shall be presented for the form of the product as packaged and for any other form of the ' +
+      'product". A second column is a second declaration of the nutrients the first one declares, ' +
+      'not a place to put one number. The engine draws the column it was asked for, so nothing ' +
+      'else here reports it: the mandate rule sees a column present and the form rules see it ' +
+      'headed, separated and equally prominent.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { 'total-fat': 7.5 },
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_DUAL_COLUMN_INCOMPLETE,
+      severity: 'violation',
+      citation: '21 CFR 101.9(e)(2)',
     },
   },
   {
@@ -291,7 +358,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
           mode: 'dual',
           basis: 'per-container',
           headings: ['Per serving', 'Per container'],
-          secondAmounts: { 'total-fat': 7.5 },
+          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
           separated: false,
         },
       },
@@ -318,7 +385,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
           mode: 'dual',
           basis: 'per-container',
           headings: ['Per serving', 'Per container'],
-          secondAmounts: { 'total-fat': 7.5 },
+          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
           secondColumnTypeScale: 0.7,
         },
       },
@@ -344,7 +411,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
           mode: 'dual',
           basis: 'per-container',
           headings: ['Per serving', 'Per serving'],
-          secondAmounts: { 'total-fat': 7.5 },
+          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
         },
       },
     },
