@@ -68,3 +68,34 @@ describe('loadEnv', () => {
     )
   })
 })
+
+/**
+ * The API is same-origin in both modes it runs in, and says so.
+ *
+ * Vite proxies `/api` and `/health` in development; in production this server
+ * serves the client itself. `cors()` was nonetheless mounted at its defaults,
+ * answering every request with `Access-Control-Allow-Origin: *` — an invitation
+ * to any page on the internet to call this API from a visitor's browser, to
+ * solve a problem neither mode has. It cost little on a stateless PDF endpoint
+ * and stops being cheap the moment saved labels put user data behind these
+ * routes.
+ */
+describe('cross-origin access', () => {
+  it('grants none, on the API or the client', async () => {
+    for (const path of ['/health', '/api/labels/nope']) {
+      const response = await request(app).get(path).set('Origin', 'https://not-packwright.example')
+      expect(response.headers['access-control-allow-origin'], path).toBeUndefined()
+      expect(response.headers['access-control-allow-credentials'], path).toBeUndefined()
+    }
+  })
+
+  it('does not answer a preflight for a cross-origin caller', async () => {
+    const response = await request(app)
+      .options('/api/labels/upc-a/export')
+      .set('Origin', 'https://not-packwright.example')
+      .set('Access-Control-Request-Method', 'POST')
+
+    expect(response.headers['access-control-allow-origin']).toBeUndefined()
+    expect(response.headers['access-control-allow-methods']).toBeUndefined()
+  })
+})
