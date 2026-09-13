@@ -54,6 +54,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
   id: 'us-food/ingredient-list',
   title: 'The ingredient statement is present and in descending order of predominance by weight.',
   citation: CITATION,
+  citations: [CITATION, EXEMPTION],
   codes: [
     FDA_INGREDIENTS_MISSING,
     FDA_INGREDIENT_NAME_MISSING,

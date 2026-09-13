@@ -51,6 +51,7 @@ export const ghsPictogramPrecedenceRule: GhsChemicalRule = {
   id: 'ghs/pictogram-precedence',
   title: 'Pictograms are reduced according to the precedence rules for the regime.',
   citation: EU,
+  citations: [EU, US],
   codes: [
     GHS_PICTOGRAM_PRECEDENCE_VIOLATED,
     GHS_PICTOGRAM_PRECEDENCE_OPTIONAL,

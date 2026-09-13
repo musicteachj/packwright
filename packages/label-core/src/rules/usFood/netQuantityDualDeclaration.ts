@@ -69,6 +69,9 @@ export const usFoodNetQuantityDualDeclarationRule: UsFoodRule = {
   id: 'us-food/net-quantity-dual-declaration',
   title: 'The net quantity is declared in both inch/pound and SI metric units.',
   citation: CITATION,
+  // The two exemptions live in the table above, so the list is built from it
+  // rather than restated beside it.
+  citations: [CITATION, ...Object.values(EXEMPTION).map((entry) => entry.citation)],
   codes: [
     FDA_NET_QUANTITY_METRIC_MISSING,
     FDA_NET_QUANTITY_DUAL_MET,

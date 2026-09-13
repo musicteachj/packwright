@@ -62,6 +62,7 @@ export const usFoodResponsibleFirmRule: UsFoodRule = {
   id: 'us-food/responsible-firm',
   title: 'The label names a manufacturer, packer or distributor and gives its place of business.',
   citation: CITATION,
+  citations: [CITATION, QUALIFIER, PLACE],
   codes: [
     FDA_RESPONSIBLE_FIRM_MISSING,
     FDA_RESPONSIBLE_FIRM_UNQUALIFIED,

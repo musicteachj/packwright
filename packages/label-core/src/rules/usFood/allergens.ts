@@ -123,6 +123,7 @@ export const usFoodAllergenRule: UsFoodRule = {
   id: 'us-food/allergen-declaration',
   title: 'Every major food allergen is declared, naming the food source the Act requires.',
   citation: CITATION,
+  citations: [CITATION, SPECIFIC],
   codes: [FDA_ALLERGEN_NOT_DECLARED, FDA_ALLERGEN_SOURCE_NOT_SPECIFIC, FDA_ALLERGEN_DECLARED_MET],
   appliesTo: 'us-food',
 

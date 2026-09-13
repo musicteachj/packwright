@@ -10,7 +10,7 @@
  */
 
 import { roundTo } from '../geometry/units'
-import type { Finding, Measurement, Severity } from '../types/index'
+import type { Citation, Finding, Measurement, Severity } from '../types/index'
 import type { Rule } from './types'
 
 interface FindingInput {
@@ -150,4 +150,22 @@ export function mm(value: number): string {
  */
 export function xDimensionMm(value: number): string {
   return `${roundTo(collapseFloatNoise(value), 3).toFixed(3)} mm`
+}
+
+/**
+ * A sibling provision of `base`, carrying no title.
+ *
+ * `Citation.title` names the provision, so spreading a primary to reach another
+ * paragraph copies a title that describes the wrong one: 101.9(b)(12)(i)(A), an
+ * *exemption*, inherited "A second column for a package holding 200 to 300
+ * percent of the reference amount". Harmless while nothing rendered it, and the
+ * `/rules` catalogue exists to render exactly that field.
+ *
+ * The title is dropped rather than invented, because composing one here would be
+ * this project authoring a description of a regulated provision. `title` is
+ * optional; a catalogue shows the reference alone until someone reads the
+ * paragraph and writes one.
+ */
+export function untitled(base: Citation, reference: string): Citation {
+  return { authority: base.authority, reference }
 }

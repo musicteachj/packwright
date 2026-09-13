@@ -8,6 +8,32 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+Phase 6, stage 3a — every provision a rule enforces, declared.
+
+- **`Rule.citations`, and `citationsOf`.** `citation` is the primary a finding inherits, but **sixteen of the
+  thirty-four** rules override it per finding. The thirty-four primaries cover **31 distinct provisions**; the
+  rules between them cite **68**. So a catalogue generated from `citation` alone would have answered under half
+  of the question `/rules` exists to answer. `us-food/dual-column-form` would have shown 101.9(e) and hidden
+  (e)(1), (e)(2) and (e)(3); `us-food/nutrition-rounding` would have shown 101.9(c) and hidden twelve nutrient
+  paragraphs.
+- **`ghs/signal-word-precedence` no longer misattributes its own authority.** It carries CLP Article 20(3) as
+  its primary and emits 29 CFR 1910.1200 Appendix C whenever the label's regime is `us-osha`, so a catalogue
+  showing the primary alone would have told a US user their signal-word rule comes from an EU regulation. Both
+  are listed now.
+- **`citations.test.ts` runs every fixture and fails on any provision a finding cites and no rule declares.**
+  It found seventeen on its first run — the exact measure of what the catalogue would have hidden. The check is
+  a test rather than a throw inside `finding()` because several references are looked up from tables at
+  judgement time, and a rule citing a real provision nobody had listed would otherwise crash a user rather than
+  fail a build.
+- **Derived where a table exists, written out where one does not — and the difference is recorded.** The
+  rounding rule's thirteen paragraphs come from `NUTRIENTS` and the SI exemptions from their own table, so
+  neither can drift from what the rule reads. `us-food/nutrition-type-size` is written out instead, because
+  (d)(7)(iii) is cited from the check body rather than from `minimumsFor` and a derivation would have looked
+  tidier while quietly omitting one.
+
+
 ### Fixed
 
 Phase 6, stage 2b — the dual column, corrected on three counts. Source: 21 CFR 101.9(e), (e)(1), (e)(2) and

@@ -20,7 +20,7 @@
 import { formatIsPermitted } from '../../fda/nutritionFormats'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnDocument } from '../finding'
+import { finding, passedOnDocument, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NUTRITION_FORMAT_NOT_PERMITTED = 'FDA_NUTRITION_FORMAT_NOT_PERMITTED'
@@ -42,6 +42,18 @@ export const usFoodNutritionFormatRule: UsFoodRule = {
   id: 'us-food/nutrition-format',
   title: 'The nutrition label uses a display the package size entitles it to.',
   citation: CITATION,
+  /**
+   * (d)(11)(iii) entitles a package of any size to the tabular display and never
+   * goes through (j)(13) at all, and (d) is cited when no route permits the
+   * display at all — so this rule reports under three paragraphs and the
+   * catalogue has to say so. None of the three is reachable from a fixture, which
+   * is why they are written out rather than left to `citations.test.ts` to find.
+   */
+  citations: [
+    CITATION,
+    untitled(CITATION, '21 CFR 101.9(d)'),
+    untitled(CITATION, '21 CFR 101.9(d)(11)(iii)'),
+  ],
   codes: [FDA_NUTRITION_FORMAT_NOT_PERMITTED, FDA_NUTRITION_FORMAT_MET],
   appliesTo: 'us-food',
 

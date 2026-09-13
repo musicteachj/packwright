@@ -155,10 +155,30 @@ well as undrawn. Needs a selector before it needs a rule.
 
 Recorded as reviewer claims rather than as facts. Each is checked before it is picked up.
 
-- **Bold text is measured with Regular metrics.** `text/measure.ts` keys on `fontFamily` alone while
-  `TextPrimitive` carries `fontWeight` and the PDF renderer resolves `>= 600` to a different face with its
-  own wider table. Claimed effect: measured widths 3–4% short for every bold string, so a panel that
-  overflows its box looks in-bounds, and `glyphHeightMm` judges bold type against the Regular face.
+- ~~**Bold text is measured with Regular metrics.**~~ **Verified, and narrower than reported.** The
+  mechanism is real: `measureTextMm` and `glyphHeightMm` take only `fontFamily`, while `TextPrimitive`
+  carries `fontWeight` and `renderPdf` resolves `>= 600` to a separate face. Both faces' figures were checked
+  against the TTFs with fontkit rather than against the table that quotes them — Regular `o` 0.5400 and
+  "Nutrition Facts" 6.6420 em, SemiBold 0.5460 and 6.9090 em, matching `measureTextMm` exactly. Bold strings
+  measure **3.2–5.5% narrow**.
+
+  **It corrupts no verdict**, which is what the original entry implied and is worth correcting. Two
+  independent reasons: every rule that calls `glyphHeightMm` measures the net quantity, the Contains statement
+  or an information-panel block, and all of them are drawn with `fontWeight: undefined`; and
+  `regulatedGlyphBasis` returns `cap-height` for all-caps text, which is **identical** across the two faces at
+  0.698 — so even a bold `NET WT 12 OZ` would measure correctly.
+
+  Where it does land is geometry. The statement of identity is wrapped with `type.fontFamily` and drawn with
+  `type.emphasisFontWeight`, so the engine computes 88.68 mm for a line that prints 91.79 mm; any string
+  between `width / 1.035` and `width` wraps one line short of what prints, and that element's box height now
+  feeds a bounds check. The tabular and linear displays size their columns from
+  `Math.max(...rows.map(measureTextMm))` over rows that include bold text. A search for an actual divergence
+  in a sample of realistic statements found none, so this is arithmetic rather than an observed failure.
+
+  The fix threads a weight — or a resolved face, mirroring `embeddedFontFor` — through `measureTextMm`,
+  `glyphHeightMm` and `wrapTextMm`, and touches every text call site in `label-core`. That is a change to the
+  layer everything else sits on, for a defect that changes no verdict, so it wants its own stage rather than
+  a detour inside someone else's.
 - **The Calories word and numeral sit on different baselines on the vertical display.** Claimed: `text()`
   derives the baseline from each run's own size, so a 16 pt word and a 22 pt figure sharing a `yMm` are
   ~2.1 mm apart. The tabular branch already takes the max of the pair; the vertical branch is said not to.
