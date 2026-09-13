@@ -10,6 +10,7 @@ export {
   NUTRIENT_IDS,
   nutrient,
   percentDailyValue,
+  printedPercentDailyValue,
   roundNutrientAmount,
   roundingIsCheckable,
 } from './nutrients'

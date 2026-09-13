@@ -464,6 +464,27 @@ describe('the type-size override seeds a size that complies', () => {
   })
 })
 
+describe('the nutrient readout beside each field', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('shows no protein percentage, because the panel prints none', async () => {
+    // 101.9(d)(7)(ii) sends protein's percentage to (c)(7)(ii), which corrects the
+    // amount by a digestibility score no label carries, so the panel omits it.
+    // This column claims to say what the panel will print, and it was saying 10%
+    // beside a panel printing nothing — the readout and the preview disagreeing
+    // about the same document.
+    const { wrapper } = await mountFood()
+    const protein = wrapper.find('[data-testid="field-food-nf-readout-protein"]')
+    expect(protein.exists()).toBe(true)
+    expect(protein.text()).toContain('5g')
+    expect(protein.text()).not.toContain('%')
+
+    // A nutrient that does print one, so the assertion above is about protein
+    // rather than about the column being empty.
+    expect(wrapper.find('[data-testid="field-food-nf-readout-sodium"]').text()).toContain('%')
+  })
+})
+
 describe('major food allergens in the editor', () => {
   beforeEach(() => setActivePinia(createPinia()))
 

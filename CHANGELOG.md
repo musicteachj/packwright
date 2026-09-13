@@ -473,6 +473,42 @@ Phase 5, stage 6.
 - The type-size rule reported "0 parts of the panel meet the type sizes" as a **pass** on a linear display,
   where one undifferentiated run leaves no servings line, serving size or Calories element to measure. A rule
   with nothing it can identify has declined, not cleared.
+- **Declining was the right answer to the wrong question.** With it, *nothing* measured any type size on the
+  linear display: a panel at `typeScale: 0.05` — 0.4 point type — came back with ten passes and no violation.
+  The premise underneath was the defect. The linear display is **named in every one of the exceptions**:
+  (d)(3)(i) and (ii) put both servings lines at 9 point "in ... the linear display for small packages as shown
+  in paragraph (j)(13)(ii)(A)(2)", (d)(1)(iii) puts the Calories word at 10 and its numeral at 14 in the same
+  sentence, and (d)(7)(iii) puts the nutrients at 8. One run at one size cannot satisfy four different
+  minimums, so the display was being drawn non-compliant by default — its Calories numeral set at 8 point
+  where the paragraph requires 14 — and the rule that would have said so had been taught to look away. The run
+  is a flow of spans now, each set at its own minimum and carrying its own id, which is what makes the drawing
+  right and the check possible at once. The same 0.4 point panel reports five violations under five
+  paragraphs.
+- **The heading had been borrowing a figure that stopped being the largest.** (d)(2) asks for "no smaller than
+  all other print size in the nutrition label except for the numerical information for 'Calories'" — a
+  relative requirement the engine satisfies by construction, which the type-size rule therefore declines to
+  check. It took the serving-size figure, true only while every part was one size; with the Calories word at
+  10 and serving size at 9 it would have been the smaller of the two. It is computed from the spans now, so
+  "by construction" is something the code does rather than something a comment claims.
+- Each nutrient in the linear run also gets an element of its own, so a finding about Sodium outlines the
+  words that say Sodium. The whole run was one `nutritionPanel` before, which is the shape that once had a
+  finding about Iron outlining the entire label.
+- **The abbreviated footnote was printed on every tabular display, and the comment above it reasoned its way
+  there backwards.** 101.9(j)(13)(i) relieves "foods in packages **subject to requirements of paragraphs
+  (j)(13)(ii)(A)(1) and (2)**" of the (d)(9) footnote and lets them use "% DV = % Daily Value" instead. Two
+  named paragraphs again. The comment read "(d)(11)'s tabular display is not one of them, so it keeps the
+  abbreviated statement rather than nothing" — but not being one of them is exactly what makes the full
+  footnote due. (d)(11) is a set of space accommodations; it permits the arrangement and relieves nothing.
+  Nothing caught it because no rule checks the footnote at all.
+- **Two `shall`s the tabular display was not drawing.** (d)(4) requires the subheading "Amount per serving"
+  and states one exception — "the dual column formats shown in paragraphs (e)(5), (e)(6)(i), and (e)(6)(ii)"
+  — which no tabular display is. (d)(6) requires the "% Daily Value" column heading and states no exception at
+  all. The display drew neither.
+- **The rail told the user a percentage the panel would not print.** 101.9(d)(7)(ii) lets protein's percentage
+  be omitted and sends it to (c)(7)(ii), where the amount is corrected by a digestibility score no label
+  carries, so the renderer omits it — and the editor's "what the panel will print" column, which spelled the
+  same rule separately and missed that branch, showed Protein at 10% beside a panel showing none. The decision
+  is one exported function now, `printedPercentDailyValue`, which both the renderer and the rail call.
 - A mutation escaped: putting the tabular Calories numeral back to 22 point left the suite green, because
   nothing tested the tabular column of the minimums table at all. It is pinned now, along with the property
   that every reduced figure is lower than its vertical counterpart and none is higher.

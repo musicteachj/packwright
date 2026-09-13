@@ -1141,15 +1141,53 @@ describe('the linear display', () => {
   it('presents the information in one run rather than vertical columns', () => {
     // 101.9(j)(13)(ii)(A): "in a tabular or ... linear (i.e., string) fashion
     // rather than in vertical columns". That is the whole of what makes it
-    // linear, and it is why a small package can carry it: 35 mm against 129.
+    // linear, and it is why a small package can carry it.
+    //
+    // What marks it as linear is that the nutrients share lines, not that they
+    // are unidentifiable: each one carries an element now, so a finding about
+    // Sodium can outline the words that say Sodium. In the vertical display every
+    // nutrient sits on a baseline of its own; here fourteen of them share a
+    // handful.
     const layout = layOutUsFoodLabel({ data: small(), stock })
     const panel = layout.elements.find((e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel)!
     const vertical = layOutUsFoodLabel(US_FOOD_CONFORMANT).elements.find(
       (e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel,
     )!
     expect(panel.box.heightMm).toBeLessThan(vertical.box.heightMm / 3)
-    expect(layout.elements.map((e) => e.elementId)).not.toContain(
-      nutritionRowElementId('total-fat'),
+
+    const rows = layout.primitives.filter(
+      (p): p is TextPrimitive =>
+        p.kind === 'text' && (p.elementId?.startsWith('food-nutrition-row-') ?? false),
+    )
+    const nutrients = new Set(rows.map((r) => r.elementId))
+    const baselines = new Set(rows.map((r) => r.baselineYMm.toFixed(3)))
+    expect(nutrients.size).toBeGreaterThan(10)
+    expect(baselines.size).toBeLessThan(nutrients.size / 2)
+  })
+
+  it('sets each part of the run to the minimum its own paragraph states', () => {
+    // The run used to be one string at 8 point, which put the Calories numeral at
+    // 8 where (d)(1)(iii) requires 14 on this very display — it is named in the
+    // exception — and left the servings lines under (d)(3)'s 9. One size could
+    // not satisfy four minimums, so the parts each carry their own.
+    const layout = layOutUsFoodLabel({ data: small(), stock })
+    const ptOf = (elementId: string): number =>
+      Math.min(
+        ...layout.primitives
+          .filter((p): p is TextPrimitive => p.kind === 'text' && p.elementId === elementId)
+          .map((p) => p.fontSizeMm / MM_PER_POINT),
+      )
+    expect(ptOf(US_FOOD_ELEMENTS.nutritionServingSize)).toBeCloseTo(9, 5)
+    expect(ptOf(US_FOOD_ELEMENTS.nutritionServings)).toBeCloseTo(9, 5)
+    expect(ptOf(US_FOOD_ELEMENTS.nutritionCalories)).toBeCloseTo(10, 5)
+    expect(ptOf(US_FOOD_ELEMENTS.nutritionCaloriesFigure)).toBeCloseTo(14, 5)
+    expect(ptOf(nutritionRowElementId('sodium'))).toBeCloseTo(8, 5)
+
+    // (d)(2) wants the heading "no smaller than all other print size ... except
+    // for the numerical information for 'Calories'", which is now the Calories
+    // word rather than the serving-size figure it used to borrow.
+    expect(ptOf(US_FOOD_ELEMENTS.nutritionHeading)).toBeGreaterThanOrEqual(
+      ptOf(US_FOOD_ELEMENTS.nutritionCalories),
     )
   })
 
@@ -1169,10 +1207,12 @@ describe('the linear display', () => {
     // the footnote, however the abbreviated footnote statement '% DV = % Daily
     // Value' may be used."
     const layout = layOutUsFoodLabel({ data: small(), stock })
+    // Joined without a separator: the run is flowed word by word and each piece
+    // keeps the space that followed it, so the spacing is already in the text.
     const text = layout.primitives
       .filter((p): p is TextPrimitive => p.kind === 'text')
       .map((p) => p.text)
-      .join(' ')
+      .join('')
     expect(text).toContain('% DV = % Daily Value')
     expect(text).not.toContain('2,000 calories a day')
   })
@@ -1189,13 +1229,41 @@ describe('the linear display', () => {
     expect(codes).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
   })
 
-  it('says nothing about per-element type sizes it cannot identify', () => {
-    // One run means no servings line, serving size or Calories element to
-    // measure — and "0 parts of the panel meet the type sizes" would be a rule
-    // declining and reporting that it cleared.
+  it('judges every part of the run, having something to identify at last', () => {
+    // It used to decline here, because one undifferentiated run left no servings
+    // line, serving size or Calories element to measure. Declining was the right
+    // answer to that question and the wrong question to be asking: nothing
+    // measured any type size on this display, so a linear panel at 0.4 point came
+    // back with ten passes and no violation at all.
     const codes = findingsFor(small(), stock).map((f) => f.code)
-    expect(codes).not.toContain('FDA_NUTRITION_TYPE_SIZE_MET')
+    expect(codes).toContain('FDA_NUTRITION_TYPE_SIZE_MET')
     expect(codes).not.toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+  })
+
+  it('sets spans of different sizes on a shared baseline', () => {
+    // A 14 point numeral beside an 8 point nutrient has to sit on the line, not
+    // float at its own height. Each line is as tall as its largest span and every
+    // piece on it takes that baseline; measured per piece instead, the run steps
+    // up and down as it reads.
+    const layout = layOutUsFoodLabel({ data: small(), stock })
+    const byBaseline = new Map<string, Set<number>>()
+    for (const p of layout.primitives) {
+      if (p.kind !== 'text' || !(p.elementId?.startsWith('food-nutrition') ?? false)) continue
+      const key = p.baselineYMm.toFixed(4)
+      byBaseline.set(key, (byBaseline.get(key) ?? new Set()).add(p.fontSizeMm))
+    }
+    const mixed = [...byBaseline.values()].filter((sizes) => sizes.size > 1)
+    expect(mixed.length).toBeGreaterThan(0)
+  })
+
+  it('reports a linear panel shrunk below the minimums it answers to', () => {
+    const undersized = findingsFor(small({ typeScale: 0.5 }), stock).filter(
+      (f) => f.code === 'FDA_NUTRITION_TYPE_TOO_SMALL',
+    )
+    expect(undersized.length).toBeGreaterThan(0)
+    // Including the numeral, which is the figure the single-size run got wrong
+    // even at full scale.
+    expect(undersized.map((f) => f.citation.reference)).toContain('21 CFR 101.9(d)(1)(iii)')
   })
 })
 
@@ -1319,6 +1387,42 @@ describe('the tabular display', () => {
     expect(
       findingsFor(small, stock).filter((f) => f.citation.reference === '21 CFR 101.9(d)(1)(iii)'),
     ).toEqual([])
+  })
+
+  const textOf = (data: UsFoodLabelData, on: LabelStock): string[] =>
+    layOutUsFoodLabel({ data, stock: on })
+      .primitives.filter((p): p is TextPrimitive => p.kind === 'text')
+      .map((p) => p.text)
+
+  it('gives the full (d)(9) footnote to the display (j)(13)(i) does not reach', () => {
+    // "Foods in packages subject to requirements of paragraphs (j)(13)(ii)(A)(1)
+    // and (2) ... do not require the information in paragraphs (d)(9) and (f)(5)
+    // ... however the abbreviated footnote statement '% DV = % Daily Value' may be
+    // used." Two named paragraphs, and (d)(11)(iii) is neither: it is a space
+    // accommodation that permits the arrangement and relieves nothing. The
+    // abbreviation was being printed on every tabular display, and no rule checks
+    // the footnote, so nothing said otherwise.
+    expect(textOf(tabular(), stock).join(' ')).toContain(
+      '2,000 calories a day is used for general nutrition advice.',
+    )
+  })
+
+  it('keeps the abbreviation for the small-package display that may use it', () => {
+    const small = tabular({ availableSurfaceSqInches: 9, continuousVerticalSpaceInches: undefined })
+    const text = textOf(small, stock).join(' ')
+    expect(text).toContain('% DV = % Daily Value')
+    expect(text).not.toContain('2,000 calories a day')
+  })
+
+  it('draws the (d)(4) subheading and the (d)(6) column heading', () => {
+    // (d)(4)'s only exception is "the dual column formats shown in paragraphs
+    // (e)(5), (e)(6)(i), and (e)(6)(ii)", and (d)(6) states none at all — so every
+    // tabular display owes both, and this one was drawing neither.
+    for (const patch of [{}, { availableSurfaceSqInches: 9 }]) {
+      const text = textOf(tabular(patch), stock)
+      expect(text, JSON.stringify(patch)).toContain('Amount per serving')
+      expect(text, JSON.stringify(patch)).toContain('% Daily Value*')
+    }
   })
 
   const narrow = { widthMm: 60, heightMm: 40, marginMm: 3 }

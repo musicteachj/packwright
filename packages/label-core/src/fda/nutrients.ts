@@ -364,3 +364,23 @@ export function percentDailyValue(id: NutrientId, amount: number): number | unde
   if (raw <= 50) return toNearest(raw, 5)
   return toNearest(raw, 10)
 }
+
+/**
+ * The percentage a panel actually prints, which is not the same question.
+ *
+ * `percentDailyValue` answers the arithmetic — protein has a DRV of 50 grams and
+ * the division works. Whether the figure may be *printed* is 101.9(d)(7)(ii),
+ * which says "the percent for protein may be omitted as provided in paragraph
+ * (c)(7)" and sends it to (c)(7)(ii), where the amount is corrected by a
+ * digestibility score no label carries. So the panel omits it, and printing an
+ * uncheckable figure would be worse than omitting a permitted one.
+ *
+ * It lives here because two callers need the same answer: the renderer, which
+ * decides what to draw, and the editor's rail, which tells a user what the panel
+ * *will* draw. Spelled twice, the rail showed a Protein percentage of 10% beside
+ * a panel that printed none — a readout contradicting the preview beside it.
+ */
+export function printedPercentDailyValue(id: NutrientId, amount: number): number | undefined {
+  if (id === 'protein') return undefined
+  return percentDailyValue(id, amount)
+}

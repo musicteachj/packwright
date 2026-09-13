@@ -26,7 +26,7 @@ import {
   INGREDIENT_THRESHOLD_PERCENTS,
   MAJOR_FOOD_ALLERGENS,
   NUTRIENTS,
-  percentDailyValue,
+  printedPercentDailyValue,
   roundNutrientAmount,
   US_FOOD_ELEMENTS,
   US_FOOD_PACKAGINGS,
@@ -427,7 +427,10 @@ const printedPercent = (id: NutrientId): string => {
   if (stated !== undefined) return `${stated}%`
   const printed = printedAmount(id)
   if (printed === '') return ''
-  const value = percentDailyValue(id, Number(printed))
+  // The same function the renderer uses, so this column says what the panel
+  // beside it will actually print. Spelled separately it showed Protein at 10%
+  // against a panel that prints none, which 101.9(d)(7)(ii) permits it to omit.
+  const value = printedPercentDailyValue(id, Number(printed))
   return value === undefined ? '—' : `${value}%`
 }
 
@@ -958,7 +961,10 @@ const packaging = computed({
               @input="setAmount(entry.id, ($event.target as HTMLInputElement).value)"
             />
           </label>
-          <p class="text-chrome-400 numeric w-24 pb-2 text-right text-xs">
+          <p
+            :data-testid="`field-food-nf-readout-${entry.id}`"
+            class="text-chrome-400 numeric w-24 pb-2 text-right text-xs"
+          >
             {{ printedAmount(entry.id) }}{{ entry.id === 'calories' ? '' : entry.unit }}
             <span class="text-chrome-300">{{ printedPercent(entry.id) }}</span>
           </p>
