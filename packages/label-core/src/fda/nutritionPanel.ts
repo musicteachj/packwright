@@ -37,6 +37,7 @@
  */
 
 import { MM_PER_POINT } from '../geometry/units'
+import { type NutritionFormat, smallPackageRouteApplies } from './nutritionFormats'
 
 /** A point, in millimetres, for the figures below. 1 pt = 25.4/72 mm. */
 const pt = (points: number): number => points * MM_PER_POINT
@@ -70,7 +71,7 @@ export const NUTRITION_PANEL_RULES = {
  * than" and why drawing at exactly these values puts the default label on the
  * line rather than comfortably above it.
  *
- * The reduced displays lower several of them; see `nutritionTypeFor`.
+ * The reduced displays lower several of them; see `nutritionTypeForDisplay`.
  */
 export const NUTRITION_PANEL_TYPE = {
   /** 101.9(d)(2): no smaller than all other print except the Calories figure.
@@ -119,42 +120,103 @@ export const NUTRITION_FOOTNOTE = {
 } as const
 
 /**
+ * The displays 101.9 illustrates, named for the paragraph that illustrates each.
+ *
+ * **This is the axis the regulation states its type-size exceptions on**, and
+ * keying the table on anything coarser is what makes them wrong. (d)(1)(iii) and
+ * (d)(3) never say "the tabular display" — they name paragraphs, and each
+ * exception names a *different set* of them. A single `tabular` row cannot
+ * satisfy four exception lists that disagree about which tabular displays they
+ * reach, and the row that tried put a 14 point Calories numeral and a 9 point
+ * servings statement on (d)(11)'s display, where both are larger.
+ */
+export const NUTRITION_DISPLAYS = {
+  /** The standard vertical display. */
+  verticalD12: '21 CFR 101.9(d)(12)',
+  /** The ordinary tabular display, reached by (d)(11)(iii)'s vertical space. */
+  tabularD11: '21 CFR 101.9(d)(11)',
+  /** The dual-column tabular display. */
+  tabularDualColumnE6ii: '21 CFR 101.9(e)(6)(ii)',
+  /** The tabular display **for small packages**. */
+  tabularSmallJ13: '21 CFR 101.9(j)(13)(ii)(A)(1)',
+  /** The linear display for small packages, which has no other route to it. */
+  linearSmallJ13: '21 CFR 101.9(j)(13)(ii)(A)(2)',
+} as const
+
+export type NutritionDisplay = keyof typeof NUTRITION_DISPLAYS
+
+/**
  * The minimums each display answers to — 21 CFR 101.9(d)(1)(iii) and (d)(3).
  *
- * **The two Calories figures move independently, and that is the easy part to
- * get wrong.** (d)(1)(iii): the word is "no smaller than 16 point except the
- * type size for this information required in the tabular displays as shown in
- * paragraphs (d)(11), (e)(6)(ii), and (j)(13)(ii)(A)(1) ... and the linear
- * display ... shall be in a type size no smaller than **10 point**". The numeric
- * amount is "no smaller than 22 point, except ... for the tabular display for
- * **small packages** ... and for the linear display ... no smaller than **14
- * point**". So (d)(11)'s ordinary tabular display keeps the 22 point numeral
- * while dropping the word to 10 — one exception lists three paragraphs and the
- * other lists two.
+ * **Four exceptions, four different lists of paragraphs.** Each is quoted here
+ * because the difference between them is the whole content of this table.
  *
- * (d)(3)(i) and (ii) drop the servings lines from 10 point to 9 in the reduced
- * displays. The nutrient rows stay at 8 throughout, and (d)(4), (6) and (9) at
- * 6, with no exception stated for either.
+ * *Calories, the word* — (d)(1)(iii): "no smaller than 16 point except the type
+ * size for this information required in the tabular displays as shown in
+ * paragraphs **(d)(11), (e)(6)(ii), and (j)(13)(ii)(A)(1)** of this section and
+ * the linear display for small packages as shown in paragraph
+ * **(j)(13)(ii)(A)(2)** ... shall be in a type size no smaller than 10 point."
+ * Every display but the vertical one.
+ *
+ * *Calories, the numeral* — (d)(1)(iii): "no smaller than 22 point, except the
+ * type size for this information required for the tabular display for **small
+ * packages** as shown in paragraph **(j)(13)(ii)(A)(1)** ... and for the linear
+ * display for small packages as shown in paragraph **(j)(13)(ii)(A)(2)** ... no
+ * smaller than 14 point." Only the two small-package displays. So (d)(11)'s
+ * ordinary tabular display carries a **22 point numeral beside a 10 point
+ * word**, and so does (e)(6)(ii)'s dual-column one.
+ *
+ * *Servings per container* — (d)(3)(i): "no smaller than 10 point, except the
+ * type size for this information shall be no smaller than 9 point in the tabular
+ * display for small packages as shown in paragraph **(j)(13)(ii)(A)(1)** ... and
+ * the linear display for small packages as shown in paragraph
+ * **(j)(13)(ii)(A)(2)**." Again only the small-package pair — (d)(11) and
+ * (e)(6)(ii) keep **10 point**.
+ *
+ * *Serving size* — (d)(3)(ii): "no smaller than 10 point, except the type size
+ * shall be no smaller than 9 point for this information in the tabular displays
+ * as shown in paragraphs **(d)(11) and (e)(6)(ii)** ..., the tabular display for
+ * small packages as shown in paragraph **(j)(13)(ii)(A)(1)** ..., and the linear
+ * display for small packages as shown in paragraph **(j)(13)(ii)(A)(2)**." This
+ * one *does* reach every display but the vertical.
+ *
+ * So the two servings lines do **not** move together, and neither do the two
+ * Calories figures. Only "Serving size" and the Calories word share a list.
+ *
+ * The nutrient rows stay at 8 throughout — (d)(1)(iii) states it for (d)(7) and
+ * (8) with no exception — and (d)(4), (6) and (9) at 6, likewise.
  *
  * FDA's illustrations annotate the linear display "all type sizes are 6 point",
  * which cannot be squared with the 9, 10 and 14 point minimums above. The
  * regulation governs; the annotation came out of a PDF that had to be decoded
  * rather than read, and a fragment is not a reason to disbelieve the text.
  */
-export const NUTRITION_TYPE_BY_FORMAT = {
-  vertical: {
+export const NUTRITION_TYPE_BY_DISPLAY = {
+  verticalD12: {
     servingsPerContainerPt: 10,
     servingSizePt: 10,
     caloriesWordPt: 16,
     caloriesFigurePt: 22,
   },
-  tabular: {
+  tabularD11: {
+    servingsPerContainerPt: 10,
+    servingSizePt: 9,
+    caloriesWordPt: 10,
+    caloriesFigurePt: 22,
+  },
+  tabularDualColumnE6ii: {
+    servingsPerContainerPt: 10,
+    servingSizePt: 9,
+    caloriesWordPt: 10,
+    caloriesFigurePt: 22,
+  },
+  tabularSmallJ13: {
     servingsPerContainerPt: 9,
     servingSizePt: 9,
     caloriesWordPt: 10,
     caloriesFigurePt: 14,
   },
-  linear: {
+  linearSmallJ13: {
     servingsPerContainerPt: 9,
     servingSizePt: 9,
     caloriesWordPt: 10,
@@ -165,9 +227,51 @@ export const NUTRITION_TYPE_BY_FORMAT = {
 /** Every minimum a display answers to, in points. */
 export type NutritionTypeSizes = Record<keyof typeof NUTRITION_PANEL_TYPE, number>
 
-/** The full set for a display, the reduced figures folded over the rest. */
-export function nutritionTypeFor(
-  format: keyof typeof NUTRITION_TYPE_BY_FORMAT,
-): NutritionTypeSizes {
-  return { ...NUTRITION_PANEL_TYPE, ...NUTRITION_TYPE_BY_FORMAT[format] }
+/** The full set for a display, its own figures folded over the vertical ones. */
+export function nutritionTypeForDisplay(display: NutritionDisplay): NutritionTypeSizes {
+  return { ...NUTRITION_PANEL_TYPE, ...NUTRITION_TYPE_BY_DISPLAY[display] }
+}
+
+/**
+ * Which of 101.9's illustrated displays a panel is presented under.
+ *
+ * The base display says tabular or linear; it does not say *by which paragraph*,
+ * and the type sizes turn on that. `smallPackageRouteApplies` answers it from
+ * the same area and shape facts the entitlement uses, so the two cannot come to
+ * disagree about which route a package took.
+ *
+ * **Without a declared area the small-package route does not apply**, so a
+ * tabular panel is held to (d)(11)'s larger figures. That is the stricter
+ * reading and the deliberate one: a label claiming a reduced display without
+ * saying what makes it small has not stated the fact that would lower the
+ * minimum, which is the stance (j)(13)(ii)(A)'s own "and the label does not say
+ * so" already takes.
+ */
+export function nutritionDisplayFor(input: {
+  format: NutritionFormat
+  availableSqInches?: number
+  cannotAccommodateVertical?: boolean
+  /** True where the panel carries an (e) dual column, which (e)(6)(ii) shows. */
+  dualColumn?: boolean
+}): NutritionDisplay {
+  if (input.format === 'vertical') return 'verticalD12'
+
+  const small =
+    input.availableSqInches !== undefined &&
+    smallPackageRouteApplies({
+      availableSqInches: input.availableSqInches,
+      ...(input.cannotAccommodateVertical === undefined
+        ? {}
+        : { cannotAccommodateVertical: input.cannotAccommodateVertical }),
+    })
+
+  // The linear display has only the one paragraph behind it.
+  if (input.format === 'linear') return 'linearSmallJ13'
+  // A small package carrying a dual column qualifies under both (j)(13)(ii)(A)(1)
+  // and (e)(6)(ii), and the small-package figures are the lower pair. Where two
+  // paragraphs both reach a panel it may be set to either, so the minimum it must
+  // clear is the smaller — holding it to (e)(6)(ii)'s 22 point numeral would
+  // report a label (j)(13)(ii)(A)(1) permits at 14.
+  if (small) return 'tabularSmallJ13'
+  return input.dualColumn === true ? 'tabularDualColumnE6ii' : 'tabularD11'
 }

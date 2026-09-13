@@ -67,6 +67,12 @@ const JUDGED_ELSEWHERE = new Set<string>([
   US_FOOD_ELEMENTS.nutritionServings,
   US_FOOD_ELEMENTS.nutritionServingSize,
   US_FOOD_ELEMENTS.nutritionCalories,
+  // The numeral beside the word, which 101.9(d)(1)(iii) sizes separately and
+  // which therefore carries an id of its own. Without it here the one part of the
+  // panel most clearly governed by 101.9 was judged against 101.2(c) as well,
+  // and — having no `ResolvedElement` — reported under a raw element id that
+  // highlighted nothing on the canvas.
+  US_FOOD_ELEMENTS.nutritionCaloriesFigure,
   US_FOOD_ELEMENTS.nutritionFootnote,
 ])
 

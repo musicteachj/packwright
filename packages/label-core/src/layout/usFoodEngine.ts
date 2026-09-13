@@ -308,6 +308,25 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       })
     }
 
+    // And the same check across the label, which the vertical one alone did not
+    // make. The reduced displays are the ones wide enough to need it: a tabular
+    // panel whose serving block crowded out its nutrient columns drew them off the
+    // right-hand edge, and nothing said so, because overflow was only ever
+    // measured downward. Taken from the elements rather than the primitives so it
+    // reads the space the panel claimed, in the units the boxes are already in.
+    const rightEdgeMm = Math.max(
+      ...drawn.elements.map((element) => element.box.xMm + element.box.widthMm),
+    )
+    if (rightEdgeMm > stock.widthMm) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        reason:
+          `The Nutrition Facts panel runs ${mmText(rightEdgeMm - stock.widthMm)} past the right ` +
+          `edge of a ${mmText(stock.widthMm)} label, so part of it is not printed.`,
+        scope: 'detail',
+      })
+    }
+
     cursorYMm = bottomMm + type.blockGapMm
   }
 

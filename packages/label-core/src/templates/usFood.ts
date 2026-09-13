@@ -45,6 +45,14 @@ export const US_FOOD_ELEMENTS = {
   nutritionServings: 'food-nutrition-servings',
   nutritionServingSize: 'food-nutrition-serving-size',
   nutritionCalories: 'food-nutrition-calories',
+  /**
+   * The Calories *numeral*, which 101.9(d)(1)(iii) gives a minimum of its own —
+   * 22 point against the word's 16, and the two drop by different amounts on the
+   * reduced displays. It is tagged separately because a rule measuring both
+   * under one id can only see the smaller of them, and so could never report an
+   * undersized numeral beside a correct word.
+   */
+  nutritionCaloriesFigure: 'food-nutrition-calories-figure',
   nutritionFootnote: 'food-nutrition-footnote',
   containsStatement: 'food-contains-statement',
   netQuantity: 'food-net-quantity',

@@ -88,6 +88,26 @@ export interface FormatVerdict {
 }
 
 /**
+ * Whether **(j)(13)(ii)(A)'s small-package route** reaches this package — "less
+ * than 12 square inches", or "40 or less square inches and the package shape or
+ * size cannot accommodate a standard vertical column".
+ *
+ * Named and exported because it answers a second question besides entitlement.
+ * (d)(1)(iii) and (d)(3)(i) lower the Calories numeral and the servings
+ * statement **only** on "the tabular display for small packages as shown in
+ * paragraph (j)(13)(ii)(A)(1)" and the linear display beside it — not on
+ * (d)(11)'s ordinary tabular display, which reaches the same arrangement by a
+ * different paragraph and keeps the larger figures. One predicate, so the
+ * entitlement and the type sizes cannot come to disagree about which route a
+ * package took.
+ */
+export function smallPackageRouteApplies(entitlement: FormatEntitlement): boolean {
+  const under12 = entitlement.availableSqInches < SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES
+  const under40 = entitlement.availableSqInches <= REDUCED_FORMAT_MAX_SQ_INCHES
+  return under12 || (under40 && entitlement.cannotAccommodateVertical === true)
+}
+
+/**
  * Whether a package may present its nutrition information in this display.
  *
  * The vertical display is always available — it is the one (d) describes and
@@ -98,15 +118,14 @@ export function formatIsPermitted(
   format: NutritionFormat,
   entitlement: FormatEntitlement,
 ): FormatVerdict {
-  const { availableSqInches, cannotAccommodateVertical, cannotAccommodateTabular } = entitlement
+  const { availableSqInches, cannotAccommodateTabular } = entitlement
 
   if (format === 'vertical') {
     return { permitted: true, reason: '', reference: '21 CFR 101.9(d)' }
   }
 
-  const under12 = availableSqInches < SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES
   const under40 = availableSqInches <= REDUCED_FORMAT_MAX_SQ_INCHES
-  const reduced = under12 || (under40 && cannotAccommodateVertical === true)
+  const reduced = smallPackageRouteApplies(entitlement)
 
   // (d)(11)(iii) is a second route to the tabular display and does not run
   // through (j)(13) at all: a package of any size may use it where there is not

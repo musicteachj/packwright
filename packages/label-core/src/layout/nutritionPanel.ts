@@ -18,7 +18,12 @@
  * failed in exactly the place a user would try it.
  */
 
-import { NUTRITION_FOOTNOTE, NUTRITION_PANEL_RULES, nutritionTypeFor } from '../fda/nutritionPanel'
+import {
+  NUTRITION_FOOTNOTE,
+  NUTRITION_PANEL_RULES,
+  nutritionDisplayFor,
+  nutritionTypeForDisplay,
+} from '../fda/nutritionPanel'
 import { NUTRIENTS, nutrient, percentDailyValue, roundNutrientAmount } from '../fda/nutrients'
 import type { NutrientId } from '../fda/nutrients'
 import { MM_PER_POINT } from '../geometry/units'
@@ -79,10 +84,23 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   const scale = facts.typeScale ?? 1
   const mm = (points: number): number => mmAt(points, scale)
   // The display decides four of the minimums — 101.9(d)(1)(iii) and (d)(3) — so
-  // the panel is drawn to the ones its own format answers to rather than to the
-  // vertical set with the others bolted on afterwards.
+  // the panel is drawn to the ones its own display answers to rather than to the
+  // vertical set with the others bolted on afterwards. Which display it *is*
+  // turns on the paragraph the package reaches it by, not on tabular-or-linear:
+  // (d)(11)'s tabular display and (j)(13)(ii)(A)(1)'s are the same arrangement
+  // with different figures.
   const format = facts.format ?? 'vertical'
-  const NUTRITION_PANEL_TYPE = nutritionTypeFor(format)
+  const NUTRITION_PANEL_TYPE = nutritionTypeForDisplay(
+    nutritionDisplayFor({
+      format,
+      ...(facts.availableSurfaceSqInches === undefined
+        ? {}
+        : { availableSqInches: facts.availableSurfaceSqInches }),
+      ...(facts.cannotAccommodateVertical === undefined
+        ? {}
+        : { cannotAccommodateVertical: facts.cannotAccommodateVertical }),
+    }),
+  )
   const primitives: LayoutPrimitive[] = []
   const elements: ResolvedElement[] = []
 
@@ -236,7 +254,15 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
 
     // The left block: heading, servings, serving size, Calories. (d)(3) keeps
     // them together and immediately after the heading whatever the display.
-    const leftLines: Array<{ text: string; bold: boolean; sizeMm: number; elementId: string }> = [
+    const leftLines: Array<{
+      text: string
+      bold: boolean
+      sizeMm: number
+      elementId: string
+      /** Set beside the line at its own size — the Calories numeral, which
+       *  (d)(1)(iii) gives a minimum the word does not share. */
+      figure?: { text: string; sizeMm: number; elementId: string }
+    }> = [
       {
         text: 'Nutrition Facts',
         bold: true,
@@ -262,22 +288,36 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     ]
     const calories = amountOf(facts, 'calories')
     if (calories !== undefined) {
+      // The word and the numeral are two primitives on one line, not one string.
+      // (d)(1)(iii) gives them separate minimums — 10 point and, on this display,
+      // 22 — and a single run at one size both misdraws the line and leaves a
+      // rule measuring them together able to see only the smaller.
       leftLines.push({
-        text: `Calories ${calories}`,
+        text: 'Calories',
         bold: true,
-        sizeMm: mm(NUTRITION_PANEL_TYPE.caloriesFigurePt),
+        sizeMm: mm(NUTRITION_PANEL_TYPE.caloriesWordPt),
         elementId: US_FOOD_ELEMENTS.nutritionCalories,
+        figure: {
+          text: String(calories),
+          sizeMm: mm(NUTRITION_PANEL_TYPE.caloriesFigurePt),
+          elementId: US_FOOD_ELEMENTS.nutritionCaloriesFigure,
+        },
       })
     }
 
     let leftYMm = yMm
     let leftWidthMm = 0
     for (const line of leftLines) {
+      // The taller of the word and the numeral sets the baseline and the leading,
+      // so a 22 point figure beside a 10 point word neither clips nor overlaps
+      // the line beneath it.
+      const lineHeightMm = Math.max(line.sizeMm, line.figure?.sizeMm ?? 0)
+      const wordWidthMm = measureTextMm(line.text, line.sizeMm, fontFamily)
       primitives.push({
         kind: 'text',
         elementId: line.elementId,
         xMm: leftMm,
-        baselineYMm: leftYMm + line.sizeMm,
+        baselineYMm: leftYMm + lineHeightMm,
         text: line.text,
         fontSizeMm: line.sizeMm,
         fontFamily,
@@ -285,18 +325,35 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
         fill: '000000',
         anchor: 'start',
       })
+      let widthMm = wordWidthMm
+      if (line.figure !== undefined) {
+        const gapMm = measureTextMm(' ', line.sizeMm, fontFamily)
+        primitives.push({
+          kind: 'text',
+          elementId: line.figure.elementId,
+          xMm: leftMm + wordWidthMm + gapMm,
+          baselineYMm: leftYMm + lineHeightMm,
+          text: line.figure.text,
+          fontSizeMm: line.figure.sizeMm,
+          fontFamily,
+          ...(line.bold ? { fontWeight: emphasisFontWeight } : {}),
+          fill: '000000',
+          anchor: 'start',
+        })
+        widthMm += gapMm + measureTextMm(line.figure.text, line.figure.sizeMm, fontFamily)
+      }
       elements.push({
         elementId: line.elementId,
         label: line.text,
         box: {
           xMm: leftMm,
           yMm: leftYMm,
-          widthMm: measureTextMm(line.text, line.sizeMm, fontFamily),
-          heightMm: line.sizeMm * 1.3,
+          widthMm,
+          heightMm: lineHeightMm * 1.3,
         },
       })
-      leftWidthMm = Math.max(leftWidthMm, measureTextMm(line.text, line.sizeMm, fontFamily))
-      leftYMm += line.sizeMm * 1.3
+      leftWidthMm = Math.max(leftWidthMm, widthMm)
+      leftYMm += lineHeightMm * 1.3
     }
 
     // The nutrients, in as many columns as the remaining width takes. This is
@@ -321,15 +378,31 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       rows.length === 0
         ? 0
         : Math.max(...rows.map((r) => measureTextMm(r.text, sizeMm, fontFamily)))
-    const availableMm = rightMm - (leftMm + leftWidthMm + gutterMm)
-    const columns = Math.max(1, Math.floor(availableMm / (columnMm + gutterMm)))
+    // The nutrients go beside the serving block where there is room for at least
+    // one column of them, and beneath it where there is not.
+    //
+    // They used to go beside it unconditionally. On a 60 mm label whose serving
+    // block takes 42 of them the remaining width is negative, the column count
+    // clamped to one, and the rows were still drawn from the right-hand edge of
+    // the block outward — past the panel, past the substrate, and with no
+    // omission recorded, so every mandatory nutrient was absent from the artefact
+    // while the completeness rule reported the panel complete. Content that will
+    // not be printed has to either move or say so.
+    const besideMm = rightMm - (leftMm + leftWidthMm + gutterMm)
+    const beside = rows.length === 0 || besideMm >= columnMm
+    const nutrientsXMm = beside ? leftMm + leftWidthMm + gutterMm : leftMm
+    const nutrientsTopMm = beside ? yMm : leftYMm
+    // n columns occupy n widths and n-1 gutters, so the gutter is added to both
+    // sides of the division rather than to the column alone.
+    const availableMm = rightMm - nutrientsXMm
+    const columns = Math.max(1, Math.floor((availableMm + gutterMm) / (columnMm + gutterMm)))
     const perColumn = Math.ceil(rows.length / columns)
 
     rows.forEach((row, index) => {
       const column = Math.floor(index / perColumn)
       const rowInColumn = index % perColumn
-      const xRowMm = leftMm + leftWidthMm + gutterMm + column * (columnMm + gutterMm)
-      const yRowMm = yMm + rowInColumn * lineMm
+      const xRowMm = nutrientsXMm + column * (columnMm + gutterMm)
+      const yRowMm = nutrientsTopMm + rowInColumn * lineMm
       const elementId = nutritionRowElementId(row.id)
       primitives.push({
         kind: 'text',
@@ -351,7 +424,9 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     })
 
     const columnsHeightMm = perColumn * lineMm
-    const bodyBottomMm = yMm + Math.max(leftYMm - yMm, columnsHeightMm)
+    // Measured from wherever the columns actually start, which is no longer always
+    // the top of the block: below it, the panel is as tall as both stacked.
+    const bodyBottomMm = Math.max(leftYMm, nutrientsTopMm + columnsHeightMm)
 
     // (j)(13)(i) drops the footnote for the small-package displays; (d)(11)'s
     // tabular display is not one of them, so it keeps the abbreviated statement
@@ -475,7 +550,9 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       bold: true,
       anchor: 'end',
       x: rightMm,
-      elementId: US_FOOD_ELEMENTS.nutritionCalories,
+      // Its own id: (d)(1)(iii)'s 22 point minimum is the numeral's alone, and a
+      // rule measuring it under the word's id would only ever see the word.
+      elementId: US_FOOD_ELEMENTS.nutritionCaloriesFigure,
     })
   }
   yMm += mm(NUTRITION_PANEL_TYPE.caloriesFigurePt) * 1.1

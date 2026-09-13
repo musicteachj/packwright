@@ -8,6 +8,8 @@ import { blockingOmissions } from '../layout/omissions'
 import { MAJOR_FOOD_ALLERGENS, majorFoodAllergen } from '../fda/allergens'
 import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
 import { roundNutrientAmount } from '../fda/nutrients'
+import { nutritionTypeForDisplay } from '../fda/nutritionPanel'
+import { MM_PER_POINT } from '../geometry/units'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_NUTRITION_PERCENT_DV_WRONG,
@@ -1257,11 +1259,141 @@ describe('the tabular display', () => {
   })
 
   it('judges its type against the reduced minimums, not the vertical ones', () => {
-    // (d)(1)(iii) drops the Calories word to 10 point and the numeral to 14 on
-    // this display, so a panel drawn to them complies — judged against the
-    // vertical set it would not.
+    // (d)(1)(iii) drops the Calories word to 10 point on this display, and
+    // (d)(3)(ii) "Serving size" to 9, so a panel drawn to them complies — judged
+    // against the vertical set it would not.
     expect(findingsFor(tabular(), stock).map((f) => f.code)).not.toContain(
       'FDA_NUTRITION_TYPE_TOO_SMALL',
+    )
+  })
+
+  const caloriesNumeralPt = (data: UsFoodLabelData, on: LabelStock): number => {
+    const drawn = layOutUsFoodLabel({ data, stock: on }).primitives.find(
+      (p): p is TextPrimitive =>
+        p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionCaloriesFigure,
+    )!
+    return drawn.fontSizeMm / MM_PER_POINT
+  }
+
+  it('keeps the Calories numeral at 22 point here and drops it to 14 only on a small package', () => {
+    // (d)(1)(iii)'s numeral exception names (j)(13)(ii)(A)(1) and (A)(2) and
+    // *not* (d)(11), so this display carries a 22 point numeral beside its 10
+    // point word. Reading "the tabular display" as one thing put 14 on both.
+    expect(caloriesNumeralPt(tabular(), stock)).toBeCloseTo(22, 5)
+    expect(
+      caloriesNumeralPt(
+        tabular({ availableSurfaceSqInches: 9, continuousVerticalSpaceInches: undefined }),
+        stock,
+      ),
+    ).toBeCloseTo(14, 5)
+  })
+
+  it('keeps the servings statement at 10 point here, which only (j)(13) lowers', () => {
+    // (d)(3)(i) names the small-package pair alone. (d)(3)(ii) names this display
+    // too, so the two servings lines part company and only one of them drops.
+    const type = nutritionTypeForDisplay('tabularD11')
+    expect(type.servingsPerContainerPt).toBe(10)
+    expect(type.servingSizePt).toBe(9)
+  })
+
+  it('reports a Calories numeral set below the 22 point (d)(1)(iii) requires', () => {
+    // Nothing measured the numeral at all before this: it shared the word's
+    // element id, so the smaller of the two always won and an undersized numeral
+    // beside a correct word could not be seen.
+    const match = findingsFor(tabular({ typeScale: 0.5 }), stock).find(
+      (f) => f.citation.reference === '21 CFR 101.9(d)(1)(iii)',
+    )
+    expect(match).toBeDefined()
+    expect(match!.code).toBe('FDA_NUTRITION_TYPE_TOO_SMALL')
+    expect(match!.measurement!.required).toBe('22 pt')
+    expect(match!.message).toContain('the Calories numeral')
+  })
+
+  it('does not report the numeral on a small package drawn to its own 14 point', () => {
+    // The over-strict direction. (j)(13)(ii)(A)(1) permits 14 here, and holding
+    // this panel to 22 would report a label the paragraph allows.
+    const small = tabular({
+      availableSurfaceSqInches: 9,
+      continuousVerticalSpaceInches: undefined,
+    })
+    expect(
+      findingsFor(small, stock).filter((f) => f.citation.reference === '21 CFR 101.9(d)(1)(iii)'),
+    ).toEqual([])
+  })
+
+  const narrow = { widthMm: 60, heightMm: 40, marginMm: 3 }
+  const onNarrowLabel = (): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    container: { shape: 'rectangular', widthMm: 60, heightMm: 40 },
+    nutritionFacts: {
+      ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      format: 'tabular',
+      availableSurfaceSqInches: 9,
+    },
+  })
+
+  it('moves the nutrients below the serving block when they do not fit beside it', () => {
+    // Every row used to be drawn from the right-hand edge of a serving block that
+    // already took 42 mm of a 60 mm label — off the panel, off the substrate, and
+    // reported complete by the rules, because the engine only ever measured
+    // overflow downward.
+    const layout = layOutUsFoodLabel({ data: onNarrowLabel(), stock: narrow })
+    const rows = layout.elements.filter((e) => e.elementId.startsWith('food-nutrition-row-'))
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.box.xMm + row.box.widthMm, row.elementId).toBeLessThanOrEqual(narrow.widthMm)
+    }
+  })
+
+  it('grows the panel box to enclose nutrients placed below the serving block', () => {
+    // The height was measured as the taller of the serving block and the nutrient
+    // columns, which is right only while they sit side by side. Stacked, the panel
+    // is as tall as both — and a box measured from the top instead of from where
+    // the columns actually start leaves every row outside the rule it is drawn in
+    // and hides the overflow from the engine's own bottom-edge check.
+    const layout = layOutUsFoodLabel({ data: onNarrowLabel(), stock: narrow })
+    const panel = layout.elements.find((e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel)!
+    const rows = layout.elements.filter((e) => e.elementId.startsWith('food-nutrition-row-'))
+    expect(rows.length).toBeGreaterThan(0)
+    const panelBottomMm = panel.box.yMm + panel.box.heightMm
+    for (const row of rows) {
+      expect(row.box.yMm + row.box.heightMm, row.elementId).toBeLessThanOrEqual(panelBottomMm)
+    }
+  })
+
+  it('reports a panel that still runs past the right edge rather than drawing it away', () => {
+    // The residual case the reflow cannot rescue: one nutrient row wider than the
+    // whole label. It has to say so, the way the vertical overflow always did.
+    const tiny = { widthMm: 20, heightMm: 40, marginMm: 3 }
+    const data: UsFoodLabelData = {
+      ...onNarrowLabel(),
+      container: { shape: 'rectangular', widthMm: 20, heightMm: 40 },
+    }
+    // Read from `omissions` rather than `blockingOmissions`: the panel is present
+    // and part of it is not printed, which is `scope: 'detail'` — the same scope
+    // the overflow past the bottom edge has always carried.
+    const overflow = layOutUsFoodLabel({ data, stock: tiny }).omissions.filter(
+      (o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+    )
+    expect(overflow.map((o) => o.reason).join(' ')).toContain('past the right edge')
+    expect(overflow.every((o) => o.scope === 'detail')).toBe(true)
+  })
+
+  it('leaves the Calories numeral to 101.9 and does not judge it under 101.2(c)', () => {
+    // The numeral got an id of its own so (d)(1)(iii)'s 22 point could be measured
+    // separately. That put it in reach of the 1/16 inch information-panel floor,
+    // which is the one part of this panel the 101.2(c) rule's own note says must
+    // be excluded — and, having no element of its own, it reported under a raw id
+    // that highlighted nothing. At this scale the numeral is 1.08 mm.
+    const shrunk: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!, typeScale: 0.2 },
+    }
+    const under1012 = findingsFor(shrunk, US_FOOD_CONFORMANT.stock).filter((f) =>
+      f.citation.reference.startsWith('21 CFR 101.2'),
+    )
+    expect(under1012.map((f) => f.elementId)).not.toContain(
+      US_FOOD_ELEMENTS.nutritionCaloriesFigure,
     )
   })
 })

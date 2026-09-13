@@ -477,6 +477,50 @@ Phase 5, stage 6.
   nothing tested the tabular column of the minimums table at all. It is pinned now, along with the property
   that every reduced figure is lower than its vertical counterpart and none is higher.
 
+- **The entry above has its premise backwards, and the table it pinned was wrong.** 22 point *is* what
+  (d)(11)'s tabular display requires; the mutation that escaped was the correct figure, and pinning 14 in
+  place fixed the test and not the defect. The minimums table was keyed on the base display — vertical,
+  tabular, linear — while **every exception in (d)(1)(iii) and (d)(3) is keyed on a paragraph**, and the four
+  exceptions name four different sets of them. The Calories word drops to 10 point in the displays "shown in
+  paragraphs (d)(11), (e)(6)(ii), and (j)(13)(ii)(A)(1)" and the linear one; the numeral drops to 14 only "for
+  the tabular display for small packages as shown in paragraph (j)(13)(ii)(A)(1)" and the linear display;
+  (d)(3)(i)'s servings statement drops to 9 on that same small-package pair alone; and (d)(3)(ii)'s "Serving
+  size" drops to 9 on all four. No two of the figures move together, and only "Serving size" and the Calories
+  word share a list. One `tabular` row cannot satisfy four lists that disagree, and the one that tried put a
+  14 point numeral and a 9 point servings statement on (d)(11)'s display, where the regulation requires 22 and
+  10 — drawn that way by the renderer and unreportable by the rule, wrong in both directions at once. The
+  table is now keyed on the paragraph that illustrates each display, which is the axis the exceptions are
+  written on.
+- **The Calories numeral was never measured at all.** It shared the word's element id, and the rule takes the
+  smallest primitive under an id, so the word's 16 point always won and an undersized numeral beside a correct
+  word could not be seen — the 22 point minimum had no check behind it in any display. It is drawn under its
+  own id now and measured separately, while a finding about it still outlines the Calories row a reader can
+  point at rather than a bare numeral.
+- **The tabular display drew "Calories" and its numeral as one string at one size**, which is the conflation
+  that hid the paragraph split: (d)(1)(iii) gives the word and the numeral separate minimums, so a single run
+  at a single size cannot satisfy both and misdraws the line besides. They are two primitives on one baseline,
+  the taller setting the leading.
+- This is the fourth defect in phase 5 of one kind — a figure enforced without reading what it was attached to
+  — so the kind is now written down in `CLAUDE.md` rather than rediscovered a fifth time.
+- **The tabular display drew its nutrients off the label and reported them present.** The columns were placed
+  from the right-hand edge of the serving block unconditionally. On a 60 mm label whose block took 42 of them
+  the remaining width was negative, the column count clamped to one, and all fourteen rows were drawn from
+  x 42 rightward — past the panel and past the substrate — while `us-food/nutrition-completeness` reported
+  `FDA_NUTRITION_COMPLETE`. The nutrients now go beneath the serving block where there is not room for a
+  column beside it, and the panel box grows to enclose them, which it did not when its height was measured
+  from the top of a block the columns no longer start level with.
+- **Overflow was only ever measured downward.** The engine checked the panel against the bottom edge of the
+  label and never against the right, which is why the case above was silent rather than reported. It checks
+  both now — the reduced displays are the ones wide enough to need it — and a panel that still cannot fit says
+  so instead of being drawn away. The column arithmetic was also off by one column: *n* columns occupy *n*
+  widths and *n−1* gutters, so the gutter belongs on both sides of the division.
+- **The Calories numeral, newly given an id of its own, fell into the 101.2(c) rule.** That rule's own note
+  explains at length why the Nutrition Facts panel must be excluded from the 1/16 inch information-panel floor
+  — 101.9 sets 8 point rows whose lowercase "o" is 1.52 mm against a 1.59 mm floor, and applying it would
+  report every compliant nutrition label in the country. The numeral was not in the exclusion set, so it was
+  judged twice under two citations, and having no `ResolvedElement` it reported under a raw element id that
+  highlighted nothing when clicked. Splitting an element for one rule put it in reach of another.
+
 - **A "shall" the panel was not drawing.** 101.9(d)(1)(v): "A hairline rule that is centered between the
   lines of text **shall** separate 'Nutrition Facts' from the servings per container statement and shall
   separate each nutrient and its corresponding percent Daily Value ... from the nutrient and percent Daily

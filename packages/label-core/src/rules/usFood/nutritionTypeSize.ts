@@ -30,7 +30,11 @@
  * 1.59 mm floor 101.2(c) sets for everything else.
  */
 
-import { nutritionTypeFor } from '../../fda/nutritionPanel'
+import {
+  type NutritionDisplay,
+  nutritionDisplayFor,
+  nutritionTypeForDisplay,
+} from '../../fda/nutritionPanel'
 import { MM_PER_POINT } from '../../geometry/units'
 import type { TextPrimitive } from '../../layout/types'
 import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
@@ -49,36 +53,60 @@ const CITATION: Citation = {
 
 /**
  * Element, its stated minimum in points, and the paragraph that states it —
- * **for the display this panel actually uses**.
+ * **for the display this panel is presented under**.
  *
- * The reduced displays lower four of the figures, and not by the same amounts:
- * (d)(1)(iii) drops the Calories *word* to 10 point in every tabular display and
- * the *numeral* to 14 only on the small-package ones, while (d)(3) drops both
- * servings lines to 9. Checking a tabular panel against the vertical minimums
- * would report a label the paragraph explicitly allows.
+ * Four figures move between displays and **no two of them move together**.
+ * (d)(1)(iii) drops the Calories word to 10 point on every display but the
+ * vertical, and the numeral to 14 only on the two small-package ones; (d)(3)(i)
+ * drops the servings statement to 9 only on that same small-package pair, while
+ * (d)(3)(ii) drops "Serving size" to 9 on all four. `NUTRITION_TYPE_BY_DISPLAY`
+ * carries the four exception lists verbatim; this measures a panel against
+ * whichever row it belongs to.
+ *
+ * `measureId` and `elementId` differ for the Calories numeral alone. It is drawn
+ * under its own id so its 22 point minimum can be seen separately from the
+ * word's 16 — measured together the smaller always wins, and an undersized
+ * numeral beside a correct word was invisible — but a finding about it should
+ * outline the Calories row a reader can see, not a bare numeral.
  */
 const minimumsFor = (
-  format: 'vertical' | 'tabular' | 'linear',
-): ReadonlyArray<{ elementId: string; label: string; pt: number; reference: string }> => {
-  const type = nutritionTypeFor(format)
+  display: NutritionDisplay,
+): ReadonlyArray<{
+  measureId: string
+  elementId: string
+  label: string
+  pt: number
+  reference: string
+}> => {
+  const type = nutritionTypeForDisplay(display)
   return [
     {
+      measureId: US_FOOD_ELEMENTS.nutritionServings,
       elementId: US_FOOD_ELEMENTS.nutritionServings,
       label: 'the servings statement',
       pt: type.servingsPerContainerPt,
       reference: '21 CFR 101.9(d)(3)(i)',
     },
     {
+      measureId: US_FOOD_ELEMENTS.nutritionServingSize,
       elementId: US_FOOD_ELEMENTS.nutritionServingSize,
       label: '"Serving size"',
       pt: type.servingSizePt,
       reference: '21 CFR 101.9(d)(3)(ii)',
     },
     {
+      measureId: US_FOOD_ELEMENTS.nutritionCalories,
       elementId: US_FOOD_ELEMENTS.nutritionCalories,
       label: '"Calories"',
       pt: type.caloriesWordPt,
       reference: '21 CFR 101.9(d)(5)',
+    },
+    {
+      measureId: US_FOOD_ELEMENTS.nutritionCaloriesFigure,
+      elementId: US_FOOD_ELEMENTS.nutritionCalories,
+      label: 'the Calories numeral',
+      pt: type.caloriesFigurePt,
+      reference: '21 CFR 101.9(d)(1)(iii)',
     },
   ]
 }
@@ -95,8 +123,17 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
   appliesTo: 'us-food',
 
   check({ data, layout }: UsFoodContext): Finding[] {
-    const format = data.nutritionFacts?.format ?? 'vertical'
-    const type = nutritionTypeFor(format)
+    const facts = data.nutritionFacts
+    const display = nutritionDisplayFor({
+      format: facts?.format ?? 'vertical',
+      ...(facts?.availableSurfaceSqInches === undefined
+        ? {}
+        : { availableSqInches: facts.availableSurfaceSqInches }),
+      ...(facts?.cannotAccommodateVertical === undefined
+        ? {}
+        : { cannotAccommodateVertical: facts.cannotAccommodateVertical }),
+    })
+    const type = nutritionTypeForDisplay(display)
     const smallestOf = (predicate: (id: string) => boolean): number | undefined => {
       const sizes = layout.primitives
         .filter(
@@ -114,11 +151,12 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
     if (smallestOf((id) => id === US_FOOD_ELEMENTS.nutritionHeading) === undefined) return []
 
     const checks = [
-      ...minimumsFor(format).map((entry) => ({
+      ...minimumsFor(display).map((entry) => ({
         ...entry,
-        drawnMm: smallestOf((id) => id === entry.elementId),
+        drawnMm: smallestOf((id) => id === entry.measureId),
       })),
       {
+        measureId: US_FOOD_ELEMENTS.nutritionPanel,
         elementId: US_FOOD_ELEMENTS.nutritionPanel,
         label: 'the nutrient rows',
         pt: type.nutrientPt,
