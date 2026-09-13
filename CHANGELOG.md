@@ -8,6 +8,38 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+Phase 6, stage 2a — a browser, at last.
+
+- **Playwright, against the built artifact rather than the dev server.** Six phases of this project have been
+  verified entirely in jsdom, which has no layout engine: it cannot say whether an element is visible, what it
+  measures, or whether two things overlap. "Preview == print" has therefore held by construction and by
+  assertion without anyone having looked. Scoped as `docs/DESIGN.md` scopes it — critical paths, not a suite —
+  because a browser test is flaky in proportion to how much of it there is.
+- **The Content-Security-Policy question is answered.** `apps/api` mounts helmet at its defaults, and until
+  stage 1 it served only JSON, so no browser had ever run a page under that policy. It runs clean: no
+  violations, no console errors, no failed requests, and the stylesheet is applied rather than merely served.
+  Confirmed to be a real check by adding an inline script to `index.html` and watching it fail with
+  `script-src-elem blocked inline`.
+- **The dual-column nutrition panel has been looked at.** It draws its two column headings side by side, which
+  is the thing jsdom could never confirm — two headings at the same x are one heading on top of another, and
+  every resolved-layout assertion passes either way.
+- **`e2e/` is type-checked**, which it was not. `npm run typecheck` walks the workspaces and the browser tests
+  sit outside all of them, so a type error there would have surfaced only when Playwright ran. It found one
+  immediately, in the CSP collector.
+- **The CSP collector asserts its own binding.** Had `exposeFunction` failed to bind, it would have reported
+  zero violations forever and the assertion would have passed by finding nothing rather than by there being
+  nothing — a harness certifying what it never checked, which is the same defect as a rule doing it.
+
+### Fixed
+
+- **A browser test that claimed more than it checked.** `draws the second column beside the first` measured
+  the two *headings* and passed on a panel that has no second column of values at all — the rail's checkbox
+  seeds headings and has no field for the figures. Renamed to what it checks, and joined by one that asserts
+  the engine reports the column as undrawn. A test certifying content that was never drawn is this project's
+  signature defect wearing a different hat.
+
 ### Removed
 
 - **`cors()`, which was answering every request with `Access-Control-Allow-Origin: *`.** Nothing here makes a
