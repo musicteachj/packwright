@@ -37,8 +37,12 @@ const summary = computed(() => {
   const passed = props.passes.length
   // "All checks passed" has to account for the checks that were declined, or the
   // announcement contradicts the notice sitting directly above it.
+  // "Element" rather than "symbol": this list now carries anything the engine
+  // could not draw as well as the symbols no rule judges, and calling a net
+  // quantity declaration a symbol would be wrong on the one line a screen reader
+  // announces.
   const declined = props.uncertifiable.length
-    ? ` ${props.uncertifiable.length} symbol${props.uncertifiable.length === 1 ? '' : 's'} could not be checked.`
+    ? ` ${props.uncertifiable.length} element${props.uncertifiable.length === 1 ? '' : 's'} could not be checked.`
     : ''
 
   // `checks` is pluralised for the same reason `findings` and `symbols` are: a
@@ -81,11 +85,14 @@ const summary = computed(() => {
     </div>
 
     <!--
-      Stated in words because no rule states it. Artwork printed through a symbol
-      destroys it while leaving both quiet zones clear, so every geometric check
-      can pass on a barcode that will not scan. No clause covering overprinting
-      has been verified against a source document, and this project does not ship
-      rules it cannot cite — so the fact is reported and the verdict withheld.
+      Stated in words because no rule states it, for two reasons that read the
+      same way to a user. Artwork printed through a symbol destroys it while
+      leaving both quiet zones clear, so every geometric check can pass on a
+      barcode that will not scan — and no clause covering overprinting has been
+      verified against a source document, so the fact is reported and the verdict
+      withheld. An element the engine could not draw is the other: its rules
+      decline to certify it, and without this block those checks would simply
+      vanish from the rail, which reads exactly like a check nobody wrote.
     -->
     <section
       v-if="uncertifiable.length"
@@ -99,9 +106,9 @@ const summary = computed(() => {
         <span aria-hidden="true">{{ SEVERITY_STYLES.advisory.icon }}</span>
         Cannot be checked
       </h3>
-      <template v-for="symbol in uncertifiable" :key="symbol.elementId">
+      <template v-for="item in uncertifiable" :key="item.elementId">
         <p
-          v-for="reason in symbol.reasons"
+          v-for="reason in item.reasons"
           :key="reason"
           class="text-chrome-200 mt-2 text-sm leading-snug"
         >

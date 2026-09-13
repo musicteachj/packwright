@@ -247,32 +247,51 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   const hasBlocking = computed(() => findings.value.some((f) => f.severity === 'blocking'))
 
   /**
-   * Symbols that could not be certified, and why.
+   * Everything that could not be certified, and why.
    *
-   * Surfaced separately from the findings because no rule judges either
-   * condition — no clause covering them has been verified against a source
-   * document, and this project does not ship rules it cannot cite. Without it
-   * the rail showed nothing but passes for a barcode with a block of ink through
-   * the middle of it, or one drawn half off the stock.
+   * Two sources, one list, because they are one thing to a reader. Symbols carry
+   * conditions no rule judges — no clause covering them has been verified against
+   * a source document, and this project does not ship rules it cannot cite.
+   * Elements carry the engine's own record of what it could not draw.
+   *
+   * The second half is what makes the withheld passes legible. `runRules` now
+   * declines to certify an element the engine did not print, which is correct and
+   * was silent: the rail simply showed five fewer passes for a net quantity drawn
+   * off the label, with nothing saying why. A check that was declined has to read
+   * as declined, or it is indistinguishable from a check that was never written.
    */
-  const uncertifiableSymbols = computed(() =>
-    (layout.value?.symbols ?? []).flatMap((symbol) => {
-      const reasons: string[] = []
+  const uncertifiable = computed(() => {
+    const byElement = new Map<string, string[]>()
+    const add = (elementId: string, reason: string) => {
+      const existing = byElement.get(elementId)
+      if (existing === undefined) byElement.set(elementId, [reason])
+      else existing.push(reason)
+    }
+
+    for (const symbol of layout.value?.symbols ?? []) {
       if (symbol.overprintedBy.length > 0) {
-        reasons.push(
+        add(
+          symbol.elementId,
           `Artwork is printed over the ${symbol.symbology} symbol. A symbol with ink through ` +
             'it will not scan whatever its margins measure.',
         )
       }
       if (symbol.verticalOverflowMm > 0) {
-        reasons.push(
+        add(
+          symbol.elementId,
           `The ${symbol.symbology} symbol runs ${mm(symbol.verticalOverflowMm)} off ` +
             'the top or bottom of the stock, so part of it will not be printed.',
         )
       }
-      return reasons.length > 0 ? [{ elementId: symbol.elementId, reasons }] : []
-    }),
-  )
+    }
+
+    // The engine's reasons are already written as sentences for a reader — the
+    // omission type exists so that nothing is ever dropped silently — so they are
+    // passed through rather than restated here.
+    for (const omission of layout.value?.omissions ?? []) add(omission.elementId, omission.reason)
+
+    return [...byElement.entries()].map(([elementId, reasons]) => ({ elementId, reasons }))
+  })
 
   const elementLabels = computed(() => {
     const labels = new Map<ElementId, string>()
@@ -300,7 +319,7 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     failures,
     passes,
     hasBlocking,
-    uncertifiableSymbols,
+    uncertifiable,
     elementLabels,
     select,
   }

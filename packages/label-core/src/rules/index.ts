@@ -13,7 +13,14 @@ export type {
   UsFoodRule,
 } from './types'
 
-export { MEASUREMENT_TOLERANCE_MM, finding, mm, passed, xDimensionMm } from './finding'
+export {
+  MEASUREMENT_TOLERANCE_MM,
+  finding,
+  mm,
+  passed,
+  passedOnDocument,
+  xDimensionMm,
+} from './finding'
 
 export {
   GS1_GTIN_CHECK_DIGIT_INVALID,

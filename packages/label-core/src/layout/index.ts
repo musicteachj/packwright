@@ -10,7 +10,7 @@ export type { UsFoodLayoutRequest } from './usFoodEngine'
 export { layOutNutritionPanel } from './nutritionPanel'
 export type { NutritionPanelRequest, NutritionPanelResult } from './nutritionPanel'
 
-export { blockingOmissions } from './omissions'
+export { blockingOmissions, omissionsForElement, wasFullyDrawn } from './omissions'
 export { measureClearSpace } from './clearSpace'
 export type { ClearSpace } from './clearSpace'
 

@@ -40,7 +40,7 @@ import { dualColumnDuty, smallPackageRouteApplies } from '../../fda/nutritionFor
 import { DUAL_COLUMN_BASIS_REFERENCE } from '../../fda/nutritionFormats'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passed, passedOnDocument } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_DUAL_COLUMN_MISSING = 'FDA_DUAL_COLUMN_MISSING'
@@ -108,7 +108,12 @@ export const usFoodDualColumnRule: UsFoodRule = {
 
     if (duty.exemption !== undefined) {
       return [
-        passed(
+        // On the document, not the artwork: the message below says so itself.
+        // An exemption is a fact about the product, so it survives a panel the
+        // engine could not draw — and withholding it there would leave the
+        // label saying nothing at all about a column it was never required to
+        // carry.
+        passedOnDocument(
           usFoodDualColumnRule,
           FDA_DUAL_COLUMN_EXEMPT,
           `This package holds ${percent} percent of its reference amount, which would require a ` +

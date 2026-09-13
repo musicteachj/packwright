@@ -215,7 +215,7 @@ async function exportPdf() {
           :groups="store.findingsBySeverity"
           :failures="store.failures"
           :passes="store.passes"
-          :uncertifiable="store.uncertifiableSymbols"
+          :uncertifiable="store.uncertifiable"
           :selected-element-id="store.selectedElementId"
           @select="store.select($event ?? null)"
         />

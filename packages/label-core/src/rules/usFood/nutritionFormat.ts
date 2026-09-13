@@ -20,7 +20,7 @@
 import { formatIsPermitted } from '../../fda/nutritionFormats'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnDocument } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NUTRITION_FORMAT_NOT_PERMITTED = 'FDA_NUTRITION_FORMAT_NOT_PERMITTED'
@@ -88,7 +88,12 @@ export const usFoodNutritionFormatRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      // On the document, not the artwork. This rule never reads the layout —
+      // `check({ data })` is its whole signature — because an entitlement is
+      // settled by the package's surface area, not by how much of the panel fit.
+      // A panel drawn past the edge of its stock is still entitled to the
+      // display it chose, and the omission reports the part that did not print.
+      passedOnDocument(
         usFoodNutritionFormatRule,
         FDA_NUTRITION_FORMAT_MET,
         `A package of ${availableSqInches.toFixed(1)} in² may present its nutrition information ` +

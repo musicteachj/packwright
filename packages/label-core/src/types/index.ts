@@ -70,6 +70,21 @@ export interface Finding {
   /** Links the finding to an element in the resolved layout, for canvas highlighting. */
   elementId?: string
   measurement?: Measurement
+  /**
+   * What the verdict rests on — the printed artwork, or the document alone.
+   *
+   * `elementId` cannot answer this, and assuming it could was a bug. That field
+   * says *where to look*; it does not say what was judged. An exemption under
+   * 101.9(b)(12)(i)(C) points at the nutrition panel so the canvas can highlight
+   * it, but what it reports is that this food is excused from carrying a second
+   * column — which is true of the food whether or not the panel printed.
+   *
+   * It matters because a pass on `artwork` is withheld when the engine could not
+   * draw the element it names, and a pass on `document` is not. Defaulting to
+   * `artwork` is the safe direction: a wrong guess withholds a pass that was
+   * earned, where the other way round certifies ink that was never laid down.
+   */
+  certifies?: 'artwork' | 'document'
 }
 
 // --- Extraction --------------------------------------------------------------

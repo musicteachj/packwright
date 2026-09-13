@@ -10,6 +10,8 @@
  * order a reader wants and the order the checks ran in are different questions.
  */
 
+import { wasFullyDrawn } from '../layout/omissions'
+import type { ResolvedLayout } from '../layout/types'
 import type { Finding } from '../types/index'
 import { barHeightRule } from './gs1/barHeight'
 import { digitalLinkRule } from './gs1/digitalLink'
@@ -149,6 +151,42 @@ export function listRules(labelType?: LabelType): readonly Rule[] {
 }
 
 /**
+ * Withholds any pass issued for an element the engine did not print in full.
+ *
+ * This is a floor under every rule rather than a courtesy each one performs, and
+ * it is here because the courtesy was not performed. `usFoodEngine` records an
+ * omission when a declaration is drawn past the edge of the stock — the fix for
+ * "the net quantity at x −57.5 mm with all five of its rules reporting
+ * compliant" — but that fix landed in the layout alone. Not one rule read
+ * `layout.omissions`, so the same label still came back with eighteen findings
+ * and every one of them a pass.
+ *
+ * Withholding the *pass* is the whole of it. A violation is never touched, for
+ * the reason `quietZone.ts` records at length: an earlier fix there skipped an
+ * uncertifiable symbol outright and manufactured a second false clearance out of
+ * the first. An element that could not be drawn has not been cleared, and it has
+ * not been absolved either.
+ *
+ * A pass carrying no `elementId`, or one built by `passedOnDocument`, is left
+ * alone. Those judge the document rather than the artwork — a check digit is a
+ * fact about a number, an exemption is a fact about the food — and nothing the
+ * engine failed to draw changes whether they ran. `elementId` alone cannot make
+ * that distinction, and an earlier version of this guard that tried to read it
+ * that way deleted two entitlements: `elementId` says where to look, not what
+ * was judged. `Finding.certifies` says what was judged.
+ */
+function withholdUncertifiablePasses(findings: Finding[], layout: ResolvedLayout): Finding[] {
+  if (layout.omissions.length === 0) return findings
+  return findings.filter(
+    (result) =>
+      result.severity !== 'pass' ||
+      result.certifies === 'document' ||
+      result.elementId === undefined ||
+      wasFullyDrawn(layout, result.elementId),
+  )
+}
+
+/**
  * Runs the rules for the document's own label type.
  *
  * The switch is what keeps this honest: narrowing on `labelType` gives each rule
@@ -156,6 +194,10 @@ export function listRules(labelType?: LabelType): readonly Rule[] {
  * still checks that a rule and the document it judges describe the same thing.
  */
 export function runRules(context: RuleContext): Finding[] {
+  return withholdUncertifiablePasses(check(context), context.layout)
+}
+
+function check(context: RuleContext): Finding[] {
   switch (context.labelType) {
     case 'gs1-retail':
       return GS1_RETAIL_RULES.flatMap((rule) => rule.check(context))
