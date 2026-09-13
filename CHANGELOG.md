@@ -8,6 +8,31 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Removed
+
+- **`cors()`, which was answering every request with `Access-Control-Allow-Origin: *`.** Nothing here makes a
+  cross-origin request: Vite proxies `/api` and `/health` in development, and in production this server *is*
+  the origin because it serves the client. The wildcard solved a problem neither mode has, and invited any
+  page on the internet to call this API from a visitor's browser. It cost little on a stateless endpoint that
+  takes JSON and returns a PDF — it stops being cheap at saved labels, which put user data behind these
+  routes, and at the vision endpoint, which spends money per call behind a key. Found by a security pass
+  before stage 2; closing it now was one line, and closing it after either of those would have been a
+  migration. `cors` and `@types/cors` are gone from `apps/api` with it.
+
+### Security
+
+- **`qs` 6.15.3 → 6.16.0 and `morgan` → 1.12.1**, the two advisories reachable from production dependencies
+  (a `qs` array-limit bypass and a denial of service via an attacker-controlled `isBuffer`). Both arrive
+  through `express@5.2.1`. The three that remain are dev-only — `vitest`, `@vitest/mocker` and `esbuild` —
+  and are recorded in `docs/BACKLOG.md` rather than fixed by forcing a test-runner major inside a security
+  change.
+- A pass over the repository found **no secret ever committed**: no `.env` or key-shaped file in any of the 46
+  commits, and no `sk-ant-`, `AKIA`, `mongodb+srv://…@`, `ghp_` or PEM block anywhere in the history. The
+  browser bundle carries no secret either, which is one of phase 8's done-when items confirmed early.
+- The static handler stage 1 added was checked against the obvious ways to escape it. `server.js`, its source
+  map and the vendored TTFs all sit outside the served root and 404; `../`, percent-encoded `%2e%2e%2f` and
+  `....//` traversal all 404; and no source map is emitted into the served directory.
+
 ### Added
 
 Phase 6, stage 1 — one artifact, verified by running it.

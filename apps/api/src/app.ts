@@ -1,4 +1,3 @@
-import cors from 'cors'
 import express, { type Express, type NextFunction, type Request, type Response } from 'express'
 import helmet from 'helmet'
 import morgan from 'morgan'
@@ -60,7 +59,30 @@ export function createApp(options: AppOptions = {}): Express {
   const app = express()
 
   app.use(helmet())
-  app.use(cors())
+
+  /**
+   * There is deliberately no CORS middleware here, and re-adding one would be a
+   * regression rather than a convenience.
+   *
+   * Nothing in this application makes a cross-origin request. In development
+   * Vite proxies `/api` and `/health` to this server, so the browser sees one
+   * origin; in production this server *is* the origin, because it serves the
+   * client itself. `cors()` was mounted at its defaults, which answers every
+   * request with `Access-Control-Allow-Origin: *` — an invitation to any page on
+   * the internet to call this API from a visitor's browser, issued to solve a
+   * problem neither mode has.
+   *
+   * It cost little while the API was stateless: a wildcard on an endpoint that
+   * takes JSON and returns a PDF is an open service rather than an exposure. It
+   * stops being cheap at the two things next on the roadmap — saved labels, which
+   * put user data behind these routes, and the vision endpoint, which spends
+   * money per call behind a key. Closing it now is one line; closing it after
+   * either of those is a migration.
+   *
+   * If some future client genuinely does live on another origin, the answer is an
+   * explicit allowlist of that origin, never the default.
+   */
+
   // Generous, because a label audit posts a photograph.
   app.use(express.json({ limit: '10mb' }))
   if (enableLogging) app.use(morgan('combined'))

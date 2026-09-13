@@ -198,3 +198,36 @@ the stage's done-when is that the build collapses to one artifact, which it now 
 user-facing cost rather than a tidiness point, and it belongs either with phase 8's deployment — where
 CloudFront in front of the ALB would settle it without a dependency at all — or with a decision to code-split
 bwip-js out of the initial chunk, which is the better fix and the larger one. Found by the stage 1 review.
+
+---
+
+## From the pre-stage-2 security pass
+
+The pass itself came back clean on the thing it was run for: no secret has ever been committed, the browser
+bundle carries none, and stage 1's static handler cannot be walked out of. Two findings were fixed at the
+time — the wildcard CORS header and the two production advisories, both in `CHANGELOG.md`. These are the rest.
+
+**Nothing rate-limits the export endpoint.** `POST /api/labels/*/export` is unauthenticated, renders a PDF per
+call, and sits behind `express.json({ limit: '10mb' })`. That combination is a cheap way to spend a task's CPU
+from the outside. It mattered less while the wildcard CORS header made the API openly callable anyway and the
+app was not deployed; it matters more once it is. The right home is **phase 8**, where an ALB and a WAF rule
+are the natural places to put it rather than middleware in this process — and where the vision endpoint,
+which spends money per call, will need the same protection more urgently.
+
+**There is no `.env.example`.** `.gitignore` has carried `!.env.example` since the first commit and nothing
+has ever written the file, so `MONGODB_URI` and `ANTHROPIC_API_KEY` are undocumented — a new checkout has no
+way to learn what it needs without reading `env.ts`. **Phase 6 stage 6** should write it, since that is the
+stage that makes `MONGODB_URI` load-bearing.
+
+**Three dev-only advisories remain.** `vitest` and `@vitest/mocker` (a path traversal in the mocker's redirect
+handling) and `esbuild` (arbitrary file read via the dev server, on Windows). None ships: `esbuild` is only
+reachable from production dependencies via `vue-router` → `vite`, which no runtime path touches. `npm audit
+fix` will not resolve them without a major bump of the test runner, and taking a vitest major inside a
+security change is how an unrelated breakage gets attributed to the wrong commit. Worth doing deliberately,
+on its own, when there is a reason to touch the tooling.
+
+**When stage 5 widens the CSP for the scanner, it must add `'wasm-unsafe-eval'` and not `'unsafe-eval'`.**
+Helmet's default `script-src 'self'` blocks `WebAssembly.instantiate`, so zxing cannot decode anything in the
+single artifact until the policy admits it. The two directives look interchangeable and are not: the second
+re-enables `eval` and `new Function` for the whole application, which is the larger grant by far and the easy
+mistake to make in a hurry.
