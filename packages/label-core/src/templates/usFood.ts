@@ -65,6 +65,21 @@ export const US_FOOD_ELEMENTS = {
    * undersized numeral beside a correct word.
    */
   nutritionCaloriesFigure: 'food-nutrition-calories-figure',
+  /** (e)(1)'s headings over the two columns of a dual-column panel. */
+  nutritionColumnHeading: 'food-nutrition-column-heading',
+  /** (e)(3)'s vertical lines between them. */
+  nutritionColumnRule: 'food-nutrition-column-rule',
+  /**
+   * The band the second set of values occupies, emitted **only where one was
+   * actually drawn**.
+   *
+   * It exists so a rule can ask the layout what the panel carries rather than
+   * asking the document what it intended. `us-food/dual-column-required` read
+   * `columns.mode` and reported the column present on a tabular panel that draws
+   * a single one — a rule certifying content the engine never printed, which is
+   * the failure `layout/types.ts` records learning the hard way.
+   */
+  nutritionSecondColumn: 'food-nutrition-second-column',
   nutritionFootnote: 'food-nutrition-footnote',
   containsStatement: 'food-contains-statement',
   netQuantity: 'food-net-quantity',
@@ -252,6 +267,36 @@ export interface UsFoodNutritionFacts {
     mode: NutritionColumnMode
     basis?: DualColumnBasis
     headings?: readonly [string, string]
+    /**
+     * What the second column declares, per nutrient.
+     *
+     * **Declared, not derived.** The obvious arithmetic — multiply the serving
+     * figures by the number of servings in the package — is exactly the kind this
+     * engine refuses to do on a labeller's behalf, for the reason the SI net
+     * quantity is typed rather than converted: a regulated figure this tool
+     * computed confidently and wrongly is worse than one it never printed, and
+     * rounding under (c) is applied to each declared amount in its own right
+     * rather than to a product of two.
+     */
+    secondAmounts?: Partial<Record<NutrientId, number>>
+    /**
+     * 101.9(e)(3)'s vertical lines, drawn unless the label says otherwise.
+     *
+     * It exists so the panel can be drawn **wrong**, which is the same reason
+     * `typeScale` exists: the lines are a requirement, so a panel that always
+     * draws them complies by construction and the rule that checks them could
+     * never fail. Dropping them to save width is also the realistic way this goes
+     * wrong on a crowded label.
+     */
+    separated?: boolean
+    /**
+     * A multiplier on the second column's type size. 101.9(e) requires "equal
+     * prominence ... to both sets of values", so anything but 1 is a defect a
+     * rule reports — and setting the package column smaller than the serving one
+     * is precisely how a designer de-emphasises a figure they would rather a
+     * reader skipped.
+     */
+    secondColumnTypeScale?: number
   }
   /**
    * The applicable reference amount from **§101.12(b)**, where the label states

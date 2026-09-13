@@ -36,6 +36,9 @@ import type {
 import type { Severity } from '../../types/index'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
+  FDA_DUAL_COLUMN_HEADINGS_MISSING,
+  FDA_DUAL_COLUMN_NOT_SEPARATED,
+  FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE,
   FDA_DUAL_COLUMN_MISSING,
   FDA_NUTRITION_MISSING,
   FDA_SERVING_SIZE_MISSING,
@@ -249,6 +252,107 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_ALLERGEN_NOT_DECLARED,
       severity: 'violation',
       citation: 'FD&C Act §403(w)(1)',
+    },
+  },
+  {
+    name: 'two columns with no headings over them',
+    defect:
+      'The panel carries two sets of values and never says which is which. 101.9(e)(1): ' +
+      '"Following the serving size information there shall be two or more column headings ' +
+      'accurately describing the amount per serving size." Their wording is the labeller’s — the ' +
+      'regulation’s own examples are "Per 1/4 cup mix" and "Per prepared portion" — so an engine ' +
+      'that composed them would be authoring part of a regulated statement.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        columns: { mode: 'dual', basis: 'per-container', secondAmounts: { 'total-fat': 7.5 } },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_DUAL_COLUMN_HEADINGS_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(e)(1)',
+    },
+  },
+  {
+    name: 'two columns run together with no line between them',
+    defect:
+      '101.9(e)(3): the quantitative information and the percent Daily Value "shall be presented ' +
+      'in two columns and the columns shall be separated by vertical lines". Dropped to save ' +
+      'width on a crowded panel, the two sets of figures read as one run and a reader has no way ' +
+      'to tell which column a number belongs to.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { 'total-fat': 7.5 },
+          separated: false,
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_DUAL_COLUMN_NOT_SEPARATED,
+      severity: 'violation',
+      citation: '21 CFR 101.9(e)(3)',
+    },
+  },
+  {
+    name: 'a package column set smaller than the serving column',
+    defect:
+      '101.9(e): "When such dual labeling is provided, equal prominence shall be given to both ' +
+      'sets of values." At 70 percent of the first column’s type the package figures are the ' +
+      'ones a reader skips — which is exactly why a labeller would set them that way, and why ' +
+      'the requirement is stated at all.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { 'total-fat': 7.5 },
+          secondColumnTypeScale: 0.7,
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE,
+      severity: 'violation',
+      citation: '21 CFR 101.9(e)',
+    },
+  },
+  {
+    name: 'two columns headed identically',
+    defect:
+      'Both headings read "Per serving", so neither describes the amount its column declares and ' +
+      'a reader cannot tell the package figure from the serving one. Present but not ' +
+      'distinguishing is the failure the presence check alone would miss.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per serving'],
+          secondAmounts: { 'total-fat': 7.5 },
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_DUAL_COLUMN_HEADINGS_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(e)(1)',
     },
   },
   {

@@ -10,6 +10,67 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 6 (in progress) — the dual-column display, drawn and judged.
+
+- **`us-food/dual-column-form` — 101.9(e).** Three of its four requirements are geometry and were
+  unmeasurable until the display was drawn: (e)'s "equal prominence **shall** be given to both sets of
+  values", (e)(1)'s column headings, and (e)(3)'s vertical lines between the columns. It says nothing about
+  *whether* to carry two columns — (e) opens "Nutrition information **may** be presented", and only the
+  (b)(12)(i) rule is entitled to demand one.
+- Equal prominence is measured as **type size, not horizontal extent**. "Sodium 0mg 0%" and "Sodium 1,250mg
+  54%" are different widths and equally prominent; a rule comparing column widths would report the arithmetic.
+- (e)(1)'s headings are checked for presence **and distinctness**. Two columns both headed "Per serving" pass
+  a presence check and still leave a reader unable to tell the package figure from the serving one. Whether a
+  heading *accurately* describes what its column declares is a question about the food, and the passing
+  finding says so rather than implying a check that did not happen.
+- **(e)(4) is deliberately not checked here.** It puts the vitamins and minerals in the order Vitamin D,
+  calcium, iron, potassium, which `us-food/nutrition-order` already measures over the whole panel under
+  101.9(c). Two rules reporting one defect under two citations is the mistake the net-quantity family was
+  untangled to avoid. (e)(4) and (e)(6)(i) also differ by one parenthetical — "(except sodium)" — which
+  changes nothing about the order, recorded because a later reader will wonder.
+
+### Fixed
+
+- **A rule certified a column the engine never drew.** `us-food/dual-column-required` read `columns.mode` off
+  the document and reported `FDA_DUAL_COLUMN_MET` on a tabular panel, which draws a single column — the exact
+  failure `layout/types.ts` records learning the hard way with the GHS pictograms, where a rule must not
+  clear a symbol that was never printed. It reads the resolved layout now, which is the standing convention
+  and which makes it right for any display that fails to draw the column rather than for this one only.
+- A second column asked for and not drawn is now **recorded as a `LayoutOmission`** rather than passing in
+  silence. 101.9(e)(6)(ii)'s dual-column tabular display has its type row and its display id wired and its
+  drawing is in `BACKLOG.md`; without the omission the label looked finished and the finding said the column
+  was missing without anything saying why. Every GHS label omits its pictogram glyphs and says so; this is
+  the same admission.
+- `separated` and `secondColumnTypeScale` exist so the panel can be drawn **wrong**, which is why `typeScale`
+  exists too: the vertical lines and equal prominence are requirements, so a panel that always satisfies them
+  complies by construction and the rules checking them could never fail. Both are also the realistic defects —
+  lines dropped to save width on a crowded panel, and the package column set smaller than the serving one so
+  a reader skips it.
+- Emitting the second column's element inside the same branch as its vertical lines made a panel drawn
+  without the lines look like a panel with one column: the mandate rule reported the column missing and the
+  form rule that should have reported the lines declined. Two questions, two conditions.
+
+### Added
+
+Phase 5, stage 6 (in progress) — the dual-column display, drawn.
+
+- **(e)(3) puts the weight *in* the column, beside the percentage.** "The quantitative information by weight
+  and the percent Daily Value **shall** be presented in two columns and the columns **shall** be separated by
+  vertical lines." So the weight comes off the nutrient name, where the single-column display carries it, and
+  the row reads `Total Fat | 3g 4% | 8g 10%`. This is not the one-column row with a figure appended.
+- **The second column's amounts are declared, never derived.** Multiplying the serving figures by the servings
+  per container is the obvious arithmetic and exactly the kind this engine refuses on a labeller's behalf, for
+  the reason the SI net quantity is typed rather than converted. Rounding under (c) also applies to each
+  declared amount in its own right rather than to a product of two, which a derived column would get wrong at
+  every half-gram boundary.
+- (e)(1)'s column headings — "two or more column headings accurately describing the amount per serving size" —
+  are printed as given. "Per 1/4 cup mix" and "Per prepared portion" are the regulation's own examples, so
+  their wording is the labeller's and nothing here composes it.
+- **The panel takes the information panel's width rather than 2.5 inches.** No paragraph sets a panel width at
+  all; 2.5 inches is the illustrations' figure for a panel carrying *one* column of values. A second column
+  has to come from somewhere, and taking it out of the nutrient names is how the tabular display once ended up
+  stacked into the single column it exists to avoid.
+
 Phase 5, stage 6 (in progress) — the first rule here that reports a label for **not** using a display.
 
 - **`us-food/dual-column-required` — 21 CFR 101.9(b)(12)(i) and (b)(2)(i)(D).** Every format rule so far is

@@ -1,6 +1,10 @@
 /**
  * A package that must carry a second column of nutrition information does.
  *
+ * **Measured on the resolved layout.** Whether a panel carries a second column is
+ * a question about what is printed, and asking the document instead let this rule
+ * clear a tabular panel that declares `columns: dual` and draws one column.
+ *
  * Source: 21 CFR 101.9(b)(12)(i) and (b)(2)(i)(D), read from the eCFR on
  * 2026-09-13. The thresholds, the band and the shared exemption set live in
  * `fda/nutritionFormats.ts`; this measures a label against them.
@@ -61,7 +65,7 @@ export const usFoodDualColumnRule: UsFoodRule = {
   codes: [FDA_DUAL_COLUMN_MISSING, FDA_DUAL_COLUMN_MET, FDA_DUAL_COLUMN_EXEMPT],
   appliesTo: 'us-food',
 
-  check({ data }: UsFoodContext): Finding[] {
+  check({ data, layout }: UsFoodContext): Finding[] {
     const panel = data.nutritionFacts
     if (panel === undefined) return []
 
@@ -117,7 +121,16 @@ export const usFoodDualColumnRule: UsFoodRule = {
       ]
     }
 
-    if (panel.columns?.mode !== 'dual') {
+    // **Asked of the layout, not of the document.** This read `columns.mode` and
+    // reported the column present on a tabular panel that draws a single one —
+    // certifying content the engine never printed, which is the failure
+    // `layout/types.ts` records learning the hard way with the GHS pictograms.
+    // What a package carries is a question about what was drawn on it.
+    const drawn = layout.elements.some(
+      (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+    )
+
+    if (!drawn) {
       return [
         finding(usFoodDualColumnRule, {
           code: FDA_DUAL_COLUMN_MISSING,
@@ -125,7 +138,9 @@ export const usFoodDualColumnRule: UsFoodRule = {
           message:
             `This package holds ${percent} percent of its reference amount, so the panel must ` +
             `carry a second column for ${BASIS_NAME[duty.basis]} beside the one per serving. ` +
-            'It carries one column.',
+            `The panel as drawn carries one column${
+              panel.columns?.mode === 'dual' ? ', though the label asks for two' : ''
+            }.`,
           measurement: {
             actual: 'one column',
             required: `a second column for ${BASIS_NAME[duty.basis]}`,

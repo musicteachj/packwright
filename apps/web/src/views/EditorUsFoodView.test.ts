@@ -65,6 +65,8 @@ describe('the editor on a US food label', () => {
       // document does not state — and a rule that reports a label for *not*
       // carrying a second column must not fire on a figure nobody supplied.
       'dual-column-required',
+      // And its form rule, which has nothing to judge on a single-column panel.
+      'dual-column-form',
     ]
     expect(store.passes.length).toBe(US_FOOD_RULES.length - declining.length)
     for (const code of ['FDA_NUTRITION_ORDER_MET', 'FDA_NUTRITION_ROUNDING_MET']) {

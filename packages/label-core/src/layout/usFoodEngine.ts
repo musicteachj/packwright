@@ -271,10 +271,18 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
   // which is the order an information panel runs in. It is boxed and narrower
   // than the label, so it takes a width of its own rather than the panel's.
   if (data.nutritionFacts !== undefined) {
-    const panelWidthMm =
-      (data.nutritionFacts.format ?? 'vertical') === 'vertical'
-        ? Math.min(NUTRITION_PANEL_WIDTH_MM, panel.widthMm)
-        : panel.widthMm
+    // The 2.5 inch figure is the illustrations' width for a panel carrying **one**
+    // column of values, and no paragraph sets a panel width at all. A second
+    // column has to come from somewhere, and taking it out of the nutrient names
+    // is how the tabular display once ended up stacked into a single column — so a
+    // dual-column panel takes the width the information panel gives it, as the
+    // reduced displays do.
+    const singleColumnVertical =
+      (data.nutritionFacts.format ?? 'vertical') === 'vertical' &&
+      data.nutritionFacts.columns?.mode !== 'dual'
+    const panelWidthMm = singleColumnVertical
+      ? Math.min(NUTRITION_PANEL_WIDTH_MM, panel.widthMm)
+      : panel.widthMm
     const drawn = layOutNutritionPanel({
       facts: data.nutritionFacts,
       xMm: panel.xMm,
@@ -304,6 +312,30 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
         reason:
           `The Nutrition Facts panel runs ${mmText(bottomMm - stock.heightMm)} past the bottom ` +
           `of a ${mmText(stock.heightMm)} label, so part of it is not printed.`,
+        scope: 'detail',
+      })
+    }
+
+    // A second column asked for and not drawn, said out loud.
+    //
+    // 101.9(e)(6)(ii) illustrates a dual-column *tabular* panel and the type table
+    // carries its figures, but the tabular branch draws one column. Silence there
+    // would be the worst of the three outcomes: the label would look finished, and
+    // the rule that judges it reads the layout, so it would report the column
+    // missing without anything saying *why* it is missing. Every GHS label omits
+    // its pictogram glyphs and says so; this is the same admission.
+    if (
+      data.nutritionFacts.columns?.mode === 'dual' &&
+      !drawn.elements.some(
+        (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+      )
+    ) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        reason:
+          'The label asks for a second column of nutrition information, which this engine draws ' +
+          'only on the standard vertical display. The panel is drawn with one column, and 21 CFR ' +
+          '101.9(e)(6)(ii)’s dual-column tabular display is not yet built.',
         scope: 'detail',
       })
     }

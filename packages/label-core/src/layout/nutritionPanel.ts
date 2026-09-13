@@ -750,12 +750,54 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   bar(NUTRITION_PANEL_RULES.mediumMm)
 
   // 101.9(d)(6) — the column heading, right of the nutrient names.
+  /**
+   * 101.9(e) — the dual-column display, where the panel carries one.
+   *
+   * (e)(3): "the quantitative information by weight and the percent Daily Value
+   * **shall** be presented in two columns and the columns **shall** be separated
+   * by vertical lines". So each column carries both figures, and the nutrient
+   * name sits to the left of both — which is why the single-column layout's
+   * right-aligned percentage is not simply repeated.
+   *
+   * (e)(1): "Following the serving size information there **shall** be two or more
+   * column headings accurately describing the amount per serving size". Their
+   * wording is the labeller's — "Per 1/4 cup mix" and "Per prepared portion" are
+   * the regulation's own examples — so they are printed as given and never
+   * composed here.
+   */
+  const dual = facts.columns?.mode === 'dual'
+  const valueColumnMm = dual ? (rightMm - leftMm) * 0.26 : 0
+  const columnRightMm = dual ? [rightMm - valueColumnMm - mm(2), rightMm] : [rightMm]
+  const columnLeftMm = columnRightMm.map((right) => right - valueColumnMm)
+
+  if (dual) {
+    const headings = facts.columns?.headings
+    if (headings !== undefined) {
+      headings.forEach((heading, index) => {
+        text(heading, NUTRITION_PANEL_TYPE.nutrientPt, {
+          bold: true,
+          anchor: 'end',
+          x: columnRightMm[index]!,
+          elementId: US_FOOD_ELEMENTS.nutritionColumnHeading,
+        })
+      })
+      row(
+        US_FOOD_ELEMENTS.nutritionColumnHeading,
+        'Column headings',
+        yMm,
+        mm(NUTRITION_PANEL_TYPE.nutrientPt) * 1.3,
+      )
+      yMm += mm(NUTRITION_PANEL_TYPE.nutrientPt + NUTRITION_PANEL_TYPE.nutrientLeadingPt)
+    }
+  }
+
   text('% Daily Value*', NUTRITION_PANEL_TYPE.nutrientPt, {
     bold: true,
     anchor: 'end',
     x: rightMm,
   })
   yMm += mm(NUTRITION_PANEL_TYPE.nutrientPt + NUTRITION_PANEL_TYPE.nutrientLeadingPt)
+  const nutrientBlockTopMm = yMm
 
   // 101.9(d)(7) — the nutrient rows, in the order the panel states or the order
   // 101.9(c) sets. Drawn in the stated order rather than sorted, because a panel
@@ -799,24 +841,94 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       ? measureTextMm('  ', mm(NUTRITION_PANEL_TYPE.nutrientPt), fontFamily)
       : 0
 
-    text(label, NUTRITION_PANEL_TYPE.nutrientPt, {
+    // In a dual column the weight belongs *in* the column beside the percentage,
+    // not appended to the name — (e)(3) presents "the quantitative information by
+    // weight and the percent Daily Value" together, per column.
+    text(dual ? entry.name : label, NUTRITION_PANEL_TYPE.nutrientPt, {
       bold: !entry.indented,
       x: leftMm + indentMm,
       elementId,
     })
-    const percent = percentOf(facts, id)
-    if (percent !== undefined) {
-      text(`${percent}%`, NUTRITION_PANEL_TYPE.nutrientPt, {
-        bold: true,
-        anchor: 'end',
-        x: rightMm,
-        elementId,
+    if (dual) {
+      const second = facts.columns?.secondAmounts?.[id]
+      const declared = [amount, second === undefined ? undefined : roundNutrientAmount(id, second)]
+      declared.forEach((value, column) => {
+        if (value === undefined) return
+        const percent = printedPercentDailyValue(id, value)
+        // (e)'s "equal prominence" is a requirement, so the second column is set
+        // at the first's size unless the label asks for something else.
+        const columnPt =
+          column === 1
+            ? NUTRITION_PANEL_TYPE.nutrientPt * (facts.columns?.secondColumnTypeScale ?? 1)
+            : NUTRITION_PANEL_TYPE.nutrientPt
+        text(`${value}${entry.unit}${percent === undefined ? '' : ` ${percent}%`}`, columnPt, {
+          bold: true,
+          anchor: 'end',
+          x: columnRightMm[column]!,
+          elementId,
+        })
       })
+    } else {
+      const percent = percentOf(facts, id)
+      if (percent !== undefined) {
+        text(`${percent}%`, NUTRITION_PANEL_TYPE.nutrientPt, {
+          bold: true,
+          anchor: 'end',
+          x: rightMm,
+          elementId,
+        })
+      }
     }
     yMm += mm(NUTRITION_PANEL_TYPE.nutrientPt + NUTRITION_PANEL_TYPE.nutrientLeadingPt)
     row(elementId, entry.name, start, yMm - start)
     drawnRows += 1
   })
+
+  if (dual) {
+    // The band itself, emitted whenever a second set of values was drawn and
+    // **independent of the lines beside it**. A rule asks the layout what the
+    // panel carries; conflating "there are two columns" with "they are separated"
+    // made a panel drawn without (e)(3)'s lines look like a panel with one
+    // column, so the mandate rule reported the column missing and the form rule
+    // that should have reported the lines declined.
+    elements.push({
+      elementId: US_FOOD_ELEMENTS.nutritionSecondColumn,
+      label: 'Second column of values',
+      box: {
+        xMm: columnLeftMm[1]!,
+        yMm: nutrientBlockTopMm,
+        widthMm: valueColumnMm,
+        heightMm: yMm - nutrientBlockTopMm,
+      },
+    })
+
+    // (e)(3)'s vertical lines, drawn once the block's extent is known. Thin rects
+    // rather than strokes, for the reason `bar` gives: a stroke centred on a path
+    // would sit half outside the line it is meant to be.
+    if (facts.columns?.separated !== false) {
+      for (const left of columnLeftMm) {
+        primitives.push({
+          kind: 'rect',
+          elementId: US_FOOD_ELEMENTS.nutritionColumnRule,
+          xMm: left - mm(1),
+          yMm: nutrientBlockTopMm,
+          widthMm: NUTRITION_PANEL_RULES.hairlineMm,
+          heightMm: yMm - nutrientBlockTopMm,
+          fill: '000000',
+        })
+      }
+      elements.push({
+        elementId: US_FOOD_ELEMENTS.nutritionColumnRule,
+        label: 'Column rules',
+        box: {
+          xMm: columnLeftMm[0]! - mm(1),
+          yMm: nutrientBlockTopMm,
+          widthMm: rightMm - (columnLeftMm[0]! - mm(1)),
+          heightMm: yMm - nutrientBlockTopMm,
+        },
+      })
+    }
+  }
 
   // 101.9(d)(9) — the footnote, beneath the vitamins and separated by a bar. Its
   // wording is codified and is looked up, never composed.

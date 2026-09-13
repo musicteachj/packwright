@@ -89,7 +89,7 @@ describe('the conformant control', () => {
     // panel using the standard vertical display, because every package may use
     // it and there is no entitlement to judge. A pass there would be a check
     // that clears every label carrying the default.
-    expect(passes).toHaveLength(US_FOOD_RULES.length - 2)
+    expect(passes).toHaveLength(US_FOOD_RULES.length - 3)
     expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_FORMAT_MET')
   })
 
@@ -1138,6 +1138,159 @@ describe('findings from the stage 5 review', () => {
       order: [...panel.order!, 'calories'],
     }).map((f) => f.code)
     expect(codes).toContain('FDA_NUTRITION_OUT_OF_ORDER')
+  })
+})
+
+describe('a second column asked for and not drawn', () => {
+  // 101.9(e)(6)(ii)'s dual-column tabular display has its type row and its display
+  // id wired, and the tabular branch draws one column. The combination has to be
+  // honest about that in both directions: the layout says what it did not draw,
+  // and the rule reports what is on the label rather than what the document meant.
+  const stock = { widthMm: 200, heightMm: 240, marginMm: 6 }
+  const tabularDual: UsFoodLabelData = {
+    ...US_FOOD_CONFORMANT.data,
+    container: { shape: 'rectangular', widthMm: 200, heightMm: 240 },
+    nutritionFacts: {
+      ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      format: 'tabular',
+      availableSurfaceSqInches: 80,
+      continuousVerticalSpaceInches: 2,
+      referenceAmount: { amount: 22, unit: 'g', category: 'Snacks' },
+      packageContent: 55,
+      packagedAndSoldIndividually: true,
+      columns: { mode: 'dual', basis: 'per-container' },
+    },
+  }
+
+  it('records the omission rather than drawing a single column quietly', () => {
+    const omissions = layOutUsFoodLabel({ data: tabularDual, stock }).omissions
+    expect(omissions.map((o) => o.reason).join(' ')).toContain('second column')
+  })
+
+  it('reports the column missing, because the rule reads what was printed', () => {
+    // Asked of the document this returned FDA_DUAL_COLUMN_MET — a rule certifying
+    // content the engine never drew, which is the failure `layout/types.ts`
+    // records learning the hard way with the GHS pictograms.
+    const codes = findingsFor(tabularDual, stock).map((f) => f.code)
+    expect(codes).toContain('FDA_DUAL_COLUMN_MISSING')
+    expect(codes).not.toContain('FDA_DUAL_COLUMN_MET')
+  })
+
+  it('says the label asked for two, so the finding is not mistaken for a typo', () => {
+    const match = findingsFor(tabularDual, stock).find((f) => f.code === 'FDA_DUAL_COLUMN_MISSING')
+    expect(match!.message).toContain('though the label asks for two')
+  })
+
+  it('draws no omission where the second column is drawn', () => {
+    const vertical: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: {
+        ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+        columns: { mode: 'dual', basis: 'per-container', secondAmounts: { 'total-fat': 7.5 } },
+      },
+    }
+    const omissions = layOutUsFoodLabel({
+      data: vertical,
+      stock: US_FOOD_CONFORMANT.stock,
+    }).omissions
+    expect(omissions.map((o) => o.reason).join(' ')).not.toContain('second column')
+  })
+})
+
+describe('the dual-column display, drawn', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const dual = (patch: Record<string, unknown> = {}): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    nutritionFacts: {
+      ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      columns: {
+        mode: 'dual',
+        basis: 'per-container',
+        headings: ['Per serving', 'Per container'],
+        secondAmounts: { 'total-fat': 7.5, sodium: 0, iron: 20, protein: 12.5 },
+        ...patch,
+      },
+    },
+  })
+  const rowText = (layout: ReturnType<typeof layOutUsFoodLabel>, id: string) =>
+    layout.primitives
+      .filter(
+        (p): p is TextPrimitive => p.kind === 'text' && p.elementId === nutritionRowElementId(id),
+      )
+      .map((p) => p.text)
+
+  it('puts the weight and the percentage together in each column', () => {
+    // (e)(3): "the quantitative information by weight and the percent Daily Value
+    // shall be presented in two columns". So the weight moves off the nutrient
+    // name and into the column beside its percentage, which is why this is not
+    // the single-column row with an extra figure appended.
+    const layout = layOutUsFoodLabel({ data: dual(), stock })
+    expect(rowText(layout, 'total-fat')).toEqual(['Total Fat', '3g 4%', '8g 10%'])
+  })
+
+  it('rounds each declared amount in its own right', () => {
+    // 7.5 g is rounded under (c)(2) as an amount, not carried through from a
+    // multiplication — which is also why the second column is declared rather
+    // than derived from the servings per container.
+    expect(rowText(layOutUsFoodLabel({ data: dual(), stock }), 'total-fat')[2]).toBe('8g 10%')
+  })
+
+  it('omits the protein percentage in both columns, not just the first', () => {
+    // 101.9(d)(7)(ii) again, applied per column: a rule spelled once and used
+    // twice cannot disagree with itself across them.
+    expect(rowText(layOutUsFoodLabel({ data: dual(), stock }), 'protein')).toEqual([
+      'Protein',
+      '5g',
+      '13g',
+    ])
+  })
+
+  it('prints the headings (e)(1) requires, as given', () => {
+    // "two or more column headings accurately describing the amount per serving
+    // size" — and their wording is the labeller's. "Per 1/4 cup mix" and "Per
+    // prepared portion" are the regulation's own examples, so nothing here
+    // composes them.
+    const layout = layOutUsFoodLabel({ data: dual(), stock })
+    const headings = layout.primitives
+      .filter(
+        (p): p is TextPrimitive =>
+          p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionColumnHeading,
+      )
+      .map((p) => p.text)
+    expect(headings).toEqual(['Per serving', 'Per container'])
+  })
+
+  it('separates the columns by the vertical lines (e)(3) requires', () => {
+    const layout = layOutUsFoodLabel({ data: dual(), stock })
+    const rules = layout.primitives.filter(
+      (p) => p.kind === 'rect' && p.elementId === US_FOOD_ELEMENTS.nutritionColumnRule,
+    )
+    expect(rules).toHaveLength(2)
+    for (const rule of rules) expect(rule.kind === 'rect' && rule.heightMm).toBeGreaterThan(10)
+  })
+
+  it('takes the panel width rather than the single-column 2.5 inches', () => {
+    // No paragraph sets a panel width; 2.5 inches is the illustrations' figure for
+    // a panel carrying one column of values. Holding a dual column to it would
+    // take the room out of the nutrient names, which is how the tabular display
+    // once ended up stacked into a single column.
+    const single = layOutUsFoodLabel(US_FOOD_CONFORMANT).elements.find(
+      (e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+    )!
+    const both = layOutUsFoodLabel({ data: dual(), stock }).elements.find(
+      (e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+    )!
+    expect(both.box.widthMm).toBeGreaterThan(single.box.widthMm)
+  })
+
+  it('draws one column where the panel says single', () => {
+    // The other direction: the axis has to change the drawing, not merely be
+    // carried on the document.
+    const layout = layOutUsFoodLabel(US_FOOD_CONFORMANT)
+    expect(rowText(layout, 'total-fat')).toEqual(['Total Fat 3g', '4%'])
+    expect(
+      layout.primitives.filter((p) => p.elementId === US_FOOD_ELEMENTS.nutritionColumnRule),
+    ).toEqual([])
   })
 })
 
