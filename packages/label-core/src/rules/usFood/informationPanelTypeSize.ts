@@ -27,7 +27,7 @@
 
 import { INFORMATION_PANEL_MIN_TYPE_HEIGHT_MM, regulatedGlyphBasis } from '../../geometry/pdp'
 import type { TextPrimitive } from '../../layout/types'
-import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
+import { NUTRITION_ELEMENT_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { glyphHeightMm } from '../../text/measure'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
@@ -60,22 +60,25 @@ const CITATION: Citation = {
  * The specific provision governs, 101.2(d)(1) already defers to 101.9 by name
  * elsewhere, and stage 5's own rules check the sizes 101.9 does set.
  */
-const JUDGED_ELSEWHERE = new Set<string>([
-  US_FOOD_ELEMENTS.netQuantity,
-  US_FOOD_ELEMENTS.nutritionPanel,
-  US_FOOD_ELEMENTS.nutritionHeading,
-  US_FOOD_ELEMENTS.nutritionServings,
-  US_FOOD_ELEMENTS.nutritionServingSize,
-  US_FOOD_ELEMENTS.nutritionCalories,
-  // The numeral beside the word, which 101.9(d)(1)(iii) sizes separately and
-  // which therefore carries an id of its own. Without it here the one part of the
-  // panel most clearly governed by 101.9 was judged against 101.2(c) as well,
-  // and — having no `ResolvedElement` — reported under a raw element id that
-  // highlighted nothing on the canvas.
-  US_FOOD_ELEMENTS.nutritionCaloriesFigure,
-  US_FOOD_ELEMENTS.nutritionFootnote,
-])
+const JUDGED_ELSEWHERE = new Set<string>([US_FOOD_ELEMENTS.netQuantity])
 
+/**
+ * The Nutrition Facts panel, all of it, by prefix.
+ *
+ * This was a list of the panel's individual element ids, and adding one to the
+ * panel meant remembering to add it here too — which failed three times: the
+ * Calories numeral when it was split from its word, and the dual column's
+ * headings when (e)(1) gained them. Each time the symptom was the same, a part of
+ * the nutrition panel reported against 101.2(c)'s 1/16 inch floor under a
+ * citation that says no such thing about it.
+ *
+ * A denylist that has to be maintained in step with another file is a denylist
+ * that will be wrong again. The note above states the actual rule — the whole
+ * panel answers to 101.9 — so the code now says that rather than enumerating the
+ * consequences of it.
+ */
+const insideTheNutritionPanel = (elementId: string): boolean =>
+  elementId.startsWith(NUTRITION_ELEMENT_PREFIX)
 /**
  * Rows carry a generated id per nutrient, so they are matched by prefix — and
  * the prefix names the rows and only the rows. A bare `food-nutrition-` also
@@ -99,7 +102,7 @@ export const usFoodInformationPanelTypeSizeRule: UsFoodRule = {
         primitive.kind === 'text' &&
         primitive.elementId !== undefined &&
         !JUDGED_ELSEWHERE.has(primitive.elementId) &&
-        !primitive.elementId.startsWith(NUTRITION_ROW_PREFIX),
+        !insideTheNutritionPanel(primitive.elementId),
     )
     // Nothing else on the panel is nothing to measure, which is not a pass.
     if (drawn.length === 0) return []

@@ -29,8 +29,22 @@ Phase 5, stage 6 (in progress) — the dual-column display, drawn and judged.
   untangled to avoid. (e)(4) and (e)(6)(i) also differ by one parenthetical — "(except sodium)" — which
   changes nothing about the order, recorded because a later reader will wonder.
 
+- **The displays are reachable from the editor at last.** `format`, the surface area (j)(13) measures, the
+  continuous vertical space (d)(11)(iii) turns on, the two declared facts no artwork can show, and the second
+  column with its basis and headings all had no control in the rail — so the tabular and linear displays
+  committed earlier in this stage could not be selected, and `us-food/nutrition-format` was a rule nobody
+  could provoke from the app it ships in. Four tests now drive the entitlement and the dual column through
+  the real editor rather than through a constructed document.
+
 ### Fixed
 
+- **A denylist that had to be maintained in step with another file, and was wrong three times.** The 101.2(c)
+  rule excludes the Nutrition Facts panel from the 1/16 inch information-panel floor, for the reason its own
+  note gives at length: 101.9 sets 8 point nutrient rows whose lowercase "o" is 1.52 mm, so applying the floor
+  would report every compliant nutrition label in the country. It did that by listing the panel's element ids
+  one by one — so splitting the Calories numeral off its word put the numeral outside the exclusion, and
+  adding (e)(1)'s column headings put those outside it too, each reported under a citation saying nothing
+  about them. It excludes the panel by prefix now, which is what the note said all along.
 - **A rule certified a column the engine never drew.** `us-food/dual-column-required` read `columns.mode` off
   the document and reported `FDA_DUAL_COLUMN_MET` on a tabular panel, which draws a single column — the exact
   failure `layout/types.ts` records learning the hard way with the GHS pictograms, where a rule must not

@@ -497,6 +497,72 @@ describe('clearing an optional number means unset, not a blank string', () => {
   })
 })
 
+describe('the Nutrition Facts displays, from the editor', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('reaches the tabular display and its entitlement rule', async () => {
+    // None of stage 6 was reachable from the app until this section existed: the
+    // reduced displays, the dual column and the areas the entitlement turns on had
+    // no control at all, so `us-food/nutrition-format` was a rule nobody could
+    // provoke from the editor it ships in.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-format').setValue('tabular')
+    await nextTick()
+    await wrapper.find('#field-food-nf-area').setValue(80)
+    await nextTick()
+
+    // 80 in² is twice the (j)(13) cap and the label claims no shortage of vertical
+    // space, so nothing entitles it to a reduced display.
+    expect(store.findings.map((f) => f.code)).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+
+    await wrapper.find('#field-food-nf-vertical-space').setValue(2)
+    await nextTick()
+    // (d)(11)(iii) reaches a package of any size, and the pass cites it rather
+    // than the rule's own paragraph.
+    const met = store.findings.find((f) => f.code === 'FDA_NUTRITION_FORMAT_MET')
+    expect(met!.citation.reference).toBe('21 CFR 101.9(d)(11)(iii)')
+  })
+
+  it('declares the facts no artwork can show, rather than inferring them', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-format').setValue('linear')
+    await nextTick()
+    await wrapper.find('#field-food-nf-area').setValue(9)
+    await nextTick()
+    // Linear is gated behind tabular: "only if the label will not accommodate a
+    // tabular display", and the label has not said so.
+    expect(store.findings.map((f) => f.code)).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+
+    await wrapper.find('#field-food-nf-no-tab').setValue(true)
+    await nextTick()
+    expect(store.findings.map((f) => f.code)).toContain('FDA_NUTRITION_FORMAT_MET')
+  })
+
+  it('draws a second column and judges its form', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-dual').setValue(true)
+    await nextTick()
+
+    expect(store.foodData.nutritionFacts!.columns!.mode).toBe('dual')
+    expect(store.failures).toEqual([])
+    // Drawn, not merely declared — the rules read the layout.
+    expect(store.layout!.elements.map((e) => e.elementId)).toContain('food-nutrition-second-column')
+    expect(store.findings.map((f) => f.code)).toContain('FDA_DUAL_COLUMN_FORM_MET')
+  })
+
+  it('reports two columns headed the same, from the form', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-dual').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-nf-heading-1').setValue('Per serving')
+    await nextTick()
+
+    const finding = store.findings.find((f) => f.code === 'FDA_DUAL_COLUMN_HEADINGS_MISSING')
+    expect(finding, 'identical headings produced no finding').toBeDefined()
+    expect(finding!.citation.reference).toBe('21 CFR 101.9(e)(1)')
+  })
+})
+
 describe('the nutrient readout beside each field', () => {
   beforeEach(() => setActivePinia(createPinia()))
 

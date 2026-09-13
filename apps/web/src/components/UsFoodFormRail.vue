@@ -26,6 +26,8 @@ import {
   INGREDIENT_THRESHOLD_PERCENTS,
   MAJOR_FOOD_ALLERGENS,
   NUTRIENTS,
+  NUTRITION_FORMATS,
+  DUAL_COLUMN_BASES,
   printedPercentDailyValue,
   roundNutrientAmount,
   US_FOOD_ELEMENTS,
@@ -39,7 +41,9 @@ import {
   type Anchor,
   type Container,
   type ContainerShape,
+  type DualColumnBasis,
   type IngredientThresholdPercent,
+  type NutritionFormat,
   type MajorFoodAllergenId,
   type NutrientId,
 } from '@packwright/label-core'
@@ -505,6 +509,109 @@ const typeScalePercent = computed({
     else facts.typeScale = percent / 100
   },
 })
+
+/**
+ * The Nutrition Facts display, and the facts that decide which one a package may
+ * use.
+ *
+ * Everything here was unreachable from the editor until now: the tabular and
+ * linear displays, the dual column, and the areas and declarations the
+ * entitlement turns on. A rule nobody can provoke from the app is a rule nobody
+ * has seen work, and "preview == print" is a claim about displays a user can
+ * actually select.
+ *
+ * Two of these are facts about a package that no artwork shows — whether its
+ * shape can take a vertical column, and whether its label will take a tabular
+ * one — so they are declared here as checkboxes rather than inferred, which is
+ * the call `fda/nutritionFormats.ts` records making.
+ */
+const FORMAT_NAMES: Record<NutritionFormat, string> = {
+  vertical: 'Standard vertical — 101.9(d)(12)',
+  tabular: 'Tabular — 101.9(d)(11) or (j)(13)(ii)(A)(1)',
+  linear: 'Linear — 101.9(j)(13)(ii)(A)(2)',
+}
+
+const BASIS_NAMES: Record<DualColumnBasis, string> = {
+  'as-prepared': 'As packaged and as prepared — (e)',
+  combination: 'Common combination of foods — (e), (h)(4)',
+  'per-unit-measure': 'A different unit, e.g. per 100 g — (e)',
+  'rdi-groups': 'Two groups with RDIs — (e)(5)',
+  'per-cup-popped': 'Per cup popped — (b)(10)(iii)',
+  'per-container': 'Per serving and per container — (b)(12)(i)',
+  'per-unit': 'Per serving and per unit — (b)(2)(i)(D)',
+}
+
+const displayFormat = computed({
+  get: (): NutritionFormat => data.nutritionFacts?.format ?? 'vertical',
+  set: (next: NutritionFormat) => {
+    const facts = data.nutritionFacts
+    if (facts === undefined) return
+    // Omitted means vertical, so selecting it clears the field rather than
+    // writing the default back into the document.
+    if (next === 'vertical') delete facts.format
+    else facts.format = next
+  },
+})
+
+const availableSurfaceSqInches = optionalNumber(
+  () => data.nutritionFacts,
+  'availableSurfaceSqInches',
+)
+const continuousVerticalSpaceInches = optionalNumber(
+  () => data.nutritionFacts,
+  'continuousVerticalSpaceInches',
+)
+
+const declaredFact = (key: 'cannotAccommodateVertical' | 'cannotAccommodateTabular') =>
+  computed({
+    get: () => data.nutritionFacts?.[key] === true,
+    set: (on: boolean) => {
+      const facts = data.nutritionFacts
+      if (facts === undefined) return
+      if (on) facts[key] = true
+      else delete facts[key]
+    },
+  })
+
+const cannotAccommodateVertical = declaredFact('cannotAccommodateVertical')
+const cannotAccommodateTabular = declaredFact('cannotAccommodateTabular')
+
+const hasSecondColumn = computed({
+  get: () => data.nutritionFacts?.columns?.mode === 'dual',
+  set: (on: boolean) => {
+    const facts = data.nutritionFacts
+    if (facts === undefined) return
+    if (on)
+      facts.columns = {
+        mode: 'dual',
+        basis: 'per-container',
+        headings: ['Per serving', 'Per container'],
+      }
+    else delete facts.columns
+  },
+})
+
+const columnBasis = computed({
+  get: (): DualColumnBasis => data.nutritionFacts?.columns?.basis ?? 'per-container',
+  set: (next: DualColumnBasis) => {
+    const columns = data.nutritionFacts?.columns
+    if (columns !== undefined) columns.basis = next
+  },
+})
+
+const columnHeading = (index: 0 | 1) =>
+  computed({
+    get: () => data.nutritionFacts?.columns?.headings?.[index] ?? '',
+    set: (next: string) => {
+      const columns = data.nutritionFacts?.columns
+      if (columns === undefined) return
+      const current = columns.headings ?? ['', '']
+      columns.headings = index === 0 ? [next, current[1]] : [current[0], next]
+    },
+  })
+
+const firstHeading = columnHeading(0)
+const secondHeading = columnHeading(1)
 
 const packaging = computed({
   get: () => data.netQuantity.packaging ?? 'standard',
@@ -1070,6 +1177,97 @@ const packaging = computed({
         <p class="text-chrome-400 text-xs">
           Every size in 101.9(d) is a minimum, so anything under 100% puts the panel below one.
         </p>
+      </template>
+    </EditorSection>
+
+    <EditorSection
+      v-if="data.nutritionFacts"
+      title="Nutrition Facts display"
+      :element-id="US_FOOD_ELEMENTS.nutritionPanel"
+      :selected-element-id="store.selectedElementId"
+      @select="select"
+    >
+      <label :class="LABEL" for="field-food-nf-format">
+        Display
+        <select id="field-food-nf-format" v-model="displayFormat" :class="INPUT">
+          <option v-for="value in NUTRITION_FORMATS" :key="value" :value="value">
+            {{ FORMAT_NAMES[value] }}
+          </option>
+        </select>
+      </label>
+
+      <label :class="LABEL" for="field-food-nf-area">
+        Surface available to bear labeling (in²)
+        <input
+          id="field-food-nf-area"
+          v-model.number="availableSurfaceSqInches"
+          :class="INPUT"
+          type="number"
+          min="0"
+          step="0.1"
+        />
+        <span class="text-chrome-400 numeric text-xs">
+          101.9(j)(13) measures the whole package, not the 101.1 principal display panel. The two
+          are different numbers answering different questions.
+        </span>
+      </label>
+
+      <label :class="LABEL" for="field-food-nf-vertical-space">
+        Continuous vertical space for the panel (in)
+        <input
+          id="field-food-nf-vertical-space"
+          v-model.number="continuousVerticalSpaceInches"
+          :class="INPUT"
+          type="number"
+          min="0"
+          step="0.1"
+        />
+        <span class="text-chrome-400 numeric text-xs">
+          Under 101.9(d)(11)(iii), less than approximately 3 in entitles a package of any size to
+          the tabular display.
+        </span>
+      </label>
+
+      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-no-vert">
+        <input id="field-food-nf-no-vert" v-model="cannotAccommodateVertical" type="checkbox" />
+        The package shape or size cannot take a standard vertical column
+      </label>
+
+      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-no-tab">
+        <input id="field-food-nf-no-tab" v-model="cannotAccommodateTabular" type="checkbox" />
+        The label will not take a tabular display
+      </label>
+
+      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-dual">
+        <input id="field-food-nf-dual" v-model="hasSecondColumn" type="checkbox" />
+        The panel carries a second column of values
+      </label>
+
+      <template v-if="data.nutritionFacts.columns">
+        <label :class="LABEL" for="field-food-nf-basis">
+          What the second column counts
+          <select id="field-food-nf-basis" v-model="columnBasis" :class="INPUT">
+            <option v-for="value in DUAL_COLUMN_BASES" :key="value" :value="value">
+              {{ BASIS_NAMES[value] }}
+            </option>
+          </select>
+        </label>
+
+        <div class="flex gap-2">
+          <label :class="LABEL" class="flex-1" for="field-food-nf-heading-0">
+            First column heading
+            <input id="field-food-nf-heading-0" v-model="firstHeading" :class="INPUT" type="text" />
+          </label>
+          <label :class="LABEL" class="flex-1" for="field-food-nf-heading-1">
+            Second column heading
+            <input
+              id="field-food-nf-heading-1"
+              v-model="secondHeading"
+              :class="INPUT"
+              type="text"
+            />
+          </label>
+        </div>
       </template>
     </EditorSection>
 
