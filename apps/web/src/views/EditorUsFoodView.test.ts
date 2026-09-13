@@ -500,6 +500,22 @@ describe('clearing an optional number means unset, not a blank string', () => {
 describe('the Nutrition Facts displays, from the editor', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
+  it('reports a second column declared with no figures in it', async () => {
+    // What ticking the box alone produces. The panel declares two columns and
+    // draws one, and the engine says so rather than clearing it — which it did,
+    // because the element marking "a second column was drawn" was emitted on the
+    // strength of the declaration instead.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-dual').setValue(true)
+    await nextTick()
+
+    expect(store.layout!.elements.map((e) => e.elementId)).not.toContain(
+      'food-nutrition-second-column',
+    )
+    expect(store.findings.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_FORM_MET')
+    expect(store.layout!.omissions.map((o) => o.reason).join(' ')).toContain('second column')
+  })
+
   it('reaches the tabular display and its entitlement rule', async () => {
     // None of stage 6 was reachable from the app until this section existed: the
     // reduced displays, the dual column and the areas the entitlement turns on had
@@ -542,6 +558,10 @@ describe('the Nutrition Facts displays, from the editor', () => {
     const { store, wrapper } = await mountFood()
     await wrapper.find('#field-food-nf-dual').setValue(true)
     await nextTick()
+    // The figures have to be typed — there is no "x2" button, because deriving
+    // them would mean this tool authoring part of a regulated statement.
+    await wrapper.find('#field-food-nf2-total-fat').setValue('7.5')
+    await nextTick()
 
     expect(store.foodData.nutritionFacts!.columns!.mode).toBe('dual')
     expect(store.failures).toEqual([])
@@ -553,6 +573,8 @@ describe('the Nutrition Facts displays, from the editor', () => {
   it('reports two columns headed the same, from the form', async () => {
     const { store, wrapper } = await mountFood()
     await wrapper.find('#field-food-nf-dual').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-nf2-total-fat').setValue('7.5')
     await nextTick()
     await wrapper.find('#field-food-nf-heading-1').setValue('Per serving')
     await nextTick()

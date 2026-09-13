@@ -37,7 +37,7 @@
  * recorded because the difference is real and a later reader will wonder.
  */
 
-import { US_FOOD_ELEMENTS } from '../../templates/usFood'
+import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { TextPrimitive } from '../../layout/types'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, passed } from '../finding'
@@ -143,7 +143,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     const rowSizes = layout.primitives.filter(
       (primitive): primitive is TextPrimitive =>
         primitive.kind === 'text' &&
-        (primitive.elementId?.startsWith('food-nutrition-row-') ?? false),
+        (primitive.elementId?.startsWith(NUTRITION_ROW_PREFIX) ?? false),
     )
     const largest = Math.max(...rowSizes.map((p) => p.fontSizeMm), 0)
     const smallest = Math.min(...rowSizes.map((p) => p.fontSizeMm), Infinity)

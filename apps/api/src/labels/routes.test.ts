@@ -246,6 +246,47 @@ describe('POST /api/labels/us-food/export', () => {
     expect(response.status).toBe(200)
   })
 
+  it('carries the second column’s figures through to the export', async () => {
+    // Zod strips unknown keys rather than rejecting them, and the reconciliation
+    // below it rebuilds the object key by key — so a field missing from either was
+    // dropped in silence, and a document previewed with a populated second column
+    // in the browser exported a blank one. That divergence is the single thing
+    // this architecture exists to prevent.
+    const body = {
+      ...FOOD_BODY,
+      nutritionFacts: {
+        servingSize: '1/2 cup (40g)',
+        amounts: { calories: 150, 'total-fat': 3 },
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { 'total-fat': 7.5 },
+          separated: false,
+          secondColumnTypeScale: 0.7,
+        },
+        referenceAmount: { amount: 22, unit: 'g', category: 'Snacks' },
+        packageContent: 55,
+        packagedAndSoldIndividually: true,
+        dualColumnExemption: { variedWeight: true },
+      },
+    }
+    const withColumn = await postFood(body)
+    expect(withColumn.status).toBe(200)
+
+    // Proved by the artefact rather than by the status code. The same document
+    // with the second column's figures removed draws fewer glyphs, so a shorter
+    // PDF is evidence the figures reached the renderer — which is exactly what a
+    // silently stripped field would not produce.
+    const { secondAmounts: _dropped, ...columnsWithoutFigures } = body.nutritionFacts.columns
+    const without = await postFood({
+      ...body,
+      nutritionFacts: { ...body.nutritionFacts, columns: columnsWithoutFigures },
+    })
+    expect(without.status).toBe(200)
+    expect(withColumn.body.length).toBeGreaterThan(without.body.length)
+  })
+
   it('refuses a column basis the regulation does not name', async () => {
     // The union comes from `DUAL_COLUMN_BASES`, so the boundary cannot drift from
     // the paragraphs behind it.

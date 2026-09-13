@@ -38,6 +38,30 @@ Phase 5, stage 6 (in progress) — the dual-column display, drawn and judged.
 
 ### Fixed
 
+- **The net quantity was the only drawn element with no overflow check.** 101.7(i) sizes the declaration from
+  the *package*, not from the label, so a container far larger than the artwork derives type wider than the
+  substrate: a 1800 mm carton on the default 120 mm stock put it at x −57.5 mm, entirely off the label, with
+  no omission recorded and all five net-quantity rules reporting it compliant. A mandatory 101.7(a) element
+  absent from the printed artefact and clean in the findings is the hole every other block here already
+  plugs.
+- **A second column was marked drawn on the strength of the declaration.** The element that tells a rule the
+  panel carries two sets of values was emitted whenever `columns.mode` was `dual`, while the comment beside
+  it said "emitted whenever a second set of values was drawn". So a panel declaring two columns with no
+  figures in the second — which is exactly what the editor's own checkbox produced, since it seeds headings
+  and had no field for the amounts — drew one column, cleared the form rule, and suppressed the engine's
+  "asked for and not drawn" omission, because that omission keys off the same element. The rail now has a
+  field per nutrient for the second column, and there is no button to derive them: multiplying by the
+  servings per container is arithmetic this tool has no business doing, and (c) rounds each declared amount
+  in its own right.
+- **Four fields were stripped silently at the API boundary.** `secondAmounts`, `separated`,
+  `secondColumnTypeScale` and the dual-column duty facts were missing from the schema, and Zod strips unknown
+  keys rather than rejecting them — so a document previewed with a populated second column in the browser
+  exported a blank one. Adding them to the schema was half the fix: the reconciliation below it rebuilds the
+  object key by key, so a field present in the schema and absent there is dropped just as quietly. The test
+  asserts on the exported artefact rather than on the status code.
+- `dualColumnForm` spelled `'food-nutrition-row-'` as a literal where every sibling imports
+  `NUTRITION_ROW_PREFIX`. A rename would have emptied its row set, and the `length > 0` guard would have
+  turned the equal-prominence check into a silent pass rather than an error.
 - **A denylist that had to be maintained in step with another file, and was wrong three times.** The 101.2(c)
   rule excludes the Nutrition Facts panel from the 1/16 inch information-panel floor, for the reason its own
   note gives at length: 101.9 sets 8 point nutrient rows whose lowercase "o" is 1.52 mm, so applying the floor

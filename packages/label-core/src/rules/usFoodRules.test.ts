@@ -1197,6 +1197,30 @@ describe('a second column asked for and not drawn', () => {
   })
 })
 
+describe('a declaration larger than the label it is drawn on', () => {
+  it('reports the net quantity running off the substrate', () => {
+    // 101.7(i) sizes the declaration from the *package*, not from the label, so a
+    // container far larger than the artwork derives type wider than the stock. It
+    // was the only drawn element with no overflow check: a 1800 mm carton on the
+    // default 120 mm label put the declaration at x -57.5 mm, entirely off the
+    // artwork, while all five net-quantity rules reported it compliant.
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      container: { shape: 'rectangular', widthMm: 1800, heightMm: 1800 },
+    }
+    const layout = layOutUsFoodLabel({ data, stock: US_FOOD_CONFORMANT.stock })
+    expect(layout.omissions.map((o) => o.reason).join(' ')).toContain('net quantity declaration')
+  })
+
+  it('says nothing about a declaration that fits', () => {
+    expect(
+      layOutUsFoodLabel(US_FOOD_CONFORMANT)
+        .omissions.map((o) => o.reason)
+        .join(' '),
+    ).not.toContain('net quantity declaration')
+  })
+})
+
 describe('the dual-column display, drawn', () => {
   const stock = US_FOOD_CONFORMANT.stock
   const dual = (patch: Record<string, unknown> = {}): UsFoodLabelData => ({
@@ -1283,6 +1307,26 @@ describe('the dual-column display, drawn', () => {
     expect(both.box.widthMm).toBeGreaterThan(single.box.widthMm)
   })
 
+  it('draws no second column where no second figure was given', () => {
+    // The element that marks "a second column was drawn" is emitted for a column
+    // that *was* drawn, not for one that was asked for. Keyed off the declaration
+    // instead, a panel with no second figures cleared the form rule and suppressed
+    // the engine's own "asked for and not drawn" omission.
+    const empty: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: {
+        ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+        columns: { mode: 'dual', basis: 'per-container', headings: ['A', 'B'] },
+      },
+    }
+    const layout = layOutUsFoodLabel({ data: empty, stock })
+    expect(layout.elements.map((e) => e.elementId)).not.toContain(
+      US_FOOD_ELEMENTS.nutritionSecondColumn,
+    )
+    expect(layout.omissions.map((o) => o.reason).join(' ')).toContain('second column')
+    expect(findingsFor(empty, stock).map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_FORM_MET')
+  })
+
   it('draws one column where the panel says single', () => {
     // The other direction: the axis has to change the drawing, not merely be
     // carried on the document.
@@ -1359,7 +1403,11 @@ describe('the second column (b)(12)(i) and (b)(2)(i)(D) make mandatory', () => {
     const codes = codesFor({
       ...individually,
       packageContent: 55,
-      columns: { mode: 'dual', basis: 'per-container' },
+      columns: {
+        mode: 'dual',
+        basis: 'per-container',
+        secondAmounts: { 'total-fat': 7.5 },
+      },
     })
     expect(codes).toContain('FDA_DUAL_COLUMN_MET')
     expect(codes).not.toContain('FDA_DUAL_COLUMN_MISSING')

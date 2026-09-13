@@ -31,6 +31,15 @@ follows (b)(7), and the mandatory dual-column rules take the reference amount as
 deriving it. Both say so in their passing findings. Modelling the table is a phase of its own, and every row
 needs verifying against the source.
 
+## Latent, not yet biting
+
+**Type size and typeface are read from different primitives.** `containsStatementType`'s `smallestOf` pairs
+the minimum `fontSizeMm` across an element's lines with `lines[0]`'s `fontFamily`, and
+`informationPanelTypeSize`'s `byElement` does the same. Harmless while every block is set in one face — which
+is true today, since `US_FOOD_TYPE_DEFAULT` gives the whole label one family — and it is precisely the
+conflation those rules exist to remove, since a glyph height is meaningless without the face it was measured
+in. Worth fixing before any label draws two faces in one element.
+
 ## The editor
 
 **The rail's required numeric fields have the unguarded-blank shape.** `v-model.number` hands back the string

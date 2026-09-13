@@ -798,6 +798,8 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   })
   yMm += mm(NUTRITION_PANEL_TYPE.nutrientPt + NUTRITION_PANEL_TYPE.nutrientLeadingPt)
   const nutrientBlockTopMm = yMm
+  // Set when a second value is actually drawn, not when one was asked for.
+  let secondColumnDrawn = false
 
   // 101.9(d)(7) — the nutrient rows, in the order the panel states or the order
   // 101.9(c) sets. Drawn in the stated order rather than sorted, because a panel
@@ -854,6 +856,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       const declared = [amount, second === undefined ? undefined : roundNutrientAmount(id, second)]
       declared.forEach((value, column) => {
         if (value === undefined) return
+        if (column === 1) secondColumnDrawn = true
         const percent = printedPercentDailyValue(id, value)
         // (e)'s "equal prominence" is a requirement, so the second column is set
         // at the first's size unless the label asks for something else.
@@ -884,9 +887,16 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     drawnRows += 1
   })
 
-  if (dual) {
-    // The band itself, emitted whenever a second set of values was drawn and
-    // **independent of the lines beside it**. A rule asks the layout what the
+  // **Emitted for a column that was drawn, not for one that was asked for.**
+  // This read `dual` alone, so a panel declaring `columns: dual` with no second
+  // amounts — which is exactly what the rail's checkbox produces, since it seeds
+  // headings and has no field for the figures — emitted the element, cleared the
+  // form rule and suppressed the engine's "asked for and not drawn" omission. The
+  // comment below already said "drawn"; the condition beside it said otherwise,
+  // which is the third time on this branch that a comment has described code that
+  // does something else.
+  if (dual && secondColumnDrawn) {
+    // The band itself, **independent of the lines beside it**. A rule asks the layout what the
     // panel carries; conflating "there are two columns" with "they are separated"
     // made a panel drawn without (e)(3)'s lines look like a panel with one
     // column, so the mandate rule reported the column missing and the form rule

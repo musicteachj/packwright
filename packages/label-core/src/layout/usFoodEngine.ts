@@ -502,6 +502,25 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       declarationHeightMm,
     )
 
+    // **The declaration was the only drawn element with no overflow check.**
+    // 101.7(i) sizes it from the *package*, not from the label, so a large
+    // container on a small piece of stock derives type wider than the substrate:
+    // a 1800 mm carton on the default 120 mm label put it at x −57.5 mm, entirely
+    // off the artwork, while all five net-quantity rules reported it compliant.
+    // A mandatory 101.7(a) element absent from the printed label and clean in the
+    // findings is the same hole every other block here already plugs.
+    if (xMm < 0 || xMm + declarationWidthMm > stock.widthMm) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.netQuantity,
+        reason:
+          `The net quantity declaration is ${mmText(declarationWidthMm)} wide on a ` +
+          `${mmText(stock.widthMm)} label, so part of it is not printed. 21 CFR 101.7(i) sizes it ` +
+          'from the package rather than from the label, and this package is larger than the ' +
+          'artwork it is being drawn on.',
+        scope: 'detail',
+      })
+    }
+
     primitives.push({
       kind: 'text',
       elementId: US_FOOD_ELEMENTS.netQuantity,

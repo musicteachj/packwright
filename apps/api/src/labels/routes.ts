@@ -289,6 +289,11 @@ function toColumns(
     mode: columns.mode,
     ...(columns.basis === undefined ? {} : { basis: columns.basis }),
     ...(columns.headings === undefined ? {} : { headings: columns.headings }),
+    ...(columns.secondAmounts === undefined ? {} : { secondAmounts: columns.secondAmounts }),
+    ...(columns.separated === undefined ? {} : { separated: columns.separated }),
+    ...(columns.secondColumnTypeScale === undefined
+      ? {}
+      : { secondColumnTypeScale: columns.secondColumnTypeScale }),
   }
 }
 
@@ -333,6 +338,24 @@ function toNutritionFacts(panel: z.infer<typeof NutritionFactsSchema>): UsFoodNu
     ...(panel.continuousVerticalSpaceInches === undefined
       ? {}
       : { continuousVerticalSpaceInches: panel.continuousVerticalSpaceInches }),
+    ...(panel.referenceAmount === undefined ? {} : { referenceAmount: panel.referenceAmount }),
+    ...(panel.packageContent === undefined ? {} : { packageContent: panel.packageContent }),
+    ...(panel.unitContent === undefined ? {} : { unitContent: panel.unitContent }),
+    ...(panel.packagedAndSoldIndividually === undefined
+      ? {}
+      : { packagedAndSoldIndividually: panel.packagedAndSoldIndividually }),
+    ...(panel.dualColumnExemption === undefined
+      ? {}
+      : {
+          dualColumnExemption: {
+            ...(panel.dualColumnExemption.rawCommodityVoluntary === undefined
+              ? {}
+              : { rawCommodityVoluntary: panel.dualColumnExemption.rawCommodityVoluntary }),
+            ...(panel.dualColumnExemption.variedWeight === undefined
+              ? {}
+              : { variedWeight: panel.dualColumnExemption.variedWeight }),
+          },
+        }),
   }
 }
 
@@ -383,6 +406,27 @@ const NutritionFactsSchema = z.object({
       mode: z.enum(NUTRITION_COLUMN_MODES),
       basis: z.enum(DUAL_COLUMN_BASES).optional(),
       headings: z.tuple([z.string(), z.string()]).optional(),
+      // Zod **strips** unknown keys rather than rejecting them, so a field missing
+      // here is silently dropped: a document carrying `secondAmounts` previewed
+      // with a populated second column in the browser and exported a blank one,
+      // which is the single thing this architecture exists to prevent. Omitting
+      // `separated` also made `FDA_DUAL_COLUMN_NOT_SEPARATED` unprovokable through
+      // the API — a rule with a fixture and no route to it.
+      secondAmounts: NutrientAmounts,
+      separated: z.boolean().optional(),
+      secondColumnTypeScale: z.number().positive().optional(),
+    })
+    .optional(),
+  referenceAmount: z
+    .object({ amount: z.number().positive(), unit: z.enum(['g', 'mL']), category: z.string() })
+    .optional(),
+  packageContent: z.number().positive().optional(),
+  unitContent: z.number().positive().optional(),
+  packagedAndSoldIndividually: z.boolean().optional(),
+  dualColumnExemption: z
+    .object({
+      rawCommodityVoluntary: z.boolean().optional(),
+      variedWeight: z.boolean().optional(),
     })
     .optional(),
   availableSurfaceSqInches: z.number().positive().optional(),

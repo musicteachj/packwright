@@ -414,6 +414,31 @@ function setAmount(id: NutrientId, raw: string): void {
   else facts.amounts[id] = Number(raw)
 }
 
+/**
+ * The second column's figures, which have to be typed.
+ *
+ * There is no "×2" button and there will not be one. Multiplying the serving
+ * amounts by the servings per container is arithmetic this tool has no business
+ * doing on a labeller's behalf — the same call the SI net quantity gets — and
+ * 101.9(c) rounds each declared amount in its own right, so a derived column
+ * would be wrong at every half-gram boundary.
+ *
+ * Without these fields the checkbox above produced a panel that declared two
+ * columns and drew one, which the engine now reports rather than clearing.
+ */
+function secondAmountOf(id: NutrientId): number | undefined {
+  return data.nutritionFacts?.columns?.secondAmounts?.[id]
+}
+
+function setSecondAmount(id: NutrientId, raw: string): void {
+  const columns = data.nutritionFacts?.columns
+  if (columns === undefined) return
+  const amounts = { ...(columns.secondAmounts ?? {}) }
+  if (raw.trim() === '') delete amounts[id]
+  else amounts[id] = Number(raw)
+  columns.secondAmounts = amounts
+}
+
 /** What the panel will print, so the form shows the rounding as it happens. */
 const printedAmount = (id: NutrientId): string => {
   const facts = data.nutritionFacts
@@ -1102,6 +1127,22 @@ const packaging = computed({
               step="0.1"
               min="0"
               @input="setAmount(entry.id, ($event.target as HTMLInputElement).value)"
+            />
+          </label>
+          <label
+            v-if="data.nutritionFacts.columns"
+            :class="LABEL"
+            class="w-24"
+            :for="`field-food-nf2-${entry.id}`"
+          >
+            <span class="sr-only">{{ entry.name }}, second column</span>
+            <input
+              :id="`field-food-nf2-${entry.id}`"
+              :value="secondAmountOf(entry.id)"
+              :class="INPUT"
+              type="number"
+              step="any"
+              @input="setSecondAmount(entry.id, ($event.target as HTMLInputElement).value)"
             />
           </label>
           <p
