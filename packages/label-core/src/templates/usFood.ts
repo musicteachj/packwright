@@ -22,7 +22,7 @@
 import type { Container, NetQuantityMarkingMethod } from '../geometry/pdp'
 import type { MajorFoodAllergenId } from '../fda/allergens'
 import type { NutrientId } from '../fda/nutrients'
-import type { NutritionFormat } from '../fda/nutritionFormats'
+import type { DualColumnBasis, NutritionColumnMode, NutritionFormat } from '../fda/nutritionFormats'
 import type { Anchor, LabelStock } from './stock'
 
 /**
@@ -235,6 +235,24 @@ export interface UsFoodNutritionFacts {
    * (j)(13)(ii)(A) for the two reduced ones. Omitted means vertical.
    */
   format?: NutritionFormat
+  /**
+   * The second set of values, where the panel carries one — 21 CFR 101.9(e), and
+   * (b)(12)(i) and (b)(2)(i)(D) where it is not optional.
+   *
+   * **Orthogonal to `format`, and it has to be.** (e)(6)(ii) illustrates a
+   * dual-column *tabular* panel and (e)(6)(i) a dual-column vertical one, so the
+   * two axes combine; folding dual-column into `format` would make both of those
+   * labels impossible to describe. Omitted means one column.
+   *
+   * The headings are carried because (e)(1) requires them — "there shall be two
+   * or more column headings accurately describing the amount per serving size" —
+   * and their text is the labeller's, not this engine's to compose.
+   */
+  columns?: {
+    mode: NutritionColumnMode
+    basis?: DualColumnBasis
+    headings?: readonly [string, string]
+  }
   /**
    * Total surface area available to bear labeling, in square inches, which is
    * what (j)(13) measures — **not** the principal display panel, which 101.1

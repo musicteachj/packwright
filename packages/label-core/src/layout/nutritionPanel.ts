@@ -92,15 +92,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   // (d)(11)'s tabular display and (j)(13)(ii)(A)(1)'s are the same arrangement
   // with different figures.
   const format = facts.format ?? 'vertical'
-  const display = nutritionDisplayFor({
-    format,
-    ...(facts.availableSurfaceSqInches === undefined
-      ? {}
-      : { availableSqInches: facts.availableSurfaceSqInches }),
-    ...(facts.cannotAccommodateVertical === undefined
-      ? {}
-      : { cannotAccommodateVertical: facts.cannotAccommodateVertical }),
-  })
+  const display = nutritionDisplayFor(facts)
   const NUTRITION_PANEL_TYPE = nutritionTypeForDisplay(display)
   /**
    * 101.9(j)(13)(i): "Foods in packages **subject to requirements of paragraphs
@@ -162,6 +154,40 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       label,
       box: { xMm: leftMm, yMm: startYMm, widthMm: rightMm - leftMm, heightMm },
     })
+  }
+
+  /**
+   * The panel's box, and the result the caller gets back.
+   *
+   * Every display ends the same way and each one used to end it in its own words
+   * — three copies of an eleven-line rect, and they had already drifted: the
+   * linear branch `push`ed the panel element where the other two `unshift`ed it,
+   * so on a linear label the panel appeared in a different place in the element
+   * order `LabelTextView` reads out. Three copies about to become four is the
+   * reason to lift it now rather than after.
+   *
+   * **The rect is unshifted, not pushed.** Its fill is opaque white, so drawn
+   * last it would paint over every bar and rule in the panel. First in the list
+   * it sits under them.
+   */
+  const finish = (heightMm: number): NutritionPanelResult => {
+    elements.unshift({
+      elementId: US_FOOD_ELEMENTS.nutritionPanel,
+      label: 'Nutrition Facts',
+      box: { xMm, yMm: request.yMm, widthMm, heightMm },
+    })
+    primitives.unshift({
+      kind: 'rect',
+      elementId: US_FOOD_ELEMENTS.nutritionPanel,
+      xMm,
+      yMm: request.yMm,
+      widthMm,
+      heightMm,
+      fill: 'ffffff',
+      stroke: '000000',
+      strokeWidthMm: NUTRITION_PANEL_RULES.boxMm,
+    })
+    return { primitives, elements, heightMm }
   }
 
   // 101.9(j)(13)(ii)(A)(2) — the linear display: "in a tabular or ... linear
@@ -369,24 +395,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       })
     }
 
-    const heightMm = lineTopMm(lineHeightsMm.length) - request.yMm + insetMm
-    elements.push({
-      elementId: US_FOOD_ELEMENTS.nutritionPanel,
-      label: 'Nutrition Facts',
-      box: { xMm, yMm: request.yMm, widthMm, heightMm },
-    })
-    primitives.unshift({
-      kind: 'rect',
-      elementId: US_FOOD_ELEMENTS.nutritionPanel,
-      xMm,
-      yMm: request.yMm,
-      widthMm,
-      heightMm,
-      fill: 'ffffff',
-      stroke: '000000',
-      strokeWidthMm: NUTRITION_PANEL_RULES.boxMm,
-    })
-    return { primitives, elements, heightMm }
+    return finish(lineTopMm(lineHeightsMm.length) - request.yMm + insetMm)
   }
 
   // 101.9(d)(11) — the tabular display: the same information, arranged across
@@ -650,23 +659,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
         heightMm: footnoteHeightMm,
       },
     })
-    primitives.unshift({
-      kind: 'rect',
-      elementId: US_FOOD_ELEMENTS.nutritionPanel,
-      xMm,
-      yMm: request.yMm,
-      widthMm,
-      heightMm,
-      fill: 'ffffff',
-      stroke: '000000',
-      strokeWidthMm: NUTRITION_PANEL_RULES.boxMm,
-    })
-    elements.unshift({
-      elementId: US_FOOD_ELEMENTS.nutritionPanel,
-      label: 'Nutrition Facts',
-      box: { xMm, yMm: request.yMm, widthMm, heightMm },
-    })
-    return { primitives, elements, heightMm }
+    return finish(heightMm)
   }
 
   // 101.9(d)(2) — the heading, no smaller than all other print bar the Calories
@@ -860,22 +853,5 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   // "All labels enclosed by ½ point box rule." Drawn **first** — `unshift` puts
   // it at the head of the list — so its opaque white fill sits under everything
   // rather than painting over the bars.
-  primitives.unshift({
-    kind: 'rect',
-    elementId: US_FOOD_ELEMENTS.nutritionPanel,
-    xMm,
-    yMm: request.yMm,
-    widthMm,
-    heightMm,
-    fill: 'ffffff',
-    stroke: '000000',
-    strokeWidthMm: NUTRITION_PANEL_RULES.boxMm,
-  })
-  elements.unshift({
-    elementId: US_FOOD_ELEMENTS.nutritionPanel,
-    label: 'Nutrition Facts',
-    box: { xMm, yMm: request.yMm, widthMm, heightMm },
-  })
-
-  return { primitives, elements, heightMm }
+  return finish(heightMm)
 }

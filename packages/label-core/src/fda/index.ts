@@ -27,6 +27,9 @@ export {
 } from './nutritionPanel'
 export type { NutritionDisplay, NutritionTypeSizes } from './nutritionPanel'
 export {
+  DUAL_COLUMN_BASES,
+  DUAL_COLUMN_BASIS_REFERENCE,
+  NUTRITION_COLUMN_MODES,
   NUTRITION_FORMATS,
   REDUCED_FORMAT_MAX_SQ_INCHES,
   SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES,
@@ -34,4 +37,10 @@ export {
   formatIsPermitted,
   smallPackageRouteApplies,
 } from './nutritionFormats'
-export type { FormatEntitlement, FormatVerdict, NutritionFormat } from './nutritionFormats'
+export type {
+  DualColumnBasis,
+  FormatEntitlement,
+  FormatVerdict,
+  NutritionColumnMode,
+  NutritionFormat,
+} from './nutritionFormats'

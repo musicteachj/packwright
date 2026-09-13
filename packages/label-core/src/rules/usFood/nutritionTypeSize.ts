@@ -124,15 +124,7 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
 
   check({ data, layout }: UsFoodContext): Finding[] {
     const facts = data.nutritionFacts
-    const display = nutritionDisplayFor({
-      format: facts?.format ?? 'vertical',
-      ...(facts?.availableSurfaceSqInches === undefined
-        ? {}
-        : { availableSqInches: facts.availableSurfaceSqInches }),
-      ...(facts?.cannotAccommodateVertical === undefined
-        ? {}
-        : { cannotAccommodateVertical: facts.cannotAccommodateVertical }),
-    })
+    const display = nutritionDisplayFor(facts ?? {})
     const type = nutritionTypeForDisplay(display)
     const smallestOf = (predicate: (id: string) => boolean): number | undefined => {
       const sizes = layout.primitives

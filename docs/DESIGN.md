@@ -626,7 +626,12 @@ five are built on sand.
 
 *Done when:*
 - A 30 in² PDP demands ≥ 3/16" net-quantity type and flags anything smaller
-- All six Nutrition Facts variants render with correct type scale and rule weights
+- The Nutrition Facts panel renders on both its axes — the display it is arranged in (standard vertical,
+  tabular, linear) and the columns of values it carries (single, dual) — with correct type scale and rule
+  weights. Those are two axes rather than one list of six variants, because 101.9(e)(6)(ii) illustrates a
+  dual-column *tabular* panel and (d)(1)(iii) gives it type sizes of its own: a flat union cannot describe a
+  label the regulation itself draws. The aggregate display, the bilingual one and the permitted abbreviations
+  are in `BACKLOG.md`
 - Sesame is present in the allergen set
 
 Largest single piece of work in the project — budget accordingly.

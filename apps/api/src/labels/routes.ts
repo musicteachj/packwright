@@ -30,6 +30,8 @@ import {
   labelFilename,
   getSymbologyConstraints,
   INGREDIENT_THRESHOLD_PERCENTS,
+  DUAL_COLUMN_BASES,
+  NUTRITION_COLUMN_MODES,
   NUTRITION_FORMATS,
   MAJOR_FOOD_ALLERGEN_IDS,
   NUTRIENT_IDS,
@@ -273,6 +275,23 @@ const ResponsibleFirmSchema = z.object({
   zip: z.string().optional(),
 })
 
+/**
+ * The same key-by-key reconciliation the other nested objects get.
+ *
+ * Zod infers an optional key as `T | undefined`, and `exactOptionalPropertyTypes`
+ * distinguishes "absent" from "present and undefined" — so the object is rebuilt
+ * rather than spread.
+ */
+function toColumns(
+  columns: NonNullable<z.infer<typeof NutritionFactsSchema>['columns']>,
+): NonNullable<UsFoodNutritionFacts['columns']> {
+  return {
+    mode: columns.mode,
+    ...(columns.basis === undefined ? {} : { basis: columns.basis }),
+    ...(columns.headings === undefined ? {} : { headings: columns.headings }),
+  }
+}
+
 /** The same key-by-key reconciliation the other nested objects get. */
 function toIngredient(ingredient: z.infer<typeof IngredientSchema>): UsFoodIngredient {
   return {
@@ -301,6 +320,7 @@ function toNutritionFacts(panel: z.infer<typeof NutritionFactsSchema>): UsFoodNu
     ...(panel.order === undefined ? {} : { order: panel.order }),
     ...(panel.typeScale === undefined ? {} : { typeScale: panel.typeScale }),
     ...(panel.format === undefined ? {} : { format: panel.format }),
+    ...(panel.columns === undefined ? {} : { columns: toColumns(panel.columns) }),
     ...(panel.availableSurfaceSqInches === undefined
       ? {}
       : { availableSurfaceSqInches: panel.availableSurfaceSqInches }),
@@ -354,6 +374,17 @@ const NutritionFactsSchema = z.object({
   order: z.array(z.enum(NUTRIENT_IDS)).optional(),
   typeScale: z.number().positive().optional(),
   format: z.enum(NUTRITION_FORMATS).optional(),
+  // The second axis, derived from the same consts so a new column mode or basis
+  // reaches the boundary without being restated. `headings` is a fixed pair
+  // because 101.9(e)(3) presents the values "in two columns"; (e)(1)'s "two or
+  // more" belongs to the aggregate display, which is not modelled yet.
+  columns: z
+    .object({
+      mode: z.enum(NUTRITION_COLUMN_MODES),
+      basis: z.enum(DUAL_COLUMN_BASES).optional(),
+      headings: z.tuple([z.string(), z.string()]).optional(),
+    })
+    .optional(),
   availableSurfaceSqInches: z.number().positive().optional(),
   cannotAccommodateVertical: z.boolean().optional(),
   cannotAccommodateTabular: z.boolean().optional(),

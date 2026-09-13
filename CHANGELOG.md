@@ -10,6 +10,32 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 6 (in progress) — the columns axis, which dual-column needs before it can be drawn.
+
+- **The panel has two axes, not one list of variants.** `format` says how the information is *arranged* —
+  standard vertical, tabular, linear — and the new `columns` says how many sets of values it *carries*. They
+  are separate because the regulation draws labels that combine them: 101.9(e)(6)(ii) is "the provisions of
+  (b)(2)(i)(D) and (b)(12)(i) ... **for labels that use the tabular display**", a dual-column tabular panel,
+  with (e)(6)(i) showing the vertical one beside it. A fourth member of `NUTRITION_FORMATS` would make both
+  inexpressible — and (d)(1)(iii) names (e)(6)(ii) separately from (d)(11), so the engine has to tell them
+  apart. `aggregate` will extend this same union when (d)(13) is built.
+- **`DUAL_COLUMN_BASES` carries what the second column counts, and the modality differs across it.** Four are
+  permissions under (e) — as prepared, common combinations, different units, RDI groups — and two are
+  mandates: (b)(12)(i)'s per-container and (b)(2)(i)(D)'s per-unit. Keeping the basis rather than a boolean is
+  also what will make (b)(12)(i)(C)'s exemptions computable, since that carve-out excuses a product already
+  providing a second column for one of the other reasons.
+- `nutritionDisplayFor` takes the panel itself now, structurally, rather than an object each caller builds by
+  hand. The renderer and the type-size rule had begun spelling the same mapping twice — and a mutation
+  proved it: severing the new axis in the renderer failed no test, because nothing observed the difference.
+- **The panel-box epilogue is one helper instead of three copies**, done before a fourth display lands on it.
+  The three had already drifted: the linear branch pushed the panel element where the other two unshifted it,
+  so a linear label listed the panel in the middle of the reading order `LabelTextView` renders rather than at
+  its head.
+- `docs/BACKLOG.md` — findings that are real and deliberately not being done, with the reason. Reviews on
+  this branch have each turned up three to five genuine defects in already-committed territory, and fixing all
+  of them immediately turned four planned items into three unplanned commits. The aggregate display, the
+  bilingual one and the permitted abbreviations are recorded there too, deferred so phase 5 can reach `dev`.
+
 Phase 5, stage 6 (in progress) — three rules for three things the engine drew and nothing checked, found by
 asking why the API was rejecting documents the engine is built to draw.
 

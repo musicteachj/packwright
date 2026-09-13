@@ -37,6 +37,69 @@ export const NUTRITION_FORMATS = ['vertical', 'tabular', 'linear'] as const
 export type NutritionFormat = (typeof NUTRITION_FORMATS)[number]
 
 /**
+ * How many sets of values the panel carries, which is **not** the same axis as
+ * the display above.
+ *
+ * A flat union of every "format" 101.9 names cannot describe the labels the
+ * regulation itself illustrates. (e)(6)(ii) is "the provisions of (b)(2)(i)(D)
+ * and (b)(12)(i) ... **for labels that use the tabular display**" — a dual-column
+ * *tabular* panel — and (e)(6)(i) shows the vertical one beside it. Making
+ * `dualColumn` a fourth member of `NUTRITION_FORMATS` would make both of those
+ * inexpressible, and (d)(1)(iii)'s type-size exceptions name (e)(6)(ii)
+ * separately from (d)(11), so the engine has to be able to tell them apart.
+ *
+ * So: the display is *how the information is arranged*, and this is *how many
+ * columns of values it carries*. `aggregate` extends this same union — the
+ * (d)(13) display is a column per food — and is in the backlog rather than here.
+ */
+export const NUTRITION_COLUMN_MODES = ['single', 'dual'] as const
+export type NutritionColumnMode = (typeof NUTRITION_COLUMN_MODES)[number]
+
+/**
+ * What the second column of a dual-column panel counts.
+ *
+ * A closed set, and the modality differs across it, which is the whole reason it
+ * is a set rather than a boolean. **Four are permissions and two are mandates.**
+ * 101.9(e) opens "Nutrition information **may** be presented for two or more
+ * forms of the same food"; (b)(12)(i) says a package holding 200–300% of the
+ * reference amount "**must** provide an additional column"; (b)(2)(i)(D) says the
+ * manufacturer "**shall** provide a column" where a unit weighs the same.
+ *
+ * Carrying the basis rather than a flag is also what makes (b)(12)(i)(C)'s
+ * exemptions computable: it excuses a product that *already* provides a second
+ * column for one of the other reasons, so most of that carve-out falls out of
+ * this value rather than needing to be declared separately.
+ */
+export const DUAL_COLUMN_BASES = [
+  /** (e) — two or more forms of the same food, "as purchased" and "as prepared". */
+  'as-prepared',
+  /** (e) with (h)(4) — common combinations of food. */
+  'combination',
+  /** (e) and (b)(10) — different units, e.g. per 100 g. */
+  'per-unit-measure',
+  /** (e)(5) — two or more groups for which RDIs are established. */
+  'rdi-groups',
+  /** (b)(10)(iii) — per cup popped, for popcorn. */
+  'per-cup-popped',
+  /** **(b)(12)(i)** — per serving and per container. Mandatory at 200–300%. */
+  'per-container',
+  /** **(b)(2)(i)(D)** — per serving and per individual unit. Mandatory likewise. */
+  'per-unit',
+] as const
+export type DualColumnBasis = (typeof DUAL_COLUMN_BASES)[number]
+
+/** The paragraph each basis comes from, for the citation a finding carries. */
+export const DUAL_COLUMN_BASIS_REFERENCE: Record<DualColumnBasis, string> = {
+  'as-prepared': '21 CFR 101.9(e)',
+  combination: '21 CFR 101.9(e)',
+  'per-unit-measure': '21 CFR 101.9(e)',
+  'rdi-groups': '21 CFR 101.9(e)(5)',
+  'per-cup-popped': '21 CFR 101.9(b)(10)(iii)',
+  'per-container': '21 CFR 101.9(b)(12)(i)',
+  'per-unit': '21 CFR 101.9(b)(2)(i)(D)',
+}
+
+/**
  * Below this, (j)(13)(i) exempts a package from nutrition labelling altogether —
  * "Provided, That the labels for these foods bear no nutrition claims or other
  * nutrition information" — and (j)(13)(ii)(A) lets any of the displays be used.

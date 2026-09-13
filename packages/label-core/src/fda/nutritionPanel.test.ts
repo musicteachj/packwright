@@ -194,11 +194,13 @@ describe('the minimums each display answers to', () => {
 
 describe('which display a package is presented under', () => {
   it('sends a tabular panel on a small package to (j)(13)(ii)(A)(1)', () => {
-    expect(nutritionDisplayFor({ format: 'tabular', availableSqInches: 9 })).toBe('tabularSmallJ13')
+    expect(nutritionDisplayFor({ format: 'tabular', availableSurfaceSqInches: 9 })).toBe(
+      'tabularSmallJ13',
+    )
     expect(
       nutritionDisplayFor({
         format: 'tabular',
-        availableSqInches: 30,
+        availableSurfaceSqInches: 30,
         cannotAccommodateVertical: true,
       }),
     ).toBe('tabularSmallJ13')
@@ -208,7 +210,9 @@ describe('which display a package is presented under', () => {
     // (d)(11)(iii)'s route — insufficient continuous vertical space — carries no
     // area limit, so this is the display a 60 in² tall thin label reaches, and it
     // keeps the 22 point numeral.
-    expect(nutritionDisplayFor({ format: 'tabular', availableSqInches: 60 })).toBe('tabularD11')
+    expect(nutritionDisplayFor({ format: 'tabular', availableSurfaceSqInches: 60 })).toBe(
+      'tabularD11',
+    )
     expect(nutritionTypeForDisplay('tabularD11').caloriesFigurePt).toBe(22)
   })
 
@@ -221,13 +225,21 @@ describe('which display a package is presented under', () => {
   it('takes the lower pair where a small package also carries a dual column', () => {
     // Both (j)(13)(ii)(A)(1) and (e)(6)(ii) reach it, and a panel entitled to two
     // displays must clear only the smaller minimum.
-    expect(nutritionDisplayFor({ format: 'tabular', availableSqInches: 9, dualColumn: true })).toBe(
-      'tabularSmallJ13',
-    )
+    expect(
+      nutritionDisplayFor({
+        format: 'tabular',
+        availableSurfaceSqInches: 9,
+        columns: { mode: 'dual' as const },
+      }),
+    ).toBe('tabularSmallJ13')
   })
 
   it('has only one paragraph for the linear display', () => {
-    expect(nutritionDisplayFor({ format: 'linear', availableSqInches: 9 })).toBe('linearSmallJ13')
-    expect(nutritionDisplayFor({ format: 'linear', availableSqInches: 60 })).toBe('linearSmallJ13')
+    expect(nutritionDisplayFor({ format: 'linear', availableSurfaceSqInches: 9 })).toBe(
+      'linearSmallJ13',
+    )
+    expect(nutritionDisplayFor({ format: 'linear', availableSurfaceSqInches: 60 })).toBe(
+      'linearSmallJ13',
+    )
   })
 })

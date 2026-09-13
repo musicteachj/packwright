@@ -229,6 +229,37 @@ describe('POST /api/labels/us-food/export', () => {
     expect((await postFood(withoutContainer)).status).toBe(400)
   })
 
+  it('accepts a dual-column panel on a tabular display', async () => {
+    // The two axes combine, which is the point of separating them: 101.9(e)(6)(ii)
+    // illustrates exactly this label. A flat `format` enum could not carry it.
+    const response = await postFood({
+      ...FOOD_BODY,
+      nutritionFacts: {
+        servingSize: '1/2 cup (40g)',
+        amounts: { calories: 150 },
+        format: 'tabular',
+        availableSurfaceSqInches: 80,
+        continuousVerticalSpaceInches: 2,
+        columns: { mode: 'dual', basis: 'as-prepared', headings: ['As packaged', 'As prepared'] },
+      },
+    })
+    expect(response.status).toBe(200)
+  })
+
+  it('refuses a column basis the regulation does not name', async () => {
+    // The union comes from `DUAL_COLUMN_BASES`, so the boundary cannot drift from
+    // the paragraphs behind it.
+    const response = await postFood({
+      ...FOOD_BODY,
+      nutritionFacts: {
+        servingSize: '1/2 cup (40g)',
+        amounts: { calories: 150 },
+        columns: { mode: 'dual', basis: 'per-fortnight' },
+      },
+    })
+    expect(response.status).toBe(400)
+  })
+
   it('names the download after the food', async () => {
     const response = await postFood(FOOD_BODY)
     expect(response.headers['content-disposition']).toContain('Rolled-oats.pdf')

@@ -37,7 +37,11 @@
  */
 
 import { MM_PER_POINT } from '../geometry/units'
-import { type NutritionFormat, smallPackageRouteApplies } from './nutritionFormats'
+import {
+  type NutritionColumnMode,
+  type NutritionFormat,
+  smallPackageRouteApplies,
+} from './nutritionFormats'
 
 /** A point, in millimetres, for the figures below. 1 pt = 25.4/72 mm. */
 const pt = (points: number): number => points * MM_PER_POINT
@@ -235,6 +239,11 @@ export function nutritionTypeForDisplay(display: NutritionDisplay): NutritionTyp
 /**
  * Which of 101.9's illustrated displays a panel is presented under.
  *
+ * **Takes the panel itself**, structurally, so the two callers that need the
+ * answer — the renderer and the type-size rule — cannot spell the mapping
+ * differently. They each built the argument by hand at first, which is two copies
+ * of a decision and one of them free to drift.
+ *
  * The base display says tabular or linear; it does not say *by which paragraph*,
  * and the type sizes turn on that. `smallPackageRouteApplies` answers it from
  * the same area and shape facts the entitlement uses, so the two cannot come to
@@ -247,31 +256,35 @@ export function nutritionTypeForDisplay(display: NutritionDisplay): NutritionTyp
  * minimum, which is the stance (j)(13)(ii)(A)'s own "and the label does not say
  * so" already takes.
  */
-export function nutritionDisplayFor(input: {
-  format: NutritionFormat
-  availableSqInches?: number
+export interface NutritionDisplayInput {
+  format?: NutritionFormat
+  /** (j)(13)'s area — the whole surface available to bear labeling. */
+  availableSurfaceSqInches?: number
   cannotAccommodateVertical?: boolean
-  /** True where the panel carries an (e) dual column, which (e)(6)(ii) shows. */
-  dualColumn?: boolean
-}): NutritionDisplay {
-  if (input.format === 'vertical') return 'verticalD12'
+  /** A second set of values makes a tabular panel (e)(6)(ii)'s rather than (d)(11)'s. */
+  columns?: { mode: NutritionColumnMode }
+}
+
+export function nutritionDisplayFor(input: NutritionDisplayInput): NutritionDisplay {
+  const format = input.format ?? 'vertical'
+  if (format === 'vertical') return 'verticalD12'
 
   const small =
-    input.availableSqInches !== undefined &&
+    input.availableSurfaceSqInches !== undefined &&
     smallPackageRouteApplies({
-      availableSqInches: input.availableSqInches,
+      availableSqInches: input.availableSurfaceSqInches,
       ...(input.cannotAccommodateVertical === undefined
         ? {}
         : { cannotAccommodateVertical: input.cannotAccommodateVertical }),
     })
 
   // The linear display has only the one paragraph behind it.
-  if (input.format === 'linear') return 'linearSmallJ13'
+  if (format === 'linear') return 'linearSmallJ13'
   // A small package carrying a dual column qualifies under both (j)(13)(ii)(A)(1)
   // and (e)(6)(ii), and the small-package figures are the lower pair. Where two
   // paragraphs both reach a panel it may be set to either, so the minimum it must
   // clear is the smaller — holding it to (e)(6)(ii)'s 22 point numeral would
   // report a label (j)(13)(ii)(A)(1) permits at 14.
   if (small) return 'tabularSmallJ13'
-  return input.dualColumn === true ? 'tabularDualColumnE6ii' : 'tabularD11'
+  return input.columns?.mode === 'dual' ? 'tabularDualColumnE6ii' : 'tabularD11'
 }

@@ -8,7 +8,7 @@ import { blockingOmissions } from '../layout/omissions'
 import { MAJOR_FOOD_ALLERGENS, majorFoodAllergen } from '../fda/allergens'
 import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
 import { roundNutrientAmount } from '../fda/nutrients'
-import { nutritionTypeForDisplay } from '../fda/nutritionPanel'
+import { nutritionDisplayFor, nutritionTypeForDisplay } from '../fda/nutritionPanel'
 import { MM_PER_POINT } from '../geometry/units'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
@@ -1138,6 +1138,99 @@ describe('findings from the stage 5 review', () => {
       order: [...panel.order!, 'calories'],
     }).map((f) => f.code)
     expect(codes).toContain('FDA_NUTRITION_OUT_OF_ORDER')
+  })
+})
+
+describe('the columns axis is orthogonal to the display', () => {
+  it('sends a dual-column tabular panel to (e)(6)(ii), not to (d)(11)', () => {
+    // The combination a flat union of "formats" cannot express, and the reason
+    // the two are separate axes: (e)(6)(ii) is "(b)(2)(i)(D) and (b)(12)(i) ...
+    // for labels that use the tabular display". (d)(1)(iii) names it separately
+    // from (d)(11), so the engine has to be able to tell them apart even though
+    // the two rows currently carry the same figures.
+    expect(nutritionDisplayFor({ format: 'tabular', availableSurfaceSqInches: 80 })).toBe(
+      'tabularD11',
+    )
+    expect(
+      nutritionDisplayFor({
+        format: 'tabular',
+        availableSurfaceSqInches: 80,
+        columns: { mode: 'dual' },
+      }),
+    ).toBe('tabularDualColumnE6ii')
+  })
+
+  it('reaches that display from a document rather than only from a flag', () => {
+    // The wiring, not just the function: `columns.mode` is what sets it.
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      container: { shape: 'rectangular', widthMm: 200, heightMm: 240 },
+      nutritionFacts: {
+        ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+        format: 'tabular',
+        availableSurfaceSqInches: 80,
+        continuousVerticalSpaceInches: 2,
+        columns: { mode: 'dual', basis: 'as-prepared', headings: ['As packaged', 'As prepared'] },
+      },
+    }
+    // Drawn without error and still judged, which is what threading the axis has
+    // to achieve before anything draws a second column.
+    const findings = findingsFor(data, { widthMm: 200, heightMm: 240, marginMm: 6 })
+    expect(findings.map((f) => f.code)).toContain('FDA_NUTRITION_FORMAT_MET')
+  })
+})
+
+describe('every display finishes the same way', () => {
+  it('puts the panel element first, whichever display drew it', () => {
+    // The box and the result were built separately in each branch, and the three
+    // copies had drifted: the linear one pushed the panel element where the other
+    // two unshifted it, so a linear label listed the panel somewhere in the middle
+    // of the reading order `LabelTextView` renders. One helper now, which is also
+    // why the opaque white rect stays first among the primitives rather than
+    // painting over the bars.
+    const displays: Array<[string, UsFoodLabelData, LabelStock]> = [
+      ['vertical', US_FOOD_CONFORMANT.data, US_FOOD_CONFORMANT.stock],
+      [
+        'linear',
+        {
+          ...US_FOOD_CONFORMANT.data,
+          nutritionFacts: {
+            ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+            format: 'linear',
+            availableSurfaceSqInches: 9,
+            cannotAccommodateTabular: true,
+          },
+        },
+        US_FOOD_CONFORMANT.stock,
+      ],
+      [
+        'tabular',
+        {
+          ...US_FOOD_CONFORMANT.data,
+          container: { shape: 'rectangular', widthMm: 200, heightMm: 240 },
+          nutritionFacts: {
+            ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+            format: 'tabular',
+            availableSurfaceSqInches: 80,
+            continuousVerticalSpaceInches: 2,
+          },
+        },
+        { widthMm: 200, heightMm: 240, marginMm: 6 },
+      ],
+    ]
+
+    for (const [name, data, on] of displays) {
+      const layout = layOutUsFoodLabel({ data, stock: on })
+      const panelElements = layout.elements.filter(
+        (e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+      )
+      expect(panelElements, name).toHaveLength(1)
+      const order = layout.elements.findIndex(
+        (e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+      )
+      const panelOwned = layout.elements.filter((e) => e.elementId.startsWith('food-nutrition'))
+      expect(layout.elements[order], name).toBe(panelOwned[0])
+    }
   })
 })
 
