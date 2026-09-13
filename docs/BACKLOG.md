@@ -231,3 +231,26 @@ Helmet's default `script-src 'self'` blocks `WebAssembly.instantiate`, so zxing 
 single artifact until the policy admits it. The two directives look interchangeable and are not: the second
 re-enables `eval` and `new Function` for the whole application, which is the larger grant by far and the easy
 mistake to make in a hurry.
+
+---
+
+## Seen in a browser for the first time
+
+Phase 6 stage 2a put the app in front of a real browser. These came from looking at what it drew.
+
+**The panel draws two column headings over one column of figures.** Ticking "The panel carries a second
+column of values" seeds `headings` and `basis`, and the rail has no field for the second column's amounts —
+so the label is drawn with "Per serving" and "Per container" side by side and a single set of numbers beneath
+them. Verified against the engine: the `food-nutrition-second-column` element is correctly *not* emitted, the
+engine records a `detail` omission saying the second column was asked for and not drawn, and every rule
+declines rather than certifying anything. Nothing is falsely cleared, and since stage 0.5 the omission reaches
+the rail.
+
+The artefact is still wrong. A heading is an assertion that a column exists, and 101.9(e)(1) requires a
+heading over *each column* — not two headings over one. The engine should not draw a heading for a column it
+is not drawing, which is the same principle as `nutritionSecondColumn` being emitted only where a column was
+actually drawn. **Phase 6 stage 2b**, with the rest of the dual-column work, since it is one decision in the
+same branch of `nutritionPanel.ts`.
+
+The editor half — that the checkbox can be ticked at all with no way to supply the figures — is the existing
+"second column toggle discards its figures" entry above, and is a rail question rather than an engine one.

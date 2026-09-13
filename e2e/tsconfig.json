@@ -1,0 +1,15 @@
+{
+  // The browser tests and their config sit outside every workspace, so nothing
+  // was type-checking them: `npm run typecheck` walks the workspaces, and a type
+  // error here would have surfaced only when Playwright ran. This project checks
+  // `.vue` templates with vue-tsc for the same reason — a check that stops at the
+  // boundary of what is convenient is a check with a blind spot in it.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // `DOM` because `page.evaluate` callbacks run in the browser and reach for
+    // `document` and `getComputedStyle`; `node` for `process.env` in the config.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "../playwright.config.ts"]
+}
