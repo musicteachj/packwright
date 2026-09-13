@@ -21,6 +21,8 @@ interface FindingInput {
   measurement?: Measurement
   /** Overrides the rule's citation, for a rule enforcing more than one clause. */
   citation?: Finding['citation']
+  /** See `Finding.certifies`. Omitted means the artwork, which is the safe default. */
+  certifies?: Finding['certifies']
 }
 
 export function finding(rule: Rule, input: FindingInput): Finding {
@@ -39,6 +41,7 @@ export function finding(rule: Rule, input: FindingInput): Finding {
     citation: input.citation ?? rule.citation,
     ...(input.elementId === undefined ? {} : { elementId: input.elementId }),
     ...(input.measurement === undefined ? {} : { measurement: input.measurement }),
+    ...(input.certifies === undefined ? {} : { certifies: input.certifies }),
   }
 }
 
@@ -62,6 +65,36 @@ export function passed(
     code,
     severity: 'pass',
     message,
+    ...(elementId === undefined ? {} : { elementId }),
+    ...(citation === undefined ? {} : { citation }),
+  })
+}
+
+/**
+ * A check that ran and cleared on the document rather than on the artwork.
+ *
+ * Use this — and only this — for a verdict that stays true whatever the engine
+ * managed to draw: an entitlement, an exemption, or a fact about the food. A
+ * food excused from a second column under 101.9(b)(12)(i)(C) is excused whether
+ * or not its panel printed, so withholding that pass when the panel is omitted
+ * would delete the only explanation of why no column was demanded — and would
+ * leave the label reporting nothing at all on the point.
+ *
+ * Everything else uses `passed`, whose verdict is withheld when the element it
+ * names was not printed in full. The default is the strict one on purpose.
+ */
+export function passedOnDocument(
+  rule: Rule,
+  code: string,
+  message: string,
+  elementId?: string,
+  citation?: Finding['citation'],
+): Finding {
+  return finding(rule, {
+    code,
+    severity: 'pass',
+    message,
+    certifies: 'document',
     ...(elementId === undefined ? {} : { elementId }),
     ...(citation === undefined ? {} : { citation }),
   })

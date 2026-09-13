@@ -800,3 +800,44 @@ describe('the Nutrition Facts panel in the editor', () => {
     expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_MISSING')).toBe(false)
   })
 })
+
+/**
+ * A withheld pass has to read as withheld.
+ *
+ * `runRules` declines to certify an element the engine could not print, which is
+ * the fix for a label whose net quantity was drawn 57 mm off the panel and whose
+ * five 101.7 rules all reported compliant. Silence would have been the wrong
+ * half of that fix: the rail would simply show five fewer passes, which is
+ * indistinguishable from five checks nobody wrote.
+ */
+describe('an element the engine could not draw', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('says so in the rail, and is certified by nothing', async () => {
+    const { store, wrapper } = await mountFood()
+
+    // 101.7(i) sizes the declaration from the package, so a carton far larger
+    // than its artwork demands type too wide for the label to hold.
+    store.foodData.container = { shape: 'rectangular', widthMm: 1800, heightMm: 1800 }
+    await nextTick()
+
+    expect(
+      store.uncertifiable.map((item) => item.elementId),
+      'the premise: the engine must have recorded what it could not draw',
+    ).toContain('food-net-quantity')
+
+    const netQuantityPasses = store.passes.filter((f) => f.elementId === 'food-net-quantity')
+    expect(
+      netQuantityPasses,
+      'a declaration drawn off the label cannot be cleared by any of its rules',
+    ).toEqual([])
+
+    const rail = wrapper.find('section[aria-labelledby="cannot-check-heading"]')
+    expect(rail.exists(), 'the rail must explain the checks it declined').toBe(true)
+    expect(rail.text()).toMatch(/not printed/i)
+
+    // The live region has to agree with the block above it, or the announcement
+    // contradicts what is on screen.
+    expect(wrapper.find('[aria-live="polite"]').text()).toMatch(/could not be checked/i)
+  })
+})

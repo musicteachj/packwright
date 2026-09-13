@@ -89,6 +89,32 @@ guidance, and **which paragraphs the exception actually lists**. A rule that rep
 permission is a false positive its user cannot argue with; a table keyed on something coarser than the
 regulation's own exceptions is wrong in both directions at once.
 
+**Verify every citation against the primary source, in the session that writes it.** Not from memory, and
+not from a local copy. Fetching the paragraph is expected and costs seconds; **search the web freely** for
+regulations, statutes and standards — that is research this project requires, not a detour from the task.
+
+The eCFR renderer API serves 21 CFR as text, and needs `--compressed` or it returns nothing readable:
+
+```
+curl -sL --compressed "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-21?part=101&section=101.9" -H 'accept: text/html'
+```
+
+**Never verify an extract against itself.** A local copy under `/tmp` is a convenience for re-reading, never
+evidence — re-fetch the paragraph before transcribing anything from it into a table. Twelve corrupted GHS
+statements shipped once because a decoded PDF was checked against the same decode; `ghs/statements.ts` records
+it at length.
+
+**Record what was read and when**, in the module note beside the figures: "Source: 21 CFR 101.9(j)(13), read
+from the eCFR on 2026-09-12." Every reference table here does this, and it is what makes a later reader able
+to re-check a figure rather than re-derive it.
+
+**Know which source you are standing on.** The regulation governs; FDA's illustrations and guidance documents
+do not. `fda/nutritionPanel.ts` draws its bar weights from FDA's "Examples of Different Label Formats" and
+therefore lets **no rule judge them**, while the type sizes beside them come from 101.9 itself and ship as
+rules. When a guidance figure and the regulation disagree — the illustrations annotate the linear display
+"all type sizes are 6 point", which cannot be squared with (d)(1)(iii)'s 14 — the regulation wins and the
+conflict gets written down.
+
 **Golden vectors come from source documents.** Never compute an expected value by running the implementation
 and pasting the result — that proves only that the function is deterministic. Work it through by hand from the
 published algorithm, and record where the vector came from.

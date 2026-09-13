@@ -38,6 +38,31 @@ Phase 5, stage 6 (in progress) — the dual-column display, drawn and judged.
 
 ### Fixed
 
+- **No rule read the omissions, so the fix below only ever landed in half the engine.** The entry that
+  follows records the net quantity at x −57.5 mm being given an omission; what it did not do was make
+  anything read it. All 34 rules ignored `layout.omissions` entirely — the only mention of it anywhere in
+  `rules/` was `gtinCheckDigit.ts` borrowing an element id — so the same 1800 mm carton on 120 mm stock still
+  came back with **eighteen findings and every one of them a pass**, five of them the net-quantity rules
+  certifying a declaration more than half of which is off the label. `runRules` now withholds any pass for an
+  element the engine recorded as not printed. The violations are untouched, for the reason `quietZone.ts`
+  records at length: an earlier fix there skipped the uncertifiable element outright and manufactured a
+  second false clearance out of the first.
+- **`elementId` was saying where to look and being read as what was judged.** The first version of that guard
+  keyed on `elementId` alone and deleted two entitlements — 101.9(b)(12)(i)(C)'s exemption and
+  (j)(13)(ii)(A)'s format permission — both of which point at the nutrition panel so the canvas can highlight
+  it, and neither of which says anything about what printed. A food excused from carrying a second column is
+  excused whether or not its panel fit on the stock. `Finding.certifies` now names the difference, defaulting
+  to `artwork`, because a wrong guess in that direction withholds a pass that was earned where the other way
+  round certifies ink that was never laid down.
+- **The statement of identity was the one mandatory element that could leave the substrate in silence.** It is
+  drawn by its own loop rather than through `stackText`, so it never inherited that helper's bounds check —
+  the check whose own comment records phase 4 shipping this exact hole for the GHS product identifier. A
+  59-character identity on an 18 mm label ran off the bottom, recorded nothing, and `us-food/statement-of-
+  identity` read the document and cleared it.
+- **A declined check now reads as declined.** Withholding a pass silently would have been the wrong half of
+  the fix: the rail would show five fewer passes for the same label, which is indistinguishable from five
+  checks nobody wrote. The "Cannot be checked" block already existed for symbols no rule judges, and now
+  carries the engine's omissions beside them.
 - **The net quantity was the only drawn element with no overflow check.** 101.7(i) sizes the declaration from
   the *package*, not from the label, so a container far larger than the artwork derives type wider than the
   substrate: a 1800 mm carton on the default 120 mm stock put it at x −57.5 mm, entirely off the label, with

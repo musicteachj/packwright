@@ -181,6 +181,7 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       panel.yMm +
       identityLines.length * type.statementOfIdentityMm * type.lineHeight +
       type.blockGapMm
+    const identityHeightMm = identityLines.length * type.statementOfIdentityMm * type.lineHeight
     elements.push({
       elementId: US_FOOD_ELEMENTS.statementOfIdentity,
       label: 'Statement of identity',
@@ -188,9 +189,35 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
         xMm: panel.xMm,
         yMm: panel.yMm,
         widthMm: panel.widthMm,
-        heightMm: identityLines.length * type.statementOfIdentityMm * type.lineHeight,
+        heightMm: identityHeightMm,
       },
     })
+
+    // The same bounds check `stackText` performs, and for the same reason. This
+    // block is drawn by its own loop rather than through that helper, so it did
+    // not inherit the check — and the statement of identity was the one mandatory
+    // element that could run off the substrate with nothing recording it. 21 CFR
+    // 101.3(a) puts it on the principal display panel; a label whose identity is
+    // printed past the bottom edge has not satisfied that, and until this said so
+    // `us-food/statement-of-identity` read the document and cleared it anyway.
+    const identityBottomMm = panel.yMm + identityHeightMm
+    if (panel.yMm >= stock.heightMm) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.statementOfIdentity,
+        reason:
+          `The statement of identity begins ${mmText(panel.yMm)} down a ` +
+          `${mmText(stock.heightMm)} label, past its bottom edge, so none of it is printed.`,
+        scope: 'element',
+      })
+    } else if (identityBottomMm > stock.heightMm) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.statementOfIdentity,
+        reason:
+          `The statement of identity runs ${mmText(identityBottomMm - stock.heightMm)} past the ` +
+          `bottom of a ${mmText(stock.heightMm)} label, so part of it is not printed.`,
+        scope: 'detail',
+      })
+    }
   }
 
   // Drawn as one run. 15 U.S.C. 1453(a)(2) wants both systems on the panel and
