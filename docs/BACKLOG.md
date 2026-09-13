@@ -183,3 +183,18 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
 - **`generate-font-metrics.mjs`'s missing-glyph guards are dead.** fontkit returns `.notdef` rather than
   `undefined`, so a face lacking a character would record `.notdef`'s advance as that character's real width.
   Tooling rather than shipped code, but it is the generator the measurement tables come from.
+
+---
+
+## Serving the client
+
+**Nothing is compressed.** The API serves `apps/web`'s build uncompressed, and the largest chunk is
+`LabelCanvas-*.js` at roughly 1.07 MB — bwip-js, which the canvas needs and which nothing currently splits
+out of the first load. Vite's dev server gzips; this one does not, and an ALB does not compress on a task's
+behalf either, so the deployed app would ship the full megabyte on every cold visit.
+
+Not fixed in phase 6 stage 1 because it needs a dependency (`compression`, or a reverse proxy doing it) and
+the stage's done-when is that the build collapses to one artifact, which it now does. It is a real
+user-facing cost rather than a tidiness point, and it belongs either with phase 8's deployment — where
+CloudFront in front of the ALB would settle it without a dependency at all — or with a decision to code-split
+bwip-js out of the initial chunk, which is the better fix and the larger one. Found by the stage 1 review.
