@@ -36,6 +36,7 @@
  */
 
 import { foodSourceName, majorFoodAllergen } from '../../fda/allergens'
+import type { MajorFoodAllergenId } from '../../fda/allergens'
 import type { TextPrimitive } from '../../layout/types'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { UsFoodIngredient } from '../../templates/usFood'
@@ -72,12 +73,18 @@ const SPECIFIC: Citation = {
  * The one place they are not equal is (B)(ii)'s caveat: the appearance does not
  * count where it is "part of the name of a food ingredient that is not a major
  * food allergen". Coconut milk contains no dairy, so the word "milk" in it
- * discharges nothing — which is why non-allergen ingredient names are struck out
+ * discharges nothing — which is why the names of other ingredients are struck out
  * of the printed list before it is searched, rather than the whole string being
  * matched.
+ *
+ * **"Other" means other than this allergen**, and that is the whole of it. The
+ * search is run once per allergen, and only the names of ingredients bearing
+ * *that* allergen are left standing — so a food-source word can only ever settle
+ * the question it belongs to.
  */
 function declaresSource(
   source: string,
+  allergenId: MajorFoodAllergenId,
   printedList: string,
   printedContains: string,
   ingredients: readonly UsFoodIngredient[],
@@ -93,7 +100,20 @@ function declaresSource(
     // rail's "Add an ingredient" button inserts exactly that row, so a label
     // printing `whey (milk)` reported milk undeclared the moment a user clicked
     // it — and went back to clean when the row was filled in.
-    if (ingredient.allergen !== undefined || ingredient.name.trim() === '') continue
+    if (ingredient.name.trim() === '') continue
+
+    // **What survives is only the names of ingredients that are this allergen.**
+    // The test used to keep every ingredient that bore *any* allergen, which is
+    // not what (B)(ii)'s caveat asks and not what the note above this function
+    // says it does. `coconut milk` carries tree-nuts, so it was left in the
+    // searchable list, and the word "milk" inside it then discharged the *dairy*
+    // declaration of an undeclared `whey` beside it — a food-source word settling
+    // a different allergen's question. The whole label came back clean.
+    //
+    // Striking out by "is not this allergen" rather than by "has no allergen"
+    // reads the caveat the way the example demands: an appearance counts only
+    // where it identifies the source it is being searched for.
+    if (ingredient.allergen === allergenId) continue
     searchable = searchable.split(ingredient.name.toLowerCase()).join(' ')
   }
   return searchable.includes(needle)
@@ -155,7 +175,7 @@ export const usFoodAllergenRule: UsFoodRule = {
 
       // Either form satisfies (w)(1). They are alternatives in the statute and
       // demanding both would report a violation against a compliant label.
-      if (declaresSource(source, printedList, printedContains, ingredients)) continue
+      if (declaresSource(source, id, printedList, printedContains, ingredients)) continue
 
       findings.push(
         finding(usFoodAllergenRule, {

@@ -30,6 +30,7 @@ import { usFoodIngredientListRule, usFoodIngredientThresholdRule } from './usFoo
 import { usFoodInformationPanelTypeSizeRule } from './usFood/informationPanelTypeSize'
 import {
   usFoodNutritionCompletenessRule,
+  usFoodServingSizeRule,
   usFoodNutritionOrderRule,
   usFoodNutritionPercentDvRule,
   usFoodNutritionRoundingRule,
@@ -42,6 +43,7 @@ import { usFoodNetQuantityPresentRule } from './usFood/netQuantityPresent'
 import { usFoodNetQuantitySeparationRule } from './usFood/netQuantitySeparation'
 import { usFoodNetQuantityTypeSizeRule } from './usFood/netQuantityTypeSize'
 import { usFoodResponsibleFirmRule } from './usFood/responsibleFirm'
+import { usFoodStatementOfIdentityRule } from './usFood/statementOfIdentity'
 import type {
   GhsChemicalRule,
   Gs1RetailRule,
@@ -110,6 +112,7 @@ export const GHS_RULES: readonly GhsChemicalRule[] = [
  *   on the label rather than only in this comment.
  */
 export const US_FOOD_RULES: readonly UsFoodRule[] = [
+  usFoodStatementOfIdentityRule,
   usFoodNetQuantityPresentRule,
   usFoodNetQuantityTypeSizeRule,
   usFoodNetQuantityPlacementRule,
@@ -120,6 +123,7 @@ export const US_FOOD_RULES: readonly UsFoodRule[] = [
   usFoodAllergenRule,
   usFoodContainsStatementTypeRule,
   usFoodNutritionCompletenessRule,
+  usFoodServingSizeRule,
   usFoodNutritionOrderRule,
   usFoodNutritionRoundingRule,
   usFoodNutritionPercentDvRule,

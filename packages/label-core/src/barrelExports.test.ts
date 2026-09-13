@@ -44,6 +44,8 @@ import * as usFoodNetQuantityPresentRule from './rules/usFood/netQuantityPresent
 import * as usFoodNetQuantitySeparationRule from './rules/usFood/netQuantitySeparation'
 import * as usFoodNetQuantityTypeSizeRule from './rules/usFood/netQuantityTypeSize'
 import * as usFoodResponsibleFirmRule from './rules/usFood/responsibleFirm'
+import * as usFoodStatementOfIdentityRule from './rules/usFood/statementOfIdentity'
+import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES } from './rules/registry'
 import * as findingBuilders from './rules/finding'
 import * as rulesBarrel from './rules/index'
 import * as registry from './rules/registry'
@@ -191,6 +193,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['usFood/nutritionFormat.ts', usFoodNutritionFormatRule],
       ['usFood/informationPanelTypeSize.ts', usFoodInformationPanelTypeSizeRule],
       ['usFood/responsibleFirm.ts', usFoodResponsibleFirmRule],
+      ['usFood/statementOfIdentity.ts', usFoodStatementOfIdentityRule],
     ],
   ],
   [
@@ -241,4 +244,22 @@ describe('barrel exports', () => {
       expect(missing).toEqual([])
     },
   )
+
+  it('lists a module for every rule the registries run', () => {
+    // The table above can only check what it lists, so a rule module left out of
+    // it is unguarded precisely because it is missing — which is how
+    // `usFood/statementOfIdentity.ts` shipped outside the invariant while every
+    // other rule module sat inside it. Driven from the registries instead, so a
+    // new rule cannot be registered without being covered here.
+    const listed = MODULES.flatMap(([, , members]) => members.map(([, module]) => module))
+    const covered = new Set(
+      listed.flatMap((module) => Object.values(module as Record<string, unknown>)),
+    )
+    const uncovered = [...GS1_RETAIL_RULES, ...GHS_RULES, ...US_FOOD_RULES]
+      .filter((rule) => !covered.has(rule))
+      .map((rule) => rule.id)
+      .sort()
+
+    expect(uncovered, 'these rules are in no module the barrel test checks').toEqual([])
+  })
 })

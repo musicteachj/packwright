@@ -4,6 +4,7 @@ import {
   NUTRIENT_IDS,
   nutrient,
   percentDailyValue,
+  permittedNutrientAmounts,
   roundNutrientAmount,
 } from './nutrients'
 
@@ -82,6 +83,28 @@ describe('rounding a declared amount', () => {
     // 52 is above 50, so the band is 10 and not 5: 50, not 55.
     expect(roundNutrientAmount('calories', 52)).toBe(50)
     expect(roundNutrientAmount('calories', 236)).toBe(240)
+  })
+
+  it('offers both lawful answers below five calories — 101.9(c)(1)', () => {
+    // "may be expressed as zero", not "shall". So 3 calories is lawfully declared
+    // as the nearest 5-calorie increment the main clause gives, or as the 0 the
+    // exception permits, and a rule that accepted only one reported the other as a
+    // violation against a compliant label.
+    expect([...permittedNutrientAmounts('calories', 3)].sort((a, b) => a - b)).toEqual([0, 5])
+    expect([...permittedNutrientAmounts('calories', 4.9)].sort((a, b) => a - b)).toEqual([0, 5])
+
+    // Below 2.5 the nearest 5-calorie increment is already zero, so there is one
+    // answer arrived at twice rather than a choice. This narrowness is why the
+    // defect survived: the obvious small values do not show it.
+    expect(permittedNutrientAmounts('calories', 2)).toEqual([0])
+    expect(permittedNutrientAmounts('calories', 47)).toEqual([45])
+  })
+
+  it('offers one answer wherever the regulation states a shall — 101.9(c)(2), (c)(4)', () => {
+    // Fat's floor says "shall be expressed as zero" and sodium's states the zero
+    // as part of the declaration, so neither is a choice the label gets to make.
+    expect(permittedNutrientAmounts('total-fat', 0.4)).toEqual([0])
+    expect(permittedNutrientAmounts('sodium', 3)).toEqual([0])
   })
 
   it('rounds fat to half grams below 5 and whole grams above — 101.9(c)(2)', () => {

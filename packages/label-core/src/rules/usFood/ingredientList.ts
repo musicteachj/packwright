@@ -33,6 +33,7 @@ import { finding, passed } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_INGREDIENTS_MISSING = 'FDA_INGREDIENTS_MISSING'
+export const FDA_INGREDIENT_NAME_MISSING = 'FDA_INGREDIENT_NAME_MISSING'
 export const FDA_INGREDIENTS_OUT_OF_ORDER = 'FDA_INGREDIENTS_OUT_OF_ORDER'
 export const FDA_INGREDIENTS_ORDER_MET = 'FDA_INGREDIENTS_ORDER_MET'
 export const FDA_INGREDIENTS_EXEMPT = 'FDA_INGREDIENTS_EXEMPT'
@@ -55,6 +56,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
   citation: CITATION,
   codes: [
     FDA_INGREDIENTS_MISSING,
+    FDA_INGREDIENT_NAME_MISSING,
     FDA_INGREDIENTS_OUT_OF_ORDER,
     FDA_INGREDIENTS_ORDER_MET,
     FDA_INGREDIENTS_EXEMPT,
@@ -94,6 +96,31 @@ export const usFoodIngredientListRule: UsFoodRule = {
             'unless § 101.100 exempts it, which this label does not claim.',
           measurement: { actual: 'no ingredients listed', required: 'an ingredient statement' },
           elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+        }),
+      ]
+    }
+
+    // 101.4(a)(1) does not merely require a list — ingredients "shall be listed
+    // by **common or usual name**". An entry with no name at all is not one, and
+    // the engine draws it: a blank reaches the statement as "INGREDIENTS: oats, ,
+    // salt.", which is why the removal handler in the rail carries a comment
+    // about having once drawn "INGREDIENTS: .". Nothing reported it, and the API
+    // rejected the document instead — a `min(1)` standing in for a rule, which
+    // turned a compliance finding into a 400 on the one screen a user meets it.
+    const unnamed = ingredients.filter((ingredient) => ingredient.name.trim() === '').length
+    if (unnamed > 0) {
+      return [
+        finding(usFoodIngredientListRule, {
+          code: FDA_INGREDIENT_NAME_MISSING,
+          severity: 'violation',
+          message:
+            `${unnamed === 1 ? 'An ingredient is' : `${unnamed} ingredients are`} listed with no ` +
+            'name. 101.4(a)(1) requires each to be listed by its common or usual name.',
+          measurement: {
+            actual: `${unnamed} unnamed of ${ingredients.length}`,
+            required: 'a common or usual name for every ingredient',
+          },
+          elementId: US_FOOD_ELEMENTS.ingredients,
         }),
       ]
     }

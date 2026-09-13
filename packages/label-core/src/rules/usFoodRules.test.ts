@@ -34,6 +34,20 @@ import {
 } from './index'
 import { US_FOOD_RULES, runRules } from './registry'
 
+/**
+ * Fixtures by name, never by index.
+ *
+ * Three tests here indexed into `US_FOOD_FIXTURES` positionally, so adding a
+ * fixture at the front of the list silently repointed them at a different label —
+ * two failed loudly and one asserted the wrong thing about the wrong document.
+ * The name is the fixture's identity; its position is not.
+ */
+const fixture = (name: string) => {
+  const match = US_FOOD_FIXTURES.find((f) => f.name === name)
+  if (match === undefined) throw new Error(`no fixture named "${name}"`)
+  return match
+}
+
 const findingsFor = (data: UsFoodLabelData, stock: LabelStock) =>
   runRules({ labelType: 'us-food', data, stock, layout: layOutUsFoodLabel({ data, stock }) })
 
@@ -94,7 +108,9 @@ describe('the panel belongs to the package, not to the label stock', () => {
     // round has a 37.20 in² panel — the 3/16 inch band — while the 60 × 90 mm
     // label wrapped round it is 8.37 in², whose band is 1/8. The requirement the
     // finding states must be the larger one.
-    const { data, stock } = US_FOOD_FIXTURES[2]!
+    const { data, stock } = fixture(
+      'type sized for the label rather than for the cylinder it wraps',
+    )
     const findings = findingsFor(data, stock)
     const match = findings.find((f) => f.code === FDA_NET_QUANTITY_TYPE_TOO_SMALL)
     expect(match!.measurement!.required).toBe('4.76 mm')
@@ -123,7 +139,7 @@ describe('a declaration formed in the surface rather than printed', () => {
   // The fixture and this pair together are what make the finding attributable to
   // 101.7(i)'s closing sentence: the label, the panel, the text and the em are
   // identical, and only `markingMethod` differs.
-  const molded = US_FOOD_FIXTURES[1]!
+  const molded = fixture('type sized for the printed band on a declaration molded into the bottle')
 
   it('fails at a size that clears the printed band', () => {
     const codes = findingsFor(molded.data, molded.stock).map((f) => f.code)
@@ -151,7 +167,7 @@ describe('the em is not the letter height', () => {
     // drawn primitive's `fontSizeMm` is 4.7625 — numerically the 3/16 inch this
     // panel requires, so `fontSizeMm >= requiredMm` is true — while the letter
     // the regulation measures stands at 54% of the minimum.
-    const { data, stock } = US_FOOD_FIXTURES[0]!
+    const { data, stock } = fixture('type sized as though the em were the letter height')
     const layout = layOutUsFoodLabel({ data, stock })
     const drawn = layout.primitives.find(
       (primitive): primitive is TextPrimitive =>
@@ -1122,6 +1138,63 @@ describe('findings from the stage 5 review', () => {
       order: [...panel.order!, 'calories'],
     }).map((f) => f.code)
     expect(codes).toContain('FDA_NUTRITION_OUT_OF_ORDER')
+  })
+})
+
+describe('the Contains statement sits where §403(w)(1)(A) puts it', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+
+  it('stays adjacent at a type size tighter than the generic block gap', () => {
+    // The allowance is one line of the ingredient list, and the engine used to
+    // leave a fixed 3 mm between every pair of blocks — so below an ingredient em
+    // of about 2.3 mm the engine's own tightest layout reported itself
+    // non-adjacent, and this label came back with a spurious finding beside the
+    // type-size ones it was written for.
+    const small: UsFoodLabelData = { ...US_FOOD_CONFORMANT.data, informationPanelFontSizeMm: 2 }
+    expect(findingsFor(small, stock).map((f) => f.code)).not.toContain('FDA_CONTAINS_NOT_ADJACENT')
+  })
+
+  it('still reports a statement pushed away on purpose', () => {
+    // The other direction: tightening the default must not make the rule
+    // unfailable. `containsStatementGapMm` is how a label is drawn adrift.
+    const adrift: UsFoodLabelData = { ...US_FOOD_CONFORMANT.data, containsStatementGapMm: 40 }
+    expect(findingsFor(adrift, stock).map((f) => f.code)).toContain('FDA_CONTAINS_NOT_ADJACENT')
+  })
+})
+
+describe('a permission the rounding rule has to accept either way', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const withCalories = (analysed: number, declared: number): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    nutritionFacts: {
+      ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      amounts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!.amounts, calories: analysed },
+      declaredAmounts: { calories: declared },
+    },
+  })
+
+  it('accepts the zero 101.9(c)(1) permits below five calories', () => {
+    expect(findingsFor(withCalories(3, 0), stock).map((f) => f.code)).not.toContain(
+      FDA_NUTRITION_ROUNDING_WRONG,
+    )
+  })
+
+  it('accepts the nearest 5-calorie increment for the same amount', () => {
+    // The half the rule used to report. "Amounts less than 5 calories *may* be
+    // expressed as zero" is a permission, so the main clause's answer stays
+    // lawful — and 5 is what a label that declines the permission prints.
+    expect(findingsFor(withCalories(3, 5), stock).map((f) => f.code)).not.toContain(
+      FDA_NUTRITION_ROUNDING_WRONG,
+    )
+  })
+
+  it('still reports an amount neither clause allows', () => {
+    // The permission is two answers, not any answer.
+    const match = findingsFor(withCalories(3, 3), stock).find(
+      (f) => f.code === FDA_NUTRITION_ROUNDING_WRONG,
+    )
+    expect(match).toBeDefined()
+    expect(match!.measurement!.required).toBe('0 or 5')
   })
 })
 

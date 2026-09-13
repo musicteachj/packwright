@@ -18,6 +18,7 @@ export {
   US_FOOD_ELEMENTS,
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
+  NUTRITION_ELEMENT_PREFIX,
   NUTRITION_ROW_PREFIX,
   nutritionRowElementId,
 } from './usFood'

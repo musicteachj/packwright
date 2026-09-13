@@ -263,6 +263,44 @@ export function roundingIsCheckable(id: NutrientId): boolean {
   return BY_ID.get(id)?.rounding.kind !== 'levels-of-significance'
 }
 
+/**
+ * Every amount a label may lawfully declare for this nutrient — usually one, and
+ * for calories under five, two.
+ *
+ * `roundNutrientAmount` has to return a single number, because the renderer has
+ * to draw something. A rule has no such excuse, and where the regulation offers
+ * a choice it must accept either answer.
+ *
+ * **101.9(c)(1) is the case.** Calories are "expressed to the nearest 5-calorie
+ * increment up to and including 50 calories ... except that amounts less than 5
+ * calories **may** be expressed as zero." *May*, not *shall* — so an analysed 3
+ * calories is lawfully declared as 5 by the main clause **or** as 0 by the
+ * exception, and both appear on real labels. The rounding rule compared against
+ * the single permitted value and reported the other as a violation.
+ *
+ * The divergence is narrower than it looks and that is why it survived: below
+ * 2.5 the nearest 5-calorie increment is already zero, so the two answers differ
+ * only across `[2.5, 5)`.
+ *
+ * No other nutrient needs this. Fat's floor at (c)(2) says "**shall** be
+ * expressed as zero" and sodium's at (c)(4) states the zero as part of the
+ * declaration itself, so neither offers a choice; and the gram nutrients at
+ * (c)(6) round to zero and permit zero at the same threshold, which is one
+ * answer arrived at twice. Their *textual* alternative — "the statement 'Contains
+ * less than 1 gram' ... may be used" — is a string rather than a number and is
+ * not something this comparison can express.
+ */
+export function permittedNutrientAmounts(id: NutrientId, value: number): readonly number[] {
+  const entry = BY_ID.get(id)
+  if (entry === undefined || !Number.isFinite(value)) return [value]
+
+  const rounded = roundNutrientAmount(id, value)
+  if (entry.rounding.kind !== 'calories' || value >= 5) return [rounded]
+
+  const nearest = toNearest(value, 5)
+  return nearest === rounded ? [rounded] : [rounded, nearest]
+}
+
 export function nutrient(id: string): Nutrient | undefined {
   return BY_ID.get(id as NutrientId)
 }

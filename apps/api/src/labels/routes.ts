@@ -224,14 +224,34 @@ const ContainerSchema = z.discriminatedUnion('shape', [
   }),
 ])
 
+/**
+ * **A blank here is a compliance finding, not a malformed request.**
+ *
+ * These five fields were `z.string().min(1)`, which made the API reject label
+ * documents the engine is built to draw and the rules to report — the editor's
+ * own "Add an ingredient" button writes an entry with an empty name, so clicking
+ * it turned Export into a raw-JSON 400. A `min(1)` standing in for a rule is a
+ * schema deciding a regulatory question, and it decides it in the one place a
+ * user cannot see a citation.
+ *
+ * Relaxed only once each had a rule behind it. Before this stage a blank
+ * `statementOfIdentity`, ingredient name or `servingSize` was reported by
+ * *nothing*, so relaxing them then would have traded a visible 400 for a silent
+ * pass, which is the worse of the two failures by a long way. The GS1 and GHS
+ * `min(1)`s stay: a blank `DigitalLink.domain` or `Artwork.text` is a malformed
+ * request rather than a non-compliant label, and the schema is the right place
+ * for those.
+ */
+const NON_COMPLIANT_BUT_WELL_FORMED = z.string()
+
 const NetQuantitySchema = z.object({
-  inchPound: z.string().min(1),
+  inchPound: NON_COMPLIANT_BUT_WELL_FORMED,
   metric: z.string().optional(),
   packaging: z.enum(US_FOOD_PACKAGINGS).optional(),
 })
 
 const IngredientSchema = z.object({
-  name: z.string().min(1),
+  name: NON_COMPLIANT_BUT_WELL_FORMED,
   percentByWeight: z.number().min(0).max(100),
   // Derived from label-core's own list rather than restated. An allergen id one
   // character off would be discarded silently and the label would declare
@@ -243,7 +263,7 @@ const IngredientSchema = z.object({
 })
 
 const ResponsibleFirmSchema = z.object({
-  name: z.string().min(1),
+  name: NON_COMPLIANT_BUT_WELL_FORMED,
   isManufacturer: z.boolean(),
   qualifyingPhrase: z.string().optional(),
   streetAddress: z.string().optional(),
@@ -321,7 +341,7 @@ function toResponsibleFirm(firm: z.infer<typeof ResponsibleFirmSchema>): UsFoodR
 const NutrientAmounts = z.partialRecord(z.enum(NUTRIENT_IDS), z.number()).optional()
 
 const NutritionFactsSchema = z.object({
-  servingSize: z.string().min(1),
+  servingSize: NON_COMPLIANT_BUT_WELL_FORMED,
   servingsPerContainer: z.number().positive().optional(),
   // `partialRecord`, not `record`. Zod 4 makes a record over an enum key
   // **exhaustive**, so `z.record` here demanded all fifteen nutrients and
@@ -342,7 +362,7 @@ const NutritionFactsSchema = z.object({
 
 const UsFoodRequest = z
   .object({
-    statementOfIdentity: z.string().min(1),
+    statementOfIdentity: NON_COMPLIANT_BUT_WELL_FORMED,
     netQuantity: NetQuantitySchema,
     // Required, and not defaulted. The container selects the 101.7(i) type-size
     // band; supplying one the caller never stated would invent the requirement

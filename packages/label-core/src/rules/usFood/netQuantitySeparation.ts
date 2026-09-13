@@ -29,7 +29,7 @@ import { glyphHeightMm, measureTextMm } from '../../text/measure'
 import { regulatedGlyphBasis } from '../../geometry/pdp'
 import type { BoundingBox, Citation, Finding } from '../../types/index'
 import type { TextPrimitive } from '../../layout/types'
-import { US_FOOD_ELEMENTS } from '../../templates/usFood'
+import { NUTRITION_ELEMENT_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
@@ -63,7 +63,12 @@ const NOT_PRINTED_INFORMATION = new Set<string>([
  * are not.
  */
 const INSIDE_THE_NUTRITION_PANEL = (elementId: string): boolean =>
-  elementId.startsWith('food-nutrition-') && elementId !== US_FOOD_ELEMENTS.nutritionPanel
+  // Imported rather than spelled out. The literal `'food-nutrition-'` was a
+  // fourth copy of a prefix the sibling rules already take from `templates`, and
+  // a rename would have quietly re-admitted every nutrient row as a neighbour —
+  // turning one crowding back into a finding per row, which is the defect the
+  // note above records fixing.
+  elementId.startsWith(NUTRITION_ELEMENT_PREFIX) && elementId !== US_FOOD_ELEMENTS.nutritionPanel
 
 /** Gap along one axis. Negative where the two boxes overlap on that axis. */
 function gap(aStart: number, aSize: number, bStart: number, bSize: number): number {

@@ -10,6 +10,100 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 5, stage 6 (in progress) — three rules for three things the engine drew and nothing checked, found by
+asking why the API was rejecting documents the engine is built to draw.
+
+- **`us-food/statement-of-identity` — 21 CFR 101.3(a).** "The principal display panel of a food in package
+  form **shall** bear as one of its principal features a statement of the identity of the commodity." No
+  exception is stated anywhere in the section. It was the one mandatory element of a US food label this engine
+  drew and no rule examined: a blank reached the renderer, which drew no primitive for it, and every rule
+  reported a clean label. Only (a) is checked. (b)'s "common or usual name" is a question about 21 CFR part
+  102 and about usage rather than about a label; (d)'s "bold type" is satisfied by construction, so a rule for
+  it could never fail; (d)'s "size reasonably related to the most prominent printed matter" states no
+  measurable standard; and its "lines generally parallel to the base" is the clause `netQuantityPlacement`
+  already declines for the identical wording in 101.7(f).
+- **`FDA_INGREDIENT_NAME_MISSING` — 21 CFR 101.4(a)(1).** The paragraph does not merely require a list:
+  ingredients "**shall** be listed by **common or usual name** in descending order of predominance by weight".
+  An entry with no name is not one, and the engine draws it — "INGREDIENTS: whole grain rolled oats, sugar,
+  salt, ." — which is the shape the rail's removal handler already carries a comment about.
+- **`us-food/serving-size` — 21 CFR 101.9(d)(3)(ii).** "Information on servings per container and serving size
+  **shall** immediately follow the heading ... Such information **shall** include ... (ii) 'Serving size'".
+  **Only one of the two is unconditional**, and that asymmetry is why they are not checked as one requirement:
+  (d)(3)(i) excuses the servings count "on single serving containers as defined in paragraph (b)(6) ... or on
+  other food containers when this information is stated in the net quantity of contents declaration", while
+  (ii) states no exception at all. The rule checks that a serving size is *declared* and not that it is the
+  right one — the amount comes from the reference amount in §101.12(b), a table this project does not carry,
+  and the passing finding says so rather than implying a check that did not happen.
+
+### Fixed
+
+Phase 5, stage 6.
+
+- **Five `min(1)`s in the API were deciding regulatory questions.** `statementOfIdentity`, `netQuantity.
+  inchPound`, `ingredients[].name`, `responsibleFirm.name` and `nutritionFacts.servingSize` were all
+  `z.string().min(1)`, so the export route rejected label documents the engine exists to draw and the rules to
+  report. It was reachable from the editor: "Add an ingredient" writes `{ name: '', percentByWeight: 0 }`, so
+  clicking it turned Export into a raw-JSON 400 — a compliance finding delivered as a schema error, in the one
+  place a user cannot see a citation.
+  **The order of the fix was the whole of it.** Of the five, only two were reported by any rule; a blank
+  statement of identity, ingredient name or serving size was reported by *nothing*. Relaxing them first would
+  have traded a visible 400 for a silent pass, which is much the worse failure, so the three rules above came
+  first and the schema was relaxed after. The GS1 and GHS `min(1)`s stay: a blank `DigitalLink.domain` or
+  `Artwork.text` is a malformed request rather than a non-compliant label, and the schema is the right place
+  for those.
+- **A food-source word inside one allergen's ingredient name cleared a different allergen.**
+  §403(w)(1)(B)(ii) excuses the parenthetical where "the name of the food source ... appears elsewhere in
+  the ingredient list", except where that appearance is "part of the name of a food ingredient that is **not**
+  a major food allergen". `declaresSource` struck out the names of ingredients bearing *no* allergen and left
+  every other name standing — so `coconut milk`, which carries tree nuts, stayed in the searched text and the
+  word "milk" inside it discharged the **dairy** declaration of an undeclared `whey` beside it. The label came
+  back with no findings at all. The function's own note names coconut milk as the example it handles, and
+  handled it the other way round.
+  The search runs once per allergen, so the test is now "is this ingredient *this* allergen" rather than "does
+  this ingredient have an allergen at all": only names that identify the source being searched for survive,
+  and a food-source word can settle only the question it belongs to. This is the most serious kind of defect
+  this project can have — a false clearance on an allergen — and it had no fixture, which is why it lasted.
+- **The engine's own tightest layout failed its own adjacency rule.** §403(w)(1)(A) puts the "Contains"
+  statement "immediately after or [...] adjacent to the list of ingredients", and the rule allows a gap of one
+  line of the list. The engine placed it with the generic 3 mm it leaves between any two blocks, so below an
+  ingredient em of about 2.3 mm the gap exceeded the allowance and a conformant label reported itself
+  non-adjacent — which the project's own 2 mm information-panel fixture did, alongside the type-size findings
+  it was written for. These two blocks are specified as adjacent and are no longer spaced as though unrelated.
+  `containsStatementGapMm` is still how a label is drawn adrift on purpose, so the rule can still fail.
+- The separation rule spelled `'food-nutrition-'` as a literal where its siblings import a prefix constant.
+  It has one now, `NUTRITION_ELEMENT_PREFIX`, beside `NUTRITION_ROW_PREFIX` — a rename would otherwise have
+  quietly re-admitted every nutrient row as a neighbour and turned one crowding back into a finding per row,
+  which is the defect that constant's own note records fixing.
+- A fixture asserted its expected citation as `'21 CFR 101.9(j)'.replace('(j)', '(c)')`, which evaluates
+  correctly and hides the string from grep in the one file whose purpose is asserting exact citations.
+- **A permission enforced as a requirement, in the function whose own doc says not to.**
+  `roundNutrientAmount`'s header reads: "Where the regulation offers a *permission* rather than a requirement
+  — 'amounts less than 5 calories **may** be expressed as zero' — this returns the permitted value, because
+  that is what a label that takes the permission declares **and a rule has to accept both**." No rule accepted
+  both. `us-food/nutrition-rounding` compared `declared === required` against the single value the function
+  returns, so an analysed 3 calories declared as the 5 that 101.9(c)(1)'s main clause gives — "expressed to
+  the nearest 5-calorie increment" — was reported as a violation against a lawful label. `roundNutrientAmount`
+  has to pick one number because the renderer has to draw one; the rule does not, and now compares against
+  `permittedNutrientAmounts`. The divergence is only across `[2.5, 5)` — below 2.5 the nearest 5-calorie
+  increment is already zero — which is why obvious test values never showed it. No other nutrient needs it:
+  fat's floor says *shall*, sodium's states the zero as part of the declaration, and the gram nutrients round
+  to zero and permit zero at the same threshold.
+- **Clearing an optional number in the rail wrote an empty string into the document.** `v-model.number` runs
+  Vue's `looseToNumber`, which returns the *string* when `parseFloat` gives NaN, so emptying "Servings per
+  container" put `''` where a number goes — drawing " servings per container" with a hole in it and making
+  Export return the same raw 400 this stage set out to remove, by a different route. `typeScale` had carried a
+  guard since the panel was once drawn at zero-size type; the other two optional numbers had not. The
+  container and stock dimensions are deliberately left out: they are required, a blank has no defined meaning
+  there, and deciding what one should do is a different question.
+- The barrel test could only check the modules it listed, so a rule module left out of the table was unguarded
+  *because* it was missing — which is how `usFood/statementOfIdentity.ts` shipped outside an invariant every
+  other rule module sits inside. It is driven from the registries now, so a rule cannot be registered without
+  being covered.
+- Three tests indexed into `US_FOOD_FIXTURES` **positionally**, so adding a fixture at the front of the list
+  silently repointed them at a different label — two failed loudly and one went on asserting the wrong thing
+  about the wrong document. They look fixtures up by name now. A fixture's name is its identity; its position
+  is not.
+
 Phase 5, stage 6 (in progress) — which display a package may use. The selection rule first, because it is
 what makes five variants worth having rather than five ways to draw one panel; the reduced displays
 themselves follow.

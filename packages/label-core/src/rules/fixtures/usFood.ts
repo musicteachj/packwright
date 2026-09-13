@@ -37,6 +37,8 @@ import type { Severity } from '../../types/index'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_NUTRITION_MISSING,
+  FDA_SERVING_SIZE_MISSING,
+  FDA_STATEMENT_OF_IDENTITY_MISSING,
   FDA_NUTRITION_NUTRIENT_MISSING,
   FDA_NUTRITION_OUT_OF_ORDER,
   FDA_NUTRITION_PERCENT_DV_WRONG,
@@ -47,6 +49,7 @@ import {
   FDA_CONTAINS_NOT_ADJACENT,
   FDA_CONTAINS_TYPE_TOO_SMALL,
   FDA_INGREDIENTS_MISSING,
+  FDA_INGREDIENT_NAME_MISSING,
   FDA_INGREDIENTS_OUT_OF_ORDER,
   FDA_INGREDIENT_THRESHOLD_EXCEEDED,
   FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED,
@@ -195,9 +198,95 @@ export interface UsFoodRuleFixture {
 }
 
 const { responsibleFirm: _firm, ...WITHOUT_FIRM } = BASE
+const { ingredientThreshold: _threshold, ...WITHOUT_THRESHOLD } = BASE
 const { nutritionFacts: _panel, ...WITHOUT_NUTRITION } = BASE
 
 export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
+  {
+    name: 'a package that never says what the food is',
+    defect:
+      'The principal display panel bears a net quantity, an ingredient statement and a full ' +
+      'nutrition panel, and nowhere says what is inside. 101.3(a) makes the statement of ' +
+      'identity one of the panel\u2019s principal features, and until this rule existed it was ' +
+      'the one mandatory element of a US food label that this engine drew and nothing checked \u2014 ' +
+      'a blank reached the renderer, which drew no primitive at all, and every rule reported a ' +
+      'clean label.',
+    data: { ...BASE, statementOfIdentity: '' },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_STATEMENT_OF_IDENTITY_MISSING,
+      severity: 'blocking',
+      citation: '21 CFR 101.3(a)',
+    },
+  },
+  {
+    name: 'a food-source word inside another allergen’s ingredient name',
+    defect:
+      'Coconut milk carries tree nuts and whey carries milk, and only the coconut is declared. ' +
+      'The word “milk” inside “coconut milk” was accepted as §403(w)(1)(B)(ii)’s “name of the ' +
+      'food source … elsewhere in the ingredient list” for the *dairy* allergen, so an ' +
+      'undeclared milk allergen cleared on the strength of a coconut — and the whole label came ' +
+      'back with no findings at all. The caveat excludes an appearance that is “part of the name ' +
+      'of a food ingredient that is not a major food allergen”, and coconut milk is not dairy ' +
+      'whatever else it is.',
+    data: {
+      ...WITHOUT_THRESHOLD,
+      ingredients: [
+        {
+          name: 'coconut milk',
+          percentByWeight: 60,
+          allergen: 'tree-nuts',
+          allergenSpecificType: 'coconut',
+          declareInline: true,
+        },
+        { name: 'whey', percentByWeight: 40, allergen: 'milk' },
+      ],
+      containsStatement: ['tree-nuts'],
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_ALLERGEN_NOT_DECLARED,
+      severity: 'violation',
+      citation: 'FD&C Act §403(w)(1)',
+    },
+  },
+  {
+    name: 'an ingredient listed with no name',
+    defect:
+      'A fourth entry carries a weight and an empty name, which the engine draws as ' +
+      '\u201cINGREDIENTS: whole grain rolled oats, sugar, salt, .\u201d. 101.4(a)(2) is about which ' +
+      'ingredients may be grouped; 101.4(a)(1) requires each to be listed *by common or usual ' +
+      'name*, and an entry with no name is not one. The API rejected this document with a 400 ' +
+      'rather than reporting it, which is a schema standing in for a rule.',
+    data: {
+      ...BASE,
+      ingredients: [...BASE_INGREDIENTS, { name: '  ', percentByWeight: 0 }],
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_INGREDIENT_NAME_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.4(a)(1)',
+    },
+  },
+  {
+    name: 'a nutrition panel with no serving size',
+    defect:
+      'Every nutrient is declared and rounded correctly, and the panel never says what a ' +
+      'serving is, so none of the figures mean anything. 101.9(d)(3)(ii) states no exception \u2014 ' +
+      'unlike (d)(3)(i), which excuses the servings count on a single-serving container, which ' +
+      'is why the two cannot be checked as one requirement.',
+    data: {
+      ...BASE,
+      nutritionFacts: { ...BASE_NUTRITION, servingSize: '' },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_SERVING_SIZE_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(d)(3)(ii)',
+    },
+  },
   {
     name: 'type sized as though the em were the letter height',
     defect:
@@ -507,7 +596,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     expected: {
       code: FDA_NUTRITION_MISSING,
       severity: 'blocking',
-      citation: '21 CFR 101.9(j)'.replace('(j)', '(c)'),
+      citation: '21 CFR 101.9(c)',
     },
   },
   {

@@ -408,6 +408,20 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       }
     }
     if (sources.length > 0) {
+      // §403(w)(1)(A) puts the statement "immediately after or [...] adjacent to
+      // the list of ingredients", so these two are not two unrelated blocks with
+      // the generic gap between them. `stackText` has already advanced the cursor
+      // by `blockGapMm`; where one line of the list is tighter than that, the gap
+      // comes down to it.
+      //
+      // The adjacency rule's allowance is exactly that line advance, so below an
+      // ingredient em of about 2.3 mm the fixed 3 mm exceeded it and the engine's
+      // own tightest layout reported itself non-adjacent — which the project's
+      // 2 mm information-panel fixture did, alongside the type-size findings it
+      // was actually written for. `containsStatementGapMm` is still how a label
+      // is drawn adrift on purpose.
+      const listAdvanceMm = panelTypeMm * type.lineHeight
+      cursorYMm -= Math.max(0, type.blockGapMm - listAdvanceMm)
       cursorYMm += data.containsStatementGapMm ?? 0
       stackText(
         US_FOOD_ELEMENTS.containsStatement,

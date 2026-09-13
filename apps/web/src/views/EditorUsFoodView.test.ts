@@ -464,6 +464,33 @@ describe('the type-size override seeds a size that complies', () => {
   })
 })
 
+describe('clearing an optional number means unset, not a blank string', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('removes servings per container rather than writing an empty string', async () => {
+    // `v-model.number` hands back the string when `parseFloat` gives NaN, so an
+    // emptied box wrote '' into the document — which the API rejects with a raw
+    // 400 and the panel draws as " servings per container". 101.9(d)(3)(i)
+    // excuses the count outright on a single-serving container, so declining to
+    // state it is a thing the label may do, not a malformed request.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-servings').setValue('')
+    await nextTick()
+    expect('servingsPerContainer' in store.foodData.nutritionFacts!).toBe(false)
+    expect(store.failures).toEqual([])
+  })
+
+  it('removes a hand-set net quantity type size the same way', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-override-type').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-type-size').setValue('')
+    await nextTick()
+    expect('netQuantityFontSizeMm' in store.foodData).toBe(false)
+    expect(store.failures).toEqual([])
+  })
+})
+
 describe('the nutrient readout beside each field', () => {
   beforeEach(() => setActivePinia(createPinia()))
 

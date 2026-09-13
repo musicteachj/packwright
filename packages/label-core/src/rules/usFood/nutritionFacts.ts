@@ -35,6 +35,7 @@ import {
   NUTRIENT_IDS,
   nutrient,
   percentDailyValue,
+  permittedNutrientAmounts,
   roundNutrientAmount,
   roundingIsCheckable,
 } from '../../fda/nutrients'
@@ -55,6 +56,8 @@ export const FDA_NUTRITION_ROUNDING_WRONG = 'FDA_NUTRITION_ROUNDING_WRONG'
 export const FDA_NUTRITION_ROUNDING_MET = 'FDA_NUTRITION_ROUNDING_MET'
 export const FDA_NUTRITION_PERCENT_DV_WRONG = 'FDA_NUTRITION_PERCENT_DV_WRONG'
 export const FDA_NUTRITION_PERCENT_DV_MET = 'FDA_NUTRITION_PERCENT_DV_MET'
+export const FDA_SERVING_SIZE_MISSING = 'FDA_SERVING_SIZE_MISSING'
+export const FDA_SERVING_SIZE_MET = 'FDA_SERVING_SIZE_MET'
 
 const CONTENT: Citation = {
   authority: 'FDA',
@@ -72,6 +75,12 @@ const PERCENT: Citation = {
   authority: 'FDA',
   reference: '21 CFR 101.9(d)(7)(ii)',
   title: 'The percent Daily Value column',
+}
+
+const SERVING_SIZE: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(d)(3)(ii)',
+  title: 'The serving size declaration',
 }
 
 const VITAMIN_PERCENT: Citation = {
@@ -249,21 +258,26 @@ export const usFoodNutritionRoundingRule: UsFoodRule = {
     )
     if (checked.length === 0) return []
 
+    // Permitted amounts, plural. 101.9(c)(1) lets an amount under five calories
+    // be "expressed as zero" — *may*, not *shall* — so 3 calories is lawfully
+    // declared as the nearest 5-calorie increment or as 0, and a rule comparing
+    // against one of them reported the other. `roundNutrientAmount` has to pick a
+    // single number because the renderer has to draw one; this does not.
     const wrong = checked.flatMap((entry) => {
-      const required = roundNutrientAmount(entry.id, panel.amounts[entry.id]!)
+      const permitted = permittedNutrientAmounts(entry.id, panel.amounts[entry.id]!)
       const declared = panel.declaredAmounts![entry.id]!
-      return declared === required ? [] : [{ entry, required, declared }]
+      return permitted.includes(declared) ? [] : [{ entry, permitted, declared }]
     })
 
     if (wrong.length > 0) {
-      return wrong.map(({ entry, required, declared }) =>
+      return wrong.map(({ entry, permitted, declared }) =>
         finding(usFoodNutritionRoundingRule, {
           code: FDA_NUTRITION_ROUNDING_WRONG,
           severity: 'violation',
           message:
             `${entry.name} is ${panel.amounts[entry.id]} and the panel declares ${declared}. ` +
-            `${entry.reference} rounds it to ${required}.`,
-          measurement: { actual: String(declared), required: String(required) },
+            `${entry.reference} rounds it to ${permitted.join(' or ')}.`,
+          measurement: { actual: String(declared), required: permitted.join(' or ') },
           // The row, not the whole panel. Stage 5 gave every nutrient an element
           // for exactly this; a defect on one line should outline that line.
           elementId: nutritionRowElementId(entry.id),
@@ -362,6 +376,72 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
         `${measured.length} percentage${measured.length === 1 ? '' : 's'} match the Daily Values, ` +
           'rounded as each nutrient’s own paragraph requires.',
         US_FOOD_ELEMENTS.nutritionPanel,
+      ),
+    ]
+  },
+}
+
+/**
+ * The panel declares its serving size.
+ *
+ * Source: 21 CFR 101.9(d)(3), read from the eCFR on 2026-09-13. The paragraph
+ * opens "Information on servings per container and serving size **shall**
+ * immediately follow the heading ... Such information **shall** include:", and
+ * (ii) is "'Serving size': A statement of the serving size as specified in
+ * paragraph (b)(7) of this section which shall immediately follow the
+ * '____servings per container' declaration".
+ *
+ * **Only (ii) is mandatory of the two, and that asymmetry is the point.** (d)(3)(i)
+ * carries its own exception — the servings-per-container statement "is not
+ * required on single serving containers as defined in paragraph (b)(6) ... or on
+ * other food containers when this information is stated in the net quantity of
+ * contents declaration" — while (ii) states none. So a panel with no servings
+ * count may be perfectly compliant and a panel with no serving size never is,
+ * and a rule demanding both would report labels the paragraph allows.
+ *
+ * What the serving size *says* is (b)(7)'s question, and (b)(2)'s before it: the
+ * amount is derived from the Reference Amount Customarily Consumed in §101.12(b),
+ * a table this engine does not carry. So this checks that a serving size is
+ * declared, and does not check that it is the right one. An unverifiable check is
+ * worse than an absent one, and saying which of the two this is belongs in the
+ * finding rather than in a commit message.
+ */
+export const usFoodServingSizeRule: UsFoodRule = {
+  id: 'us-food/serving-size',
+  title: 'The nutrition label declares a serving size.',
+  citation: SERVING_SIZE,
+  codes: [FDA_SERVING_SIZE_MISSING, FDA_SERVING_SIZE_MET],
+  appliesTo: 'us-food',
+
+  check({ data }: UsFoodContext): Finding[] {
+    const panel = panelOf(data)
+    // No panel at all is the completeness rule's finding, not this one's. Two
+    // rules reporting one absence under two citations is the mistake the
+    // net-quantity family was untangled to avoid.
+    if (panel === undefined) return []
+
+    if (panel.servingSize.trim() === '') {
+      return [
+        finding(usFoodServingSizeRule, {
+          code: FDA_SERVING_SIZE_MISSING,
+          severity: 'violation',
+          message:
+            'The nutrition label declares no serving size. 101.9(d)(3)(ii) requires one ' +
+            'immediately after the servings per container, and states no exception.',
+          measurement: { actual: 'no serving size', required: 'a serving size declaration' },
+          elementId: US_FOOD_ELEMENTS.nutritionServingSize,
+        }),
+      ]
+    }
+
+    return [
+      passed(
+        usFoodServingSizeRule,
+        FDA_SERVING_SIZE_MET,
+        `The panel declares a serving size of ${panel.servingSize.trim()}. Whether that amount ` +
+          'follows the reference amount in §101.12(b) is not checked — that table is not carried ' +
+          'here.',
+        US_FOOD_ELEMENTS.nutritionServingSize,
       ),
     ]
   },

@@ -203,6 +203,32 @@ describe('POST /api/labels/us-food/export', () => {
     expect(response.body.subarray(0, 5).toString()).toBe('%PDF-')
   })
 
+  it('exports a label whose blanks are findings rather than malformed input', async () => {
+    // The editor's own "Add an ingredient" button writes `{ name: '',
+    // percentByWeight: 0 }`, so a `min(1)` on the name turned Export into a raw
+    // JSON 400 on the one screen a user meets it. Every blank below is reported
+    // by a rule — 101.3(a), 101.4(a)(1), 101.5(a), 101.7(a) and 101.9(d)(3)(ii) —
+    // which is what makes rejecting them the API's mistake rather than its job.
+    const response = await postFood({
+      ...FOOD_BODY,
+      statementOfIdentity: '',
+      netQuantity: { inchPound: '' },
+      ingredients: [...FOOD_BODY.ingredients, { name: '', percentByWeight: 0 }],
+      responsibleFirm: { ...FOOD_BODY.responsibleFirm, name: '' },
+      nutritionFacts: { servingSize: '', amounts: { calories: 150 } },
+    })
+    expect(response.status).toBe(200)
+    expect(response.body.subarray(0, 5).toString()).toBe('%PDF-')
+  })
+
+  it('still refuses a request that is malformed rather than non-compliant', async () => {
+    // The distinction the relaxation turns on. A missing container is not a
+    // label defect a rule could report — it is a request the engine cannot lay
+    // out at all.
+    const { container: _drop, ...withoutContainer } = FOOD_BODY
+    expect((await postFood(withoutContainer)).status).toBe(400)
+  })
+
   it('names the download after the food', async () => {
     const response = await postFood(FOOD_BODY)
     expect(response.headers['content-disposition']).toContain('Rolled-oats.pdf')
@@ -343,12 +369,16 @@ describe('the US food route on stage 2 content', () => {
     expect(response.status).toBe(200)
   })
 
-  it('rejects an ingredient with no name', async () => {
+  it('reports an ingredient with no name instead of rejecting it', async () => {
+    // This asserted a 400 until 101.4(a)(1) had a rule behind it. Rejecting the
+    // document was the schema answering a regulatory question in the one place a
+    // user cannot see a citation — and it was reachable from the editor's own
+    // "Add an ingredient" button, which writes exactly this entry.
     const response = await postFood({
       ...FOOD_BODY,
       ingredients: [{ name: '', percentByWeight: 50 }],
     })
-    expect(response.status).toBe(400)
+    expect(response.status).toBe(200)
   })
 })
 

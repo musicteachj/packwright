@@ -36,6 +36,18 @@ import type { Anchor, LabelStock } from './stock'
  */
 export const NUTRITION_ROW_PREFIX = 'food-nutrition-row-'
 
+/**
+ * Everything the Nutrition Facts panel draws — the rows above and the fixed ids
+ * beside them.
+ *
+ * The separation rule needs "is this element inside the panel?" rather than "is
+ * this a nutrient row?", and spelled the answer as a literal `'food-nutrition-'`.
+ * A prefix written out where a constant exists is a rename away from silently
+ * changing meaning, and this one guards a rule that multiplies one crowding into
+ * a finding per row when it gets the answer wrong.
+ */
+export const NUTRITION_ELEMENT_PREFIX = 'food-nutrition-'
+
 export const nutritionRowElementId = (id: string): string => `${NUTRITION_ROW_PREFIX}${id}`
 
 export const US_FOOD_ELEMENTS = {

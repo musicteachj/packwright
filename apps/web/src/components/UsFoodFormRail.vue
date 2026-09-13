@@ -458,6 +458,42 @@ const overrideOf = (kind: 'declaredAmounts' | 'declaredPercentDv', id: NutrientI
  * minimum, so a panel drawn from them complies by construction — shrinking it is
  * how a real one goes wrong, and the only way the type-size rule can fail.
  */
+/**
+ * A number field whose blank means "unset" rather than a number.
+ *
+ * `v-model.number` runs Vue's `looseToNumber`, which hands back the **string**
+ * when `parseFloat` returns NaN — so clearing the box writes `''` into the
+ * document. Bound straight through, that string reached the API, where
+ * `z.number()` rejected the whole label with a raw 400, and reached the engine,
+ * where it drew " servings per container" with a hole where the count goes.
+ *
+ * A 400 on Export for a cleared optional field is the same defect as the
+ * `min(1)`s this stage removed, arriving by a different route: the user is told
+ * the request is malformed when what they did was decline to state something the
+ * regulation lets them omit. 101.9(d)(3)(i) excuses the servings count outright
+ * on a single-serving container, and an absent `netQuantityFontSizeMm` means the
+ * engine derives the size 101.7(i) requires.
+ *
+ * `typeScalePercent` has carried a guard for this since the panel was drawn at
+ * zero-size type; these are the other two optional numbers in the rail. The
+ * container and stock dimensions are **not** included: they are required, so a
+ * blank has no defined meaning there, and deciding what one should do is a
+ * separate question from this one.
+ */
+const optionalNumber = <T extends object, K extends keyof T>(target: () => T | undefined, key: K) =>
+  computed({
+    get: () => target()?.[key] as number | undefined,
+    set: (next: number | undefined) => {
+      const object = target()
+      if (object === undefined) return
+      if (typeof next !== 'number' || !Number.isFinite(next)) delete object[key]
+      else object[key] = next as T[K]
+    },
+  })
+
+const servingsPerContainer = optionalNumber(() => data.nutritionFacts, 'servingsPerContainer')
+const netQuantityFontSizeMm = optionalNumber(() => data, 'netQuantityFontSizeMm')
+
 const typeScalePercent = computed({
   get: () => Math.round((data.nutritionFacts?.typeScale ?? 1) * 100),
   set: (percent: number) => {
@@ -654,7 +690,7 @@ const packaging = computed({
         Type size, em (mm)
         <input
           id="field-food-type-size"
-          v-model.number="data.netQuantityFontSizeMm"
+          v-model.number="netQuantityFontSizeMm"
           :class="INPUT"
           type="number"
           min="0.1"
@@ -931,7 +967,7 @@ const packaging = computed({
           Servings per container
           <input
             id="field-food-nf-servings"
-            v-model.number="data.nutritionFacts.servingsPerContainer"
+            v-model.number="servingsPerContainer"
             :class="INPUT"
             type="number"
             min="1"

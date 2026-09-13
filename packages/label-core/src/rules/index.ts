@@ -116,6 +116,7 @@ export {
   FDA_INGREDIENTS_MISSING,
   FDA_INGREDIENTS_ORDER_MET,
   FDA_INGREDIENTS_OUT_OF_ORDER,
+  FDA_INGREDIENT_NAME_MISSING,
   FDA_INGREDIENT_THRESHOLD_EXCEEDED,
   FDA_INGREDIENT_THRESHOLD_MET,
   FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED,
@@ -129,6 +130,11 @@ export {
   FDA_RESPONSIBLE_FIRM_UNQUALIFIED,
   usFoodResponsibleFirmRule,
 } from './usFood/responsibleFirm'
+export {
+  FDA_STATEMENT_OF_IDENTITY_MET,
+  FDA_STATEMENT_OF_IDENTITY_MISSING,
+  usFoodStatementOfIdentityRule,
+} from './usFood/statementOfIdentity'
 export {
   FDA_PANEL_TYPE_SIZE_MET,
   FDA_PANEL_TYPE_TOO_SMALL,
@@ -159,10 +165,13 @@ export {
   FDA_NUTRITION_PERCENT_DV_WRONG,
   FDA_NUTRITION_ROUNDING_MET,
   FDA_NUTRITION_ROUNDING_WRONG,
+  FDA_SERVING_SIZE_MET,
+  FDA_SERVING_SIZE_MISSING,
   usFoodNutritionCompletenessRule,
   usFoodNutritionOrderRule,
   usFoodNutritionPercentDvRule,
   usFoodNutritionRoundingRule,
+  usFoodServingSizeRule,
 } from './usFood/nutritionFacts'
 export {
   FDA_NUTRITION_TYPE_SIZE_MET,
