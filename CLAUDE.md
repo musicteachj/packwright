@@ -17,6 +17,49 @@ labels, and reports why a label is non-compliant with a citation for every findi
 
 ---
 
+## Reviews and pull requests
+
+**Open a pull request when unmerged work reaches ~1,500 lines, or at a stage boundary — whichever comes
+first.** Size is the trigger, not the phase or stage structure, because size is the thing that actually
+breaks. Phase 5 ran the length of a phase on one branch and produced a 14,000-line PR across 59 files: the
+deep review refused it outright, and no person could have read it in one sitting either.
+
+Nothing in that branch was ever too big. Its fifteen commits had a **median of 750 lines** and a largest of
+3,056 — they simply accumulated, because `dev` did not move for a phase. Stage boundaries alone would not
+have saved it: stages 1–2 came to 5,029 lines and stage 6 to 4,802.
+
+The commit checkpoints are already the right unit. They are where the work pauses for approval anyway, so
+PRing there adds no ceremony.
+
+**The review ladder:**
+
+| when | what |
+|---|---|
+| before each commit | `/code-review medium` with **no target** — it reviews the uncommitted diff, so it scales with what was just written rather than with the branch |
+| PR touching `rules/`, `fda/` or `layout/` | `/code-review ultra <PR#>` — runs in the cloud, so it costs no session budget |
+| PR that is UI or API only | the per-commit medium was enough |
+| every second or third stage, while a phase is in flight | one `/code-review medium dev` as a hedge — reviews keep finding defects in *older* code, and the allergen false clearance was stage 3 work found on the fifth pass |
+
+**`/code-review ultra` takes a PR number or a branch, never a path.** A diff can only be made smaller by
+having committed less to the branch; once it is large the only remedy is stacked branches and a billed run
+for each. **Never run `max` in-session on a branch-sized diff** — it will consume most of a session.
+
+**Fix what is in the current scope and record the rest in `docs/BACKLOG.md`, with the reasoning.** Fixing
+every finding the moment it appears turned four planned items into four unplanned commits in one session,
+and left the stage no further forward.
+
+**After changing any rule or the renderer, ask directly: can this rule now pass on something the engine did
+not draw?** Every false clearance this project has shipped was found by review and none by the suite — the
+allergen cleared by a coconut, the nutrient rows drawn off the substrate, the net quantity at x −57.5 mm
+with all five of its rules reporting compliant, the second column marked drawn on the strength of a
+declaration. Tests catch regressions in what someone thought to check; they are structurally blind to a rule
+certifying content that was never printed.
+
+**Mutation-test every fix.** Revert it and confirm a named test fails. A fix whose test still passes without
+it is a fix with no test.
+
+---
+
 ## Correctness invariants
 
 This project's only real value is being right. These are the rules most easily broken without noticing.
