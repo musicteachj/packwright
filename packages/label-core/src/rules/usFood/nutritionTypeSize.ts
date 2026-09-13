@@ -39,7 +39,7 @@ import { MM_PER_POINT } from '../../geometry/units'
 import type { TextPrimitive } from '../../layout/types'
 import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, passed, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NUTRITION_TYPE_TOO_SMALL = 'FDA_NUTRITION_TYPE_TOO_SMALL'
@@ -115,10 +115,33 @@ const minimumsFor = (
 // change in one would have this rule reporting every compliant 8 point row.
 const pointsOf = (mm: number): number => mm / MM_PER_POINT
 
+/**
+ * Every paragraph this rule can cite.
+ *
+ * Written out rather than derived from `minimumsFor`, because (d)(7)(iii) is
+ * cited from the check body and not from that table — a derivation would have
+ * looked tidier and quietly omitted one. `citations.test.ts` runs every fixture
+ * and fails on any provision a finding cites and no rule declares, so the list
+ * is enforced rather than trusted.
+ *
+ * Source: 21 CFR 101.9(d), (d)(1)(iii), (d)(3)(i), (d)(3)(ii), (d)(5) and
+ * (d)(7)(iii), read from the eCFR on 2026-09-12 for the figures this rule
+ * measures and re-read on 2026-09-13 for this list.
+ */
+const TYPE_SIZE_CITATIONS: readonly Citation[] = [
+  CITATION,
+  untitled(CITATION, '21 CFR 101.9(d)(1)(iii)'),
+  untitled(CITATION, '21 CFR 101.9(d)(3)(i)'),
+  untitled(CITATION, '21 CFR 101.9(d)(3)(ii)'),
+  untitled(CITATION, '21 CFR 101.9(d)(5)'),
+  untitled(CITATION, '21 CFR 101.9(d)(7)(iii)'),
+]
+
 export const usFoodNutritionTypeSizeRule: UsFoodRule = {
   id: 'us-food/nutrition-type-size',
   title: 'The Nutrition Facts panel meets the minimum type sizes 21 CFR 101.9 sets.',
   citation: CITATION,
+  citations: TYPE_SIZE_CITATIONS,
   codes: [FDA_NUTRITION_TYPE_TOO_SMALL, FDA_NUTRITION_TYPE_SIZE_MET],
   appliesTo: 'us-food',
 

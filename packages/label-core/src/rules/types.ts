@@ -83,6 +83,31 @@ export interface Rule<TContext extends RuleContext = RuleContext> {
    * carry a citation that belongs to a different rule.
    */
   citation: Citation
+  /**
+   * Every provision this rule can cite, where it cites more than one.
+   *
+   * `citation` is the primary and is what a finding inherits by default, but a
+   * rule that enforces several paragraphs overrides it per finding — sixteen of
+   * the thirty-four do. A catalogue generated from `citation` alone therefore
+   * under-reports: `us-food/dual-column-form` would show 101.9(e) and hide (e)(1),
+   * (e)(2) and (e)(3), and a reader checking what the tool enforces would be
+   * given a quarter of the answer.
+   *
+   * Worse than under-reporting, it can be *wrong*. `ghs/signal-word-precedence`
+   * carries CLP Article 20(3) here and emits 29 CFR 1910.1200 whenever the label's
+   * regime is `us-osha`, so a catalogue showing the primary alone tells a US user
+   * their signal-word rule comes from an EU regulation.
+   *
+   * Omit it where a rule cites one provision; `citationsOf` falls back to
+   * `[citation]`. `citations.test.ts` runs every fixture rule by rule and asserts
+   * that each finding's citation appears in **that rule's** list, so the two
+   * cannot drift — the
+   * check is a test rather than a throw in `finding()` because several references
+   * are looked up from tables at judgement time, and a rule that cited a real
+   * provision nobody had listed would otherwise crash a user rather than fail a
+   * build.
+   */
+  citations?: readonly Citation[]
   /** Every code this rule can emit. The catalogue is generated from these. */
   codes: readonly string[]
   /**
@@ -126,4 +151,15 @@ export const SEVERITY_ORDER: readonly Severity[] = [
 
 export function compareSeverity(a: Severity, b: Severity): number {
   return SEVERITY_ORDER.indexOf(a) - SEVERITY_ORDER.indexOf(b)
+}
+
+/**
+ * Every provision a rule can cite, primary first.
+ *
+ * The catalogue renders this rather than `citation`, so a rule enforcing four
+ * paragraphs is listed as enforcing four. Rules that cite one provision declare
+ * nothing and get a one-element list.
+ */
+export function citationsOf(rule: Rule): readonly Citation[] {
+  return rule.citations ?? [rule.citation]
 }

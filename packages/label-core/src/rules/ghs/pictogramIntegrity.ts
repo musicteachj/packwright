@@ -60,6 +60,7 @@ export const ghsPictogramIntegrityRule: GhsChemicalRule = {
   id: 'ghs/pictogram-integrity',
   title: 'Every pictogram carries a hazard symbol the regime recognises.',
   citation: US,
+  citations: [US, EU, US_SYMBOLS, EU_SYMBOLS],
   codes: [GHS_PICTOGRAM_SYMBOL_MISSING, GHS_PICTOGRAM_NOT_RECOGNISED, GHS_PICTOGRAM_COMPLETE],
   appliesTo: 'ghs-chemical',
 

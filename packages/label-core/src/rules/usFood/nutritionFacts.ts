@@ -43,7 +43,7 @@ import type { NutrientId } from '../../fda/nutrients'
 import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../../templates/usFood'
 import type { UsFoodNutritionFacts } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passed, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NUTRITION_MISSING = 'FDA_NUTRITION_MISSING'
@@ -106,6 +106,7 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
   id: 'us-food/nutrition-completeness',
   title: 'The nutrition label declares every nutrient 21 CFR 101.9(c) makes mandatory.',
   citation: CONTENT,
+  citations: [CONTENT, EXEMPTION],
   codes: [
     FDA_NUTRITION_MISSING,
     FDA_NUTRITION_NUTRIENT_MISSING,
@@ -233,10 +234,35 @@ export const usFoodNutritionOrderRule: UsFoodRule = {
   },
 }
 
+/**
+ * Every paragraph the rounding rule can cite, taken from the table it judges
+ * against rather than restated. `NUTRIENTS` carries a reference per nutrient and
+ * the finding overrides `CONTENT` with it, so listing them by hand here would be
+ * a second copy to keep in step with the first.
+ *
+ * Filtered through `roundingIsCheckable`, which is the predicate the check itself
+ * uses. Deriving from the whole table instead added 101.9(c)(8)(iv) — a paragraph
+ * this rule has no path to cite, so the catalogue would have advertised a check
+ * that never runs. Exactly the over-declaration the dual-column list was fixed
+ * for, made again two files away and caught by review rather than by this
+ * comment.
+ */
+const ROUNDING_CITATIONS: readonly Citation[] = [
+  CONTENT,
+  ...[
+    ...new Set(
+      NUTRIENTS.filter((entry) => roundingIsCheckable(entry.id)).map((entry) => entry.reference),
+    ),
+  ]
+    .filter((reference) => reference !== CONTENT.reference)
+    .map((reference) => untitled(CONTENT, reference)),
+]
+
 export const usFoodNutritionRoundingRule: UsFoodRule = {
   id: 'us-food/nutrition-rounding',
   title: 'Declared amounts are rounded as 21 CFR 101.9(c) requires.',
   citation: CONTENT,
+  citations: ROUNDING_CITATIONS,
   codes: [FDA_NUTRITION_ROUNDING_WRONG, FDA_NUTRITION_ROUNDING_MET],
   appliesTo: 'us-food',
 
@@ -302,6 +328,7 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
   id: 'us-food/nutrition-percent-dv',
   title: 'The percent Daily Value column is computed and rounded as 21 CFR 101.9 requires.',
   citation: PERCENT,
+  citations: [PERCENT, VITAMIN_PERCENT],
   codes: [FDA_NUTRITION_PERCENT_DV_WRONG, FDA_NUTRITION_PERCENT_DV_MET],
   appliesTo: 'us-food',
 

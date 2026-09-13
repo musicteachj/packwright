@@ -36,6 +36,7 @@ export const ghsSignalWordRule: GhsChemicalRule = {
   id: 'ghs/signal-word-precedence',
   title: 'Where “Danger” is used, “Warning” does not appear.',
   citation: EU,
+  citations: [EU, US],
   codes: [GHS_SIGNAL_WORD_CONFLICT, GHS_SIGNAL_WORD_SINGLE],
   appliesTo: 'ghs-chemical',
 

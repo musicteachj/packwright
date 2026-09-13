@@ -38,9 +38,10 @@
 
 import { dualColumnDuty, smallPackageRouteApplies } from '../../fda/nutritionFormats'
 import { DUAL_COLUMN_BASIS_REFERENCE } from '../../fda/nutritionFormats'
+import type { MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed, passedOnDocument } from '../finding'
+import { finding, passed, passedOnDocument, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_DUAL_COLUMN_MISSING = 'FDA_DUAL_COLUMN_MISSING'
@@ -53,6 +54,21 @@ const CITATION: Citation = {
   title: 'A second column for a package holding 200 to 300 percent of the reference amount',
 }
 
+/**
+ * The two bases that carry an obligation, as a value rather than only a type.
+ *
+ * A `Record<MandatoryDualColumnBasis, true>` rather than an array, because the
+ * array form does not do what it appears to. `readonly MandatoryDualColumnBasis[]`
+ * constrains what may go *in* and says nothing about what must: widening the
+ * union leaves this compiling happily, and the rule would quietly stop declaring
+ * the paragraph it had started reporting under. A record keyed on the union is
+ * exhaustive, so adding a mandatory basis fails the build here.
+ */
+const MANDATORY_DUAL_COLUMN_BASES: Record<MandatoryDualColumnBasis, true> = {
+  'per-container': true,
+  'per-unit': true,
+}
+
 const BASIS_NAME = {
   'per-container': 'the entire package',
   'per-unit': 'the individual unit',
@@ -62,6 +78,40 @@ export const usFoodDualColumnRule: UsFoodRule = {
   id: 'us-food/dual-column-required',
   title: 'A package holding 200 to 300 percent of its reference amount carries a second column.',
   citation: CITATION,
+  /**
+   * The basis decides which paragraph demands the column and the exemptions each
+   * cite their own, so this rule ranges over both tables in
+   * `fda/nutritionFormats`. Built from them rather than restated, because a
+   * second copy of a table is a second copy to keep in step.
+   */
+  citations: [
+    CITATION,
+    ...[
+      ...new Set([
+        // **Only the bases this rule can actually report under.**
+        // `DUAL_COLUMN_BASIS_REFERENCE` is keyed on every `DualColumnBasis`,
+        // including the voluntary ones 101.9(e) permits, and `dualColumnDuty`
+        // returns a `MandatoryDualColumnBasis` — two of the seven. Listing all
+        // seven made this rule advertise 101.9(e)(5) and (b)(10)(iii), which it
+        // has no path to emit: a catalogue entry claiming a check that never
+        // runs, which is the same defect as a rule that can never fail. The
+        // annotation is what keeps it honest — adding a mandatory basis widens
+        // this list, and adding a voluntary one does not.
+        ...Object.keys(MANDATORY_DUAL_COLUMN_BASES).map(
+          (basis) => DUAL_COLUMN_BASIS_REFERENCE[basis as MandatoryDualColumnBasis],
+        ),
+        // The three exemptions `dualColumnDuty` can return. Written out because
+        // it returns them from a chain of conditionals rather than a table, and
+        // a rule may not report under a paragraph the catalogue does not list.
+        '21 CFR 101.9(b)(12)(i)(A)',
+        '21 CFR 101.9(b)(12)(i)(B)',
+        '21 CFR 101.9(b)(12)(i)(C)',
+      ]),
+    ]
+      .filter((reference) => reference !== CITATION.reference)
+      .sort()
+      .map((reference) => untitled(CITATION, reference)),
+  ],
   codes: [FDA_DUAL_COLUMN_MISSING, FDA_DUAL_COLUMN_MET, FDA_DUAL_COLUMN_EXEMPT],
   appliesTo: 'us-food',
 
