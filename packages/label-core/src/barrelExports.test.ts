@@ -7,6 +7,7 @@ import * as applicationIdentifiers from './gs1/applicationIdentifiers'
 import * as checkDigit from './gs1/checkDigit'
 import * as digitalLink from './gs1/digitalLink'
 import * as elementString from './gs1/elementString'
+import * as scan from './gs1/scan'
 import * as gs1Barrel from './gs1/index'
 import * as clearSpace from './layout/clearSpace'
 import * as layoutOmissions from './layout/omissions'
@@ -113,6 +114,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['checkDigit.ts', checkDigit],
       ['digitalLink.ts', digitalLink],
       ['elementString.ts', elementString],
+      ['scan.ts', scan],
     ],
   ],
   [

@@ -10,6 +10,45 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 6, stage 5a — turning what a scanner read into a GTIN-12, or refusing to.
+
+- **`normaliseScannedGtin` in `label-core/src/gs1/`.** A camera hands back whatever the symbol carried and
+  the retail form takes twelve digits; those are not the same thing. It narrows the one read GS1 defines as
+  lossless — a GTIN-12 *is* a GTIN-13 with a leading zero — and refuses the rest by name rather than by
+  truncation. **It never recomputes a check digit**, because the most common real defect in a supplied GTIN is
+  a transposed digit and an engine that repairs one silently accepts the wrong product.
+- **Paste goes through it.** `maxlength="12"` is right for typing and wrong for a paste: it keeps the first
+  twelve characters of a 13-digit read, so the *check digit* is what falls off. Most truncations then fail
+  that check — but **about one in ten passes it**, measured at 527 of 5,000, and becomes a structurally valid
+  GTIN naming a different article with nothing said. A paste shorter than eight characters is a fragment and
+  is left alone.
+- **A refused read is announced, not merely shown.** A refusal a screen reader never hears leaves the field
+  unchanged and silent, which is the state the feature exists to avoid.
+
+### Fixed
+
+- **Three claims of my own, corrected by measuring them.** The first: a 13-digit scan was described as
+  producing a "silent non-check". It does not — the engine refuses to draw and the editor says "A GTIN-12 is
+  exactly twelve digits", with zero findings. `findings: 0` means nothing ran, not everything passed, and that
+  is the second time this phase the distinction has been got wrong.
+- The second: naive truncation was described as producing a plausible wrong product. The check digit catches
+  it, and the reason is exact — the dropped digit sits at an odd index counted from the right, so it carries
+  weight 1, and the check digit survives truncation **if and only if that digit is zero**, which is precisely
+  the lossless case. The refusal exists for the error message, not for safety: `slice(1)` would be caught, and
+  reported as a wrong check digit about a barcode with nothing wrong with it.
+- The third, and the worst: the test that measured the claim above generated every payload with
+  `padStart(12, '7')`, so all 2,000 codes began with a 7 and the one interesting branch never ran. Mutating
+  its expectation to a nonsense number still passed, while the docblock cited it as evidence. It now covers
+  all ten leading digits and asserts that it does.
+- **A regex that had been corrupted into control characters.** `[\s -]` had become `[\s\x00-\x1F]` through a
+  shell-escaped mutation command, and every test passed either way. Replaced with `trim`, which is all the
+  behaviour that can actually be justified.
+- **A vacuous paste test.** jsdom does not insert on paste, so asserting the field equalled the value it
+  already held proved nothing — removing the paste handler left it green.
+
+
+### Added
+
 Phase 6, stage 4 — the responsive collapse. **Done-when #3.**
 
 - **Below 1024px the editor's three panes take turns behind a Form / Preview / Checks control.** They do not

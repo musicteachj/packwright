@@ -26,5 +26,8 @@ export {
 } from './elementString'
 export type { Gs1Element } from './elementString'
 
+export { normaliseScannedGtin } from './scan'
+export type { ScannedGtin } from './scan'
+
 export { DigitalLinkError, buildDigitalLinkUri } from './digitalLink'
 export type { DigitalLinkInput } from './digitalLink'

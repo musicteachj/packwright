@@ -22,12 +22,14 @@ import {
   layOutUpcALabel,
   layOutUsFoodLabel,
   mm,
+  normaliseScannedGtin,
   runRules,
   type ElementId,
   type Finding,
   type GhsLabelData,
   type LabelStock,
   type ResolvedLayout,
+  type ScannedGtin,
   type Severity,
   type UpcALabelData,
   type UsFoodLabelData,
@@ -303,6 +305,36 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     selectedElementId.value = elementId ?? null
   }
 
+  /**
+   * The most recent scan or paste into the GTIN field, accepted or refused.
+   *
+   * Kept so the rail can say *why* a read was not taken. A refusal that only
+   * results in the field staying as it was is indistinguishable from the camera
+   * not having fired.
+   */
+  const lastScan = ref<ScannedGtin | null>(null)
+
+  /**
+   * Takes a scanned or pasted symbol value, if it is a GTIN-12 or narrows to one.
+   *
+   * An action rather than a `v-model` because a scan is not typing: it arrives
+   * whole, in whatever form the symbol carried, and has to be turned into the
+   * twelve digits this form takes — or refused with a reason. `normaliseScannedGtin`
+   * decides; nothing here is permitted to repair a check digit or shorten a code
+   * to fit.
+   */
+  function applyScan(raw: string): ScannedGtin {
+    const result = normaliseScannedGtin(raw)
+    lastScan.value = result
+    if (result.ok) data.gtin = result.gtin
+    return result
+  }
+
+  /** Clears the note, for when the user starts typing over it. */
+  function clearScan() {
+    lastScan.value = null
+  }
+
   return {
     labelType,
     data,
@@ -322,5 +354,8 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     uncertifiable,
     elementLabels,
     select,
+    lastScan,
+    applyScan,
+    clearScan,
   }
 })

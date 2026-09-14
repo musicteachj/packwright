@@ -230,3 +230,94 @@ describe('the editor', () => {
     expect(live.text()).toMatch(/checks passed/i)
   })
 })
+
+/**
+ * A paste is a scan by another route.
+ *
+ * Anyone with a barcode in a spreadsheet pastes it, and what they paste is
+ * whatever the symbol carried — thirteen digits as often as twelve. Left to the
+ * input, `maxlength="12"` takes the first twelve characters of a 13-digit code:
+ * `0036000291452` becomes `003600029145`, a different number, with nothing said.
+ */
+describe('pasting a barcode into the GTIN field', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  const paste = async (wrapper: ReturnType<typeof mountEditor>, text: string) => {
+    const field = wrapper.find('#field-gtin')
+    await field.trigger('paste', {
+      clipboardData: { getData: () => text },
+    })
+    await nextTick()
+  }
+
+  it('narrows a 13-digit paste rather than truncating it', async () => {
+    const store = useLabelDocumentStore()
+    const wrapper = mountEditor()
+
+    // Moved off the default first. jsdom does not actually insert on paste, so
+    // asserting the field equals the value it already held proved nothing —
+    // removing the handler entirely left this green. The starting value has to be
+    // something the paste must change.
+    store.data.gtin = '012000161155'
+    await nextTick()
+
+    await paste(wrapper, '0036000291452')
+
+    expect(store.data.gtin, 'maxlength would have given 003600029145').toBe('036000291452')
+  })
+
+  it('lets a fragment paste through, rather than calling it a bad scan', async () => {
+    // Pasting a missing digit into a partly typed field is typing, not scanning.
+    // Intercepting every paste answered it with "A GTIN is 8, 12, 13 or 14
+    // digits; this scan is 1" — true, and useless.
+    const store = useLabelDocumentStore()
+    const wrapper = mountEditor()
+    store.data.gtin = '03600029145'
+    await nextTick()
+
+    await paste(wrapper, '2')
+
+    expect(store.lastScan, 'a fragment is not a scan to be refused').toBeNull()
+  })
+
+  it('announces the refusal rather than only showing it', async () => {
+    // A refusal a screen reader never hears leaves the field unchanged and silent
+    // — the state the feature exists to avoid.
+    const store = useLabelDocumentStore()
+    const wrapper = mountEditor()
+
+    await paste(wrapper, '4006381333931')
+
+    const note = wrapper.find('#gtin-scan-note')
+    expect(note.exists()).toBe(true)
+    expect(note.attributes('aria-live')).toBe('polite')
+    expect(wrapper.find('#field-gtin').attributes('aria-describedby')).toBe('gtin-scan-note')
+    expect(store.lastScan?.ok).toBe(false)
+  })
+
+  it('clears the note once the field is typed in', async () => {
+    const store = useLabelDocumentStore()
+    const wrapper = mountEditor()
+
+    await paste(wrapper, '4006381333931')
+    expect(store.lastScan).not.toBeNull()
+
+    await wrapper.find('#field-gtin').setValue('03600029145')
+    await nextTick()
+
+    expect(store.lastScan, 'typing over a refusal clears it').toBeNull()
+    expect(wrapper.find('#gtin-scan-note').exists()).toBe(false)
+  })
+
+  it('refuses a GTIN-13 and shows the reason', async () => {
+    const store = useLabelDocumentStore()
+    const wrapper = mountEditor()
+    const before = store.data.gtin
+
+    await paste(wrapper, '4006381333931')
+
+    expect(store.data.gtin).toBe(before)
+    expect(wrapper.text()).toMatch(/GTIN-13/)
+    expect(wrapper.text(), 'the reader should see what was read').toContain('4006381333931')
+  })
+})

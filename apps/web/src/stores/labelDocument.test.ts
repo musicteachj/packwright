@@ -72,3 +72,70 @@ describe('the label document store', () => {
     expect(store.selectedElementId).toBeNull()
   })
 })
+
+/**
+ * A scan arrives whole, in whatever form the symbol carried.
+ *
+ * `applyScan` is an action rather than a `v-model` because that is the
+ * difference: typing produces twelve digits a character at a time, and a scan
+ * produces thirteen at once, or eight, or a URL. Every decision about what may
+ * become a GTIN-12 belongs to `normaliseScannedGtin`; the store's job is to keep
+ * the refusal visible.
+ */
+describe('taking a scan', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('takes a GTIN-12 and draws it', () => {
+    const store = useLabelDocumentStore()
+    // Verified against `isValidCheckDigit` rather than invented — the first
+    // number written here had a wrong check digit, and the normaliser said so,
+    // which is the whole point of it.
+    const result = store.applyScan('  012000161155 ')
+
+    expect(result.ok).toBe(true)
+    expect(store.data.gtin).toBe('012000161155')
+    expect(store.layout, 'the label redraws from the scan').not.toBeNull()
+  })
+
+  it('narrows a 13-digit read that begins with a zero', () => {
+    const store = useLabelDocumentStore()
+    store.applyScan('0036000291452')
+
+    expect(store.data.gtin).toBe('036000291452')
+    expect(store.lastScan?.ok && store.lastScan.note).toMatch(/leading zero/i)
+  })
+
+  it('leaves the field alone when the read cannot be a GTIN-12, and says why', () => {
+    // The refusal has to be visible. A read that changes nothing and reports
+    // nothing is indistinguishable from the camera never having fired.
+    const store = useLabelDocumentStore()
+    const before = store.data.gtin
+
+    const result = store.applyScan('4006381333931')
+
+    expect(result.ok).toBe(false)
+    expect(store.data.gtin, 'a refused scan must not touch the document').toBe(before)
+    expect(store.lastScan?.ok).toBe(false)
+    expect(!store.lastScan!.ok && store.lastScan!.reason).toMatch(/GTIN-13/)
+    expect(!store.lastScan!.ok && store.lastScan!.scanned).toBe('4006381333931')
+  })
+
+  it('never repairs a check digit', () => {
+    const store = useLabelDocumentStore()
+    const before = store.data.gtin
+
+    store.applyScan('036000291453')
+
+    expect(store.data.gtin).toBe(before)
+    expect(!store.lastScan!.ok && store.lastScan!.reason).toMatch(/check digit/i)
+  })
+
+  it('forgets the note once the field is edited by hand', () => {
+    const store = useLabelDocumentStore()
+    store.applyScan('4006381333931')
+    expect(store.lastScan).not.toBeNull()
+
+    store.clearScan()
+    expect(store.lastScan).toBeNull()
+  })
+})
