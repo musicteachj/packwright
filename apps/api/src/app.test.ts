@@ -33,23 +33,33 @@ describe('unknown routes', () => {
   })
 })
 
+/**
+ * Everything the schema requires, so a case can vary one field and mean it.
+ *
+ * `MONGODB_URI` is required, and without it supplied here the two `toThrow`
+ * cases below pass on the missing URI rather than on the port or the NODE_ENV
+ * they name — true with their own subject deleted.
+ */
+const REQUIRED = { MONGODB_URI: 'mongodb://localhost:27017/packwright' }
+const load = (overrides: NodeJS.ProcessEnv = {}) => loadEnv({ ...REQUIRED, ...overrides })
+
 describe('loadEnv', () => {
-  it('applies defaults when nothing is set', () => {
-    const env = loadEnv({})
+  it('applies defaults when nothing else is set', () => {
+    const env = load({})
     expect(env.NODE_ENV).toBe('development')
     expect(env.PORT).toBe(3000)
   })
 
   it('coerces PORT from the string the platform actually provides', () => {
-    expect(loadEnv({ PORT: '8080' }).PORT).toBe(8080)
+    expect(load({ PORT: '8080' }).PORT).toBe(8080)
   })
 
   it('fails loudly on a malformed value rather than at first use', () => {
-    expect(() => loadEnv({ PORT: 'not-a-port' })).toThrow(/Invalid environment configuration/)
+    expect(() => load({ PORT: 'not-a-port' })).toThrow(/Invalid environment configuration/)
   })
 
   it('rejects an unknown NODE_ENV', () => {
-    expect(() => loadEnv({ NODE_ENV: 'staging' })).toThrow(/Invalid environment configuration/)
+    expect(() => load({ NODE_ENV: 'staging' })).toThrow(/Invalid environment configuration/)
   })
 
   it('treats a declared-but-blank secret as absent', () => {
@@ -57,15 +67,14 @@ describe('loadEnv', () => {
     // and leaves its value empty yields '' — which is *present*, so a bare
     // .min(1).optional() rejected it and crash-looped the container on a config
     // that looks perfectly fine in the console.
-    const env = loadEnv({ ANTHROPIC_API_KEY: '', MONGODB_URI: '' })
-    expect(env.ANTHROPIC_API_KEY).toBeUndefined()
-    expect(env.MONGODB_URI).toBeUndefined()
+    //
+    // MONGODB_URI is absorbed the same way and is no longer demonstrable here,
+    // because absent is now fatal for it. `env.test.ts` asserts that directly.
+    expect(load({ ANTHROPIC_API_KEY: '' }).ANTHROPIC_API_KEY).toBeUndefined()
   })
 
   it('still accepts a real secret', () => {
-    expect(loadEnv({ ANTHROPIC_API_KEY: 'sk-ant-example' }).ANTHROPIC_API_KEY).toBe(
-      'sk-ant-example',
-    )
+    expect(load({ ANTHROPIC_API_KEY: 'sk-ant-example' }).ANTHROPIC_API_KEY).toBe('sk-ant-example')
   })
 })
 

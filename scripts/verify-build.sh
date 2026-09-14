@@ -18,12 +18,27 @@ BASE="http://localhost:${PORT}"
 LOG=/tmp/pw-build-check.log
 
 npm run build >/dev/null
-PORT="$PORT" NODE_ENV=test node apps/api/dist/server.js >"$LOG" 2>&1 &
+PORT="$PORT" NODE_ENV=test node scripts/serve-with-memory-mongo.mjs >"$LOG" 2>&1 &
 pid=$!
 trap 'kill $pid 2>/dev/null || true' EXIT
-for _ in $(seq 1 20); do curl -sf "${BASE}/health" >/dev/null && break; sleep 0.5; done
-
 fail() { echo "$1"; tail -20 "$LOG"; exit 1; }
+
+# Thirty seconds, not ten. The server starts a `mongod` before it listens, which
+# is seconds rather than minutes — mongodb-memory-server's `postinstall` fetches
+# the binary during `npm ci`, so nothing is downloaded here. The old budget was
+# tight enough to expire on a slow start, and because the loop fell through
+# silently the script then blamed the first request it made: "export failed:
+# HTTP 000", naming a PDF for a server that was never up.
+healthy=""
+for _ in $(seq 1 60); do
+  curl -sf "${BASE}/health" >/dev/null && { healthy=yes; break; }
+  # A server that has already exited will not become healthy by being waited for,
+  # and spending the remaining budget on it is the same misdirection in slower
+  # form: the run looks like a timeout when it was a crash.
+  kill -0 "$pid" 2>/dev/null || fail "the built server exited before it was healthy"
+  sleep 0.5
+done
+[ -n "$healthy" ] || fail "the built server never became healthy"
 
 # --- the PDF export, against the bundle -------------------------------------
 code=$(curl -s -o /tmp/pw-build-check.pdf -w '%{http_code}' -X POST \

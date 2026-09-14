@@ -77,10 +77,24 @@ Requires **Node 24** (pinned in `.nvmrc`) and **npm ≥ 11** — npm 10 fails to
 
 ```bash
 npm ci
-npm run dev        # api on :3000, web on :5173
+cp apps/api/.env.example apps/api/.env
+docker compose up -d   # mongo on :27017
+npm run dev            # api on :3000, web on :5173
 npm test
 npm run lint && npm run typecheck && npm run build
 ```
+
+The `.env` goes in `apps/api/`, not the repository root: `dotenv` resolves it
+against the working directory, and npm runs a workspace script from that
+workspace. At the root it is silently ignored.
+
+**The API will not start without `MONGODB_URI`**, and that is deliberate: a server
+that boots with nowhere to save reports healthy to its load balancer and then
+fails on the first save, which is a worse failure than refusing to start.
+
+The tests need none of this. `npm run verify:build` and the browser suite start
+their own `mongod` through `mongodb-memory-server`, and `npm test` needs no
+database at all — so a clean checkout with no Docker runs the whole suite.
 
 ## Documentation
 

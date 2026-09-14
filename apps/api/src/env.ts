@@ -36,8 +36,35 @@ const EnvSchema = z.object({
   NODE_ENV: blankAsAbsent(z.enum(['development', 'test', 'production']).default('development')),
   PORT: blankAsAbsent(z.coerce.number().int().positive().max(MAX_TCP_PORT).default(3000)),
 
-  /** Optional until persistence lands. Injected from Secrets Manager in production. */
-  MONGODB_URI: optionalSecret,
+  /**
+   * Required. The process refuses to boot without it.
+   *
+   * It was optional while there was nothing to store. Leaving it optional now
+   * would mean a server that starts, reports healthy to the ALB, serves the
+   * client, and fails every persistence route — which is precisely the shape
+   * this file's opening docblock refuses to allow at startup. Injected from
+   * Secrets Manager in production.
+   *
+   * `blankAsAbsent` still wraps it, so an ECS variable declared with an empty
+   * value is reported as missing rather than as failing a non-empty check. The
+   * difference between those two messages is the difference between finding the
+   * task definition and reading the schema.
+   *
+   * **The scheme is checked, and `.min(1)` would not have been enough.**
+   * `blankAsAbsent` maps only the empty string to absent, so `'   '` is a
+   * present value that satisfies any non-empty check — and a server booted on
+   * one reports healthy and fails at first connect, which is precisely the
+   * deferral this variable was made required to prevent. A value mongoose cannot
+   * dial is a missing value that has not admitted it yet.
+   */
+  MONGODB_URI: blankAsAbsent(
+    z
+      .string()
+      .regex(
+        /^mongodb(\+srv)?:\/\/\S/,
+        'MONGODB_URI must be a mongodb:// or mongodb+srv:// connection string',
+      ),
+  ),
 
   /**
    * Server-side only, always. This key must never reach the browser bundle —
