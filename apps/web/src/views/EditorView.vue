@@ -15,7 +15,15 @@
  * control. Shrinking them would have produced three unusable columns instead of
  * one usable one.
  */
-import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import {
+  SavedLabelError,
+  createLabel,
+  readLabel,
+  replaceLabel,
+  type SavedLabelInput,
+} from '../api/savedLabels'
 import EditorFormRail from '../components/EditorFormRail.vue'
 import FindingsRail from '../components/FindingsRail.vue'
 import LabelCanvas from '../components/LabelCanvas.vue'
@@ -115,6 +123,126 @@ const canvasTitle = computed(() => {
   return store.layout?.symbols[0]
     ? `UPC-A label for GTIN ${store.layout.symbols[0].value}`
     : 'Label with no barcode drawn'
+})
+
+/**
+ * Saving, and what the editor is saving *to*.
+ *
+ * The route decides: `/labels/:id` opens that record and attaches the editor to
+ * it, `/labels/new` leaves it unattached. Attachment is what makes Save replace
+ * rather than duplicate, and it is also what lets an export use the stock a
+ * label was saved at — `docs/BACKLOG.md` records what happens without it.
+ */
+const route = useRoute()
+const router = useRouter()
+const saving = ref(false)
+const saveError = ref<string | null>(null)
+const loadError = ref<string | null>(null)
+
+const savedInput = computed(() => ({
+  name: store.savedName.trim(),
+  labelType: store.labelType,
+  stock: JSON.parse(JSON.stringify(store.snapshot.stock)) as SavedLabelInput['stock'],
+  data: JSON.parse(JSON.stringify(store.snapshot.data)) as unknown,
+}))
+
+/** A label the schema will refuse for want of a name is refused here first. */
+const canSave = computed(() => savedInput.value.name.length > 0)
+
+async function persist(mode: 'replace' | 'create') {
+  if (!canSave.value) return
+  saving.value = true
+  saveError.value = null
+  try {
+    const saved =
+      mode === 'replace' && store.savedId !== null
+        ? await replaceLabel(store.savedId, savedInput.value)
+        : await createLabel(savedInput.value)
+    store.markSaved(saved.id, saved.name)
+    // The URL follows the document, so a reload lands on the same label and a
+    // copied link points at it.
+    if (route.params.id !== saved.id) await router.replace(`/labels/${saved.id}`)
+  } catch (caught) {
+    saveError.value =
+      caught instanceof SavedLabelError && caught.detail.length > 0
+        ? `${caught.message}: ${caught.detail.map((d) => `${d.path} ${d.message}`).join('; ')}`
+        : caught instanceof Error
+          ? caught.message
+          : 'The label could not be saved.'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function openFromRoute(id: string) {
+  loadError.value = null
+  try {
+    const saved = await readLabel(id)
+    store.loadSaved({
+      id: saved.id,
+      name: saved.name,
+      labelType: saved.labelType as 'gs1-retail' | 'ghs-chemical' | 'us-food',
+      stock: saved.stock,
+      data: saved.data,
+    })
+  } catch (caught) {
+    loadError.value =
+      caught instanceof SavedLabelError && caught.isMissing
+        ? 'That label no longer exists. The editor is showing a new document.'
+        : caught instanceof Error
+          ? caught.message
+          : 'The label could not be opened.'
+  }
+}
+
+/**
+ * The route decides what the editor is holding, on every change of it.
+ *
+ * **`onMounted` alone was a way to overwrite somebody's label.** The store is a
+ * singleton and the editor is the same component at `/labels/new` and at
+ * `/labels/:id`, so arriving at `/labels/new` from a saved label — the header's
+ * own "Editor" link does exactly that — left `savedId` set. The document still
+ * read "Saved", and the next edit followed by Save issued a `PUT` over the
+ * record the user thought they had navigated away from.
+ */
+watch(
+  () => route.params.id,
+  (id) => {
+    loadError.value = null
+    saveError.value = null
+    if (typeof id === 'string' && id.length > 0) {
+      if (id !== store.savedId) void openFromRoute(id)
+      return
+    }
+    // `/labels/new` is a new document. The fields are left as they are, so
+    // "start from this one" still works, but nothing is attached and the name
+    // does not carry over — a name belongs to the record it was given to.
+    store.detach()
+    store.savedName = ''
+  },
+  { immediate: true },
+)
+
+/**
+ * Unsaved work does not leave quietly.
+ *
+ * Two guards because there are two ways out: the router covers navigation inside
+ * the application, and `beforeunload` covers closing the tab. The second cannot
+ * carry a message — every browser shows its own wording — which makes it a blunt
+ * instrument, and it is here because losing an edited label to a closed tab is
+ * worse than a prompt nobody can word.
+ */
+const warnOnUnload = (event: BeforeUnloadEvent) => {
+  if (!store.isDirty) return
+  event.preventDefault()
+}
+
+onMounted(() => window.addEventListener('beforeunload', warnOnUnload))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', warnOnUnload))
+
+onBeforeRouteLeave(() => {
+  if (!store.isDirty) return true
+  return window.confirm('This label has unsaved changes. Leave without saving?')
 })
 
 /** The route and filename follow the label type, so neither is hardcoded. */
@@ -227,11 +355,64 @@ async function exportPdf() {
         </label>
       </div>
 
+      <!--
+        The name is a field rather than a dialog. It is required by the schema, so
+        it has to be asked for somewhere, and a modal to collect one string would
+        be the first dialog this application owns.
+      -->
+      <label for="field-label-name" class="flex min-w-0 grow items-baseline gap-2 text-xs">
+        <span class="sr-only">Label name</span>
+        <input
+          id="field-label-name"
+          v-model="store.savedName"
+          type="text"
+          maxlength="120"
+          placeholder="Name this label to save it"
+          class="border-chrome-700 bg-chrome-900 text-chrome-200 min-w-0 grow border px-2 py-0.5 text-xs"
+        />
+      </label>
+
       <div class="flex min-w-0 shrink-0 items-center gap-4">
+        <span
+          v-if="store.savedId !== null"
+          class="text-chrome-400 shrink-0 text-xs"
+          data-save-state
+          >{{ store.isDirty ? 'Unsaved changes' : 'Saved' }}</span
+        >
+        <button
+          type="button"
+          :class="[BUTTON, 'shrink-0 px-3 py-1 text-xs']"
+          :disabled="saving || !canSave || (store.savedId !== null && !store.isDirty)"
+          data-save
+          @click="persist('replace')"
+        >
+          {{ saving ? 'Saving…' : store.savedId !== null && !store.isDirty ? 'Saved' : 'Save' }}
+        </button>
+        <button
+          v-if="store.savedId !== null"
+          type="button"
+          :class="[BUTTON, 'shrink-0 px-3 py-1 text-xs']"
+          :disabled="saving || !canSave"
+          data-save-as
+          @click="persist('create')"
+        >
+          Save as new
+        </button>
         <p v-if="exportError" class="text-danger max-w-md text-xs">{{ exportError }}</p>
         <p v-else-if="cannotExport" class="text-chrome-300 max-w-md text-xs">
           Nothing to export — part of the label could not be drawn.
         </p>
+        <!--
+          After the pair above, not between them. Inserted in the middle, these
+          two rebound `v-else-if` onto `loadError`, so a failed open suppressed
+          the only explanation beside a disabled Export button.
+
+          A save that failed and a label that could not be opened both have to be
+          said out loud: a Save button that quietly does nothing reads as a
+          document that is safe, which is the worst thing it could read as.
+        -->
+        <p v-if="saveError" class="text-danger max-w-md text-xs" role="alert">{{ saveError }}</p>
+        <p v-if="loadError" class="text-danger max-w-md text-xs" role="alert">{{ loadError }}</p>
         <button
           type="button"
           :class="[BUTTON, 'px-3 py-1.5 text-xs']"

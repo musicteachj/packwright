@@ -9,7 +9,9 @@
  * purpose, so the shared part is a component the reading routes mount rather than
  * a wrapper imposed on everything.
  */
-const props = defineProps<{ current: 'landing' | 'rules' }>()
+type Section = 'landing' | 'labels' | 'rules'
+
+const props = defineProps<{ current: Section }>()
 
 /**
  * Both links read the prop, which only one of them used to.
@@ -19,10 +21,10 @@ const props = defineProps<{ current: 'landing' | 'rules' }>()
  * component accepted and ignored. A prop that is passed, type-checked and inert
  * is worse than no prop: it reads at the call site as though the case is handled.
  */
-const linkClass = (section: 'landing' | 'rules') =>
+const linkClass = (section: Section) =>
   props.current === section ? 'text-chrome-100' : 'text-chrome-400 hover:text-chrome-200'
 
-const ariaCurrent = (section: 'landing' | 'rules') =>
+const ariaCurrent = (section: Section) =>
   props.current === section ? ('page' as const) : undefined
 </script>
 
@@ -38,6 +40,14 @@ const ariaCurrent = (section: 'landing' | 'rules') =>
     </RouterLink>
 
     <nav class="flex items-baseline gap-5 text-xs" aria-label="Sections">
+      <RouterLink
+        class="focus-visible:outline-notice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        :class="linkClass('labels')"
+        :aria-current="ariaCurrent('labels')"
+        to="/labels"
+      >
+        Saved
+      </RouterLink>
       <RouterLink
         class="focus-visible:outline-notice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         :class="linkClass('rules')"

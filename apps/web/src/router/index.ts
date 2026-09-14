@@ -5,16 +5,17 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
  * their phases land.
  *
  *   /              landing                                   — done
- *   /labels/new    the editor, on an in-memory document      — done
- *   /labels        saved labels
- *   /labels/:id    the editor, on a saved document
+ *   /labels        saved labels                              — done
+ *   /labels/new    the editor, on a new document             — done
+ *   /labels/:id    the editor, on a saved document           — done
  *   /audit         photo/camera label audit
- *   /rules         the rule catalogue, from the registry       — done
+ *   /rules         the rule catalogue, from the registry     — done
  *
- * `/labels/new` carries the editor rather than `/labels/:id` because there is no
- * persistence yet. An id would have to be invented, and inventing one means
- * either a fake route parameter or a browser-storage layer built to be thrown
- * away. The route shape is the cheaper of the two to change later.
+ * `/labels/new` used to carry the editor *instead of* `/labels/:id`, because
+ * there was nothing to have an id. Both exist now, and the order below matters:
+ * a literal segment and a parameter both match `/labels/new`, so the literal one
+ * has to be declared first or every new document would be read as a saved label
+ * called "new".
  */
 const routes: RouteRecordRaw[] = [
   {
@@ -25,6 +26,17 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/labels/new',
     name: 'editor',
+    component: () => import('../views/EditorView.vue'),
+  },
+  {
+    path: '/labels',
+    name: 'labels',
+    component: () => import('../views/LabelsView.vue'),
+  },
+  {
+    // After `/labels/new`, so the literal route is matched before the parameter.
+    path: '/labels/:id',
+    name: 'saved-editor',
     component: () => import('../views/EditorView.vue'),
   },
   {
