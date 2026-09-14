@@ -9,7 +9,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
  *   /labels        saved labels
  *   /labels/:id    the editor, on a saved document
  *   /audit         photo/camera label audit
- *   /rules         the rule catalogue, generated from the registry
+ *   /rules         the rule catalogue, from the registry       — done
  *
  * `/labels/new` carries the editor rather than `/labels/:id` because there is no
  * persistence yet. An id would have to be invented, and inventing one means
@@ -26,6 +26,11 @@ const routes: RouteRecordRaw[] = [
     path: '/labels/new',
     name: 'editor',
     component: () => import('../views/EditorView.vue'),
+  },
+  {
+    path: '/rules',
+    name: 'rules',
+    component: () => import('../views/RulesView.vue'),
   },
 ]
 

@@ -117,13 +117,21 @@ test('the stylesheet is applied, not merely served', async ({ page }) => {
 
   // A CSP that blocked the stylesheet would leave a page that still passes every
   // assertion above — the elements exist and are "visible" — while rendering as
-  // unstyled HTML. So this asks the browser what it actually computed, against a
-  // token from the theme rather than against a hardcoded colour.
-  const background = await page
-    .locator('main')
-    .first()
-    .evaluate((element) => getComputedStyle(element).backgroundColor)
+  // unstyled HTML. So this asks the browser what it actually computed.
+  //
+  // Read off `body`, which `main.css` themes directly, rather than off whichever
+  // element happens to carry the page frame. It asked `main` once and broke when
+  // the masthead moved out of it and the frame moved up a level — a structural
+  // change with nothing to do with whether the stylesheet loaded, which is all
+  // this is here to answer.
+  const themed = await page.evaluate(() => {
+    const style = getComputedStyle(document.body)
+    return { background: style.backgroundColor, colour: style.color, font: style.fontFamily }
+  })
 
-  expect(background, 'the graphite chrome must be applied').not.toBe('rgba(0, 0, 0, 0)')
-  expect(background).not.toBe('rgb(255, 255, 255)')
+  expect(themed.background, 'the graphite chrome must be applied').not.toBe('rgba(0, 0, 0, 0)')
+  expect(themed.background).not.toBe('rgb(255, 255, 255)')
+  // The self-hosted face, which is served under the same policy as the stylesheet
+  // that names it.
+  expect(themed.font, 'IBM Plex must be the resolved family').toMatch(/IBM Plex Sans/)
 })

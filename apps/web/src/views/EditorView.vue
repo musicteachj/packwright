@@ -20,6 +20,7 @@ import LabelCanvas from '../components/LabelCanvas.vue'
 import LabelTextView from '../components/LabelTextView.vue'
 import { blockingOmissions, labelFilename } from '@packwright/label-core'
 import { useLabelDocumentStore } from '../stores/labelDocument'
+import { BUTTON } from '../components/chrome'
 
 const store = useLabelDocumentStore()
 
@@ -172,7 +173,7 @@ async function exportPdf() {
         </p>
         <button
           type="button"
-          class="border-chrome-700 bg-chrome-900 text-chrome-100 hover:bg-chrome-800 focus-visible:outline-notice border px-3 py-1.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50"
+          :class="[BUTTON, 'px-3 py-1.5 text-xs']"
           :disabled="exporting || !store.layout || cannotExport"
           :title="cannotExport ? exportBlockedReason : undefined"
           @click="exportPdf"
