@@ -5,12 +5,19 @@
 import 'dotenv/config'
 
 import { createApp } from './app'
+import { connectToDatabase, databaseStatus } from './db'
 import { loadEnv } from './env'
 import { resolveWebRoot } from './static'
 
 const env = loadEnv()
 const webRoot = resolveWebRoot()
-const app = createApp({ enableLogging: env.NODE_ENV !== 'test', webRoot })
+
+// Before `listen`, so a server accepting requests is a server with a database.
+// The alternative is a task that reports healthy and then fails under traffic,
+// which is what `env.ts` refuses at startup and what this completes.
+await connectToDatabase(env.MONGODB_URI)
+
+const app = createApp({ enableLogging: env.NODE_ENV !== 'test', webRoot, databaseStatus })
 
 app.listen(env.PORT, () => {
   console.log(`packwright api listening on :${env.PORT} (${env.NODE_ENV})`)

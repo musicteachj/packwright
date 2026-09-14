@@ -77,6 +77,44 @@ source is degenerate. An ingredient whose name does not reveal the allergen — 
 `marzipan (almonds)` — would show the feature earning its place. A content decision about the seeded
 document, not a correctness fix.
 
+## Saved labels
+
+**A saved label's `data` cannot be posted to the export route as it stands, and the failure is silent.** A
+saved document holds `stock` beside `data`; the export request takes them flattened together, and defaults a
+missing `stock` to `DEFAULT_UPC_A_STOCK` or its siblings. So handing an export route the `data` of a saved
+label prints it at whatever the default happens to be rather than at the size it was designed at — the same
+class of failure as a rule clearing a label the engine never drew, and invisible until somebody measures a
+printed sheet.
+
+Nothing does this today, because there is no user interface yet. **The stage that adds one is where it
+becomes reachable**, since "open a saved label, then export it" is the obvious first thing to wire. That stage
+should carry the round trip in a test — save, read back, export, assert the page box matches the stock that
+was saved — and probably a named helper that rebuilds an export request from a saved document, so the correct
+path is the easy one. Written here rather than built now because a helper with no caller is a guess at what
+the caller will want.
+
+**The label list is unbounded.** `GET /api/labels` returns every document, newest first. The sort is indexed
+now, so the 32 MB in-memory sort ceiling is no longer the limit, but the response still grows without one.
+Pagination is an API shape decision — cursor or offset, and what the client does with it — and it belongs
+with the list view that will consume it rather than ahead of it.
+
+## The API's tests
+
+**`loadEnv` is tested twice, in two files.** `apps/api/src/env.test.ts` and a `describe('loadEnv')` block
+inside `apps/api/src/app.test.ts` cover overlapping ground — defaults, port coercion, a rejected `NODE_ENV`,
+a declared-but-blank secret. Both needed the same repair when `MONGODB_URI` became required, which is how the
+duplication surfaced: a change to one schema field meant editing the same assertions in two places, and the
+second copy is the one that would be forgotten.
+
+Not merged here because deleting tests is a change that should be made deliberately rather than while passing
+through. The `app.test.ts` copy is the older one and its cases are a subset, so the merge is a deletion rather
+than a consolidation — but it wants someone to confirm that reading rather than a patch that assumes it.
+
+The cost has since been paid twice more. Repairing both copies meant pasting the same `REQUIRED`/`load` helper
+into each, and two review passes flagged the duplication independently. The reading has now been done and the
+subset relationship holds, so what remains is the deletion itself — which is a commit of its own, not a line
+in one that was making the schema stricter.
+
 ## The scanner
 
 **The fallback swaps on a timer, and it could swap on evidence.** `NATIVE_TRIAL_TICKS` gives the browser's
@@ -257,10 +295,11 @@ app was not deployed; it matters more once it is. The right home is **phase 8**,
 are the natural places to put it rather than middleware in this process — and where the vision endpoint,
 which spends money per call, will need the same protection more urgently.
 
-**There is no `.env.example`.** `.gitignore` has carried `!.env.example` since the first commit and nothing
-has ever written the file, so `MONGODB_URI` and `ANTHROPIC_API_KEY` are undocumented — a new checkout has no
-way to learn what it needs without reading `env.ts`. **Phase 6 stage 6** should write it, since that is the
-stage that makes `MONGODB_URI` load-bearing.
+**~~There is no `.env.example`.~~ Written in phase 6 stage 6**, the stage that made `MONGODB_URI`
+load-bearing, as this entry asked. It lives at `apps/api/.env.example` rather than the repository root:
+`dotenv` resolves `.env` against the working directory and npm runs a workspace script from that workspace, so
+a root `.env` is read by nothing. That was latent for as long as every variable was optional, and became a
+failure to start the moment one was not.
 
 **Three dev-only advisories remain.** `vitest` and `@vitest/mocker` (a path traversal in the mocker's redirect
 handling) and `esbuild` (arbitrary file read via the dev server, on Windows). None ships: `esbuild` is only

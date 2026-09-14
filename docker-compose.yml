@@ -1,0 +1,20 @@
+# A database for `npm run dev`.
+#
+# The tests do not use this. They start their own `mongod` through
+# mongodb-memory-server, so `npm test`, `npm run verify:build` and the browser
+# suite all run on a clean checkout with no Docker installed. This exists for the
+# one case that genuinely wants a database outliving the process that used it:
+# developing against data you put there yourself.
+services:
+  mongo:
+    image: mongo:8
+    # Bound to the loopback address. `'27017:27017'` publishes on 0.0.0.0, which
+    # puts an unauthenticated database on every interface the machine has — a
+    # coffee-shop network included. Nothing outside this machine needs it.
+    ports:
+      - '127.0.0.1:27017:27017'
+    volumes:
+      - packwright-mongo:/data/db
+
+volumes:
+  packwright-mongo:

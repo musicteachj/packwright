@@ -74,11 +74,19 @@ export default defineConfig({
    * the bundle, this is where it surfaces.
    */
   webServer: {
-    command: `npm run build && PORT=${PORT} NODE_ENV=production node apps/api/dist/server.js`,
+    // Through the same wrapper `verify:build` uses, which starts a `mongod` and
+    // then imports the built `server.js`. The database lives and dies with the
+    // server process Playwright already manages, so there is no second lifetime
+    // to get right: no mongod started by `--list`, none left behind when the
+    // server fails to boot, and no teardown racing the thing it is tearing down.
+    command: `npm run build && PORT=${PORT} NODE_ENV=production node scripts/serve-with-memory-mongo.mjs`,
     url: `http://localhost:${PORT}/health`,
     reuseExistingServer: !process.env.CI,
     // The build is a Vite production build plus a tsup bundle; on a cold cache
-    // that is comfortably more than the 60s default.
+    // that is comfortably more than the 60s default. The command also starts a
+    // `mongod` before it listens, which is seconds rather than minutes — the
+    // binary is fetched by mongodb-memory-server's `postinstall` during
+    // `npm ci`, not here. Widening this further only delays a real hang.
     timeout: 180_000,
     stdout: 'pipe',
     stderr: 'pipe',

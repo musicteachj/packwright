@@ -8,9 +8,141 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+Phase 6, stage 6 — persistence. Saved labels, as an API. No user interface yet: the list, the `/labels/:id`
+route and the save experience are about the editor rather than about storage, and are the stage after this.
+
+- **`LabelDocument`, with `data` stored as `Mixed` and judged by Zod.** The shape of a label is described
+  once, in `schemas.ts`, and the persistence routes validate against the same description the export routes
+  are built from. Restating three large label-data shapes in a second schema language would be a second
+  source of truth for one set of facts — the drift `getSymbologyConstraints` was introduced to end. The trade
+  is that nothing at the database level checks `data`; the API is its only writer, and it checks every write.
+- **Five routes under `/api/labels`** — list, create, read, replace, delete. The list omits `data`, in the
+  query rather than by stripping it afterwards, so the cost of listing does not grow with the size of the
+  labels in it. `PUT` rather than `PATCH`, because the editor holds the whole document and merging a partial
+  update into a discriminated union is where a `us-food` label still carrying a `gtin` comes from. A
+  malformed `ObjectId` is a 404 and not a 500: it is a request for a label that does not exist, and letting
+  Mongoose's cast error through reports a server fault for a client's typo.
+- **What was validated on the way out is what is served.** Parsing a stored document and then sending the
+  original checks nothing a client can see: zod strips keys it does not recognise, so a `data.gtin` left on a
+  us-food label by an older shape parsed clean and the unsanitised original went out regardless. That is the
+  same defect the replace on `PUT` exists to prevent, arriving from the other direction — and a stale value
+  that reaches a client is a value that can be sent back.
+- **A document is parsed again on the way out.** A stored document is untrusted input the moment the schema
+  moves, and one saved under an older shape that silently deserializes into something the engine mis-draws —
+  or that a rule then judges — is the class of defect this project keeps finding by review and never by its
+  suite. A label that no longer validates is reported with its id rather than served.
+- **`stock` is required on a saved label** where the export request treats it as optional and falls back to a
+  default. A saved label records the stock it was designed at; inheriting `DEFAULT_UPC_A_STOCK` would mean
+  that changing that constant silently resizes every label already stored against it, and the resize would
+  first be visible in a PDF somebody had already sent to a printer.
+- **A saved us-food label gets the same cross-field checks a posted one does.** `.refine` returns something
+  that is no longer an object and `.omit` is an object method, so the saved shape has to be built from the
+  unrefined base — and would have been validated more weakly than the same label sent to the exporter. The
+  refinement is named and reapplied, and a test fails if it stops being.
+- **`/health` reports the connection, and answers 503 without one.** Phase 8 puts an ALB target group behind
+  it, and a task that reports healthy without a database holds a broken instance in service. The status is
+  injected rather than looked up, for the reason `webRoot` already is: `createApp` builds the same
+  application every time it is called, and importing mongoose into it would make every route test that asks
+  about a PDF depend on a live connection.
+- **An edit no longer re-dates the label it edits, and still clears what an older shape left behind.** A
+  replacement body carries no `createdAt`, so mongoose's replace branch wrote the current time into it and
+  every `PUT` reported the label as newly created — unnoticed, because the test for replacing one asserted
+  only its name. Updating the known fields with `$set` fixed the date and broke the replacement: a field from
+  a schema that has since moved on survived every edit, and would become live label data again the day its
+  name was reused. So the replace stands and `createdAt` is carried across it explicitly. Both halves have a
+  test that fails without them: drop the carried date and the first fails, swap back to `$set` and the second
+  does.
+- **A second `mongod` starting alongside the first no longer has its data directory deleted, in either
+  direction.** The sweep that
+  bounds what a `SIGKILL` leaves behind reads a directory with no recorded owner as abandoned, and the owner
+  was only recorded once `mongod` had finished starting — leaving seconds in which a concurrent run would
+  delete a directory that was very much in use. The claim is written before the sweep runs and handed to the
+  `mongod` pid afterwards. Two wrappers started together now both come up healthy with both directories
+  intact.
+- **The label list sorts on an index.** An unindexed sort runs in memory against a 32 MB ceiling, which is a
+  long way off for a collection of labels and a 500 with no obvious cause when it arrives.
+- **A test ties the schema's label types to the ones the model accepts.** The union restates them because each
+  arm carries a different `data` schema, so the arms cannot be derived from a list — but the two lists
+  agreeing can be asserted, and has to be: a type in one and not the other turns a request the schema accepts
+  into a 500 from the Mongoose enum validator. That is the same two-sources-of-truth failure this stage exists
+  to avoid, one level up from where it was being avoided.
+- **The wrapper's owner file is renamed into place rather than written over.** A plain write truncates first,
+  so a neighbour's sweep reading it in that window got an empty string — which parses to zero, fails the
+  liveness test, and reaches the one conclusion that must never be reached by accident: that a live database's
+  directory is free. The Y4M fixture already writes itself this way for the same reason.
+- **`templateId` is not in the model** that `docs/DESIGN.md` sketches. It has no referent — `templates/`
+  exports element maps and defaults rather than identified templates, and `labelType` already selects which
+  `layOut*` function runs. A field naming nothing gets filled in with something arbitrary and then read as
+  meaningful.
+
 ### Changed
 
 Phase 6, stage 6 — persistence. The first of two parts: nothing new works yet, and one file learned to share.
+
+- **The server now refuses to start without `MONGODB_URI`, and everything that boots it supplies one.**
+  `env.ts` has argued since it was written that reading config at each use site "defers a missing database URI
+  until the first request that needs it, which in a container means a task that reports healthy and then 500s
+  under traffic" — the variable was only optional because there was nothing yet to store. `blankAsAbsent`
+  still wraps it, so an ECS variable declared with an empty value is reported as *missing* rather than as
+  failing a non-empty check, which is the difference between looking at the task definition and looking at the
+  schema.
+- **Making it required exposed four tests that were passing on the wrong thing.** Every case in `env.test.ts`
+  built its environment from scratch, so once the URI was mandatory the three asserting `Invalid environment`
+  threw on the missing URI rather than on the port or the `NODE_ENV` they name — green, and true with their
+  own subject deleted. They now vary one field against a complete base environment. Confirmed by removing the
+  TCP upper bound: "rejects a port above the TCP maximum" fails, where before it would not have noticed.
+- **`verify:build` and the browser suite start a real `mongod` rather than being handed a stub.** Both boot
+  the shipped artifact, so both stopped working the moment it demanded a database — `verify:build` exited 7 on
+  a health check that never answered. `mongodb-memory-server` rather than a container, so a clean checkout
+  with no Docker still runs the whole suite, and `scripts/serve-with-memory-mongo.mjs` sets one variable and
+  imports the built `server.js`, so what is verified is still the artifact. `docker compose up -d`, an
+  `apps/api/.env.example` and a README note cover the one case that does want a database outliving its
+  process: `npm run dev`, which the required variable had quietly broken. The template sits in `apps/api/`
+  rather than the repository root because `dotenv` resolves `.env` against the working directory and npm runs
+  a workspace script from that workspace — a root `.env` is read by nothing, which was harmless while every
+  variable was optional and a failure to start the moment one was not.
+- **The browser suite gets its database from the same wrapper, which is what makes its lifetime simple.** The
+  first attempt owned a `mongod` in `playwright.config.ts`, and that config is re-imported in every worker —
+  the behaviour the Y4M fixture already works around with an atomic rename — so it needed a guard to avoid
+  starting one per worker, a teardown to stop it, and an exception for workers that construct `webServer`
+  without ever starting one. Measured, the guard did work: the config loads six times here and one `mongod`
+  started. It was still the wrong owner. `--list` started one, a failed `webServer` left one behind, and the
+  global teardown ran before the server it was serving had stopped. Started inside the process Playwright
+  already manages, all three stop being possible and the guard, the teardown and the exception all go away.
+- **The wrapper cleans up after the failures it exists to catch, including the ones that arrive late.** A
+  server that throws on the way up is precisely what `verify:build` is for, and letting that take the wrapper
+  down orphaned the `mongod` — reproduced, and flatly contradicting the comment above it claiming none was
+  left behind. A `try` around the import was not enough either: an error thrown *after* the module evaluates,
+  which is what a failed `listen` is, reaches neither the `catch` nor anything Node installs by default.
+  `uncaughtException` and `unhandledRejection` now do, and the signal handlers are registered before the
+  database is created rather than after. Proven with a deliberate throw 300 ms after listening: no process
+  and no directory survive it.
+- **The sweep asks whether the `mongod` is alive, not whether the wrapper is.** It asked the wrong process:
+  `mongod` is a child that outlives a wrapper killed outright, so a later run would find the wrapper gone and
+  delete the wiredTiger files out from under a database still using them — the precise hazard the comment
+  claimed to prevent. Each run now records its `mongod`'s pid beside the directory and spares any directory
+  whose recorded owner still answers. Demonstrated with three planted directories: a dead owner and an
+  ownerless one are removed, a live owner is left alone.
+- **`verify:build` notices a server that has already exited.** The health budget was spent in full on a
+  process that had died in one, reporting a timeout for a crash — the same misdirection the budget was
+  widened to remove, just slower. It checks the pid each time round and now says so in a second.
+- **What a `SIGKILL` leaves behind is bounded at the other end.** A graceful stop cleans up after itself —
+  verified by signalling the wrapper directly — but Playwright does not always let it finish, and nothing
+  survives being killed outright. So each run sweeps the directories left by runs whose process is gone and
+  spares any whose process is alive, which is what makes it safe when `verify:build` and the browser suite
+  overlap. Demonstrated with a planted dead pid and a live one: the first is removed, the second is not.
+- **A connection string has to be one mongoose can dial, not merely non-empty.** `blankAsAbsent` maps only
+  the empty string to absent, so `MONGODB_URI="   "` was a *present* value that satisfied a non-empty check —
+  booting a server that reports healthy and fails at first connect, which is the precise deferral this change
+  was made to prevent. The scheme is checked instead, so `localhost:27017` and a stray `postgres://` are
+  refused at startup where the message can still name the variable.
+- **`verify:build` waits thirty seconds for health, and says so when it does not get it.** Ten was tight
+  enough to expire on a slow start now that a `mongod` comes up before the server listens — seconds, not
+  minutes, since `mongodb-memory-server` fetches its binary during `npm ci` rather than at boot. An earlier
+  version of this entry claimed that download happened here and budgeted ninety seconds for it; the cache
+  directory says otherwise, and a budget padded for something that does not happen only delays a real hang.
 
 - **What a label is now lives in `apps/api/src/labels/schemas.ts`, not inside the export routes.** The three
   request schemas and the `toX` mappers that reconcile Zod's `string | undefined` with `label-core`'s

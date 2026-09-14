@@ -45,6 +45,7 @@
     "eslint-plugin-vuejs-accessibility": "^2.6.0",
     "globals": "^17.10.0",
     "lint-staged": "^17.3.0",
+    "mongodb-memory-server": "^11.2.0",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "simple-git-hooks": "^2.13.1",

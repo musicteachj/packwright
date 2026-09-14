@@ -427,61 +427,79 @@ export const NutritionFactsSchema = z.object({
   continuousVerticalSpaceInches: z.number().positive().optional(),
 })
 
-export const UsFoodRequest = z
-  .object({
-    statementOfIdentity: NON_COMPLIANT_BUT_WELL_FORMED,
-    netQuantity: NetQuantitySchema,
-    // Required, and not defaulted. The container selects the 101.7(i) type-size
-    // band; supplying one the caller never stated would invent the requirement
-    // every finding on this label is measured against.
-    container: ContainerSchema,
-    markingMethod: z.enum(['printed', 'blown-embossed-or-molded']).optional(),
-    netQuantityFontSizeMm: z.number().positive().optional(),
-    netQuantityAnchor: z.enum(ANCHORS).optional(),
-    informationPanelFontSizeMm: z.number().positive().optional(),
-    ingredients: z.array(IngredientSchema).optional(),
-    // The four figures 21 CFR 101.4(a)(2) permits, derived from label-core's own
-    // list rather than restated — a fifth would be a compliance defect, so it is
-    // rejected at the boundary rather than drawn and reported.
-    ingredientThreshold: z
-      .object({
-        percent: z.union(
-          INGREDIENT_THRESHOLD_PERCENTS.map((p) => z.literal(p)) as unknown as [
-            z.ZodLiteral<2>,
-            z.ZodLiteral<1.5>,
-            z.ZodLiteral<1>,
-            z.ZodLiteral<0.5>,
-          ],
-        ),
-        count: z.number().int().min(0),
-      })
-      .optional(),
-    ingredientsExempt: z.boolean().optional(),
-    containsStatement: z.array(z.enum(MAJOR_FOOD_ALLERGEN_IDS)).optional(),
-    containsStatementFontSizeMm: z.number().positive().optional(),
-    containsStatementGapMm: z.number().min(0).optional(),
-    nutritionFacts: NutritionFactsSchema.optional(),
-    nutritionFactsExempt: z.boolean().optional(),
-    responsibleFirm: ResponsibleFirmSchema.optional(),
-    stock: z
-      .object({
-        widthMm: z.number().positive(),
-        heightMm: z.number().positive(),
-        marginMm: z.number().min(0),
-      })
-      .optional(),
-  })
-  // A quantifying statement cannot cover entries that are not on the list. An
-  // unbounded count drew a leading empty sentence and left the order rule with
-  // nothing to examine, which it reported as a pass — so it is refused here
-  // rather than clamped silently, the way an impermissible threshold is.
-  .refine(
-    (request) => (request.ingredientThreshold?.count ?? 0) <= (request.ingredients?.length ?? 0),
-    {
-      path: ['ingredientThreshold', 'count'],
-      message: 'cannot cover more entries than the ingredient list contains',
-    },
-  )
+export const UsFoodRequestBase = z.object({
+  statementOfIdentity: NON_COMPLIANT_BUT_WELL_FORMED,
+  netQuantity: NetQuantitySchema,
+  // Required, and not defaulted. The container selects the 101.7(i) type-size
+  // band; supplying one the caller never stated would invent the requirement
+  // every finding on this label is measured against.
+  container: ContainerSchema,
+  markingMethod: z.enum(['printed', 'blown-embossed-or-molded']).optional(),
+  netQuantityFontSizeMm: z.number().positive().optional(),
+  netQuantityAnchor: z.enum(ANCHORS).optional(),
+  informationPanelFontSizeMm: z.number().positive().optional(),
+  ingredients: z.array(IngredientSchema).optional(),
+  // The four figures 21 CFR 101.4(a)(2) permits, derived from label-core's own
+  // list rather than restated — a fifth would be a compliance defect, so it is
+  // rejected at the boundary rather than drawn and reported.
+  ingredientThreshold: z
+    .object({
+      percent: z.union(
+        INGREDIENT_THRESHOLD_PERCENTS.map((p) => z.literal(p)) as unknown as [
+          z.ZodLiteral<2>,
+          z.ZodLiteral<1.5>,
+          z.ZodLiteral<1>,
+          z.ZodLiteral<0.5>,
+        ],
+      ),
+      count: z.number().int().min(0),
+    })
+    .optional(),
+  ingredientsExempt: z.boolean().optional(),
+  containsStatement: z.array(z.enum(MAJOR_FOOD_ALLERGEN_IDS)).optional(),
+  containsStatementFontSizeMm: z.number().positive().optional(),
+  containsStatementGapMm: z.number().min(0).optional(),
+  nutritionFacts: NutritionFactsSchema.optional(),
+  nutritionFactsExempt: z.boolean().optional(),
+  responsibleFirm: ResponsibleFirmSchema.optional(),
+  stock: z
+    .object({
+      widthMm: z.number().positive(),
+      heightMm: z.number().positive(),
+      marginMm: z.number().min(0),
+    })
+    .optional(),
+})
+
+/**
+ * A quantifying statement cannot cover entries that are not on the list.
+ *
+ * An unbounded count drew a leading empty sentence and left the order rule with
+ * nothing to examine, which it reported as a pass — so it is refused here rather
+ * than clamped silently, the way an impermissible threshold is.
+ *
+ * Named rather than inlined so that a saved us-food document gets the same check
+ * as one posted for export. `.refine` returns something that is no longer an
+ * object, and `.omit` is an object method — so the saved-document shape has to
+ * be built from the base and refined again, and building it from the base
+ * without this would validate a stored label more weakly than the same label
+ * sent to the exporter. Two paths disagreeing about what a valid label is, is
+ * the condition this architecture exists to prevent.
+ */
+export const coversOnlyListedIngredients = (request: {
+  ingredientThreshold?: { count?: number } | undefined
+  ingredients?: readonly unknown[] | undefined
+}): boolean => (request.ingredientThreshold?.count ?? 0) <= (request.ingredients?.length ?? 0)
+
+export const COVERS_ONLY_LISTED_INGREDIENTS: { path: PropertyKey[]; message: string } = {
+  path: ['ingredientThreshold', 'count'],
+  message: 'cannot cover more entries than the ingredient list contains',
+}
+
+export const UsFoodRequest = UsFoodRequestBase.refine(
+  coversOnlyListedIngredients,
+  COVERS_ONLY_LISTED_INGREDIENTS,
+)
 
 /** The same key-by-key reconciliation `toArtwork` and `toSupplier` do. */
 export function toNetQuantity(netQuantity: z.infer<typeof NetQuantitySchema>): UsFoodNetQuantity {
@@ -513,3 +531,61 @@ export function toContainer(
       : { obviousPanelAreaSqMm: container.obviousPanelAreaSqMm }),
   }
 }
+
+/**
+ * The label types the editor can produce, in one place.
+ *
+ * The model and the routes both need this list. It is declared here because this
+ * file is already where the shape of a label is decided, and a second copy is
+ * the drift `getSymbologyConstraints` was introduced to end.
+ */
+export const LABEL_TYPES = ['gs1-retail', 'ghs-chemical', 'us-food'] as const
+
+export const StockSchema = z.object({
+  widthMm: z.number().positive(),
+  heightMm: z.number().positive(),
+  marginMm: z.number().min(0),
+})
+
+/** Required, trimmed, and not unique — two drafts of the same product is normal. */
+const SavedLabelName = z.string().trim().min(1).max(120)
+
+/**
+ * A saved label, as it arrives and as it comes back out.
+ *
+ * Discriminated on `labelType`, so a document claiming to be `us-food` while
+ * carrying a `gtin` cannot be represented — which is also why the routes replace
+ * rather than merge.
+ *
+ * **`stock` is required here and optional on the export request.** An export
+ * borrows `DEFAULT_UPC_A_STOCK` and its siblings for one PDF; a saved label
+ * records what it was designed at. Inheriting the default instead would mean
+ * that changing one of those constants silently resizes every label already
+ * stored against it, and the resize would first be visible in a PDF somebody had
+ * already sent to a printer.
+ */
+export const LabelDocumentInput = z.discriminatedUnion('labelType', [
+  z.object({
+    name: SavedLabelName,
+    labelType: z.literal('gs1-retail'),
+    stock: StockSchema,
+    data: UpcARequest.omit({ stock: true }),
+  }),
+  z.object({
+    name: SavedLabelName,
+    labelType: z.literal('ghs-chemical'),
+    stock: StockSchema,
+    data: GhsRequest.omit({ stock: true }),
+  }),
+  z.object({
+    name: SavedLabelName,
+    labelType: z.literal('us-food'),
+    stock: StockSchema,
+    data: UsFoodRequestBase.omit({ stock: true }).refine(
+      coversOnlyListedIngredients,
+      COVERS_ONLY_LISTED_INGREDIENTS,
+    ),
+  }),
+])
+
+export type LabelDocumentInput = z.infer<typeof LabelDocumentInput>
