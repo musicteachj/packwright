@@ -88,9 +88,28 @@ test('the landing page mounts and renders a real label', async ({ page }) => {
   await expect(app).not.toBeEmpty()
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
-  // The landing page runs the real layout engine in the browser to draw a UPC-A.
-  // If bwip-js or the engine failed under the policy, this is where it shows.
-  await expect(page.locator('svg[role="img"]').first()).toBeVisible()
+  // The landing page runs all three layout engines in the browser. If bwip-js or
+  // any of the engines failed under the policy, this is where it shows.
+  //
+  // Three, counted. The page's whole claim is that it draws the labels rather
+  // than picturing them, and `.first()` alone would keep passing if two of the
+  // three stopped resolving — which is how a page ends up asserting a claim it
+  // no longer demonstrates.
+  const canvases = page.locator('svg[role="img"]')
+  await expect(canvases).toHaveCount(3)
+  await expect(canvases.first()).toBeVisible()
+
+  // **Three different labels, not three labels.** The `<title>` is a prop the
+  // caller passes, so asserting it proves only that the page was labelled
+  // honestly — point all three canvases at the same layout and the titles still
+  // read correctly while the page draws one label three times.
+  //
+  // The dimension readout is not a prop. `LabelCanvas` derives it from the
+  // resolved layout's own stock, so three distinct sizes is the page's claim
+  // stated in something it cannot fake.
+  const drawn = await page.locator('figure figcaption').allTextContents()
+  const sizes = drawn.map((text) => text.match(/[\d.]+ mm × [\d.]+ mm/)?.[0]).filter(Boolean)
+  expect(sizes).toEqual(['60.00 mm × 40.00 mm', '74.00 mm × 105.00 mm', '120.00 mm × 240.00 mm'])
 
   expect(violations, 'the client must run under the CSP the server sends').toEqual([])
   expect(failures, 'the page must load without browser errors').toEqual([])
