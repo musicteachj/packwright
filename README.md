@@ -54,13 +54,22 @@ invented one.
 
 ## Status
 
-Phase 3 of 8 complete. `label-core` resolves a UPC-A retail label to millimetre geometry, renders it to SVG and
-to PDF from that one resolved layout, and runs six GS1 rules against what was **drawn** rather than what was
-asked for. The editor at `/labels/new` puts the form, the label and the findings side by side, and clicking a
-finding outlines the offending element on the canvas.
+Phases 1–5 complete, phase 6 nearly so. `label-core` resolves GS1 retail, GHS chemical and FDA food labels to
+millimetre geometry, renders each to SVG and to PDF from that one resolved layout, and runs its rules against
+what was **drawn** rather than what was asked for. The editor at `/labels/new` puts the form, the label and
+the findings side by side, and clicking a finding outlines the offending element on the canvas. `/rules` lists
+every encoded rule with its citation, generated from the registry rather than written out.
+
+Phase 6 adds a barcode scanner that reads through `BarcodeDetector` or a bundled zxing-wasm ponyfill, a saved
+labels API, a three-pane layout that collapses to a segmented control on a phone, and a production build that
+collapses to a single artifact — `apps/web`'s static output served by `apps/api`. **One thing is still
+unverified**: scanning a real product barcode with a phone. The scan-back test rasterises the engine's own
+symbol into a fake camera and reads it back, which is what a headless browser can prove; focus, glare and a
+curved pack are not among them.
 
 Every regulatory constant is cited to a source document, and every rule ships with a known-bad label asserting
-the exact code, severity and citation it produces. 376 tests, CI green. The GHS chemical label is next.
+the exact code, severity and citation it produces. 956 tests across 50 files, plus 28 in a real browser. CI
+green. The label audit from a photograph is next.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for detail and [`docs/DESIGN.md`](docs/DESIGN.md) for the full design and
 remaining phases.

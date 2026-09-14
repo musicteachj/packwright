@@ -10,6 +10,41 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 6, stage 7 — the landing page draws all three.
+
+- **Three regimes, rendered live rather than pictured.** `docs/DESIGN.md` has always asked the front door for
+  "the three types"; it drew one. GHS and FDA food now resolve through their own engines in the browser
+  alongside the retail label, each captioned with what it checks and the source it checks against. The page's
+  claim is that it draws labels rather than showing images of them, and drawing one of three was the weakest
+  version of that.
+- **The food sample declares `marzipan (almonds)`, not `almonds (almonds)`.** `docs/BACKLOG.md` records the
+  editor's seed declaring an allergen against an ingredient already named for it — a demonstration that
+  demonstrates nothing. An ingredient whose name does not reveal its allergen is the case the parenthetical
+  exists for, and the front door is where it earns its place. The showcase documents are declared in the view
+  rather than borrowed from the store, because the editor's seeds exist to be edited and these exist to be
+  looked at; sharing them would let a change to the editor's starting point silently redraw the front door.
+- **The browser test counts three, and reads something the page cannot fake.** It asserted one visible
+  canvas, which would have gone on passing if two of the three stopped resolving. Counting them and reading
+  each `<title>` was the first attempt and was barely better: the title is a prop the caller passes, so
+  pointing all three canvases at one layout drew the same label three times and the titles still read
+  correctly. It now asserts the three distinct stock sizes, which `LabelCanvas` derives from the resolved
+  layout rather than from anything the view hands it.
+- **The showcase documents have a test, which is how the two defects in them were meant to be found.** A "2
+  percent or less" statement grouped a 10% sugar and a 5% butter, and eight servings did not reconcile with
+  the declared net weight — both found by hand, and neither would have been found again after the next edit.
+  They live in `landingSamples.ts` now, because a const inside a `.vue` script block is reachable by no test,
+  and both go through `runRules`: nothing against the food label, and exactly the two documented pictogram
+  omissions against the chemical one, asserted exactly so a third cannot arrive behind them unnoticed.
+
+### Fixed
+
+- **`README.md` said "Phase 3 of 8 complete", 376 tests, and that the GHS label was next.** GHS shipped in
+  phase 4 and the food label in phase 5. The status now says what is true, including the part that is not
+  finished: scanning a real product barcode with a phone is still unverified, because a fake camera reading a
+  synthetic frame says nothing about focus, glare or a curved pack.
+
+### Added
+
 Phase 6, stage 6 — persistence. Saved labels, as an API. No user interface yet: the list, the `/labels/:id`
 route and the save experience are about the editor rather than about storage, and are the stage after this.
 
