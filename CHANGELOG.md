@@ -10,6 +10,46 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 6, stage 3b — the rule catalogue. **Done-when #2.**
+
+- **`/rules` lists all thirty-four encoded rules, generated from `listRules()`.** Nothing on the page is
+  written by hand, which is the whole point: a hand-written catalogue is a second description of the rule set,
+  and it goes stale the first time someone adds a rule and forgets the page — leaving a document claiming the
+  tool checks something it does not. The page calls the same function `runRules` dispatches through, so a rule
+  a user can read about is a rule that runs.
+- **Every provision, not just the primary.** Sixteen rules report under more than one paragraph, so the entry
+  renders `citationsOf` — 68 distinct provisions across the set. `ghs/signal-word-precedence` shows both CLP
+  Article 20(3) and 29 CFR 1910.1200 Appendix C, rather than telling a US labeller their signal-word rule comes
+  from an EU regulation.
+- **A citation with a reference and no title renders as the reference.** That state is legitimate rather than
+  missing data — `untitled()` drops an inherited title rather than composing one, because writing a description
+  of a regulated provision would be this project authoring regulatory text — and the page shows what is known.
+- **Registry order is preserved within each section.** It is ordered as a person would check a label, and
+  sorting it into something tidier would throw that away for nothing.
+- **`SiteHeader`, mounted by the reading routes rather than wrapping everything.** A global shell would sit
+  above the editor too, and the editor is a full-height three-pane application with its own header and its own
+  `h-screen` scroll contract — a band of chrome would push the canvas off the bottom of the window. It sits
+  outside `<main>`, so the page has a `banner` landmark and a skip link lands past the nav rather than on it.
+- **The button recipe is one constant, and carries no size.** The landing page's call to action and the
+  editor's export control had already drifted — `px-4 py-2` against `px-3 py-1.5` — and that difference is real
+  rather than drift, since one is a primary action and the other a toolbar control. `BUTTON` holds the border,
+  hover and focus treatment; callers add their own scale. Flattening them would have been a visual regression
+  dressed as a cleanup. The canvas zoom control deliberately keeps its own: its background is conditional on
+  `aria-pressed`, so sharing would mean parameterising away everything that was shared.
+- **The tests compare the page against the registry, never against a typed number**, in jsdom and in the
+  browser alike. A spec asserting "34 rules" would pass a page that had stopped rendering one and been updated
+  to match, which is the hand-written catalogue's failure moved into the test file.
+
+### Fixed
+
+- **`text-chrome-500` reached for the citation lines again.** It measures 3.01:1 on `chrome-900` and the
+  guardrail in `theme.test.ts` exists because it was used for the citation lines on the landing view once
+  before. It caught the same reach on the catalogue's authority column within a minute of it being written,
+  which is the argument for enforcing a palette rule rather than documenting one.
+
+
+### Added
+
 Phase 6, stage 3a — every provision a rule enforces, declared.
 
 - **`Rule.citations`, and `citationsOf`.** `citation` is the primary a finding inherits, but **sixteen of the
