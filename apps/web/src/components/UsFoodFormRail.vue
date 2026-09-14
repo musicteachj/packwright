@@ -520,6 +520,70 @@ const optionalNumber = <T extends object, K extends keyof T>(target: () => T | u
     },
   })
 
+/**
+ * A required dimension, kept a number even when the box is empty.
+ *
+ * `v-model.number` hands back the original string when `parseFloat` gives NaN, so
+ * clearing a box wrote `''` into a field the type declares as `number`. That is a
+ * type lie, and this removes it: a blank becomes `NaN`, which is a number and is
+ * not a measurement.
+ *
+ * **It is not a false clearance, and `BACKLOG.md` said it was.** That entry
+ * claimed the empty string multiplied out to a zero-area panel and cleared every
+ * 101.7 rule on the strength of a 0.0 in² package. The arithmetic is real — `''
+ * * 240` is `0` and `isNetQuantityZoneRequired(0)` is `0 > 5`, which is false —
+ * and the path is not: `assertContainerDrawable` reaches the container first, and
+ * `Number.isFinite('')` is `false` because it does not coerce. The label never
+ * resolved, so no rule ever ran. Running it says so plainly: layout `null`, zero
+ * findings, "Container panel width must be a positive finite number".
+ *
+ * The entry was written from reading the predicate rather than from running the
+ * path, and it said so approvingly. So this is worth having for the type alone,
+ * and worth none of the urgency it was given.
+ *
+ * The getter hands back `undefined` rather than `NaN` so the input renders empty
+ * rather than showing the word.
+ */
+const requiredNumber = <T extends object, K extends keyof T>(target: () => T | undefined, key: K) =>
+  computed({
+    get: () => {
+      const value = target()?.[key] as number | undefined
+      return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+    },
+    set: (next: number | undefined) => {
+      const object = target()
+      if (object === undefined) return
+      object[key] = (typeof next === 'number' && Number.isFinite(next) ? next : NaN) as T[K]
+    },
+  })
+
+/**
+ * The container dimensions 21 CFR 101.1 computes a panel area from. Each is
+ * required — a blank has no meaning the regulation recognises — so each goes
+ * through `requiredNumber` rather than `v-model.number`.
+ */
+/**
+ * Narrowed per shape rather than cast with `as never`.
+ *
+ * `data.container` is a discriminated union, so no single key is a key of every
+ * member and `as never` was silencing that — which also silenced the check that
+ * the key exists at all: rename `widthMm` on the rectangular member and the old
+ * form still compiled, writing a dead property while the engine refused the
+ * layout. The narrowing below keeps `K extends keyof T` doing its job, and each
+ * accessor returns `undefined` when the container is not the shape that has the
+ * field, which is exactly when its input is not rendered.
+ */
+const shaped = <S extends Container['shape']>(shape: S) =>
+  data.container.shape === shape ? (data.container as Extract<Container, { shape: S }>) : undefined
+
+const panelWidthMm = requiredNumber(() => shaped('rectangular'), 'widthMm')
+const panelHeightMm = requiredNumber(
+  () => shaped('rectangular') ?? shaped('cylindrical'),
+  'heightMm',
+)
+const containerCircumferenceMm = requiredNumber(() => shaped('cylindrical'), 'circumferenceMm')
+const containerSurfaceAreaSqMm = requiredNumber(() => shaped('other'), 'totalSurfaceAreaSqMm')
+
 const servingsPerContainer = optionalNumber(() => data.nutritionFacts, 'servingsPerContainer')
 const netQuantityFontSizeMm = optionalNumber(() => data, 'netQuantityFontSizeMm')
 
@@ -689,7 +753,7 @@ const packaging = computed({
           Panel width (mm)
           <input
             id="field-food-panel-width"
-            v-model.number="data.container.widthMm"
+            v-model.number="panelWidthMm"
             :class="INPUT"
             type="number"
             min="1"
@@ -699,7 +763,7 @@ const packaging = computed({
           Panel height (mm)
           <input
             id="field-food-panel-height"
-            v-model.number="data.container.heightMm"
+            v-model.number="panelHeightMm"
             :class="INPUT"
             type="number"
             min="1"
@@ -712,7 +776,7 @@ const packaging = computed({
           Container height (mm)
           <input
             id="field-food-cylinder-height"
-            v-model.number="data.container.heightMm"
+            v-model.number="panelHeightMm"
             :class="INPUT"
             type="number"
             min="1"
@@ -722,7 +786,7 @@ const packaging = computed({
           Circumference (mm)
           <input
             id="field-food-circumference"
-            v-model.number="data.container.circumferenceMm"
+            v-model.number="containerCircumferenceMm"
             :class="INPUT"
             type="number"
             min="1"
@@ -735,7 +799,7 @@ const packaging = computed({
           Total surface area (mm²)
           <input
             id="field-food-surface"
-            v-model.number="data.container.totalSurfaceAreaSqMm"
+            v-model.number="containerSurfaceAreaSqMm"
             :class="INPUT"
             type="number"
             min="1"

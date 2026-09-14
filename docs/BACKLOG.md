@@ -50,19 +50,25 @@ guard: retaining the last value snaps the digits back mid-edit, which is worse t
 clearing a field to retype it. Sites: `UsFoodFormRail.vue` container width/height/circumference/surface area
 and stock width/height/margin.
 
-**This entry previously stopped at "writes `''` into the document", and that understated it by a category.**
-`'' * 240` is `0`, not `NaN`, so the panel area computes as a valid zero rather than failing — and
-`isNetQuantityZoneRequired(0)` is `0 > 5`, which is false. Clearing "Panel width" therefore emits
-`FDA_NET_QUANTITY_ZONE_NOT_REQUIRED` as a **pass**, reading "The panel is 0.0 in², so the bottom-30 percent
-placement requirement does not apply to this package", while `minNetQuantityTypeHeightInches(0)` drops to the
-smallest band and the declaration is redrawn at about 1.6 mm. Every 101.7 rule reports compliant, and the
-cause is an empty form field. Verified by reading the predicate, not inferred. The export then 400s on
-`z.number()`, so preview and export disagree about the same document as well.
+**The entry that stood here claimed a false clearance, and there was none.** It said `'' * 240` is `0` rather
+than `NaN`, so a cleared "Panel width" made the panel area a valid zero, `isNetQuantityZoneRequired(0)`
+returned false, and every 101.7 rule cleared a label whose dimensions were empty. Every step of that
+arithmetic is correct. The path is not: `assertContainerDrawable` reaches the container before any rule runs,
+and `Number.isFinite('')` is `false` because it does not coerce — so the label never resolved, no rule ever
+ran, and the editor showed "Container panel width must be a positive finite number". Running it says so:
+layout `null`, zero findings.
 
-That makes it a false clearance rather than a form-state bug, which is the category this project exists to
-prevent — so it is **scheduled for phase 6 stage 4**, the stage that is in `UsFoodFormRail.vue` anyway, rather
-than left to whenever the design question gets answered. The design question is still real; it just no longer
-gets to be the reason for waiting.
+It was written from reading the predicate rather than from running the path, and the entry said so
+approvingly — "verified by reading the predicate, not inferred". That is the sentence to distrust. Reading a
+predicate tells you what it returns for an input; it tells you nothing about whether that input arrives.
+
+**What was real is smaller and is fixed** (phase 6 stage 4): `v-model.number` wrote the empty string into a
+field the type declares as `number`. The container dimensions now go through a `requiredNumber` guard that
+writes `NaN`, so the document holds a number that is not a measurement and the engine declines for a reason
+that reads properly. Worth having for the type. Worth none of the urgency it was given.
+
+The stock dimensions still use the raw binding. Same type lie, same absence of a false clearance —
+`panelFor(stock)` is reached by the same guard — so they are a tidiness item rather than a scheduled one.
 
 **The default document reads `almonds (almonds)`.** A review flagged it; `EditorUsFoodView.test.ts` asserts it
 on purpose, as "belt and braces — the parenthetical in the list and the statement after it". Both are right:

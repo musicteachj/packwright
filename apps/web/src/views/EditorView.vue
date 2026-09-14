@@ -10,10 +10,12 @@
  * afterwards.
  *
  * Desktop-first, deliberately. A phone is a bad place to lay out a 100 × 150 mm
- * label and pretending otherwise produces a worse desktop tool; the collapse to
- * a segmented control is a later phase.
+ * label and pretending otherwise produces a worse desktop tool — so below 1024px
+ * the three panes do not shrink, they take turns behind a Form / Preview / Checks
+ * control. Shrinking them would have produced three unusable columns instead of
+ * one usable one.
  */
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import EditorFormRail from '../components/EditorFormRail.vue'
 import FindingsRail from '../components/FindingsRail.vue'
 import LabelCanvas from '../components/LabelCanvas.vue'
@@ -21,8 +23,62 @@ import LabelTextView from '../components/LabelTextView.vue'
 import { blockingOmissions, labelFilename } from '@packwright/label-core'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import { BUTTON } from '../components/chrome'
+import PaneSwitcher from '../components/PaneSwitcher.vue'
+import { DEFAULT_EDITOR_PANE, useNarrowEditor, type EditorPane } from '../panes'
 
 const store = useLabelDocumentStore()
+
+/**
+ * Which pane a narrow screen is showing. Inert at `lg` and above, where all three
+ * are displayed and nothing reads it.
+ */
+const pane = ref<EditorPane>(DEFAULT_EDITOR_PANE)
+
+/**
+ * Whether the panes are taking turns. Drives the ARIA rather than the pixels —
+ * the layout is still CSS — because a role cannot be set by a media query.
+ */
+const narrow = useNarrowEditor()
+
+const previewPane = useTemplateRef<HTMLElement>('previewPane')
+
+/**
+ * Classes that hide a pane on a narrow screen and always show it on a wide one.
+ *
+ * The display value is a parameter because the preview pane is a flex column —
+ * the canvas grows and the text-equivalent view sits under it — and the other two
+ * are ordinary blocks. Handing all three `block` silently neutered `flex-col` on
+ * the preview, which nothing in jsdom could have noticed: the element was still
+ * there, still "visible", and laid out completely differently.
+ *
+ * Expressed once rather than three times, because three copies of a rule about
+ * which pane is visible is how two of them end up visible at once.
+ */
+const paneClass = (id: EditorPane, display: 'block' | 'flex' = 'block') => [
+  pane.value === id ? display : 'hidden',
+  display === 'flex' ? 'lg:flex' : 'lg:block',
+]
+
+/**
+ * Clicking a finding outlines the offending element on the canvas — the
+ * interaction this editor is built around. Below `lg` the canvas is not on
+ * screen when the findings are, so following the link means going to it: without
+ * this, the signature interaction silently does nothing on a phone, which is
+ * worse than not offering it.
+ */
+async function selectFromFindings(elementId: string | undefined) {
+  store.select(elementId ?? null)
+  if (elementId === undefined || !narrow.value) return
+
+  pane.value = 'preview'
+  // Switching panes hides the button that was just activated, and a focused
+  // element inside a `display: none` subtree is dropped by the browser — measured
+  // as `document.activeElement` becoming `BODY`. A keyboard or screen-reader user
+  // would follow the link and land nowhere, with nothing announced: the same
+  // silent nothing this function exists to prevent, one step further on.
+  await nextTick()
+  previewPane.value?.focus()
+}
 
 const exporting = ref(false)
 const exportError = ref<string | null>(null)
@@ -148,16 +204,21 @@ async function exportPdf() {
 
 <template>
   <main class="bg-chrome-950 text-chrome-100 flex h-screen flex-col">
-    <header class="border-chrome-800 flex items-center justify-between gap-6 border-b px-6 py-3">
-      <div class="flex items-baseline gap-3">
+    <header
+      class="border-chrome-800 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-3 py-3 lg:gap-6 lg:px-6"
+    >
+      <div class="flex min-w-0 items-baseline gap-3">
         <span class="text-notice text-lg" aria-hidden="true">⊕</span>
         <h1 class="text-sm font-semibold tracking-tight">packwright</h1>
-        <label for="field-label-type" class="text-chrome-400 flex items-baseline gap-2 text-xs">
+        <label
+          for="field-label-type"
+          class="text-chrome-400 flex min-w-0 items-baseline gap-2 text-xs"
+        >
           <span class="sr-only">Label type</span>
           <select
             id="field-label-type"
             v-model="store.labelType"
-            class="border-chrome-700 bg-chrome-900 text-chrome-300 numeric border px-2 py-0.5 text-xs"
+            class="border-chrome-700 bg-chrome-900 text-chrome-300 numeric min-w-0 border px-2 py-0.5 text-xs"
           >
             <option value="gs1-retail">GS1 retail label</option>
             <option value="ghs-chemical">GHS chemical label</option>
@@ -166,7 +227,7 @@ async function exportPdf() {
         </label>
       </div>
 
-      <div class="flex items-center gap-4">
+      <div class="flex min-w-0 shrink-0 items-center gap-4">
         <p v-if="exportError" class="text-danger max-w-md text-xs">{{ exportError }}</p>
         <p v-else-if="cannotExport" class="text-chrome-300 max-w-md text-xs">
           Nothing to export — part of the label could not be drawn.
@@ -183,12 +244,39 @@ async function exportPdf() {
       </div>
     </header>
 
-    <div class="grid min-h-0 flex-1 grid-cols-[380px_1fr_340px]">
-      <div class="border-chrome-800 bg-chrome-900 min-h-0 border-r">
+    <PaneSwitcher v-if="narrow" :current="pane" @select="pane = $event" />
+
+    <!--
+      The findings rail carries the only `aria-live` region in the application,
+      and below `lg` that rail is `display: none` unless Checks is the pane on
+      screen — so a screen-reader user got no compliance announcements at all on a
+      narrow window. Measured: one live region in the document, zero client rects.
+      This one exists only while that is true, so exactly one is ever live.
+    -->
+    <p v-if="narrow" class="sr-only" role="status" aria-live="polite">
+      {{ store.failures.length }} findings, {{ store.passes.length }} checks passed.
+    </p>
+
+    <div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[380px_1fr_340px]">
+      <div
+        id="pane-form"
+        :role="narrow ? 'tabpanel' : undefined"
+        :aria-labelledby="narrow ? 'tab-form' : undefined"
+        class="border-chrome-800 bg-chrome-900 min-h-0 overflow-y-auto lg:overflow-visible lg:border-r"
+        :class="paneClass('form')"
+      >
         <EditorFormRail />
       </div>
 
-      <div class="flex min-h-0 flex-col overflow-y-auto">
+      <div
+        id="pane-preview"
+        ref="previewPane"
+        :role="narrow ? 'tabpanel' : undefined"
+        :aria-labelledby="narrow ? 'tab-preview' : undefined"
+        :tabindex="narrow ? -1 : undefined"
+        class="min-h-0 flex-col overflow-y-auto"
+        :class="paneClass('preview', 'flex')"
+      >
         <div class="flex flex-1 items-center justify-center p-8">
           <LabelCanvas
             v-if="store.layout"
@@ -211,14 +299,20 @@ async function exportPdf() {
         <LabelTextView v-if="store.layout" :layout="store.layout" />
       </div>
 
-      <div class="border-chrome-800 bg-chrome-900 min-h-0 border-l">
+      <div
+        id="pane-checks"
+        :role="narrow ? 'tabpanel' : undefined"
+        :aria-labelledby="narrow ? 'tab-checks' : undefined"
+        class="border-chrome-800 bg-chrome-900 min-h-0 lg:border-l"
+        :class="paneClass('checks')"
+      >
         <FindingsRail
           :groups="store.findingsBySeverity"
           :failures="store.failures"
           :passes="store.passes"
           :uncertifiable="store.uncertifiable"
           :selected-element-id="store.selectedElementId"
-          @select="store.select($event ?? null)"
+          @select="selectFromFindings($event)"
         />
       </div>
     </div>
