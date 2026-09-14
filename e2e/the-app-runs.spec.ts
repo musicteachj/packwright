@@ -9,10 +9,12 @@ import { expect, test, type ConsoleMessage, type Page } from '@playwright/test'
  * following as fine whether or not a user could see a thing.
  *
  * The specific thing at stake is the Content-Security-Policy. `apps/api` mounts
- * helmet at its defaults — `script-src 'self'`, `style-src 'self' https:
- * 'unsafe-inline'` — and until stage 1 it only ever served JSON, so no browser
- * had run a page under it. Serving the client from the same origin puts the whole
- * client under that policy for the first time.
+ * helmet at its defaults but for one directive: `script-src` is `'self'` plus
+ * `'wasm-unsafe-eval'`, which the barcode scanner needs and which was added
+ * deliberately rather than inherited. Everything else — `default-src 'self'`,
+ * `object-src 'none'`, `style-src 'self' https: 'unsafe-inline'` — is helmet's
+ * own. Until stage 1 this server only ever returned JSON, so no browser had run a
+ * page under any of it.
  */
 
 /** Errors the browser reported, of the kinds that mean something is broken. */

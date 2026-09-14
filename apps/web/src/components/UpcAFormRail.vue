@@ -17,6 +17,7 @@ import { computed } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorSection from './EditorSection.vue'
 import { INPUT, LABEL } from './formStyles'
+import BarcodeScanner from './BarcodeScanner.vue'
 
 const store = useLabelDocumentStore()
 
@@ -176,6 +177,8 @@ const select = (elementId: string) => store.select(elementId)
       >
         {{ store.lastScan.note }}
       </p>
+
+      <BarcodeScanner />
 
       <p v-if="!gtinIsComplete" class="text-chrome-400 text-xs">
         Twelve digits, check digit included. The check digit is verified rather than computed, so a

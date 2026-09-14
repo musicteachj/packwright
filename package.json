@@ -33,9 +33,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@packwright/label-core": "^0.0.0",
     "@playwright/test": "^1.63.0",
     "@vitest/coverage-v8": "^4.1.10",
     "@vue/eslint-config-typescript": "^14.9.0",
+    "bwip-js": "^4.11.4",
     "concurrently": "^10.0.4",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
@@ -48,6 +50,7 @@
     "simple-git-hooks": "^2.13.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "zxing-wasm": "3.1.3"
   }
 }
