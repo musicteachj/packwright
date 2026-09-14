@@ -35,14 +35,25 @@ PRing there adds no ceremony.
 
 | when | what |
 |---|---|
-| before each commit | `/code-review medium` with **no target** — it reviews the uncommitted diff, so it scales with what was just written rather than with the branch |
-| PR touching `rules/`, `fda/` or `layout/` | `/code-review ultra <PR#>` — runs in the cloud, so it costs no session budget |
+| before each commit | `/code-review medium` with **no target** — it reviews the uncommitted diff, so it scales with what was just written rather than with the branch. `max`, still with no target, when that diff touches `rules/`, `fda/` or `layout/` and is small |
+| PR touching `rules/`, `fda/` or `layout/` | `/code-review high <PR#>` — broader coverage than medium, and some findings it is less sure of; triaging them is the price |
 | PR that is UI or API only | the per-commit medium was enough |
 | every second or third stage, while a phase is in flight | one `/code-review medium dev` as a hedge — reviews keep finding defects in *older* code, and the allergen false clearance was stage 3 work found on the fifth pass |
 
-**`/code-review ultra` takes a PR number or a branch, never a path.** A diff can only be made smaller by
-having committed less to the branch; once it is large the only remedy is stacked branches and a billed run
-for each. **Never run `max` in-session on a branch-sized diff** — it will consume most of a session.
+**Cloud reviews are not used on this project.** `/code-review ultra` is billed per run against usage credits
+and its free allotment is three per account, one-time and non-refreshing — spent the moment the cloud session
+starts, whether or not the review finishes. `high` is the top of this ladder.
+
+**The level is chosen by diff size as much as by risk.** `max` is the deepest pass and the one that scales
+worst: **never run it on a branch-sized diff**, where it will consume most of a session. On a small
+uncommitted diff it is affordable, which is why it sits on the commit row rather than the PR row — the commit
+checkpoint is where a false clearance is born, and where the diff is still small enough to look at closely.
+Once a diff is large the only remedy is stacked branches, and that is a reason to commit less to a branch
+rather than to reach for a bigger review.
+
+**Levels are worth escalating, and this is the evidence.** Three `medium` passes over the same file walked
+past a write-vs-rename race in the test-database wrapper — a plain write truncates first, so a concurrent
+sweep read an empty owner file and deleted a live database's directory. `high` found it on its first pass.
 
 **Fix what is in the current scope and record the rest in `docs/BACKLOG.md`, with the reasoning.** Fixing
 every finding the moment it appears turned four planned items into four unplanned commits in one session,
