@@ -14,9 +14,12 @@ const A_LABEL = {
   data: { gtin: '036000291452' },
 } as const
 
-describe('LabelDocument', () => {
-  withDatabase()
+// Once for the file. Called inside each `describe`, it starts and stops a
+// separate `mongod` per block, which is two of them to answer questions that
+// share a collection.
+withDatabase()
 
+describe('LabelDocument', () => {
   it('round-trips a gs1-retail label', async () => {
     const saved = await LabelDocument.create(A_LABEL)
     const read = await LabelDocument.findById(saved._id).lean()
@@ -63,8 +66,6 @@ describe('LabelDocument', () => {
 })
 
 describe('serializeLabelDocument', () => {
-  withDatabase()
-
   it('hands back a string id, and no version key', async () => {
     const saved = await LabelDocument.create(A_LABEL)
     const body = serializeLabelDocument(saved)

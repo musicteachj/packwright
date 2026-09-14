@@ -61,6 +61,17 @@ route and the save experience are about the editor rather than about storage, an
   delete a directory that was very much in use. The claim is written before the sweep runs and handed to the
   `mongod` pid afterwards. Two wrappers started together now both come up healthy with both directories
   intact.
+- **The label list sorts on an index.** An unindexed sort runs in memory against a 32 MB ceiling, which is a
+  long way off for a collection of labels and a 500 with no obvious cause when it arrives.
+- **A test ties the schema's label types to the ones the model accepts.** The union restates them because each
+  arm carries a different `data` schema, so the arms cannot be derived from a list — but the two lists
+  agreeing can be asserted, and has to be: a type in one and not the other turns a request the schema accepts
+  into a 500 from the Mongoose enum validator. That is the same two-sources-of-truth failure this stage exists
+  to avoid, one level up from where it was being avoided.
+- **The wrapper's owner file is renamed into place rather than written over.** A plain write truncates first,
+  so a neighbour's sweep reading it in that window got an empty string — which parses to zero, fails the
+  liveness test, and reaches the one conclusion that must never be reached by accident: that a live database's
+  directory is free. The Y4M fixture already writes itself this way for the same reason.
 - **`templateId` is not in the model** that `docs/DESIGN.md` sketches. It has no referent — `templates/`
   exports element maps and defaults rather than identified templates, and `labelType` already selects which
   `layOut*` function runs. A field naming nothing gets filled in with something arbitrary and then read as

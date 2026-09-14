@@ -17,7 +17,7 @@
  * left one behind, and the global teardown ran before the server it served had
  * stopped.
  */
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MongoMemoryServer } from 'mongodb-memory-server'
@@ -43,8 +43,23 @@ const ownerFile = `${dbPath}.owner`
 // the sweep, which only looks at directories. This script's own pid holds it
 // until there is a `mongod` pid to hand it to.
 mkdirSync(HOME, { recursive: true })
-writeFileSync(ownerFile, String(process.pid))
+claim(process.pid)
 mkdirSync(dbPath, { recursive: true })
+
+/**
+ * Records who owns the directory, atomically.
+ *
+ * Written beside and renamed into place, the way the Y4M fixture is. A plain
+ * `writeFileSync` truncates first, so a neighbour's sweep reading the file in
+ * that window gets an empty string — which parses to `0`, fails the liveness
+ * test, and takes the sweep to the one conclusion that must never be reached by
+ * accident: that a live database's directory is free.
+ */
+function claim(pid) {
+  const staging = `${ownerFile}.${process.pid}.tmp`
+  writeFileSync(staging, String(pid))
+  renameSync(staging, ownerFile)
+}
 
 /** Whether a pid names a process that still exists. */
 function alive(pid) {
@@ -65,7 +80,7 @@ function alive(pid) {
 }
 
 for (const entry of readdirSync(HOME)) {
-  if (!entry.startsWith('mongo-') || entry.endsWith('.owner')) continue
+  if (!entry.startsWith('mongo-') || entry.includes('.owner')) continue
   const directory = join(HOME, entry)
   // Not our own, which has just been created and has no owner recorded yet. Left
   // out, the sweep deletes the directory this run is about to start `mongod` in
@@ -129,7 +144,7 @@ process.env.MONGODB_URI = mongo.getUri()
 // actually holds the wiredTiger files, and it outlives this one when this one is
 // killed outright.
 const mongodPid = mongo.instanceInfo?.instance?.mongodProcess?.pid
-if (mongodPid !== undefined) writeFileSync(ownerFile, String(mongodPid))
+if (mongodPid !== undefined) claim(mongodPid)
 
 try {
   await import('../apps/api/dist/server.js')

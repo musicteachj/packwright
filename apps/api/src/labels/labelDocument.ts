@@ -63,6 +63,11 @@ const labelDocumentSchema = new Schema(
   { timestamps: true, versionKey: false },
 )
 
+// The list sorts on this, and an unindexed sort is done in memory against a
+// 32 MB ceiling — which is a long way off for a label collection, and a 500 with
+// no obvious cause when it arrives.
+labelDocumentSchema.index({ updatedAt: -1 })
+
 export const LabelDocument = model('LabelDocument', labelDocumentSchema)
 
 /**

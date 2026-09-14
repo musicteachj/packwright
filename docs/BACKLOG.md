@@ -77,6 +77,27 @@ source is degenerate. An ingredient whose name does not reveal the allergen — 
 `marzipan (almonds)` — would show the feature earning its place. A content decision about the seeded
 document, not a correctness fix.
 
+## Saved labels
+
+**A saved label's `data` cannot be posted to the export route as it stands, and the failure is silent.** A
+saved document holds `stock` beside `data`; the export request takes them flattened together, and defaults a
+missing `stock` to `DEFAULT_UPC_A_STOCK` or its siblings. So handing an export route the `data` of a saved
+label prints it at whatever the default happens to be rather than at the size it was designed at — the same
+class of failure as a rule clearing a label the engine never drew, and invisible until somebody measures a
+printed sheet.
+
+Nothing does this today, because there is no user interface yet. **The stage that adds one is where it
+becomes reachable**, since "open a saved label, then export it" is the obvious first thing to wire. That stage
+should carry the round trip in a test — save, read back, export, assert the page box matches the stock that
+was saved — and probably a named helper that rebuilds an export request from a saved document, so the correct
+path is the easy one. Written here rather than built now because a helper with no caller is a guess at what
+the caller will want.
+
+**The label list is unbounded.** `GET /api/labels` returns every document, newest first. The sort is indexed
+now, so the 32 MB in-memory sort ceiling is no longer the limit, but the response still grows without one.
+Pagination is an API shape decision — cursor or offset, and what the client does with it — and it belongs
+with the list view that will consume it rather than ahead of it.
+
 ## The API's tests
 
 **`loadEnv` is tested twice, in two files.** `apps/api/src/env.test.ts` and a `describe('loadEnv')` block

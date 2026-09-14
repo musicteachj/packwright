@@ -69,4 +69,15 @@ describe('LabelDocumentInput', () => {
   it('names every label type the editor can produce', () => {
     expect([...LABEL_TYPES]).toEqual(['gs1-retail', 'ghs-chemical', 'us-food'])
   })
+
+  it('covers exactly the label types the model will accept', () => {
+    // The union restates the three types because each arm carries a different
+    // `data` schema, so the arms are not derivable from a list. What is derivable
+    // is that the two agree — and they have to. A type in the union but not in
+    // `LABEL_TYPES` turns a request this schema accepts into a 500 from the
+    // Mongoose enum validator, which is the same two-sources-of-truth failure
+    // this file exists to avoid, one level up.
+    const covered = LabelDocumentInput.options.map((option) => option.shape.labelType.value)
+    expect(covered.sort()).toEqual([...LABEL_TYPES].sort())
+  })
 })
