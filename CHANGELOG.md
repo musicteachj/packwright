@@ -8,6 +8,55 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+Phase 6, stage 6 — persistence. Saved labels, as an API. No user interface yet: the list, the `/labels/:id`
+route and the save experience are about the editor rather than about storage, and are the stage after this.
+
+- **`LabelDocument`, with `data` stored as `Mixed` and judged by Zod.** The shape of a label is described
+  once, in `schemas.ts`, and the persistence routes validate against the same description the export routes
+  are built from. Restating three large label-data shapes in a second schema language would be a second
+  source of truth for one set of facts — the drift `getSymbologyConstraints` was introduced to end. The trade
+  is that nothing at the database level checks `data`; the API is its only writer, and it checks every write.
+- **Five routes under `/api/labels`** — list, create, read, replace, delete. The list omits `data`, in the
+  query rather than by stripping it afterwards, so the cost of listing does not grow with the size of the
+  labels in it. `PUT` rather than `PATCH`, because the editor holds the whole document and merging a partial
+  update into a discriminated union is where a `us-food` label still carrying a `gtin` comes from. A
+  malformed `ObjectId` is a 404 and not a 500: it is a request for a label that does not exist, and letting
+  Mongoose's cast error through reports a server fault for a client's typo.
+- **A document is parsed again on the way out.** A stored document is untrusted input the moment the schema
+  moves, and one saved under an older shape that silently deserializes into something the engine mis-draws —
+  or that a rule then judges — is the class of defect this project keeps finding by review and never by its
+  suite. A label that no longer validates is reported with its id rather than served.
+- **`stock` is required on a saved label** where the export request treats it as optional and falls back to a
+  default. A saved label records the stock it was designed at; inheriting `DEFAULT_UPC_A_STOCK` would mean
+  that changing that constant silently resizes every label already stored against it, and the resize would
+  first be visible in a PDF somebody had already sent to a printer.
+- **A saved us-food label gets the same cross-field checks a posted one does.** `.refine` returns something
+  that is no longer an object and `.omit` is an object method, so the saved shape has to be built from the
+  unrefined base — and would have been validated more weakly than the same label sent to the exporter. The
+  refinement is named and reapplied, and a test fails if it stops being.
+- **`/health` reports the connection, and answers 503 without one.** Phase 8 puts an ALB target group behind
+  it, and a task that reports healthy without a database holds a broken instance in service. The status is
+  injected rather than looked up, for the reason `webRoot` already is: `createApp` builds the same
+  application every time it is called, and importing mongoose into it would make every route test that asks
+  about a PDF depend on a live connection.
+- **An edit no longer re-dates the label it edits.** `findOneAndReplace` takes mongoose's replace branch, and
+  a replacement body carries no `createdAt` — so it wrote the current time into it and every `PUT` reported
+  the label as newly created. Nothing noticed, because the test for replacing one asserted only its name. The
+  update sets the fields a caller owns and leaves `_id` and `createdAt`, which are not the caller's to set,
+  and a test now fails if that stops being true.
+- **A second `mongod` starting alongside the first no longer has its data directory deleted.** The sweep that
+  bounds what a `SIGKILL` leaves behind reads a directory with no recorded owner as abandoned, and the owner
+  was only recorded once `mongod` had finished starting — leaving seconds in which a concurrent run would
+  delete a directory that was very much in use. The claim is written before the sweep runs and handed to the
+  `mongod` pid afterwards. Two wrappers started together now both come up healthy with both directories
+  intact.
+- **`templateId` is not in the model** that `docs/DESIGN.md` sketches. It has no referent — `templates/`
+  exports element maps and defaults rather than identified templates, and `labelType` already selects which
+  `layOut*` function runs. A field naming nothing gets filled in with something arbitrary and then read as
+  meaningful.
+
 ### Changed
 
 Phase 6, stage 6 — persistence. The first of two parts: nothing new works yet, and one file learned to share.

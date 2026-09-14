@@ -43,6 +43,34 @@ describe('unknown routes', () => {
 const REQUIRED = { MONGODB_URI: 'mongodb://localhost:27017/packwright' }
 const load = (overrides: NodeJS.ProcessEnv = {}) => loadEnv({ ...REQUIRED, ...overrides })
 
+describe('/health and the database', () => {
+  it('reports the database as part of liveness', async () => {
+    const response = await request(
+      createApp({ enableLogging: false, databaseStatus: () => 'connected' }),
+    ).get('/health')
+    expect(response.status).toBe(200)
+    expect(response.body.database).toBe('connected')
+  })
+
+  it('fails the probe when the connection has gone away', async () => {
+    // Phase 8 puts an ALB target group behind this. A task that reports healthy
+    // without a database holds a broken instance in service.
+    const response = await request(
+      createApp({ enableLogging: false, databaseStatus: () => 'disconnected' }),
+    ).get('/health')
+    expect(response.status).toBe(503)
+    expect(response.body.status).toBe('degraded')
+  })
+
+  it('reports healthy when nothing told it about a database', async () => {
+    // The route tests that construct an app to ask about a PDF must not need a
+    // connection to do it.
+    const response = await request(createApp({ enableLogging: false })).get('/health')
+    expect(response.status).toBe(200)
+    expect(response.body).not.toHaveProperty('database')
+  })
+})
+
 describe('loadEnv', () => {
   it('applies defaults when nothing else is set', () => {
     const env = load({})

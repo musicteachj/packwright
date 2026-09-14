@@ -2,7 +2,9 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import helmet from 'helmet'
 import morgan from 'morgan'
 import { join } from 'node:path'
+import { createLabelDocumentRouter } from './labels/labelDocumentRoutes'
 import { createLabelRouter } from './labels/routes'
+import type { DatabaseStatus } from './db'
 
 export interface AppOptions {
   /** Suppresses request logging under test, where it is only noise. */
@@ -18,6 +20,16 @@ export interface AppOptions {
    * state of a gitignored directory. `server.ts` decides; tests state it.
    */
   webRoot?: string | undefined
+  /**
+   * How the database is doing, asked rather than looked up.
+   *
+   * Injected for the same reason `webRoot` is: `createApp` builds the same
+   * application every time it is called, and importing mongoose here would make
+   * every route test that asks about a PDF depend on a live connection. Absent
+   * means "this app was built without a database", which is what those tests
+   * are.
+   */
+  databaseStatus?: (() => DatabaseStatus) | undefined
 }
 
 /**
@@ -55,7 +67,7 @@ const isReservedForTheServer = (path: string): boolean =>
  * so route tests need neither a port nor a running process.
  */
 export function createApp(options: AppOptions = {}): Express {
-  const { enableLogging = true, webRoot } = options
+  const { enableLogging = true, webRoot, databaseStatus } = options
   const app = express()
 
   /**
@@ -120,14 +132,24 @@ export function createApp(options: AppOptions = {}): Express {
    * bearing — a 200 here is what keeps the ECS task in service.
    */
   app.get('/health', (_req: Request, res: Response) => {
-    res.json({
-      status: 'ok',
+    const database = databaseStatus?.()
+    // A probe that answers 200 without a database holds a broken task in
+    // service, which is the one thing this endpoint exists to prevent. With
+    // MONGODB_URI required a booted server has a connection; one lost afterwards
+    // is the state worth reporting.
+    const healthy = database === undefined || database === 'connected'
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'ok' : 'degraded',
+      ...(database === undefined ? {} : { database }),
       uptimeSeconds: Math.round(process.uptime()),
       environment: process.env.NODE_ENV ?? 'development',
       timestamp: new Date().toISOString(),
     })
   })
 
+  // The saved-label routes first: their paths are the shorter ones, and nothing
+  // about either mount shadows the other.
+  app.use('/api/labels', createLabelDocumentRouter())
   app.use('/api/labels', createLabelRouter())
 
   /**

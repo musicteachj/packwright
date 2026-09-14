@@ -37,6 +37,11 @@ const dbPath = join(HOME, `mongo-${process.pid}`)
 const ownerFile = `${dbPath}.owner`
 
 mkdirSync(dbPath, { recursive: true })
+// Claimed before the sweep runs and long before `mongod` exists, because another
+// wrapper starting concurrently reads an unclaimed directory as abandoned. This
+// script's own pid holds the claim until there is a `mongod` pid to hand it to,
+// which is a few seconds during which the directory is very much in use.
+writeFileSync(ownerFile, String(process.pid))
 
 /** Whether a pid names a process that still exists. */
 function alive(pid) {
@@ -67,6 +72,8 @@ for (const entry of readdirSync(HOME)) {
     // there is nothing that could still be writing here.
   }
   if (owner !== undefined && alive(owner)) continue
+  // No owner at all means the claim was never written, which only happens if a
+  // run died between creating the directory and claiming it.
   rmSync(directory, { recursive: true, force: true })
   rmSync(`${directory}.owner`, { force: true })
 }
@@ -110,6 +117,9 @@ process.on('unhandledRejection', (error) => {
 mongo = await MongoMemoryServer.create({ instance: { dbPath } })
 process.env.MONGODB_URI = mongo.getUri()
 
+// Handed from this script to the `mongod` it started: that is the process which
+// actually holds the wiredTiger files, and it outlives this one when this one is
+// killed outright.
 const mongodPid = mongo.instanceInfo?.instance?.mongodProcess?.pid
 if (mongodPid !== undefined) writeFileSync(ownerFile, String(mongodPid))
 
