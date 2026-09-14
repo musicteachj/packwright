@@ -10,6 +10,46 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 6, stage 4 — the responsive collapse. **Done-when #3.**
+
+- **Below 1024px the editor's three panes take turns behind a Form / Preview / Checks control.** They do not
+  shrink: the editor is desktop-first because a phone is a bad place to lay out a 100 × 150 mm label, and
+  three squeezed columns would be worse than one usable one. `docs/DESIGN.md` names one threshold, and `lg` is
+  exactly 1024 in Tailwind v4 — so no `--breakpoint-*` token was added. 375 / 768 / 1024 / 1440 are four
+  widths to verify at rather than four breakpoints, which is what the plan had assumed.
+- **A tablist, where the zoom control beside it is a group of pressed buttons.** Zoom is a set of independent
+  states of one thing and `aria-pressed` says so; this switches which of three regions is displayed, which is
+  what `tablist` / `tab` / `tabpanel` describes. Forcing them to match would announce one of them wrongly.
+- **Following a finding goes to the canvas it outlines.** Below `lg` the canvas is not on screen when the
+  findings are, so without this the interaction the editor is built around silently does nothing on a phone —
+  worse than not offering it.
+- **The masthead fits 375px.** Found by looking at a screenshot: the label-type select and the export button
+  did not fit on one line and "Export PDF" was cut off at the window edge, while every assertion passed,
+  because a clipped button is still visible and still clickable by its accessible name.
+- **Browser tests at the four widths.** This is the file jsdom could not have written: it has no layout
+  engine, cannot evaluate a media query or resolve a `lg:` variant, and would report all three panes visible
+  at every width.
+
+### Fixed
+
+- **A required dimension left blank now holds `NaN` rather than the empty string.** `v-model.number` hands
+  back the original string when `parseFloat` gives NaN, so clearing a container dimension wrote `''` into a
+  field the type declares as `number`.
+- **The entry in `BACKLOG.md` calling that a false clearance was wrong, and is corrected rather than
+  quietly dropped.** It said the empty string multiplied out to a zero-area panel and cleared every 101.7
+  rule. The arithmetic is right — `'' * 240` is `0`, and `isNetQuantityZoneRequired(0)` is `0 > 5` — and the
+  path is not: `assertContainerDrawable` reaches the container first and `Number.isFinite('')` is `false`
+  because it does not coerce, so the label never resolved and no rule ever ran. It was written from reading
+  the predicate rather than running the path, and said so approvingly. Reading a predicate tells you what it
+  returns for an input, and nothing about whether that input arrives.
+- **A mutation that killed nothing, which was the more useful result.** Removing the `lg:` from the grid's
+  column template left all nine collapse tests green, because the panes are shown and hidden by their own
+  classes — while the one visible pane sat in a 380px column on a 375px screen and the editor scrolled
+  sideways. Visibility and fit are two claims and only one was being made.
+
+
+### Added
+
 Phase 6, stage 3b — the rule catalogue. **Done-when #2.**
 
 - **`/rules` lists all thirty-four encoded rules, generated from `listRules()`.** Nothing on the page is

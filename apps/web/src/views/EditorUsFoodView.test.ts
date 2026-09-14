@@ -869,3 +869,63 @@ describe('an element the engine could not draw', () => {
     expect(wrapper.find('[aria-live="polite"]').text()).toMatch(/could not be checked/i)
   })
 })
+
+/**
+ * A required dimension left blank stays a number.
+ *
+ * `v-model.number` hands back the original string when `parseFloat` gives NaN, so
+ * clearing a box wrote `''` into a field typed `number`.
+ *
+ * **It was recorded in `BACKLOG.md` as a false clearance and it is not one.**
+ * That entry said the empty string multiplied out to a zero-area panel and
+ * cleared every 101.7 rule. The arithmetic holds and the path does not:
+ * `assertContainerDrawable` reaches the container first and `Number.isFinite('')`
+ * is `false`, so the label never resolved and no rule ever ran. The third test
+ * below is the one that would have shown that, and it passes on the old code too
+ * — kept for exactly that reason, since a test that cannot fail is worth having
+ * only when it is labelled as the control it is.
+ */
+describe('a required dimension left blank', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('holds NaN rather than the empty string', async () => {
+    const { store, wrapper } = await mountFood()
+
+    expect(store.failures).toEqual([])
+    expect(store.passes.length).toBeGreaterThan(0)
+
+    await wrapper.find('#field-food-panel-width').setValue('')
+    await nextTick()
+
+    const width = (store.foodData.container as { widthMm: number }).widthMm
+    expect(typeof width, 'a field typed `number` must hold a number').toBe('number')
+    expect(Number.isNaN(width)).toBe(true)
+  })
+
+  it('control: the engine already declined to draw, before and after', async () => {
+    // Passes on the old code as well, and is here to record that. The layout is
+    // refused either way, which is why the entry claiming a false clearance was
+    // wrong — there is no verdict to be false, because there is no verdict.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-panel-width').setValue('')
+    await nextTick()
+
+    expect(store.layout).toBeNull()
+    expect(store.findings).toEqual([])
+    expect(store.layoutError).toMatch(/panel width/i)
+    expect(store.findings.map((f) => f.code)).not.toContain('FDA_NET_QUANTITY_ZONE_NOT_REQUIRED')
+  })
+
+  it('recovers when a number is typed back in', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-panel-width').setValue('')
+    await nextTick()
+    expect(store.layout).toBeNull()
+
+    await wrapper.find('#field-food-panel-width').setValue('120')
+    await nextTick()
+
+    expect(store.layout).not.toBeNull()
+    expect(store.failures).toEqual([])
+  })
+})
