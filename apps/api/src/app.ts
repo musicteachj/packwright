@@ -58,7 +58,35 @@ export function createApp(options: AppOptions = {}): Express {
   const { enableLogging = true, webRoot } = options
   const app = express()
 
-  app.use(helmet())
+  /**
+   * helmet's defaults, with one directive widened and the reason recorded.
+   *
+   * `script-src 'self'` forbids `WebAssembly.instantiate`, and the barcode
+   * scanner is zxing compiled to WebAssembly — the engine most people who ever
+   * scan with this will run, since `BarcodeDetector` is Chromium-only and every
+   * browser on iOS is WebKit. Without this the camera opens, the module fails to
+   * instantiate, and nothing reads.
+   *
+   * **`'wasm-unsafe-eval'` and not `'unsafe-eval'`.** They look interchangeable
+   * and are not: the second re-enables `eval` and `new Function` for the entire
+   * application, which is the grant this policy exists to withhold. The first
+   * permits WebAssembly compilation and nothing else.
+   *
+   * Everything else is left alone deliberately. The client was confirmed to run
+   * clean under the untouched defaults when it was first served from this server,
+   * so each directive still carries its weight and any further widening should
+   * have to argue for itself the way this one did.
+   */
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          'script-src': ["'self'", "'wasm-unsafe-eval'"],
+        },
+      },
+    }),
+  )
 
   /**
    * There is deliberately no CORS middleware here, and re-adding one would be a

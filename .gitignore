@@ -31,3 +31,8 @@ print-test-sheet*.pdf
 /test-results/
 /playwright-report/
 /e2e/__screenshots__/
+
+# The fake-camera video the scanner tests read is generated into the system
+# temporary directory at launch, not into the repository — eight uncompressed
+# frames is five megabytes, and it is derived from the engine in this repository,
+# so committing it would store a slow copy of something the build can make.

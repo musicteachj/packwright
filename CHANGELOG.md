@@ -10,6 +10,96 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 6, stage 5b — the camera. **Done-when #1**, as far as a headless browser can carry it.
+
+- **A scanner in the retail form**, reading through whichever engine the browser has. The read goes to
+  `store.applyScan`, so nothing here decides what may become a GTIN-12 — `normaliseScannedGtin` does, and it
+  is the only thing permitted to.
+- **The ponyfill rather than the polyfill.** The polyfill assigns `globalThis.BarcodeDetector`; a library that
+  patches a global is one whose absence is untestable and whose presence is invisible.
+- **The `.wasm` ships in the bundle.** zxing resolves it from jsdelivr by default, which would make a label
+  editor stop scanning when a CDN has a bad day, put a third party in the path of a shopper's camera, and
+  breach the policy the API serves this client under.
+- **The Content-Security-Policy gains `'wasm-unsafe-eval'`, and nothing else.** `script-src 'self'` forbids
+  `WebAssembly.instantiate`. `'unsafe-eval'` would have worked and would also re-enable `eval` and
+  `new Function` for the whole application, which is the grant this policy exists to withhold.
+- **A scan-back test, which `docs/DESIGN.md` calls the one that actually matters.** The symbol the camera
+  reads is drawn by `layOutUpcALabel` and rasterised into the frames Chromium serves as a camera, so it
+  asserts what no unit test can: that what the engine draws is what a reader reads back. The fixture decodes
+  its own frame before writing it, because an undecodable one would otherwise surface as a browser test timing
+  out with no reason given.
+
+### Fixed
+
+- **The browser's own detector is now trusted only as far as it reads.** `getSupportedFormats()` is a claim,
+  not a demonstration: headless Chromium reports `upc_a` and `ean_13` and then returns an empty array from
+  every `detect` call, against a frame zxing reads immediately. A user cannot tell that from a camera that
+  will not focus — they hold the phone steadier and give up. After eight seconds of reading nothing, the
+  frames go to zxing instead. Eight and not the two it started at: a barren frame is usually just aiming, and
+  two seconds downgraded a working platform decoder on any device where someone took a moment to line the
+  pack up.
+- **The camera is asked for 1280×720.** The default stream is 640×480, which puts a UPC-A module at about
+  five pixels once the pack is far enough away to fit in frame, and five is under what the reader needs.
+- **`ref="video"` bound to nothing.** The composable owned the ref and the component assigned it across, which
+  vue-tsc reported as an unused local and Vue never populated: `play()` was called on nothing and the camera
+  sat paused with no frames while the status read "scanning". The component owns the element now and hands it
+  over.
+- **A camera handed in was reported as a browser without one.** `start` checked `navigator.mediaDevices`
+  before using the injected stream, so every test in jsdom answered `unsupported`. That check belongs to the
+  real implementation, which is the only thing it is knowable about.
+- **Two browser tests that passed without scanning.** The editor opens on the GTIN the fake camera carries, so
+  "the field contains the scanned value" was true before the camera was opened — both passed in 590ms. Every
+  scanner test now moves the field off its default first.
+- **One `zxing-wasm` in the tree, pinned rather than ranged — the scanner was running one version's
+  WebAssembly under another version's loader.** `detector.ts` resolves the `.wasm` from *this* package and
+  hands the URL to `setZXingModuleOverrides`, while the Emscripten glue that loads it comes from whichever
+  copy `barcode-detector` resolved; `barcode-detector@3.2.2` pins `zxing-wasm` to an exact `3.1.3`, so the
+  root's `^3.1.4` — added for the fixture that rasterises the frames — hoisted 3.1.4 and split the pair. The
+  two are not interchangeable and they do not say so: 3.1.3's reader is 1,093,289 bytes against 3.1.4's
+  953,527, the import and export names still line up, the module instantiates, and the first `detect()` then
+  spins in WebAssembly for ever. No exception, no console output, no failed request — the page's main thread
+  simply stops, and it presents as a camera that has gone quiet. Both manifests now pin the version
+  `barcode-detector` pins, and `wasmPairing.test.ts` asserts the single copy by resolved path, so the guard
+  keeps holding when that pin next moves.
+- **A frame that threw did not count as a frame that read nothing.** `barrenTicks` advanced only when
+  `detect()` resolved empty; a rejection was swallowed on its own, so a detector that threw on every frame —
+  which is what Chromium reports when the platform's barcode service is unavailable — never spent its trial
+  window and never lost the camera. The one failure the window exists to rescue was the one it could not see.
+  Both outcomes now go through `symbolsIn`, which has read nothing either way.
+- **The fake-camera fixture downloaded its reader from jsdelivr.** `assertDecodes` calls `readBarcodes` in
+  Node without overriding `locateFile`, and zxing-wasm's default points at `fastly.jsdelivr.net`. It runs at
+  `playwright.config.ts` module scope, so the whole browser suite fetched a megabyte from a CDN before the
+  first test and died at config load without a network — the client refuses to do this for reasons that apply
+  just as well to the fixture checking it. It now reads the bytes off disk with `wasmBinary`, which was
+  confirmed by running the config with `fetch` blocked: clean with the override, `Aborted(both async and sync
+  fetching of the wasm failed)` without it.
+- **"The WebAssembly comes from the bundle" assumed zxing had run.** The test required at least one `.wasm`
+  request, which is true only where the platform's own detector failed to read — the same operating-system
+  assumption that put `data-scan-engine="native"` in a test that would have failed on `ubuntu-latest`. The
+  same-origin assertion holds everywhere and stays unconditional; the premise is now tied to whether `zxing`
+  was actually observed on the status element, recorded by a `MutationObserver` because a successful scan
+  closes the panel before the test could read it. The scanner spec also gets a 60 s test timeout: a 25 s
+  assertion inside Playwright's default 30 s, on a path that spends eight seconds on the native trial, turned
+  a useful mismatch into a bare timeout.
+- **The fallback's own tests stopped testing it when the window moved.** Widening the trial from two seconds
+  to eight left one sleeping a fixed five, so it timed out waiting for a swap that had not happened yet — and
+  left the other asserting the detector was *still* native at 2.6 seconds, which it now is whatever the code
+  does. That one had been written for the abandoned comparison and claimed a behaviour the scanner does not
+  have: the swap is unconditional. Both now walk a fake clock to the near and far edges of the exported
+  `NATIVE_TRIAL_MS`, so they track the constant instead of a number typed beside it, and they assert what
+  ships — barren at the near edge, swapped at the far one, whether or not zxing reads either. Eight seconds
+  of real sleeping per assertion became 504ms for the file.
+- **Two recorded causes for that hang were wrong, and are corrected where they were written.** It was first
+  read as `WebAssembly.instantiate` hanging, which retired the sharper fallback that offers zxing the frame
+  native failed on; then as the Content-Security-Policy refusing a CDN request, which is why
+  `setZXingModuleOverrides` was imported statically while the detector beside it was not. Neither survived
+  being run: the ponyfill requests nothing until a `BarcodeDetector` is constructed, and that is after the
+  override is set either way. Both imports are dynamic again, so the glue and its megabyte are fetched when
+  the camera opens rather than on every page load.
+
+
+### Added
+
 Phase 6, stage 5a — turning what a scanner read into a GTIN-12, or refusing to.
 
 - **`normaliseScannedGtin` in `label-core/src/gs1/`.** A camera hands back whatever the symbol carried and

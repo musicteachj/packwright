@@ -77,6 +77,23 @@ source is degenerate. An ingredient whose name does not reveal the allergen — 
 `marzipan (almonds)` — would show the feature earning its place. A content decision about the seeded
 document, not a correctness fix.
 
+## The scanner
+
+**The fallback swaps on a timer, and it could swap on evidence.** `NATIVE_TRIAL_TICKS` gives the browser's
+own detector sixty-four barren frames — eight seconds — and then hands the camera to zxing unconditionally.
+The sharper shape is to offer zxing the very frame native has just failed on and swap only if zxing reads it,
+which separates "this detector is broken" from "nothing is in shot yet" instead of guessing at it with a
+clock. The timer gets both ends wrong: someone who takes nine seconds to line a pack up loses a working
+platform decoder, and someone pointing a Firefox at a blank wall waits eight seconds to be told nothing.
+
+It was tried during stage 5b and abandoned because `detect` hung there every time with no error. **That cause
+is now established and fixed** — one version's `zxing-wasm` binary running under another version's Emscripten
+glue, nothing to do with the comparison — so the blocker is gone and what remains is a small change to
+`fallBackToZxing`. It is not done here because stage 5b's scope was reading a barcode at all, the timer
+version is written and green, and the comparison needs a test for the case the timer never had to handle:
+zxing reading nothing either. Swapping on a frame *neither* engine can read would downgrade the platform
+detector on precisely the evidence that says nothing is wrong with it.
+
 ## Deferred from phase 5 stage 6
 
 Moved to a follow-up so phase 5 can reach `dev`. Between them these carry three mechanically checkable
