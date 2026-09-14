@@ -8,6 +8,24 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Changed
+
+Phase 6, stage 6 — persistence. The first of two parts: nothing new works yet, and one file learned to share.
+
+- **What a label is now lives in `apps/api/src/labels/schemas.ts`, not inside the export routes.** The three
+  request schemas and the `toX` mappers that reconcile Zod's `string | undefined` with `label-core`'s
+  genuinely-absent optionals were module-local to `routes.ts`, which was fine while exporting a PDF was the
+  only thing that needed to know the shape of a label. Saving one needs the same answer, and writing a second
+  description of the same fields is how two sources of truth for one set of facts get created — the drift
+  `getSymbologyConstraints` was introduced into this very file to end, when each side carried its own copy of
+  the payload length and the magnification range and could disagree without a test failing. `routes.ts` goes
+  from 752 lines to 277.
+- **The move is a move.** Every declaration is byte-identical to the one it replaced, bar three signatures
+  prettier reflowed because `export ` pushed them past the print width, and **no test file was edited** — 918
+  tests pass against code that was only relocated. That property is the whole reason this is its own commit:
+  a refactor that needed its tests changed to stay green is not a refactor, and the claim is worth being able
+  to check at a glance rather than inferring from a diff that also adds a feature.
+
 ### Added
 
 Phase 6, stage 5b — the camera. **Done-when #1**, as far as a headless browser can carry it.
