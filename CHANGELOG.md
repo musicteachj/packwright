@@ -24,6 +24,11 @@ route and the save experience are about the editor rather than about storage, an
   update into a discriminated union is where a `us-food` label still carrying a `gtin` comes from. A
   malformed `ObjectId` is a 404 and not a 500: it is a request for a label that does not exist, and letting
   Mongoose's cast error through reports a server fault for a client's typo.
+- **What was validated on the way out is what is served.** Parsing a stored document and then sending the
+  original checks nothing a client can see: zod strips keys it does not recognise, so a `data.gtin` left on a
+  us-food label by an older shape parsed clean and the unsanitised original went out regardless. That is the
+  same defect the replace on `PUT` exists to prevent, arriving from the other direction — and a stale value
+  that reaches a client is a value that can be sent back.
 - **A document is parsed again on the way out.** A stored document is untrusted input the moment the schema
   moves, and one saved under an older shape that silently deserializes into something the engine mis-draws —
   or that a rule then judges — is the class of defect this project keeps finding by review and never by its
@@ -41,12 +46,16 @@ route and the save experience are about the editor rather than about storage, an
   injected rather than looked up, for the reason `webRoot` already is: `createApp` builds the same
   application every time it is called, and importing mongoose into it would make every route test that asks
   about a PDF depend on a live connection.
-- **An edit no longer re-dates the label it edits.** `findOneAndReplace` takes mongoose's replace branch, and
-  a replacement body carries no `createdAt` — so it wrote the current time into it and every `PUT` reported
-  the label as newly created. Nothing noticed, because the test for replacing one asserted only its name. The
-  update sets the fields a caller owns and leaves `_id` and `createdAt`, which are not the caller's to set,
-  and a test now fails if that stops being true.
-- **A second `mongod` starting alongside the first no longer has its data directory deleted.** The sweep that
+- **An edit no longer re-dates the label it edits, and still clears what an older shape left behind.** A
+  replacement body carries no `createdAt`, so mongoose's replace branch wrote the current time into it and
+  every `PUT` reported the label as newly created — unnoticed, because the test for replacing one asserted
+  only its name. Updating the known fields with `$set` fixed the date and broke the replacement: a field from
+  a schema that has since moved on survived every edit, and would become live label data again the day its
+  name was reused. So the replace stands and `createdAt` is carried across it explicitly. Both halves have a
+  test that fails without them: drop the carried date and the first fails, swap back to `$set` and the second
+  does.
+- **A second `mongod` starting alongside the first no longer has its data directory deleted, in either
+  direction.** The sweep that
   bounds what a `SIGKILL` leaves behind reads a directory with no recorded owner as abandoned, and the owner
   was only recorded once `mongod` had finished starting — leaving seconds in which a concurrent run would
   delete a directory that was very much in use. The claim is written before the sweep runs and handed to the

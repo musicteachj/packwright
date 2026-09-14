@@ -85,7 +85,22 @@ export function createLabelDocumentRouter(): Router {
         })),
       })
     }
-    response.json(serializeLabelDocument(document))
+    // **What was validated is what is served.** Parsing into `parsed` and then
+    // sending the raw document checks nothing a client can see: zod strips keys
+    // it does not know, so a `data.gtin` left on a us-food label by an older
+    // shape parses clean and the unsanitised original goes out anyway. That is
+    // the same defect the replace on `PUT` exists to prevent, on the way back.
+    //
+    // `_id` and the timestamps come from the document because they are not part
+    // of what the schema describes.
+    response.json(
+      serializeLabelDocument({
+        _id: document._id,
+        ...parsed.data,
+        createdAt: document.createdAt,
+        updatedAt: document.updatedAt,
+      }),
+    )
   })
 
   router.put('/:id', async (request: Request, response: Response) => {
@@ -94,17 +109,21 @@ export function createLabelDocumentRouter(): Router {
     const parsed = LabelDocumentInput.safeParse(request.body)
     if (!parsed.success) return badRequest(response, parsed.error.issues)
 
-    // Every field a caller owns is overwritten — the body is the whole document,
-    // because merging a *partial* update into a discriminated union is where a
-    // `us-food` label still carrying a `gtin` comes from.
+    // Replaced, not merged. The body is the whole document, because merging a
+    // *partial* update into a discriminated union is where a `us-food` label
+    // still carrying a `gtin` comes from — and a replace is what clears a field
+    // an older shape left behind, which `$set` of the known fields does not.
     //
-    // `$set` of those fields rather than `findOneAndReplace`, which resets
-    // `createdAt`: with no `createdAt` in the replacement body, mongoose's
-    // replace branch writes the current time into it, so every edit re-dated the
-    // label it was editing. `createdAt` is not the caller's to set.
-    const updated = await LabelDocument.findOneAndUpdate(
+    // `createdAt` is carried across rather than left to mongoose. A replacement
+    // body has none, so its replace branch writes the current time and every
+    // edit re-dated the label it was editing. The date a label was created is
+    // not the caller's to set, and not the edit's to move.
+    const existing = await LabelDocument.findById(id).lean()
+    if (existing === null) return notFound(response)
+
+    const updated = await LabelDocument.findOneAndReplace(
       { _id: id },
-      { $set: parsed.data },
+      { ...parsed.data, createdAt: existing.createdAt },
       { new: true, timestamps: true, runValidators: true },
     )
     if (updated === null) return notFound(response)

@@ -34,6 +34,10 @@ describe('/api/labels', () => {
 
   it('lists labels newest first, without their data', async () => {
     await LabelDocument.create({ ...A_LABEL, name: 'Older' })
+    // Mongo stores milliseconds. Two creates inside one of them tie on
+    // `updatedAt` and the sort is then arbitrary — a test that passes on the
+    // machine it was written on.
+    await new Promise((resolve) => setTimeout(resolve, 5))
     await LabelDocument.create({ ...A_LABEL, name: 'Newer' })
     const response = await supertest(app()).get('/api/labels')
     expect(response.status).toBe(200)
@@ -58,6 +62,24 @@ describe('/api/labels', () => {
 
   it('answers 404 for a well-formed id that names nothing', async () => {
     expect((await supertest(app()).get('/api/labels/64b7f0000000000000000000')).status).toBe(404)
+  })
+
+  it('does not serve a field the schema no longer describes', async () => {
+    // Reading validates, and what was validated is what must be sent. Zod strips
+    // keys it does not know, so parsing and then serving the original checks
+    // nothing a client can see — and a stale value reaching a client is a value
+    // that can be sent back.
+    const created = await LabelDocument.create(A_LABEL)
+    await LabelDocument.collection.updateOne(
+      { _id: created._id },
+      { $set: { 'data.legacyField': 'stale' } },
+    )
+
+    const response = await supertest(app()).get(`/api/labels/${created._id}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).not.toHaveProperty('legacyField')
+    expect(response.body.data).toEqual({ gtin: '036000291452' })
   })
 
   it('replaces a label rather than merging into it', async () => {
@@ -85,6 +107,25 @@ describe('/api/labels', () => {
 
     expect(response.body.createdAt, 'the label was not created again').toBe(before)
     expect(new Date(response.body.updatedAt).getTime()).toBeGreaterThan(new Date(before).getTime())
+  })
+
+  it('clears a field an older shape left behind', async () => {
+    // A replace and not a `$set`: updating the fields the schema knows about
+    // leaves anything it does not, and a stale value becomes live again the day
+    // a field name is reused. Nothing becomes label data silently.
+    const created = await LabelDocument.create(A_LABEL)
+    await LabelDocument.collection.updateOne(
+      { _id: created._id },
+      { $set: { legacyField: 'stale' } },
+    )
+
+    await supertest(app())
+      .put(`/api/labels/${created._id}`)
+      .send({ ...A_LABEL, name: 'Renamed' })
+
+    expect(await LabelDocument.collection.findOne({ _id: created._id })).not.toHaveProperty(
+      'legacyField',
+    )
   })
 
   it('deletes a label', async () => {

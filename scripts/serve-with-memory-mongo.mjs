@@ -36,15 +36,23 @@ const dbPath = join(HOME, `mongo-${process.pid}`)
  */
 const ownerFile = `${dbPath}.owner`
 
-mkdirSync(dbPath, { recursive: true })
-// Claimed before the sweep runs and long before `mongod` exists, because another
-// wrapper starting concurrently reads an unclaimed directory as abandoned. This
-// script's own pid holds the claim until there is a `mongod` pid to hand it to,
-// which is a few seconds during which the directory is very much in use.
+// **Claimed before the directory exists, not after.** Another wrapper starting
+// concurrently reads an unclaimed directory as abandoned, so any gap between
+// creating one and claiming it is a gap in which a neighbour deletes it. Writing
+// the claim first inverts that: a claim with no directory yet is invisible to
+// the sweep, which only looks at directories. This script's own pid holds it
+// until there is a `mongod` pid to hand it to.
+mkdirSync(HOME, { recursive: true })
 writeFileSync(ownerFile, String(process.pid))
+mkdirSync(dbPath, { recursive: true })
 
 /** Whether a pid names a process that still exists. */
 function alive(pid) {
+  // A truncated or half-written claim gives `NaN`, and `process.kill(NaN, 0)`
+  // throws a `TypeError` carrying no `code` — which the `ESRCH` test below reads
+  // as "still alive", leaving the directory unreclaimable for ever. An
+  // unreadable claim is no claim.
+  if (!Number.isInteger(pid) || pid <= 0) return false
   try {
     // Signal 0 tests for existence without delivering anything.
     process.kill(pid, 0)
