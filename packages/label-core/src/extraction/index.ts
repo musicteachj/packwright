@@ -1,0 +1,1 @@
+export { confirmed } from './confirm'

@@ -76,6 +76,8 @@ import * as ghsTemplate from './templates/ghs'
 import * as stock from './templates/stock'
 import * as upcA from './templates/upcA'
 import * as usFoodTemplate from './templates/usFood'
+import * as extractionBarrel from './extraction/index'
+import * as confirm from './extraction/confirm'
 
 /**
  * Every public symbol must be reachable from its module's barrel.
@@ -117,6 +119,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['scan.ts', scan],
     ],
   ],
+  ['extraction', extractionBarrel, [['confirm.ts', confirm]]],
   [
     'geometry',
     geometryBarrel,

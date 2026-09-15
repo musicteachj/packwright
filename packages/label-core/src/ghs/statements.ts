@@ -324,6 +324,27 @@ const PRECAUTIONARY: Readonly<Record<GhsRegime, Readonly<Record<string, string>>
  * complete and be wrong, which is worse than a label that states plainly that a
  * statement could not be supplied.
  */
+/**
+ * A statement code as the tables spell it.
+ *
+ * The tables key combinations as `'P337 + P313'`, with a space either side of
+ * the plus, and labels print them both ways. This exists in `label-core` rather
+ * than beside either caller because both the extraction endpoint and the confirm
+ * screen have to reach the same answer: they disagreed once, and the symptom was
+ * a code the server had accepted being dropped by the screen without a word.
+ *
+ * Whitespace and letter case, and nothing else. `P337+P313` and `P337 + P313`
+ * are one code in different type; a paraphrased statement would be different
+ * regulatory text, and nothing here touches that.
+ */
+export function canonicalStatementCode(code: string): string {
+  return code
+    .trim()
+    .toUpperCase()
+    .replace(/\s*\+\s*/g, ' + ')
+    .replace(/\s+/g, ' ')
+}
+
 export function hazardStatementText(regime: GhsRegime, code: string): string | undefined {
   return own(HAZARD[regime], code)
 }

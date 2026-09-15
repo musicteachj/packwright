@@ -1,3 +1,4 @@
+export * from './extraction/index'
 export * from './gs1/index'
 export * from './geometry/index'
 export * from './ghs/index'

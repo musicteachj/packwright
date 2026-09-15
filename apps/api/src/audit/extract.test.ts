@@ -173,7 +173,7 @@ describe('a reply with one unreadable field in it', () => {
     // reject one: the call has been paid for, this endpoint exists to show what
     // was read, and one bad confidence would cost every field that parsed.
     const result = await extract(wrongShape)
-    expect(result.fields.supplier?.value?.name).toBe('Northgate Solvents Ltd')
+    expect(result.fields.supplier?.value.name).toBe('Northgate Solvents Ltd')
     expect(result.fields.productIdentifier).toBeUndefined()
   })
 
@@ -247,12 +247,8 @@ describe('reading the recorded reply', () => {
     expect(result.fields.productIdentifier?.confidence).toBe(
       asRecorded.productIdentifier.confidence,
     )
-    // `?.` on `value` rather than only on the field: `ExtractionResult`'s mapped
-    // type is `ExtractedField<T[K]>`, and for an optional key of `GhsLabelData`
-    // that `T[K]` still includes `undefined` — so the contract currently admits
-    // a field that is present with no value. Recorded in `docs/BACKLOG.md`.
-    expect(result.fields.supplier?.value?.name).toBe('Northgate Solvents Ltd')
-    expect(result.fields.supplier?.value?.telephone).toBe('+44 1522 880 114')
+    expect(result.fields.supplier?.value.name).toBe('Northgate Solvents Ltd')
+    expect(result.fields.supplier?.value.telephone).toBe('+44 1522 880 114')
   })
 
   it('reports both signal words, which is the whole reason that field is plural', async () => {

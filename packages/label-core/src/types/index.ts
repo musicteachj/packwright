@@ -123,6 +123,16 @@ export interface ExtractionWarning {
  * confirms it.
  */
 export interface ExtractionResult<T> {
-  fields: { [K in keyof T]?: ExtractedField<T[K]> }
+  /**
+   * `NonNullable` because a field that is present with no value means nothing.
+   *
+   * `T[K]` for an optional key of a label type still includes `undefined`, so
+   * the first version of this made `fields.supplier.value` a
+   * `GhsSupplier | undefined` — and every consumer carried a second optional
+   * chain for a state that could not be produced and would not have been
+   * meaningful if it were. Absence is already sayable: the field itself is
+   * optional, and leaving it out is how a producer says it could not read one.
+   */
+  fields: { [K in keyof T]?: ExtractedField<NonNullable<T[K]>> }
   warnings: ExtractionWarning[]
 }
