@@ -15,7 +15,22 @@ import type { Finding } from '@packwright/label-core'
 import { computed } from 'vue'
 import { SEVERITY_STYLES } from '../severity'
 
-const props = defineProps<{ finding: Finding; selected: boolean }>()
+const props = withDefaults(
+  defineProps<{
+    finding: Finding
+    selected: boolean
+    /**
+     * Whether selecting this finding does anything.
+     *
+     * False on the audit report, which has no canvas to highlight. A finding
+     * rendered as a `<button aria-pressed="false">` that does nothing when
+     * activated announces itself as a toggle and is not one — the same defect
+     * as the Digital Link finding below, arriving from the other direction.
+     */
+    selectable?: boolean
+  }>(),
+  { selectable: true },
+)
 defineEmits<{ select: [elementId: string] }>()
 
 const style = SEVERITY_STYLES[props.finding.severity]
@@ -27,7 +42,7 @@ const style = SEVERITY_STYLES[props.finding.severity]
  * geometry — so clicking it used to *clear* the canvas highlight rather than set
  * one: a control that looks interactive and undoes your last action.
  */
-const interactive = computed(() => props.finding.elementId !== undefined)
+const interactive = computed(() => props.selectable && props.finding.elementId !== undefined)
 </script>
 
 <template>

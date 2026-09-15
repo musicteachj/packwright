@@ -322,3 +322,27 @@ describe('pasting a barcode into the GTIN field', () => {
     expect(wrapper.text(), 'the reader should see what was read').toContain('4006381333931')
   })
 })
+
+describe('a label handed over from an audit', () => {
+  it('is still unsaved work after the editor has mounted', () => {
+    // The store keeps it dirty; the editor's route watcher used to take that
+    // back. `detach()` rebased the baseline on mount at `/labels/new` even with
+    // nothing attached, so the document arrived dirty and went clean before
+    // anyone saw it — leaving both leave guards silent over an audit somebody
+    // had just done by hand.
+    //
+    // Asserted here rather than in the store's own test, which passes either
+    // way because it never mounts anything. That gap is how this survived.
+    const store = useLabelDocumentStore()
+    store.loadUnsaved({
+      labelType: 'ghs-chemical',
+      stock: { widthMm: 74, heightMm: 105, marginMm: 4 },
+      data: { regime: 'eu-clp', productIdentifier: 'Acetone', capacityL: 1 },
+    })
+    expect(store.isDirty, 'the premise: it arrives as unsaved work').toBe(true)
+
+    mountEditor()
+    expect(store.isDirty).toBe(true)
+    expect(store.savedId).toBeNull()
+  })
+})
