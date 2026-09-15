@@ -102,6 +102,20 @@ the API downsamples to it anyway — so nothing is lost, and `docs/DESIGN.md`'s 
 upload" is honoured rather than contradicted. Both documents need the nuance, because the naive reading sends
 a 12-megapixel photograph the API immediately throws most of away.
 
+### Decided at the stage 2 boundary
+
+**An unrecognised statement code is shown and cannot be confirmed.** Stage 1 chose to report a code this build
+has no verified text for rather than drop it, because the user should see what was on their label. That left a
+question it could not answer on its own: `GhsRequest` admits only codes with verified text, so confirming one
+produces a label the save and export routes refuse with a 400, naming a field the user cannot edit their way
+out of.
+
+Three ways out. Refuse the code; drop it with the user's agreement; or loosen `GhsRequest` so the layout
+engine records the omission it already knows how to record. This takes the first. It keeps the change inside
+the audit screen, "this build has no text for H999" is both true and worth showing, and the third is really
+the same job as transcribing OSHA Appendix C.4 — which is in `docs/BACKLOG.md` and is a reference-table task
+with its own provenance requirements, not a schema tweak.
+
 ---
 
 ## Module layout
