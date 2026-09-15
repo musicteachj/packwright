@@ -5,6 +5,7 @@ import { nextTick } from 'vue'
 import { US_FOOD_RULES } from '@packwright/label-core'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
+import { testRouter } from './editorTestRouter'
 
 /**
  * The US food label, driven through the real editor.
@@ -23,7 +24,8 @@ import EditorView from './EditorView.vue'
 // jsdom has no layout, so scrolling is a no-op it does not implement.
 Element.prototype.scrollIntoView = vi.fn()
 
-const mountEditor = () => mount(EditorView, { global: { stubs: { RouterLink: true } } })
+const mountEditor = () =>
+  mount(EditorView, { global: { plugins: [testRouter()], stubs: { RouterLink: true } } })
 
 const mountFood = async () => {
   const store = useLabelDocumentStore()

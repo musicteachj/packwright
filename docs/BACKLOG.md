@@ -79,19 +79,14 @@ document, not a correctness fix.
 
 ## Saved labels
 
-**A saved label's `data` cannot be posted to the export route as it stands, and the failure is silent.** A
-saved document holds `stock` beside `data`; the export request takes them flattened together, and defaults a
-missing `stock` to `DEFAULT_UPC_A_STOCK` or its siblings. So handing an export route the `data` of a saved
-label prints it at whatever the default happens to be rather than at the size it was designed at — the same
-class of failure as a rule clearing a label the engine never drew, and invisible until somebody measures a
-printed sheet.
+**~~A saved label's `data` cannot be posted to the export route as it stands.~~ Closed** by the saved-labels
+user interface, which is the stage this entry said would make it reachable. Opening `/labels/:id` restores the
+stock a label was saved at as well as its data, and `e2e/the-saved-label-round-trip.spec.ts` carries the round
+trip: save at 90 mm, open, export, assert the PDF's MediaBox. Reverting the fix makes it report `[0 0 170.07874
+113.385827]` — 60 mm, the default — which is the silent wrong size this entry described.
 
-Nothing does this today, because there is no user interface yet. **The stage that adds one is where it
-becomes reachable**, since "open a saved label, then export it" is the obvious first thing to wire. That stage
-should carry the round trip in a test — save, read back, export, assert the page box matches the stock that
-was saved — and probably a named helper that rebuilds an export request from a saved document, so the correct
-path is the easy one. Written here rather than built now because a helper with no caller is a guess at what
-the caller will want.
+The helper it also asked for was not written. Nothing outside the editor builds an export request, so a shared
+one would have a single caller and would be a guess at what a second one wants.
 
 **The label list is unbounded.** `GET /api/labels` returns every document, newest first. The sort is indexed
 now, so the 32 MB in-memory sort ceiling is no longer the limit, but the response still grows without one.

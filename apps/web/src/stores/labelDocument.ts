@@ -36,7 +36,8 @@ import {
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import { defineStore } from 'pinia'
-import { computed, reactive, ref } from 'vue'
+import { sameDocument, type DocumentSnapshot } from './documentIdentity'
+import { computed, reactive, ref, watch } from 'vue'
 
 /** A real GTIN-12, so the editor opens on something that resolves. */
 const STARTING_GTIN = '036000291452'
@@ -335,7 +336,174 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     lastScan.value = null
   }
 
+  /**
+   * Which saved label the editor is attached to, if any.
+   *
+   * `null` means the document has never been written, so Save creates. An id
+   * means Save replaces that record — which is the only reason the editor can
+   * export a saved label at its own stock rather than at a default.
+   */
+  const savedId = ref<string | null>(null)
+  const savedName = ref('')
+  /** What was last written, for telling an edited document from an opened one. */
+  const baseline = ref<DocumentSnapshot | null>(null)
+
+  /** The active type's document, in the shape the API stores. */
+  const snapshot = computed<DocumentSnapshot>(() => ({
+    name: savedName.value,
+    labelType: labelType.value,
+    stock:
+      labelType.value === 'gs1-retail'
+        ? stock
+        : labelType.value === 'ghs-chemical'
+          ? ghsStock
+          : foodStock,
+    data:
+      labelType.value === 'gs1-retail'
+        ? data
+        : labelType.value === 'ghs-chemical'
+          ? ghsData
+          : foodData,
+  }))
+
+  /**
+   * Whether the document has moved since it was last written — or, for one that
+   * has never been written, since the editor opened.
+   *
+   * **A never-saved document has a baseline too.** Gating this on having been
+   * saved made both guards inert for a brand-new label, which is the case they
+   * most exist for: an hour of work on something never written is the work most
+   * easily lost. The baseline starts at the seeded document, so an untouched
+   * editor is clean and the first edit is not.
+   */
+  const isDirty = computed(
+    () => baseline.value !== null && !sameDocument(snapshot.value, baseline.value),
+  )
+
+  /**
+   * A plain, detached copy of the live document.
+   *
+   * Through JSON rather than `structuredClone`, because the baseline it produces
+   * is compared against a document that has been through JSON on the way back
+   * from the server — so both sides lose `undefined` the same way, and an
+   * optional field the editor never touched compares equal to one the server
+   * omitted.
+   */
+  const detachedSnapshot = (): DocumentSnapshot =>
+    JSON.parse(JSON.stringify(snapshot.value)) as DocumentSnapshot
+
+  /** Replaces a reactive document wholesale, rather than merging into it. */
+  function replaceReactive(target: Record<string, unknown>, source: Record<string, unknown>): void {
+    for (const key of Object.keys(target)) delete target[key]
+    Object.assign(target, structuredClone(source))
+  }
+
+  /**
+   * Opens a saved label, stock included.
+   *
+   * **The stock matters as much as the data.** `docs/BACKLOG.md` records what
+   * happens without it: the export request defaults a missing stock, so a label
+   * opened without its own would print at whatever the default is rather than at
+   * the size it was designed at — silently, and first visible on a printed
+   * sheet.
+   */
+  function loadSaved(saved: {
+    id: string
+    name: string
+    labelType: 'gs1-retail' | 'ghs-chemical' | 'us-food'
+    stock: LabelStock
+    data: unknown
+  }): void {
+    labelTypeIsLoading = true
+    labelType.value = saved.labelType
+    labelTypeIsLoading = false
+
+    if (saved.labelType === 'gs1-retail') {
+      replaceReactive(
+        data as unknown as Record<string, unknown>,
+        saved.data as Record<string, unknown>,
+      )
+      replaceReactive(
+        stock as unknown as Record<string, unknown>,
+        saved.stock as unknown as Record<string, unknown>,
+      )
+    } else if (saved.labelType === 'ghs-chemical') {
+      replaceReactive(
+        ghsData as unknown as Record<string, unknown>,
+        saved.data as Record<string, unknown>,
+      )
+      replaceReactive(
+        ghsStock as unknown as Record<string, unknown>,
+        saved.stock as unknown as Record<string, unknown>,
+      )
+    } else {
+      replaceReactive(
+        foodData as unknown as Record<string, unknown>,
+        saved.data as Record<string, unknown>,
+      )
+      replaceReactive(
+        foodStock as unknown as Record<string, unknown>,
+        saved.stock as unknown as Record<string, unknown>,
+      )
+    }
+
+    savedId.value = saved.id
+    savedName.value = saved.name
+    baseline.value = detachedSnapshot()
+  }
+
+  /** Records that the current document is now what the server holds. */
+  function markSaved(id: string, name: string): void {
+    savedId.value = id
+    savedName.value = name
+    baseline.value = detachedSnapshot()
+  }
+
+  /**
+   * Lets go of the saved label without touching the document.
+   *
+   * Switching label type does this, because a saved label is one type and its
+   * `data` is a discriminated union keyed on it. The API would accept the
+   * conversion without complaint, which is exactly why the client must not offer
+   * it: a stored record would change kind because somebody clicked a tab, and
+   * its name would still describe what it used to be.
+   */
+  function detach(): void {
+    savedId.value = null
+    // Rebased rather than cleared: the document carries on existing and is still
+    // worth defending, it just no longer belongs to a stored record.
+    baseline.value = detachedSnapshot()
+  }
+
+  // The seeded document is the baseline until something is written, so an
+  // untouched editor is clean and an edited one is not.
+  baseline.value = detachedSnapshot()
+
+  let labelTypeIsLoading = false
+  /**
+   * Synchronously, because the gap matters.
+   *
+   * A watcher flushed on the next tick leaves a window in which `labelType` has
+   * already changed and `savedId` has not — and a Save in that window replaces
+   * the stored record with a document of a different kind, which is the one
+   * thing detaching exists to prevent.
+   */
+  watch(
+    labelType,
+    () => {
+      if (!labelTypeIsLoading && savedId.value !== null) detach()
+    },
+    { flush: 'sync' },
+  )
+
   return {
+    savedId,
+    savedName,
+    isDirty,
+    snapshot,
+    loadSaved,
+    markSaved,
+    detach,
     labelType,
     data,
     stock,

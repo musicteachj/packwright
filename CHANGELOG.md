@@ -10,6 +10,52 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 6, stage 8 — saved labels reach the editor. Persistence shipped as an API in stage 6 with no way to use
+it; `/labels` and `/labels/:id` have been in the router's inventory since phase 3, waiting.
+
+- **A list at `/labels`**, and an editor that knows which saved label it is editing. Opening `/labels/:id`
+  attaches the document, so Save replaces that record rather than duplicating it, and Save as new is the
+  separate act it ought to be. The list omits each label's `data` — a list whose cost grows with the size of
+  the labels in it gets slower the more useful it becomes.
+- **Switching label type lets go of the saved label.** A saved label is one type and its `data` is a
+  discriminated union keyed on it. The API would accept the conversion without complaint, which is exactly why
+  the client must not offer it: a stored record would change kind because somebody clicked a tab, under a name
+  still describing what it used to be. The watcher is synchronous, because a flush on the next tick leaves a
+  window in which the type has changed and the attachment has not — and a Save in that window writes the wrong
+  kind.
+- **Unsaved work does not leave quietly.** `onBeforeRouteLeave` covers navigation inside the application and
+  `beforeunload` covers closing the tab, both gated on whether the document differs from what was last
+  written. That comparison sorts keys before comparing: the editor builds its document field by field and a
+  loaded one arrives through JSON, so a direct string compare reports every freshly-opened label as modified —
+  and an indicator that is always on is one nobody reads.
+- **The round trip `docs/BACKLOG.md` was waiting for, closed and tested.** A saved label holds `stock` beside
+  `data` while the export request takes them flattened and defaults a missing one. Opening a label now restores
+  its stock, and a browser test saves at 90 mm, opens, exports and asserts the PDF's MediaBox. Reverting the
+  fix reports `[0 0 170.07874 113.385827]` — 60 mm, the default — which is the silent wrong size the entry
+  described.
+
+### Fixed
+
+- **`/labels/new` kept the last saved label attached, which was a way to overwrite one.** The store is a
+  singleton and the editor is the same component at both routes, so arriving at `/labels/new` from a saved
+  label — which the header's own Editor link does — left `savedId` set. The document still read "Saved", and
+  the next edit followed by Save issued a `PUT` over the record the user thought they had navigated away from.
+  The editor reacts to the route now rather than only to being mounted.
+- **Both unsaved-work guards were inert for a new label**, which is the case they most exist for: an hour of
+  work on something never written is the work most easily lost. `isDirty` was gated on having been saved, so a
+  document with no record behind it could never be dirty. The baseline starts at the seeded document instead,
+  so an untouched editor is clean and the first edit is not.
+- **Two new error lines broke a `v-if` chain they were inserted into.** `v-else-if="cannotExport"` rebound
+  onto `loadError`, so a failed open suppressed the only explanation beside a disabled Export button, and an
+  export error could show two messages at once. They sit after the pair now rather than between it.
+- **A failed open kept complaining after a successful save**, because `loadError` was set and never cleared.
+- **A delete that 404s left a row nothing could clear.** A label that is already gone is a delete that got
+  what it wanted.
+- **A failed list showed "Nothing saved yet".** The request failing leaves the list empty too, so the empty
+  state and the error appeared together — telling a reader their work is gone at the same moment as telling
+  them the server could not be reached. Found by the test written to prevent exactly that.
+
+
 Phase 6, stage 7 — the landing page draws all three.
 
 - **Three regimes, rendered live rather than pictured.** `docs/DESIGN.md` has always asked the front door for

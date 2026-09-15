@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
+import { testRouter } from './editorTestRouter'
 
 /**
  * The GHS label, driven through the real editor.
@@ -19,7 +20,8 @@ import EditorView from './EditorView.vue'
 // jsdom has no layout, so scrolling is a no-op it does not implement.
 Element.prototype.scrollIntoView = vi.fn()
 
-const mountEditor = () => mount(EditorView, { global: { stubs: { RouterLink: true } } })
+const mountEditor = () =>
+  mount(EditorView, { global: { plugins: [testRouter()], stubs: { RouterLink: true } } })
 
 /** Serious eye damage puts GHS05 on the label; skin irritation puts GHS07 on it. */
 const PRECEDENCE_HAZARDS = ['3.3/serious-eye-damage-1', '3.2/skin-irritation-2']

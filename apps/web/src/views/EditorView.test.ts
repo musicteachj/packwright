@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
+import { testRouter } from './editorTestRouter'
 
 /**
  * The signature interaction, tested rather than asserted.
@@ -20,7 +21,7 @@ import EditorView from './EditorView.vue'
 Element.prototype.scrollIntoView = vi.fn()
 
 function mountEditor() {
-  return mount(EditorView, { global: { stubs: { RouterLink: true } } })
+  return mount(EditorView, { global: { plugins: [testRouter()], stubs: { RouterLink: true } } })
 }
 
 describe('the editor', () => {
