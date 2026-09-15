@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { GHS_PICTOGRAMS_BY_REGIME, isPictogramRecognised } from './pictograms'
 import {
+  canonicalStatementCode,
   EU_CLP_HAZARD_STATEMENTS,
   EU_CLP_PRECAUTIONARY_STATEMENTS,
   GHS_REGIMES,
   hazardStatementText,
   precautionaryStatementText,
+  US_OSHA_HAZARD_STATEMENTS,
+  US_OSHA_PRECAUTIONARY_STATEMENTS,
 } from './statements'
 
 /**
@@ -62,6 +65,96 @@ describe('statement text is exact', () => {
     // It appears in Annex IV Part 1 as "packing instruction P200 of the UN RTDG"
     // and is not a precautionary statement at all.
     expect(precautionaryStatementText('eu-clp', 'P200')).toBeUndefined()
+  })
+})
+
+describe('canonicalising a code the tables already hold changes nothing', () => {
+  it('leaves every key in every table exactly as the source spells it', () => {
+    // The invariant that makes the bracket case checkable rather than
+    // remembered. Spacing every `+` alike rewrote CLP's own
+    // `'P370 + P380 + P375 [+ P378]'` to `'[ + P378]'`, so canonicalising the
+    // table's own key produced something the table does not contain — and every
+    // lookup that canonicalises first, which by now is all of them, stopped
+    // finding the one code the editor offers for it.
+    const tables = [
+      EU_CLP_HAZARD_STATEMENTS,
+      EU_CLP_PRECAUTIONARY_STATEMENTS,
+      US_OSHA_HAZARD_STATEMENTS,
+      US_OSHA_PRECAUTIONARY_STATEMENTS,
+    ]
+    for (const table of tables) {
+      for (const key of Object.keys(table)) {
+        expect(canonicalStatementCode(key), key).toBe(key)
+      }
+    }
+  })
+
+  it('still collapses the spellings a label actually prints', () => {
+    expect(canonicalStatementCode('p337+p313')).toBe('P337 + P313')
+    expect(canonicalStatementCode('  H225  ')).toBe('H225')
+  })
+
+  it('collapses every spacing of the bracketed member onto the key', () => {
+    // A label prints this combination without much regard for the regulation's
+    // own spacing, and all of these are the same code. Repairing only the `+`
+    // inside the bracket left the unspaced form — the one a label is most likely
+    // to print — still failing, which is the half-fix this replaced.
+    const KEY = 'P370 + P380 + P375 [+ P378]'
+    for (const spelling of [
+      KEY,
+      'P370 + P380 + P375 [ + P378]',
+      'P370+P380+P375[+P378]',
+      'p370 + p380 + p375 [ +p378 ]',
+      '  P370+P380 + P375  [ + P378 ]  ',
+    ]) {
+      expect(canonicalStatementCode(spelling), spelling).toBe(KEY)
+    }
+  })
+})
+
+describe('the optional member of a combination code is not optional to a lookup', () => {
+  it('keeps the bracketed and un-bracketed codes as two codes', () => {
+    // **The guard against a fix that would generate regulatory text.**
+    // `docs/BACKLOG.md` asked for “a lookup that understands the bracket”, on the
+    // false premise that `P370 + P380 + P375` resolved to nothing. It is its own
+    // key. Collapsing the two — the obvious reading of that request — would append
+    // “[Use … to extinguish].” to a label that never carried P378.
+    const bare = precautionaryStatementText('eu-clp', 'P370 + P380 + P375')
+    const bracketed = precautionaryStatementText('eu-clp', 'P370 + P380 + P375 [+ P378]')
+
+    expect(bare, 'the un-bracketed code is its own entry').toBeDefined()
+    expect(bracketed).toBeDefined()
+    expect(bare).not.toBe(bracketed)
+    expect(bare, 'P378 is what the bracket adds, and it must not leak').not.toContain('extinguish')
+    expect(bracketed).toContain('extinguish')
+  })
+
+  it('has exactly one bracketed key, which is the count the BACKLOG asked for', () => {
+    const keys = [
+      ...Object.keys(EU_CLP_HAZARD_STATEMENTS),
+      ...Object.keys(EU_CLP_PRECAUTIONARY_STATEMENTS),
+    ]
+    expect(keys.filter((key) => key.includes('['))).toEqual(['P370 + P380 + P375 [+ P378]'])
+  })
+})
+
+describe('a lookup answers from the table and never from the prototype', () => {
+  it('has no text for an inherited property name', () => {
+    // `constructor` is not undefined on a plain object literal — it is a
+    // function — so a bare `table[code]` returns one, sails past a
+    // `!== undefined` guard downstream, and crashes the layout engine on
+    // `text.split`. That was once a 500 from a well-formed request, and `own()`
+    // is the fix.
+    //
+    // **Pinned here rather than through a schema**, because every caller that
+    // canonicalises to upper case defuses this by accident: nothing on
+    // `Object.prototype` is spelt in capitals, so an API-level test passes with
+    // `own()` removed and proves nothing about it. These go in raw.
+    for (const code of ['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf']) {
+      expect(hazardStatementText('eu-clp', code), code).toBeUndefined()
+      expect(precautionaryStatementText('eu-clp', code), code).toBeUndefined()
+      expect(hazardStatementText('us-osha', code), code).toBeUndefined()
+    }
   })
 })
 

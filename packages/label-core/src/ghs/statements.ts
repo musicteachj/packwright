@@ -298,8 +298,14 @@ export const US_OSHA_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> 
  * A plain object literal inherits from `Object.prototype`, so `table['constructor']`
  * returns a function rather than `undefined` — which sailed past the
  * `!== undefined` guard downstream and crashed the layout engine on
- * `text.split`. The API accepts statement codes as free strings, so that was a
- * 500 from a well-formed request.
+ * `text.split`. That was a 500 from a well-formed request.
+ *
+ * **This sentence has been true, then false, then true again**, which is why it
+ * now says which callers it is about rather than “the API”. Statement codes
+ * arrive as free strings from the audit endpoint, where a model produces them,
+ * and — since the saved-label and export schemas stopped using a `z.enum` they
+ * could not key to a regime — from those too, which now validate by asking this
+ * table rather than by listing its keys. Every one of those paths reaches here.
  */
 function own(table: Readonly<Record<string, string>>, code: string): string | undefined {
   return Object.hasOwn(table, code) ? table[code] : undefined
@@ -316,15 +322,6 @@ const PRECAUTIONARY: Readonly<Record<GhsRegime, Readonly<Record<string, string>>
 }
 
 /**
- * The statement text for a code under a regime, or `undefined`.
- *
- * `undefined` means this regime has no verified text for that code, and the
- * caller must say so rather than print something. It deliberately does **not**
- * fall back to another regime: a US label carrying EU wording would look
- * complete and be wrong, which is worse than a label that states plainly that a
- * statement could not be supplied.
- */
-/**
  * A statement code as the tables spell it.
  *
  * The tables key combinations as `'P337 + P313'`, with a space either side of
@@ -336,15 +333,55 @@ const PRECAUTIONARY: Readonly<Record<GhsRegime, Readonly<Record<string, string>>
  * Whitespace and letter case, and nothing else. `P337+P313` and `P337 + P313`
  * are one code in different type; a paraphrased statement would be different
  * regulatory text, and nothing here touches that.
+ *
+ * **The bracket is spaced the way the source spaces it, and that is not a
+ * flourish.** CLP keys one entry `'P370 + P380 + P375 [+ P378]'`, where the `+`
+ * inside the bracket is the regulation's own notation for an optional component
+ * and sits against it, with a single space before the `[` and none before the
+ * `]`. Spacing every `+` alike rewrote that key to `'[ + P378]'` — so
+ * canonicalising the table's own key produced something the table does not
+ * contain, and the one code the editor's dropdown offers for it failed every
+ * lookup that canonicalises first.
+ *
+ * The bracket rules therefore run on both sides of it, not just inside: a label
+ * printing `P370+P380+P375[+P378]` with no spaces at all is the same code, and
+ * repairing only the inner `+` left that one failing too — which is the half-fix
+ * this replaced. `statements.test.ts` pins the invariant that makes the whole
+ * thing checkable rather than remembered: every key in every table canonicalises
+ * to itself, and the spellings around it collapse onto that key.
+ *
+ * It does not close the wider bracket problem in `docs/BACKLOG.md`, and that
+ * entry's premise is wrong in a way worth stating here: `'P370 + P380 + P375'`
+ * **is its own key**, with its own text, so a label that did not use P378
+ * resolves already. What still resolves to nothing is a label that *did* use it
+ * and printed it as `P370 + P380 + P375 + P378`, or `[P378]` without the plus.
+ *
+ * That difference is the whole danger. Mapping the un-bracketed code onto the
+ * bracketed key — the obvious reading of “understand the bracket” — would append
+ * “[Use … to extinguish].” to a label that never carried P378, which is this
+ * project printing regulatory text nobody asked for. One key in 199 has a
+ * bracket; it is this one.
  */
 export function canonicalStatementCode(code: string): string {
   return code
     .trim()
     .toUpperCase()
     .replace(/\s*\+\s*/g, ' + ')
+    .replace(/\s*\[\s*\+\s*/g, ' [+ ')
+    .replace(/\s*\]/g, ']')
     .replace(/\s+/g, ' ')
+    .trim()
 }
 
+/**
+ * The statement text for a code under a regime, or `undefined`.
+ *
+ * `undefined` means this regime has no verified text for that code, and the
+ * caller must say so rather than print something. It deliberately does **not**
+ * fall back to another regime: a US label carrying EU wording would look
+ * complete and be wrong, which is worse than a label that states plainly that a
+ * statement could not be supplied.
+ */
 export function hazardStatementText(regime: GhsRegime, code: string): string | undefined {
   return own(HAZARD[regime], code)
 }

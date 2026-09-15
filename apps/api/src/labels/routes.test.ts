@@ -166,6 +166,35 @@ describe('POST /api/labels/ghs/export', () => {
     expect(response.status).toBe(200)
   })
 
+  it('refuses a US label\u2019s statement codes, and says which regime it judged', async () => {
+    // `H225` is a real UN GHS code with EU text, so the old enum admitted it on
+    // a `us-osha` label \u2014 a label this build cannot draw a single statement on.
+    // The message has to be one a caller can act on: a bare \u201Cinvalid enum value\u201D
+    // names a field they cannot edit their way out of.
+    const response = await postGhs({ ...GHS_BODY, regime: 'us-osha' })
+    expect(response.status).toBe(400)
+    const body = JSON.stringify(response.body)
+    expect(body).toContain('hazardStatementCodes')
+    expect(body, 'the regime it was judged against').toContain('us-osha')
+    expect(body).toContain('no verified')
+  })
+
+  it('exports a US label that carries no statement codes', async () => {
+    // Which is every US label this build can draw. The check must close a gap,
+    // not close the regime.
+    const { hazardStatementCodes: _h, precautionaryStatementCodes: _p, ...body } = GHS_BODY
+    const response = await postGhs({ ...body, regime: 'us-osha' })
+    expect(response.status).toBe(200)
+  })
+
+  it('accepts the code spellings every other layer accepts', async () => {
+    // `P337+P313` without the spaces is what a label prints and what the audit
+    // endpoint already takes. The enum here refused it, so a code the server had
+    // accepted once was rejected on its way to being exported.
+    const response = await postGhs({ ...GHS_BODY, precautionaryStatementCodes: ['P337+P313'] })
+    expect(response.status).toBe(200)
+  })
+
   it('refuses stock that describes no drawing at all', async () => {
     const response = await postGhs({ ...GHS_BODY, stock: { widthMm: 0, heightMm: 0, marginMm: 0 } })
     expect(response.status).toBe(400)

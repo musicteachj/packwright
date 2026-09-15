@@ -35,14 +35,21 @@
  *   29 CFR 1910.1200(f)(12)(i), which nothing in a photograph can make.
  * - every geometry field — `pictogramSideMm`, `stock`, the type sizes.
  *
- * **Statement codes are free strings, not an enum.** `GhsRequest` keys its own
- * to `knownHazardStatementCodes('eu-clp')` whatever the regime says, and
- * `US_OSHA_HAZARD_STATEMENTS` is empty — so a regime-correct closed set on a US
- * label would have no members at all, and the EU set on a US label is a foreign
- * list the model would be pushed to choose from. Codes are transcribed as
- * printed and classified in `extract.ts`; an unknown one becomes a warning and
- * is still shown to the user, which is what the layout engine already does with
- * the same input.
+ * **Statement codes are free strings, not an enum**, and for a reason that
+ * outlived the one this note used to give. `US_OSHA_HAZARD_STATEMENTS` is empty,
+ * so a regime-correct closed set on a US label would have no members at all, and
+ * the EU set on a US label is a foreign list the model would be pushed to choose
+ * from. Codes are transcribed as printed and classified in `extract.ts`; an
+ * unknown one becomes a warning and is still shown to the user, which is what
+ * the layout engine already does with the same input.
+ *
+ * This used to add that `GhsRequest` keyed its own codes to
+ * `knownHazardStatementCodes('eu-clp')` whatever the regime said. It no longer
+ * does — that was a defect, and it is fixed. Both schemas now take free strings
+ * and ask the table; the difference is what they do with a code it cannot
+ * answer for, and that difference is deliberate. Here it is a warning, because
+ * refusing a reading makes the photograph wrong instead of this build
+ * incomplete. There it is a rejection, because a label is about to be stored.
  *
  * One thing the JSON Schema below does **not** do, and it is the reason
  * `extract.ts` re-validates rather than trusting the response: `zodOutputFormat`
