@@ -75,6 +75,15 @@ const EnvSchema = z.object({
 
 export type Env = z.infer<typeof EnvSchema>
 
+/**
+ * Every name this server reads out of the environment.
+ *
+ * Derived from the schema rather than listed beside it, so a field added above
+ * cannot be forgotten here. `dotenv.ts` needs the list before the schema can
+ * run, to decide which blanks to treat as absent.
+ */
+export const ENV_NAMES = Object.keys(EnvSchema.shape) as readonly (keyof Env)[]
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = EnvSchema.safeParse(source)
   if (!parsed.success) {

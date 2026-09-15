@@ -10,6 +10,98 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 7, stage 1 — Claude vision reads a label photograph. `ExtractionResult` has been defined since phase 1
+with no producer; `@anthropic-ai/sdk` has been a declared dependency of `apps/api`, imported nowhere. This is
+the first thing on the other side of that socket, and it ships with no user interface at all — `/audit`'s
+capture, confirm and report are the two stages after it.
+
+- **`POST /api/audit/ghs` returns an unverified reading and no verdict of any kind.** The boundary
+  `docs/DESIGN.md` states — the model reads, the engine judges — is enforced by the endpoint returning an
+  `ExtractionResult` whose every field is unconfirmed, and by the extraction schema having nowhere to put an
+  opinion. The model authors no prose either: not a note, not a warning, values and confidences only. That is
+  stricter than the design asked for, and the reason is placement, since a sentence written by a language
+  model beside one carrying a CFR citation invites the confusion the boundary exists to prevent.
+- **The extractor is injected, so no test touches the network and no test needs a key.** `AppOptions` takes an
+  `extract` the way it already takes `webRoot` and `databaseStatus`. Absent, the endpoint answers 503 and the
+  rest of the server is untouched — `ANTHROPIC_API_KEY` stays optional in `env.ts`, deliberately, because
+  making `MONGODB_URI` required in phase 6 broke every harness that boots the server and this key has an
+  external service and a cost per call behind it.
+- **The fixture the suite replays is recorded, not written.** `npm run record:extraction` makes one real call
+  against a hand-authored label and commits what came back. A written fixture would be this repository's own
+  idea of the API checked against this repository's own idea of the API, which is the circularity
+  `ghs/statements.ts` already paid for once. The protocol fixtures — refusal, prose instead of JSON, a body
+  the schema rejects — are hand-written, and that is a different thing: their shape comes from the API
+  specification, and each changes exactly one thing about the recorded reply.
+- **The sample label carries a real defect on purpose.** It prints DANGER and WARNING together, which CLP
+  Article 20(3) forbids. `GhsLabelData.signalWords` was made plural in phase 4 with a note saying it was the
+  honest shape for this path; the recorded reading comes back `['Danger', 'Warning']`, so the field now earns
+  its plural, and stage 3's report will have something true to say.
+- **Every way the reading can fail is a different sentence.** A declined request, a reply cut short by the
+  token budget, a reply that was not JSON, a reply the schema rejected, an image the vision service refused
+  and a service that could not be reached are six outcomes, and collapsing them loses the only part a user
+  can act on. The first draft had two of them and reported a truncated reply — cut-off JSON — as an
+  unreadable photograph, which blames a label for a budget this server set.
+- **The reading reports the model that answered it, not the one this server asked for.** Those are different
+  facts — `EXTRACTION_MODEL` is the request and `response.model` is the reply — and a provenance field
+  echoing the request is a claim dressed as an observation, which is the one kind of statement this
+  application exists not to make. The test for it needed a fixture answered by a *different* model, because
+  the recorded one answers on `claude-opus-5` and so does the constant: the obvious assertion passed
+  whichever of the two the code reported, and survived the mutation that swapped them.
+- **A warning that promised something untrue now says what actually happens.** An unrecognised statement code
+  was reported as one a drawn label "records as omitted". It does not: `GhsRequest` admits only codes this
+  build has verified text for, so confirming one has the saved-label and export routes refuse the *whole*
+  label with a 400 — verified by parsing such a label. The warning says that, and the test asserts the schema
+  rather than the sentence, so loosening the schema later fails here and sends someone back to the wording.
+- **A 400 from the vision service no longer tells the user their photograph is bad.** It arrives as
+  `invalid_request_error` whether the image was undecodable or this server asked for a parameter the API has
+  stopped accepting, and the two are told apart only by prose in the message — which is the string-matching
+  the SDK's own guidance warns off. The first wording said the image "may be corrupt", which blames a
+  photograph for a fault that may be entirely ours.
+- **One unreadable field costs that field, not the reading.** A reply is validated as a whole, and on a
+  violation the offending fields are pruned and it is validated again — so a confidence of 4 on the product
+  identifier no longer discards the supplier, the pictograms and every statement code that parsed perfectly
+  well, after a call that has already been paid for. Each dropped field becomes a warning naming it, because
+  the one thing worse than losing a field is losing it silently. A body with no field to prune — not an object
+  at all — is still reported whole. A code printed twice is stored once as well as warned about once; the
+  warning deduped and the stored value did not, so a confirmed label would have carried the duplicate and
+  drawn it twice, and the test that should have caught it asserted the warning count and never the value.
+- **A signal word printed in capitals is still a signal word.** `GHS_SIGNAL_WORDS` is `['Danger', 'Warning']`
+  because that is how CLP Article 20 spells them; real labels print DANGER and WARNING, the sample one
+  included, and the prompt tells the model to transcribe exactly what is printed. Those two instructions pull
+  against each other on this one field, and the loser would have been the most interesting thing on a label
+  carrying both. Case is matched without regard to it and mapped to the codified spelling — which is not the
+  normalisation the rest of this work refuses to do, because a paraphrased H-statement is different
+  regulatory text where "DANGER" and "Danger" are the same word in different type. A word that is neither is
+  left exactly as it arrived, and dropped.
+- **A combination code is the same code however a label spaces it.** The precautionary table is keyed
+  `'P337 + P313'` and labels print it both ways, so a verbatim `P337+P313` warned as unrecognised and lost a
+  statement this build has verified text for. Whitespace and letter case are matched without regard to them
+  and the resolving spelling is what gets stored, because the layout engine looks these up by exact key — a
+  confirmed `P337+P313` would draw nothing and record an omission, which is the printed label being blamed for
+  our punctuation. A code that resolves neither way is kept exactly as read, with the warning beside it.
+- **The vision call is bounded at two minutes and one retry, and the token budget is sized to fit inside
+  it.** The SDK's defaults — ten minutes, two
+  retries — are built for a script, and this is a request somebody is holding a phone through: they add up to
+  half an hour of a browser waiting to be told the service could not be reached. The timeout and `max_tokens`
+  were first chosen separately and could not both be true: 16,000 output tokens cannot be generated inside
+  sixty seconds at any rate this model has produced, so the budget was unreachable, `ExtractionTruncated`
+  guarded something that never happened, and a long reading became two billed attempts reported as an
+  unreachable service. They are now one decision, and a test asserts they still agree — the next person to
+  change either will change only one. The client is built by a factory rather than inline in `server.ts` so
+  that the bound can be asserted at all, since `server.ts` opens a database and listens on a port and nothing
+  in the workspace imports it.
+- **The live test needs to be asked for, not merely afforded.** It was gated on `ANTHROPIC_API_KEY` alone,
+  which is a variable people export into a shell profile and leave there — so a plain `npm test` would have
+  quietly made a paid call for anyone set up that way. It now also needs `PACKWRIGHT_LIVE_EXTRACTION`, and it
+  still does not read `.env`. Two ways to spend somebody's money without their saying so, both closed.
+- **Statement codes are transcribed, never repaired.** They are extracted as free strings rather than
+  constrained to a set, because `US_OSHA_HAZARD_STATEMENTS` is empty and `GhsRequest` keys its own enum to
+  eu-clp whatever the regime says — so a closed set would leave a US label with no valid code at all, and the
+  model would be pushed to substitute a code it can see for one it cannot. Each code is classified against the
+  regime's own table afterwards. One that has no verified text becomes a warning and is still shown; a regime
+  with no table at all says so once rather than once per code, because eleven identical warnings read as
+  eleven defects on the user's label when the gap is in this application.
+
 Phase 6, stage 8 — saved labels reach the editor. Persistence shipped as an API in stage 6 with no way to use
 it; `/labels` and `/labels/:id` have been in the router's inventory since phase 3, waiting.
 
@@ -36,6 +128,24 @@ it; `/labels` and `/labels/:id` have been in the router's inventory since phase 
 
 ### Fixed
 
+- **An oversized request body reported `500 Internal server error`.** `express.json` throws with
+  `status: 413` and `type: 'entity.too.large'`, and the application error handler flattened every error to an
+  internal one — so a caller who sent 11 MB was told the server had broken. Verified by posting exactly that
+  before the fix and getting the 500 back. No route had previously taken anything large enough to reach it;
+  `/api/audit` will, from every phone. The handler now answers the three failures `body-parser` actually
+  raises — 400, 413 and 415 — each in this server's own words. A status range with one shared message was
+  tried first and was wrong for the third: an unsupported `Content-Encoding` came back as a 415 carrying the
+  sentence "Bad request", which is a status about the encoding and a sentence about the body. Anything not on
+  that list stays a 500 with its detail in the log, so a library reporting a 5xx of its own cannot borrow the
+  server's voice. None of the three is logged: `morgan` already records the request, and a stack trace per
+  oversized upload turns the one signal that log carries into noise.
+- **A blank `ANTHROPIC_API_KEY` in the environment silently beat `.env`.** `dotenv` will not overwrite a name
+  that is already defined, and defined-but-empty counts as defined, so a shell exporting `ANTHROPIC_API_KEY=`
+  left a perfectly correct `.env` unread and the server reported vision extraction unconfigured while the key
+  sat in the file. Found by running the fixture recorder, which refused to start for exactly that reason.
+  Blank now means absent one step earlier, which is the rule `env.ts` already applies through `blankAsAbsent`
+  and the reason it gives — a task definition declaring a variable with an empty value has not supplied it.
+  Scoped to the names the schema reads, derived from the schema so a new field cannot be forgotten.
 - **`/labels/new` kept the last saved label attached, which was a way to overwrite one.** The store is a
   singleton and the editor is the same component at both routes, so arriving at `/labels/new` from a saved
   label — which the header's own Editor link does — left `savedId` set. The document still read "Saved", and

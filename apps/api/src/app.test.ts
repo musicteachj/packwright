@@ -1,5 +1,5 @@
 import request from 'supertest'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createApp } from './app'
 import { loadEnv } from './env'
 
@@ -134,5 +134,81 @@ describe('cross-origin access', () => {
 
     expect(response.headers['access-control-allow-origin']).toBeUndefined()
     expect(response.headers['access-control-allow-methods']).toBeUndefined()
+  })
+})
+
+describe('a request the server cannot accept', () => {
+  it('reports an oversized body as the client error it is', async () => {
+    // It answered 500 before this, which told a caller the server had broken
+    // when what had happened was that they sent 11 MB. Found by posting exactly
+    // that, and reachable in normal use for the first time now that `/api/audit`
+    // takes photographs.
+    const response = await request(app)
+      .post('/api/labels/upc-a/export')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ blob: 'x'.repeat(11 * 1024 * 1024) }))
+
+    expect(response.status).toBe(413)
+    expect(response.body).toEqual({ error: 'The request body is too large' })
+  })
+
+  it('reports an unsupported encoding in words about the encoding', async () => {
+    // `body-parser` raises three: `entity.parse.failed` (400),
+    // `entity.too.large` (413) and `encoding.unsupported` (415). An earlier fix
+    // answered any 4xx and worded them all "Bad request", which gave this one a
+    // status about the encoding and a sentence about the body.
+    const response = await request(app)
+      .post('/api/labels/upc-a/export')
+      .set('Content-Type', 'application/json')
+      .set('Content-Encoding', 'bogus')
+      .send('{}')
+
+    expect(response.status).toBe(415)
+    expect(response.body).toEqual({ error: 'The request encoding is not supported' })
+  })
+
+  it('does not fill the log with stack traces for things the client did', async () => {
+    // `morgan` already records the request. A stack per oversized upload turns
+    // the one signal this log carries — that something here is broken — into
+    // noise, and `/api/audit` takes photographs from phones.
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await request(app)
+        .post('/api/labels/upc-a/export')
+        .set('Content-Type', 'application/json')
+        .send(JSON.stringify({ blob: 'x'.repeat(11 * 1024 * 1024) }))
+      expect(logged).not.toHaveBeenCalled()
+    } finally {
+      logged.mockRestore()
+    }
+  })
+
+  it('reports malformed JSON as a bad request rather than a broken server', async () => {
+    const response = await request(app)
+      .post('/api/labels/upc-a/export')
+      .set('Content-Type', 'application/json')
+      .send('{"gtin": ')
+
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: 'Bad request' })
+  })
+})
+
+describe('the audit endpoint', () => {
+  it('is mounted, and says it has no key rather than 404ing', async () => {
+    // `createApp()` with no options is what every route test in this workspace
+    // builds, and it must keep building — the endpoint being unconfigured is a
+    // state the server serves happily, not one it refuses to start in.
+    const response = await request(app).post('/api/audit/ghs').send({})
+    expect(response.status).toBe(503)
+    expect(response.body).toEqual({ error: 'Vision extraction is not configured' })
+  })
+
+  it('is not swallowed by the client history fallback', async () => {
+    // `/api` is reserved for the server, so a mistyped audit path is a JSON 404
+    // rather than a page of HTML with a 200 on it.
+    const response = await request(app).post('/api/audit/nope').send({})
+    expect(response.status).toBe(404)
+    expect(response.body).toEqual({ error: 'Not found' })
   })
 })

@@ -9,7 +9,9 @@
     "build": "tsup",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "print-test": "tsx src/labels/printTestSheet.cli.ts"
+    "print-test": "tsx src/labels/printTestSheet.cli.ts",
+    "record:extraction": "tsx src/audit/recordFixture.cli.ts",
+    "sample:photo": "node ../../scripts/make-audit-sample.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",

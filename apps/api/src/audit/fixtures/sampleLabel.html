@@ -1,0 +1,167 @@
+<!doctype html>
+<!--
+  A GHS label to photograph, authored by hand.
+
+  Deliberately **not** rendered by this project's own layout engine. A fixture
+  drawn by the code that would later draw the same label tests the model against
+  our renderer rather than against a label, and the two failure modes it would
+  hide — our own glyphs being unusually legible, our own wording being the
+  wording we then look up — are exactly the ones worth catching.
+
+  It carries a real defect on purpose: **both DANGER and WARNING**. CLP Article
+  20(3) forbids that, `GhsLabelData.signalWords` is plural so it can be
+  represented, and `ghs/signal-word-precedence` exists to catch it. So this one
+  image exercises the plural field on the way in and gives the audit report
+  something true to say on the way out.
+
+  Rasterised by `makeSamplePhoto.cli.ts`. Not served, not bundled, not imported
+  by anything that ships.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @page {
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        width: 760px;
+        font-family: Helvetica, Arial, sans-serif;
+        background: #e8e6e1;
+        padding: 40px;
+      }
+      .label {
+        background: #fff;
+        border: 1px solid #bbb;
+        padding: 26px 28px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+      }
+      h1 {
+        font-size: 30px;
+        margin: 0 0 2px;
+        letter-spacing: 0.01em;
+      }
+      .synonym {
+        font-size: 15px;
+        color: #333;
+        margin: 0 0 18px;
+      }
+      .signals {
+        display: flex;
+        gap: 26px;
+        align-items: baseline;
+        margin: 0 0 16px;
+      }
+      .signal {
+        font-size: 34px;
+        font-weight: bold;
+        letter-spacing: 0.06em;
+      }
+      .pictos {
+        display: flex;
+        gap: 18px;
+        margin: 0 0 20px;
+      }
+      .statements {
+        font-size: 14.5px;
+        line-height: 1.5;
+        margin: 0 0 16px;
+      }
+      .statements p {
+        margin: 0 0 3px;
+      }
+      .heading {
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        color: #555;
+        margin: 0 0 6px;
+      }
+      .supplier {
+        font-size: 13.5px;
+        line-height: 1.45;
+        border-top: 1px solid #ccc;
+        padding-top: 12px;
+      }
+      .supplier strong {
+        font-size: 14.5px;
+      }
+      .qty {
+        float: right;
+        font-size: 20px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="label">
+      <span class="qty">1 L</span>
+      <h1>Acetone</h1>
+      <p class="synonym">propan-2-one &middot; CAS 67-64-1 &middot; Technical grade</p>
+
+      <div class="pictos">
+        <!-- Flame (GHS02) and exclamation mark (GHS07), drawn as the standard
+             red square set on point with a black symbol on white. -->
+        <svg width="104" height="104" viewBox="0 0 100 100" aria-hidden="true">
+          <rect
+            x="50"
+            y="4"
+            width="65"
+            height="65"
+            transform="rotate(45 50 4)"
+            fill="#fff"
+            stroke="#e00"
+            stroke-width="7"
+          />
+          <path
+            d="M50 28c6 10 14 14 14 24a14 14 0 0 1-28 0c0-6 3-9 6-13 1 4 3 6 5 6 2 0 3-2 3-5 0-5-2-8-0-12z"
+            fill="#000"
+          />
+        </svg>
+        <svg width="104" height="104" viewBox="0 0 100 100" aria-hidden="true">
+          <rect
+            x="50"
+            y="4"
+            width="65"
+            height="65"
+            transform="rotate(45 50 4)"
+            fill="#fff"
+            stroke="#e00"
+            stroke-width="7"
+          />
+          <rect x="46" y="28" width="8" height="26" rx="3" fill="#000" />
+          <circle cx="50" cy="62" r="5" fill="#000" />
+        </svg>
+      </div>
+
+      <div class="signals">
+        <span class="signal">DANGER</span>
+        <span class="signal">WARNING</span>
+      </div>
+
+      <div class="statements">
+        <p class="heading">HAZARD STATEMENTS</p>
+        <p>H225 Highly flammable liquid and vapour.</p>
+        <p>H319 Causes serious eye irritation.</p>
+        <p>H336 May cause drowsiness or dizziness.</p>
+      </div>
+
+      <div class="statements">
+        <p class="heading">PRECAUTIONARY STATEMENTS</p>
+        <p>
+          P210 Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No
+          smoking.
+        </p>
+        <p>P280 Wear protective gloves/protective clothing/eye protection/face protection.</p>
+        <p>P337 + P313 If eye irritation persists: Get medical advice/attention.</p>
+        <p>P403 + P233 Store in a well-ventilated place. Keep container tightly closed.</p>
+      </div>
+
+      <div class="supplier">
+        <strong>Northgate Solvents Ltd</strong><br />
+        Unit 14, Brayford Industrial Estate, Lincoln LN6 7DQ, United Kingdom<br />
+        Telephone +44 1522 880 114
+      </div>
+    </div>
+  </body>
+</html>
