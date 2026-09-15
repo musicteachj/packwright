@@ -439,15 +439,75 @@ own error class.
 
 ## From phase 7, stage 3
 
-**Whether `detach()` could lose work at `/labels/new` without an audit is unchecked.** The rebase it used to
-do unconditionally was found on the audit hand-off — a document arrives dirty, the editor mounts, its route
-watcher calls `detach()`, the baseline is rebased and both leave guards go quiet. That is reproduced and
-fixed. The larger question is whether the same path was reachable before: edit at `/labels/new`, navigate to
-`/labels`, come back, and the watcher fires again on mount.
+**~~Whether `detach()` could lose work at `/labels/new` without an audit is unchecked.~~ Walked in a browser;
+the answer is no, and the walk found a different defect that is now fixed.** See `CHANGELOG.md`. Editing at
+`/labels/new`, leaving, returning and leaving again prompts every time: `savedId` is null throughout that
+route, so the watcher's `detach()` had nothing to let go of and the phase 7 guard covered it.
 
-**It is recorded as a question rather than a defect because the reproduction did not hold.** A probe that
-mounted the editor, wrote to `store.data.gtin` and remounted reported the document as clean *before* the
-remount — so its premise failed and it proved nothing in either direction. Either the edit did not dirty the
-document in that harness, or something else rebased first. Worth ten minutes with the real application rather
-than another jsdom probe; the fix is already in place either way, so nothing is at risk while it waits.
+**What the walk found instead was `detach()` itself, on the path nobody had asked about.** It rebased the
+baseline onto the document in front of it, so an edit made before detaching stopped counting as unsaved.
+Reachable by switching the label type on an edited saved label — no audit, no route change, two clicks — and
+the leave guards then said nothing at all. Fixed by leaving the baseline where it is, with the type watcher
+deciding the one case where a switch makes the comparison meaningless.
+
+**The methodology note is the part worth keeping.** The original probe “did not hold” for a reason, and the
+reason was in the harness rather than in the application: the test router's initial navigation is a promise,
+so mounting without awaiting `isReady()` runs the route watcher against the empty starting route first — a
+trap `EditorSaveView.test.ts:29-33` already documents. “It proved nothing” was the right verdict and the wrong
+stopping point; ten minutes in a browser settled what a second jsdom probe would not have.
+
+**Switching type away from an untouched saved label and straight back reports unsaved changes.** Two clicks,
+nothing typed, and both leave guards fire over a document identical to the stored one. The first switch
+rebases the baseline onto the new type and detaches; the second is skipped, because the type watcher's rebase
+is restricted to attached documents — so the baseline stays stranded on the type nobody is looking at.
+Confirmed: `open=false away=false back=true`.
+
+**The obvious fix is a trap, and this entry exists mostly to say so.** Dropping the `savedId` restriction — on
+the reasoning that whether a document is attached says nothing about whether it has anything to lose — closes
+this and opens a false clearance on the audit hand-off. `loadUnsaved` leaves the baseline describing a
+*different* type on purpose, and that mismatch is the entirety of what keeps an audited label dirty; a
+widened rebase reads it as “nothing to lose” on the way back and writes the confirmed audit data in.
+Measured: `handover=true away=false back=false`, guards silent, on the path phase 7 was built to protect. It
+was written, reviewed, caught and reverted inside this change.
+
+What it needs is for “never written” to be representable rather than inferred from a snapshot comparison — a
+flag `loadUnsaved` sets and `markSaved` clears, which `isDirty` honours whatever the baseline happens to
+describe. That is a change to what the store *means* by dirty, so it belongs with the two entries below it
+rather than bolted onto a rebase condition. `savedLabelAttachment.test.ts` pins the hand-off round trip in
+the meantime, so the trap cannot be walked into twice quietly.
+
+**Arriving at `/labels/new` from an untouched saved label reports unsaved changes.** `EditorView`'s route
+watcher clears `savedName` a line after detaching, and `name` is part of the snapshot — so the document
+differs from its baseline by a name nobody typed, and the leave guards fire over a copy of a label that is
+already stored. Pre-existing, unchanged by the `detach()` fix, and a false positive rather than a loss.
+
+Not fixed here for two reasons. It is in the view rather than the store, and the store is where the
+“rebase only when there is nothing to lose” rule now lives — so the honest fix is for the store to own this
+transition too (something like a `detachForNewDocument()` that clears the name and answers the same question
+once), rather than for the view to re-derive it. And it rests on a design question worth asking deliberately:
+whether leaving a saved label for `/labels/new` should hand over a clean copy — “start from this one”, which
+is what the watcher's own comment says it is for — or a draft the guards defend. The answer decides the fix,
+and it is not obvious.
+
+`EditorSaveView.test.ts`'s new case restores `savedName` before asserting for exactly this reason: anything
+else passes on the name's own dirtiness and never touches the edit underneath it.
+
+**A detached document shows no “Unsaved changes”, however dirty it is.** `EditorView.vue`'s indicator is
+behind `v-if="store.savedId !== null"`, so the moment a document detaches — a type switch, a route back to
+`/labels/new`, an audit hand-off — the only visible dirtiness signal disappears and the leave prompt becomes
+the first a user hears of it. Pre-existing, and deliberate as far as it goes: the span's two words are
+“Saved” and “Unsaved changes”, and “Saved” would be a lie about a document that has never been written.
+
+The fix is small — show it when `savedId !== null || isDirty`, keeping the same text — but it flips two
+assertions written on purpose (`EditorSaveView.test.ts:131` and `e2e/the-label-audit.spec.ts:139`, the latter
+asserting the audit hand-off shows none). It also decides the same design question as the entry above: if
+arriving at `/labels/new` from an untouched saved label stops being dirty, this indicator stops appearing
+there too. The two want settling together, and settling them means deciding what `/labels/new` *is* — a clean
+copy to start from, or a draft worth defending.
+
+**Neither leave guard has a test that asserts a prompt was raised.** The store tests cannot: they never mount,
+and `isDirty` is one step removed from what a user meets. `e2e/the-unsaved-editor.spec.ts` now counts dialogs
+for the two cases above, which is why the type-switch defect is visible at all. The other guard,
+`beforeunload`, is still untested anywhere — it reads the same `store.isDirty`, so nothing is unprotected,
+but nothing pins that it is still wired up either.
 

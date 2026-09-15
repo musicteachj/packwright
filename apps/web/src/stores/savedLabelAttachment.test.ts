@@ -92,6 +92,57 @@ describe('attaching to a saved label', () => {
     expect(store.isDirty, 'detached is not the same as unprotected').toBe(true)
   })
 
+  it('never rebases a detached document, however untouched it looks', () => {
+    // **The guard against a false clearance on the audit hand-off**, and it is
+    // here because removing it produced one. `loadUnsaved` leaves the baseline
+    // describing a *different* type on purpose — that mismatch is what keeps an
+    // audited label dirty. A rebase that asks only “did the type being left have
+    // anything to lose” reads the mismatch as “no” the moment the user switches
+    // away and back, and writes the confirmed audit data into the baseline.
+    //
+    // It was written while widening that rebase to detached documents, to close
+    // a false *positive* — see `docs/BACKLOG.md`. Trading a nuisance prompt for a
+    // silent loss is the wrong way round, and this is what says so.
+    const store = useLabelDocumentStore()
+    store.loadUnsaved({
+      labelType: 'ghs-chemical',
+      stock: DEFAULT_GHS_STOCK,
+      data: { regime: 'eu-clp', productIdentifier: 'Acetone', signalWords: ['Danger'] },
+    })
+    expect(store.isDirty, 'the premise: a hand-off arrives as unsaved work').toBe(true)
+
+    store.labelType = 'gs1-retail'
+    store.labelType = 'ghs-chemical'
+
+    expect(
+      store.isDirty,
+      'a label nobody saved is still unsaved after a round trip through the type dropdown',
+    ).toBe(true)
+  })
+
+  it('does not launder an unsaved edit into the baseline when the type switches', () => {
+    // Found in a browser, which is the only place it was visible: the editor
+    // showed “Unsaved changes”, the type dropdown was changed, and the header
+    // went quiet — leaving the page raised no prompt at all and closing the tab
+    // would have lost the edit without a word.
+    //
+    // `detach()` used to rebase the baseline to the document in front of it,
+    // which is what absorbed the edit. The test above pins the other half: a
+    // label nobody typed into must *not* become dirty just because somebody
+    // looked at another type. Both have to hold, and only one of them did.
+    const store = useLabelDocumentStore()
+    store.loadSaved(A_SAVED_LABEL)
+
+    store.data.gtin = '036000291452'
+    expect(store.isDirty, 'the premise: the edit has to register').toBe(true)
+
+    store.labelType = 'ghs-chemical'
+    expect(
+      store.isDirty,
+      'an edit nobody saved is still unsaved after the type switches away from it',
+    ).toBe(true)
+  })
+
   it('lets go of the saved label when the type changes', () => {
     // A saved label is one type; its data is a discriminated union keyed on it.
     // The API would accept the conversion without complaint, which is why the

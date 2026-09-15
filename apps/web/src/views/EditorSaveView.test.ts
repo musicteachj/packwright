@@ -131,6 +131,37 @@ describe('the Save control', () => {
     expect(wrapper.find('[data-save-state]').exists()).toBe(false)
   })
 
+  it('carries an unsaved edit to /labels/new as unsaved work, not as a new baseline', async () => {
+    // The question `docs/BACKLOG.md` asked about this route, answered. Leaving a
+    // saved label for `/labels/new` keeps its fields — “start from this one” —
+    // and `detach()` used to rebase the baseline onto them, so an edit nobody
+    // had saved stopped counting as one. It survived only because the watcher
+    // clears the name a line later and *that* difference kept the guards awake:
+    // restore the name and the document read clean while still holding the edit.
+    //
+    // Asserted through the name on purpose. Anything else would pass on the
+    // name's own dirtiness and never touch the edit underneath it.
+    vi.stubGlobal('fetch', respond(SAVED))
+    const router = testRouter('/labels/abc123')
+    await router.isReady()
+    mount(EditorView, { global: { plugins: [router], stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    const store = useLabelDocumentStore()
+    store.data.gtin = '036000291452'
+    expect(store.isDirty, 'the premise: the edit has to register').toBe(true)
+
+    await router.push('/labels/new')
+    await flushPromises()
+    expect(store.data.gtin, 'the fields come along — that part is deliberate').toBe('036000291452')
+
+    store.savedName = SAVED.name
+    expect(
+      store.isDirty,
+      'the edit is still unsaved with the name put back, because the name was never what was edited',
+    ).toBe(true)
+  })
+
   it('says so when a label no longer exists rather than showing someone else’s', async () => {
     vi.stubGlobal('fetch', respond({ error: 'Not found' }, false, 404))
     const wrapper = await mountAt('/labels/gone')

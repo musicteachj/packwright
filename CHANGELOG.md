@@ -37,6 +37,60 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **Detaching a saved label absorbed the unsaved edit it was carrying.** `detach()` rebased the baseline onto
+  the document in front of it, beneath a comment saying that document “is still worth defending” — and
+  rebasing is precisely what stops defending it, because every edit made before the detach is folded into the
+  new baseline and stops counting as unsaved. Reproduced in a browser, which is the only place it showed:
+  open a saved label, edit a field, switch the label type. Leaving the page then raised no prompt at all, and
+  closing the tab would have lost the edit without a word from `beforeunload` either.
+
+  **The two leave guards are what this restores, which is less than everything a user sees.** The
+  “Unsaved changes” indicator is gated on being attached to a record, so a detached document shows nothing
+  whether it is dirty or not — unchanged by this fix, and already true of the audit hand-off, which
+  `e2e/the-label-audit.spec.ts:139` pins deliberately. Recorded in `docs/BACKLOG.md` rather than changed here,
+  because flipping it means flipping two assertions that were written on purpose.
+
+  The baseline is now left exactly where it is, because it records what was last *written* and detaching
+  writes nothing. One caller needs more than that: a type switch moves `snapshot` to the new type, so
+  comparing it against a baseline recorded for the old one reports “edited” however untouched the label was.
+  The type watcher therefore asks whether the document carried unsaved work **on the type it is leaving**,
+  using a new `snapshotFor(type)`, and rebases only when it did not — so a saved label somebody merely looked
+  at still leaves quietly, and one they had typed into does not.
+
+  **That rebase stays restricted to attached documents, and the restriction is load-bearing.** Widening it to
+  detached ones looked right — whether a document is attached says nothing about whether it has anything to
+  lose — and it closed a real false positive: switching type away from an untouched saved label and straight
+  back strands the baseline on the other type, so two clicks and nothing typed leave both guards firing. But
+  `loadUnsaved` deliberately leaves an audit hand-off's baseline describing a *different* type, and that
+  mismatch is the whole of what keeps an audited label dirty. A widened rebase reads it as “nothing to lose”
+  on the way back and writes the confirmed audit data into the baseline: `handover=true away=false
+  back=false`, a false clearance on the path phase 7 exists to protect. Trading a nuisance prompt for a silent
+  loss is the wrong way round, so the false positive is in `docs/BACKLOG.md` instead, with the trap written
+  down beside it. `savedLabelAttachment.test.ts` now pins the hand-off round trip, which is the test that
+  would have caught it.
+
+  This subsumes the phase 7 guard below. `detach()`'s `if (savedId === null) return` existed so the route
+  watcher could not rebase an audited document on mount; with nothing rebasing anything there is no longer a
+  rebase to prevent, and restoring the old body fails that phase's own test as well as the two new ones.
+
+- **~~Whether the same rebase could lose work at `/labels/new` without an audit was unestablished.~~
+  Settled, and the answer is no.** Walked in a real browser rather than probed in jsdom: edit at
+  `/labels/new`, leave, come back, leave again — prompted every time, because `savedId` is null throughout and
+  the watcher's `detach()` had nothing to let go of. `e2e/the-unsaved-editor.spec.ts` carries that walk, and
+  reverting the fix above leaves it passing while the case beside it fails, which is the evidence that the
+  two are different defects.
+
+  What the walk did find is the one above, next door. It also found that the route to `/labels/new` was
+  laundering edits in the same way and getting away with it: the watcher clears the name a line after
+  detaching, and *that* difference kept the guards awake. Put the name back and the document read clean while
+  still holding the edit. `EditorSaveView.test.ts` asserts through the restored name for that reason —
+  anything else passes on the name's own dirtiness and never touches the edit underneath it.
+
+  The original reproduction “did not hold” because of a trap `EditorSaveView.test.ts` already documents: the
+  test router's initial navigation is a promise, so a probe that mounts without awaiting `isReady()` runs the
+  route watcher against the empty starting route first. That is worth recording as the reason, rather than
+  leaving “it proved nothing” as the last word.
+
 - **A label handed to the editor from an audit stopped being unsaved work the moment it arrived.**
   `loadUnsaved` keeps the document dirty on purpose, so both leave guards stay awake over an audit somebody
   did by hand — and `EditorView`'s route watcher called `detach()` on mount at `/labels/new`, which rebased
@@ -45,9 +99,8 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   meant. Asserted where the two meet rather than in the store's own test, which passes either way because it
   never mounts anything — and that gap is exactly how this survived.
 
-  Whether the same rebase could lose work at `/labels/new` without an audit in the picture is **not
-  established**: the obvious reproduction did not hold up, and it is in `docs/BACKLOG.md` as something to
-  check rather than as a defect anyone has seen.
+  Whether the same rebase could lose work at `/labels/new` without an audit in the picture was left **not
+  established** here. It has since been walked in a browser and settled — see the two entries above.
 
 ### Changed
 
