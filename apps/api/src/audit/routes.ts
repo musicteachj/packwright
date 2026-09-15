@@ -23,7 +23,6 @@ import {
   ExtractionDeclined,
   ExtractionTruncated,
   ExtractionUnreadable,
-  EXTRACTION_MODEL,
   PHOTO_MEDIA_TYPES,
   type ExtractLabel,
 } from './extract'
@@ -94,8 +93,12 @@ export function createAuditRouter(options: { extract?: ExtractLabel | undefined 
     }
 
     try {
-      const extraction = await extract(image, regime)
-      response.json({ extraction, model: EXTRACTION_MODEL })
+      // `model` comes out of the reading rather than from `EXTRACTION_MODEL`.
+      // The constant is what this server asked for; the reading carries what
+      // answered, and reporting the first as the second is a claim dressed as
+      // an observation.
+      const { extraction, model } = await extract(image, regime)
+      response.json({ extraction, model })
     } catch (error) {
       if (error instanceof ExtractionDeclined) {
         response.status(422).json({
@@ -135,9 +138,19 @@ export function createAuditRouter(options: { extract?: ExtractLabel | undefined 
         // service could not be reached", which is false of the first and sends
         // whoever is debugging the second to look at the network.
         if (error instanceof Anthropic.BadRequestError) {
+          // Worded to say what is known, which is less than it first appeared.
+          // A 400 here is `invalid_request_error` whether the image was
+          // undecodable or this server sent a parameter the API has stopped
+          // accepting, and the two are told apart only by prose in the message
+          // — which is the string-matching the SDK's own guidance warns off.
+          // The first version said "it may be corrupt", which tells every user
+          // their photograph is bad on the strength of a fault that may be
+          // entirely ours. The detail is in the log above.
           response.status(422).json({
-            error: 'The image was rejected by the vision service',
-            detail: ['It may be corrupt, or larger than the service will accept.'],
+            error: 'The vision service could not process this request',
+            detail: [
+              'The image may be unreadable, or this server may have asked for something the service no longer accepts. The detail is in the server log.',
+            ],
           })
           return
         }

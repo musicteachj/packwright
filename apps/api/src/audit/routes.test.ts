@@ -6,6 +6,7 @@ import {
   ExtractionDeclined,
   ExtractionTruncated,
   ExtractionUnreadable,
+  EXTRACTION_MODEL,
   type ExtractLabel,
 } from './extract'
 import { MAX_PHOTO_BASE64 } from './routes'
@@ -13,10 +14,14 @@ import { MAX_PHOTO_BASE64 } from './routes'
 const A_PHOTO = { mediaType: 'image/png', data: 'AAAA' }
 const A_REQUEST = { regime: 'eu-clp', image: A_PHOTO }
 
-const READING = {
+const EXTRACTION = {
   fields: { productIdentifier: { value: 'Acetone', confidence: 0.99 } },
   warnings: [],
 }
+
+/** A model name that is not the one this server asks for, so the two cannot be confused. */
+const ANSWERED_BY = 'claude-opus-5-some-other-snapshot'
+const READING = { extraction: EXTRACTION, model: ANSWERED_BY }
 
 const post = (body: unknown, extract?: ExtractLabel) =>
   supertest(createApp({ enableLogging: false, extract }))
@@ -40,10 +45,13 @@ describe('POST /api/audit/ghs', () => {
     expect(response.status).toBe(503)
   })
 
-  it('returns the reading and the model that produced it', async () => {
+  it('returns the reading and the model that actually produced it', async () => {
+    // The fake answers on a model this server would never ask for, which is the
+    // only way to tell a reported `response.model` from a reported constant.
     const response = await post(A_REQUEST, reading())
     expect(response.status).toBe(200)
-    expect(response.body).toEqual({ extraction: READING, model: 'claude-opus-5' })
+    expect(response.body).toEqual({ extraction: EXTRACTION, model: ANSWERED_BY })
+    expect(response.body.model).not.toBe(EXTRACTION_MODEL)
   })
 
   it('hands the extractor the regime it was asked for', async () => {
@@ -121,10 +129,12 @@ describe('POST /api/audit/ghs', () => {
     expect(response.body.error).toBe('The reading was cut short')
   })
 
-  it('reports an image the vision service rejected as being about the image', async () => {
-    // One message for every upstream failure was wrong in both directions: a
-    // rejected image and an unreachable service are different facts, and only
-    // one of them is something the person holding the camera can act on.
+  it('does not blame the photograph for a fault it cannot attribute', async () => {
+    // A 400 from upstream is `invalid_request_error` whether the image was
+    // undecodable or this server sent a parameter the API has stopped
+    // accepting. The first wording said the image "may be corrupt", which tells
+    // every user their photograph is bad on the strength of a fault that may be
+    // entirely ours.
     const rejected = new Anthropic.BadRequestError(
       400,
       {
@@ -136,7 +146,8 @@ describe('POST /api/audit/ghs', () => {
     )
     const response = await post(A_REQUEST, failing(rejected))
     expect(response.status).toBe(422)
-    expect(response.body.error).toBe('The image was rejected by the vision service')
+    expect(response.body.error).toBe('The vision service could not process this request')
+    expect(JSON.stringify(response.body)).not.toContain('corrupt')
   })
 
   it('reports being rate limited as busy rather than as unreachable', async () => {

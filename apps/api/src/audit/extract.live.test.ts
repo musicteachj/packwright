@@ -24,7 +24,13 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { extractGhsLabel, sendThrough, visionClient } from './extract'
+import {
+  extractGhsLabel,
+  sendThrough,
+  visionClient,
+  VISION_MAX_RETRIES,
+  VISION_TIMEOUT_MS,
+} from './extract'
 
 const apiKey = process.env.ANTHROPIC_API_KEY
 const optedIn = process.env.PACKWRIGHT_LIVE_EXTRACTION
@@ -34,7 +40,11 @@ const wanted = (value: string | undefined) => value !== undefined && value !== '
 describe.skipIf(!wanted(apiKey) || !wanted(optedIn))('against the real API', () => {
   it(
     'reads the sample label into an extraction the contract accepts',
-    { timeout: 120_000 },
+    // Derived, not typed in. A flat 120 s was exactly one attempt of a client
+    // configured for one retry, so the retry this test exists to exercise could
+    // never finish inside it — the test would fail on its own budget and report
+    // it as the API being slow.
+    { timeout: VISION_TIMEOUT_MS * (VISION_MAX_RETRIES + 1) + 30_000 },
     async () => {
       const photo = {
         mediaType: 'image/png',
@@ -47,13 +57,17 @@ describe.skipIf(!wanted(apiKey) || !wanted(optedIn))('against the real API', () 
       // ships are the ones exercised — a bare client here would leave the one
       // configuration that only matters in production untested in the one test
       // that reaches production.
-      const result = await extractGhsLabel(sendThrough(visionClient(apiKey!)), photo, 'eu-clp')
+      const { extraction } = await extractGhsLabel(
+        sendThrough(visionClient(apiKey!)),
+        photo,
+        'eu-clp',
+      )
 
       // Deliberately weak assertions. A strong one here would fail on a rewording
       // rather than on a breakage, and this test exists to notice the API moving,
       // not to grade the model.
-      expect(Object.keys(result.fields).length).toBeGreaterThan(0)
-      for (const field of Object.values(result.fields)) {
+      expect(Object.keys(extraction.fields).length).toBeGreaterThan(0)
+      for (const field of Object.values(extraction.fields)) {
         expect(field?.confidence).toBeGreaterThanOrEqual(0)
         expect(field?.confidence).toBeLessThanOrEqual(1)
       }

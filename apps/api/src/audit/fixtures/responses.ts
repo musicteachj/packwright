@@ -201,5 +201,15 @@ export const unspacedCombinationCode = variant({
   ],
 })
 
+/**
+ * The same reading, answered by a model this server did not ask for.
+ *
+ * Exists because the obvious assertion is a tautology: `recorded.model` is
+ * `claude-opus-5`, which is also `EXTRACTION_MODEL`, so a test comparing the
+ * two passes whichever one the code reports. This fixture is the only way to
+ * tell an observed provenance from a claimed one.
+ */
+export const answeredByAnotherModel = variant({ model: 'claude-opus-5-not-what-we-asked-for' })
+
 /** A reply that says the photograph showed nothing. The honest empty answer. */
 export const readNothing = variant({ content: [textBlock('{}')] })

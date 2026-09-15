@@ -62,4 +62,4 @@ console.log(
   `usage: ${JSON.stringify(captured?.usage.input_tokens)} in, ${JSON.stringify(captured?.usage.output_tokens)} out`,
 )
 console.log('\nMapped to:')
-console.log(JSON.stringify(result, null, 2))
+console.log(JSON.stringify(result.extraction, null, 2))

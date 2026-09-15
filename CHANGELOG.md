@@ -41,12 +41,30 @@ capture, confirm and report are the two stages after it.
   and a service that could not be reached are six outcomes, and collapsing them loses the only part a user
   can act on. The first draft had two of them and reported a truncated reply — cut-off JSON — as an
   unreadable photograph, which blames a label for a budget this server set.
+- **The reading reports the model that answered it, not the one this server asked for.** Those are different
+  facts — `EXTRACTION_MODEL` is the request and `response.model` is the reply — and a provenance field
+  echoing the request is a claim dressed as an observation, which is the one kind of statement this
+  application exists not to make. The test for it needed a fixture answered by a *different* model, because
+  the recorded one answers on `claude-opus-5` and so does the constant: the obvious assertion passed
+  whichever of the two the code reported, and survived the mutation that swapped them.
+- **A warning that promised something untrue now says what actually happens.** An unrecognised statement code
+  was reported as one a drawn label "records as omitted". It does not: `GhsRequest` admits only codes this
+  build has verified text for, so confirming one has the saved-label and export routes refuse the *whole*
+  label with a 400 — verified by parsing such a label. The warning says that, and the test asserts the schema
+  rather than the sentence, so loosening the schema later fails here and sends someone back to the wording.
+- **A 400 from the vision service no longer tells the user their photograph is bad.** It arrives as
+  `invalid_request_error` whether the image was undecodable or this server asked for a parameter the API has
+  stopped accepting, and the two are told apart only by prose in the message — which is the string-matching
+  the SDK's own guidance warns off. The first wording said the image "may be corrupt", which blames a
+  photograph for a fault that may be entirely ours.
 - **One unreadable field costs that field, not the reading.** A reply is validated as a whole, and on a
   violation the offending fields are pruned and it is validated again — so a confidence of 4 on the product
   identifier no longer discards the supplier, the pictograms and every statement code that parsed perfectly
   well, after a call that has already been paid for. Each dropped field becomes a warning naming it, because
   the one thing worse than losing a field is losing it silently. A body with no field to prune — not an object
-  at all — is still reported whole.
+  at all — is still reported whole. A code printed twice is stored once as well as warned about once; the
+  warning deduped and the stored value did not, so a confirmed label would have carried the duplicate and
+  drawn it twice, and the test that should have caught it asserted the warning count and never the value.
 - **A signal word printed in capitals is still a signal word.** `GHS_SIGNAL_WORDS` is `['Danger', 'Warning']`
   because that is how CLP Article 20 spells them; real labels print DANGER and WARNING, the sample one
   included, and the prompt tells the model to transcribe exactly what is printed. Those two instructions pull

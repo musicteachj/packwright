@@ -49,10 +49,21 @@ export type SendMessage = (
   params: Anthropic.MessageCreateParamsNonStreaming,
 ) => Promise<Anthropic.Message>
 
-export type ExtractLabel = (
-  photo: LabelPhoto,
-  regime: GhsRegime,
-) => Promise<ExtractionResult<GhsLabelData>>
+/**
+ * A reading, and the model that produced it.
+ *
+ * The model is carried out of here rather than restated by the route from the
+ * constant this server asked for. Those are different facts — `response.model`
+ * is what answered — and a provenance field that reports the request rather
+ * than the reply is a claim dressed as an observation, which is the one kind of
+ * statement this application exists not to make.
+ */
+export interface LabelReading {
+  extraction: ExtractionResult<GhsLabelData>
+  model: string
+}
+
+export type ExtractLabel = (photo: LabelPhoto, regime: GhsRegime) => Promise<LabelReading>
 
 /**
  * Claude declined the request.
@@ -176,7 +187,7 @@ function classifyCodes(
     return [
       {
         code: 'GHS_STATEMENT_TABLE_EMPTY',
-        message: `This build carries no verified ${regime} statement text, so none of the ${codes.length} code(s) read from this label can be printed. That is a gap in this application, not a defect on the label.`,
+        message: `This build carries no verified ${regime} statement text, so none of the ${codes.length} code(s) read from this label can be carried into one here — the saved-label and export routes admit only codes with verified text. That is a gap in this application, not a defect on the label.`,
         path,
       },
     ]
@@ -189,7 +200,7 @@ function classifyCodes(
     .filter((code) => textFor(regime, canonicaliseCode(code)) === undefined)
     .map((code) => ({
       code: 'GHS_STATEMENT_CODE_UNRECOGNISED',
-      message: `“${code}” was read from the label and has no verified ${regime} text in this build, so a label drawn from this reading records it as omitted rather than printing something for it.`,
+      message: `“${code}” was read from the label and has no verified ${regime} text in this build, so it cannot be carried into a label here. Confirming it would have the saved-label and export routes refuse the whole label, because their schema admits only codes this build knows.`,
       path,
     }))
 }
@@ -296,18 +307,27 @@ function resolvable(
   kind: 'hazard' | 'precautionary',
 ): readonly string[] {
   const textFor = kind === 'hazard' ? hazardStatementText : precautionaryStatementText
-  return codes.map((code) => {
-    if (textFor(regime, code) !== undefined) return code
-    const canonical = canonicaliseCode(code)
-    return textFor(regime, canonical) === undefined ? code : canonical
-  })
+  // Distinct, and in the order they were read. The warnings already said a
+  // code printed twice was one code; what was stored still said two, so a
+  // confirmed label would have carried the duplicate and drawn it twice. Done
+  // after canonicalising, so `P337+P313` and `P337 + P313` collapse together
+  // rather than surviving as two spellings of one statement.
+  return [
+    ...new Set(
+      codes.map((code) => {
+        if (textFor(regime, code) !== undefined) return code
+        const canonical = canonicaliseCode(code)
+        return textFor(regime, canonical) === undefined ? code : canonical
+      }),
+    ),
+  ]
 }
 
 export async function extractGhsLabel(
   send: SendMessage,
   photo: LabelPhoto,
   regime: GhsRegime,
-): Promise<ExtractionResult<GhsLabelData>> {
+): Promise<LabelReading> {
   const response = await send({
     model: EXTRACTION_MODEL,
     max_tokens: VISION_MAX_TOKENS,
@@ -392,7 +412,7 @@ export async function extractGhsLabel(
     warnings.push(...classifyCodes(read.precautionaryStatementCodes.value, regime, 'precautionary'))
   }
 
-  return { fields, warnings }
+  return { extraction: { fields, warnings }, model: response.model }
 }
 
 /**
@@ -401,7 +421,7 @@ export async function extractGhsLabel(
  * The SDK's defaults are built for a script: ten minutes and two retries, which
  * is up to half an hour of a browser waiting before it is told the service
  * could not be reached. This is a request somebody is holding a phone through.
- * The recorded call takes about five seconds, so sixty is generous and one
+ * The recorded call takes about five seconds, so two minutes is generous and one
  * retry still covers a dropped connection.
  *
  * Here rather than in `server.ts` so that a test can assert it. `server.ts`
@@ -414,17 +434,20 @@ export const VISION_MAX_RETRIES = 1
 /**
  * The output budget, sized so that reaching it is possible before the timeout.
  *
- * These two numbers are one decision and were first written as two. 16,000
- * tokens cannot be generated inside sixty seconds at any rate this model has
- * produced — the recorded call managed 267 in about five, so roughly fifty a
- * second — which made `ExtractionTruncated` a guard for something the timeout
- * always reached first, and turned a genuinely long reading into two billed
- * attempts reported as "the service could not be reached".
+ * These two numbers are one decision and were first written as two: 16,000
+ * tokens against a sixty-second timeout, which cannot both be true at any rate
+ * this model has produced — the recorded call managed 267 tokens in about five
+ * seconds, so roughly fifty a second. The budget was unreachable, which made
+ * `ExtractionTruncated` a guard for something the timeout always got to first
+ * and turned a genuinely long reading into two billed attempts reported as "the
+ * service could not be reached".
  *
- * A reading is a small JSON object; the recorded one is 267 tokens and adaptive
- * thinking draws on the same budget. Four thousand is generous for a dense
- * label and deliverable inside the timeout with room to spare, which is what
- * `extract.test.ts` asserts rather than leaves to whoever edits these next.
+ * Both numbers moved: the timeout to two minutes, the budget to four thousand.
+ * A reading is a small JSON object — the recorded one is 267 tokens, and
+ * adaptive thinking draws on the same budget — so four thousand is generous for
+ * a dense label and deliverable inside two minutes with room to spare.
+ * `extract.test.ts` asserts that they still agree, rather than leaving it to
+ * whoever edits one of them next.
  */
 export const VISION_MAX_TOKENS = 4_000
 

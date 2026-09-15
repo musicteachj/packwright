@@ -376,6 +376,14 @@ regimes adopt — so this is latent rather than biting, and *why* it is latent i
 `US_OSHA_HAZARD_STATEMENTS` is empty, so a regime-correct enum would reject every code on every US label. The
 two are one problem, it stops being latent the day Appendix C.4 is transcribed, and the fix is the same fix.
 
+**It is no longer only latent, and stage 2 has to handle it.** A photograph can carry a code this build has
+no text for — `H999`, or any real code the tables happen to miss — and extraction reports it with a warning
+rather than dropping it, which is right. But `GhsRequest` then refuses the *whole* label, so confirming that
+reading makes the label unsavable and unexportable with a 400 naming a field the user cannot edit their way
+out of. The confirm step therefore cannot simply hand everything it was given to the save route: it has to
+either refuse to confirm an unrecognised code, or drop it with the user's agreement. That is a decision about
+the confirm screen and belongs with it, not here — but it is a constraint on stage 2 rather than a wish.
+
 **Nothing derives a hazard classification from the statement codes.** `GhsLabelData.hazards` carries
 `ANNEX_V_ENTRIES` ids, and CLP Article 26 precedence turns on them — `ghs/pictogram-set` and
 `ghs/pictogram-precedence` both decline without them. A label prints H-codes and pictograms, not class ids, so

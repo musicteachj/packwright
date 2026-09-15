@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { describe, expect, it, vi } from 'vitest'
+import { GhsRequest } from '../labels/schemas'
 import {
   EXTRACTION_MODEL,
   ExtractionDeclined,
@@ -14,6 +15,7 @@ import {
   type SendMessage,
 } from './extract'
 import {
+  answeredByAnotherModel,
   noTextBlock,
   notAnObject,
   notJson,
@@ -38,8 +40,12 @@ const PHOTO = { mediaType: 'image/png', data: 'AAAA' } as const
 
 const replying = (message: Anthropic.Message): SendMessage => vi.fn().mockResolvedValue(message)
 
-const extract = (message: Anthropic.Message, regime: 'eu-clp' | 'us-osha' = 'eu-clp') =>
-  extractGhsLabel(replying(message), PHOTO, regime)
+/** The reading alone. `readingOf` is for the tests that care about the envelope. */
+const extract = async (message: Anthropic.Message, regime: 'eu-clp' | 'us-osha' = 'eu-clp') =>
+  (await extractGhsLabel(replying(message), PHOTO, regime)).extraction
+
+const readingOf = (message: Anthropic.Message) =>
+  extractGhsLabel(replying(message), PHOTO, 'eu-clp')
 
 /** What was thrown, without the assertion passing when nothing was. */
 async function thrownBy(promise: Promise<unknown>): Promise<unknown> {
@@ -212,6 +218,17 @@ describe('reading the recorded reply', () => {
     expect(fromThinkingFirst).toEqual(fromText)
   })
 
+  it('reports the model that answered, not the one this server asked for', async () => {
+    // Asserted against a reply from a *different* model on purpose. The obvious
+    // version compares `reading.model` to `recorded.model` — and `recorded.model`
+    // is `claude-opus-5`, which is also `EXTRACTION_MODEL`, so it passes
+    // whichever of the two the code reports. It was written that way first and
+    // survived the mutation that replaced the observation with the claim.
+    const reading = await readingOf(answeredByAnotherModel)
+    expect(reading.model).toBe('claude-opus-5-not-what-we-asked-for')
+    expect(reading.model).not.toBe(EXTRACTION_MODEL)
+  })
+
   it('carries the confidences the model gave, not ones of our own', async () => {
     const result = await extract(recorded)
     expect(result.fields.productIdentifier?.value).toBe('Acetone')
@@ -279,10 +296,14 @@ describe('classifying statement codes', () => {
     expect(result.warnings[0]?.path).toBe('hazardStatementCodes')
   })
 
-  it('says it once for a code printed twice', async () => {
+  it('says it once for a code printed twice, and stores it once too', async () => {
     const result = await extract(repeatedUnknownCode)
     expect(result.warnings).toHaveLength(1)
     expect(result.warnings[0]?.message).toContain('H999')
+    // The warning deduped and what was stored did not, so a confirmed label
+    // would have carried H999 twice and drawn it twice. This test asserted the
+    // warning count and never the value, which is how that survived.
+    expect(result.fields.hazardStatementCodes?.value).toEqual(['H999', 'H225'])
   })
 
   it('does not crash on a code naming an inherited property', async () => {
@@ -300,6 +321,26 @@ describe('classifying statement codes', () => {
     const result = await extract(unspacedCombinationCode)
     expect(result.fields.precautionaryStatementCodes?.value).toEqual(['P337 + P313', 'P210'])
     expect(result.warnings).toEqual([])
+  })
+
+  it('is telling the truth about what confirming an unknown code would do', async () => {
+    // The warning used to promise the code would be "recorded as omitted" on a
+    // drawn label. It would not: `GhsRequest` admits only codes this build has
+    // text for, so confirming one refuses the whole label with a 400. Asserting
+    // the schema rather than the wording, so that loosening the schema later
+    // fails here and sends someone back to the sentence.
+    const result = await extract(unknownCodes)
+    const codes = result.fields.hazardStatementCodes?.value ?? []
+    expect(codes).toContain('H999')
+
+    const asLabel = GhsRequest.safeParse({
+      regime: 'eu-clp',
+      productIdentifier: 'Acetone',
+      capacityL: 1,
+      hazardStatementCodes: codes,
+    })
+    expect(asLabel.success).toBe(false)
+    expect(result.warnings[0]?.message).toContain('refuse the whole label')
   })
 
   it('guards the precautionary lookup too, not only the hazard one', async () => {
