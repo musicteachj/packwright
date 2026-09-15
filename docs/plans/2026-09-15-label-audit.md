@@ -285,17 +285,88 @@ guarded parse of an error body, its own error class carrying `status` and `detai
 - Mutation tests, each confirmed to have applied: remove the accepted-set check in `confirmed()`; pre-accept a
   field in the view; default the stock; drop the EXIF orientation.
 
-## Stage 3 — the report and the hand-off (outline)
+## Stage 3 — the report and the hand-off
 
-- `layOutGhsLabel` then `runRules` on the confirmed document; `FindingsRail` reused via its five props.
-  Its `id="findings-heading"` is hardcoded and it owns the app's only `aria-live` region — both need handling.
-- The honest claim, in the interface: these findings describe a label built from what you confirmed, not the
-  photograph.
-- Every GHS pictogram glyph is a layout omission today (`ghsEngine.ts:16-21`), so the "Cannot be checked"
-  block will be populated on every audit and must read as a fact about this build rather than a defect on the
-  user's label.
-- **Open in the editor** → loads the store and navigates. Saving stays the editor's act.
-- `e2e/the-label-audit.spec.ts` — `page.route('/api/audit/**')` fulfilled from the recorded fixture.
+Written against `dev` at `415b324`, with stages 1 and 2 merged in #23 and #24.
+
+The last stage of the phase, and the first time the engine judges anything. Everything so far has been
+reading and confirming.
+
+### What the report is allowed to claim
+
+Three things will be true of every audit this build produces, and each is a way a report could mislead if it
+were left to sit in a findings list looking like a finding.
+
+**1. The engine judges a reconstruction.** It takes a label document and draws it, so what it reports is about
+*our* drawing of what was confirmed. For the content rules — signal-word precedence, Article 26, the required
+element set — that barely matters, because they read the document. For anything dimensional it matters
+entirely, which is why the confirm screen refuses to default the measurements.
+
+**2. A rule that passed because a field was not confirmed has not passed.** Decline to confirm the signal
+words and `ghs/signal-word-precedence` clears, because there is nothing to conflict. That is a false
+clearance produced by the interface rather than by a rule, and it is the exact shape this project keeps
+finding. **The report names every field that was read and not confirmed**, and says what that means.
+
+**3. Half of what this build cannot do looks like a defect on the label.** Every GHS pictogram glyph is a
+layout omission — the Annex V artwork was never verified — so the "cannot be checked" block is populated on
+every audit. Under `us-osha` every statement code has no verified text, so an OSHA audit draws no statements
+at all. Both must read as facts about this application.
+
+So the report has its own section, above the findings, headed by what was *not* judged. The findings rail
+follows it.
+
+### Tasks
+
+**1. `apps/web/src/audit/report.ts`.** Pure, and out of the view for the reason `readingRows.ts` is:
+
+```ts
+auditReport(data: GhsLabelData, stock: LabelStock, read: ReadonlySet<ReadingKey>,
+            confirmed: ReadonlySet<ReadingKey>): AuditReport | AuditRefusal
+```
+
+- `layOutGhsLabel` then `runRules`, grouped and split exactly as the editor store does.
+- `uncertifiable` is the layout's omissions alone. A GHS layout returns `symbols: []`, so the overprint and
+  overflow halves of the store's version have nothing to say here — and restating them would be code that
+  cannot run.
+- `unconfirmed` = read minus confirmed, as field labels.
+- A `LayoutError` is a refusal with its message, not a throw. The engine declines input that describes no
+  drawing, and a missing capacity or a zero stock is exactly that.
+
+**2. The report in `AuditView.vue`.** Shown once the document is complete — a regime, a product identifier, a
+capacity and a measured stock. `FindingsRail` reused via its five props.
+
+**3. `FindingsRail` gains two optional props.** `headingId` and `owns-live-region`, both defaulting to what it
+does now, so the editor is untouched. Its `id="findings-heading"` is hardcoded and it owns the app's only
+`aria-live` region; `EditorView.vue:430-439` documents the care that took, and a second live region on the
+audit page would undo it.
+
+**4. The hand-off.** `Open in the editor` puts the confirmed document into the store as an unsaved label and
+navigates to `/labels/new`. Saving stays the editor's act — this screen does not gain a second way to write a
+record.
+
+**5. `e2e/the-label-audit.spec.ts`.** `page.route('/api/audit/**')` fulfilled from the recorded fixture, so it
+is deterministic and free. It drives the whole path and asserts the one thing the phase exists to show: a
+photograph carrying DANGER and WARNING produces `GHS_SIGNAL_WORD_CONFLICT`, cited to CLP Article 20(3), from
+the deterministic engine.
+
+### The tests that have to fail first
+
+- A confirmed document carrying both signal words produces `GHS_SIGNAL_WORD_CONFLICT` with its real citation.
+- **A field read and not confirmed is named as not judged** — asserted with the premise first, so it cannot
+  pass because nothing was read.
+- A rule that cleared only because its field was unconfirmed is not presented as a pass without that notice.
+- A `LayoutError` is a refusal that says what was wrong, not a blank screen.
+- The report does not appear while the document is incomplete.
+- Two `aria-live` regions never exist on the page at once.
+- The hand-off puts the document in the store unsaved, and saves nothing.
+
+### Done when
+
+- The sample label's audit reports the Article 20(3) violation, from `rules/`, with its citation.
+- Every finding in the report comes from the engine; nothing on the screen is authored by the model.
+- `npm test`, `typecheck`, `lint`, `format:check`, `build`, `verify:build` and the browser suite pass.
+- Mutation tests, each confirmed applied: drop the unconfirmed-fields notice; default the stock; let
+  `FindingsRail` own a second live region; return findings from anywhere but `runRules`.
 
 ## Documents
 
