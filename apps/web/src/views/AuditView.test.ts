@@ -1,7 +1,9 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AuditView from './AuditView.vue'
 import { testRouter } from './editorTestRouter'
+import { useLabelDocumentStore } from '../stores/labelDocument'
 
 /**
  * The encode path is stubbed, not the reading.
@@ -39,7 +41,7 @@ const respond = (body: unknown, ok = true, status = 200) =>
 async function mountAudit(body: unknown = READING, ok = true, status = 200) {
   vi.stubGlobal('fetch', respond(body, ok, status))
   const wrapper = mount(AuditView, {
-    global: { plugins: [testRouter('/audit')], stubs: { RouterLink: true } },
+    global: { plugins: [testRouter('/audit'), createPinia()], stubs: { RouterLink: true } },
   })
   await flushPromises()
   return wrapper
@@ -58,7 +60,11 @@ async function readALabel(wrapper: Awaited<ReturnType<typeof mountAudit>>) {
   return wrapper
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  // The screen hands a confirmed document to the editor's store, so it needs one.
+  setActivePinia(createPinia())
+})
 afterEach(() => vi.unstubAllGlobals())
 
 describe('before anything has been read', () => {
@@ -259,7 +265,7 @@ describe('a reading still in flight', () => {
       ),
     )
     const wrapper = mount(AuditView, {
-      global: { plugins: [testRouter('/audit')], stubs: { RouterLink: true } },
+      global: { plugins: [testRouter('/audit'), createPinia()], stubs: { RouterLink: true } },
     })
     await flushPromises()
     await wrapper.find('[data-test="regime"]').setValue('eu-clp')
@@ -380,6 +386,123 @@ describe('changing the market after a reading', () => {
 
     await wrapper.find('[data-test="regime"]').setValue('us-osha')
     expect(wrapper.find('[data-field="productIdentifier"]').exists()).toBe(false)
+  })
+})
+
+/** Accepts enough, and measures enough, for the engine to have a label to draw. */
+async function completeTheDocument(wrapper: Awaited<ReturnType<typeof mountAudit>>) {
+  await wrapper.find('[data-test="accept-productIdentifier"]').trigger('click')
+  await wrapper.find('[data-test="accept-signalWords"]').trigger('click')
+  await wrapper.find('[data-test="capacity"]').setValue('1')
+  await wrapper.find('[data-test="width"]').setValue('74')
+  await wrapper.find('[data-test="height"]').setValue('105')
+  return wrapper
+}
+
+describe('what the rules say', () => {
+  it('says nothing until there is a label to say it about', async () => {
+    const wrapper = await readALabel(await mountAudit())
+    expect(wrapper.find('[data-test="not-judged"]').exists()).toBe(false)
+  })
+
+  it('waits for the measurements, rather than reporting on a stock of zero', async () => {
+    // The case the test above cannot reach: a field accepted, and nothing
+    // measured. Without the measurements in the completeness check the engine
+    // is handed a stock of 0 mm, refuses it — correctly — and the screen tells
+    // somebody halfway through a form that the label cannot be drawn. An
+    // incomplete document is not a failed audit.
+    const wrapper = await readALabel(await mountAudit())
+    await wrapper.find('[data-test="accept-productIdentifier"]').trigger('click')
+    expect(wrapper.find('[data-test="document"]').text()).toContain('Acetone')
+
+    expect(wrapper.find('[aria-labelledby="audit-report-heading"]').exists()).toBe(false)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('reports the Article 20(3) conflict, with the citation the rule carries', async () => {
+    // The point of the phase, on one screen: a model read DANGER and WARNING
+    // off a photograph, a person confirmed them, and a rule written in phase 4
+    // judged the result. Nothing on this path authors a verdict.
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    const report = wrapper.find('[aria-labelledby="audit-report-heading"]').text()
+    expect(report).toContain('Warning')
+    expect(report).toContain('Article 20(3)')
+  })
+
+  it('says plainly that it judged a reconstruction', async () => {
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    expect(wrapper.find('[data-test="not-judged"]').text()).toContain('not the photograph itself')
+  })
+
+  it('names a field that was read and left unconfirmed', async () => {
+    // A rule that cleared because its field was never confirmed has not
+    // cleared. The premise first: the field really was read.
+    const wrapper = await readALabel(await mountAudit())
+    expect(wrapper.find('[data-field="hazardStatementCodes"]').exists()).toBe(true)
+
+    await completeTheDocument(wrapper)
+    const notice = wrapper.find('[data-test="unconfirmed"]').text()
+    expect(notice).toContain('Hazard statements')
+    expect(notice).toContain('nothing to check')
+  })
+
+  it('stops naming a field once it has been confirmed', async () => {
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    // The premise: it was being named a moment ago.
+    expect(wrapper.find('[data-test="unconfirmed"]').text()).toContain('Hazard statements')
+
+    await wrapper.find('[data-test="accept-hazardStatementCodes"]').trigger('click')
+    // Gone entirely, rather than present and empty. Everything read has been
+    // confirmed, so there is nothing for the notice to be about.
+    expect(wrapper.find('[data-test="unconfirmed"]').exists()).toBe(false)
+  })
+
+  it('leaves exactly one live region on the page', async () => {
+    // `FindingsRail` has been the only one in the application, and
+    // `EditorView.vue` documents the care taken to keep exactly one live at a
+    // time. A second announcing over the capture status would undo it.
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    expect(wrapper.findAll('[aria-live]').length).toBe(1)
+  })
+
+  it('does not offer a control that does nothing', async () => {
+    // The editor's rail makes a finding a button so it can highlight the
+    // element on the canvas. There is no canvas here, so a
+    // `<button aria-pressed="false">` that does nothing when activated
+    // announces itself as a toggle and is not one.
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    const rail = wrapper.find('[aria-labelledby="audit-findings-heading"]')
+    // The premise: there is at least one finding carrying an element to select.
+    expect(rail.text()).toContain('WARNING')
+    expect(rail.findAll('button').length).toBe(0)
+  })
+
+  it('gives the two headings on the page different ids', async () => {
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    const ids = wrapper.findAll('h2').map((h) => h.attributes('id'))
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+describe('handing the document to the editor', () => {
+  it('opens it unsaved, so the editor does not write over a record', async () => {
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    await wrapper.find('[data-test="open-in-editor"]').trigger('click')
+
+    const store = useLabelDocumentStore()
+    expect(store.labelType).toBe('ghs-chemical')
+    expect(store.ghsData.productIdentifier).toBe('Acetone')
+    expect(store.ghsData.signalWords).toEqual(['Danger', 'Warning'])
+    // Unsaved: a label rebuilt from a photograph has never been stored, and
+    // pretending otherwise would make the editor's Save a PUT over nothing.
+    expect(store.savedId).toBeNull()
+  })
+
+  it('carries the measured stock, not a default', async () => {
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    await wrapper.find('[data-test="width"]').setValue('90')
+    await wrapper.find('[data-test="open-in-editor"]').trigger('click')
+    expect(useLabelDocumentStore().ghsStock.widthMm).toBe(90)
   })
 })
 

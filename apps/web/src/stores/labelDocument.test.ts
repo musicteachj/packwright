@@ -139,3 +139,23 @@ describe('taking a scan', () => {
     expect(store.lastScan).toBeNull()
   })
 })
+
+describe('a document handed over from an audit', () => {
+  it('arrives unsaved, and as work worth defending', () => {
+    const store = useLabelDocumentStore()
+    store.loadUnsaved({
+      labelType: 'ghs-chemical',
+      stock: { widthMm: 74, heightMm: 105, marginMm: 4 },
+      data: { regime: 'eu-clp', productIdentifier: 'Acetone', capacityL: 1 },
+    })
+
+    expect(store.labelType).toBe('ghs-chemical')
+    expect(store.ghsData.productIdentifier).toBe('Acetone')
+    // Never stored, so the editor's Save must not become a PUT over a record.
+    expect(store.savedId).toBeNull()
+    // And dirty, or both leave guards go quiet on an hour of somebody's work.
+    // The first version cleared the baseline, which reads as "nothing to
+    // defend" — the opposite of what its own comment claimed.
+    expect(store.isDirty).toBe(true)
+  })
+})

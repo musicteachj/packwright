@@ -434,3 +434,20 @@ are two callers now, so that objection is gone. What remains is that merging the
 tested module in the middle of a feature, which this project's habit says is done deliberately rather than
 while passing through. They differ in two ways worth keeping: saved labels handle a 204, and each carries its
 own error class.
+
+---
+
+## From phase 7, stage 3
+
+**Whether `detach()` could lose work at `/labels/new` without an audit is unchecked.** The rebase it used to
+do unconditionally was found on the audit hand-off — a document arrives dirty, the editor mounts, its route
+watcher calls `detach()`, the baseline is rebased and both leave guards go quiet. That is reproduced and
+fixed. The larger question is whether the same path was reachable before: edit at `/labels/new`, navigate to
+`/labels`, come back, and the watcher fires again on mount.
+
+**It is recorded as a question rather than a defect because the reproduction did not hold.** A probe that
+mounted the editor, wrote to `store.data.gtin` and remounted reported the document as clean *before* the
+remount — so its premise failed and it proved nothing in either direction. Either the edit did not dirty the
+document in that harness, or something else rebased first. Worth ten minutes with the real application rather
+than another jsdom probe; the fix is already in place either way, so nothing is at risk while it waits.
+

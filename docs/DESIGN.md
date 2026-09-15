@@ -744,7 +744,7 @@ copy-adapt from the old repo.
 | 4 · GHS chemical label | **Complete** — seven rules, reviewed and remediated; merged in #4 |
 | 5 · US food label | **Complete** — six stages; the aggregate and bilingual displays deferred to `BACKLOG.md` |
 | 6 · Scanning, persistence, catalogue | **Complete** — code-complete; scanning a real product barcode by phone is outstanding |
-| 7 · Label audit from a photo | **In progress** — stage 1 (the extraction endpoint) complete |
+| 7 · Label audit from a photo | **Complete** — three stages; a photographed label is read, confirmed and judged |
 | 8 · Deployment | Not started — deliberately held |
 
 No AWS resource is provisioned and none should be until phase 8. Phases 1–7 run entirely on localhost.

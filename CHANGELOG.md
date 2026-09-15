@@ -10,6 +10,56 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 7, stage 3 — the engine judges. Everything before this was reading and confirming; `/audit` now runs the
+rule set over the confirmed document and shows what `rules/` says about it, which completes the phase.
+
+- **Every finding comes from `rules/`, and there is no second source of them.** The report lays the confirmed
+  document out and hands it to `runRules` — the same call the editor makes. Nothing on this path authors a
+  verdict, a citation or a severity. On the sample label that means the Article 20(3) conflict it was built to
+  carry, reported by a rule written in phase 4, with the CLP reference that rule declares.
+- **The report says what it did not judge, above the findings rather than beneath them.** Three things are
+  true of every audit this build produces and each would mislead if it sat in a list looking like a finding.
+  The engine judges a label rebuilt from what was confirmed, not the photograph. Every GHS pictogram glyph is
+  a layout omission here, because the Annex V artwork was never verified, so the "cannot be checked" block is
+  populated on every audit that has pictograms. And under `us-osha` no statement code has verified text at
+  all.
+- **A rule that cleared because its field was never confirmed has not cleared.** Decline to confirm the signal
+  words and `ghs/signal-word-precedence` says *nothing* — the conflict finding simply disappears, leaving one
+  fewer check and no reason for it. That is a false clearance produced by the interface rather than by a rule,
+  which is the shape this project keeps finding, so the report names every field that was read and left alone.
+- **An incomplete document is not a failed audit.** The report waits for a market, a confirmed product
+  identifier, a package capacity and a measured label before it says anything. Without the measurements the
+  engine is handed a stock of zero and refuses it, correctly — and telling somebody halfway through a form
+  that their label cannot be drawn is blaming them for not having finished.
+- **The confirmed label opens in the editor, unsaved.** Saving and naming stay the editor's act; a second way
+  to write a record is a second place for the rules about writing one to be got wrong. It arrives dirty, so
+  both leave guards stay awake over work somebody did with a camera in their hand.
+
+### Fixed
+
+- **A label handed to the editor from an audit stopped being unsaved work the moment it arrived.**
+  `loadUnsaved` keeps the document dirty on purpose, so both leave guards stay awake over an audit somebody
+  did by hand — and `EditorView`'s route watcher called `detach()` on mount at `/labels/new`, which rebased
+  the baseline and made it clean again. Reproduced by mounting the editor over a handed-over document: dirty
+  before, clean after. `detach()` now does nothing when there is nothing attached, which is what it always
+  meant. Asserted where the two meet rather than in the store's own test, which passes either way because it
+  never mounts anything — and that gap is exactly how this survived.
+
+  Whether the same rebase could lose work at `/labels/new` without an audit in the picture is **not
+  established**: the obvious reproduction did not hold up, and it is in `docs/BACKLOG.md` as something to
+  check rather than as a defect anyone has seen.
+
+### Changed
+
+- **`FindingsRail` takes its heading id, its title, whether it announces, and whether its findings can be
+  selected.** All three default to what it
+  All four default to what it did before, so the editor is untouched. It hardcoded `id="findings-heading"`
+  and owned the application's only `aria-live` region — two of the first would have collided on the audit
+  page, and a second of the second would have undone the care `EditorView.vue` documents in keeping exactly
+  one live at a time. The fourth is because the audit report has no canvas: a finding rendered as a
+  `<button aria-pressed="false">` that does nothing when activated announces itself as a toggle and is not
+  one, which is the same defect the Digital Link finding was fixed for, arriving from the other direction.
+
 Phase 7, stage 2 — `/audit`, where a photograph becomes a label document one accepted field at a time. The
 route has been in the router's inventory since phase 3 as the one line without a "done" beside it.
 

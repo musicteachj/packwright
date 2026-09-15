@@ -17,14 +17,61 @@ import { computed } from 'vue'
 import { SEVERITY_STYLES } from '../severity'
 import FindingItem from './FindingItem.vue'
 
-const props = defineProps<{
-  groups: ReadonlyArray<[Severity, Finding[]]>
-  failures: Finding[]
-  passes: Finding[]
-  /** Symbols that could not be certified — reported, but deliberately not judged. */
-  uncertifiable: ReadonlyArray<{ elementId: string; reasons: string[] }>
-  selectedElementId: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    groups: ReadonlyArray<[Severity, Finding[]]>
+    failures: Finding[]
+    passes: Finding[]
+    /** Symbols that could not be certified — reported, but deliberately not judged. */
+    uncertifiable: ReadonlyArray<{ elementId: string; reasons: string[] }>
+    selectedElementId: string | null
+    /**
+     * The id this rail's heading takes, so two of them can share a page.
+     *
+     * Hardcoded before the audit report reused this component, which would have
+     * put two `id="findings-heading"` attributes in one document and left both
+     * `aria-labelledby` references pointing at whichever the browser picked.
+     * Defaulted to what it was, so the editor is untouched.
+     */
+    headingId?: string
+    /** Overridden where "Compliance" is not what the section is. */
+    title?: string
+    /**
+     * Whether this rail owns an `aria-live` region.
+     *
+     * It has been the only one in the application, and `EditorView.vue` documents
+     * the care taken to keep exactly one live at a time. A page that already has
+     * one turns this off rather than adding a second — two regions announcing
+     * over each other is worse than one that says less.
+     */
+    announce?: boolean
+    /** Passed through: false where there is no canvas for a selection to reach. */
+    selectable?: boolean
+  }>(),
+  {
+    headingId: 'findings-heading',
+    title: 'Compliance',
+    // **Stated, not inferred.** An absent Boolean prop is `false` in Vue, not
+    // `undefined` — so `v-if="announce !== false"` with no default turned the
+    // live region off for every caller, including the editor, and three tests
+    // said so immediately. A flag whose safe value is "on" has to say so here.
+    announce: true,
+    selectable: true,
+  },
+)
+
+/**
+ * The declined-checks heading keeps its original id for the default caller.
+ *
+ * Deriving it from `headingId` unconditionally renamed an attribute three
+ * existing tests query for, which is a gratuitous break for a component that
+ * was working.
+ */
+const declinedHeadingId = computed(() =>
+  props.headingId === 'findings-heading'
+    ? 'cannot-check-heading'
+    : `${props.headingId}-cannot-check`,
+)
 
 defineEmits<{ select: [elementId: string | undefined] }>()
 
@@ -58,15 +105,17 @@ const summary = computed(() => {
 </script>
 
 <template>
-  <section class="flex h-full flex-col overflow-y-auto" aria-labelledby="findings-heading">
+  <section class="flex h-full flex-col overflow-y-auto" :aria-labelledby="headingId">
     <h2
-      id="findings-heading"
+      :id="headingId"
       class="text-chrome-200 border-chrome-800 bg-chrome-900 sticky top-0 border-b px-4 py-3 text-xs font-semibold tracking-wide uppercase"
     >
-      Compliance
+      {{ title }}
     </h2>
 
-    <p class="sr-only" role="status" aria-live="polite">{{ summary }}</p>
+    <p v-if="announce" class="sr-only" role="status" aria-live="polite">
+      {{ summary }}
+    </p>
 
     <div v-for="[severity, items] in failureGroups" :key="severity">
       <h3
@@ -78,6 +127,7 @@ const summary = computed(() => {
       <FindingItem
         v-for="(finding, index) in items"
         :key="`${finding.code}-${index}`"
+        :selectable="selectable"
         :finding="finding"
         :selected="!!finding.elementId && finding.elementId === selectedElementId"
         @select="$emit('select', $event)"
@@ -97,10 +147,10 @@ const summary = computed(() => {
     <section
       v-if="uncertifiable.length"
       class="border-caution bg-chrome-950 m-4 border-l-2 px-3 py-3"
-      aria-labelledby="cannot-check-heading"
+      :aria-labelledby="declinedHeadingId"
     >
       <h3
-        id="cannot-check-heading"
+        :id="declinedHeadingId"
         class="text-caution flex items-center gap-2 text-xs font-semibold"
       >
         <span aria-hidden="true">{{ SEVERITY_STYLES.advisory.icon }}</span>
@@ -145,6 +195,7 @@ const summary = computed(() => {
       <FindingItem
         v-for="(finding, index) in passes"
         :key="`${finding.code}-${index}`"
+        :selectable="selectable"
         :finding="finding"
         :selected="!!finding.elementId && finding.elementId === selectedElementId"
         @select="$emit('select', $event)"

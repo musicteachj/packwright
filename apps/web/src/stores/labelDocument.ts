@@ -452,6 +452,37 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     baseline.value = detachedSnapshot()
   }
 
+  /**
+   * Opens a document that belongs to no saved record.
+   *
+   * The audit hand-off. `loadSaved` needs an id and marks the result as what the
+   * server holds; this one deliberately does neither, because a label rebuilt
+   * from a photograph has never been saved and pretending otherwise would make
+   * the editor's Save a `PUT` over a record that does not exist.
+   *
+   * The baseline is left where it was rather than rebased, so the document reads
+   * as unsaved work the moment it arrives — which it is. Rebasing it, or
+   * clearing it, tells the leave guards there is nothing to defend.
+   */
+  function loadUnsaved(incoming: {
+    labelType: 'gs1-retail' | 'ghs-chemical' | 'us-food'
+    stock: LabelStock
+    data: unknown
+  }): void {
+    // The baseline from before the hand-off is put back, because `loadSaved`
+    // rebases it to whatever it has just loaded. Keeping the old one is what
+    // makes `isDirty` true, and an audited label *is* unsaved work worth
+    // defending — someone who photographed a drum, confirmed six fields and
+    // then navigated away should be asked. Setting it to `null` was the first
+    // version, and it did the opposite of the sentence above it: `isDirty` is
+    // gated on a baseline existing, so both leave guards went quiet.
+    const before = baseline.value
+    loadSaved({ id: '', name: '', ...incoming })
+    savedId.value = null
+    savedName.value = ''
+    baseline.value = before
+  }
+
   /** Records that the current document is now what the server holds. */
   function markSaved(id: string, name: string): void {
     savedId.value = id
@@ -469,6 +500,14 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    * its name would still describe what it used to be.
    */
   function detach(): void {
+    // Nothing attached, nothing to let go of — and rebasing anyway is how an
+    // audited label lost its dirtiness. `EditorView`'s route watcher calls this
+    // on mount at `/labels/new`, so a document handed over from `/audit`
+    // arrived dirty, was mounted, and went clean before anyone could look at
+    // it: both leave guards silent over work somebody did with a camera in
+    // their hand. Reproduced by mounting the editor after `loadUnsaved` —
+    // dirty before, clean after.
+    if (savedId.value === null) return
     savedId.value = null
     // Rebased rather than cleared: the document carries on existing and is still
     // worth defending, it just no longer belongs to a stored record.
@@ -502,6 +541,7 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     isDirty,
     snapshot,
     loadSaved,
+    loadUnsaved,
     markSaved,
     detach,
     labelType,

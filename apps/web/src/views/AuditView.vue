@@ -33,8 +33,13 @@ import {
   type ExtractionResult,
   type GhsLabelData,
   type GhsRegime,
+  type LabelStock,
 } from '@packwright/label-core'
+import { useRouter } from 'vue-router'
 import { AuditError, readGhsLabel, type LabelReading } from '../api/audit'
+import { auditReport } from '../audit/report'
+import { useLabelDocumentStore } from '../stores/labelDocument'
+import FindingsRail from '../components/FindingsRail.vue'
 import { useLabelPhoto } from '../audit/useLabelPhoto'
 import {
   FIELD_SHAPES,
@@ -288,6 +293,70 @@ function edit(key: ReadingKey, text: string) {
   const next = new Set(accepted.value)
   next.delete(key)
   accepted.value = next
+}
+
+/**
+ * The label as it would be drawn, once there is enough of one to draw.
+ *
+ * Gated on completeness rather than attempted and caught, because an incomplete
+ * document is not a failed audit — it is an audit nobody has finished giving the
+ * facts to, and reporting "the engine declined" at somebody halfway through
+ * filling a form is telling them they broke something.
+ */
+const complete = computed(
+  () =>
+    supplied.value.regime !== undefined &&
+    supplied.value.capacityL !== undefined &&
+    supplied.value.widthMm !== undefined &&
+    supplied.value.heightMm !== undefined &&
+    document.value.productIdentifier !== undefined,
+)
+
+const auditStock = computed<LabelStock>(() => ({
+  widthMm: supplied.value.widthMm ?? 0,
+  heightMm: supplied.value.heightMm ?? 0,
+  // A drawing choice rather than a measured figure, and the only one of the four
+  // that may be defaulted for that reason.
+  marginMm: 4,
+}))
+
+const confirmedDocument = computed<GhsLabelData | null>(() =>
+  complete.value
+    ? ({
+        ...document.value,
+        regime: supplied.value.regime!,
+        productIdentifier: document.value.productIdentifier!,
+        capacityL: supplied.value.capacityL!,
+      } as GhsLabelData)
+    : null,
+)
+
+const report = computed(() => {
+  const built = confirmedDocument.value
+  if (built === null) return null
+  return auditReport(
+    built,
+    auditStock.value,
+    new Set(rows.value.map((row) => row.key)),
+    accepted.value,
+  )
+})
+
+const router = useRouter()
+const store = useLabelDocumentStore()
+
+/**
+ * Hands the document to the editor, unsaved.
+ *
+ * Saving stays the editor's act. A second way to write a record is a second
+ * place for the rules about writing one to be got wrong, and this screen has no
+ * business deciding what a label is called.
+ */
+function openInEditor() {
+  const built = confirmedDocument.value
+  if (built === null) return
+  store.loadUnsaved({ labelType: 'ghs-chemical', stock: auditStock.value, data: built })
+  void router.push('/labels/new')
 }
 
 const canRead = computed(() => camera.photo.value !== null && regime.value !== '' && !busy.value)
@@ -595,6 +664,77 @@ const canRead = computed(() => camera.photo.value !== null && regime.value !== '
         <p v-if="missing.length > 0" class="text-chrome-300 max-w-2xl text-xs" data-test="missing">
           Still needed before this can be checked: {{ missing.join(', ') }}.
         </p>
+      </section>
+
+      <section
+        v-if="report !== null"
+        class="flex flex-col gap-4"
+        aria-labelledby="audit-report-heading"
+      >
+        <h2 id="audit-report-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
+          What the rules say
+        </h2>
+
+        <p v-if="report.outcome === 'refused'" class="text-danger text-sm" role="alert">
+          {{ report.reason }}
+        </p>
+
+        <template v-else>
+          <!--
+            Above the findings, not beneath them.
+
+            Three things are true of every audit this build produces and each
+            would mislead if it were left to sit in a list looking like a
+            finding: the engine judges a label rebuilt from what was confirmed
+            rather than the photograph; a rule that cleared because its field was
+            never confirmed has not cleared; and half of what this application
+            cannot do reads as a defect on somebody's label.
+          -->
+          <div class="border-caution flex flex-col gap-2 border-l-2 pl-4" data-test="not-judged">
+            <p class="text-chrome-200 text-xs">
+              These findings describe a label built from what you confirmed above, drawn by this
+              application — not the photograph itself. Anything you did not confirm is not in it.
+            </p>
+            <p
+              v-if="report.unconfirmed.length > 0"
+              class="text-caution text-xs"
+              data-test="unconfirmed"
+            >
+              Read but not confirmed: {{ report.unconfirmed.join(', ') }}. Rules about
+              {{ report.unconfirmed.length === 1 ? 'that field' : 'those fields' }} judged their
+              absence, so a check that cleared here may have cleared because there was nothing to
+              check.
+            </p>
+          </div>
+
+          <div class="border-chrome-800 border">
+            <FindingsRail
+              :groups="report.groups"
+              :failures="report.failures"
+              :passes="report.passes"
+              :uncertifiable="report.uncertifiable"
+              :selected-element-id="null"
+              heading-id="audit-findings-heading"
+              title="What the rules say about it"
+              :announce="false"
+              :selectable="false"
+            />
+          </div>
+
+          <div>
+            <button
+              type="button"
+              :class="[BUTTON, 'px-4 py-2 text-sm']"
+              data-test="open-in-editor"
+              @click="openInEditor()"
+            >
+              Open in the editor
+            </button>
+            <p class="text-chrome-400 mt-2 max-w-2xl text-xs">
+              Opened unsaved. Saving it, and naming it, stays the editor's job.
+            </p>
+          </div>
+        </template>
       </section>
     </main>
   </div>
