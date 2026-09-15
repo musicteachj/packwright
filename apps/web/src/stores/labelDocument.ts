@@ -28,6 +28,7 @@ import {
   type Finding,
   type GhsLabelData,
   type LabelStock,
+  type LabelType,
   type ResolvedLayout,
   type ScannedGtin,
   type Severity,
@@ -348,23 +349,24 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   /** What was last written, for telling an edited document from an opened one. */
   const baseline = ref<DocumentSnapshot | null>(null)
 
-  /** The active type's document, in the shape the API stores. */
-  const snapshot = computed<DocumentSnapshot>(() => ({
+  /**
+   * One type's document, in the shape the API stores.
+   *
+   * Parameterised rather than reading `labelType` directly, because the type
+   * watcher has to ask what the document looked like on the type it has just
+   * left — by the time that watcher runs, `labelType` has already moved, and
+   * comparing the new type's document against a baseline recorded for the old
+   * one answers nothing.
+   */
+  const snapshotFor = (type: LabelType): DocumentSnapshot => ({
     name: savedName.value,
-    labelType: labelType.value,
-    stock:
-      labelType.value === 'gs1-retail'
-        ? stock
-        : labelType.value === 'ghs-chemical'
-          ? ghsStock
-          : foodStock,
-    data:
-      labelType.value === 'gs1-retail'
-        ? data
-        : labelType.value === 'ghs-chemical'
-          ? ghsData
-          : foodData,
-  }))
+    labelType: type,
+    stock: type === 'gs1-retail' ? stock : type === 'ghs-chemical' ? ghsStock : foodStock,
+    data: type === 'gs1-retail' ? data : type === 'ghs-chemical' ? ghsData : foodData,
+  })
+
+  /** The active type's document, in the shape the API stores. */
+  const snapshot = computed<DocumentSnapshot>(() => snapshotFor(labelType.value))
 
   /**
    * Whether the document has moved since it was last written — or, for one that
@@ -498,20 +500,42 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    * conversion without complaint, which is exactly why the client must not offer
    * it: a stored record would change kind because somebody clicked a tab, and
    * its name would still describe what it used to be.
+   *
+   * **The baseline is left exactly where it is**, and that is the whole of this
+   * function's care. The baseline records what was last *written*; detaching
+   * writes nothing, so moving it is the one thing this must not do. An earlier
+   * version rebased it to the document in front of it, beneath a comment saying
+   * that document “is still worth defending” — and rebasing is precisely what
+   * stops defending it, because every edit made before the detach is absorbed
+   * into the new baseline and stops counting as unsaved.
+   *
+   * Found in a browser, not in a test. Open a saved label, edit a field, switch
+   * the label type: leaving the page raised no prompt, and closing the tab would
+   * have lost the edit without a word from `beforeunload` either.
+   *
+   * **The leave guards are what this restores, and they are not the whole of
+   * what a user sees.** `EditorView`'s “Unsaved changes” indicator is gated on
+   * being attached to a record, so a detached document shows nothing whether it
+   * is dirty or not — true before this change and true after it, and true of the
+   * audit hand-off as well, which `e2e/the-label-audit.spec.ts` pins. That gap is
+   * in `docs/BACKLOG.md`; it is a separate decision from this one.
+   *
+   * `docs/BACKLOG.md` asked a narrower version of the defect itself, about
+   * `/labels/new`, where the answer turns out to be no — the route watcher only
+   * reaches a document that came from a saved label, and that path is this one.
+   *
+   * It also subsumes the phase 7 guard that used to stand here, for the path
+   * that guard was written for. `if (savedId === null) return` existed so a
+   * document handed over from `/audit` could not be rebased by `EditorView`'s
+   * route watcher on mount; nothing rebases here any more, so there is no rebase
+   * left to prevent and an assignment of `null` over `null` is not worth
+   * guarding. **The type watcher below keeps its own `savedId` check, and it is
+   * not the same guard** — it protects the same hand-off from a different
+   * rebase, the one that watcher does itself. Removing it produced a false
+   * clearance; the note there says how.
    */
   function detach(): void {
-    // Nothing attached, nothing to let go of — and rebasing anyway is how an
-    // audited label lost its dirtiness. `EditorView`'s route watcher calls this
-    // on mount at `/labels/new`, so a document handed over from `/audit`
-    // arrived dirty, was mounted, and went clean before anyone could look at
-    // it: both leave guards silent over work somebody did with a camera in
-    // their hand. Reproduced by mounting the editor after `loadUnsaved` —
-    // dirty before, clean after.
-    if (savedId.value === null) return
     savedId.value = null
-    // Rebased rather than cleared: the document carries on existing and is still
-    // worth defending, it just no longer belongs to a stored record.
-    baseline.value = detachedSnapshot()
   }
 
   // The seeded document is the baseline until something is written, so an
@@ -529,8 +553,35 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    */
   watch(
     labelType,
-    () => {
-      if (!labelTypeIsLoading && savedId.value !== null) detach()
+    (_next, previous) => {
+      // **Attached documents only, and that restriction is load-bearing.** A
+      // detached one may be an audit hand-off, whose baseline `loadUnsaved`
+      // deliberately leaves describing a different type — that mismatch is what
+      // holds `isDirty` true over work somebody did with a camera in their hand.
+      // Rebasing a detached document reads that mismatch as “nothing to lose”
+      // the moment the user switches type away and back, and writes the
+      // confirmed audit data into the baseline: both guards then go silent on a
+      // document that has never been saved. Reproduced, and it is the reason
+      // this condition is not the tidier `labelTypeIsLoading` alone.
+      if (labelTypeIsLoading || savedId.value === null) return
+
+      // Asked of the type being *left*, and before detaching. A switch moves
+      // `snapshot` to the new type, so measuring it against a baseline recorded
+      // for the old one reports “edited” however untouched the label was — the
+      // comparison is only meaningful on one side of the change, and this is
+      // that side.
+      const carriedUnsavedWork =
+        baseline.value !== null && !sameDocument(snapshotFor(previous), baseline.value)
+
+      detach()
+
+      // **Only a document with nothing to lose is rebased.** A saved label the
+      // user merely looked at is not unsaved work, and prompting on the way out
+      // of a type switch nobody typed into is a false positive they cannot
+      // argue with. One they had edited is, and its baseline stays where it is
+      // so the leave guards keep asking about it — which is the defect this
+      // replaced.
+      if (!carriedUnsavedWork) baseline.value = detachedSnapshot()
     },
     { flush: 'sync' },
   )
