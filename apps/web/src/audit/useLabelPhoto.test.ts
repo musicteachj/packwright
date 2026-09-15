@@ -170,6 +170,31 @@ describe('the camera', () => {
     expect(stop).toHaveBeenCalled()
   })
 
+  it('does not orphan a live camera when it is started again', async () => {
+    // A frame that could not be read leaves the state at `failed` with the
+    // camera still running, and `start()` proceeds from `failed`. Without
+    // releasing first, the second start overwrote the only reference to the
+    // first stream and left it running for the life of the page.
+    const first = fakeStream()
+    const second = fakeStream()
+    const broken: PhotoPipeline = {
+      decode: vi.fn().mockRejectedValue(new DOMException('bad', 'InvalidStateError')),
+      encode: async () => new Uint8Array(),
+    }
+    const getMedia = vi
+      .fn()
+      .mockResolvedValueOnce(first.stream)
+      .mockResolvedValueOnce(second.stream)
+    const { photo } = mountPhoto({ getMedia, pipeline: broken })
+
+    await photo.start()
+    await photo.fromFile(new Blob())
+    expect(photo.state.value).toBe('failed')
+
+    await photo.start()
+    expect(first.stop, 'the first camera should have been let go').toHaveBeenCalled()
+  })
+
   it('does not capture when there is nothing to capture from', async () => {
     const { photo } = mountPhoto({ getMedia: failing('NotAllowedError'), pipeline: pipeline() })
     await photo.capture()

@@ -48,6 +48,24 @@ export const GHS_ELEMENTS = {
 export const GHS_SIGNAL_WORDS = ['Danger', 'Warning'] as const
 export type GhsSignalWord = (typeof GHS_SIGNAL_WORDS)[number]
 
+/**
+ * A signal word as CLP Article 20 spells it, whatever case a label printed.
+ *
+ * Real labels print DANGER and WARNING in capitals and the codified strings are
+ * title case, so something has to reconcile the two. It lives here rather than
+ * beside either caller because the extraction endpoint and the confirm screen
+ * both have to reach the same answer — and they did not: the endpoint folded
+ * case and the screen matched exactly, so editing a field to `DANGER` had it
+ * marked unusable under a banner claiming this build has no wording for it.
+ *
+ * Case only. `DANGER` and `Danger` are one codified word in different type,
+ * which is a different thing from a paraphrase, and nothing here touches that.
+ */
+export function canonicalSignalWord(word: string): GhsSignalWord | undefined {
+  const trimmed = word.trim().toLowerCase()
+  return GHS_SIGNAL_WORDS.find((known) => known.toLowerCase() === trimmed)
+}
+
 /** CLP Article 17(1)(a): the supplier's name, address and telephone number. */
 export interface GhsSupplier {
   name: string

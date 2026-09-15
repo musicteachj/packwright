@@ -3,6 +3,7 @@ import {
   FIELD_SHAPES,
   READING_KEYS,
   entryIsUsable,
+  unusableReason,
   formatValue,
   parseValue,
   partitionEntries,
@@ -95,6 +96,9 @@ describe('the text a field is shown and edited as', () => {
   })
 })
 
+const canonicalEntryOf = (key: 'signalWords', text: string) =>
+  partitionEntries(key, 'eu-clp', text).usable[0]
+
 describe('which statement codes a label can actually carry', () => {
   it('accepts a code the tables have verified text for', () => {
     expect(entryIsUsable('hazardStatementCodes', 'eu-clp', 'H225')).toBe(true)
@@ -121,6 +125,23 @@ describe('which statement codes a label can actually carry', () => {
     expect(entryIsUsable('pictograms', 'eu-clp', 'GHS99')).toBe(false)
     expect(entryIsUsable('signalWords', 'eu-clp', 'Danger')).toBe(true)
     expect(entryIsUsable('signalWords', 'eu-clp', 'Caution')).toBe(false)
+  })
+
+  it('accepts a signal word in the case labels actually print it', () => {
+    // The endpoint folds case; matching exactly here meant an edited `DANGER` —
+    // which is what the sample label prints — was marked unusable under a
+    // banner claiming this build had no wording for it.
+    expect(entryIsUsable('signalWords', 'eu-clp', 'DANGER')).toBe(true)
+    expect(canonicalEntryOf('signalWords', 'DANGER')).toBe('Danger')
+  })
+
+  it('says something that fits the field it is talking about', () => {
+    // One sentence for all four read "this build has no verified wording for
+    // the European Union", which is about statement text and says nothing true
+    // about a rejected pictogram code.
+    expect(unusableReason('hazardStatementCodes', 'EU')).toContain('verified wording')
+    expect(unusableReason('pictograms', 'EU')).toContain('pictogram code')
+    expect(unusableReason('signalWords', 'EU')).toContain('Article 20')
   })
 
   it('accepts a code spelled the way the server accepts it', () => {

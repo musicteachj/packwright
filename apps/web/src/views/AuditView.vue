@@ -40,8 +40,10 @@ import {
   FIELD_SHAPES,
   READING_KEYS,
   formatValue,
+  isListKey,
   parseValue,
   partitionEntries,
+  unusableReason,
   type ReadingKey,
 } from '../audit/readingRows'
 import SiteHeader from '../components/SiteHeader.vue'
@@ -75,11 +77,23 @@ const editing = ref<ReadingKey | null>(null)
 const chosenRegime = computed(() => (regime.value === '' ? 'eu-clp' : regime.value))
 
 watch(regime, () => {
-  // A regime change re-decides which statement codes this build can carry, so
-  // an acceptance made under the previous one is no longer a decision about
-  // what is on screen.
-  accepted.value = new Set()
+  // The whole reading goes, not merely the acceptances. The regime is sent with
+  // the request, so a reading belongs to the market it was made under: keeping
+  // it across a change meant a us-osha reading re-judged under CLP, and — since
+  // `chosenRegime` falls back to `eu-clp` — re-judged under CLP merely for
+  // returning the select to "Choose a market". Clearing it also makes that
+  // fallback unreachable while there is anything on screen to judge.
+  forgetReading()
 })
+
+function forgetReading() {
+  reading.value = null
+  texts.value = {}
+  accepted.value = new Set()
+  editing.value = null
+  readingError.value = null
+  readingDetail.value = []
+}
 
 const rows = computed(() =>
   READING_KEYS.flatMap((key) => {
@@ -87,23 +101,45 @@ const rows = computed(() =>
     if (text === undefined) return []
     const field = reading.value?.extraction.fields[key]
     const { unusable } = partitionEntries(key, chosenRegime.value, text)
+    const asRead = field === undefined ? undefined : formatValue(key, field.value)
     return [
       {
         key,
         ...FIELD_SHAPES[key],
         text,
-        confidence: field?.confidence ?? 0,
+        // Dropped once the text differs from what was read. A confidence is the
+        // model's account of how clearly it could read something; carried over
+        // an edit it becomes a number about text the model never saw, sitting
+        // beside it as though it still meant something.
+        confidence: asRead === text ? (field?.confidence ?? null) : null,
         unusable,
+        unusableReason: unusableReason(key, REGIME_NAMES[chosenRegime.value]),
+        contributes: contributes(key, text),
       },
     ]
   }),
 )
 
-/** What a row would contribute, with codes this build cannot carry left out. */
+/**
+ * What a row would contribute, with entries this build cannot carry left out.
+ *
+ * A list field always goes through `partitionEntries`, never through
+ * `parseValue`. The first version took the raw parse whenever nothing was
+ * unusable, which looked like a shortcut and threw away the canonicalisation on
+ * every clean list: an edited `h225` was confirmed verbatim, and the engine
+ * looks these up by exact key, so the label drew nothing and recorded an
+ * omission. Its test passed because it called `partitionEntries` directly and
+ * never came through here.
+ */
 function valueOf(key: ReadingKey, text: string): unknown {
-  const { usable, unusable } = partitionEntries(key, chosenRegime.value, text)
-  if (unusable.length === 0) return parseValue(key, text)
+  if (!isListKey(key)) return parseValue(key, text)
+  const { usable } = partitionEntries(key, chosenRegime.value, text)
   return usable.length === 0 ? undefined : usable
+}
+
+/** Whether accepting this row would actually put anything in the document. */
+function contributes(key: ReadingKey, text: string): boolean {
+  return valueOf(key, text) !== undefined
 }
 
 const working = computed<ExtractionResult<GhsLabelData>>(() => {
@@ -179,25 +215,31 @@ async function onFile(event: Event) {
  * reading of photo A while looking at photo B. Watched rather than cleared at
  * each call site because there are two ways a photograph arrives.
  */
-watch(
-  () => camera.photo.value,
-  () => {
-    reading.value = null
-    texts.value = {}
-    accepted.value = new Set()
-    editing.value = null
-    readingError.value = null
-    readingDetail.value = []
-  },
-)
+watch(() => camera.photo.value, forgetReading)
+
+/**
+ * Bumped by anything that invalidates a reading in flight.
+ *
+ * `read()` takes a while and the photograph, the market and the discard button
+ * are all still reachable while it does. Without this, a reading of photo A
+ * landed after the watcher had cleared the screen for photo B — repopulating
+ * the rows under a preview of a different label, which is exactly what that
+ * watcher exists to prevent.
+ */
+let readGeneration = 0
+watch([() => camera.photo.value, regime], () => {
+  readGeneration += 1
+})
 
 async function read() {
   if (camera.photo.value === null || regime.value === '') return
+  const mine = ++readGeneration
   busy.value = true
   readingError.value = null
   readingDetail.value = []
   try {
     const result = await readGhsLabel(camera.photo.value, regime.value)
+    if (mine !== readGeneration) return
     reading.value = result
     accepted.value = new Set()
     editing.value = null
@@ -208,6 +250,7 @@ async function read() {
       }),
     )
   } catch (caught) {
+    if (mine !== readGeneration) return
     reading.value = null
     texts.value = {}
     readingError.value =
@@ -216,7 +259,7 @@ async function read() {
         : 'The label could not be read. Please try again.'
     readingDetail.value = caught instanceof AuditError ? caught.detail : []
   } finally {
-    busy.value = false
+    if (mine === readGeneration) busy.value = false
   }
 }
 
@@ -408,7 +451,10 @@ const canRead = computed(() => camera.photo.value !== null && regime.value !== '
             <div class="flex flex-wrap items-baseline justify-between gap-2">
               <span class="text-chrome-100 text-sm">{{ row.label }}</span>
               <span class="numeric text-chrome-400 text-xs">
-                confidence {{ row.confidence.toFixed(2) }}
+                <template v-if="row.confidence !== null">
+                  confidence {{ row.confidence.toFixed(2) }}
+                </template>
+                <template v-else>edited</template>
               </span>
             </div>
 
@@ -433,9 +479,8 @@ const canRead = computed(() => camera.photo.value !== null && regime.value !== '
               class="border-caution text-caution border-l-2 pl-3 text-xs"
               :data-unusable="row.key"
             >
-              {{ row.unusable.join(', ') }} — read from the label, but this build has no verified
-              wording for {{ REGIME_NAMES[chosenRegime] }}. It cannot be carried into a label here,
-              and accepting this field takes the remaining codes only.
+              {{ row.unusable.join(', ') }} — {{ row.unusableReason }}. It cannot be carried into a
+              label here, and accepting this field takes the rest only.
             </p>
 
             <div class="flex flex-wrap gap-2">
@@ -443,11 +488,22 @@ const canRead = computed(() => camera.photo.value !== null && regime.value !== '
                 type="button"
                 :class="[BUTTON, 'px-2 py-1 text-xs']"
                 :aria-pressed="accepted.has(row.key)"
+                :disabled="!row.contributes"
                 :data-test="`accept-${row.key}`"
                 @click="toggle(row.key)"
               >
                 {{ accepted.has(row.key) ? 'Accepted' : 'Accept' }}
               </button>
+              <!--
+                Disabled rather than silently inert. A field edited down to
+                something the parser rejects — a supplier with only a name, a
+                list of nothing — took the click, recorded the acceptance and
+                contributed nothing, with no way to tell that from a field that
+                had worked.
+              -->
+              <span v-if="!row.contributes" class="text-caution self-center text-xs">
+                Nothing to accept yet.
+              </span>
               <button
                 type="button"
                 :class="[BUTTON, 'px-2 py-1 text-xs']"

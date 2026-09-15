@@ -242,6 +242,44 @@ describe('a second photograph', () => {
   })
 })
 
+describe('a reading still in flight', () => {
+  it('does not land on a photograph nobody asked about', async () => {
+    // `read()` takes a while, and the photograph, the market and the discard
+    // button are all reachable while it does. Without a generation guard the
+    // reading of photo A arrived after the watcher had cleared the screen for
+    // photo B, repopulating the rows under a preview of a different label —
+    // exactly what that watcher exists to prevent.
+    let answer: ((value: unknown) => void) | undefined
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockReturnValue(
+        new Promise((resolve) => {
+          answer = () => resolve({ ok: true, status: 200, json: async () => READING } as Response)
+        }),
+      ),
+    )
+    const wrapper = mount(AuditView, {
+      global: { plugins: [testRouter('/audit')], stubs: { RouterLink: true } },
+    })
+    await flushPromises()
+    await wrapper.find('[data-test="regime"]').setValue('eu-clp')
+    const input = wrapper.find('[data-test="photo-file"]')
+    Object.defineProperty(input.element, 'files', { value: [new Blob()], configurable: true })
+    await input.trigger('change')
+    await flushPromises()
+
+    await wrapper.find('[data-test="read"]').trigger('click')
+    // A second photograph arrives before the first reading comes back.
+    await input.trigger('change')
+    await flushPromises()
+
+    answer?.(undefined)
+    await flushPromises()
+
+    expect(wrapper.find('[data-field="productIdentifier"]').exists()).toBe(false)
+  })
+})
+
 describe('a measurement that is not one', () => {
   it('does not count as having been supplied', async () => {
     // `Number.parseFloat` reads `12mm abc` as 12 and `0` as a size, so a gap
@@ -277,6 +315,71 @@ describe('an edited list', () => {
     expect(shown).toContain('H225')
     expect(shown).not.toContain('NOT-A-CODE')
     expect(wrapper.find('[data-unusable="hazardStatementCodes"]').text()).toContain('NOT-A-CODE')
+  })
+})
+
+describe('an edited value on its way into the document', () => {
+  it('is stored in the spelling the engine looks up', async () => {
+    // Through the screen, not through `partitionEntries`. The first version of
+    // this took the raw parse whenever nothing was unusable, so an edited
+    // `h225` was confirmed verbatim and the engine — which looks these up by
+    // exact key — drew nothing. The test that should have caught it called the
+    // partitioner directly and never came through here.
+    const wrapper = await readALabel(await mountAudit())
+    await wrapper.findAll('[data-field="hazardStatementCodes"] button')[1]!.trigger('click')
+    // Two *hazard* codes, both usable once case is folded. The first version of
+    // this test used `p337+p313` — a precautionary code in the hazard field, so
+    // it was unusable, the partitioned branch ran, and the bypass this test
+    // exists for was never reached. It passed against the bug.
+    await wrapper.find('[data-test="edit-hazardStatementCodes"]').setValue('h225, h319')
+    expect(wrapper.find('[data-unusable="hazardStatementCodes"]').exists()).toBe(false)
+
+    await wrapper.find('[data-test="accept-hazardStatementCodes"]').trigger('click')
+    const shown = wrapper.find('[data-test="document"]').text()
+    expect(shown).toContain('H225, H319')
+    expect(shown).not.toContain('h225')
+  })
+
+  it('cannot be accepted when there would be nothing to accept', async () => {
+    // A supplier with only a name parses to nothing. The button used to take
+    // the click, record the acceptance and contribute nothing, with no way to
+    // tell that from a field that had worked.
+    const wrapper = await readALabel(await mountAudit())
+    await wrapper.findAll('[data-field="productIdentifier"] button')[1]!.trigger('click')
+    await wrapper.find('[data-test="edit-productIdentifier"]').setValue('   ')
+
+    expect(
+      wrapper.find('[data-test="accept-productIdentifier"]').attributes('disabled'),
+    ).toBeDefined()
+  })
+
+  it('stops carrying a confidence the model never gave it', async () => {
+    // A confidence is the model's account of how clearly it read something.
+    // Over an edit it becomes a number about text the model never saw, sitting
+    // beside it as though it still meant something.
+    const wrapper = await readALabel(await mountAudit())
+    expect(wrapper.find('[data-field="productIdentifier"]').text()).toContain('confidence 0.99')
+
+    await wrapper.findAll('[data-field="productIdentifier"] button')[1]!.trigger('click')
+    await wrapper.find('[data-test="edit-productIdentifier"]').setValue('Propan-2-one')
+
+    const row = wrapper.find('[data-field="productIdentifier"]').text()
+    expect(row).not.toContain('confidence')
+    expect(row).toContain('edited')
+  })
+})
+
+describe('changing the market after a reading', () => {
+  it('puts the reading away, because it was made under the old one', async () => {
+    // The regime is sent with the request, so a reading belongs to the market
+    // it was made under. Keeping it meant a us-osha reading re-judged under
+    // CLP — and `chosenRegime` falls back to `eu-clp`, so merely returning the
+    // select to "Choose a market" did it too.
+    const wrapper = await readALabel(await mountAudit())
+    expect(wrapper.find('[data-field="productIdentifier"]').exists()).toBe(true)
+
+    await wrapper.find('[data-test="regime"]').setValue('us-osha')
+    expect(wrapper.find('[data-field="productIdentifier"]').exists()).toBe(false)
   })
 })
 

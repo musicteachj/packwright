@@ -81,6 +81,14 @@ export function useLabelPhoto(options: LabelPhotoOptions) {
     state.value = 'starting'
     message.value = null
 
+    // Anything still open is let go before another is asked for. A frame that
+    // could not be read leaves the state at `failed` with the camera still
+    // running, and `start()` proceeds from `failed` — so without this the
+    // assignment below overwrote the only reference to a live stream and
+    // orphaned it for the life of the page.
+    releaseStream()
+    generation = mine
+
     let opened: MediaStream
     try {
       opened = await media(CAMERA)

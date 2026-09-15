@@ -14,8 +14,8 @@
  */
 
 import {
+  canonicalSignalWord,
   canonicalStatementCode,
-  GHS_SIGNAL_WORDS,
   hazardStatementText,
   isPictogramRecognised,
   precautionaryStatementText,
@@ -71,7 +71,23 @@ const LIST_KEYS = [
   'precautionaryStatementCodes',
 ] as const satisfies readonly ReadingKey[]
 
-const isListKey = (key: ReadingKey): boolean => (LIST_KEYS as readonly string[]).includes(key)
+export const isListKey = (key: ReadingKey): boolean =>
+  (LIST_KEYS as readonly string[]).includes(key)
+
+/** What a rejected entry in this field is, said in words that fit the field. */
+export function unusableReason(key: ReadingKey, regimeName: string): string {
+  switch (key) {
+    case 'hazardStatementCodes':
+    case 'precautionaryStatementCodes':
+      return `this build has no verified wording for ${regimeName}`
+    case 'pictograms':
+      return `not a pictogram code ${regimeName} recognises`
+    case 'signalWords':
+      return 'not one of the two signal words CLP Article 20 defines'
+    default:
+      return 'not a value this build can carry'
+  }
+}
 
 /**
  * Whether an entry in a list field is one a label here can carry.
@@ -102,7 +118,11 @@ export function entryIsUsable(key: ReadingKey, regime: GhsRegime, entry: string)
       // one on a US label.
       return isPictogramRecognised(regime, entry.trim().toUpperCase() as GhsPictogramCode)
     case 'signalWords':
-      return (GHS_SIGNAL_WORDS as readonly string[]).includes(entry.trim())
+      // Case-folded, through `label-core`'s own function, because the endpoint
+      // folds case too. Matching exactly here meant an edited `DANGER` — which
+      // is what labels actually print — was marked unusable under a banner
+      // claiming this build had no wording for it.
+      return canonicalSignalWord(entry) !== undefined
     default:
       return true
   }
@@ -114,6 +134,7 @@ export function canonicalEntry(key: ReadingKey, entry: string): string {
     return canonicalStatementCode(entry)
   }
   if (key === 'pictograms') return entry.trim().toUpperCase()
+  if (key === 'signalWords') return canonicalSignalWord(entry) ?? entry.trim()
   return entry.trim()
 }
 
