@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { knownHazardStatementCodes } from '@packwright/label-core'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
 import { testRouter } from './editorTestRouter'
@@ -239,5 +240,78 @@ describe('the small container path is reachable from the editor', () => {
     await nextTick()
     // CLP 1.5.1.2 names no such statement, so the field is not offered.
     expect(wrapper.find('#field-outer-statement').exists()).toBe(false)
+  })
+})
+
+describe('the statement rail belongs to the label\u2019s regime', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('does not caption a code on a US label with the EU wording for it', async () => {
+    // `textFor` read `EU_CLP_HAZARD_STATEMENTS` directly, so any code sitting on
+    // a `us-osha` label was captioned with CLP text — the cross-regime
+    // substitution `ghs/statements.ts` exists to prevent, printed in the editor
+    // beside the code it misdescribes.
+    //
+    // **Reached the way a user reaches it**, which is three clicks: choose EU,
+    // pick a statement, then change Market. Nothing clears the codes on a regime
+    // change — see `docs/BACKLOG.md` — so the label keeps them and the rail was
+    // captioning them out of the wrong regulation.
+    const store = useLabelDocumentStore()
+    store.labelType = 'ghs-chemical'
+    store.ghsData.regime = 'eu-clp'
+    store.ghsData.hazardStatementCodes = ['H225']
+    const wrapper = mountEditor()
+    await nextTick()
+
+    expect(
+      wrapper
+        .findAll('li')
+        .find((li) => li.text().includes('H225'))
+        ?.text(),
+      'the premise: it is captioned correctly before the switch',
+    ).toContain('Highly flammable liquid and vapour')
+
+    await wrapper.find('#field-ghs-regime').setValue('us-osha')
+    await nextTick()
+    expect(
+      store.ghsData.hazardStatementCodes,
+      'the premise: changing market keeps the codes',
+    ).toEqual(['H225'])
+
+    const chip = wrapper.findAll('li').find((li) => li.text().includes('H225'))
+    expect(chip, 'the premise: the code has to be on screen at all').toBeDefined()
+    expect(
+      chip?.text(),
+      'this build has no verified us-osha wording, so it must show none',
+    ).not.toContain('Highly flammable')
+    expect(chip?.text().replace(/[\s\u00d7]/g, '')).toBe('H225')
+  })
+
+  it('still captions the same code on an EU label', async () => {
+    // The other half: the fix must not silence a caption that was correct.
+    const store = useLabelDocumentStore()
+    store.labelType = 'ghs-chemical'
+    store.ghsData.regime = 'eu-clp'
+    store.ghsData.hazardStatementCodes = ['H225']
+    const wrapper = mountEditor()
+    await nextTick()
+
+    const chip = wrapper.findAll('li').find((li) => li.text().includes('H225'))
+    expect(chip?.text()).toContain('Highly flammable liquid and vapour')
+  })
+
+  it('offers a US label nothing to choose, because the table is empty', async () => {
+    // Asserted through the emptiness of the table rather than through the regime
+    // name, which is what the rail used to test. The two agree today and would
+    // part company the day Appendix C.4 is transcribed.
+    const store = useLabelDocumentStore()
+    store.labelType = 'ghs-chemical'
+    store.ghsData.regime = 'us-osha'
+    const wrapper = mountEditor()
+    await nextTick()
+
+    expect(knownHazardStatementCodes('us-osha'), 'the premise').toHaveLength(0)
+    const options = wrapper.findAll('select option').filter((o) => /^H\d{3}/.test(o.text()))
+    expect(options).toHaveLength(0)
   })
 })

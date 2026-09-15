@@ -37,6 +37,93 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A `us-osha` label's statement codes were validated against the EU table.** Both arrays in `GhsRequest`
+  were `z.enum(knownHazardStatementCodes('eu-clp'))` whatever the `regime` field three lines above them said,
+  so the saved-label and export routes judged a US label against CLP. Latent only because H- and P-numbers are
+  UN GHS codes both regimes adopt — and the reason it was latent is the reason it could not be fixed as an
+  enum: `US_OSHA_HAZARD_STATEMENTS` is empty, a regime-correct enum would therefore be empty, and `z.enum`
+  cannot express that. The `as [string, ...string[]]` cast was what hid it.
+
+  It is a refinement now, asking what `apps/api/src/audit` and the confirm screen already ask: is there
+  verified text for this code under this regime. Four validation sites, one mechanism. The message names the
+  code and the regime rather than reading “invalid enum value” against a field a caller cannot edit their way
+  out of, and an empty table is reported once for the field instead of once per code — eleven identical
+  sentences read like eleven defects on the label rather than one gap in this build.
+
+  **It makes a sentence the audit endpoint already prints true.** `GHS_STATEMENT_TABLE_EMPTY` tells a user
+  that “the saved-label and export routes admit only codes with verified text”, which under `us-osha` was
+  precisely what this defect made false.
+
+  Two things had to be split to do it. `.omit()` throws at runtime on a Zod object carrying an object-level
+  refinement while still type-checking, so `GhsRequestShape` is the plain object and the check is applied to
+  it twice — once for `GhsRequest`, once after `LabelDocumentInput` omits `stock`. `UsFoodRequestBase` was
+  already split this way for the same reason.
+
+- **Codes are canonicalised on the way in, so the spellings every other layer accepts now reach storage.** The
+  enum admitted only the tables' exact keys, so `P337+P313` or `h225` — both taken by the extraction endpoint
+  and the confirm screen — came back 400 from the routes beside them. They go through
+  `canonicalStatementCode` in the schema, which is also what the refinement reads, so the two cannot disagree
+  about what a code is. The engine looks these up by exact key, so storing the canonical form is the point:
+  a confirmed `p337+p313` would otherwise draw nothing and blame the label for our punctuation.
+
+  **They are deduplicated in the same breath**, which is the half of `extract.ts`'s `resolvable()` that had to
+  come with the canonicalising and nearly did not. The engine draws one statement per entry, so `H225` twice
+  is the statement printed twice on the exported PDF — something the old enum already allowed for an exact
+  repeat, and which canonicalising alone would have extended to `h225` beside `H225`.
+
+  The doc block explaining why a lookup never falls back to another regime — the sentence this whole change
+  rests on — was sitting above `canonicalStatementCode` rather than above the lookups, which had none. Moved.
+
+  Two things about what the rejection *says*, both found reviewing it. The issue path names the field rather
+  than an index, because after canonicalising and deduplicating the position no longer lines up with what the
+  caller sent — `['H225', 'h225', 'H999']` reported `hazardStatementCodes.1`, pointing a client at its own
+  valid `h225`. The code is named in the message, which is the part that locates it. And an entry of pure
+  whitespace has a length, so it passed `.min(1)` and canonicalised to nothing, producing ““” has no verified
+  text” — a complaint about a code the caller cannot go and look for. It is `.trim().min(1)` now, and the
+  regime check skips an empty code rather than complaining about it twice.
+
+- **`canonicalStatementCode` rewrote one of the table's own keys.** CLP keys an entry
+  `'P370 + P380 + P375 [+ P378]'`, where the `+` inside the bracket is the regulation's notation for an
+  optional component and sits against it. Spacing every `+` alike turned that into `'[ + P378]'`, so
+  canonicalising the key produced something the table does not contain. Latent while the schema used an enum
+  that took the key verbatim; the moment validation started canonicalising first, the one code the editor's
+  dropdown offers for that entry was refused on export and on save. It also means the audit paths, which have
+  canonicalised before looking up since phase 7, have been warning that code as unrecognised all along.
+
+  `statements.test.ts` now pins the invariant that makes this checkable rather than remembered: **every key in
+  every table canonicalises to itself.** That is the assertion that would have caught it, and it is derived
+  from the tables rather than from a list someone typed.
+
+  It does not close the wider bracket problem in `docs/BACKLOG.md`, and checking it turned up that **that
+  entry's premise is false** — a claim this changelog repeated once before it was checked.
+  `'P370 + P380 + P375'` is its own key with its own text, so a label that did not use P378 resolves already.
+  What resolves to nothing is a label that *did* use it and printed it without the regulation's bracket
+  notation. The correction matters because the obvious fix for the entry as written — map the un-bracketed
+  code onto the bracketed key — would append “[Use … to extinguish].” to a label that never carried P378.
+  One key in 199 has a bracket, which is the count that entry asked someone to establish.
+
+- **The editor captioned a code on a US label with the EU wording for it.** `GhsFormRail`'s `textFor` read
+  `EU_CLP_HAZARD_STATEMENTS` directly rather than going through the regime, so a `us-osha` label carrying
+  `H225` displayed “Highly flammable liquid and vapour.” beside it — the cross-regime substitution
+  `ghs/statements.ts` exists to prevent, printed in the editor next to the code it misdescribes. **Three
+  clicks away**, and not by way of a stored record: choose EU, pick a statement, change Market. Nothing clears
+  the codes on a regime change, which is now its own `docs/BACKLOG.md` entry, and the test drives exactly that
+  path rather than assembling the end state — an earlier version assembled it and justified itself with a
+  stored record that `GET /labels/:id` would in fact refuse to serve. The options list went the same way, from
+  a `regime === 'eu-clp'` ternary to
+  `knownHazardStatementCodes(regime)` — which behaves identically today and stops behaving identically the
+  day Appendix C.4 is transcribed, without anybody having to remember this file.
+
+- **`own()` was an untested guard, and this change made it load-bearing again.** It exists because
+  `table['constructor']` returns a function rather than `undefined` on a plain object literal, which once
+  sailed past a `!== undefined` check and crashed the layout engine on `text.split` — a 500 from a
+  well-formed request. Widening the schema from an enum back to free strings points that surface at it again.
+  Removing `Object.hasOwn` broke nothing in the suite, including the API-level case written for it here:
+  every caller canonicalises to upper case first, and nothing on `Object.prototype` is spelt in capitals, so
+  an accident was doing the work. `statements.test.ts` now puts the raw names in, where the accident cannot
+  help, and the comment above `own()` says which callers it is about rather than “the API” — a sentence that
+  has been true, then false, then true again as the schema changed underneath it.
+
 - **Detaching a saved label absorbed the unsaved edit it was carrying.** `detach()` rebased the baseline onto
   the document in front of it, beneath a comment saying that document “is still worth defending” — and
   rebasing is precisely what stops defending it, because every edit made before the detach is folded into the

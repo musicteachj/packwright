@@ -368,20 +368,46 @@ requested at all in stage 1. Highlighting the part of a photograph a value came 
 on the confirm screen, and the vision documentation calls its localisation approximate, so it needs a
 deliberate decision about what an approximate region may be used for before it needs a type.
 
-**`GhsRequest` validates a `us-osha` label's statement codes against the EU table.** `schemas.ts:162-167` keys
-both code arrays to `knownHazardStatementCodes('eu-clp')` regardless of the `regime` field beside them. In
-practice the EU list is a superset for the codes that matter, since H- and P-numbers are UN GHS codes both
-regimes adopt — so this is latent rather than biting, and *why* it is latent is the point:
-`US_OSHA_HAZARD_STATEMENTS` is empty, so a regime-correct enum would reject every code on every US label. The
-two are one problem, it stops being latent the day Appendix C.4 is transcribed, and the fix is the same fix.
+**~~`GhsRequest` validates a `us-osha` label's statement codes against the EU table.~~ Fixed.** See
+`CHANGELOG.md`. The premise that the two were “one problem” and needed the same fix turned out to be wrong,
+and that is the part worth keeping: transcribing Appendix C.4 was never required. An enum could not be made
+regime-correct at all — it is built at module load and a correct one would be empty under `us-osha`, which
+`z.enum` cannot express — so the fix was to stop using one and ask the table the same question every other
+layer asks. The transcription is still wanted, and it is now an independent piece of work rather than a
+blocker.
 
-**It is no longer only latent, and stage 2 has to handle it.** A photograph can carry a code this build has
-no text for — `H999`, or any real code the tables happen to miss — and extraction reports it with a warning
-rather than dropping it, which is right. But `GhsRequest` then refuses the *whole* label, so confirming that
-reading makes the label unsavable and unexportable with a 400 naming a field the user cannot edit their way
-out of. The confirm step therefore cannot simply hand everything it was given to the save route: it has to
-either refuse to confirm an unrecognised code, or drop it with the user's agreement. That is a decision about
-the confirm screen and belongs with it, not here — but it is a constraint on stage 2 rather than a wish.
+**Changing the market does not clear the statement codes chosen under the old one.** `GhsFormRail`'s Market
+control is a plain `v-model="data.regime"`, so choosing EU, picking `H225`, and switching to US OSHA leaves
+the code on a label whose regime has no text for it. Three clicks. The rail no longer *captions* it out of the
+wrong regulation — that was the defect fixed here — but the code is still there, the engine will record an
+omission for it, and the export route will now refuse the label outright.
+
+Not fixed here because what should happen is a real question rather than an oversight. Silently dropping a
+user's chosen statements when they change a dropdown is its own kind of data loss; keeping them and reporting
+the label is honest but obstructive; the audit confirm screen's answer — show them, mark them uncarriable,
+carry the rest — is probably the right shape and is a piece of interface work rather than a guard.
+
+**A label already stored with EU codes on a `us-osha` regime can no longer be opened.** `GET /labels/:id`
+re-validates the stored document against `LabelDocumentInput` and answers 500 when it does not match —
+deliberately, and it names the id so the record can be found. Tightening the schema is what makes an existing
+record fail it, and `PUT` validates the same shape, so nothing in the application can repair one.
+
+The practical risk is nil today: nothing is deployed, `main` is 89 commits behind `dev`, and there is no
+database that outlives a developer's laptop. It is recorded because it is the shape of problem that stops
+being free the moment phase 8 happens — the first schema tightening after deployment needs a migration, or a
+read path that repairs rather than refuses, and this is the first change that would have needed one.
+
+**Whether an unrecognised statement code should be a 400 at all is still open.** The schema refuses one; the
+layout engine, handed the same code, records an omission saying it drew nothing for it and carries on
+(`ghsEngine.ts:249-264`). Those are two different answers to one question, and only the schema's is visible to
+a user — as a rejected label rather than as a label that says what is missing from it. The audit path already
+chose the third position: show the code, refuse to confirm it, save the rest.
+
+Rejecting is kept for now because it is what the audit endpoint's own warnings promise, and because a silently
+accepted code produces a label that looks complete and is not. But the alternative is defensible and arguably
+better: admit the code, let the omission report it, and let a rule judge it. That decision wants making
+deliberately, and it belongs with whoever transcribes Appendix C.4 — because until then the question only ever
+arises for codes this build cannot spell.
 
 **Nothing derives a hazard classification from the statement codes.** `GhsLabelData.hazards` carries
 `ANNEX_V_ENTRIES` ids, and CLP Article 26 precedence turns on them — `ghs/pictogram-set` and
@@ -391,14 +417,26 @@ A deterministic H-code to hazard-class mapping would close that, and it is a ref
 provenance requirements rather than a function — Annex VI, read and verified, not inferred. Emphatically not a
 job for the model: a classification it guessed would make the precedence rule judge the guess.
 
-**A combination code carrying an optional member cannot be matched.**
-`EU_CLP_PRECAUTIONARY_STATEMENTS` keys one entry `'P370 + P380 + P375 [+ P378]'`, where the bracketed member
-is the regulation's own optional part. Extraction now matches a code regardless of the whitespace around its
-plus signs, which closes the common case, and does nothing for this one: a label printing
-`P370 + P380 + P375` — entirely correctly, having not used P378 — resolves to nothing and is warned as
-unrecognised. The fix is a lookup that understands the bracket rather than more string tidying, and it wants
-someone to read how many entries carry one and whether the bracketed member is ever printed. Not urgent: the
-warning is honest about what happened, and the code is still shown to the user.
+**~~A combination code carrying an optional member cannot be matched.~~ The entry that stood here was wrong,
+and its own suggested fix would have printed regulatory text nobody asked for.** It said a label printing
+`P370 + P380 + P375` — correctly, having not used P378 — resolved to nothing. It does not:
+`'P370 + P380 + P375'` is **its own key** in `EU_CLP_PRECAUTIONARY_STATEMENTS`, with its own text, sitting two
+lines above the bracketed one. Both resolve. The claim was written from reading the bracketed key and
+inferring the rest, which is the shape this file keeps having to correct.
+
+It matters because the fix it proposed — “a lookup that understands the bracket” — reads naturally as mapping
+the un-bracketed code onto the bracketed entry. That would append “[Use … to extinguish].” to a label that
+never carried P378: this project generating regulatory text, which is the one thing it exists not to do.
+
+**The standing questions are answered.** One key in 199 carries a bracket, and it is that one. It has an
+un-bracketed twin, and no other bracketed key does, because there is no other bracketed key.
+
+**What is actually unmatched is the opposite case**, and it is small. A label that *did* use P378 and printed
+the combination as `P370 + P380 + P375 + P378`, or as `[P378]` without the plus, resolves to nothing and is
+warned as unrecognised — verified. Both are a label spelling a real code in a way the regulation does not.
+Aliasing those two spellings onto the bracketed key is safe in a way the reverse is not, because both say
+P378 was used. Still not urgent: the warning is honest, the code is shown to the user, and the canonicaliser
+now collapses every *whitespace* variant of the bracketed form onto the key, which is the common case.
 
 **Nothing compares the statement text a label prints against the text the table holds.** Extraction takes
 codes only where the code itself is printed, and never derives one from wording, because deriving one is how a

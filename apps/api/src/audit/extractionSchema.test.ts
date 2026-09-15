@@ -39,11 +39,13 @@ describe('the GHS extraction schema', () => {
 
   it('takes a statement code as printed, whether or not this build knows it', () => {
     // Deliberate, and the reason is in the module note: the OSHA tables are
-    // empty and `GhsRequest` keys its own enum to eu-clp whatever the regime
-    // says, so a closed set here would leave a US label with no valid code at
+    // empty, so a closed set here would leave a US label with no valid code at
     // all. `extract.ts` classifies; the schema transcribes. Tightening this to
     // an enum would make the model substitute a code it can see for one it
     // cannot, which is the failure the free string exists to avoid.
+    //
+    // This comment used to cite `GhsRequest`'s own eu-clp enum as a second
+    // reason. That enum was a defect and is gone; the reason above is not.
     const parsed = GhsExtraction.safeParse({ hazardStatementCodes: reading(['H225', 'H999']) })
     expect(parsed.success).toBe(true)
     expect(parsed.success && parsed.data.hazardStatementCodes?.value).toEqual(['H225', 'H999'])

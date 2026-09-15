@@ -20,8 +20,11 @@ import {
   GHS_PICTOGRAM_CODES,
   GHS_REGIMES,
   HAZARD_CLASS_IDS,
+  canonicalStatementCode,
+  hazardStatementText,
   knownHazardStatementCodes,
   knownPrecautionaryStatementCodes,
+  precautionaryStatementText,
   GHS_SIGNAL_WORDS,
   getSymbologyConstraints,
   INGREDIENT_THRESHOLD_PERCENTS,
@@ -33,6 +36,7 @@ import {
   US_FOOD_PACKAGINGS,
   type ArtworkBlock,
   type DigitalLinkData,
+  type GhsRegime,
   type GhsSupplier,
   type UsFoodLabelData,
   type UsFoodNetQuantity,
@@ -140,7 +144,108 @@ export const GhsSupplierSchema = z.object({
   telephone: z.string().optional(),
 })
 
-export const GhsRequest = z.object({
+/**
+ * Statement codes, checked against the regime of the label carrying them.
+ *
+ * **The regime was sitting in the same object and was ignored.** Both arrays were
+ * `z.enum(knownHazardStatementCodes('eu-clp'))` whatever `regime` said beside
+ * them, so a `us-osha` label was validated against the EU table. An enum cannot
+ * fix that: it is built once at module load and can never see a request's own
+ * regime, and a regime-correct enum would be *empty* under `us-osha`, which
+ * `z.enum` cannot express at all — the `as [string, ...string[]]` cast is what
+ * used to hide that.
+ *
+ * So it is a refinement instead, asking the same question `apps/api/src/audit`
+ * and the confirm screen already ask: is there verified text for this code under
+ * this regime. Four validation sites, one mechanism.
+ *
+ * It also makes a sentence the audit endpoint already prints true. Its
+ * `GHS_STATEMENT_TABLE_EMPTY` warning tells a user that “the saved-label and
+ * export routes admit only codes with verified text”, which under `us-osha` was
+ * exactly what this defect made false.
+ *
+ * Rejecting rather than dropping is deliberate and unchanged: the engine records
+ * an omission for a code it cannot spell, so a silently-accepted one would leave
+ * a label that looks complete and is not. Whether the two layers should agree the
+ * other way — admit it and let the omission report it — is in `docs/BACKLOG.md`.
+ */
+const distinctCodes = (codes: string[]): string[] => [...new Set(codes.map(canonicalStatementCode))]
+
+const STATEMENT_FIELDS = [
+  {
+    key: 'hazardStatementCodes',
+    noun: 'hazard statement',
+    textFor: hazardStatementText,
+    known: knownHazardStatementCodes,
+  },
+  {
+    key: 'precautionaryStatementCodes',
+    noun: 'precautionary statement',
+    textFor: precautionaryStatementText,
+    known: knownPrecautionaryStatementCodes,
+  },
+] as const
+
+interface StatementCodeCarrier {
+  regime: GhsRegime
+  hazardStatementCodes?: string[] | undefined
+  precautionaryStatementCodes?: string[] | undefined
+}
+
+function statementCodesMatchRegime(value: StatementCodeCarrier, ctx: z.RefinementCtx): void {
+  for (const field of STATEMENT_FIELDS) {
+    const codes = value[field.key]
+    if (codes === undefined || codes.length === 0) continue
+
+    // Said once for the whole field rather than once per code. Under `us-osha`
+    // every code lands here, and eleven identical sentences read like eleven
+    // defects on the label instead of one gap in this build — the distinction
+    // `apps/api/src/audit/extract.ts` draws for the same reason.
+    if (field.known(value.regime).length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [field.key],
+        message:
+          `This build carries no verified ${value.regime} ${field.noun} text, so no code can be ` +
+          `saved or exported on a ${value.regime} label. That is a gap in this application, not a ` +
+          'defect on the label.',
+      })
+      continue
+    }
+
+    // **The field, not an index.** These codes have been canonicalised and
+    // deduplicated, so position no longer lines up with what the caller sent:
+    // `['H225', 'h225', 'H999']` arrives here as two entries, and reporting
+    // `hazardStatementCodes.1` points a client at its own `h225`, which is
+    // fine. The code is named in the message, which is the part that locates it.
+    for (const code of codes) {
+      // Already reported by the entry's own `.trim().min(1)`. Zod runs an
+      // object-level check even when a field raised a validation issue, so
+      // without this a blank entry drew a second complaint — ““” has no verified
+      // text” — naming a code the caller cannot go and look for.
+      if (code === '') continue
+      if (field.textFor(value.regime, code) !== undefined) continue
+      ctx.addIssue({
+        code: 'custom',
+        path: [field.key],
+        message:
+          `“${code}” has no verified ${value.regime} ${field.noun} text in this build, so a label ` +
+          'carrying it would print nothing for it.',
+      })
+    }
+  }
+}
+
+/**
+ * The fields of a GHS request, before the regime check is applied to them.
+ *
+ * Separate because `.omit()` throws at runtime on a Zod object carrying an
+ * object-level refinement — “.omit() cannot be used on object schemas containing
+ * refinements” — and `LabelDocumentInput` omits `stock` from this. TypeScript
+ * does not catch it: `.omit` is still on the type. `UsFoodRequestBase` is split
+ * for the same reason and its refinement is likewise applied after the omit.
+ */
+const GhsRequestShape = z.object({
   regime: z.enum(GHS_REGIMES),
   productIdentifier: z.string().min(1),
   // Bounded below only, and required. Capacity selects the CLP Table 1.3 band
@@ -159,11 +264,28 @@ export const GhsRequest = z.object({
   // clearance produced by a typo.
   hazards: z.array(z.enum(HAZARD_CLASS_IDS as [string, ...string[]])).optional(),
   pictograms: z.array(z.enum(GHS_PICTOGRAM_CODES)).optional(),
-  hazardStatementCodes: z
-    .array(z.enum(knownHazardStatementCodes('eu-clp') as [string, ...string[]]))
-    .optional(),
+  // Canonicalised on the way in, through `label-core`'s own function, because
+  // the engine looks these up by exact key and every other layer already does
+  // it. A caller sending `P337+P313` or `h225` — both of which the extraction
+  // endpoint and the confirm screen accept — used to get a 400 from the enum
+  // here, and a confirmed `p337+p313` that slipped through would have drawn
+  // nothing and blamed the label for our punctuation. The refinement below reads
+  // the canonical form, so the two cannot disagree about what a code is.
+  //
+  // **Distinct, and in the order they were sent**, which is the half of
+  // `extract.ts`'s `resolvable()` that has to come with the canonicalising and
+  // nearly did not. The engine draws one statement per entry, so `H225` twice is
+  // the statement printed twice on the exported PDF. The old enum let exact
+  // repeats through already; canonicalising without deduping would have added
+  // `h225` beside `H225` to the ways of reaching it.
+  //
+  // `.trim().min(1)` rather than `.min(1)`: a whitespace-only entry has a length
+  // and canonicalises to nothing, so the check below reported ““” has no verified
+  // text” — a message naming no code, about a code the caller cannot find.
+  hazardStatementCodes: z.array(z.string().trim().min(1)).transform(distinctCodes).optional(),
   precautionaryStatementCodes: z
-    .array(z.enum(knownPrecautionaryStatementCodes('eu-clp') as [string, ...string[]]))
+    .array(z.string().trim().min(1))
+    .transform(distinctCodes)
     .optional(),
   supplier: GhsSupplierSchema.optional(),
   smallContainerLabelling: z.boolean().optional(),
@@ -177,6 +299,8 @@ export const GhsRequest = z.object({
     })
     .optional(),
 })
+
+export const GhsRequest = GhsRequestShape.superRefine(statementCodesMatchRegime)
 
 /** The same key-by-key reconciliation `toArtwork` does, and for the same reason. */
 export function toSupplier(supplier: z.infer<typeof GhsSupplierSchema>): GhsSupplier {
@@ -575,7 +699,9 @@ export const LabelDocumentInput = z.discriminatedUnion('labelType', [
     name: SavedLabelName,
     labelType: z.literal('ghs-chemical'),
     stock: StockSchema,
-    data: GhsRequest.omit({ stock: true }),
+    // The shape, then the same check — not `GhsRequest.omit(...)`, which throws at
+    // runtime on a refined object while still type-checking.
+    data: GhsRequestShape.omit({ stock: true }).superRefine(statementCodesMatchRegime),
   }),
   z.object({
     name: SavedLabelName,

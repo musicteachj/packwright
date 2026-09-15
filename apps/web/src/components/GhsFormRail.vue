@@ -20,8 +20,10 @@
  */
 import {
   ANNEX_V_ENTRIES,
-  EU_CLP_HAZARD_STATEMENTS,
-  EU_CLP_PRECAUTIONARY_STATEMENTS,
+  hazardStatementText,
+  knownHazardStatementCodes,
+  knownPrecautionaryStatementCodes,
+  precautionaryStatementText,
   GHS_ELEMENTS,
   GHS_REGIMES,
   GHS_SIGNAL_WORDS,
@@ -92,16 +94,39 @@ function toggleSignalWord(word: GhsSignalWord, on: boolean): void {
 }
 
 /**
- * The statement tables, as options. Only the EU tables carry text today, so a US
- * label offers nothing to choose — which is honest rather than convenient, and
- * the rail says so in words instead of presenting an empty dropdown.
+ * The statement text for a code, under this label's regime and no other.
+ *
+ * It read the EU tables directly, so a code sitting on a `us-osha` label was
+ * captioned with CLP wording — the silent cross-regime substitution
+ * `ghs/statements.ts` exists to prevent, printed in the editor beside the code
+ * it misdescribes.
+ *
+ * **Three clicks away**, and not by way of a stored record: choose EU, pick a
+ * statement, then change Market. Nothing clears the codes on a regime change,
+ * which is its own entry in `docs/BACKLOG.md`.
  */
-const hazardOptions = computed(() =>
-  data.regime === 'eu-clp' ? Object.entries(EU_CLP_HAZARD_STATEMENTS) : [],
-)
-const precautionaryOptions = computed(() =>
-  data.regime === 'eu-clp' ? Object.entries(EU_CLP_PRECAUTIONARY_STATEMENTS) : [],
-)
+const textFor = (kind: 'hazard' | 'precautionary', code: string) =>
+  (kind === 'hazard' ? hazardStatementText : precautionaryStatementText)(data.regime, code) ?? ''
+
+/**
+ * The statement tables, as options, for the regime this label is actually for.
+ *
+ * Only the EU tables carry text today, so a US label still offers nothing to
+ * choose — which is honest rather than convenient, and the rail says so in words
+ * instead of presenting an empty dropdown. The difference is that it now says so
+ * because `knownHazardStatementCodes('us-osha')` is empty, rather than because
+ * this file was written while that was true: a `regime === 'eu-clp'` ternary
+ * over the EU constants happens to behave correctly and would go on offering
+ * nothing the day Appendix C.4 is transcribed, until somebody remembered to come
+ * back here.
+ */
+const optionsFor = (kind: 'hazard' | 'precautionary') =>
+  (kind === 'hazard' ? knownHazardStatementCodes : knownPrecautionaryStatementCodes)(
+    data.regime,
+  ).map((code) => [code, textFor(kind, code)] as [string, string])
+
+const hazardOptions = computed(() => optionsFor('hazard'))
+const precautionaryOptions = computed(() => optionsFor('precautionary'))
 
 const chosenHazardStatements = computed(() => data.hazardStatementCodes ?? [])
 const chosenPrecautionary = computed(() => data.precautionaryStatementCodes ?? [])
@@ -131,9 +156,6 @@ function removeStatement(kind: 'hazard' | 'precautionary', code: string): void {
     else data.precautionaryStatementCodes = next
   }
 }
-
-const textFor = (kind: 'hazard' | 'precautionary', code: string) =>
-  (kind === 'hazard' ? EU_CLP_HAZARD_STATEMENTS : EU_CLP_PRECAUTIONARY_STATEMENTS)[code] ?? ''
 
 const smallContainer = computed({
   get: () => data.smallContainerLabelling === true,
