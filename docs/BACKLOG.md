@@ -290,6 +290,12 @@ app was not deployed; it matters more once it is. The right home is **phase 8**,
 are the natural places to put it rather than middleware in this process — and where the vision endpoint,
 which spends money per call, will need the same protection more urgently.
 
+**That endpoint now exists.** `POST /api/audit/ghs` is unauthenticated and costs roughly two US cents a call
+at the sample label's token count, which makes it the most expensive thing on this server to abuse and the
+reason this entry stops being theoretical. Nothing about the fix changes — it still belongs at the edge rather
+than in this process — but the order of the two endpoints does: the audit route is now the one to cover
+first.
+
 **~~There is no `.env.example`.~~ Written in phase 6 stage 6**, the stage that made `MONGODB_URI`
 load-bearing, as this entry asked. It lives at `apps/api/.env.example` rather than the repository root:
 `dotenv` resolves `.env` against the working directory and npm runs a workspace script from that workspace, so
@@ -330,3 +336,69 @@ and a percentage. Whether that matches the display in 101.9(e)(6)(i) has **not**
 illustration, and the illustration is guidance rather than the regulation — so this is an observation from
 looking at a screenshot, not a finding. It needs the source read before anyone changes anything, and it must
 not become a rule on the strength of an illustration.
+
+---
+
+## From phase 7, stage 1
+
+The extraction endpoint, and what writing it turned up.
+
+**`Finding.certifies` is the right idea and is set in two places.** `'document'` versus `'artwork'` is exactly
+the distinction an audit report needs: the engine judges a label rebuilt from what a user confirmed, so a
+verdict resting on the document describes their label and a verdict resting on the artwork describes our
+reconstruction. Today `passedOnDocument` is called at `usFood/nutritionFormat.ts:108` and
+`usFood/dualColumn.ts:166` and nowhere else, so everything else defaults to `'artwork'` — and filtering an
+audit report on it would empty the report, which is misleading in the opposite direction to not filtering at
+all. Widening it means reading every rule and deciding what it actually judges, and it alters
+`withholdUncertifiablePasses`, the guard standing between this project and a pass issued on ink that was never
+laid down. Its own stage, and a `max` review.
+
+**`ExtractionResult` admits a field that is present with no value.** `fields` is
+`{ [K in keyof T]?: ExtractedField<T[K]> }`, and for an optional key of `GhsLabelData` that `T[K]` still
+includes `undefined` — so `fields.supplier.value` is `GhsSupplier | undefined`, and every consumer needs a
+second optional chain for a state that means nothing. `ExtractedField<NonNullable<T[K]>>` says what was
+intended. It is a one-line change to a phase 1 type with, as of now, one producer and no consumers, which is
+the cheapest this will ever be — but it changes `label-core`'s public contract, and it wants to land with the
+confirm step that will actually feel it, in stage 2.
+
+**`sourceRegion` is millimetres on a stock, and a vision region is pixels on a photograph.** `BoundingBox`
+names all four members `xMm`, `yMm`, `widthMm`, `heightMm`, and the same type is what `ResolvedElement.box`
+uses. Filling it from a model would either put pixels in fields named for millimetres — the first breach of
+the units-in-the-field-name convention this project has — or need a scale nobody has measured. It is not
+requested at all in stage 1. Highlighting the part of a photograph a value came from would be genuinely good
+on the confirm screen, and the vision documentation calls its localisation approximate, so it needs a
+deliberate decision about what an approximate region may be used for before it needs a type.
+
+**`GhsRequest` validates a `us-osha` label's statement codes against the EU table.** `schemas.ts:162-167` keys
+both code arrays to `knownHazardStatementCodes('eu-clp')` regardless of the `regime` field beside them. In
+practice the EU list is a superset for the codes that matter, since H- and P-numbers are UN GHS codes both
+regimes adopt — so this is latent rather than biting, and *why* it is latent is the point:
+`US_OSHA_HAZARD_STATEMENTS` is empty, so a regime-correct enum would reject every code on every US label. The
+two are one problem, it stops being latent the day Appendix C.4 is transcribed, and the fix is the same fix.
+
+**Nothing derives a hazard classification from the statement codes.** `GhsLabelData.hazards` carries
+`ANNEX_V_ENTRIES` ids, and CLP Article 26 precedence turns on them — `ghs/pictogram-set` and
+`ghs/pictogram-precedence` both decline without them. A label prints H-codes and pictograms, not class ids, so
+an audit either asks the user to classify by hand or leaves the two most interesting GHS rules unable to run.
+A deterministic H-code to hazard-class mapping would close that, and it is a reference table with its own
+provenance requirements rather than a function — Annex VI, read and verified, not inferred. Emphatically not a
+job for the model: a classification it guessed would make the precedence rule judge the guess.
+
+**A combination code carrying an optional member cannot be matched.**
+`EU_CLP_PRECAUTIONARY_STATEMENTS` keys one entry `'P370 + P380 + P375 [+ P378]'`, where the bracketed member
+is the regulation's own optional part. Extraction now matches a code regardless of the whitespace around its
+plus signs, which closes the common case, and does nothing for this one: a label printing
+`P370 + P380 + P375` — entirely correctly, having not used P378 — resolves to nothing and is warned as
+unrecognised. The fix is a lookup that understands the bracket rather than more string tidying, and it wants
+someone to read how many entries carry one and whether the bracketed member is ever printed. Not urgent: the
+warning is honest about what happened, and the code is still shown to the user.
+
+**Nothing compares the statement text a label prints against the text the table holds.** Extraction takes
+codes only where the code itself is printed, and never derives one from wording, because deriving one is how a
+label printing "Highly flammable liquid" — missing "and vapour" — gets laundered into a correct H225 and its
+defect disappears. The consequence is that a label printing wording without codes yields no codes at all.
+Nothing is falsely cleared by that, since no rule currently judges whether a statement is present. The sharper
+version extracts the printed wording alongside the code and compares it against
+`hazardStatementText(regime, code)`, which would catch the paraphrase the current design merely refuses to
+launder. It needs a field `GhsLabelData` does not have, and a decision about whether a mismatch is a finding
+or a warning — a finding would be the first rule in this project to judge text rather than geometry.

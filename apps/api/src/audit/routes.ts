@@ -1,0 +1,156 @@
+/**
+ * `POST /api/audit/ghs` — a photograph in, an unverified reading out.
+ *
+ * Nothing this route returns is label data. It returns an `ExtractionResult`,
+ * every field of which is unconfirmed until a user says otherwise, and it
+ * returns no verdict of any kind: the rules run later, in the client, against
+ * what the user confirmed.
+ *
+ * The extractor is injected rather than constructed here, for the reason
+ * `AppOptions` gives about `webRoot` and `databaseStatus` — `createApp()` builds
+ * the same application every time it is called, so a route test needs neither a
+ * key nor a network. Absent, the route answers 503 and the rest of the server is
+ * unaffected. That is deliberate: `MONGODB_URI` was made load-bearing in phase 6
+ * and broke every harness that boots the server, and this key has an external
+ * service and a per-call cost behind it.
+ */
+
+import Anthropic from '@anthropic-ai/sdk'
+import { GHS_REGIMES } from '@packwright/label-core'
+import { Router, type Request, type Response } from 'express'
+import { z } from 'zod'
+import {
+  ExtractionDeclined,
+  ExtractionTruncated,
+  ExtractionUnreadable,
+  EXTRACTION_MODEL,
+  PHOTO_MEDIA_TYPES,
+  type ExtractLabel,
+} from './extract'
+
+/**
+ * The largest image this route will forward, in base64 characters.
+ *
+ * **Deliberately below `express.json`'s body limit, so that it can fire.** The
+ * first figure written here was 10 MB — the vision API's own per-image
+ * ceiling — and it was unreachable: a 10 MB base64 string inside a JSON
+ * envelope exceeds a 10 MB body before the handler sees it, so the body limit
+ * answered first and this branch could never run. A check that cannot fail is
+ * the defect this codebase has found in a validator, a template field and a
+ * rule, and it would have been one here too.
+ *
+ * 8 MB clears both readings of the upstream limit — whether its "10 MB" counts
+ * 10,000,000 bytes or 10,485,760 — and is enormous for the traffic this route
+ * expects, since the client caps the long edge at 2576 px and encodes JPEG,
+ * which lands between one and two megabytes.
+ */
+export const MAX_PHOTO_BASE64 = 8 * 1024 * 1024
+
+const AuditRequest = z.object({
+  regime: z.enum(GHS_REGIMES),
+  image: z.object({
+    mediaType: z.enum(PHOTO_MEDIA_TYPES),
+    data: z.string().min(1),
+  }),
+})
+
+/** The export routes' error shape, so the API has one contract for a bad body. */
+const badRequest = (
+  response: Response,
+  issues: readonly { path: PropertyKey[]; message: string }[],
+) =>
+  response.status(400).json({
+    error: 'Invalid audit request',
+    detail: issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
+  })
+
+export function createAuditRouter(options: { extract?: ExtractLabel | undefined } = {}): Router {
+  const router = Router()
+  const { extract } = options
+
+  router.post('/ghs', async (request: Request, response: Response) => {
+    if (extract === undefined) {
+      // Before the body is looked at. The endpoint is not unavailable for this
+      // request; it is unavailable.
+      response.status(503).json({ error: 'Vision extraction is not configured' })
+      return
+    }
+
+    const parsed = AuditRequest.safeParse(request.body)
+    if (!parsed.success) {
+      badRequest(response, parsed.error.issues)
+      return
+    }
+
+    const { regime, image } = parsed.data
+    if (image.data.length > MAX_PHOTO_BASE64) {
+      response.status(413).json({
+        error: 'The image is too large',
+        detail: [
+          `The image is ${image.data.length} base64 characters and the limit is ${MAX_PHOTO_BASE64}.`,
+        ],
+      })
+      return
+    }
+
+    try {
+      const extraction = await extract(image, regime)
+      response.json({ extraction, model: EXTRACTION_MODEL })
+    } catch (error) {
+      if (error instanceof ExtractionDeclined) {
+        response.status(422).json({
+          error: 'Reading this image was declined',
+          detail:
+            error.category === null
+              ? ['No reason was given.']
+              : [`The request was declined under the ${error.category} category.`],
+        })
+        return
+      }
+      if (error instanceof ExtractionUnreadable) {
+        response.status(422).json({
+          error: 'The image could not be read as a label',
+          detail:
+            error.detail.length === 0
+              ? [error.message]
+              : error.detail.map((issue) => `${issue.path}: ${issue.message}`),
+        })
+        return
+      }
+      if (error instanceof ExtractionTruncated) {
+        response.status(422).json({
+          error: 'The reading was cut short',
+          detail: ['The model reached its output limit before finishing this label.'],
+        })
+        return
+      }
+      if (error instanceof Anthropic.APIError) {
+        // The upstream detail goes to the log, not to the client — it can carry
+        // request identifiers and, on an authentication failure, a hint about
+        // the key.
+        console.error(error)
+
+        // Sorted, because one message for every upstream failure was wrong in
+        // both directions: a rejected image and a revoked key both read as "the
+        // service could not be reached", which is false of the first and sends
+        // whoever is debugging the second to look at the network.
+        if (error instanceof Anthropic.BadRequestError) {
+          response.status(422).json({
+            error: 'The image was rejected by the vision service',
+            detail: ['It may be corrupt, or larger than the service will accept.'],
+          })
+          return
+        }
+        if (error instanceof Anthropic.RateLimitError) {
+          response.status(503).json({ error: 'Vision extraction is busy — try again shortly' })
+          return
+        }
+        response.status(502).json({ error: 'The extraction service could not be reached' })
+        return
+      }
+      throw error
+    }
+  })
+
+  return router
+}

@@ -2,8 +2,10 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import helmet from 'helmet'
 import morgan from 'morgan'
 import { join } from 'node:path'
+import { createAuditRouter } from './audit/routes'
 import { createLabelDocumentRouter } from './labels/labelDocumentRoutes'
 import { createLabelRouter } from './labels/routes'
+import type { ExtractLabel } from './audit/extract'
 import type { DatabaseStatus } from './db'
 
 export interface AppOptions {
@@ -30,6 +32,17 @@ export interface AppOptions {
    * are.
    */
   databaseStatus?: (() => DatabaseStatus) | undefined
+  /**
+   * How a label photograph is read, or nothing to serve the rest without it.
+   *
+   * Injected for the reason its two neighbours are, and for one more of its
+   * own: constructing an Anthropic client here would make `createApp` need an
+   * API key, and every route test in this workspace would then depend on a
+   * secret to build an application that never calls out. Absent means the audit
+   * endpoint answers 503 and nothing else changes — which is the behaviour
+   * `ANTHROPIC_API_KEY` staying optional in `env.ts` is there to allow.
+   */
+  extract?: ExtractLabel | undefined
 }
 
 /**
@@ -61,13 +74,47 @@ const isReservedForTheServer = (path: string): boolean =>
   RESERVED_FOR_THE_SERVER.some((base) => path === base || path.startsWith(`${base}/`))
 
 /**
+ * The client errors a library can hand this server, in this server's own words.
+ *
+ * A map rather than a status range, because a range needs a sentence for every
+ * status in it and there is only one honest sentence per status. An earlier
+ * version answered any 4xx and worded all of them "Bad request", so a
+ * body-parser 415 — an unsupported `Content-Encoding`, which is a real thing a
+ * client can send — came back with a status about the encoding and a sentence
+ * about the body. Anything not listed here is an error this server has not
+ * accounted for and stays a 500 with its detail in the log.
+ *
+ * These are the three `body-parser` raises: `entity.parse.failed`,
+ * `entity.too.large` and `encoding.unsupported`.
+ */
+const CLIENT_ERRORS: Readonly<Record<number, string>> = {
+  400: 'Bad request',
+  413: 'The request body is too large',
+  415: 'The request encoding is not supported',
+}
+
+/**
+ * A client-error status an upstream library has already worked out, or nothing.
+ *
+ * Express and body-parser both set `status`; some libraries set `statusCode`
+ * instead. Read as `unknown` and checked rather than cast, because this runs on
+ * the error path and a wrong assumption here turns one failure into two.
+ */
+function statusOf(error: Error): number | undefined {
+  const carried = error as { status?: unknown; statusCode?: unknown }
+  const status = typeof carried.status === 'number' ? carried.status : carried.statusCode
+  if (typeof status !== 'number') return undefined
+  return Object.hasOwn(CLIENT_ERRORS, status) ? status : undefined
+}
+
+/**
  * Builds the Express application without starting a listener.
  *
  * Split from `server.ts` on purpose: Supertest can exercise the app directly,
  * so route tests need neither a port nor a running process.
  */
 export function createApp(options: AppOptions = {}): Express {
-  const { enableLogging = true, webRoot, databaseStatus } = options
+  const { enableLogging = true, webRoot, databaseStatus, extract } = options
   const app = express()
 
   /**
@@ -151,6 +198,7 @@ export function createApp(options: AppOptions = {}): Express {
   // about either mount shadows the other.
   app.use('/api/labels', createLabelDocumentRouter())
   app.use('/api/labels', createLabelRouter())
+  app.use('/api/audit', createAuditRouter({ extract }))
 
   /**
    * The built client, served from the same origin as the API it calls.
@@ -202,6 +250,26 @@ export function createApp(options: AppOptions = {}): Express {
   })
 
   app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
+    // A body-parser failure is the client's, and it already knows its own
+    // status. Flattening it to 500 told a caller the server had broken when
+    // what had happened was that they sent 11 MB — verified by posting exactly
+    // that and getting `Internal server error` back, with
+    // `type: 'entity.too.large'` underneath it. No route had posted anything
+    // large enough to reach this before; `/api/audit` will, from every phone.
+    //
+    // Only 4xx is honoured. A library reporting a 5xx of its own is still an
+    // error this server has not accounted for, and the message stays in the log
+    // where it cannot leak.
+    //
+    // Not logged, either. `morgan` already records the request, and a stack
+    // trace for every oversized upload turns the one signal this log carries —
+    // that something here is broken — into noise.
+    const status = statusOf(error)
+    if (status !== undefined) {
+      res.status(status).json({ error: CLIENT_ERRORS[status] })
+      return
+    }
+
     // Never leak an internal message to the client; the detail goes to the logs,
     // which in production means CloudWatch.
     console.error(error)

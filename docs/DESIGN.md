@@ -354,17 +354,39 @@ one. New producers plug into an existing socket.
 
 ### Implementation
 
-Server-side, in `apps/api`. Claude vision with structured outputs — `output_config.format` built from the
-**same Zod schema** the wizard form already validates against, via `zodOutputFormat` from
-`@anthropic-ai/sdk/helpers/zod`, so extraction cannot return a shape the wizard can't consume.
+Server-side, in `apps/api`. Claude vision with structured outputs — `output_config.format` built with
+`zodOutputFormat` from `@anthropic-ai/sdk/helpers/zod`.
 
-Two things to get right, both easy to miss:
+**Corrected 2026-09-15**, from running it rather than reading about it. This section said the format was built
+from "the **same Zod schema** the wizard form already validates against, so extraction cannot return a shape
+the wizard can't consume". Two things in that are wrong.
+
+- **The schema is a projection of the form's, not the form's.** `GhsRequest` carries `pictogramSideMm`,
+  `stock` and the type defaults; handing those to a vision model invites it to invent layout it cannot see.
+  Extraction supplies content. The physical facts a photograph cannot show — the regime, the package
+  capacity, the measured label size — come from the user, and none of them is defaulted, because
+  `DEFAULT_GHS_STOCK` is the CLP minimum for its band and defaulting it would hand `ghs/label-dimensions` a
+  guaranteed pass on a label nobody measured.
+- **`output_config.format` constrains types and keys and nothing else.** The SDK's `transformJSONSchema`
+  keeps `type`, `description`, `title`, `format`, `items`, `required` and a forced
+  `additionalProperties: false`, and appends everything else to the description as prose — so an enum and a
+  pattern arrive as advice, not as constraints, even though the API itself supports `enum`. The guarantee is
+  real only because the reply is re-validated with the real schema on receipt. That makes a schema violation
+  a second clean-error path alongside refusal, rather than an edge case.
+
+Three things to get right, all easy to miss:
 
 - **Check `stop_reason === "refusal"` before reading `response.content`.** Claude Opus 5 runs safety
-  classifiers; a declined request returns HTTP 200 with empty or partial content. Code that indexes
-  `content[0]` unconditionally breaks.
-- **High-resolution vision is automatic** on Opus 5 — 2576 px on the long edge. Label photos benefit
-  directly from this; don't downsample before upload.
+  classifiers; a declined request returns HTTP 200 with empty or partial content.
+- **Find the text block by type, never by position.** This entry used to say that indexing `content[0]`
+  breaks on a refusal, which understates it in the more awkward direction. Two live calls with identical
+  parameters returned different layouts — `[thinking, text]` against one image, `[text]` against another,
+  because adaptive thinking decides per request. A positional read is *intermittently* wrong on the success
+  path, which is the kind of wrong that survives a green suite.
+- **High-resolution vision is automatic** on Opus 5 — 2576 px on the long edge — so don't downsample below
+  it. Do normalise to it: the API downsamples anything larger anyway, so capping the long edge at 2576 loses
+  nothing and keeps the request small. And Claude receives **no image metadata**, so a phone photograph
+  carrying EXIF orientation 6 is read on its side unless the pixels themselves are rotated first.
 
 Flow: capture → extract → present every field as unverified with confidence → user confirms → the confirmed
 data enters the wizard's normal path → existing validators run unchanged.
@@ -720,13 +742,14 @@ copy-adapt from the old repo.
 | 2 · Rendering spine + design tokens | **Complete** — preview == print asserted against a real exported PDF |
 | 3 · Rule engine + findings rail | **Complete** — six GS1 rules, each with a known-bad fixture |
 | 4 · GHS chemical label | **Complete** — seven rules, reviewed and remediated; merged in #4 |
-| 5 · US food label | **In progress** — stage 1 (net quantity on the PDP) complete and reviewed |
-| 6 · Scanning, persistence, catalogue | Not started |
-| 7 · Label audit from a photo | Not started |
-| 8 · Deployment | Not started |
+| 5 · US food label | **Complete** — six stages; the aggregate and bilingual displays deferred to `BACKLOG.md` |
+| 6 · Scanning, persistence, catalogue | **Complete** — code-complete; scanning a real product barcode by phone is outstanding |
+| 7 · Label audit from a photo | **In progress** — stage 1 (the extraction endpoint) complete |
+| 8 · Deployment | Not started — deliberately held |
 
 No AWS resource is provisioned and none should be until phase 8. Phases 1–7 run entirely on localhost.
-An Anthropic API key is needed at phase 7 and not before.
+An Anthropic API key is needed at phase 7 and not before — and stays **optional**, so that a checkout without
+one runs the whole suite and boots the server. Only `/api/audit` notices, and it answers 503.
 
 ## Open items (non-blocking)
 
