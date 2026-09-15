@@ -24,6 +24,7 @@ export {
   GHS_REGIMES,
   US_OSHA_HAZARD_STATEMENTS,
   US_OSHA_PRECAUTIONARY_STATEMENTS,
+  canonicalStatementCode,
   hazardStatementText,
   knownHazardStatementCodes,
   knownPrecautionaryStatementCodes,

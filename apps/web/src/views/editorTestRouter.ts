@@ -22,6 +22,7 @@ export function testRouter(initial = '/labels/new'): Router {
       { path: '/labels', component: blank },
       { path: '/labels/new', component: blank },
       { path: '/labels/:id', component: blank },
+      { path: '/audit', component: blank },
       { path: '/rules', component: blank },
     ],
   })

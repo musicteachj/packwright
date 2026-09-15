@@ -1,5 +1,11 @@
 export { labelFilename } from './filename'
-export { DEFAULT_GHS_STOCK, GHS_ELEMENTS, GHS_SIGNAL_WORDS, GHS_TYPE_DEFAULT } from './ghs'
+export {
+  DEFAULT_GHS_STOCK,
+  GHS_ELEMENTS,
+  canonicalSignalWord,
+  GHS_SIGNAL_WORDS,
+  GHS_TYPE_DEFAULT,
+} from './ghs'
 export type { GhsLabelData, GhsSignalWord, GhsSupplier } from './ghs'
 export { ANCHORS, ARTWORK_DEFAULT, anchorBox, panelFor } from './stock'
 export type { Anchor, ArtworkBlock, LabelStock, Panel } from './stock'

@@ -19,7 +19,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import {
-  GHS_SIGNAL_WORDS,
+  canonicalSignalWord,
+  canonicalStatementCode,
   hazardStatementText,
   knownHazardStatementCodes,
   knownPrecautionaryStatementCodes,
@@ -149,29 +150,6 @@ const isTextBlock = (block: Anthropic.ContentBlock): block is Anthropic.TextBloc
  * form with an enum behind it. An earlier version of this note claimed only the
  * hazard lookup was used, which was never true of the code beneath it.
  */
-/**
- * The spelling the statement tables are keyed by.
- *
- * `EU_CLP_PRECAUTIONARY_STATEMENTS` keys combinations as `'P337 + P313'`, with
- * a space either side of the plus. Labels print them both ways, and the prompt
- * asks for verbatim transcription — so a label reading `P337+P313` was warned
- * as unrecognised and lost a statement this build has verified text for. Our own
- * sample label prints the spaced form, which is exactly why the fixture never
- * showed it.
- *
- * Whitespace and letter case, and nothing else. This is the same judgement as
- * the signal words: `P337+P313` and `P337 + P313` are one code set in different
- * type, where a paraphrased statement would be different regulatory text. A code
- * that does not resolve after this is kept exactly as it was read.
- */
-function canonicaliseCode(code: string): string {
-  return code
-    .trim()
-    .toUpperCase()
-    .replace(/\s*\+\s*/g, ' + ')
-    .replace(/\s+/g, ' ')
-}
-
 function classifyCodes(
   codes: readonly string[],
   regime: GhsRegime,
@@ -197,7 +175,7 @@ function classifyCodes(
   // unrecognised code on it, and saying so twice makes the reading look worse
   // than it is.
   return [...new Set(codes)]
-    .filter((code) => textFor(regime, canonicaliseCode(code)) === undefined)
+    .filter((code) => textFor(regime, canonicalStatementCode(code)) === undefined)
     .map((code) => ({
       code: 'GHS_STATEMENT_CODE_UNRECOGNISED',
       message: `“${code}” was read from the label and has no verified ${regime} text in this build, so it cannot be carried into a label here. Confirming it would have the saved-label and export routes refuse the whole label, because their schema admits only codes this build knows.`,
@@ -209,17 +187,16 @@ function classifyCodes(
  * Title-cases a signal word a label printed in capitals.
  *
  * `GHS_SIGNAL_WORDS` is `['Danger', 'Warning']` because that is how CLP Article
- * 20 spells them, and real labels print them as DANGER and WARNING — including
- * the sample one. The prompt tells the model to transcribe exactly what is
+ * 20 spells them, and real labels print them as DANGER and WARNING — the sample
+ * one included. The prompt tells the model to transcribe exactly what is
  * printed, so the two instructions pull against each other on this one field,
  * and losing it would be losing the most interesting thing on a label carrying
  * both.
  *
  * This is **not** the normalisation the rest of this file refuses to do. A
  * paraphrased H-statement is different regulatory text; "DANGER" and "Danger"
- * are the same codified word set in different type, and the case a label is
- * printed in is a typographic choice no rule here judges. Anything that is not
- * one of the two words is left exactly as it arrived, for `validate` to reject.
+ * are the same codified word set in different type. `canonicalSignalWord` lives
+ * in `label-core` so the confirm screen reaches the same answer.
  */
 function canonicaliseSignalWords(body: unknown): unknown {
   if (typeof body !== 'object' || body === null) return body
@@ -234,9 +211,7 @@ function canonicaliseSignalWords(body: unknown): unknown {
     signalWords: {
       ...(field as Record<string, unknown>),
       value: value.map((word) =>
-        typeof word === 'string'
-          ? (GHS_SIGNAL_WORDS.find((known) => known.toLowerCase() === word.toLowerCase()) ?? word)
-          : word,
+        typeof word === 'string' ? (canonicalSignalWord(word) ?? word) : word,
       ),
     },
   }
@@ -316,7 +291,7 @@ function resolvable(
     ...new Set(
       codes.map((code) => {
         if (textFor(regime, code) !== undefined) return code
-        const canonical = canonicaliseCode(code)
+        const canonical = canonicalStatementCode(code)
         return textFor(regime, canonical) === undefined ? code : canonical
       }),
     ),

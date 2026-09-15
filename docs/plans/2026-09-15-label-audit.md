@@ -191,18 +191,99 @@ Stop at each stage boundary and wait.
 
 ---
 
-## Stage 2 — capture and confirm (outline; expanded at the boundary)
+## Stage 2 — capture and confirm
 
-- `label-core/src/extraction/confirm.ts` — `confirmed(result, accepted)`. Add to `src/index.ts` **and to the
-  hand-written module list in `barrelExports.test.ts`**, which does not sweep a new file on its own.
-- `useLabelPhoto` — file input first (`accept="image/*" capture="environment"`), camera still second, reusing
-  `useBarcodeScanner`'s `CAMERA` constraints, generation guard and `ScannerState` union. Normalise: orient
-  from EXIF, cap the long edge at 2576 px, encode JPEG.
-- `AuditView.vue` — mobile-first, not `panes.ts`. Two sections: **read from the photograph** (accept / edit /
-  discard per field, nothing pre-accepted) and **not from the photograph** (`regime`, `capacityL`, measured
-  label width and height, `hazards` optional). None of the second group is defaulted.
-- Router, `SiteHeader.vue`'s `Section` union, and `editorTestRouter.ts`.
-- The test that matters: **a field left unconfirmed never reaches the document**, asserted as a negative.
+Written against `dev` at `f6d39fe`, with stage 1 merged in #23.
+
+**What this stage ends at.** A photograph, a screen of readings each of which the user has accepted, edited
+or discarded, and a `GhsLabelData` built from what was accepted — shown as a plain summary. The engine does
+not run yet; the findings and the hand-off into the editor are stage 3. The point of stopping there is that
+the confirm gate is the thing worth reviewing on its own, and burying it under a findings rail is how it
+stops being looked at.
+
+### The decision this stage turns on
+
+**An unrecognised statement code is shown and cannot be confirmed.** A photograph can carry a code this build
+has no verified text for; extraction reports it with a warning rather than dropping it, because the user
+should see what was on their label. But `GhsRequest` admits only codes with verified text, so confirming one
+produces a label the save and export routes refuse with a 400 naming a field the user cannot edit their way
+out of.
+
+Of the three ways out — refuse the code, drop it with the user's agreement, or loosen `GhsRequest` — this
+stage takes the first. It keeps the change inside the audit screen; "this build has no text for H999" is both
+true and useful to show someone; and loosening the schema is really the same job as transcribing OSHA
+Appendix C.4, which `docs/BACKLOG.md` already holds.
+
+So a code carrying an `EXTRACTION_FIELD_DISCARDED`-style warning is rendered as read-but-not-usable, with no
+accept control, and the field it belongs to confirms with the remaining codes.
+
+### Tasks
+
+**1. `ExtractionResult` stops admitting a field with no value.** `fields` is
+`{ [K in keyof T]?: ExtractedField<T[K]> }`, and for an optional key of `GhsLabelData` that `T[K]` still
+includes `undefined` — so `fields.supplier.value` is `GhsSupplier | undefined` and every consumer needs a
+second optional chain for a state that means nothing. `ExtractedField<NonNullable<T[K]>>` says what was
+meant. `docs/BACKLOG.md` says this wants to land with the consumer that feels it, which is this stage.
+A change to a phase 1 type, so the existing `extract.ts` mapping and its tests move with it.
+
+**2. `packages/label-core/src/extraction/confirm.ts`.** Pure and framework-free:
+
+```ts
+confirmed<T>(result: ExtractionResult<T>, accepted: ReadonlySet<keyof T>): Partial<T>
+```
+
+Takes only the keys named, ignores the rest, and reads nothing from anywhere else — so the only way a value
+becomes label data is that the set says so. Add to `src/index.ts` **and to the hand-written module list in
+`barrelExports.test.ts`**, which does not sweep a new file on its own.
+
+**3. `apps/web/src/audit/useLabelPhoto.ts`.** Two ways in.
+
+- **A file input**, `accept="image/*" capture="environment"` — the primary. On a phone it opens the native
+  camera and returns a full-resolution photograph; on a desktop it picks a file.
+- **An in-page camera still**, importing `CAMERA` and `ScannerState` from the scanner rather than restating
+  them. The scanner's lifecycle — the generation guard, the wording that separates a declined permission from
+  an absent API, the explicit track release — is copied rather than shared, and that is a debt this stage
+  records rather than pays: extracting one camera composable from two is a refactor of tested code and wants
+  its own change.
+
+Normalisation, in both paths: orient from EXIF, cap the long edge at **2576 px**, encode JPEG. Claude reads no
+image metadata, so a phone photograph carrying orientation 6 is read on its side; and 2576 is the
+high-resolution tier's own limit, so capping there loses nothing the model would have used.
+
+**4. `apps/web/src/api/audit.ts`.** Mirrors `api/savedLabels.ts` — the same `request` helper shape, the same
+guarded parse of an error body, its own error class carrying `status` and `detail`.
+
+**5. `apps/web/src/views/AuditView.vue`.** Mobile-first, **not** `panes.ts`. Three sections:
+
+- **Read from the photograph** — one row per field: the value, its confidence, and accept / edit / discard.
+  **Nothing is pre-accepted.** A code with no verified text renders without an accept control and says why.
+- **Not from the photograph** — `regime`, `capacityL`, and the **measured** label width and height, entered by
+  the user and labelled as such. **None is defaulted**, because `DEFAULT_GHS_STOCK` is the CLP minimum for its
+  band and defaulting it would hand `ghs/label-dimensions` a guaranteed pass on a label nobody measured.
+  `hazards` is offered and optional; left blank, the pictogram-set and precedence rules correctly decline.
+- **The document so far** — what has actually been confirmed, as plain text.
+
+**6. Router, `SiteHeader.vue`'s `Section` union, `editorTestRouter.ts`.**
+
+### The tests that have to fail first
+
+- `confirmed()` ignores a key not in the accepted set — asserted as a **negative**, with the field present in
+  the result and absent from the output.
+- A field the user never touched does not reach the document. The premise is asserted first, the way
+  `certification.test.ts` does, so it cannot pass because nothing was extracted at all.
+- Editing a value confirms the edited one, not the read one.
+- An unrecognised code renders with no accept control, and confirming its field yields only the codes that
+  resolve.
+- A declined camera permission is worded as a decision, not a fault — and the file input still works.
+- An image is normalised to 2576 px on the long edge and re-encoded, with EXIF orientation applied.
+- The API client surfaces each of the endpoint's statuses as something a person can read.
+
+### Done when
+
+- A photograph produces rows with confidences, and nothing enters the document without an explicit act.
+- `npm test`, `typecheck`, `lint`, `format:check`, `build`, `verify:build` and the browser suite all pass.
+- Mutation tests, each confirmed to have applied: remove the accepted-set check in `confirmed()`; pre-accept a
+  field in the view; default the stock; drop the EXIF orientation.
 
 ## Stage 3 — the report and the hand-off (outline)
 

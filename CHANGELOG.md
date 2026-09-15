@@ -10,6 +10,65 @@ into a version only when there is a reason to.
 
 ### Added
 
+Phase 7, stage 2 — `/audit`, where a photograph becomes a label document one accepted field at a time. The
+route has been in the router's inventory since phase 3 as the one line without a "done" beside it.
+
+- **Nothing is accepted on the user's behalf, and the code says so structurally.** `confirmed()` in
+  `label-core` iterates the accepted set rather than walking the reading and asking whether each field was
+  accepted. The two compute the same answer today and fail in opposite directions: losing the set the first
+  way produces an empty document, losing it the second way produces a full one. Reverting to the second makes
+  six named tests fail.
+- **An edit takes back the acceptance it was made under.** What somebody agreed to was the value on screen at
+  the time, and carrying an acceptance across an edit is how a value nobody looked at reaches a label.
+- **A reading belongs to the photograph and the market it was made under.** A new photograph, or a change of
+  regime, puts the previous reading away rather than leaving its rows acceptable under a different picture —
+  and a reading still in flight when either changes is discarded when it lands rather than repopulating the
+  screen behind it.
+- **An edit stops carrying a confidence the model never gave it.** A confidence is the model's account of how
+  clearly it read something; over an edit it becomes a number about text the model never saw, sitting beside
+  it as though it still meant something. The row says "edited" instead.
+- **A field that would contribute nothing cannot be accepted.** A supplier edited down to a name alone parses
+  to nothing, and the button used to take the click, record the acceptance and put nothing in the document,
+  with no way to tell that from a field that had worked.
+- **The screen and the endpoint agree on how a code is spelled.** `canonicalStatementCode` moved into
+  `label-core` because both of them have to reach the same answer, and they did not: the server canonicalises
+  whitespace and case before it looks anything up, the screen looked up verbatim, and the symptom was a user
+  typing `P337+P313` or `h225` — both of which the server accepts — having it marked unusable and dropped
+  from the confirmed field without a word. `canonicalSignalWord` moved for the same reason: the endpoint
+  folded case and the screen matched exactly, so an edited `DANGER` — which is what labels actually print —
+  was rejected under a banner claiming this build had no wording for it. That banner now says something that
+  fits the field it is about; one sentence for all four called a rejected pictogram code missing *wording*.
+- **Every closed set is checked, not only the statement tables.** A reading straight from the server is
+  already validated against them; an edited one was not, so typing `GHS99` confirmed it into the document.
+  The pictogram check is regime-aware, because OSHA recognises eight of the nine and a flat membership test
+  would have called GHS09 a pictogram on a US label.
+- **A statement code this build has no verified wording for is shown and cannot be confirmed.** It really was
+  on the label, so hiding it would be a lie; but `GhsRequest` admits only codes with verified text, so
+  confirming one produces a label the save and export routes refuse outright — with a 400 naming a field the
+  user cannot edit their way out of. Accepting the field takes the remaining codes. Which codes those are is
+  asked of `label-core`'s tables rather than parsed out of the server's warning prose.
+- **What a photograph cannot show is typed by the user and labelled as theirs.** The market, the package
+  capacity and the measured label size, none of them filled in. `DEFAULT_GHS_STOCK` is 74 × 105 mm — the CLP
+  minimum for the three-to-fifty-litre band — so a default there would hand `ghs/label-dimensions` a
+  guaranteed pass on a label nobody measured. The screen names what is still missing rather than counting it.
+- **A file input first, the camera second.** `capture="environment"` opens the native camera on a phone and
+  picks a file on a desktop, which is both the simpler path and the better photograph. Both ends meet at one
+  normaliser, because `createImageBitmap` takes a file and a video frame alike.
+- **The photograph is oriented and capped before it is sent.** Claude receives no image metadata, so EXIF
+  orientation is applied to the pixels or a phone photograph is read on its side. The long edge is capped at
+  2576 px — the high-resolution tier's own limit, which the API would downscale to anyway — and the long edge
+  is pinned to that figure rather than multiplied towards it: scaling both edges and flooring lost a pixel on
+  the commonest case there is, an exact 4:3 photograph, where 3024 × (2576 / 4032) is 1932 in arithmetic and
+  1931.9999999999998 in binary.
+
+### Changed
+
+- **`ExtractionResult` no longer admits a field that is present with no value.** `fields` is now
+  `{ [K in keyof T]?: ExtractedField<NonNullable<T[K]>> }`, so `fields.supplier.value` is a `GhsSupplier`
+  rather than a `GhsSupplier | undefined` and the second optional chain every consumer needed is gone.
+  Absence was already sayable: the field itself is optional. `docs/BACKLOG.md` said this should land with the
+  consumer that would feel it, and nothing else in the repository needed changing when it did.
+
 Phase 7, stage 1 — Claude vision reads a label photograph. `ExtractionResult` has been defined since phase 1
 with no producer; `@anthropic-ai/sdk` has been a declared dependency of `apps/api`, imported nowhere. This is
 the first thing on the other side of that socket, and it ships with no user interface at all — `/audit`'s
