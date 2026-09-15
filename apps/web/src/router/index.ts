@@ -8,7 +8,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
  *   /labels        saved labels                              — done
  *   /labels/new    the editor, on a new document             — done
  *   /labels/:id    the editor, on a saved document           — done
- *   /audit         photo/camera label audit
+ *   /audit         photo/camera label audit                  — done
  *   /rules         the rule catalogue, from the registry     — done
  *
  * `/labels/new` used to carry the editor *instead of* `/labels/:id`, because
@@ -38,6 +38,11 @@ const routes: RouteRecordRaw[] = [
     path: '/labels/:id',
     name: 'saved-editor',
     component: () => import('../views/EditorView.vue'),
+  },
+  {
+    path: '/audit',
+    name: 'audit',
+    component: () => import('../views/AuditView.vue'),
   },
   {
     path: '/rules',

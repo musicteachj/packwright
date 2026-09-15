@@ -47,7 +47,7 @@ export interface ScannerOptions {
  * reader needs. Asking for 1280 is `ideal` rather than `exact` so a device that
  * cannot manage it still opens rather than refusing outright.
  */
-const CAMERA: MediaStreamConstraints = {
+export const CAMERA: MediaStreamConstraints = {
   video: {
     facingMode: { ideal: 'environment' },
     width: { ideal: 1280 },

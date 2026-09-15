@@ -353,13 +353,12 @@ all. Widening it means reading every rule and deciding what it actually judges, 
 `withholdUncertifiablePasses`, the guard standing between this project and a pass issued on ink that was never
 laid down. Its own stage, and a `max` review.
 
-**`ExtractionResult` admits a field that is present with no value.** `fields` is
-`{ [K in keyof T]?: ExtractedField<T[K]> }`, and for an optional key of `GhsLabelData` that `T[K]` still
-includes `undefined` — so `fields.supplier.value` is `GhsSupplier | undefined`, and every consumer needs a
-second optional chain for a state that means nothing. `ExtractedField<NonNullable<T[K]>>` says what was
-intended. It is a one-line change to a phase 1 type with, as of now, one producer and no consumers, which is
-the cheapest this will ever be — but it changes `label-core`'s public contract, and it wants to land with the
-confirm step that will actually feel it, in stage 2.
+**~~`ExtractionResult` admits a field that is present with no value.~~ Fixed in stage 2**, the stage this
+entry said should carry it. `fields` is now `{ [K in keyof T]?: ExtractedField<NonNullable<T[K]>> }`, so
+`fields.supplier.value` is a `GhsSupplier` rather than a `GhsSupplier | undefined` and the second optional
+chain every consumer needed is gone. Absence was already sayable — the field itself is optional, and leaving
+it out is how a producer says it could not read one. Nothing else in the repository needed changing, which is
+what "land it with its first consumer" was worth waiting for.
 
 **`sourceRegion` is millimetres on a stock, and a vision region is pixels on a photograph.** `BoundingBox`
 names all four members `xMm`, `yMm`, `widthMm`, `heightMm`, and the same type is what `ResolvedElement.box`
@@ -410,3 +409,28 @@ version extracts the printed wording alongside the code and compares it against
 `hazardStatementText(regime, code)`, which would catch the paraphrase the current design merely refuses to
 launder. It needs a field `GhsLabelData` does not have, and a decision about whether a mismatch is a finding
 or a warning — a finding would be the first rule in this project to judge text rather than geometry.
+
+---
+
+## From phase 7, stage 2
+
+**The camera lifecycle exists twice.** `scanner/useBarcodeScanner.ts` and `audit/useLabelPhoto.ts` each carry
+the generation guard, the wording that separates a declined permission from an absent camera API, and the
+explicit track release — and every one of those parts exists because of something that went wrong in the
+scanner. The audit composable copied them rather than sharing them, which is a debt taken knowingly: one
+camera composable extracted from two is a refactor of shipped, tested code, and doing it as a passenger on a
+feature is how an unrelated breakage gets attributed to the wrong commit.
+
+The shapes are close but not identical — the scanner runs a decode loop and swaps engines, the audit path
+takes one frame and stops — so the extraction is a `useCameraStream` holding start, stop, the guard and the
+error wording, with each caller keeping what it does with the frames. Worth doing before a third caller
+appears, and the two differ enough that it is not mechanical.
+
+**`api/savedLabels.ts` and `api/audit.ts` have near-duplicate `request` helpers.** The guarded parse of an
+error body — keep the server's sentence, fall back to a status-only message, never let a failed parse of an
+error page replace the real failure — is the subtle part and it is now written twice. The BACKLOG's own rule
+for the export helper was that a shared thing with one caller is a guess at what a second one wants; there
+are two callers now, so that objection is gone. What remains is that merging them means editing a shipped and
+tested module in the middle of a feature, which this project's habit says is done deliberately rather than
+while passing through. They differ in two ways worth keeping: saved labels handle a 204, and each carries its
+own error class.

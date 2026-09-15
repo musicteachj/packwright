@@ -9,7 +9,7 @@
  * purpose, so the shared part is a component the reading routes mount rather than
  * a wrapper imposed on everything.
  */
-type Section = 'landing' | 'labels' | 'rules'
+type Section = 'landing' | 'labels' | 'audit' | 'rules'
 
 const props = defineProps<{ current: Section }>()
 
@@ -47,6 +47,14 @@ const ariaCurrent = (section: Section) =>
         to="/labels"
       >
         Saved
+      </RouterLink>
+      <RouterLink
+        class="focus-visible:outline-notice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        :class="linkClass('audit')"
+        :aria-current="ariaCurrent('audit')"
+        to="/audit"
+      >
+        Audit
       </RouterLink>
       <RouterLink
         class="focus-visible:outline-notice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"

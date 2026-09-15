@@ -32,8 +32,15 @@ try {
   const label = page.locator('.label')
   const shot = await label.screenshot({ type: 'png' })
   writeFileSync(target, shot)
-  const { width, height } = await label.boundingBox()
-  console.log(`${target}\n${Math.round(width)} x ${Math.round(height)} px, ${shot.length} bytes`)
+  // Read out of the PNG's own header rather than from `boundingBox()`. Two
+  // things were wrong with the box: it is nullable, so destructuring it throws
+  // *after* the file has been written and reports a failure for a run that
+  // succeeded — and it is the CSS box, which is fractional, so it said 619 px
+  // for a file that is 620. A generator that misreports what it wrote is how a
+  // later reader ends up checking the wrong number.
+  console.log(
+    `${target}\n${shot.readUInt32BE(16)} x ${shot.readUInt32BE(20)} px, ${shot.length} bytes`,
+  )
 } finally {
   await browser.close()
 }
