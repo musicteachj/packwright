@@ -81,6 +81,19 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument }> = 
     label: 'nutrition exempt',
     data: { ...WITHOUT_A_PANEL, nutritionExemption: { kind: 'small-business' } },
   },
+  // The same rule clears a small package bearing (j)(13)(i)(A)'s line, citing the
+  // subparagraph rather than (j) — the one citation no other document here emits.
+  {
+    label: 'small package nutrition exempt',
+    data: {
+      ...WITHOUT_A_PANEL,
+      nutritionExemption: {
+        kind: 'small-package',
+        availableSurfaceSqInches: 11.5,
+        contactLine: 'For nutrition information, call 1-800-555-0100',
+      },
+    },
+  },
   // `us-food/net-quantity-placement` exempts a 4.65 in² package whose declaration
   // clears its presence, type size and separation. `US_FOOD_SMALL_PANEL` reached
   // this until the exemption learned to ask, and its declaration is crowded.

@@ -90,6 +90,7 @@ const NUTRITION_EXEMPTION_NAMES: Record<(typeof US_FOOD_NUTRITION_EXEMPTIONS)[nu
   'bulk-for-manufacture': '§ 101.9(j)(9) — shipped in bulk, not for consumers',
   'raw-produce-or-fish': '§ 101.9(j)(10) — raw fruit, vegetables or fish',
   'custom-processed-fish-or-game': '§ 101.9(j)(11)(ii) — custom processed fish or game meat',
+  'small-package': '§ 101.9(j)(13)(i) — package under 12 in², with a line to ask',
   'bulk-at-retail': '§ 101.9(j)(16) — sold from bulk containers',
   'low-volume': '§ 101.9(j)(18) — low-volume product of a small business',
 }
@@ -428,7 +429,20 @@ const nutritionExemption = computed({
     if (next === 'unstated') return
     delete data.nutritionFactsExempt
     if (next === '') delete data.nutritionExemption
-    else data.nutritionExemption = { kind: next as UsFoodNutritionExemptionKind }
+    else if (next === 'small-package') {
+      // No area is seeded. The label stock is not the package, and any figure put here
+      // would grant the exemption to a package nobody measured — so it starts blank,
+      // and the rule says the claim has not been shown to qualify until one is typed.
+      data.nutritionExemption = {
+        kind: 'small-package',
+        availableSurfaceSqInches: Number.NaN,
+        contactLine: '',
+      }
+    } else {
+      data.nutritionExemption = {
+        kind: next as Exclude<UsFoodNutritionExemptionKind, 'small-package'>,
+      }
+    }
   },
 })
 
@@ -619,6 +633,20 @@ const panelHeightMm = requiredNumber(
   'heightMm',
 )
 const containerCircumferenceMm = requiredNumber(() => shaped('cylindrical'), 'circumferenceMm')
+
+/** The small package's particulars, where that is the exemption claimed. */
+const smallPackage = () =>
+  data.nutritionExemption?.kind === 'small-package' ? data.nutritionExemption : undefined
+
+const smallPackageAreaSqInches = requiredNumber(smallPackage, 'availableSurfaceSqInches')
+
+const smallPackageContactLine = computed({
+  get: () => smallPackage()?.contactLine ?? '',
+  set: (next: string) => {
+    const claimed = smallPackage()
+    if (claimed !== undefined) claimed.contactLine = next
+  },
+})
 const containerSurfaceAreaSqMm = requiredNumber(() => shaped('other'), 'totalSurfaceAreaSqMm')
 
 const servingsPerContainer = optionalNumber(() => data.nutritionFacts, 'servingsPerContainer')
@@ -1195,6 +1223,36 @@ const packaging = computed({
           </option>
         </select>
       </label>
+
+      <template v-if="nutritionExemption === 'small-package'">
+        <label :class="LABEL" for="field-food-nf-small-area">
+          Package surface available to bear labeling (in²)
+          <input
+            id="field-food-nf-small-area"
+            v-model.number="smallPackageAreaSqInches"
+            :class="INPUT"
+            type="number"
+            min="0.1"
+            step="0.1"
+          />
+        </label>
+        <label :class="LABEL" for="field-food-nf-contact">
+          Line for obtaining the nutrition information
+          <input
+            id="field-food-nf-contact"
+            v-model="smallPackageContactLine"
+            :class="INPUT"
+            type="text"
+            placeholder="For nutrition information, call 1-800-123-4567"
+          />
+        </label>
+        <p class="text-chrome-400 text-xs">
+          21 CFR 101.9(j)(13)(i) exempts a package with less than 12 in² of total surface available
+          to bear labeling — the package, not this label — on the condition that the label bears an
+          address or telephone number a consumer can use to obtain the nutrition information. Typed
+          as it should print; the placeholder is the regulation's own example.
+        </p>
+      </template>
 
       <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-present">
         <input id="field-food-nf-present" v-model="hasPanel" type="checkbox" />

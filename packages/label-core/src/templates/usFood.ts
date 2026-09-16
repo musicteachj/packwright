@@ -81,6 +81,13 @@ export const US_FOOD_ELEMENTS = {
    */
   nutritionSecondColumn: 'food-nutrition-second-column',
   nutritionFootnote: 'food-nutrition-footnote',
+  /**
+   * 101.9(j)(13)(i)(A)'s address or telephone number, on a small package using that
+   * exemption. **Deliberately not under `food-nutrition-`**: that prefix is how the
+   * rules deferring to 101.9's own type sizes recognise the panel, and 101.9 sets no
+   * size for this line, so it answers to 101.2(c)'s floor instead.
+   */
+  smallPackageContact: 'food-small-package-contact',
   containsStatement: 'food-contains-statement',
   netQuantity: 'food-net-quantity',
   ingredients: 'food-ingredients',
@@ -150,6 +157,11 @@ export interface UsFoodIngredientsExemption {
  *   section 403(q)(4) of the act.
  * - `custom-processed-fish-or-game` — (j)(11)(ii): "Nutrition information is not
  *   required for custom processed fish or game meats."
+ * - `small-package` — (j)(13)(i), a package with "a total surface area available
+ *   to bear labeling of less than 12 square inches", whose label bears "an address
+ *   or telephone number that a consumer can use to obtain the required nutrition
+ *   information" under (A). The only one declared with particulars: the area, and
+ *   the line, which the engine prints and a rule requires.
  * - `bulk-at-retail` — (j)(16), food sold from bulk containers.
  * - `low-volume` — (j)(18), low-volume products of a small business.
  *
@@ -157,16 +169,15 @@ export interface UsFoodIngredientsExemption {
  * labelling: (j)(5) sets what foods for infants and young children declare, (j)(6)
  * and (j)(7) move dietary supplements and infant formula to § 101.36 and part 107,
  * and (j)(11)(i), (j)(12) and (j)(17) permit where or on what basis the information
- * is given rather than excusing it. Three hold only on something printed on the
- * package, and each is offered when that is checked, so no pass rests on a
- * statement nothing reads: (j)(13)(i)'s small package, which must bear "an address
- * or telephone number"; (j)(14)'s egg carton, whose information must be "clearly
- * presented immediately beneath the carton lid or in an insert" — relocated, not
- * excused; and (j)(15)'s unit container, which must bear "This Unit Not Labeled For
- * Retail Sale". The first draft of this list offered (j)(14) and called (j)(8) and
- * (j)(11) not exemptions at all; a review of it read the paragraphs again.
+ * is given rather than excusing it. Two hold only on something printed on the
+ * package that nothing here checks, and are offered when it is: (j)(14)'s egg
+ * carton, whose information must be "clearly presented immediately beneath the
+ * carton lid or in an insert" — relocated, not excused; and (j)(15)'s unit
+ * container, which must bear "This Unit Not Labeled For Retail Sale". The first
+ * draft of this list offered (j)(14) and called (j)(8) and (j)(11) not exemptions
+ * at all; a review of it read the paragraphs again.
  */
-export const US_FOOD_NUTRITION_EXEMPTIONS = [
+export const US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE = [
   'small-business',
   'food-service',
   'retail-prepared',
@@ -178,10 +189,26 @@ export const US_FOOD_NUTRITION_EXEMPTIONS = [
   'bulk-at-retail',
   'low-volume',
 ] as const
+
+/** Every kind, the one declared with particulars included. */
+export const US_FOOD_NUTRITION_EXEMPTIONS = [
+  ...US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
+  'small-package',
+] as const
 export type UsFoodNutritionExemptionKind = (typeof US_FOOD_NUTRITION_EXEMPTIONS)[number]
-export interface UsFoodNutritionExemption {
-  kind: UsFoodNutritionExemptionKind
+
+/** 101.9(j)(13)(i): the area that qualifies the package, and the line (A) requires. */
+export interface UsFoodSmallPackageExemption {
+  kind: 'small-package'
+  /** The *package's* total surface area available to bear labeling — not this label's. */
+  availableSurfaceSqInches: number
+  /** Printed as typed, e.g. "For nutrition information, call 1-800-123-4567". */
+  contactLine: string
 }
+
+export type UsFoodNutritionExemption =
+  | { kind: (typeof US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE)[number] }
+  | UsFoodSmallPackageExemption
 
 /**
  * The net quantity of contents declaration.

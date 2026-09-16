@@ -50,7 +50,12 @@ import {
 import type { NutrientId } from '../../fda/nutrients'
 import { wasFullyDrawn } from '../../layout/omissions'
 import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../../templates/usFood'
-import type { UsFoodNutritionExemptionKind, UsFoodNutritionFacts } from '../../templates/usFood'
+import type {
+  UsFoodNutritionExemptionKind,
+  UsFoodNutritionFacts,
+  UsFoodSmallPackageExemption,
+} from '../../templates/usFood'
+import { SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES } from '../../fda/nutritionFormats'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
@@ -60,6 +65,7 @@ export const FDA_NUTRITION_NUTRIENT_MISSING = 'FDA_NUTRITION_NUTRIENT_MISSING'
 export const FDA_NUTRITION_COMPLETE = 'FDA_NUTRITION_COMPLETE'
 export const FDA_NUTRITION_EXEMPT = 'FDA_NUTRITION_EXEMPT'
 export const FDA_NUTRITION_EXEMPTION_UNSTATED = 'FDA_NUTRITION_EXEMPTION_UNSTATED'
+export const FDA_NUTRITION_CONTACT_MISSING = 'FDA_NUTRITION_CONTACT_MISSING'
 export const FDA_NUTRITION_OUT_OF_ORDER = 'FDA_NUTRITION_OUT_OF_ORDER'
 export const FDA_NUTRITION_ORDER_MET = 'FDA_NUTRITION_ORDER_MET'
 export const FDA_NUTRITION_ROUNDING_WRONG = 'FDA_NUTRITION_ROUNDING_WRONG'
@@ -92,7 +98,7 @@ const NO_CLAIMS =
  * Worded from 101.9(j) as read from the eCFR on 2026-09-16.
  */
 const EXEMPTIONS: Record<
-  UsFoodNutritionExemptionKind,
+  Exclude<UsFoodNutritionExemptionKind, 'small-package'>,
   { citation: Citation; grants: string; unchecked: string }
 > = {
   'small-business': {
@@ -165,6 +171,17 @@ const EXEMPTIONS: Record<
   },
 }
 
+/**
+ * 101.9(j)(13)(i), the one exemption declared with particulars — and the one whose
+ * condition this rule checks, because (A) puts it on the label: the manufacturer,
+ * packer or distributor "shall provide on the label of packages that qualify for and
+ * use this exemption an address or telephone number that a consumer can use to obtain
+ * the required nutrition information (e.g., 'For nutrition information, call
+ * 1-800-123-4567')". Read from the eCFR on 2026-09-16.
+ */
+const SMALL_PACKAGE = untitled(EXEMPTION, '21 CFR 101.9(j)(13)(i)')
+const SMALL_PACKAGE_CONTACT = untitled(EXEMPTION, '21 CFR 101.9(j)(13)(i)(A)')
+
 const PERCENT: Citation = {
   authority: 'FDA',
   reference: '21 CFR 101.9(d)(7)(ii)',
@@ -204,6 +221,8 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     CONTENT,
     EXEMPTION,
     ...Object.values(EXEMPTIONS).map((exemption) => exemption.citation),
+    SMALL_PACKAGE,
+    SMALL_PACKAGE_CONTACT,
   ],
   codes: [
     FDA_NUTRITION_MISSING,
@@ -211,6 +230,7 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     FDA_NUTRITION_COMPLETE,
     FDA_NUTRITION_EXEMPT,
     FDA_NUTRITION_EXEMPTION_UNSTATED,
+    FDA_NUTRITION_CONTACT_MISSING,
   ],
   appliesTo: 'us-food',
 
@@ -218,7 +238,10 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     const panel = panelOf(data)
 
     const claimed = data.nutritionExemption
-    if (claimed !== undefined && panel === undefined) {
+    if (claimed?.kind === 'small-package' && panel === undefined) {
+      return smallPackage(claimed)
+    }
+    if (claimed !== undefined && claimed.kind !== 'small-package' && panel === undefined) {
       const exemption = EXEMPTIONS[claimed.kind]
       return [
         // Most (j) exemptions hold only while the label bears no nutrition claims: the artwork.
@@ -302,6 +325,80 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
       ),
     ]
   },
+}
+
+/**
+ * 101.9(j)(13)(i), judged: the exemption holds only for a package under 12 in², and
+ * only where the label bears the line (A) requires.
+ *
+ * **The area is declared, and a blank one does not qualify.** It is the package's
+ * surface available to bear labeling, which the label stock does not measure, so the
+ * user states it — and a missing figure reads as not shown to be under 12 rather than
+ * as zero, which would grant the exemption to a package nobody measured. Where it does
+ * not qualify, the panel is missing and says why: the claim is the reason there is none.
+ *
+ * **The pass names the printed line**, not the panel, so a line that ran off the label
+ * withholds it. What the line says is not judged: whether it gives an address or
+ * telephone number a consumer can use is a question about the words, and the
+ * regulation prescribes none.
+ */
+function smallPackage(claimed: UsFoodSmallPackageExemption): Finding[] {
+  const area = claimed.availableSurfaceSqInches
+  // Above zero as well as under 12. A package with no surface cannot bear the label
+  // being judged, and reading 0 as qualifying would grant the exemption to exactly the
+  // unmeasured package a blank area is kept from reaching — a review caught it.
+  const declared = Number.isFinite(area) && area > 0
+  if (!(declared && area < SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES)) {
+    return [
+      finding(usFoodNutritionCompletenessRule, {
+        code: FDA_NUTRITION_MISSING,
+        severity: 'blocking',
+        message:
+          'The label bears no nutrition label and claims the 101.9(j)(13)(i) exemption, which ' +
+          `covers only packages with less than ${SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES} in² available ` +
+          'to bear labeling. ' +
+          (declared
+            ? `This package declares ${area} in², so it must carry one.`
+            : 'This package declares no area above zero, so it has not been shown to qualify.'),
+        measurement: {
+          actual: declared ? `${area} in² available` : 'no area declared',
+          required: `less than ${SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES} in² for the exemption`,
+        },
+        elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+        citation: SMALL_PACKAGE,
+      }),
+    ]
+  }
+
+  if (claimed.contactLine.trim() === '') {
+    return [
+      finding(usFoodNutritionCompletenessRule, {
+        code: FDA_NUTRITION_CONTACT_MISSING,
+        severity: 'blocking',
+        message:
+          'The label claims the 101.9(j)(13)(i) small-package exemption but bears no address or ' +
+          'telephone number a consumer can use to obtain the nutrition information, which ' +
+          '(j)(13)(i)(A) requires of a package using it.',
+        measurement: { actual: 'no contact line', required: 'an address or telephone number' },
+        elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+        citation: SMALL_PACKAGE_CONTACT,
+      }),
+    ]
+  }
+
+  return [
+    // (A) puts the line on the label, and the pass names it: the artwork.
+    passedOnArtwork(
+      usFoodNutritionCompletenessRule,
+      FDA_NUTRITION_EXEMPT,
+      `The label claims the ${SMALL_PACKAGE.reference} exemption for a package with ${area} in² ` +
+        `available to bear labeling, and bears the contact line (j)(13)(i)(A) requires, so no ` +
+        'panel is required. Not checked here: the area itself, whether the line gives an address ' +
+        `or telephone number a consumer can use to obtain the nutrition information, and ${NO_CLAIMS}.`,
+      US_FOOD_ELEMENTS.smallPackageContact,
+      SMALL_PACKAGE,
+    ),
+  ]
 }
 
 export const usFoodNutritionOrderRule: UsFoodRule = {

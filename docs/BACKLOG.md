@@ -504,9 +504,11 @@ to bear.
 
 *In progress on `fix/exemption-conditions`.* The paragraph is now recorded — `ingredientsExemption` and
 `nutritionExemption`, each a `kind` naming one paragraph — and every exempt pass cites that paragraph and says
-what of it goes unchecked. A label saved with a bare flag is excused and advised rather than cleared. Neither
-condition above is checked yet, and neither exemption is offered until it is: (j)(13)(i)'s contact line and
-(a)(1)'s statement are the next two commits on that branch.
+what of it goes unchecked. A label saved with a bare flag is excused and advised rather than cleared.
+(j)(13)(i)(A) is now checked: the small package declares its area and the line, the engine prints the line, and
+the exemption is refused at 12 in² or more, without a line, or where the line did not print. What the line says
+is not judged. (a)(1)'s statement is the remaining commit on that branch, and the assortment is not offered
+until it lands.
 
 **101.9(j)(15)'s unit container is not offered, because its condition is a statement nothing checks.** Read
 from the eCFR on 2026-09-16: the unit containers in a multiunit retail package are exempt where the outer

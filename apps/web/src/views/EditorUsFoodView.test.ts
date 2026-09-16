@@ -830,6 +830,31 @@ describe('the Nutrition Facts panel in the editor', () => {
     expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_MISSING')).toBe(false)
   })
 
+  it('takes a small package only with its area, and prints the line it asks for', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-present').setValue(false)
+    await wrapper.find('#field-food-nf-exemption').setValue('small-package')
+    await nextTick()
+
+    // Nothing is seeded, so the claim is not yet shown to qualify.
+    expect(wrapper.find<HTMLInputElement>('#field-food-nf-small-area').element.value).toBe('')
+    expect(
+      store.findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')?.message,
+      'a blank area is not read as small',
+    ).toContain('declares no area')
+
+    await wrapper.find('#field-food-nf-small-area').setValue(11.5)
+    await nextTick()
+    expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_CONTACT_MISSING')).toBe(true)
+
+    const line = 'For nutrition information, call 1-800-555-0100'
+    await wrapper.find('#field-food-nf-contact').setValue(line)
+    await nextTick()
+    expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_EXEMPT')).toBe(true)
+    expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_CONTACT_MISSING')).toBe(false)
+    expect(wrapper.find('svg[role="img"]').text(), 'and the canvas prints it').toContain(line)
+  })
+
   it('asks a label saved with the old bare flag which paragraph it claims', async () => {
     // Saved before the paragraph was recorded: excused, advised, and shown as such
     // until a paragraph is picked — which clears the flag, so the document never

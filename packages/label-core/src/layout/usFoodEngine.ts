@@ -514,6 +514,26 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     cursorYMm = bottomMm + type.blockGapMm
   }
 
+  // 21 CFR 101.9(j)(13)(i)(A) — a small package using its exemption bears "an address
+  // or telephone number that a consumer can use to obtain the required nutrition
+  // information". Drawn in the panel's place, and only where that exemption is claimed
+  // and no panel is carried: a label printing a panel is not using it. Typed and never
+  // composed, because "For nutrition information, call 1-800-123-4567" is the
+  // regulation's example of such a line rather than a form of words it prescribes.
+  //
+  // Its element id sits outside the nutrition panel's prefix on purpose. 101.9 sets no
+  // type size for this line, so 101.2(c)'s floor governs it like the rest of the
+  // information panel — and the rules that defer to 101.9 recognise the panel by that
+  // prefix.
+  if (data.nutritionFacts === undefined && data.nutritionExemption?.kind === 'small-package') {
+    stackText(
+      US_FOOD_ELEMENTS.smallPackageContact,
+      'Nutrition information contact',
+      data.nutritionExemption.contactLine,
+      panelTypeMm,
+    )
+  }
+
   // 21 CFR 101.4(a)(1) — the list is drawn in the order it was given. Sorting it
   // here would make a list out of descending order impossible to draw, and that
   // list is precisely what the order rule exists to report.

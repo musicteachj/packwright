@@ -356,6 +356,28 @@ describe('POST /api/labels/us-food/export', () => {
     ).toBe(400)
   })
 
+  it('takes a small package with its area and line, and refuses one without the area', async () => {
+    const { ingredients: _list, ...withoutList } = FOOD_BODY
+    const exempt = { ...withoutList, ingredientThreshold: undefined }
+    const smallPackage = {
+      kind: 'small-package',
+      availableSurfaceSqInches: 11.5,
+      contactLine: 'For nutrition information, call 1-800-555-0100',
+    }
+    const drawn = await postFood({ ...exempt, nutritionExemption: smallPackage })
+    expect(drawn.status).toBe(200)
+    // The line reached the renderer, which a status code alone would not show: the same
+    // label with no line to print draws fewer glyphs.
+    const blank = await postFood({
+      ...exempt,
+      nutritionExemption: { ...smallPackage, contactLine: '' },
+    })
+    expect(drawn.body.length).toBeGreaterThan(blank.body.length)
+
+    const { availableSurfaceSqInches: _area, ...withoutArea } = smallPackage
+    expect((await postFood({ ...exempt, nutritionExemption: withoutArea })).status).toBe(400)
+  })
+
   it('names the download after the food', async () => {
     const response = await postFood(FOOD_BODY)
     expect(response.headers['content-disposition']).toContain('Rolled-oats.pdf')

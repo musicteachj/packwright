@@ -37,6 +37,21 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A small package claiming 101.9(j)(13)(i) must bear the line (A) requires, and qualify by area.** The
+  exemption covers packages "that have a total surface area available to bear labeling of less than 12 square
+  inches", and (A) says the manufacturer, packer or distributor "shall provide on the label of packages that
+  qualify for and use this exemption an address or telephone number that a consumer can use to obtain the
+  required nutrition information". Neither was checked, so the exemption was not offered. It is now: the label
+  declares the package's area and the line, typed as it should print, and the engine prints it where the panel
+  would sit. The rule refuses the exemption for 12 in² or more — the missing panel then reported blocking under
+  (j)(13)(i) — and for a blank area or one of zero or less, which reads as not shown to qualify — a review caught 0 clearing it; it reports a claim
+  with no line as `FDA_NUTRITION_CONTACT_MISSING`; and its pass names the printed line, so a line that ran off
+  the label withholds it. The manufacturer's 101.5 address does not stand in for the line: the regulation does
+  not settle that it would, and FDA's own sample prints a dedicated one. What the line says is not judged, and
+  101.9 sets no size for it, so its element sits outside the nutrition panel's `food-nutrition-` prefix and
+  answers to 101.2(c)'s 1/16 inch floor. The editor seeds no area, because any figure it chose would grant the
+  exemption to a package nobody measured.
+
 - **An exemption from ingredient or nutrition labelling is claimed by its paragraph, not by a checkbox.**
   `ingredientsExempt` and `nutritionFactsExempt` were booleans, so the passes they earned could name only
   § 101.100 and 101.9(j) as a whole and say that which exemption applied was not checked — and no rule could ever

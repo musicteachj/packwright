@@ -4,13 +4,18 @@ import type { TextPrimitive } from '../layout/types'
 import {
   US_FOOD_ELEMENTS,
   US_FOOD_NUTRITION_EXEMPTIONS,
+  US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
   nutritionRowElementId,
 } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES, US_FOOD_SMALL_PANEL } from './fixtures/usFood'
 import { blockingOmissions } from '../layout/omissions'
 import { MAJOR_FOOD_ALLERGENS, majorFoodAllergen } from '../fda/allergens'
-import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
+import type {
+  UsFoodIngredient,
+  UsFoodLabelData,
+  UsFoodSmallPackageExemption,
+} from '../templates/usFood'
 import { roundNutrientAmount } from '../fda/nutrients'
 import { nutritionDisplayFor, nutritionTypeForDisplay } from '../fda/nutritionPanel'
 import { MM_PER_POINT } from '../geometry/units'
@@ -29,6 +34,8 @@ import {
   FDA_INGREDIENT_THRESHOLD_EXCEEDED,
   FDA_PANEL_TYPE_SIZE_MET,
   FDA_PANEL_TYPE_TOO_SMALL,
+  FDA_NUTRITION_CONTACT_MISSING,
+  usFoodNutritionCompletenessRule,
   FDA_NET_QUANTITY_CROWDED,
   FDA_NET_QUANTITY_DUAL_MET,
   FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
@@ -1194,7 +1201,7 @@ describe('the §101.9(j) nutrition exemption', () => {
 
   // Each kind is named for the paragraph that grants it, and the pass must cite that
   // paragraph — not 101.9(j) as a whole, which exempts nothing by itself.
-  const PARAGRAPH: Record<(typeof US_FOOD_NUTRITION_EXEMPTIONS)[number], string> = {
+  const PARAGRAPH: Record<(typeof US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE)[number], string> = {
     'small-business': '21 CFR 101.9(j)(1)',
     'food-service': '21 CFR 101.9(j)(2)',
     'retail-prepared': '21 CFR 101.9(j)(3)',
@@ -1207,7 +1214,7 @@ describe('the §101.9(j) nutrition exemption', () => {
     'low-volume': '21 CFR 101.9(j)(18)',
   }
 
-  it.each(US_FOOD_NUTRITION_EXEMPTIONS.map((kind) => [kind] as const))(
+  it.each(US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE.map((kind) => [kind] as const))(
     'clears it when the label claims %s, citing its own paragraph',
     (kind) => {
       const findings = findingsFor({ ...withoutPanel, nutritionExemption: { kind } }, stock)
@@ -1223,8 +1230,15 @@ describe('the §101.9(j) nutrition exemption', () => {
     // (j)(13)(i)'s address or telephone number, (j)(14)'s information beneath the
     // carton lid and (j)(15)'s "This Unit Not Labeled For Retail Sale" are each a
     // condition on the package. A first draft offered (j)(14), and its pass said no
-    // panel was required of a carton whose panel had only moved.
-    const cited = US_FOOD_NUTRITION_EXEMPTIONS.map((kind) =>
+    // panel was required of a carton whose panel had only moved. (j)(13)(i) is
+    // offered now, as the one kind declared with particulars — because its line is
+    // checked, below — and nothing claimed by paragraph alone reaches any of them.
+    expect(
+      US_FOOD_NUTRITION_EXEMPTIONS.filter(
+        (kind) => !(US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE as readonly string[]).includes(kind),
+      ),
+    ).toEqual(['small-package'])
+    const cited = US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE.map((kind) =>
       findingsFor({ ...withoutPanel, nutritionExemption: { kind } }, stock).find(
         (f) => f.code === 'FDA_NUTRITION_EXEMPT',
       ),
@@ -1261,6 +1275,120 @@ describe('the §101.9(j) nutrition exemption', () => {
       stock,
     ).map((f) => f.code)
     expect(codes).toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+  })
+
+  describe('the (j)(13)(i) small package, which must bear a line to ask for the information', () => {
+    // Read from the eCFR on 2026-09-16: packages "that have a total surface area
+    // available to bear labeling of less than 12 square inches", on which (A) requires
+    // "an address or telephone number that a consumer can use to obtain the required
+    // nutrition information".
+    const line = 'For nutrition information, call 1-800-555-0100'
+    const codesOf = (findings: { code: string }[]) => findings.map((f) => f.code)
+    const claim = (patch: Partial<UsFoodSmallPackageExemption> = {}): UsFoodLabelData => ({
+      ...withoutPanel,
+      nutritionExemption: {
+        kind: 'small-package',
+        availableSurfaceSqInches: 11.5,
+        contactLine: line,
+        ...patch,
+      },
+    })
+    const contactText = (data: UsFoodLabelData, onStock: LabelStock = stock) =>
+      layOutUsFoodLabel({ data, stock: onStock })
+        .primitives.filter(
+          (p): p is TextPrimitive =>
+            p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.smallPackageContact,
+        )
+        .map((p) => p.text)
+        .join(' ')
+
+    it('prints the line as typed and clears the exemption on it', () => {
+      expect(contactText(claim()), 'the engine prints it, and composes nothing').toBe(line)
+      const findings = findingsFor(claim(), stock)
+      const pass = findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')
+      expect(pass!.citation.reference).toBe('21 CFR 101.9(j)(13)(i)')
+      expect(pass!.elementId, 'naming the line, so a line that did not print withholds it').toBe(
+        US_FOOD_ELEMENTS.smallPackageContact,
+      )
+      expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_MISSING')
+    })
+
+    it('refuses it for a package of 12 square inches or more, which "less than 12" excludes', () => {
+      expect(codesOf(findingsFor(claim({ availableSurfaceSqInches: 11.99 }), stock))).toContain(
+        'FDA_NUTRITION_EXEMPT',
+      )
+      const findings = findingsFor(claim({ availableSurfaceSqInches: 12 }), stock)
+      const missing = findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
+      expect(missing!.severity).toBe('blocking')
+      expect(missing!.citation.reference, 'the paragraph the claim failed').toBe(
+        '21 CFR 101.9(j)(13)(i)',
+      )
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it.each([Number.NaN, 0, -3])(
+      'does not read an area of %s as small enough',
+      (availableSurfaceSqInches) => {
+        // A blank area arrives as NaN, and 0 or less describes no surface at all. Read
+        // as under 12, either would exempt a package nobody measured — a review caught
+        // 0 doing exactly that after NaN had been handled.
+        const findings = findingsFor(claim({ availableSurfaceSqInches }), stock)
+        const missing = findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
+        expect(missing!.message).toContain('declares no area above zero')
+        expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+      },
+    )
+
+    it('reports a claim with no line, and prints nothing for it', () => {
+      const data = claim({ contactLine: '   ' })
+      expect(contactText(data)).toBe('')
+      const findings = findingsFor(data, stock)
+      const missing = findings.find((f) => f.code === FDA_NUTRITION_CONTACT_MISSING)
+      expect(missing!.severity).toBe('blocking')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(j)(13)(i)(A)')
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('withholds the exemption when the line does not print', () => {
+      // A label short enough that the line, drawn under the statement of identity,
+      // begins past its bottom edge. The rule clears it; the guard must not let that
+      // stand, because (A) is about what the label bears.
+      const short: LabelStock = { ...stock, heightMm: 16 }
+      const data = claim()
+      const layout = layOutUsFoodLabel({ data, stock: short })
+      expect(
+        layout.omissions.map((o) => o.elementId),
+        'the premise: the line did not print in full',
+      ).toContain(US_FOOD_ELEMENTS.smallPackageContact)
+      const context = { labelType: 'us-food' as const, data, stock: short, layout }
+      expect(
+        usFoodNutritionCompletenessRule.check(context).map((f) => f.code),
+        'the premise: the rule itself clears it',
+      ).toContain('FDA_NUTRITION_EXEMPT')
+      expect(codesOf(runRules(context))).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('holds the line to the 101.2(c) floor, since 101.9 sets no size for it', () => {
+      const small = findingsFor({ ...claim(), informationPanelFontSizeMm: 2 }, stock).filter(
+        (f) => f.code === FDA_PANEL_TYPE_TOO_SMALL,
+      )
+      expect(small.map((f) => f.elementId)).toContain(US_FOOD_ELEMENTS.smallPackageContact)
+    })
+
+    it('prints no line on a label that carries a panel, which is not using the exemption', () => {
+      const data: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionExemption: {
+          kind: 'small-package',
+          availableSurfaceSqInches: 11.5,
+          contactLine: line,
+        },
+      }
+      expect(contactText(data)).toBe('')
+      const codes = codesOf(findingsFor(data, stock))
+      expect(codes).toContain('FDA_NUTRITION_COMPLETE')
+      expect(codes).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
   })
 })
 

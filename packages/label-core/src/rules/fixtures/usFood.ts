@@ -38,6 +38,7 @@ import {
   FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_INGREDIENTS_EXEMPTION_UNSTATED,
+  FDA_NUTRITION_CONTACT_MISSING,
   FDA_NUTRITION_EXEMPTION_UNSTATED,
   FDA_DUAL_COLUMN_HEADINGS_MISSING,
   FDA_DUAL_COLUMN_INCOMPLETE,
@@ -871,6 +872,28 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_NUTRITION_EXEMPTION_UNSTATED,
       severity: 'advisory',
       citation: '21 CFR 101.9(j)',
+    },
+  },
+  {
+    name: 'a small package using its nutrition exemption with no line to ask for the information',
+    defect:
+      'An 11.5 in² package is under the 12 in² at which 101.9(j)(13)(i) exempts it from ' +
+      'nutrition labelling — but (A) says the manufacturer, packer or distributor "shall provide ' +
+      'on the label of packages that qualify for and use this exemption an address or telephone ' +
+      'number" a consumer can use to obtain it. This label bears none.',
+    data: {
+      ...WITHOUT_NUTRITION,
+      nutritionExemption: {
+        kind: 'small-package',
+        availableSurfaceSqInches: 11.5,
+        contactLine: '',
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_CONTACT_MISSING,
+      severity: 'blocking',
+      citation: '21 CFR 101.9(j)(13)(i)(A)',
     },
   },
   {
