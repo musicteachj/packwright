@@ -35,6 +35,7 @@ import type {
 } from '../../templates/usFood'
 import type { Severity } from '../../types/index'
 import {
+  FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_DUAL_COLUMN_HEADINGS_MISSING,
   FDA_DUAL_COLUMN_INCOMPLETE,
@@ -754,6 +755,29 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
       severity: 'violation',
       citation: 'FD&C Act §403(w)(2)',
+    },
+  },
+  {
+    name: 'almonds declared only in a Contains statement that runs off the label',
+    defect:
+      'The list never names almonds and they are not declared inline, so only the Contains ' +
+      'statement says it — and on stock this short the engine draws that statement past the ' +
+      'bottom edge. It cannot clear, and "not declared" could be false: the omission is recorded ' +
+      'per element, so the rule cannot tell whether the lost line carried the source. The 158 mm ' +
+      'height is an input chosen to put the statement off the label, not a regulatory figure.',
+    data: {
+      ...BASE,
+      ingredients: BASE_INGREDIENTS.map((ingredient) =>
+        ingredient.allergen === 'tree-nuts'
+          ? { ...ingredient, name: 'nut paste', declareInline: false }
+          : { ...ingredient },
+      ),
+    },
+    stock: { ...CONFORMING_STOCK, heightMm: 158 },
+    expected: {
+      code: FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
+      severity: 'advisory',
+      citation: 'FD&C Act §403(w)(1)',
     },
   },
   {

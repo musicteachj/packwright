@@ -517,8 +517,19 @@ pass names the element that did not make the declaration. The fix is to name, or
 whichever element's text discharged it — the same shape as the serving-size, panel type-size and
 pictogram-set entries, which are worth fixing together.
 
-**A declared allergen whose only declaration is cut off gets no allergen finding at all.** Found by the `high`
-review of PR #29 and reproduced. Since that branch, the allergen rule declines its pass when every element
+**~~A declared allergen whose only declaration is cut off gets no allergen finding at all.~~ Fixed** on
+`fix/unconfirmed-allergen-declaration`. The rule now raises `FDA_ALLERGEN_DECLARATION_UNCONFIRMED`, an
+advisory under §403(w)(1), for each ingredient whose source is declared only in elements with an omission
+recorded against them. It names the source and points at the declaring element, and the pass stays withheld.
+It is not "not declared" for the reason below, and it does not block export: it makes the lost declaration
+visible rather than stopping it shipping. Because `wasFullyDrawn` counts any omission, it also fires where the
+source did print — a Contains statement whose only omission is an entry no ingredient carries, or the
+163.15 mm case below — so its message says an omission is recorded, never that the text went unprinted. The
+first wording said "did not print in full"; the `high` review of PR #31 found that false in a state the editor
+keeps on purpose, where clearing an ingredient's allergen leaves its Contains tick and the statement prints
+whole. Telling those cases apart is the open entry that follows this one. What follows here is the entry as it
+stood.
+Found by the `high` review of PR #29 and reproduced. Since that branch, the allergen rule declines its pass when every element
 declaring a source has an omission, and reports nothing in its place. Where the statement is wholly off the
 label, the `element` omission says so plainly. Where it is only cut, the omission is `detail` — on
 `US_FOOD_CONFORMANT` with the almonds renamed `nut paste`, a 161.74 mm label puts "Contains: almonds." on a
@@ -535,6 +546,26 @@ shows: at 163.15 mm the whole line prints and only its line box overhangs, and t
 Deciding this needs omissions that say which lines were lost, or an advisory finding that says the
 declaration could not be confirmed on the label. The advisory is a new code with a citation and a fixture, so
 it is a change of its own.
+
+**`FDA_ALLERGEN_DECLARATION_UNCONFIRMED` fires on a declaration that printed whole.** Recorded from the `high`
+review of PR #31, and reproduced. The allergen rule asks `wasFullyDrawn` of each declaring element, which counts
+every omission, positional or not. Two cases where the source prints raise the advisory anyway. On
+`US_FOOD_CONFORMANT` with the almonds renamed `nut paste`, not declared inline, and `containsStatement:
+['tree-nuts', 'milk']` on the full 240 mm stock, "Contains: almonds." prints on a baseline at 162.77 mm, and the
+only omission is the engine's `detail` for the milk entry no ingredient carries. The editor reaches this
+routinely: `UsFoodFormRail.vue` keeps a Contains tick after its ingredient's allergen is cleared, on purpose.
+The other case is 163.15 mm with no firm, where the line prints and only its line box overhangs. Neither is a
+false clearance, and since that PR the message claims only that an omission is recorded. It is still an
+advisory about a label that is fine.
+The review suggested the rule read line by line — keep only the Contains and list lines that landed on the
+stock and search those — which would need no engine change. It is not a small fix, for two reasons. First, a
+baseline on the stock does not put the glyphs there: descenders hang below it, and `FaceMetrics` in
+`text/metrics.ts` carries cap height, lowercase-o height and advance widths but no descender, so the metric
+would have to be read from the font file and verified first. A line's right edge would have to be measured too,
+in the face it prints in. Second, it loosens the condition the pass is withheld on, from "no omission against
+the element" to the rule's own measurement. That is the direction in which every false clearance here has
+shipped, so it wants its own branch and its own review. The alternative is omissions that say what was lost —
+lines, or entries — which is a change to the engine's contract.
 
 **~~`usFoodEngine` records nothing for a word that runs off the right edge.~~ Fixed** on
 `fix/engines-record-what-runs-off`. The statement of identity, measured in the SemiBold face it prints in, and

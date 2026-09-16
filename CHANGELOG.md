@@ -37,6 +37,24 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **An allergen declared only in text that did not print is named, rather than passed over.** Since the
+  allergen rule learned which element declared each source, it has withheld its pass when every one of them
+  carried an omission — and returned nothing in its place. On `US_FOOD_CONFORMANT` with the almonds renamed
+  `nut paste` and not declared inline, a 161.74 mm label with no responsible firm puts "Contains: almonds." on
+  a baseline at 162.77 mm. That is a `detail` omission, which does not block export, so the PDF went out with
+  the declaration cut off and no allergen finding at all. `usFoodAllergenRule` now raises
+  `FDA_ALLERGEN_DECLARATION_UNCONFIRMED` for each such ingredient, naming its source and pointing at the element
+  that declared it, under the rule's existing §403(w)(1) citation. It is an advisory, as `GHS_PICTOGRAM_MISSING`
+  is, because "not declared" cannot be established: omissions are recorded per element, so the rule cannot
+  tell whether the lost line held the source. It does not block export or ask for confirmation. It is stricter
+  than necessary in two known places, both because any omission counts: a Contains statement whose only
+  omission is an entry no ingredient carries, and one whose line printed with only its line box overhanging.
+  Its message therefore says only that a layout omission is recorded against the declaring text, never that
+  the text went unprinted. The first wording said the statement "did not print in full", and the PR's review
+  found that false in a state the editor keeps on purpose: clear an ingredient's allergen and the rail leaves
+  its Contains tick, so the statement prints whole on a full-size label beside an omission for the entry it
+  dropped.
+
 - **`usFoodEngine` looks across as well as down.** Its bounds checks have recorded a block drawn past the bottom
   of the stock since phase 5, but nothing looked past the right edge, and `wrapTextMm` never breaks inside a
   word. A statement of identity reading "Supercalifragilisticexpialidociousgranola" was set as one line
