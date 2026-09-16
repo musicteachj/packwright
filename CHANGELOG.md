@@ -37,6 +37,21 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A margin that leaves no panel is refused, rather than drawn.** Every engine required only a finite,
+  non-negative margin, so a margin of half the stock or more resolved a panel of zero or negative size and
+  anchored everything relative to it. The omissions filed for what then ran off the label did not agree with
+  each other at the boundary: on 74 mm GHS stock a 37 mm margin set every statement into a panel no width at
+  all, running up to 74.79 mm past the right edge, and because each was only a `detail` omission nothing blocked
+  export — while at 36.99 mm the same label was refused. All three engines now throw a `LayoutError` when twice
+  the margin is at least the stock's width or height, from one shared `assertMarginLeavesPanel` that replaces
+  the three identical margin checks. The line is zero rather than some minimum usable panel, because no
+  source publishes one. The editor shows the message where the preview would be and the export routes answer
+  422, as they do for any input that describes no drawing. It costs one drawing that happened to work: a
+  centred UPC-A with a margin wider than its label still lands in the middle, because centring in a negative
+  panel finds the stock's centre. The omission branches that recorded a symbol or block wholly off the label
+  stay, though no stock the engines accept can reach them now, so loosening the check cannot reopen an empty
+  export; the tests that built those stocks now assert the refusal instead.
+
 - **An allergen declared only in text that did not print is named, rather than passed over.** Since the
   allergen rule learned which element declared each source, it has withheld its pass when every one of them
   carried an omission — and returned nothing in its place. On `US_FOOD_CONFORMANT` with the almonds renamed

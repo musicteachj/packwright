@@ -1,4 +1,4 @@
-export { LayoutError, layOutUpcALabel } from './engine'
+export { LayoutError, assertMarginLeavesPanel, layOutUpcALabel } from './engine'
 export type { UpcALayoutRequest } from './engine'
 
 export { layOutGhsLabel } from './ghsEngine'

@@ -581,7 +581,19 @@ live false clearance, and the fix is the one `layOutGhsLabel` now has: measure e
 against the stock, for the stacked blocks and the statement of identity's own loop — in the face it prints
 in, since the statement of identity is bold.
 
-**A margin as wide as the stock describes no panel, and all three engines accept it.** Found reviewing the
+**~~A margin as wide as the stock describes no panel, and all three engines accept it.~~ Fixed** on
+`fix/margin-leaves-no-panel`, decided as a `LayoutError`. All three engines now refuse a margin that leaves
+the panel zero or less in either dimension, through one shared `assertMarginLeavesPanel`. Zero rather than a
+minimum usable panel, because no source publishes one. Reproducing it before the decision corrected the
+sentence below that nothing ships: that holds for a margin wider than the stock, but at exactly half the width
+it does not. On `GHS_CONFORMANT`'s 74 mm stock a 37 mm margin left a panel no width at all, the statements ran
+up to 74.79 mm past the right edge as `detail` omissions only, and nothing blocked export — while 36.99 mm was
+refused. In the three cases whose passes were checked against the drawing — US food at a 125 mm margin, GHS at
+37 mm, UPC-A at 65 mm — every pass that survived named ink that did print, so none of those was a false
+clearance.
+The refusal costs a centred UPC-A, which lands in the middle of the label even on a negative panel. The
+omission branches for a symbol or block wholly off the label are kept, though no accepted stock reaches them.
+What follows is the entry as it stood. Found reviewing the
 right-edge checks on `fix/engines-record-what-runs-off`, and reproduced. Every engine requires only a finite,
 non-negative margin, so `{ widthMm: 60, marginMm: 65 }` resolves a panel of negative width, and anchors then
 place elements wholly off the label. That branch made each engine record such an element as an `element`
