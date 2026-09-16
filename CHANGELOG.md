@@ -221,7 +221,9 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   the first test fails on the old wording. The serving-size pass is the eighth, and it is out of reach. It names its own row, the
   engine records omissions against the whole panel, and on a 25 mm label the row prints wholly below the edge
   while the pass reports a serving size declared. A live false clearance, recorded in `docs/BACKLOG.md`
-  with the exemption conditions no rule checks.
+  with the exemption conditions no rule checks. The `high` review of the pull request found one more of the
+  same shape and it is recorded beside them: the allergen pass names the ingredient list, so it survives a
+  Contains statement that carried the only declaration and never printed.
 
 - **The SI exemption now survives an omission; the other fourteen passes outside the nutrition panel stay on
   the artwork, and say why.** `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` rests on the document: a random package

@@ -538,9 +538,10 @@ describe('every pass says what it certifies', () => {
   it('observes both answers, not just the default one', () => {
     // The gap this file shipped with for one commit: the sweep was copied from
     // `citations.test.ts` minus the permission paths, so it saw 708 passes and
-    // every one of them `artwork`. Both `passedOnDocument` sites sit on rules it
-    // never reached, which is to say the half of the distinction that changes a
-    // verdict was untested by the test written to police it.
+    // every one of them `artwork`. Both of the two `passedOnDocument` sites there
+    // were then sat on rules it never reached, which is to say the half of the
+    // distinction that changes a verdict was untested by the test written to
+    // police it.
     const kinds = new Set(PASSES.map(({ finding: result }) => result.certifies))
     expect([...kinds].sort()).toEqual(['artwork', 'document'])
   })

@@ -479,6 +479,17 @@ running past the bottom of the stock against `food-nutrition-panel`, and never a
 still returns "The panel declares a serving size of …". The stamp is right; the id is out of the guard's
 reach. The same shape as the panel type-size entry above. Reproduced 2026-09-16.
 
+**`FDA_ALLERGEN_DECLARED_MET` names the ingredient list, and can rest on the Contains statement instead.**
+Found by the `high` review of PR #28 and reproduced. §403(w)(1) is satisfied by either form, and the rule
+searches both printed texts — but the pass always names `food-ingredients`, and the engine still emits text
+primitives for a block it records as off the label. On `US_FOOD_CONFORMANT` with the almond ingredient renamed
+`nut paste` and `declareInline: false`, on a 120 × 158 mm label, the Contains statement begins at 159.8 mm and
+is recorded as an `element` omission, the printed list never names almonds, and `runRules` still returns
+"almonds is declared." `FDA_CONTAINS_TYPE_MET` beside it is correctly withheld. The artwork stamp is right; the
+pass names the element that did not make the declaration. The fix is to name, or require `wasFullyDrawn` of,
+whichever element's text discharged it — the same shape as the serving-size, panel type-size and
+pictogram-set entries, which are worth fixing together.
+
 ### What reading the GHS provisions turned up
 
 **The GHS engine records no omission for a block drawn off its stock, so no GHS pass about text can be

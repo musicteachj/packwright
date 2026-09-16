@@ -6,9 +6,9 @@
  * asked whether each pass said what it certified. The second was written from
  * the first, and dropped the one thing the first had added on purpose — the
  * documents below, which reach paragraphs no known-bad fixture does. So the
- * newer sweep silently missed ten pass codes including *both* `passedOnDocument`
- * sites: the half of the distinction that actually changes a verdict was never
- * observed by the test built to police it.
+ * newer sweep silently missed ten pass codes including *both* of the two
+ * `passedOnDocument` sites there were then: the half of the distinction that
+ * actually changes a verdict was never observed by the test built to police it.
  *
  * One sweep, two filters. Neither can fall behind the other now.
  *
