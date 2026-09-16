@@ -34,7 +34,14 @@ import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
 import { runRules } from './registry'
 import {
   FDA_DUAL_COLUMN_EXEMPT,
+  FDA_INGREDIENTS_EXEMPT,
   FDA_NET_QUANTITY_CROWDED,
+  FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
+  FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
+  FDA_ALLERGEN_DECLARED_MET,
+  FDA_CONTAINS_TYPE_MET,
+  FDA_INGREDIENTS_ORDER_MET,
+  FDA_INGREDIENT_THRESHOLD_MET,
   FDA_RESPONSIBLE_FIRM_MET,
   GHS_PICTOGRAM_SIZE_MET,
   GS1_DIGITAL_LINK_VALID,
@@ -158,6 +165,119 @@ describe('a rule never certifies what the engine did not print', () => {
       findings.map((result) => result.code),
       'an exemption is a fact about the food and survives an omission',
     ).toContain(FDA_DUAL_COLUMN_EXEMPT)
+  })
+})
+
+describe('the US food passes that rest on the artwork', () => {
+  it('withholds the small-package proviso and the ingredient passes with what they judged', () => {
+    // Five artwork answers no test held: each could have been stamped `document`
+    // with the suite green. The proviso is the one most likely to be, since it
+    // reads like an entitlement from panel area — but 101.7(f) grants it only
+    // "when the declaration … meets the other requirements", which a declaration
+    // running off the stock has not been shown to do.
+    const { nutritionFacts: _panel, ...withoutPanel } = US_FOOD_CONFORMANT.data
+    const data: UsFoodLabelData = {
+      ...withoutPanel,
+      container: { shape: 'rectangular', widthMm: 50, heightMm: 50 },
+    }
+    const stock: LabelStock = { widthMm: 20, heightMm: 60, marginMm: 1 }
+    const layout = layOutUsFoodLabel({ data, stock })
+    const context = { labelType: 'us-food' as const, data, stock, layout }
+    const judged = [
+      FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
+      FDA_INGREDIENTS_ORDER_MET,
+      FDA_INGREDIENT_THRESHOLD_MET,
+      FDA_ALLERGEN_DECLARED_MET,
+      FDA_CONTAINS_TYPE_MET,
+    ]
+
+    const omitted = layout.omissions.map((omission) => omission.elementId)
+    expect(omitted, 'the premise: a 3.9 in² panel on stock too narrow for it').toEqual(
+      expect.arrayContaining([
+        US_FOOD_ELEMENTS.netQuantity,
+        US_FOOD_ELEMENTS.ingredients,
+        US_FOOD_ELEMENTS.containsStatement,
+      ]),
+    )
+    const cleared = US_FOOD_RULES.flatMap((rule) => rule.check(context)).map(
+      (result) => result.code,
+    )
+    expect(cleared, 'the premise: every rule clears before the guard sees it').toEqual(
+      expect.arrayContaining(judged),
+    )
+
+    const reported = runRules(context).map((result) => result.code)
+    expect(
+      judged.filter((code) => reported.includes(code)),
+      'none of them may survive the omission of the element it names',
+    ).toEqual([])
+  })
+})
+
+describe('the US food passes that rest on the document', () => {
+  it('keeps the SI exemption when the declaration it excuses is drawn off the label', () => {
+    // 15 U.S.C. 1453(a)(3)(A)(ii) excuses a random package from the SI declaration.
+    // That is a fact about the package, true whatever printed, so it survives the
+    // same omission that withholds every pass measured off the declaration.
+    const { findings, omitted } = judge(
+      {
+        ...OVERSIZED_PACKAGE,
+        netQuantity: { ...OVERSIZED_PACKAGE.netQuantity, packaging: 'random' },
+      },
+      US_FOOD_CONFORMANT.stock,
+    )
+
+    expect(omitted, 'the premise: the declaration the exemption names is omitted').toContain(
+      US_FOOD_ELEMENTS.netQuantity,
+    )
+    const exemption = findings.find(
+      (result) => result.code === FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
+    )
+    expect(exemption, 'an exemption is a fact about the package and survives').toBeDefined()
+    // Surviving is why the message had to change: "the label carries an SI
+    // declaration" is false of a declaration at x −57.5 mm.
+    expect(exemption!.message, 'it says what is excused, not what the panel shows').not.toMatch(
+      /carries|stands alone/,
+    )
+  })
+
+  it('keeps the ingredient exemption, which leaves no list to omit', () => {
+    // §101.100 excuses the food from bearing a statement at all, so the engine
+    // draws no list and can record no omission against one. The omission is added
+    // by hand, as the GS1 case below does, to pin the answer for the day a list
+    // element exists on an exempt label.
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      ingredients: [],
+      ingredientsExempt: true,
+    }
+    const { stock } = US_FOOD_CONFORMANT
+    const drawn = layOutUsFoodLabel({ data, stock })
+    expect(
+      drawn.elements.map((element) => element.elementId),
+      'the premise: an exempt food draws no ingredient statement',
+    ).not.toContain(US_FOOD_ELEMENTS.ingredients)
+
+    const findings = runRules({
+      labelType: 'us-food',
+      data,
+      stock,
+      layout: {
+        ...drawn,
+        omissions: [
+          ...drawn.omissions,
+          {
+            elementId: US_FOOD_ELEMENTS.ingredients,
+            reason: 'Omitted for this test.',
+            scope: 'element',
+          },
+        ],
+      },
+    })
+    expect(
+      findings.map((result) => result.code),
+      'an exemption is a fact about the food and survives an omission',
+    ).toContain(FDA_INGREDIENTS_EXEMPT)
   })
 })
 

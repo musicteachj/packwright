@@ -80,6 +80,7 @@ export const usFoodStatementOfIdentityRule: UsFoodRule = {
     }
 
     return [
+      // 101.3(a): the panel "shall bear" a statement of identity — printed, so the artwork.
       passedOnArtwork(
         usFoodStatementOfIdentityRule,
         FDA_STATEMENT_OF_IDENTITY_MET,

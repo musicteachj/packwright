@@ -81,6 +81,7 @@ export const usFoodNetQuantityTypeSizeRule: UsFoodRule = {
 
     if (actualMm >= requiredMm - MEASUREMENT_TOLERANCE_MM) {
       return [
+        // 101.7(i) sets the height of the printed letters: the artwork.
         passedOnArtwork(
           usFoodNetQuantityTypeSizeRule,
           FDA_NET_QUANTITY_TYPE_SIZE_MET,

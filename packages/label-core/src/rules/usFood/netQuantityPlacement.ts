@@ -65,6 +65,7 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
 
     if (!isNetQuantityZoneRequired(pdpSqInches)) {
       return [
+        // (f)'s proviso turns on the printed declaration meeting the other requirements: artwork.
         passedOnArtwork(
           usFoodNetQuantityPlacementRule,
           FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
@@ -86,6 +87,7 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
 
     if (declaration.box.yMm >= zoneTopMm - MEASUREMENT_TOLERANCE_MM) {
       return [
+        // 101.7(f) places the printed declaration in the bottom 30 percent: the artwork.
         passedOnArtwork(
           usFoodNetQuantityPlacementRule,
           FDA_NET_QUANTITY_PLACEMENT_MET,

@@ -29,7 +29,7 @@
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { INGREDIENT_THRESHOLD_PERCENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnArtwork } from '../finding'
+import { finding, passedOnArtwork, passedOnDocument } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_INGREDIENTS_MISSING = 'FDA_INGREDIENTS_MISSING'
@@ -75,7 +75,8 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // listed — otherwise what is on the label is checked like any other list.
     if (data.ingredientsExempt === true && ingredients.length === 0) {
       return [
-        passedOnArtwork(
+        // §101.100 excuses the food from bearing a list: an entitlement, so the document.
+        passedOnDocument(
           usFoodIngredientListRule,
           FDA_INGREDIENTS_EXEMPT,
           'The label claims an exemption from ingredient labelling, so the statement is not ' +
@@ -169,6 +170,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
     }
 
     return [
+      // 101.4(a)(1): the ingredients "shall be listed" in that order on the panel: the artwork.
       passedOnArtwork(
         usFoodIngredientListRule,
         FDA_INGREDIENTS_ORDER_MET,
@@ -249,6 +251,7 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
     }
 
     return [
+      // (a)(2)'s permission turns on a listing "placed at the end" of the statement: the artwork.
       passedOnArtwork(
         usFoodIngredientThresholdRule,
         FDA_INGREDIENT_THRESHOLD_MET,

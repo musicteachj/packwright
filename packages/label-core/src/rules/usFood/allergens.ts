@@ -197,6 +197,7 @@ export const usFoodAllergenRule: UsFoodRule = {
       .map((ingredient) => foodSourceName(ingredient.allergen!, ingredient.allergenSpecificType))
       .filter((name): name is string => name !== undefined)
     return [
+      // §403(w)(1) is satisfied by what the package prints, in either form: the artwork.
       passedOnArtwork(
         usFoodAllergenRule,
         FDA_ALLERGEN_DECLARED_MET,

@@ -156,6 +156,7 @@ export const usFoodInformationPanelTypeSizeRule: UsFoodRule = {
     }
 
     return [
+      // 101.2(c) bounds the height of the letters on the panel: the artwork.
       passedOnArtwork(
         usFoodInformationPanelTypeSizeRule,
         FDA_PANEL_TYPE_SIZE_MET,

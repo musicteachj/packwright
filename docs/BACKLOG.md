@@ -190,6 +190,12 @@ declaration, the second predicated on a condition the first has just reported un
 others here — the type-size violation is still reported, so nothing is wholly cleared — but it is a pass
 issued on an unsatisfied condition, and the fix is a conditional the rule already has the inputs for.
 
+The US food reading kept `FDA_NET_QUANTITY_ZONE_NOT_REQUIRED` on the artwork, and this entry is the reason.
+Keyed on panel area it reads like an entitlement, which makes it the obvious candidate for the document. But the
+proviso's condition is about the printed declaration, so stamping it `document` would have let it survive
+the omission of the very declaration it is conditional on — this defect, deepened. `certification.test.ts`
+now fails if it survives one.
+
 **A "Contains" statement can vanish unannounced.** `usFoodEngine.ts` records an omission for an allergen no
 ingredient carries, but not for the case where every bearing ingredient yields no food-source name — which is
 what `tree nuts`, `fish` and `crustacean shellfish` do without an `allergenSpecificType`. Reproduced:
@@ -360,7 +366,9 @@ carries a note saying what its provision governs.
 
 GS1's six were read on 2026-09-16. The check digit and the Digital Link rest on the document; the four that
 measure the printed symbol rest on the artwork. GHS's seven were read the same day, and all seven rest on
-the artwork. Twenty-four stamps remain, all of them US food.
+the artwork. The fifteen US food passes outside the nutrition panel were read next. The SI exemption and the
+ingredient exemption rest on the document; the other thirteen rest on the artwork. Nine stamps remain, all on
+the nutrition panel, beside the two `passedOnDocument` sites there that were judged when they were written.
 
 ### What reviewing the mechanism turned up
 
@@ -376,6 +384,10 @@ clear the 1.59 mm floor", where the three are the statement of identity, the ing
 omitted) and a firm that is not on the label. `certification.test.ts` asserts `FDA_RESPONSIBLE_FIRM_MET` is
 withheld for this exact document, so two rules disagree about the same undrawn element and the one that
 survives is the one certifying more. A live false clearance.
+
+The US food reading kept it on the artwork — 101.2(c) bounds the height of printed letters — so the stamp is
+right and cannot reach the defect. The pass names an element the engine never omits. The fix belongs in the
+rule, counting only elements that `wasFullyDrawn`.
 
 **`GHS_SMALL_CONTAINER_COMPLETE` names no element, so nothing can withhold it.** On a complete EU small
 container (0.1 L, GHS02) it reports "The container carries everything the small-container provision requires
@@ -417,6 +429,8 @@ The other four are reachable and not in the sweep — `GHS_SMALL_CONTAINER_COMPL
 `FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. It matters less than it did, because
 the guarantee that every pass states what it certifies is now the compiler's, not the sweep's. It still
 matters for every reading that flips one of them, since a flip ships with a fixture that reaches it.
+`FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` has since been flipped, and its fixture is in `certification.test.ts`
+rather than in the sweep.
 
 **~~`us-food/nutrition-format`'s docblock and its behaviour disagree about (d)(11)(iii).~~ They do not, and
 this entry was wrong.** It recorded a disagreement while declining to read the paragraph, which `CLAUDE.md`

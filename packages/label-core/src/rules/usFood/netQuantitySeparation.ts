@@ -123,6 +123,7 @@ export const usFoodNetQuantitySeparationRule: UsFoodRule = {
 
     if (crowded.length === 0) {
       return [
+        // 101.7(f) separates it "from other printed label information": the artwork.
         passedOnArtwork(
           usFoodNetQuantitySeparationRule,
           FDA_NET_QUANTITY_SEPARATION_MET,

@@ -164,6 +164,7 @@ export const usFoodContainsStatementTypeRule: UsFoodRule = {
     if (findings.length > 0) return findings
 
     return [
+      // §403(w)(1)(A): "printed immediately after" the list, in type no smaller: the artwork.
       passedOnArtwork(
         usFoodContainsStatementTypeRule,
         FDA_CONTAINS_TYPE_MET,

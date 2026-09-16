@@ -191,6 +191,38 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Changed
 
+- **Two US food exemptions now survive an omission; the other thirteen passes outside the nutrition panel
+  stay on the artwork, and say why.** `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` and `FDA_INGREDIENTS_EXEMPT` rest
+  on the document. A random package, a food packaged at retail, and a food §101.100 excuses from bearing an
+  ingredient list are facts about the package and the food, and they stay true whatever the engine managed
+  to draw. Every other pass here is about the panel: 101.3(a) and 101.7(a) say what it "shall bear", 101.7(f)
+  and (i) place and size the printed declaration, 101.5(a) says the label "shall specify" the firm, 101.2(c)
+  bounds printed letters, and §403(w) is satisfied by what the package prints.
+
+  **The SI exemption's message had to change with it.** It read "The label carries an SI declaration, …" or
+  "The inch/pound declaration stands alone", and a pass that survives a declaration drawn off the stock
+  cannot say either. It now states the entitlement: "No SI declaration is required, because this is a random
+  package", naming a carried SI declaration as permitted all the same. That keeps what the "stands alone"
+  test was written to protect.
+
+  **`FDA_NET_QUANTITY_ZONE_NOT_REQUIRED` looks like an exemption and stays on the artwork.** It is keyed on
+  panel area, but 101.7(f)'s proviso applies only "when the declaration … meets the other requirements", a
+  condition on the printed declaration. `docs/BACKLOG.md` already records the rule applying it
+  unconditionally, and a `document` stamp would have deepened that.
+
+  **Each answer is pinned, not just the flips.** Both flips have fixtures showing the pass survives. The
+  ingredient exemption's omission is added by hand, because an exempt food draws no list for the engine to
+  omit. Every artwork answer was then flipped in turn against the whole suite, and five of the thirteen —
+  the proviso, ingredient order, the threshold, allergens and the Contains statement — changed nothing. One
+  new document now covers all five: a 50 × 50 mm package on 20 × 60 mm stock, whose declaration, list and
+  Contains statement all run off the label. The panel type-size pass is the thirteenth, and it cannot be
+  observed, because it names an element the engine never omits. That is the live false clearance
+  `docs/BACKLOG.md` already records.
+
+  Two module headers argued that reading the document meant judging it. `netQuantityDualDeclaration` even
+  cited the check digit as its precedent, which now rests on the document for a reason that does not carry
+  over. Both headers now say the reading is a means.
+
 - **All seven GHS passes rest on the artwork, and now say why.** Each provision governs what the label
   carries. Article 20(3) says a second signal word "shall not appear on the label". C.2.3.1 says a pictogram
   "shall include a black hazard symbol". Annex V and Article 26 decide which pictograms appear. Table 1.3 and
