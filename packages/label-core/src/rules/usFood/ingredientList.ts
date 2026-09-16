@@ -21,20 +21,22 @@
  * weight share turns it into a claim that can be wrong, which is the only kind
  * this engine can report on.
  *
- * The § 101.100 exemptions are not modelled and are not inferred. Most turn on
- * facts about the product and its packaging, but not all of them: (a)(1) excuses
- * an assortment "on the condition that the label shall bear, in conjunction with
- * the names of such ingredients as are common to all packages, a statement …
- * indicating by name other ingredients which may be present", and (d)(3) needs a
- * caution tag on each container. So the exemption pass rests on the artwork like
- * the rest. A label claiming one says so, the way a GHS small container does.
- * Read from the eCFR on 2026-09-16.
+ * **The § 101.100 exemptions are declared, never inferred, and each by the
+ * paragraph claimed.** A bare "exempt" could not be judged, because the limbs of
+ * (a) differ in kind: (a)(1) excuses an assortment "on the condition that the
+ * label shall bear, in conjunction with the names of such ingredients as are
+ * common to all packages, a statement … indicating by name other ingredients
+ * which may be present", while (a)(2)'s condition is on a retail display. So the
+ * pass cites the paragraph and says what it does not check, and a label saved
+ * with the old bare flag gets an advisory asking which paragraph it claims. The
+ * passes rest on the artwork like the rest. Read from the eCFR on 2026-09-16.
  */
 
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
+import type { UsFoodIngredientsExemptionKind } from '../../templates/usFood'
 import { INGREDIENT_THRESHOLD_PERCENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnArtwork } from '../finding'
+import { finding, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_INGREDIENTS_MISSING = 'FDA_INGREDIENTS_MISSING'
@@ -42,6 +44,7 @@ export const FDA_INGREDIENT_NAME_MISSING = 'FDA_INGREDIENT_NAME_MISSING'
 export const FDA_INGREDIENTS_OUT_OF_ORDER = 'FDA_INGREDIENTS_OUT_OF_ORDER'
 export const FDA_INGREDIENTS_ORDER_MET = 'FDA_INGREDIENTS_ORDER_MET'
 export const FDA_INGREDIENTS_EXEMPT = 'FDA_INGREDIENTS_EXEMPT'
+export const FDA_INGREDIENTS_EXEMPTION_UNSTATED = 'FDA_INGREDIENTS_EXEMPTION_UNSTATED'
 
 const CITATION: Citation = {
   authority: 'FDA',
@@ -55,17 +58,41 @@ const EXEMPTION: Citation = {
   title: 'Food; exemptions from labeling',
 }
 
+/**
+ * Each exemption cites the paragraph that grants it, and says what of that
+ * paragraph is not checked. Untitled, because the subparagraphs carry no heading
+ * of their own to quote.
+ */
+const EXEMPTIONS: Record<
+  UsFoodIngredientsExemptionKind,
+  { citation: Citation; grants: string; unchecked: string }
+> = {
+  'bulk-at-retail': {
+    citation: untitled(EXEMPTION, '21 CFR 101.100(a)(2)'),
+    grants: 'a food received in bulk containers at a retail establishment',
+    unchecked:
+      'that it is displayed with the bulk container’s labeling plainly in view, or with a ' +
+      'counter card, sign or other device, bearing the ingredient information in lettering at ' +
+      'least one-fourth of an inch high — a condition on the retail display, not on this label',
+  },
+}
+
 export const usFoodIngredientListRule: UsFoodRule = {
   id: 'us-food/ingredient-list',
   title: 'The ingredient statement is present and in descending order of predominance by weight.',
   citation: CITATION,
-  citations: [CITATION, EXEMPTION],
+  citations: [
+    CITATION,
+    EXEMPTION,
+    ...Object.values(EXEMPTIONS).map((exemption) => exemption.citation),
+  ],
   codes: [
     FDA_INGREDIENTS_MISSING,
     FDA_INGREDIENT_NAME_MISSING,
     FDA_INGREDIENTS_OUT_OF_ORDER,
     FDA_INGREDIENTS_ORDER_MET,
     FDA_INGREDIENTS_EXEMPT,
+    FDA_INGREDIENTS_EXEMPTION_UNSTATED,
   ],
   appliesTo: 'us-food',
 
@@ -78,18 +105,43 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // descending order, and a consumer reading a printed statement has no way of
     // knowing it was voluntary. So this short-circuits only when nothing is
     // listed — otherwise what is on the label is checked like any other list.
-    if (data.ingredientsExempt === true && ingredients.length === 0) {
+    const claimed = data.ingredientsExemption
+    if (claimed !== undefined && ingredients.length === 0) {
+      const exemption = EXEMPTIONS[claimed.kind]
       return [
-        // §101.100(a)(1) holds only on "the condition that the label shall bear" a statement: artwork.
+        // Each paragraph's condition is on what the label or its display bears, not on a fact
+        // about the food alone: artwork.
         passedOnArtwork(
           usFoodIngredientListRule,
           FDA_INGREDIENTS_EXEMPT,
-          'The label claims an exemption from ingredient labelling, so the statement is not ' +
-            'required. Which exemption applies, and whether the label bears what that exemption ' +
-            'requires of it, are not checked here.',
+          `The label claims the ${exemption.citation.reference} exemption for ${exemption.grants}, ` +
+            `so the statement is not required. Not checked here: ${exemption.unchecked}.`,
           US_FOOD_ELEMENTS.ingredients,
-          EXEMPTION,
+          exemption.citation,
         ),
+      ]
+    }
+
+    // A label saved before the paragraph was recorded. It keeps the list excused —
+    // reporting a blocking missing statement on a document that once cleared would
+    // punish it for this project's own omission — but it is no longer cleared,
+    // because a claim naming no paragraph has no conditions anyone could check.
+    if (data.ingredientsExempt === true && ingredients.length === 0) {
+      return [
+        finding(usFoodIngredientListRule, {
+          code: FDA_INGREDIENTS_EXEMPTION_UNSTATED,
+          severity: 'advisory',
+          message:
+            'The label is marked exempt from ingredient labelling without saying which § 101.100 ' +
+            'exemption it claims. Each carries its own conditions, so the claim cannot be judged ' +
+            'until the paragraph is stated.',
+          measurement: {
+            actual: 'exempt, paragraph not stated',
+            required: 'the paragraph claimed',
+          },
+          elementId: US_FOOD_ELEMENTS.ingredients,
+          citation: EXEMPTION,
+        }),
       ]
     }
 

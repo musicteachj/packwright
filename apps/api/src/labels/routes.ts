@@ -218,6 +218,9 @@ export function createLabelRouter(): Router {
       ...(rest.ingredientThreshold === undefined
         ? {}
         : { ingredientThreshold: rest.ingredientThreshold }),
+      ...(rest.ingredientsExemption === undefined
+        ? {}
+        : { ingredientsExemption: rest.ingredientsExemption }),
       ...(rest.ingredientsExempt === undefined
         ? {}
         : { ingredientsExempt: rest.ingredientsExempt }),
@@ -233,6 +236,9 @@ export function createLabelRouter(): Router {
       ...(rest.nutritionFacts === undefined
         ? {}
         : { nutritionFacts: toNutritionFacts(rest.nutritionFacts) }),
+      ...(rest.nutritionExemption === undefined
+        ? {}
+        : { nutritionExemption: rest.nutritionExemption }),
       ...(rest.nutritionFactsExempt === undefined
         ? {}
         : { nutritionFactsExempt: rest.nutritionFactsExempt }),

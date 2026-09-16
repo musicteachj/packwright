@@ -33,6 +33,8 @@ import {
   NUTRITION_FORMATS,
   MAJOR_FOOD_ALLERGEN_IDS,
   NUTRIENT_IDS,
+  US_FOOD_INGREDIENTS_EXEMPTIONS,
+  US_FOOD_NUTRITION_EXEMPTIONS,
   US_FOOD_PACKAGINGS,
   type ArtworkBlock,
   type DigitalLinkData,
@@ -579,11 +581,17 @@ export const UsFoodRequestBase = z.object({
       count: z.number().int().min(0),
     })
     .optional(),
+  // The paragraph claimed, from label-core's own list — a kind it does not name is an
+  // exemption no rule could judge, so it is refused here rather than drawn.
+  ingredientsExemption: z.object({ kind: z.enum(US_FOOD_INGREDIENTS_EXEMPTIONS) }).optional(),
+  // Superseded, and accepted so a label saved with it still opens and exports.
   ingredientsExempt: z.boolean().optional(),
   containsStatement: z.array(z.enum(MAJOR_FOOD_ALLERGEN_IDS)).optional(),
   containsStatementFontSizeMm: z.number().positive().optional(),
   containsStatementGapMm: z.number().min(0).optional(),
   nutritionFacts: NutritionFactsSchema.optional(),
+  nutritionExemption: z.object({ kind: z.enum(US_FOOD_NUTRITION_EXEMPTIONS) }).optional(),
+  // Superseded, as `ingredientsExempt` is.
   nutritionFactsExempt: z.boolean().optional(),
   responsibleFirm: ResponsibleFirmSchema.optional(),
   stock: z

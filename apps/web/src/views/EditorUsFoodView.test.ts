@@ -361,7 +361,7 @@ describe('the ingredient statement, from the form to the rail', () => {
     // §101.100's exemptions turn on facts about the product, so the label
     // declares one and no rule infers it — the GHS small-container call again.
     const { store, wrapper } = await mountFood()
-    await wrapper.find('#field-food-ing-exempt').setValue(true)
+    await wrapper.find('#field-food-ing-exemption').setValue('bulk-at-retail')
     await nextTick()
     for (let i = store.foodData.ingredients!.length; i > 0; i -= 1) {
       await wrapper.find('[aria-label^="Remove "]').trigger('click')
@@ -376,7 +376,7 @@ describe('the ingredient statement, from the form to the rail', () => {
     // printed anyway. A consumer reading a printed list has no way of knowing it
     // was voluntary, so what is on the label is checked like any other list.
     const { store, wrapper } = await mountFood()
-    await wrapper.find('#field-food-ing-exempt').setValue(true)
+    await wrapper.find('#field-food-ing-exemption').setValue('bulk-at-retail')
     await nextTick()
     await wrapper.find('[aria-label="Move almonds up"]').trigger('click')
     await nextTick()
@@ -824,10 +824,37 @@ describe('the Nutrition Facts panel in the editor', () => {
     await nextTick()
     expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_MISSING')).toBe(true)
 
-    await wrapper.find('#field-food-nf-exempt').setValue(true)
+    await wrapper.find('#field-food-nf-exemption').setValue('small-business')
     await nextTick()
     expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_EXEMPT')).toBe(true)
     expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_MISSING')).toBe(false)
+  })
+
+  it('asks a label saved with the old bare flag which paragraph it claims', async () => {
+    // Saved before the paragraph was recorded: excused, advised, and shown as such
+    // until a paragraph is picked — which clears the flag, so the document never
+    // carries both answers to one question.
+    const { store, wrapper } = await mountFood()
+    delete store.foodData.nutritionFacts
+    store.foodData.nutritionFactsExempt = true
+    await nextTick()
+
+    const picker = wrapper.find<HTMLSelectElement>('#field-food-nf-exemption')
+    expect(picker.element.value).toBe('unstated')
+    expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_EXEMPTION_UNSTATED')).toBe(true)
+    expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_MISSING')).toBe(false)
+
+    await picker.setValue('low-volume')
+    await nextTick()
+    expect(store.foodData.nutritionFactsExempt).toBeUndefined()
+    expect(store.foodData.nutritionExemption).toEqual({ kind: 'low-volume' })
+    expect(store.findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')?.citation.reference).toBe(
+      '21 CFR 101.9(j)(18)',
+    )
+    expect(
+      wrapper.find('#field-food-nf-exemption option[value="unstated"]').exists(),
+      'and the placeholder for an unstated paragraph is gone',
+    ).toBe(false)
   })
 })
 

@@ -37,6 +37,8 @@ import type { Severity } from '../../types/index'
 import {
   FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
   FDA_ALLERGEN_NOT_DECLARED,
+  FDA_INGREDIENTS_EXEMPTION_UNSTATED,
+  FDA_NUTRITION_EXEMPTION_UNSTATED,
   FDA_DUAL_COLUMN_HEADINGS_MISSING,
   FDA_DUAL_COLUMN_INCOMPLETE,
   FDA_DUAL_COLUMN_NOT_SEPARATED,
@@ -630,6 +632,20 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     },
   },
   {
+    name: 'no ingredient statement, and an exemption claimed without its paragraph',
+    defect:
+      'Marked exempt from ingredient labelling, the way a label saved before the paragraph was ' +
+      'recorded is. §101.100(a)(1) and (a)(2) put different conditions on the food, so a claim ' +
+      'naming neither cannot be judged — excused, not cleared.',
+    data: { ...BASE, ingredients: [], ingredientsExempt: true },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_INGREDIENTS_EXEMPTION_UNSTATED,
+      severity: 'advisory',
+      citation: '21 CFR 101.100',
+    },
+  },
+  {
     name: 'sugar hidden behind a 2 percent statement it exceeds',
     defect:
       'Sugar at 8% sits behind "Contains 2 percent or less of". 101.4(a)(2) is explicit that no ' +
@@ -841,6 +857,20 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_NUTRITION_MISSING,
       severity: 'blocking',
       citation: '21 CFR 101.9(c)',
+    },
+  },
+  {
+    name: 'a food with no nutrition label, exempt without saying under which paragraph',
+    defect:
+      'Marked exempt from nutrition labelling, the way a label saved before the paragraph was ' +
+      'recorded is. The 101.9(j) exemptions put different conditions on the food and its label, ' +
+      'so a claim naming none of them cannot be judged — excused, not cleared.',
+    data: { ...WITHOUT_NUTRITION, nutritionFactsExempt: true },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_EXEMPTION_UNSTATED,
+      severity: 'advisory',
+      citation: '21 CFR 101.9(j)',
     },
   },
   {

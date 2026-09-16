@@ -31,6 +31,8 @@ import {
   printedPercentDailyValue,
   roundNutrientAmount,
   US_FOOD_ELEMENTS,
+  US_FOOD_INGREDIENTS_EXEMPTIONS,
+  US_FOOD_NUTRITION_EXEMPTIONS,
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
   fontSizeMmForGlyphHeight,
@@ -46,6 +48,8 @@ import {
   type NutritionFormat,
   type MajorFoodAllergenId,
   type NutrientId,
+  type UsFoodIngredientsExemptionKind,
+  type UsFoodNutritionExemptionKind,
 } from '@packwright/label-core'
 import { computed, ref } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
@@ -66,6 +70,28 @@ const PACKAGING_NAMES: Record<(typeof US_FOOD_PACKAGINGS)[number], string> = {
   standard: 'Standard — both measurement systems required',
   random: 'Random weight — SI declaration optional',
   'packaged-at-retail': 'Packaged at the retail store — SI does not apply',
+}
+
+/**
+ * The exemptions by the paragraph that grants them. Named here for the picker; the
+ * rules hold what each one leaves unchecked, and say it on the finding.
+ */
+const INGREDIENTS_EXEMPTION_NAMES: Record<(typeof US_FOOD_INGREDIENTS_EXEMPTIONS)[number], string> =
+  {
+    'bulk-at-retail': '§ 101.100(a)(2) — received in bulk, displayed at retail',
+  }
+
+const NUTRITION_EXEMPTION_NAMES: Record<(typeof US_FOOD_NUTRITION_EXEMPTIONS)[number], string> = {
+  'small-business': '§ 101.9(j)(1) — direct sales to consumers, low annual sales',
+  'food-service': '§ 101.9(j)(2) — restaurants and other food service',
+  'retail-prepared': '§ 101.9(j)(3) — prepared and sold in one retail establishment',
+  'insignificant-nutrients': '§ 101.9(j)(4) — insignificant amounts of every nutrient',
+  'medical-food': '§ 101.9(j)(8) — medical food',
+  'bulk-for-manufacture': '§ 101.9(j)(9) — shipped in bulk, not for consumers',
+  'raw-produce-or-fish': '§ 101.9(j)(10) — raw fruit, vegetables or fish',
+  'custom-processed-fish-or-game': '§ 101.9(j)(11)(ii) — custom processed fish or game meat',
+  'bulk-at-retail': '§ 101.9(j)(16) — sold from bulk containers',
+  'low-volume': '§ 101.9(j)(18) — low-volume product of a small business',
 }
 
 /**
@@ -243,11 +269,18 @@ const thresholdPercent = computed({
   },
 })
 
-const ingredientsExempt = computed({
-  get: () => data.ingredientsExempt === true,
-  set: (on: boolean) => {
-    if (on) data.ingredientsExempt = true
-    else delete data.ingredientsExempt
+/**
+ * The § 101.100 paragraph claimed, `''` for none. A label saved with the old bare
+ * flag reads `'unstated'` until a paragraph is picked — which clears the flag, so a
+ * document never carries both answers to one question.
+ */
+const ingredientsExemption = computed({
+  get: () => data.ingredientsExemption?.kind ?? (data.ingredientsExempt === true ? 'unstated' : ''),
+  set: (next: string) => {
+    if (next === 'unstated') return
+    delete data.ingredientsExempt
+    if (next === '') delete data.ingredientsExemption
+    else data.ingredientsExemption = { kind: next as UsFoodIngredientsExemptionKind }
   },
 })
 
@@ -387,11 +420,15 @@ const allergensPresent = computed(() =>
  * so the overrides are offered rather than hidden — behind one toggle, because
  * three inputs on every one of fifteen rows is not a form anyone reads.
  */
-const nutritionExempt = computed({
-  get: () => data.nutritionFactsExempt === true,
-  set: (on: boolean) => {
-    if (on) data.nutritionFactsExempt = true
-    else delete data.nutritionFactsExempt
+/** The 101.9(j) paragraph claimed, read and written as `ingredientsExemption` is. */
+const nutritionExemption = computed({
+  get: () =>
+    data.nutritionExemption?.kind ?? (data.nutritionFactsExempt === true ? 'unstated' : ''),
+  set: (next: string) => {
+    if (next === 'unstated') return
+    delete data.nutritionFactsExempt
+    if (next === '') delete data.nutritionExemption
+    else data.nutritionExemption = { kind: next as UsFoodNutritionExemptionKind }
   },
 })
 
@@ -913,14 +950,22 @@ const packaging = computed({
       title="Ingredients"
       :element-id="US_FOOD_ELEMENTS.ingredients"
       :selected-element-id="store.selectedElementId"
-      :status="ingredientsExempt ? 'exempt' : `${ingredients.length} listed`"
+      :status="ingredientsExemption !== '' ? 'exempt' : `${ingredients.length} listed`"
       @select="select"
     >
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-ing-exempt">
-        <input id="field-food-ing-exempt" v-model="ingredientsExempt" type="checkbox" />
-        Exempt from ingredient labelling under § 101.100
+      <label :class="LABEL" for="field-food-ing-exemption">
+        Exemption from ingredient labelling
+        <select id="field-food-ing-exemption" v-model="ingredientsExemption" :class="INPUT">
+          <option value="">None claimed</option>
+          <option v-if="ingredientsExemption === 'unstated'" value="unstated">
+            Exempt — paragraph not stated
+          </option>
+          <option v-for="(name, value) in INGREDIENTS_EXEMPTION_NAMES" :key="value" :value="value">
+            {{ name }}
+          </option>
+        </select>
       </label>
-      <p v-if="ingredientsExempt" class="text-chrome-400 text-xs">
+      <p v-if="ingredientsExemption !== ''" class="text-chrome-400 text-xs">
         The statement is not required. Listing one anyway is allowed — and a list that is printed
         still runs in descending order, because a reader has no way of knowing it was voluntary.
       </p>
@@ -1135,12 +1180,20 @@ const packaging = computed({
       title="Nutrition Facts"
       :element-id="US_FOOD_ELEMENTS.nutritionPanel"
       :selected-element-id="store.selectedElementId"
-      :status="nutritionExempt ? 'exempt' : hasPanel ? 'present' : 'none'"
+      :status="nutritionExemption !== '' ? 'exempt' : hasPanel ? 'present' : 'none'"
       @select="select"
     >
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-exempt">
-        <input id="field-food-nf-exempt" v-model="nutritionExempt" type="checkbox" />
-        Exempt from nutrition labelling under § 101.9(j)
+      <label :class="LABEL" for="field-food-nf-exemption">
+        Exemption from nutrition labelling
+        <select id="field-food-nf-exemption" v-model="nutritionExemption" :class="INPUT">
+          <option value="">None claimed</option>
+          <option v-if="nutritionExemption === 'unstated'" value="unstated">
+            Exempt — paragraph not stated
+          </option>
+          <option v-for="(name, value) in NUTRITION_EXEMPTION_NAMES" :key="value" :value="value">
+            {{ name }}
+          </option>
+        </select>
       </label>
 
       <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-present">

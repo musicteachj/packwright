@@ -330,6 +330,32 @@ describe('POST /api/labels/us-food/export', () => {
     expect(response.status).toBe(400)
   })
 
+  it('takes an exemption by the paragraph claimed, and refuses one no paragraph names', async () => {
+    // The kinds come from label-core's lists, so a claim the rules could not judge
+    // never reaches them. The old bare flags are still accepted, so a label saved
+    // with one exports as it did.
+    const { ingredients: _list, ...withoutList } = FOOD_BODY
+    const exempt = { ...withoutList, ingredientThreshold: undefined }
+    expect(
+      (
+        await postFood({
+          ...exempt,
+          ingredientsExemption: { kind: 'bulk-at-retail' },
+          nutritionExemption: { kind: 'small-business' },
+        })
+      ).status,
+    ).toBe(200)
+    expect(
+      (await postFood({ ...exempt, ingredientsExempt: true, nutritionFactsExempt: true })).status,
+    ).toBe(200)
+    expect(
+      (await postFood({ ...exempt, nutritionExemption: { kind: 'we-asked-nicely' } })).status,
+    ).toBe(400)
+    expect(
+      (await postFood({ ...exempt, ingredientsExemption: { kind: 'assortment-of-sorts' } })).status,
+    ).toBe(400)
+  })
+
   it('names the download after the food', async () => {
     const response = await postFood(FOOD_BODY)
     expect(response.headers['content-disposition']).toContain('Rolled-oats.pdf')

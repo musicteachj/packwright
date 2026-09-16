@@ -37,6 +37,24 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **An exemption from ingredient or nutrition labelling is claimed by its paragraph, not by a checkbox.**
+  `ingredientsExempt` and `nutritionFactsExempt` were booleans, so the passes they earned could name only
+  § 101.100 and 101.9(j) as a whole and say that which exemption applied was not checked — and no rule could ever
+  ask what an exemption requires the label to bear, because nothing recorded which one it was. Both regulations
+  were re-read from the eCFR for this, and neither exempts by a single switch: § 101.100(a)'s three limbs differ in
+  kind, and 101.9(j)'s eighteen paragraphs mix conditions on the label with facts about the business, the food
+  and the retail display. The label now records `ingredientsExemption` and `nutritionExemption`, each a `kind`
+  naming one paragraph; the editor's two checkboxes became pickers; and each pass cites its own paragraph and
+  says what of it goes unchecked — for most of 101.9(j), that the label bears no nutrition claims, which this
+  project does not model. Only exemptions whose remaining conditions lie off the label or in that claims gap are
+  offered: § 101.100(a)(2) and ten 101.9(j) paragraphs, among them (j)(8)'s medical foods and (j)(11)(ii)'s custom
+  processed fish and game, which a first draft wrongly listed as not exemptions at all. The (a)(1) assortment and
+  the (j)(13)(i) small package each put a statement on the label and arrive with the checks for them; (j)(14)'s
+  egg carton, whose nutrition information moves beneath the lid rather than going away, and (j)(15)'s unit
+  container are recorded in `docs/BACKLOG.md`. A draft offered (j)(14), and its review caught it. A label saved with a bare flag still opens and exports, keeps its missing
+  list or panel excused, and gets an advisory asking which paragraph it claims instead of a pass. Picking one in
+  the editor clears the old flag. The API refuses a kind label-core does not name.
+
 - **The small-package placement exemption is granted only on the condition 101.7(f) sets.** The proviso
   excuses a package of 5 in² or less from the bottom-30 percent placement "when the declaration of net quantity
   of contents meets the other requirements of this part", and `us-food/net-quantity-placement` quoted it and

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import type { TextPrimitive } from '../layout/types'
-import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../templates/usFood'
+import {
+  US_FOOD_ELEMENTS,
+  US_FOOD_NUTRITION_EXEMPTIONS,
+  nutritionRowElementId,
+} from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES, US_FOOD_SMALL_PANEL } from './fixtures/usFood'
 import { blockingOmissions } from '../layout/omissions'
@@ -17,7 +21,9 @@ import {
   FDA_CONTAINS_TYPE_TOO_SMALL,
   FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
   FDA_INGREDIENTS_EXEMPT,
+  FDA_INGREDIENTS_EXEMPTION_UNSTATED,
   FDA_INGREDIENTS_MISSING,
+  FDA_NUTRITION_EXEMPTION_UNSTATED,
   FDA_INGREDIENTS_ORDER_MET,
   FDA_INGREDIENTS_OUT_OF_ORDER,
   FDA_INGREDIENT_THRESHOLD_EXCEEDED,
@@ -227,8 +233,8 @@ describe('the panel belongs to the package, not to the label stock', () => {
       statementOfIdentity: '',
       ingredients: [],
       containsStatement: [],
-      ingredientsExempt: true,
-      nutritionFactsExempt: true,
+      ingredientsExemption: { kind: 'bulk-at-retail' },
+      nutritionExemption: { kind: 'small-business' },
     }
     const findings = netQuantityFindings(alone)
     const codes = codesOf(findings)
@@ -349,7 +355,7 @@ describe('rules that decline rather than pass', () => {
       ...rest,
       statementOfIdentity: '',
       ingredients: [],
-      nutritionFactsExempt: true,
+      nutritionExemption: { kind: 'small-business' as const },
     }
     const layout = layOutUsFoodLabel({ data, stock: US_FOOD_CONFORMANT.stock })
     for (const elementId of [
@@ -638,20 +644,53 @@ describe('findings from the phase 5 review', () => {
   })
 
   describe('the §101.100 exemption excuses absence, not disorder', () => {
-    it('clears a label that lists nothing', () => {
-      const codes = findingsFor(
+    const bulkAtRetail = { kind: 'bulk-at-retail' } as const
+
+    it('clears a label that lists nothing, citing the paragraph claimed', () => {
+      const findings = findingsFor(
+        { ...US_FOOD_CONFORMANT.data, ingredients: [], ingredientsExemption: bulkAtRetail },
+        stock,
+      )
+      const codes = findings.map((f) => f.code)
+      expect(codes).not.toContain(FDA_INGREDIENTS_MISSING)
+      const pass = findings.find((f) => f.code === FDA_INGREDIENTS_EXEMPT)
+      expect(pass!.citation.reference).toBe('21 CFR 101.100(a)(2)')
+      // And says what of that paragraph it cannot see: the display, not the label.
+      expect(pass!.message).toContain('one-fourth of an inch')
+    })
+
+    it('asks which paragraph a label saved with the old bare flag claims', () => {
+      // Excused, so a label that once cleared is not now blocked — but no longer
+      // cleared, because a claim naming no paragraph has no conditions to check.
+      const findings = findingsFor(
         { ...US_FOOD_CONFORMANT.data, ingredients: [], ingredientsExempt: true },
         stock,
-      ).map((f) => f.code)
-      expect(codes).toContain(FDA_INGREDIENTS_EXEMPT)
+      )
+      const codes = findings.map((f) => f.code)
       expect(codes).not.toContain(FDA_INGREDIENTS_MISSING)
+      expect(codes).not.toContain(FDA_INGREDIENTS_EXEMPT)
+      const advisory = findings.find((f) => f.code === FDA_INGREDIENTS_EXEMPTION_UNSTATED)
+      expect(advisory!.severity).toBe('advisory')
+      expect(advisory!.citation.reference).toBe('21 CFR 101.100')
+
+      const both = findingsFor(
+        {
+          ...US_FOOD_CONFORMANT.data,
+          ingredients: [],
+          ingredientsExempt: true,
+          ingredientsExemption: bulkAtRetail,
+        },
+        stock,
+      ).map((f) => f.code)
+      expect(both, 'a stated paragraph wins over the old flag').toContain(FDA_INGREDIENTS_EXEMPT)
+      expect(both).not.toContain(FDA_INGREDIENTS_EXEMPTION_UNSTATED)
     })
 
     it('still judges a list printed anyway', () => {
       const codes = findingsFor(
         {
           ...US_FOOD_CONFORMANT.data,
-          ingredientsExempt: true,
+          ingredientsExemption: bulkAtRetail,
           ingredients: [
             { name: 'sugar', percentByWeight: 2 },
             { name: 'oats', percentByWeight: 97 },
@@ -1153,12 +1192,61 @@ describe('the §101.9(j) nutrition exemption', () => {
     expect(match!.citation.reference).toBe('21 CFR 101.9(c)')
   })
 
-  it('clears it when the label claims the exemption, citing 101.9(j)', () => {
+  // Each kind is named for the paragraph that grants it, and the pass must cite that
+  // paragraph — not 101.9(j) as a whole, which exempts nothing by itself.
+  const PARAGRAPH: Record<(typeof US_FOOD_NUTRITION_EXEMPTIONS)[number], string> = {
+    'small-business': '21 CFR 101.9(j)(1)',
+    'food-service': '21 CFR 101.9(j)(2)',
+    'retail-prepared': '21 CFR 101.9(j)(3)',
+    'insignificant-nutrients': '21 CFR 101.9(j)(4)',
+    'medical-food': '21 CFR 101.9(j)(8)',
+    'bulk-for-manufacture': '21 CFR 101.9(j)(9)',
+    'raw-produce-or-fish': '21 CFR 101.9(j)(10)',
+    'custom-processed-fish-or-game': '21 CFR 101.9(j)(11)(ii)',
+    'bulk-at-retail': '21 CFR 101.9(j)(16)',
+    'low-volume': '21 CFR 101.9(j)(18)',
+  }
+
+  it.each(US_FOOD_NUTRITION_EXEMPTIONS.map((kind) => [kind] as const))(
+    'clears it when the label claims %s, citing its own paragraph',
+    (kind) => {
+      const findings = findingsFor({ ...withoutPanel, nutritionExemption: { kind } }, stock)
+      const match = findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')
+      expect(match!.severity).toBe('pass')
+      expect(match!.citation.reference).toBe(PARAGRAPH[kind])
+      expect(match!.message, 'and says what it cannot check').toContain('Not checked here:')
+      expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_MISSING')
+    },
+  )
+
+  it('offers no exemption that holds only on something printed that nothing checks', () => {
+    // (j)(13)(i)'s address or telephone number, (j)(14)'s information beneath the
+    // carton lid and (j)(15)'s "This Unit Not Labeled For Retail Sale" are each a
+    // condition on the package. A first draft offered (j)(14), and its pass said no
+    // panel was required of a carton whose panel had only moved.
+    const cited = US_FOOD_NUTRITION_EXEMPTIONS.map((kind) =>
+      findingsFor({ ...withoutPanel, nutritionExemption: { kind } }, stock).find(
+        (f) => f.code === 'FDA_NUTRITION_EXEMPT',
+      ),
+    ).map((pass) => pass!.citation.reference)
+    for (const paragraph of ['(j)(13)', '(j)(14)', '(j)(15)']) {
+      expect(
+        cited.filter((reference) => reference.includes(paragraph)),
+        paragraph,
+      ).toEqual([])
+    }
+  })
+
+  it('asks which paragraph a label saved with the old bare flag claims', () => {
     const findings = findingsFor({ ...withoutPanel, nutritionFactsExempt: true }, stock)
-    const match = findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')
-    expect(match!.severity).toBe('pass')
-    expect(match!.citation.reference).toBe('21 CFR 101.9(j)')
-    expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_MISSING')
+    const codes = findings.map((f) => f.code)
+    expect(codes, 'still excused, so a label that once cleared is not blocked').not.toContain(
+      'FDA_NUTRITION_MISSING',
+    )
+    expect(codes, 'but no longer cleared').not.toContain('FDA_NUTRITION_EXEMPT')
+    const advisory = findings.find((f) => f.code === FDA_NUTRITION_EXEMPTION_UNSTATED)
+    expect(advisory!.severity).toBe('advisory')
+    expect(advisory!.citation.reference).toBe('21 CFR 101.9(j)')
   })
 
   it('does not let the claim excuse a panel that is present and wrong', () => {
@@ -1167,7 +1255,7 @@ describe('the §101.9(j) nutrition exemption', () => {
     const codes = findingsFor(
       {
         ...US_FOOD_CONFORMANT.data,
-        nutritionFactsExempt: true,
+        nutritionExemption: { kind: 'small-business' },
         nutritionFacts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!, typeScale: 0.8 },
       },
       stock,

@@ -69,11 +69,18 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument }> = 
   // `us-food/ingredient-list` clears an exempt label with no list.
   {
     label: 'ingredients exempt',
-    data: { ...US_FOOD_CONFORMANT.data, ingredients: [], ingredientsExempt: true },
+    data: {
+      ...US_FOOD_CONFORMANT.data,
+      ingredients: [],
+      ingredientsExemption: { kind: 'bulk-at-retail' },
+    },
   },
   // `us-food/nutrition-completeness` clears an exempt label with no panel. The
   // panel has to be *absent*, not merely unused: its exemption branch tests for it.
-  { label: 'nutrition exempt', data: { ...WITHOUT_A_PANEL, nutritionFactsExempt: true } },
+  {
+    label: 'nutrition exempt',
+    data: { ...WITHOUT_A_PANEL, nutritionExemption: { kind: 'small-business' } },
+  },
   // `us-food/net-quantity-placement` exempts a 4.65 in² package whose declaration
   // clears its presence, type size and separation. `US_FOOD_SMALL_PANEL` reached
   // this until the exemption learned to ask, and its declaration is crowded.

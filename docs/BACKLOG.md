@@ -502,6 +502,38 @@ statement. Both passes now rest on the artwork, which is right, but a stamp cann
 not exist. The fix is to record which paragraph is claimed and check what that paragraph requires the label
 to bear.
 
+*In progress on `fix/exemption-conditions`.* The paragraph is now recorded — `ingredientsExemption` and
+`nutritionExemption`, each a `kind` naming one paragraph — and every exempt pass cites that paragraph and says
+what of it goes unchecked. A label saved with a bare flag is excused and advised rather than cleared. Neither
+condition above is checked yet, and neither exemption is offered until it is: (j)(13)(i)'s contact line and
+(a)(1)'s statement are the next two commits on that branch.
+
+**101.9(j)(15)'s unit container is not offered, because its condition is a statement nothing checks.** Read
+from the eCFR on 2026-09-16: the unit containers in a multiunit retail package are exempt where the outer
+package carries the nutrition information, the units are "securely enclosed within and not intended to be
+separated from the retail package", and "each unit container is labeled with the statement 'This Unit Not
+Labeled For Retail Sale' in type size not less than 1/16-inch in height" — with "individual" permitted in or
+before "Retail", and no statement needed where the units bear no labeling at all. Offering the exemption
+before the engine draws that exact text, and a rule measures it, would issue a pass on a label condition no
+one reads. It needs the statement taken verbatim from the regulation, its two permitted variants, and a
+height check at the 101.2(c) floor it shares. Left out of the exemption work on the scope agreed for it.
+
+(j)(14)'s egg carton is left out for the same reason, found by the review of the commit that recorded the
+paragraphs — which had offered it. Shell eggs in a carton with a conforming top lid "are exempt from outer carton
+label requirements where the required nutrition information is clearly presented immediately beneath the
+carton lid or in an insert that can be clearly seen when the carton is opened". The information is relocated,
+not excused, and this engine draws neither the underside of a lid nor an insert, so a pass saying no panel is
+required would certify a declaration nothing printed.
+
+**No rule models nutrition claims, so the condition most 101.9(j) exemptions share goes unchecked.** (j)(1),
+(2)(i)–(iii), (3), (4), (10), (13)(i) and (18) each hold only while the food "bears no nutrition claims or other
+nutrition information in any context on the label or in labeling or advertising" (read from the eCFR on
+2026-09-16). This project has no representation of a claim — 21 CFR 101.13 and 101.14 are unmodelled — so every
+one of those passes says the condition is not checked, and none can be withdrawn when a claim appears. The
+same gap already keeps (c)(2)(i), (c)(3) and (c)(6)'s "if no claims are made" relaxations unapplied. Modelling
+claims, even as a declared list the label prints, is a piece of work of its own; "or in labeling or
+advertising" reaches beyond the label and could never be checked here at all.
+
 **~~`FDA_SERVING_SIZE_MET` names a row the engine never omits.~~ Fixed** on
 `fix/passes-rest-on-what-printed`. The rule now declines unless the panel and the row both `wasFullyDrawn`.
 Because omissions name the panel, that also withholds it where the row printed and something below it did
