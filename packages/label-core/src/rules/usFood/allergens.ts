@@ -218,18 +218,30 @@ export const usFoodAllergenRule: UsFoodRule = {
         // Contains statement whose only omission is an entry no ingredient carries
         // raises this too, though its source printed — and so does one whose last
         // line printed with only its line box overhanging. Stricter than necessary,
-        // never looser; telling those apart needs omissions that say what was lost.
+        // never looser. Telling those apart needs either omissions that say what was
+        // lost or this rule measuring each line's ink against the stock itself, and
+        // the second loosens a pass condition — `docs/BACKLOG.md` records both.
+        //
+        // **So the message says only what the rule knows: that an omission is
+        // recorded, not that anything went unprinted.** It first said the statement
+        // "did not print in full", which the review of PR #31 showed false in a state
+        // the editor keeps on purpose — clear an ingredient's allergen and the rail
+        // leaves its Contains tick in place, so a statement ticked for tree nuts and
+        // milk prints "Contains: almonds." whole on a full-size label, beside an
+        // omission for the milk entry it dropped.
         findings.push(
           finding(usFoodAllergenRule, {
             code: FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
             severity: 'advisory',
             message:
-              `"${ingredient.name}" contains ${source}, and it is declared only in ` +
+              `"${ingredient.name}" contains ${source} and is declared only in ` +
               `${declaring.map((elementId) => DECLARING_ELEMENT_NAMES[elementId]).join(' and ')}, ` +
-              'which did not print in full — so the declaration cannot be confirmed on the label.',
+              `${declaring.length === 1 ? 'which has' : 'each of which has'} a layout omission ` +
+              'recorded against it. This check does not know which part of the text an omission ' +
+              `affects, so it cannot confirm that ${source} is declared on the printed label.`,
             measurement: {
-              actual: 'declared only in text that did not print in full',
-              required: `a printed declaration naming ${source}`,
+              actual: 'declared only in text with a layout omission recorded against it',
+              required: `a declaration naming ${source} in text with no omission recorded`,
             },
             elementId: declaring[0]!,
           }),

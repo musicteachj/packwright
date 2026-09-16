@@ -49,6 +49,11 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   tell whether the lost line held the source. It does not block export or ask for confirmation. It is stricter
   than necessary in two known places, both because any omission counts: a Contains statement whose only
   omission is an entry no ingredient carries, and one whose line printed with only its line box overhanging.
+  Its message therefore says only that a layout omission is recorded against the declaring text, never that
+  the text went unprinted. The first wording said the statement "did not print in full", and the PR's review
+  found that false in a state the editor keeps on purpose: clear an ingredient's allergen and the rail leaves
+  its Contains tick, so the statement prints whole on a full-size label beside an omission for the entry it
+  dropped.
 
 - **`usFoodEngine` looks across as well as down.** Its bounds checks have recorded a block drawn past the bottom
   of the stock since phase 5, but nothing looked past the right edge, and `wrapTextMm` never breaks inside a

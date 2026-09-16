@@ -723,6 +723,44 @@ describe('a US food pass the guard cannot reach is withheld by its own rule', ()
       FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
     )
   })
+
+  it('does not tell a user that a Contains statement which printed did not print', () => {
+    // A state the editor keeps on purpose: clear an ingredient's allergen and the
+    // rail leaves its Contains tick in place. The engine drops the entry, records a
+    // detail omission for it, and prints the rest whole on a full-size label. The
+    // advisory still fires, because any omission counts — but its first message
+    // said the statement "did not print in full", which the review of PR #31
+    // showed false here.
+    const staleTick: UsFoodLabelData = {
+      ...declaredOnlyByContains,
+      containsStatement: ['tree-nuts', 'milk'],
+    }
+    const { layout, findings } = judge(staleTick, US_FOOD_CONFORMANT.stock)
+    const statement = layout.primitives
+      .filter(
+        (primitive): primitive is TextPrimitive =>
+          primitive.kind === 'text' && primitive.elementId === US_FOOD_ELEMENTS.containsStatement,
+      )
+      .map((primitive) => primitive.text)
+
+    expect(
+      layout.omissions.map((omission) => `${omission.elementId}/${omission.scope}`),
+      'the premise: one omission, for the dropped entry, and nothing drawn off the label',
+    ).toEqual([`${US_FOOD_ELEMENTS.containsStatement}/detail`])
+    expect(statement, 'and the statement that printed names the source').toEqual([
+      'Contains: almonds.',
+    ])
+
+    const unconfirmed = findings.find(
+      (result) => result.code === FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
+    )
+    expect(unconfirmed, 'still unconfirmed: the rule cannot tell this omission apart').toBeDefined()
+    expect(unconfirmed!.message, 'but it says only what the rule knows').toContain(
+      'layout omission recorded against it',
+    )
+    expect(unconfirmed!.message).not.toMatch(/did not print|not printed|cut off/)
+    expect(unconfirmed!.measurement!.actual).not.toMatch(/did not print|not printed|cut off/)
+  })
 })
 
 describe('a GHS pass the guard cannot reach is withheld by its own rule', () => {
