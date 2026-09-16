@@ -49,7 +49,9 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   cost the exemption. The dual declaration is not a condition, because its mandate is the Fair Packaging and
   Labeling Act's rather than part 101's, where 101.7(p) only permits a metric statement; the rest of 101.7 is
   not modelled, and the pass says the exemption rests on the three it checks. A declaration alone on its panel
-  keeps the exemption, since the separation rule declines rather than passes when nothing could crowd it. The
+  keeps the exemption, since the separation rule declines rather than passes when nothing could crowd it, and
+  its pass says separation had nothing to measure rather than that it was met — the first wording claimed the
+  measurement, which the PR's review caught. The
   sweep reached this pass through `US_FOOD_SMALL_PANEL` and now reaches it through a permission path.
 
 - **A margin that leaves no panel is refused, rather than drawn.** Every engine required only a finite,

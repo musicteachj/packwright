@@ -49,7 +49,11 @@ import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 import { FDA_NET_QUANTITY_DECLARED_MET, usFoodNetQuantityPresentRule } from './netQuantityPresent'
-import { FDA_NET_QUANTITY_CROWDED, usFoodNetQuantitySeparationRule } from './netQuantitySeparation'
+import {
+  FDA_NET_QUANTITY_CROWDED,
+  FDA_NET_QUANTITY_SEPARATION_MET,
+  usFoodNetQuantitySeparationRule,
+} from './netQuantitySeparation'
 import {
   FDA_NET_QUANTITY_TYPE_SIZE_MET,
   usFoodNetQuantityTypeSizeRule,
@@ -88,7 +92,9 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
 
     const pdpSqInches = pdpAreaSqInches(data.container)
     const small = !isNetQuantityZoneRequired(pdpSqInches)
-    const unmet = small ? otherRequirementsUnmet(context) : []
+    const { unmet, separationMeasured } = small
+      ? otherRequirements(context)
+      : { unmet: [], separationMeasured: false }
 
     if (small && unmet.length === 0) {
       return [
@@ -96,9 +102,14 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
         passedOnArtwork(
           usFoodNetQuantityPlacementRule,
           FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
-          `The panel is ${pdpSqInches.toFixed(1)} in² and the declaration meets 101.7(a), (i) and ` +
-            "(f)'s separation, so the bottom-30 percent placement requirement does not apply to " +
-            'this package. The rest of 101.7 is not checked, and the exemption rests on those three.',
+          `The panel is ${pdpSqInches.toFixed(1)} in² and the declaration meets 101.7(a) and (i)` +
+            // A declined separation check measured nothing, so it is not reported as met —
+            // a review caught the message saying so of a declaration alone on its panel.
+            (separationMeasured
+              ? " and (f)'s separation"
+              : ", with nothing else on the panel for (f)'s separation to measure") +
+            ', so the bottom-30 percent placement requirement does not apply to this package. ' +
+            'The rest of 101.7 is not checked, and the exemption rests on these.',
           US_FOOD_ELEMENTS.netQuantity,
         ),
       ]
@@ -148,7 +159,8 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
 
 /**
  * Which of the other part 101 requirements this project checks the declaration
- * does not meet, in words — empty when all three cleared it.
+ * does not meet, in words — empty when all three cleared it — and whether
+ * separation was measured at all, so the exemption does not claim it was.
  *
  * Asked of the rules themselves rather than re-derived, so the exemption can never
  * disagree with the findings printed beside it. A rule that declined has not
@@ -157,7 +169,11 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
  * crowded. Type size declines only when no declaration was drawn, which has not
  * met a size requirement.
  */
-function otherRequirementsUnmet(context: UsFoodContext): string[] {
+function otherRequirements(context: UsFoodContext): {
+  unmet: string[]
+  /** False where separation declined — met only in that nothing could crowd it. */
+  separationMeasured: boolean
+} {
   const codes = (rule: UsFoodRule) => rule.check(context).map((result) => result.code)
   const unmet: string[] = []
   if (!codes(usFoodNetQuantityPresentRule).includes(FDA_NET_QUANTITY_DECLARED_MET)) {
@@ -166,8 +182,9 @@ function otherRequirementsUnmet(context: UsFoodContext): string[] {
   if (!codes(usFoodNetQuantityTypeSizeRule).includes(FDA_NET_QUANTITY_TYPE_SIZE_MET)) {
     unmet.push("101.7(i)'s type size")
   }
-  if (codes(usFoodNetQuantitySeparationRule).includes(FDA_NET_QUANTITY_CROWDED)) {
+  const separation = codes(usFoodNetQuantitySeparationRule)
+  if (separation.includes(FDA_NET_QUANTITY_CROWDED)) {
     unmet.push("101.7(f)'s separation")
   }
-  return unmet
+  return { unmet, separationMeasured: separation.includes(FDA_NET_QUANTITY_SEPARATION_MET) }
 }

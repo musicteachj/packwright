@@ -137,12 +137,17 @@ describe('the panel belongs to the package, not to the label stock', () => {
     // is a violation; on a 4.65 in² one whose declaration meets the rest it is
     // not, and a rule that skipped this check would report against a compliant
     // package.
-    const small = codesOf(netQuantityFindings(smallMidPanel))
+    const smallFindings = netQuantityFindings(smallMidPanel)
+    const small = codesOf(smallFindings)
     expect(small, 'the premise: nothing else is wrong with the declaration').toEqual(
       expect.not.arrayContaining([FDA_NET_QUANTITY_CROWDED, FDA_NET_QUANTITY_TYPE_TOO_SMALL]),
     )
     expect(small).toContain(FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)
     expect(small).not.toContain(FDA_NET_QUANTITY_OUTSIDE_ZONE)
+    expect(
+      smallFindings.find((f) => f.code === FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)!.message,
+      'naming the separation it measured',
+    ).toContain("meets 101.7(a) and (i) and (f)'s separation")
 
     const large = codesOf(
       netQuantityFindings({ ...smallMidPanel, container: US_FOOD_CONFORMANT.data.container }),
@@ -225,13 +230,19 @@ describe('the panel belongs to the package, not to the label stock', () => {
       ingredientsExempt: true,
       nutritionFactsExempt: true,
     }
-    const codes = codesOf(netQuantityFindings(alone))
+    const findings = netQuantityFindings(alone)
+    const codes = codesOf(findings)
 
     expect(codes, 'the premise: separation had nothing to measure').not.toContain(
       FDA_NET_QUANTITY_SEPARATION_MET,
     )
     expect(codes).not.toContain(FDA_NET_QUANTITY_CROWDED)
     expect(codes).toContain(FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)
+    // And it says so, rather than claiming a separation it never measured — which
+    // the first message did, and the review of PR #33 caught.
+    const message = findings.find((f) => f.code === FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)!.message
+    expect(message).not.toContain("meets 101.7(a) and (i) and (f)'s separation")
+    expect(message).toContain("nothing else on the panel for (f)'s separation to measure")
   })
 })
 
