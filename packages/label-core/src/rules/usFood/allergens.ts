@@ -37,6 +37,7 @@
 
 import { foodSourceName, majorFoodAllergen } from '../../fda/allergens'
 import type { MajorFoodAllergenId } from '../../fda/allergens'
+import { wasFullyDrawn } from '../../layout/omissions'
 import type { TextPrimitive } from '../../layout/types'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { UsFoodIngredient } from '../../templates/usFood'
@@ -61,7 +62,12 @@ const SPECIFIC: Citation = {
 }
 
 /**
- * Whether the printed label names this food source anywhere it counts.
+ * Where the printed label names this food source, of the places it counts.
+ *
+ * **Which element, not merely whether.** The rule withholds its pass unless one
+ * element that declares the source printed in full, and it needs to know which to
+ * ask. Returning a boolean is how a Contains statement drawn past the bottom of
+ * the label came to clear "almonds is declared" on a list that never named them.
  *
  * **Read from the layout, not re-derived from the document**, because §403(w) is
  * about what a package says. That also collapses four clauses into one
@@ -82,15 +88,18 @@ const SPECIFIC: Citation = {
  * *that* allergen are left standing — so a food-source word can only ever settle
  * the question it belongs to.
  */
-function declaresSource(
+function elementsDeclaring(
   source: string,
   allergenId: MajorFoodAllergenId,
   printedList: string,
   printedContains: string,
   ingredients: readonly UsFoodIngredient[],
-): boolean {
+): string[] {
   const needle = source.toLowerCase()
-  if (printedContains.toLowerCase().includes(needle)) return true
+  const declaring: string[] = []
+  if (printedContains.toLowerCase().includes(needle)) {
+    declaring.push(US_FOOD_ELEMENTS.containsStatement)
+  }
 
   let searchable = printedList.toLowerCase()
   for (const ingredient of ingredients) {
@@ -116,7 +125,8 @@ function declaresSource(
     if (ingredient.allergen === allergenId) continue
     searchable = searchable.split(ingredient.name.toLowerCase()).join(' ')
   }
-  return searchable.includes(needle)
+  if (searchable.includes(needle)) declaring.push(US_FOOD_ELEMENTS.ingredients)
+  return declaring
 }
 
 export const usFoodAllergenRule: UsFoodRule = {
@@ -146,6 +156,13 @@ export const usFoodAllergenRule: UsFoodRule = {
     const printedList = textOf(US_FOOD_ELEMENTS.ingredients)
     const printedContains = textOf(US_FOOD_ELEMENTS.containsStatement)
     const findings: Finding[] = []
+    // Declared only by a block with an omission recorded against it — so neither
+    // cleared nor reported. `textOf` reads every primitive, including those of a
+    // block drawn off the label, which is the text a declaration must not rest on.
+    // `wasFullyDrawn` counts any omission, as the guard does, so a Contains
+    // statement carrying a detail omission (an entry no ingredient carries) cannot
+    // clear on its own either: stricter than necessary, never looser.
+    let declaredOnlyOffTheLabel = false
 
     for (const ingredient of bearing) {
       const id = ingredient.allergen!
@@ -176,7 +193,13 @@ export const usFoodAllergenRule: UsFoodRule = {
 
       // Either form satisfies (w)(1). They are alternatives in the statute and
       // demanding both would report a violation against a compliant label.
-      if (declaresSource(source, id, printedList, printedContains, ingredients)) continue
+      const declaring = elementsDeclaring(source, id, printedList, printedContains, ingredients)
+      if (declaring.length > 0) {
+        if (!declaring.some((elementId) => wasFullyDrawn(layout, elementId))) {
+          declaredOnlyOffTheLabel = true
+        }
+        continue
+      }
 
       findings.push(
         finding(usFoodAllergenRule, {
@@ -192,6 +215,11 @@ export const usFoodAllergenRule: UsFoodRule = {
     }
 
     if (findings.length > 0) return findings
+    // Withheld, not reported. The omission says the block did not print in full,
+    // though not which line was lost — so "not declared" could be false of a
+    // statement whose source printed. What a declined declaration should say is
+    // an open question in `docs/BACKLOG.md`.
+    if (declaredOnlyOffTheLabel) return []
 
     const names = bearing
       .map((ingredient) => foodSourceName(ingredient.allergen!, ingredient.allergenSpecificType))

@@ -26,6 +26,7 @@
  */
 
 import { INFORMATION_PANEL_MIN_TYPE_HEIGHT_MM, regulatedGlyphBasis } from '../../geometry/pdp'
+import { wasFullyDrawn } from '../../layout/omissions'
 import type { TextPrimitive } from '../../layout/types'
 import { NUTRITION_ELEMENT_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { glyphHeightMm } from '../../text/measure'
@@ -154,6 +155,18 @@ export const usFoodInformationPanelTypeSizeRule: UsFoodRule = {
         }),
       )
     }
+
+    // **Every letter on the panel means every letter that printed.** The engine
+    // still emits primitives for a block it records as off the label, so this
+    // counted a responsible firm 645 mm down a 240 mm label among the elements
+    // that "clear the floor". The pass names the panel, which is never omitted, so
+    // the guard in `runRules` could not withhold it. A panel with something missing
+    // is not certified at all: clearing only what printed would read as clearing
+    // the panel. `wasFullyDrawn` counts any omission, as the guard does — a detail
+    // such as a Contains entry no ingredient carries withholds this too, which is
+    // stricter than off-the-stock alone and never looser. Undersized type is still
+    // reported above whether or not it printed.
+    if (![...byElement.keys()].every((elementId) => wasFullyDrawn(layout, elementId))) return []
 
     return [
       // 101.2(c) bounds the height of the letters on the panel: the artwork.

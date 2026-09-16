@@ -375,7 +375,10 @@ stamped `document` first and reversed once §101.100 was read. **No stamp is lef
 Each reproduced before being written here. None is fixed by choosing `artwork` or `document`, which is why
 they are separate entries rather than part of the reading.
 
-**`us-food/information-panel-type-size` clears type that was never printed.** Its pass names
+**~~`us-food/information-panel-type-size` clears type that was never printed.~~ Fixed** on
+`fix/passes-rest-on-what-printed`. The rule now declines its pass unless every element it measured
+`wasFullyDrawn` — not by counting only what printed, which would read as clearing the panel. Undersized type is
+still reported whether or not it printed. What follows is the entry as it stood. Its pass names
 `food-pdp`, and the engine never records an omission against that id, so the guard cannot withhold it. On
 `US_FOOD_CONFORMANT` with 400 ingredients, the responsible firm is recorded as an `element`-scope omission
 — "begins 645.22 mm down a 240.00 mm label, past its bottom edge, so none of it is printed" — and the engine
@@ -389,7 +392,11 @@ The US food reading kept it on the artwork — 101.2(c) bounds the height of pri
 right and cannot reach the defect. The pass names an element the engine never omits. The fix belongs in the
 rule, counting only elements that `wasFullyDrawn`.
 
-**`GHS_SMALL_CONTAINER_COMPLETE` names no element, so nothing can withhold it.** On a complete EU small
+**~~`GHS_SMALL_CONTAINER_COMPLETE` names no element, so nothing can withhold it.~~ Fixed** on
+`fix/passes-rest-on-what-printed`: the rule now declines the pass unless every element its list names
+`wasFullyDrawn` — the product identifier, each pictogram, the supplier, and under OSHA the signal word and the
+outer-package statement. While no glyph is drawn that is every container carrying a pictogram. What follows is
+the entry as it stood. On a complete EU small
 container (0.1 L, GHS02) it reports "The container carries everything the small-container provision requires
 of it" while the only pictogram is a frame with no symbol in it. The rule's own list includes "at least one
 hazard pictogram", which it checks as `layout.pictograms.length > 0` — frames, not glyphs. The violation
@@ -410,7 +417,9 @@ appears. `GS1_DIGITAL_LINK_VALID` was the second site, and the GS1 reading settl
 Syntax governs a string, and this engine prints no carrier for the link, so there is no ink to withhold the
 pass over.
 
-**`GHS_PICTOGRAM_SET_MATCHES` names the strip; omissions are recorded per pictogram.** It carries
+**~~`GHS_PICTOGRAM_SET_MATCHES` names the strip; omissions are recorded per pictogram.~~ Fixed** on
+`fix/passes-rest-on-what-printed`, as the entry proposed: the pass is withheld unless every member pictogram
+`wasFullyDrawn`. It carries
 `ghs-pictograms`, and the engine records `ghs-pictograms-GHS02` — so on `GHS_CONFORMANT` the guard never
 matches, and the pass "Every pictogram on the label is required by a declared hazard class" survives beside
 a `GHS_PICTOGRAM_SYMBOL_MISSING` violation for the same pictogram. `ghs/pictogram-size` names the suffixed id
@@ -426,7 +435,10 @@ on every label carrying a pictogram, which is the correct answer while no glyph 
 `GHS_PICTOGRAM_COMPLETE` is unreachable by any document and correctly so: `glyphDrawn` is only ever `false`,
 because the Annex V specimen artwork was never verified, and the rule continues past the pass whenever it is.
 The other four are reachable and not in the sweep — `GHS_SMALL_CONTAINER_COMPLETE`, `FDA_DUAL_COLUMN_MET`,
-`FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. It matters less than it did, because
+`FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. `GHS_PICTOGRAM_SET_MATCHES` and
+`GHS_SMALL_CONTAINER_COMPLETE` have since joined `GHS_PICTOGRAM_COMPLETE` as unreachable, for the same reason
+and as correctly: each certifies a pictogram, and no glyph is drawn. The small-container pass was listed here
+as reachable for a commit after that stopped being true. It matters less than it did, because
 the guarantee that every pass states what it certifies is now the compiler's, not the sweep's. It still
 matters for every reading that flips one of them, since a flip ships with a fixture that reaches it.
 `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` has since been flipped, and `FDA_DUAL_COLUMN_MET` and
@@ -472,14 +484,21 @@ statement. Both passes now rest on the artwork, which is right, but a stamp cann
 not exist. The fix is to record which paragraph is claimed and check what that paragraph requires the label
 to bear.
 
-**`FDA_SERVING_SIZE_MET` names a row the engine never omits.** The engine records a Nutrition Facts panel
+**~~`FDA_SERVING_SIZE_MET` names a row the engine never omits.~~ Fixed** on
+`fix/passes-rest-on-what-printed`. The rule now declines unless the panel and the row both `wasFullyDrawn`.
+Because omissions name the panel, that also withholds it where the row printed and something below it did
+not — stricter than it needs to be, never looser, and how every other pass on the panel already behaves. The
+engine records a Nutrition Facts panel
 running past the bottom of the stock against `food-nutrition-panel`, and never against its rows. On
 `US_FOOD_CONFORMANT` on a 120 × 25 mm label, the panel begins at 16.8 mm, the serving-size row prints at
 32.2–36.0 mm (wholly below the edge), and the only omission is `food-nutrition-panel/detail`. `runRules`
 still returns "The panel declares a serving size of …". The stamp is right; the id is out of the guard's
 reach. The same shape as the panel type-size entry above. Reproduced 2026-09-16.
 
-**`FDA_ALLERGEN_DECLARED_MET` names the ingredient list, and can rest on the Contains statement instead.**
+**~~`FDA_ALLERGEN_DECLARED_MET` names the ingredient list, and can rest on the Contains statement instead.~~
+Fixed** on `fix/passes-rest-on-what-printed`. The rule now learns which element declared each source and
+declines its pass unless at least one of them printed in full. It declines rather than reporting the allergen
+undeclared, because the omission is already the finding.
 Found by the `high` review of PR #28 and reproduced. §403(w)(1) is satisfied by either form, and the rule
 searches both printed texts — but the pass always names `food-ingredients`, and the engine still emits text
 primitives for a block it records as off the label. On `US_FOOD_CONFORMANT` with the almond ingredient renamed
@@ -490,6 +509,25 @@ pass names the element that did not make the declaration. The fix is to name, or
 whichever element's text discharged it — the same shape as the serving-size, panel type-size and
 pictogram-set entries, which are worth fixing together.
 
+**A declared allergen whose only declaration is cut off gets no allergen finding at all.** Found by the `high`
+review of PR #29 and reproduced. Since that branch, the allergen rule declines its pass when every element
+declaring a source has an omission, and reports nothing in its place. Where the statement is wholly off the
+label, the `element` omission says so plainly. Where it is only cut, the omission is `detail` — on
+`US_FOOD_CONFORMANT` with the almonds renamed `nut paste`, a 161.74 mm label puts "Contains: almonds." on a
+baseline at 162.77 mm — and the only explanation is "runs past the bottom", which names no allergen. No pass
+is issued, so it is not a false clearance, **but it can ship.** Export is refused only for `element`
+omissions (`blockingOmissions`). The firm, drawn below the statement, is one — but only when the label has a
+firm. Without one, `FDA_RESPONSIBLE_FIRM_MISSING` is reported, and a blocking *finding* only asks the editor's
+user to confirm before exporting, so the PDF goes out with the declaration cut off and no allergen finding.
+A first draft of this entry said export was always blocked; the review of it read `usFoodEngine` and found
+the firm is drawn only when present. A missing allergen declaration is the most consequential thing on a food
+label to leave unnamed, and "not declared" cannot simply be raised instead: the
+omission is per element, so the rule cannot tell whether the lost line held the source. The reverse also
+shows: at 163.15 mm the whole line prints and only its line box overhangs, and the pass is withheld anyway.
+Deciding this needs omissions that say which lines were lost, or an advisory finding that says the
+declaration could not be confirmed on the label. The advisory is a new code with a citation and a fixture, so
+it is a change of its own.
+
 ### What reading the GHS provisions turned up
 
 **The GHS engine records no omission for a block drawn off its stock, so no GHS pass about text can be
@@ -499,12 +537,14 @@ baseline sits at 13.4 mm, wholly below the edge, and `GHS_SIGNAL_WORD_SINGLE` st
 one signal word, “Danger”". The realistic case is the small container. A US 50 ml container invoking
 (f)(12), on a 50 × 25 mm label, prints its outer-package statement at 34.3–41.3 mm and its manufacturer at
 43.3–49.8 mm — both wholly off the label — and its only pictogram at 18.1–32.3 mm, more than half off. The
-only omission recorded is the missing glyph. `runRules` returns `GHS_SMALL_CONTAINER_COMPLETE`, "The container
+only omission recorded is the missing glyph. `runRules` returned `GHS_SMALL_CONTAINER_COMPLETE`, "The container
 carries everything the small-container provision requires of it", beside `GHS_PICTOGRAM_SET_MATCHES` for the
 half-printed strip, while the manufacturer's name and telephone and the outer-package statement — three
-entries on the rule's own list — are not on the label. The blocking
-`GHS_PICTOGRAM_SYMBOL_MISSING` is all that keeps it from reading clean, and that finding exists only because
-the glyph artwork is unverified. Reproduced 2026-09-16. It is the GHS sibling of the GS1 off-stock entry
+entries on the rule's own list — are not on the label. Reproduced 2026-09-16. **Both passes are now withheld by
+their own rules** — but on this label only because the glyph is missing. The small-container rule also gates
+on the supplier and the outer-package statement printing, and that gate has nothing to act on until this
+engine records the omission, so the entry stands: the signal-word pass is still reachable today, and the
+supplier and statement gates wait on it. It is the GHS sibling of the GS1 off-stock entry
 below, and `usFoodEngine`'s bounds check is the precedent for the fix.
 
 ### What reading the GS1 provisions turned up
