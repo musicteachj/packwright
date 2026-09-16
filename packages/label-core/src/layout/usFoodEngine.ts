@@ -35,7 +35,7 @@ import type { UsFoodLabelData } from '../templates/usFood'
 import { US_FOOD_ELEMENTS, US_FOOD_TYPE_DEFAULT } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
 import { anchorBox, panelFor } from '../templates/stock'
-import { LayoutError } from './engine'
+import { LayoutError, assertMarginLeavesPanel } from './engine'
 import type { LayoutOmission, LayoutPrimitive, ResolvedElement, ResolvedLayout } from './types'
 
 /** Millimetres for an omission's prose. `rules/finding` owns the same format for
@@ -49,10 +49,12 @@ const mmText = (value: number): string => `${roundTo(value, 2).toFixed(2)} mm`
  * phase 5, but nothing looked across: `wrapTextMm` never breaks inside a word, so
  * a statement of identity reading "Supercalifragilisticexpialidociousgranola" was
  * set as one line ending 114.8 mm across a 60 mm label, recorded nowhere, and
- * cleared by `us-food/statement-of-identity`. A block that begins past the edge —
- * a margin at least as wide as the stock, which the engine accepts — is absent,
- * exactly as the bottom-edge checks treat one below the label; a review of this
- * check caught it filing that case as a detail, which left export open.
+ * cleared by `us-food/statement-of-identity`. A block that begins past the edge is
+ * absent, exactly as the bottom-edge checks treat one below the label; a review of
+ * this check caught it filing that case as a detail, which left export open. Every
+ * block begins at the panel's left edge, so that case needs a margin as wide as
+ * the stock, which `assertMarginLeavesPanel` now refuses. The branch stays so that
+ * loosening the check cannot reopen an empty export.
  */
 function rightOverrun(
   elementId: string,
@@ -159,11 +161,7 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
 
   assertFinitePositive(stock.widthMm, 'Stock width')
   assertFinitePositive(stock.heightMm, 'Stock height')
-  if (!Number.isFinite(stock.marginMm) || stock.marginMm < 0) {
-    throw new LayoutError(
-      `Stock margin must be a finite, non-negative number, received ${stock.marginMm}.`,
-    )
-  }
+  assertMarginLeavesPanel(stock)
   // The container selects the type-size band every net-quantity rule is measured
   // against, so a nonsensical one is input that describes no drawing rather than
   // a drawing that fails. Defaulting it would fabricate a requirement.

@@ -36,7 +36,7 @@ import type { GhsLabelData } from '../templates/ghs'
 import { GHS_ELEMENTS, GHS_TYPE_DEFAULT } from '../templates/ghs'
 import type { LabelStock } from '../templates/stock'
 import { panelFor } from '../templates/stock'
-import { LayoutError } from './engine'
+import { LayoutError, assertMarginLeavesPanel } from './engine'
 import type {
   LayoutOmission,
   LayoutPrimitive,
@@ -63,11 +63,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
 
   assertFinitePositive(stock.widthMm, 'Stock width')
   assertFinitePositive(stock.heightMm, 'Stock height')
-  if (!Number.isFinite(stock.marginMm) || stock.marginMm < 0) {
-    throw new LayoutError(
-      `Stock margin must be a finite, non-negative number, received ${stock.marginMm}.`,
-    )
-  }
+  assertMarginLeavesPanel(stock)
   // Capacity selects the band every dimensional rule is measured against, so a
   // nonsensical one produces a requirement rather than a drawing failure — and
   // silently defaulting it would fabricate a requirement the user never stated.

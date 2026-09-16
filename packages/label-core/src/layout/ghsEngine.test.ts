@@ -187,10 +187,14 @@ describe('a block drawn off the stock says so', () => {
 
   it('records a block that runs past the bottom edge as a lost detail', () => {
     // Cut through the product identifier's box, so it starts on the label and ends off it.
-    const probe = layOutGhsLabel({ data: DATA, stock: STOCK })
+    // On a 1 mm margin, because the identifier begins at the margin and the 4 mm one
+    // would put the cut at 6.7 mm — stock too short to leave any panel between its
+    // margins, which the engine refuses.
+    const stock: LabelStock = { ...STOCK, marginMm: 1 }
+    const probe = layOutGhsLabel({ data: DATA, stock })
     const id = probe.elements.find((e) => e.elementId === GHS_ELEMENTS.productIdentifier)!.box
     const heightMm = id.yMm + id.heightMm / 2
-    const layout = layOutGhsLabel({ data: DATA, stock: { ...STOCK, heightMm } })
+    const layout = layOutGhsLabel({ data: DATA, stock: { ...stock, heightMm } })
 
     expect(positional(layout, GHS_ELEMENTS.productIdentifier).map((o) => o.scope)).toEqual([
       'detail',

@@ -17,7 +17,7 @@
 
 import { describe, expect, it } from 'vitest'
 import * as bwip from 'bwip-js/generic'
-import { layOutUpcALabel } from '../layout/engine'
+import { LayoutError, layOutUpcALabel } from '../layout/engine'
 import { layOutGhsLabel } from '../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import { blockingOmissions } from '../layout/omissions'
@@ -446,15 +446,15 @@ describe('the statement of identity is bounded like every other block', () => {
       ).toEqual(['detail'])
     })
 
-    it('records a block that begins past the right edge as absent', () => {
-      // A margin wider than the stock, which the engine accepts: nothing prints, so
-      // the omission has to block export as one below the label would.
+    it('refuses the stock that put a block wholly past the right edge', () => {
+      // Every block begins at the panel's left edge, so only a margin wider than the
+      // stock put one past the right edge. The engine recorded that as absent, so the
+      // empty label could not export; it now refuses the stock, which leaves no panel
+      // between its margins, so the empty label never resolves at all.
       const stock: LabelStock = { widthMm: 40, heightMm: 400, marginMm: 45 }
       const data = { ...US_FOOD_CONFORMANT.data, statementOfIdentity: identity }
 
-      expect(
-        acrossOmissions(data, stock, US_FOOD_ELEMENTS.statementOfIdentity).map((o) => o.scope),
-      ).toEqual(['element'])
+      expect(() => judge(data, stock)).toThrow(LayoutError)
     })
 
     it('does not also measure across a block already recorded as absent', () => {
@@ -476,15 +476,15 @@ describe('the statement of identity is bounded like every other block', () => {
       expect(firm.map((omission) => omission.scope)).toEqual(['element'])
     })
 
-    it('gives an absent statement of identity one omission, not two', () => {
-      // A margin deeper than the label puts the identity below it, and its long word
-      // would overrun a 40 mm width as well.
+    it('refuses the stock that put the statement of identity below the label', () => {
+      // The identity is drawn first, at the panel's top edge, so only a margin deeper
+      // than the label put it below — where its long word, overrunning a 40 mm width
+      // as well, once earned it two contradictory omissions. That stock now leaves no
+      // panel and is refused, so the case cannot be reached.
       const stock: LabelStock = { widthMm: 40, heightMm: 5, marginMm: 6 }
       const data = { ...US_FOOD_CONFORMANT.data, statementOfIdentity: identity }
-      const omissions = judge(data, stock).layout.omissions.filter(
-        (omission) => omission.elementId === US_FOOD_ELEMENTS.statementOfIdentity,
-      )
-      expect(omissions.map((omission) => omission.scope)).toEqual(['element'])
+
+      expect(() => judge(data, stock)).toThrow(LayoutError)
     })
 
     it('records a stacked block too, which is drawn by a different loop', () => {

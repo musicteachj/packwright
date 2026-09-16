@@ -20,7 +20,8 @@
  * `rules/` says what is wrong with it, with a citation.
  *
  * What survives as a `LayoutError` is input that describes no drawing at all: a
- * magnification of zero, a stock with no area, a GTIN that is not a GTIN.
+ * magnification of zero, a stock with no area, a margin that leaves no panel, a
+ * GTIN that is not a GTIN.
  */
 
 import {
@@ -52,6 +53,54 @@ export class LayoutError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'LayoutError'
+  }
+}
+
+/**
+ * Refuses a margin that is not a length, or that leaves no panel to draw in.
+ *
+ * Shared by all three engines because it is one contract, and it was written out
+ * three times — each engine required only a finite, non-negative margin, in
+ * identical words.
+ *
+ * **A margin that takes the whole stock describes no drawing, so it is refused
+ * rather than drawn.** `panelFor` subtracts twice the margin from each dimension,
+ * and every anchor is relative to what is left. At or past half the stock that is
+ * zero or less, and what the engines drew there was arithmetic rather than a
+ * layout: on 74 mm GHS stock a 37 mm margin set every statement into a panel no
+ * width at all, running up to 74.79 mm past the right edge, and because those were
+ * only `detail` omissions nothing blocked export — while at 36.99 mm the same label
+ * was refused. The omissions filed one case at a time could not agree with each
+ * other at the boundary, and a `LayoutError` makes the whole region unreachable.
+ *
+ * **At or below zero, not below some minimum.** A panel a hundredth of a millimetre
+ * wide is useless too, but the smallest usable panel is a figure nobody has
+ * published, and inventing one would refuse labels on this project's say-so. Zero
+ * is the point at which there is no panel at all.
+ *
+ * It costs one drawing that happened to work. A centred UPC-A on 60 mm stock with
+ * a 65 mm margin lands in the middle of the label, because centring a symbol in a
+ * negative panel still finds the stock's centre. A margin wider than the label is
+ * still not something anyone meant, and the editor shows a `LayoutError` in place
+ * of the preview as routinely as it does for a half-typed GTIN.
+ */
+export function assertMarginLeavesPanel(stock: LabelStock): void {
+  // The margin is as load-bearing as the dimensions — `panelFor` and `anchorBox`
+  // derive every coordinate from it. Left unchecked, a cleared form field
+  // arrives as `''`, string-concatenates through the arithmetic, and the rail
+  // prints "the left quiet zone measures NaN mm" under a real GS1 citation while
+  // the renderer throws on a coordinate that is not a number.
+  if (!Number.isFinite(stock.marginMm) || stock.marginMm < 0) {
+    throw new LayoutError(
+      `Stock margin must be a finite, non-negative number, received ${stock.marginMm}.`,
+    )
+  }
+  const panel = panelFor(stock)
+  if (panel.widthMm <= 0 || panel.heightMm <= 0) {
+    throw new LayoutError(
+      `A ${stock.marginMm} mm margin leaves no panel on ${stock.widthMm} x ${stock.heightMm} mm ` +
+        'stock. Twice the margin must be less than both the width and the height.',
+    )
   }
 }
 
@@ -97,16 +146,7 @@ export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest):
     )
   }
 
-  // The margin is as load-bearing as the dimensions — `panelFor` and `anchorBox`
-  // derive every coordinate from it. Left unchecked, a cleared form field
-  // arrives as `''`, string-concatenates through the arithmetic, and the rail
-  // prints "the left quiet zone measures NaN mm" under a real GS1 citation while
-  // the renderer throws on a coordinate that is not a number.
-  if (!Number.isFinite(stock.marginMm) || stock.marginMm < 0) {
-    throw new LayoutError(
-      `Stock margin must be a finite, non-negative number, received ${stock.marginMm}.`,
-    )
-  }
+  assertMarginLeavesPanel(stock)
 
   if (
     data.barHeightMm !== undefined &&
@@ -261,11 +301,13 @@ export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest):
     // cut a digit off. Measured from the primitives, where the digits actually are.
     //
     // A detail where some of it prints, and the whole element where none does. The
-    // anchor keeps a symbol on the panel, but the engine accepts a margin as wide
-    // as the stock, and a corner anchor then places it wholly outside the label —
-    // an empty label, which an element omission refuses to export. Every pass
-    // measured off the symbol is withheld either way, the magnification included,
-    // because a symbol not printed as asked for has not been cleared.
+    // anchor keeps a symbol on the panel, and while `assertMarginLeavesPanel` holds
+    // the panel is on the label, so no anchor can place a symbol wholly outside it.
+    // That case was reachable when the engine accepted a margin as wide as the
+    // stock — a corner anchor then drew an empty label — and the branch stays so
+    // that loosening the check cannot reopen an empty export. Every pass measured
+    // off the symbol is withheld either way, the magnification included, because a
+    // symbol not printed as asked for has not been cleared.
     const digitExtents = placed.primitives.flatMap((primitive) => {
       if (primitive.kind !== 'text') return []
       const widthMm = measureTextMm(primitive.text, primitive.fontSizeMm, primitive.fontFamily)
