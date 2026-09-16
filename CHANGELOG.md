@@ -82,6 +82,12 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   label — found while reviewing the US food check below, which made the same assumption, and fixed with a
   case for each side.)
 
+  **The editor stops saying it twice.** The web store has stated a symbol's vertical overflow itself since phase
+  3, when no omission did. With the engine now recording one, the "Cannot be checked" list carried both — and
+  for a symbol wholly off the label, "part of it will not be printed" beside "none of it is printed". The
+  pull request's `high` review found it. The store's sentence is gone, the engine's covers every edge, and the
+  editor test that pinned the old wording now asserts the symbol has exactly one reason.
+
   **Float noise is not an overrun.** Its review found a symbol on a label typed to its exact height — 22.16 mm
   at 0.8x, where the drawn height is 22.160000000000004 — recorded as running "0.00 mm past the top and
   0.00 mm past the bottom", withholding every pass on a symbol that printed whole. Anything within

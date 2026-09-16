@@ -21,7 +21,6 @@ import {
   layOutGhsLabel,
   layOutUpcALabel,
   layOutUsFoodLabel,
-  mm,
   normaliseScannedGtin,
   runRules,
   type ElementId,
@@ -280,13 +279,11 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
             'it will not scan whatever its margins measure.',
         )
       }
-      if (symbol.verticalOverflowMm > 0) {
-        add(
-          symbol.elementId,
-          `The ${symbol.symbology} symbol runs ${mm(symbol.verticalOverflowMm)} off ` +
-            'the top or bottom of the stock, so part of it will not be printed.',
-        )
-      }
+      // A symbol drawn off the stock is not stated here. It used to be, before the
+      // engine recorded an omission for it; now the omission below says so, for
+      // every edge rather than only the top and bottom, and stating it here too
+      // listed one overrun twice — as "part of it" beside "none of it" when the
+      // whole symbol lay off the label.
     }
 
     // The engine's reasons are already written as sentences for a reader — the

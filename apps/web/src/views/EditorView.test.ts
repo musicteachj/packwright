@@ -205,8 +205,13 @@ describe('the editor', () => {
 
     const rail = wrapper.find('section[aria-labelledby="findings-heading"]')
     expect(rail.text()).toContain('Cannot be checked')
-    expect(rail.text()).toContain('off the top or bottom')
+    expect(rail.text()).toContain('past the top')
     expect(rail.text()).not.toContain('Every check passed')
+    // Once. The store stated the overrun itself before the engine recorded it, and
+    // kept doing so afterwards, so the rail listed one defect twice.
+    const symbol = store.uncertifiable.find((item) => item.elementId === 'upca-symbol')
+    expect(symbol!.reasons.filter((reason) => reason.includes('past the'))).toHaveLength(1)
+    expect(symbol!.reasons).toHaveLength(1)
   })
 
   it('shows the same measurement on the canvas as in the rail', async () => {
