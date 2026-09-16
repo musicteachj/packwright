@@ -18,7 +18,9 @@
 import { describe, expect, it } from 'vitest'
 import * as bwip from 'bwip-js/generic'
 import { layOutUpcALabel } from '../layout/engine'
+import { layOutGhsLabel } from '../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
+import { GHS_CONFORMANT } from './fixtures/ghs'
 import { CONFORMANT_FIXTURE as GS1_CONFORMANT } from './fixtures/gs1Retail'
 import { US_FOOD_CONFORMANT } from './fixtures/usFood'
 import { PERMISSION_PATHS, sweepEveryRule } from './fixtures/sweep'
@@ -34,8 +36,10 @@ import {
   FDA_DUAL_COLUMN_EXEMPT,
   FDA_NET_QUANTITY_CROWDED,
   FDA_RESPONSIBLE_FIRM_MET,
+  GHS_PICTOGRAM_SIZE_MET,
   GS1_DIGITAL_LINK_VALID,
   GS1_GTIN_CHECK_DIGIT_VALID,
+  ghsPictogramSizeRule,
 } from './index'
 
 /** Layout and findings together, because every case here asserts its own premise. */
@@ -226,6 +230,30 @@ describe('the GS1 passes that rest on the document', () => {
     expect(link, 'the premise: the conformant label configures a valid Digital Link').toBeDefined()
     expect(link!.elementId, 'the premise: nothing is drawn for it to name').toBeUndefined()
     expect(link!.severity === 'pass' && link!.certifies).toBe('document')
+  })
+})
+
+describe('a GHS pictogram is certified on its ink', () => {
+  it('withholds its size when the symbol inside the frame was not drawn', () => {
+    // The one GHS answer a verdict turns on today, and nothing pinned it: stamped
+    // `document`, the whole suite stayed green. Every pictogram this engine draws
+    // is a frame with its symbol recorded as omitted, and a frame with no symbol
+    // is not a pictogram (C.2.3.1), so there is no printed pictogram whose size
+    // 1.2.1.3 could be met by. On the audit path it would be worse: nobody measures
+    // `pictogramSideMm` there, so a pass on the document would clear a size that was
+    // never measured, on every audit carrying a pictogram.
+    const { data, stock } = GHS_CONFORMANT
+    const layout = layOutGhsLabel({ data, stock })
+    const context = { labelType: 'ghs-chemical' as const, data, stock, layout }
+
+    expect(
+      ghsPictogramSizeRule.check(context).map((result) => result.code),
+      'the premise: the rule clears the frame before the guard sees it',
+    ).toContain(GHS_PICTOGRAM_SIZE_MET)
+    expect(
+      runRules(context).map((result) => result.code),
+      'a pictogram whose symbol was not printed has not met a size requirement',
+    ).not.toContain(GHS_PICTOGRAM_SIZE_MET)
   })
 })
 

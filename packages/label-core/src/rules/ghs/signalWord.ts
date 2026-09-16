@@ -64,6 +64,7 @@ export const ghsSignalWordRule: GhsChemicalRule = {
     }
 
     return [
+      // Article 20(3): "shall not appear on the label" — what is printed, so the artwork.
       passedOnArtwork(
         ghsSignalWordRule,
         GHS_SIGNAL_WORD_SINGLE,

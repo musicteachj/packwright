@@ -191,6 +191,35 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Changed
 
+- **All seven GHS passes rest on the artwork, and now say why.** Each provision governs what the label
+  carries. Article 20(3) says a second signal word "shall not appear on the label". C.2.3.1 says a pictogram
+  "shall include a black hazard symbol". Annex V and Article 26 decide which pictograms appear. Table 1.3 and
+  1.2.1.3 size the label and the printed pictogram. And both small-container provisions list what the
+  container's own label must still carry. None is an entitlement or a fact about the chemical. Each call site
+  carries the note.
+
+  **Nothing reappears in the audit report, though that was the effect this rule set was expected to show.** The
+  expectation was that some pictogram passes would rest on the document and survive the glyph omission every
+  audit carries.
+  The only GHS pass that omission withholds is `GHS_PICTOGRAM_SIZE_MET`, and it must stay withheld: a frame
+  with no symbol is not a pictogram, and on the audit path `pictogramSideMm` is never measured, so a pass on
+  the document would clear a size nobody measured on every audit carrying a pictogram.
+
+  **That answer was the only one of the seven a verdict turns on, and nothing tested it.** Stamped `document`,
+  the whole suite stayed green. `certification.test.ts` now asserts the rule clears the frame and `runRules`
+  withholds it, and fails under that mutation. The other six are unobservable today, which is why they carry
+  notes and not tests. `GHS_PICTOGRAM_COMPLETE` cannot be reached. The signal word, set and label-size passes
+  name elements this engine never omits. The precedence and small-container passes name none.
+
+  The reading settled the two GHS questions `docs/BACKLOG.md` left for it. `GHS_PICTOGRAM_SET_MATCHES` is a
+  live false clearance: it judges the pictograms the label carries, but names the strip while omissions are
+  recorded per pictogram, so it survives beside a symbol-less frame. `GHS_PICTOGRAM_PRECEDENCE_MET` is not:
+  glyph omissions change neither the codes it reads nor the truth of a "shall not appear". Neither is fixed
+  by a stamp, so both are recorded rather than fixed. So is what reading turned up: `layOutGhsLabel` records no
+  omission for a block drawn off its stock, so a 50 ml container on a 50 × 25 mm label reports that it
+  "carries everything the small-container provision requires" with its manufacturer and outer-package
+  statement printed below the edge.
+
 - **The GS1 passes say what they rest on because the provisions were read, not because of a default.** Two
   of the six rest on the document. `GS1_GTIN_CHECK_DIGIT_VALID` reports a check digit, which is computed from
   the GTIN's own digits and is true of the number whether or not a symbol printed. `GS1_DIGITAL_LINK_VALID`

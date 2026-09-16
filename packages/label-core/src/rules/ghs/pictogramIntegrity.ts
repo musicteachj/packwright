@@ -107,6 +107,7 @@ export const ghsPictogramIntegrityRule: GhsChemicalRule = {
       }
 
       findings.push(
+        // C.2.3.1: a pictogram "shall include a black hazard symbol" — ink, so the artwork.
         passedOnArtwork(
           ghsPictogramIntegrityRule,
           GHS_PICTOGRAM_COMPLETE,

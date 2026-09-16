@@ -59,6 +59,7 @@ export const ghsLabelDimensionsRule: GhsChemicalRule = {
 
     if (fits) {
       return [
+        // Table 1.3 sizes the label itself, not anything it declares: the artwork.
         passedOnArtwork(
           ghsLabelDimensionsRule,
           GHS_LABEL_SIZE_MET,

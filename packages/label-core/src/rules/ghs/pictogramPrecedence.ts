@@ -96,6 +96,7 @@ export const ghsPictogramPrecedenceRule: GhsChemicalRule = {
 
     if (!findings.some((f) => f.code === GHS_PICTOGRAM_PRECEDENCE_VIOLATED)) {
       findings.push(
+        // Article 26 and C.2.1 say which pictograms "shall not appear" on a label: the artwork.
         passedOnArtwork(
           ghsPictogramPrecedenceRule,
           GHS_PICTOGRAM_PRECEDENCE_MET,

@@ -95,6 +95,7 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
 
     if (findings.length === 0) {
       findings.push(
+        // Whether the pictograms the label carries are the ones Annex V requires: the artwork.
         passedOnArtwork(
           ghsPictogramSetRule,
           GHS_PICTOGRAM_SET_MATCHES,

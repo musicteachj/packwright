@@ -359,7 +359,8 @@ not yet decisions.** The provisions are read rule set by rule set, and a call si
 carries a note saying what its provision governs.
 
 GS1's six were read on 2026-09-16. The check digit and the Digital Link rest on the document; the four that
-measure the printed symbol rest on the artwork. Thirty-one stamps remain — seven GHS, twenty-four US food.
+measure the printed symbol rest on the artwork. GHS's seven were read the same day, and all seven rest on
+the artwork. Twenty-four stamps remain, all of them US food.
 
 ### What reviewing the mechanism turned up
 
@@ -383,19 +384,31 @@ hazard pictogram", which it checks as `layout.pictograms.length > 0` — frames,
 branch names `GHS_ELEMENTS.supplier`, so an id was available. `GHS_PICTOGRAM_SYMBOL_MISSING` is still raised
 on the same label, so the label is not silently clean, but this pass states something false.
 
+The GHS reading kept it on the artwork — both provisions list what the container's own label must carry — and
+found it reaches further than the pictogram. It reads the supplier and the outer-package statement from the
+document, so it also counts them when they were never printed: see the GHS engine entry under "What reading
+the GHS provisions turned up".
+
 One other `passedOnArtwork` site names no element and is equally beyond the guard's reach:
-`GHS_PICTOGRAM_PRECEDENCE_MET`. Whether it is a false clearance depends on what its provision governs, which
-is the GHS reading. `GS1_DIGITAL_LINK_VALID` was the second, and the GS1 reading settled it on the document:
-URI Syntax governs a string, and this engine prints no carrier for the link, so there is no ink to withhold
-the pass over.
+`GHS_PICTOGRAM_PRECEDENCE_MET`. **The GHS reading found it is not a false clearance on today's engine.**
+Article 26 and C.2.1 say which pictograms "shall not appear", so it rests on the artwork. But the only
+omissions `layOutGhsLabel` records against pictograms are missing glyphs, one on every pictogram alike, and
+those change neither the codes `precedenceSuppressions` reads nor the truth of a claim that nothing forbidden
+appears. `GS1_DIGITAL_LINK_VALID` was the second site, and the GS1 reading settled it on the document: URI
+Syntax governs a string, and this engine prints no carrier for the link, so there is no ink to withhold the
+pass over.
 
 **`GHS_PICTOGRAM_SET_MATCHES` names the strip; omissions are recorded per pictogram.** It carries
 `ghs-pictograms`, and the engine records `ghs-pictograms-GHS02` — so on `GHS_CONFORMANT` the guard never
 matches, and the pass "Every pictogram on the label is required by a declared hazard class" survives beside
 a `GHS_PICTOGRAM_SYMBOL_MISSING` violation for the same pictogram. `ghs/pictogram-size` names the suffixed id
-and *is* withheld. **Recorded as a mechanism, not yet as a defect:** whether a set rule is judging the codes a
-label declares or the glyphs it prints is exactly the question the GHS reading has to answer, and the answer
-decides whether this survival is right.
+and *is* withheld. ~~Recorded as a mechanism, not yet as a defect~~ — **the GHS reading makes it a defect, and
+a live false clearance.** The rule judges whether the pictograms the label *carries* are the ones Annex V
+requires. That is the artwork, in the same way 101.5's firm is: the codes are read from the layout as a proxy
+for what is printed, and a frame with no symbol is not a pictogram (C.2.3.1). So this pass should fall with
+the pictograms it vouches for, and the guard never gets the chance. The fix is in the rule or the id, not the
+stamp: withhold the pass unless every member pictogram `wasFullyDrawn`. On today's engine that withholds it
+on every label carrying a pictogram, which is the correct answer while no glyph is drawn.
 
 **Five pass codes are reached by no fixture.** The sweep in `fixtures/sweep.ts` reaches 34 of 39.
 `GHS_PICTOGRAM_COMPLETE` is unreachable by any document and correctly so: `glyphDrawn` is only ever `false`,
@@ -429,6 +442,23 @@ the violating label plus its exemption and the two cannot drift. Not done in the
 already grown by fixing a review's findings in place. One item from that pass was fixed there: only the
 US-food loop labelled where its findings came from, so a GHS permission document added later would have
 counted as fixture coverage and escaped the check that every such document reaches something.
+
+### What reading the GHS provisions turned up
+
+**The GHS engine records no omission for a block drawn off its stock, so no GHS pass about text can be
+withheld.** `layOutGhsLabel` stacks its blocks top to bottom and, by design, clamps nothing — but unlike
+`usFoodEngine` it records nothing either. On `GHS_CONFORMANT`'s data and a 60 × 6 mm stock the signal word's
+baseline sits at 13.4 mm, wholly below the edge, and `GHS_SIGNAL_WORD_SINGLE` still reports "The label carries
+one signal word, “Danger”". The realistic case is the small container. A US 50 ml container invoking
+(f)(12), on a 50 × 25 mm label, prints its outer-package statement at 34.3–41.3 mm and its manufacturer at
+43.3–49.8 mm — both wholly off the label — and its only pictogram at 18.1–32.3 mm, more than half off. The
+only omission recorded is the missing glyph. `runRules` returns `GHS_SMALL_CONTAINER_COMPLETE`, "The container
+carries everything the small-container provision requires of it", beside `GHS_PICTOGRAM_SET_MATCHES` for the
+half-printed strip, while the manufacturer's name and telephone and the outer-package statement — three
+entries on the rule's own list — are not on the label. The blocking
+`GHS_PICTOGRAM_SYMBOL_MISSING` is all that keeps it from reading clean, and that finding exists only because
+the glyph artwork is unverified. Reproduced 2026-09-16. It is the GHS sibling of the GS1 off-stock entry
+below, and `usFoodEngine`'s bounds check is the precedent for the fix.
 
 ### What reading the GS1 provisions turned up
 

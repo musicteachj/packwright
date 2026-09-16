@@ -78,6 +78,7 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
 
       if (!tooSmall) {
         findings.push(
+          // 1.2.1.3 and Table 1.3 size the printed pictogram; a bare frame has not cleared it.
           passedOnArtwork(
             ghsPictogramSizeRule,
             GHS_PICTOGRAM_SIZE_MET,

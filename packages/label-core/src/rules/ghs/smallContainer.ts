@@ -149,6 +149,7 @@ export const ghsSmallContainerRule: GhsChemicalRule = {
     }
 
     return [
+      // Both provisions list what the container's own label must still carry: the artwork.
       passedOnArtwork(
         ghsSmallContainerRule,
         GHS_SMALL_CONTAINER_COMPLETE,
