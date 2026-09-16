@@ -47,6 +47,7 @@ import {
   roundingIsCheckable,
 } from '../../fda/nutrients'
 import type { NutrientId } from '../../fda/nutrients'
+import { wasFullyDrawn } from '../../layout/omissions'
 import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../../templates/usFood'
 import type { UsFoodNutritionFacts } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
@@ -452,7 +453,7 @@ export const usFoodServingSizeRule: UsFoodRule = {
   codes: [FDA_SERVING_SIZE_MISSING, FDA_SERVING_SIZE_MET],
   appliesTo: 'us-food',
 
-  check({ data }: UsFoodContext): Finding[] {
+  check({ data, layout }: UsFoodContext): Finding[] {
     const panel = panelOf(data)
     // No panel at all is the completeness rule's finding, not this one's. Two
     // rules reporting one absence under two citations is the mistake the
@@ -472,6 +473,18 @@ export const usFoodServingSizeRule: UsFoodRule = {
         }),
       ]
     }
+
+    // **Declared means printed, and the engine records the panel, not its rows.**
+    // The pass names the serving-size row so the canvas can outline it, but a panel
+    // running past the bottom of its stock is recorded against the panel alone —
+    // so on a 25 mm label this reported a serving size declared while the row sat
+    // wholly below the edge, and the guard in `runRules` never matched. Unable to
+    // tell a row that printed from one that did not, it declines whenever anything
+    // is recorded as omitted from the panel or the row — not only an overrun, since
+    // `wasFullyDrawn` counts every omission — as every other pass on the panel is
+    // withheld.
+    const printed = [US_FOOD_ELEMENTS.nutritionPanel, US_FOOD_ELEMENTS.nutritionServingSize]
+    if (!printed.every((elementId) => wasFullyDrawn(layout, elementId))) return []
 
     return [
       // (d)(3): the panel's servings information "shall include" it — printed, so the artwork.

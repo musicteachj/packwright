@@ -375,7 +375,10 @@ stamped `document` first and reversed once §101.100 was read. **No stamp is lef
 Each reproduced before being written here. None is fixed by choosing `artwork` or `document`, which is why
 they are separate entries rather than part of the reading.
 
-**`us-food/information-panel-type-size` clears type that was never printed.** Its pass names
+**~~`us-food/information-panel-type-size` clears type that was never printed.~~ Fixed** on
+`fix/passes-rest-on-what-printed`. The rule now declines its pass unless every element it measured
+`wasFullyDrawn` — not by counting only what printed, which would read as clearing the panel. Undersized type is
+still reported whether or not it printed. What follows is the entry as it stood. Its pass names
 `food-pdp`, and the engine never records an omission against that id, so the guard cannot withhold it. On
 `US_FOOD_CONFORMANT` with 400 ingredients, the responsible firm is recorded as an `element`-scope omission
 — "begins 645.22 mm down a 240.00 mm label, past its bottom edge, so none of it is printed" — and the engine
@@ -480,14 +483,21 @@ statement. Both passes now rest on the artwork, which is right, but a stamp cann
 not exist. The fix is to record which paragraph is claimed and check what that paragraph requires the label
 to bear.
 
-**`FDA_SERVING_SIZE_MET` names a row the engine never omits.** The engine records a Nutrition Facts panel
+**~~`FDA_SERVING_SIZE_MET` names a row the engine never omits.~~ Fixed** on
+`fix/passes-rest-on-what-printed`. The rule now declines unless the panel and the row both `wasFullyDrawn`.
+Because omissions name the panel, that also withholds it where the row printed and something below it did
+not — stricter than it needs to be, never looser, and how every other pass on the panel already behaves. The
+engine records a Nutrition Facts panel
 running past the bottom of the stock against `food-nutrition-panel`, and never against its rows. On
 `US_FOOD_CONFORMANT` on a 120 × 25 mm label, the panel begins at 16.8 mm, the serving-size row prints at
 32.2–36.0 mm (wholly below the edge), and the only omission is `food-nutrition-panel/detail`. `runRules`
 still returns "The panel declares a serving size of …". The stamp is right; the id is out of the guard's
 reach. The same shape as the panel type-size entry above. Reproduced 2026-09-16.
 
-**`FDA_ALLERGEN_DECLARED_MET` names the ingredient list, and can rest on the Contains statement instead.**
+**~~`FDA_ALLERGEN_DECLARED_MET` names the ingredient list, and can rest on the Contains statement instead.~~
+Fixed** on `fix/passes-rest-on-what-printed`. The rule now learns which element declared each source and
+declines its pass unless at least one of them printed in full. It declines rather than reporting the allergen
+undeclared, because the omission is already the finding.
 Found by the `high` review of PR #28 and reproduced. §403(w)(1) is satisfied by either form, and the rule
 searches both printed texts — but the pass always names `food-ingredients`, and the engine still emits text
 primitives for a block it records as off the label. On `US_FOOD_CONFORMANT` with the almond ingredient renamed

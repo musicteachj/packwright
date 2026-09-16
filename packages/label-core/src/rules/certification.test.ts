@@ -21,7 +21,7 @@ import { layOutUpcALabel } from '../layout/engine'
 import { layOutGhsLabel } from '../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import { GHS_CONFORMANT } from './fixtures/ghs'
-import type { ResolvedLayout } from '../layout/types'
+import type { ResolvedLayout, TextPrimitive } from '../layout/types'
 import { GHS_ELEMENTS } from '../templates/ghs'
 import type { GhsLabelData } from '../templates/ghs'
 import { CONFORMANT_FIXTURE as GS1_CONFORMANT } from './fixtures/gs1Retail'
@@ -54,6 +54,9 @@ import {
   FDA_INGREDIENTS_ORDER_MET,
   FDA_INGREDIENT_THRESHOLD_MET,
   FDA_RESPONSIBLE_FIRM_MET,
+  FDA_PANEL_TYPE_SIZE_MET,
+  FDA_SERVING_SIZE_MET,
+  FDA_ALLERGEN_NOT_DECLARED,
   GHS_PICTOGRAM_SET_MATCHES,
   GHS_PICTOGRAM_SIZE_MET,
   GHS_SMALL_CONTAINER_COMPLETE,
@@ -183,11 +186,13 @@ describe('a rule never certifies what the engine did not print', () => {
 
 describe('the US food passes that rest on the artwork', () => {
   it('withholds the small-package proviso and the ingredient passes with what they judged', () => {
-    // Five artwork answers no test held: each could have been stamped `document`
-    // with the suite green. The proviso is the one most likely to be, since it
-    // reads like an entitlement from panel area — but 101.7(f) grants it only
-    // "when the declaration … meets the other requirements", which a declaration
-    // running off the stock has not been shown to do.
+    // Artwork answers no test held: each could have been stamped `document` with
+    // the suite green. The proviso is the one most likely to be, since it reads
+    // like an entitlement from panel area — but 101.7(f) grants it only "when the
+    // declaration … meets the other requirements", which a declaration running
+    // off the stock has not been shown to do. The allergen pass was a fifth, until
+    // its rule learned to decline a declaration that did not print; that is pinned
+    // below, where the rule does it rather than the guard.
     const { nutritionFacts: _panel, ...withoutPanel } = US_FOOD_CONFORMANT.data
     const data: UsFoodLabelData = {
       ...withoutPanel,
@@ -200,7 +205,6 @@ describe('the US food passes that rest on the artwork', () => {
       FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
       FDA_INGREDIENTS_ORDER_MET,
       FDA_INGREDIENT_THRESHOLD_MET,
-      FDA_ALLERGEN_DECLARED_MET,
       FDA_CONTAINS_TYPE_MET,
     ]
 
@@ -453,6 +457,108 @@ describe('a GHS pictogram is certified on its ink', () => {
       runRules(context).map((result) => result.code),
       'a pictogram whose symbol was not printed has not met a size requirement',
     ).not.toContain(GHS_PICTOGRAM_SIZE_MET)
+  })
+})
+
+describe('a US food pass the guard cannot reach is withheld by its own rule', () => {
+  // Each names an element omissions are never recorded against — the panel, a
+  // nutrient row, or the ingredient list when the Contains statement carried the
+  // declaration — so `runRules` could not withhold it, and each certified text
+  // that never printed. Every case pairs the reproduction with a control that
+  // still clears, so the rule is shown declining for the omission and nothing else.
+  const codesOf = (data: UsFoodLabelData, stock: LabelStock) =>
+    judge(data, stock).findings.map((result) => result.code)
+
+  it('does not clear the panel type size while counting a firm that did not print', () => {
+    const ingredients: UsFoodIngredient[] = Array.from({ length: 400 }, (_, index) => ({
+      name: `ingredient number ${index}`,
+      percentByWeight: (400 - index) / 400,
+    }))
+    const long = { ...US_FOOD_CONFORMANT.data, ingredients }
+
+    expect(
+      judge(long, US_FOOD_CONFORMANT.stock).omitted,
+      'the premise: the firm is drawn past the bottom edge',
+    ).toContain(US_FOOD_ELEMENTS.responsibleFirm)
+    expect(
+      codesOf(long, US_FOOD_CONFORMANT.stock),
+      'an unprinted firm clears nothing',
+    ).not.toContain(FDA_PANEL_TYPE_SIZE_MET)
+    expect(
+      codesOf(US_FOOD_CONFORMANT.data, US_FOOD_CONFORMANT.stock),
+      'the control: everything printed, it clears',
+    ).toContain(FDA_PANEL_TYPE_SIZE_MET)
+  })
+
+  it('does not report a serving size declared on a row below the edge of the label', () => {
+    const short: LabelStock = { ...US_FOOD_CONFORMANT.stock, heightMm: 25 }
+    const { layout, omitted } = judge(US_FOOD_CONFORMANT.data, short)
+    const row = layout.elements.find(
+      (element) => element.elementId === US_FOOD_ELEMENTS.nutritionServingSize,
+    )!
+
+    expect(row.box.yMm, 'the premise: the row begins below a 25 mm label').toBeGreaterThan(
+      short.heightMm,
+    )
+    // The omission names the panel and never the row, which is why the guard
+    // could not see it.
+    expect(omitted).toContain(US_FOOD_ELEMENTS.nutritionPanel)
+    expect(omitted).not.toContain(US_FOOD_ELEMENTS.nutritionServingSize)
+    expect(
+      codesOf(US_FOOD_CONFORMANT.data, short),
+      'a row off the label declares nothing',
+    ).not.toContain(FDA_SERVING_SIZE_MET)
+    expect(
+      codesOf(US_FOOD_CONFORMANT.data, US_FOOD_CONFORMANT.stock),
+      'the control: everything printed, it clears',
+    ).toContain(FDA_SERVING_SIZE_MET)
+  })
+
+  it('does not clear an allergen declared only by a Contains statement that did not print', () => {
+    // The almonds, renamed so the list no longer names their source and not
+    // declared inline: only the Contains statement says "almonds".
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      ingredients: US_FOOD_CONFORMANT.data.ingredients!.map((ingredient) =>
+        ingredient.allergen === undefined
+          ? ingredient
+          : { ...ingredient, name: 'nut paste', declareInline: false },
+      ),
+    }
+    const short: LabelStock = { ...US_FOOD_CONFORMANT.stock, heightMm: 158 }
+    const { layout, omitted, findings } = judge(data, short)
+    const list = layout.primitives
+      .filter(
+        (primitive): primitive is TextPrimitive =>
+          primitive.kind === 'text' && primitive.elementId === US_FOOD_ELEMENTS.ingredients,
+      )
+      .map((primitive) => primitive.text)
+      .join(' ')
+
+    expect(omitted, 'the premise: the Contains statement is off the label').toContain(
+      US_FOOD_ELEMENTS.containsStatement,
+    )
+    expect(omitted, 'and the list is not').not.toContain(US_FOOD_ELEMENTS.ingredients)
+    expect(list.toLowerCase(), 'and the printed list never names the source').not.toContain(
+      'almond',
+    )
+
+    const codes = findings.map((result) => result.code)
+    expect(codes, 'a declaration that did not print has not declared').not.toContain(
+      FDA_ALLERGEN_DECLARED_MET,
+    )
+    // Declined, not reported: the omission is the finding, and "not declared"
+    // would be a second one for the same cause.
+    expect(codes).not.toContain(FDA_ALLERGEN_NOT_DECLARED)
+    expect(codesOf(data, US_FOOD_CONFORMANT.stock), 'the control: printed, it clears').toContain(
+      FDA_ALLERGEN_DECLARED_MET,
+    )
+    // And either form still suffices. Declared inline as well, the same lost
+    // Contains statement costs nothing, because the list that printed says it.
+    expect(
+      codesOf(US_FOOD_CONFORMANT.data, short),
+      'a declaration that printed in the list still clears',
+    ).toContain(FDA_ALLERGEN_DECLARED_MET)
   })
 })
 
