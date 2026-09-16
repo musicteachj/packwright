@@ -37,6 +37,53 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **An assortment claiming § 101.100(a)(1) must bear a statement naming what may be present.** (a)(1) exempts
+  an assortment "with respect to any ingredient that is not common to all packages", "on the condition that the
+  label shall bear, in conjunction with the names of such ingredients as are common to all packages, a
+  statement … indicating by name other ingredients which may be present". It was unreachable before the
+  paragraph was recorded — the exempt path required an empty list, and an assortment lists its common
+  ingredients — and unchecked, so it was not offered. It is now: the label declares the statement, typed as it
+  should print, and the names it must carry. The common ingredients are listed and judged by the ordinary list
+  rule, and where no ingredient is common to all packages only the statement is owed — the plan for this change would have reported it instead, and re-reading the paragraph reversed that. A claim with no statement is
+  `FDA_ASSORTMENT_STATEMENT_MISSING`; one that does not name every declared ingredient as a word of its own, or declares none, is `FDA_ASSORTMENT_STATEMENT_INCOMPLETE` — matched as a bare substring, "egg" was found in "eggplant" until the review of this change; the pass names the printed statement. It is drawn as its own element
+  after the list and any "Contains" statement, for two reasons: placed between them it would part the two
+  §403(w)(1)(A) wants adjacent, and folded into the list's text a name in it — "may also contain almonds" —
+  would have satisfied (w)(1)(B)(ii)'s "appears elsewhere in the ingredient list" for an allergen the list never
+  declared. A test pins that it does not. Whether the variations occur in good packing practice, whether the
+  names are all the others, and whether the statement is informative and not misleading are not judged.
+
+- **A small package claiming 101.9(j)(13)(i) must bear the line (A) requires, and qualify by area.** The
+  exemption covers packages "that have a total surface area available to bear labeling of less than 12 square
+  inches", and (A) says the manufacturer, packer or distributor "shall provide on the label of packages that
+  qualify for and use this exemption an address or telephone number that a consumer can use to obtain the
+  required nutrition information". Neither was checked, so the exemption was not offered. It is now: the label
+  declares the package's area and the line, typed as it should print, and the engine prints it where the panel
+  would sit. The rule refuses the exemption for 12 in² or more — the missing panel then reported blocking under (j)(13)(i) — and where the label or the package's principal display panel is itself 12 in² or more, whatever area is typed, since a package bears at least the labeling on it and that panel is part of its surface (the PR's review found the first fixtures declaring 11.5 in² on a 44.6 in² label, and then on a 44.6 in² panel); and for a blank area or one of zero or less, which reads as not shown to qualify — a review caught 0 clearing it; it reports a claim
+  with no line as `FDA_NUTRITION_CONTACT_MISSING`; and its pass names the printed line, so a line that ran off
+  the label withholds it. The manufacturer's 101.5 address does not stand in for the line: the regulation does
+  not settle that it would, and FDA's own sample prints a dedicated one. What the line says is not judged, and
+  101.9 sets no size for it, so its element sits outside the nutrition panel's `food-nutrition-` prefix and
+  answers to 101.2(c)'s 1/16 inch floor. The editor seeds no area, because any figure it chose would grant the
+  exemption to a package nobody measured.
+
+- **An exemption from ingredient or nutrition labelling is claimed by its paragraph, not by a checkbox.**
+  `ingredientsExempt` and `nutritionFactsExempt` were booleans, so the passes they earned could name only
+  § 101.100 and 101.9(j) as a whole and say that which exemption applied was not checked — and no rule could ever
+  ask what an exemption requires the label to bear, because nothing recorded which one it was. Both regulations
+  were re-read from the eCFR for this, and neither exempts by a single switch: § 101.100(a)'s three limbs differ in
+  kind, and 101.9(j)'s eighteen paragraphs mix conditions on the label with facts about the business, the food
+  and the retail display. The label now records `ingredientsExemption` and `nutritionExemption`, each a `kind`
+  naming one paragraph; the editor's two checkboxes became pickers; and each pass cites its own paragraph and
+  says what of it goes unchecked — for most of 101.9(j), that the label bears no nutrition claims, which this
+  project does not model. Only exemptions whose remaining conditions lie off the label or in that claims gap are
+  offered: § 101.100(a)(2) and ten 101.9(j) paragraphs, among them (j)(8)'s medical foods and (j)(11)(ii)'s custom
+  processed fish and game, which a first draft wrongly listed as not exemptions at all. The (a)(1) assortment and
+  the (j)(13)(i) small package each put a statement on the label and arrive with the checks for them; (j)(14)'s
+  egg carton, whose nutrition information moves beneath the lid rather than going away, and (j)(15)'s unit
+  container are recorded in `docs/BACKLOG.md`. A draft offered (j)(14), and its review caught it. A label saved with a bare flag still opens and exports, keeps its missing
+  list or panel excused, and gets an advisory asking which paragraph it claims instead of a pass. Picking one in
+  the editor clears the old flag. The API refuses a kind label-core does not name.
+
 - **The small-package placement exemption is granted only on the condition 101.7(f) sets.** The proviso
   excuses a package of 5 in² or less from the bottom-30 percent placement "when the declaration of net quantity
   of contents meets the other requirements of this part", and `us-food/net-quantity-placement` quoted it and

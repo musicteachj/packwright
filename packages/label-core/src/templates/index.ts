@@ -22,6 +22,10 @@ export {
   DEFAULT_US_FOOD_STOCK,
   INGREDIENT_THRESHOLD_PERCENTS,
   US_FOOD_ELEMENTS,
+  US_FOOD_INGREDIENTS_EXEMPTIONS,
+  US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
+  US_FOOD_NUTRITION_EXEMPTIONS,
+  US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
   NUTRITION_ELEMENT_PREFIX,
@@ -30,10 +34,16 @@ export {
 } from './usFood'
 export type {
   IngredientThresholdPercent,
+  UsFoodAssortmentExemption,
   UsFoodIngredient,
+  UsFoodIngredientsExemption,
+  UsFoodIngredientsExemptionKind,
   UsFoodLabelData,
   UsFoodNetQuantity,
+  UsFoodNutritionExemption,
+  UsFoodNutritionExemptionKind,
   UsFoodNutritionFacts,
   UsFoodPackaging,
+  UsFoodSmallPackageExemption,
   UsFoodResponsibleFirm,
 } from './usFood'

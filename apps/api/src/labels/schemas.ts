@@ -33,6 +33,8 @@ import {
   NUTRITION_FORMATS,
   MAJOR_FOOD_ALLERGEN_IDS,
   NUTRIENT_IDS,
+  US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
+  US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_PACKAGINGS,
   type ArtworkBlock,
   type DigitalLinkData,
@@ -579,11 +581,38 @@ export const UsFoodRequestBase = z.object({
       count: z.number().int().min(0),
     })
     .optional(),
+  // The paragraph claimed, from label-core's own list — a kind it does not name is an
+  // exemption no rule could judge, so it is refused here rather than drawn.
+  ingredientsExemption: z
+    .union([
+      z.object({ kind: z.enum(US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE) }),
+      z.object({
+        kind: z.literal('assortment'),
+        statement: z.string(),
+        mayBePresent: z.array(z.string()),
+      }),
+    ])
+    .optional(),
+  // Superseded, and accepted so a label saved with it still opens and exports.
   ingredientsExempt: z.boolean().optional(),
   containsStatement: z.array(z.enum(MAJOR_FOOD_ALLERGEN_IDS)).optional(),
   containsStatementFontSizeMm: z.number().positive().optional(),
   containsStatementGapMm: z.number().min(0).optional(),
   nutritionFacts: NutritionFactsSchema.optional(),
+  // Claimed by paragraph alone, or the small package with the area that qualifies it
+  // and the line (j)(13)(i)(A) puts on its label. A blank area is not accepted here:
+  // the rule would refuse it anyway, and a saved label should not carry one.
+  nutritionExemption: z
+    .union([
+      z.object({ kind: z.enum(US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE) }),
+      z.object({
+        kind: z.literal('small-package'),
+        availableSurfaceSqInches: z.number().positive(),
+        contactLine: z.string(),
+      }),
+    ])
+    .optional(),
+  // Superseded, as `ingredientsExempt` is.
   nutritionFactsExempt: z.boolean().optional(),
   responsibleFirm: ResponsibleFirmSchema.optional(),
   stock: z

@@ -81,6 +81,21 @@ export const US_FOOD_ELEMENTS = {
    */
   nutritionSecondColumn: 'food-nutrition-second-column',
   nutritionFootnote: 'food-nutrition-footnote',
+  /**
+   * 101.9(j)(13)(i)(A)'s address or telephone number, on a small package using that
+   * exemption. **Deliberately not under `food-nutrition-`**: that prefix is how the
+   * rules deferring to 101.9's own type sizes recognise the panel, and 101.9 sets no
+   * size for this line, so it answers to 101.2(c)'s floor instead.
+   */
+  smallPackageContact: 'food-small-package-contact',
+  /**
+   * § 101.100(a)(1)'s statement naming the other ingredients an assortment may
+   * contain. Its own element, drawn after the list and any "Contains" statement: a
+   * block between those two would move the "Contains" statement away from the list
+   * §403(w)(1)(A) wants it beside, and folding it into the list's own text would let
+   * a name in it discharge an allergen declaration the list itself never made.
+   */
+  assortmentStatement: 'food-assortment-statement',
   containsStatement: 'food-contains-statement',
   netQuantity: 'food-net-quantity',
   ingredients: 'food-ingredients',
@@ -101,6 +116,130 @@ export const US_FOOD_ELEMENTS = {
  */
 export const US_FOOD_PACKAGINGS = ['standard', 'random', 'packaged-at-retail'] as const
 export type UsFoodPackaging = (typeof US_FOOD_PACKAGINGS)[number]
+
+/**
+ * The § 101.100 exemptions from ingredient labelling a label can claim.
+ *
+ * Source: 21 CFR 101.100, read from the eCFR on 2026-09-16. Only paragraph (a)
+ * exempts a food from section 403(i)(2)'s ingredient statement, and its three
+ * limbs differ in kind, which is why a bare "exempt" could not be judged:
+ *
+ * - `assortment` — (a)(1): "An assortment of different items of food, when
+ *   variations in the items that make up different packages packed from such
+ *   assortment normally occur in good packing practice", exempt "with respect to
+ *   any ingredient that is not common to all packages" and "on the condition that
+ *   the label shall bear, in conjunction with the names of such ingredients as are
+ *   common to all packages, a statement (in terms that are as informative as
+ *   practicable and that are not misleading) indicating by name other ingredients
+ *   which may be present". Declared with that statement and the names it must
+ *   carry; the list holds the ingredients common to all packages.
+ * - `bulk-at-retail` — (a)(2): "A food having been received in bulk containers at
+ *   a retail establishment", displayed with the bulk container's labeling in view
+ *   or a counter card or sign, either way in lettering "not less than one-fourth
+ *   of an inch in height". The condition is on the display, not on this label.
+ *
+ * **Not offered, and why.** (a)(3) excuses incidental additives from the list
+ * rather than the list itself, so nothing is claimed by leaving them out. (b), (c)
+ * and (h) exempt other requirements, and (d) a shipment in transit rather than a
+ * retail label.
+ */
+export const US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE = ['bulk-at-retail'] as const
+
+/** Every kind, the one declared with particulars included. */
+export const US_FOOD_INGREDIENTS_EXEMPTIONS = [
+  ...US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
+  'assortment',
+] as const
+export type UsFoodIngredientsExemptionKind = (typeof US_FOOD_INGREDIENTS_EXEMPTIONS)[number]
+
+/** § 101.100(a)(1): the statement the label bears, and the names it must carry. */
+export interface UsFoodAssortmentExemption {
+  kind: 'assortment'
+  /** Printed as typed. The regulation prescribes no wording, only what it must name. */
+  statement: string
+  /** The other ingredients that may be present, each of which the statement must name. */
+  mayBePresent: readonly string[]
+}
+
+export type UsFoodIngredientsExemption =
+  | { kind: (typeof US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE)[number] }
+  | UsFoodAssortmentExemption
+
+/**
+ * The 21 CFR 101.9(j) exemptions from nutrition labelling a label can claim.
+ *
+ * Source: 21 CFR 101.9(j), read from the eCFR on 2026-09-16. Each is named for the
+ * paragraph that grants it, and `rules/usFood/nutritionFacts.ts` cites that
+ * paragraph and says which of its conditions are not checked:
+ *
+ * - `small-business` — (j)(1), sales by a person making direct sales to consumers.
+ * - `food-service` — (j)(2), food served, sold or used in establishments serving
+ *   food for immediate human consumption, or sold by a distributor to them.
+ * - `retail-prepared` — (j)(3), ready-to-eat food processed and prepared primarily
+ *   in a retail establishment and not offered for sale outside it.
+ * - `insignificant-nutrients` — (j)(4), food containing insignificant amounts of
+ *   all the nutrients and food components (c) requires.
+ * - `medical-food` — (j)(8), a medical food as the Orphan Drug Act defines it,
+ *   "subject to this exemption only if" it meets five conditions on how it is
+ *   formulated and used.
+ * - `bulk-for-manufacture` — (j)(9), food shipped in bulk form, not for
+ *   distribution to consumers in that form.
+ * - `raw-produce-or-fish` — (j)(10), raw fruits, vegetables and fish subject to
+ *   section 403(q)(4) of the act.
+ * - `custom-processed-fish-or-game` — (j)(11)(ii): "Nutrition information is not
+ *   required for custom processed fish or game meats."
+ * - `small-package` — (j)(13)(i), a package with "a total surface area available
+ *   to bear labeling of less than 12 square inches", whose label bears "an address
+ *   or telephone number that a consumer can use to obtain the required nutrition
+ *   information" under (A). The only one declared with particulars: the area, and
+ *   the line, which the engine prints and a rule requires.
+ * - `bulk-at-retail` — (j)(16), food sold from bulk containers.
+ * - `low-volume` — (j)(18), low-volume products of a small business.
+ *
+ * **Not offered, and why.** Some paragraphs are not exemptions from nutrition
+ * labelling: (j)(5) sets what foods for infants and young children declare, (j)(6)
+ * and (j)(7) move dietary supplements and infant formula to § 101.36 and part 107,
+ * and (j)(11)(i), (j)(12) and (j)(17) permit where or on what basis the information
+ * is given rather than excusing it. Two hold only on something printed on the
+ * package that nothing here checks, and are offered when it is: (j)(14)'s egg
+ * carton, whose information must be "clearly presented immediately beneath the
+ * carton lid or in an insert" — relocated, not excused; and (j)(15)'s unit
+ * container, which must bear "This Unit Not Labeled For Retail Sale". The first
+ * draft of this list offered (j)(14) and called (j)(8) and (j)(11) not exemptions
+ * at all; a review of it read the paragraphs again.
+ */
+export const US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE = [
+  'small-business',
+  'food-service',
+  'retail-prepared',
+  'insignificant-nutrients',
+  'medical-food',
+  'bulk-for-manufacture',
+  'raw-produce-or-fish',
+  'custom-processed-fish-or-game',
+  'bulk-at-retail',
+  'low-volume',
+] as const
+
+/** Every kind, the one declared with particulars included. */
+export const US_FOOD_NUTRITION_EXEMPTIONS = [
+  ...US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
+  'small-package',
+] as const
+export type UsFoodNutritionExemptionKind = (typeof US_FOOD_NUTRITION_EXEMPTIONS)[number]
+
+/** 101.9(j)(13)(i): the area that qualifies the package, and the line (A) requires. */
+export interface UsFoodSmallPackageExemption {
+  kind: 'small-package'
+  /** The *package's* total surface area available to bear labeling — not this label's. */
+  availableSurfaceSqInches: number
+  /** Printed as typed, e.g. "For nutrition information, call 1-800-123-4567". */
+  contactLine: string
+}
+
+export type UsFoodNutritionExemption =
+  | { kind: (typeof US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE)[number] }
+  | UsFoodSmallPackageExemption
 
 /**
  * The net quantity of contents declaration.
@@ -394,10 +533,16 @@ export interface UsFoodLabelData {
     count: number
   }
   /**
-   * Declared where § 101.100 exempts the food from ingredient labelling. Those
-   * exemptions turn on facts about the product and its packaging rather than on
-   * anything drawable, so like the GHS small-container provision this is stated
-   * by the supplier and never inferred.
+   * Which § 101.100 exemption from ingredient labelling the label claims, where
+   * it claims one. Stated by the supplier and never inferred, like the GHS
+   * small-container provision. See `US_FOOD_INGREDIENTS_EXEMPTIONS`.
+   */
+  ingredientsExemption?: UsFoodIngredientsExemption
+  /**
+   * **Superseded by `ingredientsExemption`, and read only so a label saved with it
+   * still opens.** A bare "exempt" named no paragraph, so no rule could ask what
+   * that paragraph requires of the label. It now excuses the missing list and
+   * draws an advisory asking which exemption is claimed, rather than a pass.
    */
   ingredientsExempt?: boolean
   /**
@@ -422,11 +567,15 @@ export interface UsFoodLabelData {
   containsStatementGapMm?: number
   nutritionFacts?: UsFoodNutritionFacts
   /**
-   * Declared where 21 CFR 101.9(j) exempts the food from nutrition labelling.
-   * That paragraph runs to eighteen subparagraphs turning on business size,
-   * units sold, and what the food is — facts about a company and a product
-   * rather than about a label, so this is stated and never inferred, the way
-   * §101.100 and the GHS small-container provision are.
+   * Which 21 CFR 101.9(j) exemption from nutrition labelling the label claims,
+   * where it claims one. Stated and never inferred. See
+   * `US_FOOD_NUTRITION_EXEMPTIONS`.
+   */
+  nutritionExemption?: UsFoodNutritionExemption
+  /**
+   * **Superseded by `nutritionExemption`, and read only so a label saved with it
+   * still opens.** It excuses the missing panel and draws an advisory asking which
+   * paragraph is claimed, rather than a pass.
    */
   nutritionFactsExempt?: boolean
   responsibleFirm?: UsFoodResponsibleFirm

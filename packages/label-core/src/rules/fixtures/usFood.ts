@@ -36,7 +36,12 @@ import type {
 import type { Severity } from '../../types/index'
 import {
   FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
+  FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
+  FDA_ASSORTMENT_STATEMENT_MISSING,
   FDA_ALLERGEN_NOT_DECLARED,
+  FDA_INGREDIENTS_EXEMPTION_UNSTATED,
+  FDA_NUTRITION_CONTACT_MISSING,
+  FDA_NUTRITION_EXEMPTION_UNSTATED,
   FDA_DUAL_COLUMN_HEADINGS_MISSING,
   FDA_DUAL_COLUMN_INCOMPLETE,
   FDA_DUAL_COLUMN_NOT_SEPARATED,
@@ -630,6 +635,59 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     },
   },
   {
+    name: 'no ingredient statement, and an exemption claimed without its paragraph',
+    defect:
+      'Marked exempt from ingredient labelling, the way a label saved before the paragraph was ' +
+      'recorded is. §101.100(a)(1) and (a)(2) put different conditions on the food, so a claim ' +
+      'naming neither cannot be judged — excused, not cleared.',
+    data: { ...BASE, ingredients: [], ingredientsExempt: true },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_INGREDIENTS_EXEMPTION_UNSTATED,
+      severity: 'advisory',
+      citation: '21 CFR 101.100',
+    },
+  },
+  {
+    name: 'an assortment claiming its exemption with no statement of what may be present',
+    defect:
+      '§ 101.100(a)(1) exempts an assortment from listing the ingredients not common to all ' +
+      'packages "on the condition that the label shall bear, in conjunction with the names of ' +
+      'such ingredients as are common to all packages, a statement … indicating by name other ' +
+      'ingredients which may be present". This label claims the exemption and bears none.',
+    data: {
+      ...BASE,
+      ingredientsExemption: { kind: 'assortment', statement: '', mayBePresent: ['pecans'] },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_ASSORTMENT_STATEMENT_MISSING,
+      severity: 'blocking',
+      citation: '21 CFR 101.100(a)(1)',
+    },
+  },
+  {
+    name: 'an assortment statement that leaves out an ingredient the label says may be present',
+    defect:
+      'The statement names walnuts, and the label declares pecans may be present as well. ' +
+      '§ 101.100(a)(1) asks for a statement "indicating by name other ingredients which may be ' +
+      'present", and one that names only some of them indicates the rest by nothing.',
+    data: {
+      ...BASE,
+      ingredientsExemption: {
+        kind: 'assortment',
+        statement: 'May also contain walnuts.',
+        mayBePresent: ['walnuts', 'pecans'],
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
+      severity: 'violation',
+      citation: '21 CFR 101.100(a)(1)',
+    },
+  },
+  {
     name: 'sugar hidden behind a 2 percent statement it exceeds',
     defect:
       'Sugar at 8% sits behind "Contains 2 percent or less of". 101.4(a)(2) is explicit that no ' +
@@ -841,6 +899,47 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_NUTRITION_MISSING,
       severity: 'blocking',
       citation: '21 CFR 101.9(c)',
+    },
+  },
+  {
+    name: 'a food with no nutrition label, exempt without saying under which paragraph',
+    defect:
+      'Marked exempt from nutrition labelling, the way a label saved before the paragraph was ' +
+      'recorded is. The 101.9(j) exemptions put different conditions on the food and its label, ' +
+      'so a claim naming none of them cannot be judged — excused, not cleared.',
+    data: { ...WITHOUT_NUTRITION, nutritionFactsExempt: true },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_EXEMPTION_UNSTATED,
+      severity: 'advisory',
+      citation: '21 CFR 101.9(j)',
+    },
+  },
+  {
+    name: 'a small package using its nutrition exemption with no line to ask for the information',
+    defect:
+      'An 11.5 in² package is under the 12 in² at which 101.9(j)(13)(i) exempts it from ' +
+      'nutrition labelling — but (A) says the manufacturer, packer or distributor "shall provide ' +
+      'on the label of packages that qualify for and use this exemption an address or telephone ' +
+      'number" a consumer can use to obtain it. This label bears none.',
+    data: {
+      ...WITHOUT_NUTRITION,
+      // A 6.51 in² panel: under the 12 in² the exemption allows, and over the 5 in² at which
+      // 101.7(f) would stop asking where the net quantity sits — so this label reaches
+      // nothing it was not written for.
+      container: { shape: 'rectangular', widthMm: 60, heightMm: 70 },
+      nutritionExemption: {
+        kind: 'small-package',
+        availableSurfaceSqInches: 11.5,
+        contactLine: '',
+      },
+    },
+    // On a 60 × 70 mm label, 6.51 in², so the label itself does not rule the package out.
+    stock: { widthMm: 60, heightMm: 70, marginMm: 3 },
+    expected: {
+      code: FDA_NUTRITION_CONTACT_MISSING,
+      severity: 'blocking',
+      citation: '21 CFR 101.9(j)(13)(i)(A)',
     },
   },
   {

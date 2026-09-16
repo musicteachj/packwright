@@ -246,11 +246,10 @@ describe('the US food passes that rest on the artwork', () => {
 
   it('withholds a claimed exemption, because what it is conditional on is printed', () => {
     // Both exemptions read as facts about the food, and both were once stamped so.
-    // The text says otherwise. §101.100(a)(1) excuses an assortment only "on the
-    // condition that the label shall bear" a statement naming the ingredients that
-    // may be present, and 101.9(j)(13)(i)(A) puts an address or telephone number
-    // on the label of a small package using its exemption. Neither rule knows which
-    // exemption was claimed, so neither pass is true whatever printed.
+    // The text says otherwise. §101.100(a)(2) holds only while the retail display
+    // bears the ingredient information, and most 101.9(j) paragraphs only while the
+    // label bears no nutrition claims — conditions on what is shown, which no pass
+    // can outlive.
     //
     // The engine draws no list for an exempt food and never omits the panel, so the
     // omissions are added by hand, as the GS1 case below does.
@@ -258,8 +257,8 @@ describe('the US food passes that rest on the artwork', () => {
     const data: UsFoodLabelData = {
       ...withoutPanel,
       ingredients: [],
-      ingredientsExempt: true,
-      nutritionFactsExempt: true,
+      ingredientsExemption: { kind: 'bulk-at-retail' },
+      nutritionExemption: { kind: 'small-business' },
     }
     const { stock } = US_FOOD_CONFORMANT
     const drawn = layOutUsFoodLabel({ data, stock })

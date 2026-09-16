@@ -21,20 +21,26 @@
  * weight share turns it into a claim that can be wrong, which is the only kind
  * this engine can report on.
  *
- * The § 101.100 exemptions are not modelled and are not inferred. Most turn on
- * facts about the product and its packaging, but not all of them: (a)(1) excuses
- * an assortment "on the condition that the label shall bear, in conjunction with
- * the names of such ingredients as are common to all packages, a statement …
- * indicating by name other ingredients which may be present", and (d)(3) needs a
- * caution tag on each container. So the exemption pass rests on the artwork like
- * the rest. A label claiming one says so, the way a GHS small container does.
- * Read from the eCFR on 2026-09-16.
+ * **The § 101.100 exemptions are declared, never inferred, and each by the
+ * paragraph claimed.** A bare "exempt" could not be judged, because the limbs of
+ * (a) differ in kind: (a)(1) excuses an assortment "on the condition that the
+ * label shall bear, in conjunction with the names of such ingredients as are
+ * common to all packages, a statement … indicating by name other ingredients
+ * which may be present", while (a)(2)'s condition is on a retail display. So the
+ * pass cites the paragraph and says what it does not check, and a label saved
+ * with the old bare flag gets an advisory asking which paragraph it claims. The
+ * passes rest on the artwork like the rest. Read from the eCFR on 2026-09-16.
  */
 
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
+import type {
+  UsFoodAssortmentExemption,
+  UsFoodIngredientsExemptionKind,
+} from '../../templates/usFood'
+import type { TextPrimitive } from '../../layout/types'
 import { INGREDIENT_THRESHOLD_PERCENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnArtwork } from '../finding'
+import { finding, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_INGREDIENTS_MISSING = 'FDA_INGREDIENTS_MISSING'
@@ -42,6 +48,9 @@ export const FDA_INGREDIENT_NAME_MISSING = 'FDA_INGREDIENT_NAME_MISSING'
 export const FDA_INGREDIENTS_OUT_OF_ORDER = 'FDA_INGREDIENTS_OUT_OF_ORDER'
 export const FDA_INGREDIENTS_ORDER_MET = 'FDA_INGREDIENTS_ORDER_MET'
 export const FDA_INGREDIENTS_EXEMPT = 'FDA_INGREDIENTS_EXEMPT'
+export const FDA_INGREDIENTS_EXEMPTION_UNSTATED = 'FDA_INGREDIENTS_EXEMPTION_UNSTATED'
+export const FDA_ASSORTMENT_STATEMENT_MISSING = 'FDA_ASSORTMENT_STATEMENT_MISSING'
+export const FDA_ASSORTMENT_STATEMENT_INCOMPLETE = 'FDA_ASSORTMENT_STATEMENT_INCOMPLETE'
 
 const CITATION: Citation = {
   authority: 'FDA',
@@ -55,22 +64,65 @@ const EXEMPTION: Citation = {
   title: 'Food; exemptions from labeling',
 }
 
+/**
+ * Each exemption cites the paragraph that grants it, and says what of that
+ * paragraph is not checked. Untitled, because the subparagraphs carry no heading
+ * of their own to quote.
+ */
+const EXEMPTIONS: Record<
+  Exclude<UsFoodIngredientsExemptionKind, 'assortment'>,
+  { citation: Citation; grants: string; unchecked: string }
+> = {
+  'bulk-at-retail': {
+    citation: untitled(EXEMPTION, '21 CFR 101.100(a)(2)'),
+    grants: 'a food received in bulk containers at a retail establishment',
+    unchecked:
+      'that it is displayed with the bulk container’s labeling plainly in view, or with a ' +
+      'counter card, sign or other device, bearing the ingredient information in lettering at ' +
+      'least one-fourth of an inch high — a condition on the retail display, not on this label',
+  },
+}
+
+/** § 101.100(a)(1), the one ingredient exemption whose condition is on the label. */
+const ASSORTMENT = untitled(EXEMPTION, '21 CFR 101.100(a)(1)')
+
 export const usFoodIngredientListRule: UsFoodRule = {
   id: 'us-food/ingredient-list',
   title: 'The ingredient statement is present and in descending order of predominance by weight.',
   citation: CITATION,
-  citations: [CITATION, EXEMPTION],
+  citations: [
+    CITATION,
+    EXEMPTION,
+    ...Object.values(EXEMPTIONS).map((exemption) => exemption.citation),
+    ASSORTMENT,
+  ],
   codes: [
     FDA_INGREDIENTS_MISSING,
     FDA_INGREDIENT_NAME_MISSING,
     FDA_INGREDIENTS_OUT_OF_ORDER,
     FDA_INGREDIENTS_ORDER_MET,
     FDA_INGREDIENTS_EXEMPT,
+    FDA_INGREDIENTS_EXEMPTION_UNSTATED,
+    FDA_ASSORTMENT_STATEMENT_MISSING,
+    FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
   ],
   appliesTo: 'us-food',
 
-  check({ data }: UsFoodContext): Finding[] {
+  check(context: UsFoodContext): Finding[] {
+    const { data } = context
     const ingredients = data.ingredients ?? []
+
+    // § 101.100(a)(1) exempts an assortment "with respect to any ingredient that is not
+    // common to all packages". So the common ingredients are listed and judged like any
+    // list — by this same rule on the label without the claim, rather than by a second
+    // copy of it — and where no ingredient is common to all packages there is nothing to
+    // list, and only the statement is owed.
+    if (data.ingredientsExemption?.kind === 'assortment') {
+      const statement = assortmentStatement(data.ingredientsExemption, context)
+      if (ingredients.length === 0) return statement
+      const { ingredientsExemption: _claimed, ...unclaimed } = data
+      return [...statement, ...usFoodIngredientListRule.check({ ...context, data: unclaimed })]
+    }
 
     // The exemption excuses the *absence* of a statement, not the disorder of
     // one that is printed anyway. §101.100 relieves a food of having to bear the
@@ -78,18 +130,43 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // descending order, and a consumer reading a printed statement has no way of
     // knowing it was voluntary. So this short-circuits only when nothing is
     // listed — otherwise what is on the label is checked like any other list.
-    if (data.ingredientsExempt === true && ingredients.length === 0) {
+    const claimed = data.ingredientsExemption
+    if (claimed !== undefined && ingredients.length === 0) {
+      const exemption = EXEMPTIONS[claimed.kind]
       return [
-        // §101.100(a)(1) holds only on "the condition that the label shall bear" a statement: artwork.
+        // Each paragraph's condition is on what the label or its display bears, not on a fact
+        // about the food alone: artwork.
         passedOnArtwork(
           usFoodIngredientListRule,
           FDA_INGREDIENTS_EXEMPT,
-          'The label claims an exemption from ingredient labelling, so the statement is not ' +
-            'required. Which exemption applies, and whether the label bears what that exemption ' +
-            'requires of it, are not checked here.',
+          `The label claims the ${exemption.citation.reference} exemption for ${exemption.grants}, ` +
+            `so the statement is not required. Not checked here: ${exemption.unchecked}.`,
           US_FOOD_ELEMENTS.ingredients,
-          EXEMPTION,
+          exemption.citation,
         ),
+      ]
+    }
+
+    // A label saved before the paragraph was recorded. It keeps the list excused —
+    // reporting a blocking missing statement on a document that once cleared would
+    // punish it for this project's own omission — but it is no longer cleared,
+    // because a claim naming no paragraph has no conditions anyone could check.
+    if (data.ingredientsExempt === true && ingredients.length === 0) {
+      return [
+        finding(usFoodIngredientListRule, {
+          code: FDA_INGREDIENTS_EXEMPTION_UNSTATED,
+          severity: 'advisory',
+          message:
+            'The label is marked exempt from ingredient labelling without saying which § 101.100 ' +
+            'exemption it claims. Each carries its own conditions, so the claim cannot be judged ' +
+            'until the paragraph is stated.',
+          measurement: {
+            actual: 'exempt, paragraph not stated',
+            required: 'the paragraph claimed',
+          },
+          elementId: US_FOOD_ELEMENTS.ingredients,
+          citation: EXEMPTION,
+        }),
       ]
     }
 
@@ -185,6 +262,104 @@ export const usFoodIngredientListRule: UsFoodRule = {
       ),
     ]
   },
+}
+
+/**
+ * § 101.100(a)(1)'s condition, judged on what printed.
+ *
+ * **Read from the layout**, like the allergen rule, because the condition is that "the
+ * label shall bear" the statement. **Each declared name must appear in it** as a word or
+ * phrase of its own, regardless of case: the statement is written by the labeller in whatever words
+ * are "as informative as practicable", so this checks that it names what the label says
+ * may be present, and nothing about how. Whether those are all the other ingredients,
+ * whether the listed ones are common to every package, and whether the variation
+ * "normally occur[s] in good packing practice" are facts about the assortment, and are
+ * said to be unchecked on the pass.
+ *
+ * **The pass names the statement**, so a statement that did not print withholds it.
+ */
+/**
+ * Whether the text names the ingredient as a word or phrase of its own, regardless of
+ * case.
+ *
+ * A bare substring was the first version, and a review found it clearing labels that
+ * named nothing: "egg" inside "eggplant", "pea" inside "peanuts", "oat" inside
+ * "chocolate-coated". So the name must be bounded on both sides by something that is not
+ * a letter or digit. That is stricter than a reader would be — "egg" is not found in
+ * "eggs" — and the finding names the ingredient it could not find, so a labeller
+ * declares it the way the statement spells it.
+ */
+function namesWholly(text: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, 'iu').test(text)
+}
+
+function assortmentStatement(
+  claimed: UsFoodAssortmentExemption,
+  context: UsFoodContext,
+): Finding[] {
+  const printed = context.layout.primitives
+    .filter(
+      (primitive): primitive is TextPrimitive =>
+        primitive.kind === 'text' && primitive.elementId === US_FOOD_ELEMENTS.assortmentStatement,
+    )
+    .map((primitive) => primitive.text)
+    .join(' ')
+
+  if (printed.trim() === '') {
+    return [
+      finding(usFoodIngredientListRule, {
+        code: FDA_ASSORTMENT_STATEMENT_MISSING,
+        severity: 'blocking',
+        message:
+          'The label claims the § 101.100(a)(1) exemption for an assortment but bears no statement ' +
+          'naming the other ingredients which may be present, which is the condition it holds on.',
+        measurement: { actual: 'no statement', required: 'a statement naming them' },
+        elementId: US_FOOD_ELEMENTS.ingredients,
+        citation: ASSORTMENT,
+      }),
+    ]
+  }
+
+  const declared = claimed.mayBePresent.map((name) => name.trim()).filter((name) => name !== '')
+  const unnamed = declared.filter((name) => !namesWholly(printed, name))
+  if (declared.length === 0 || unnamed.length > 0) {
+    return [
+      finding(usFoodIngredientListRule, {
+        code: FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
+        severity: 'violation',
+        message:
+          declared.length === 0
+            ? 'The assortment declares no ingredient that may be present, so its statement cannot ' +
+              'be shown to indicate them by name as § 101.100(a)(1) requires.'
+            : `The assortment statement does not name ${unnamed.map((name) => `"${name}"`).join(', ')}, ` +
+              'which the label declares may be present. § 101.100(a)(1) requires it to indicate ' +
+              'them by name.',
+        measurement: {
+          actual: declared.length === 0 ? 'no names declared' : `${unnamed.length} not named`,
+          required: 'every ingredient that may be present, by name',
+        },
+        elementId: US_FOOD_ELEMENTS.assortmentStatement,
+        citation: ASSORTMENT,
+      }),
+    ]
+  }
+
+  return [
+    // The condition is that "the label shall bear" the statement, and the pass names it: artwork.
+    passedOnArtwork(
+      usFoodIngredientListRule,
+      FDA_INGREDIENTS_EXEMPT,
+      `The label claims the ${ASSORTMENT.reference} exemption for an assortment, and bears a ` +
+        `statement naming the ${declared.length} ingredient${declared.length === 1 ? '' : 's'} it ` +
+        'declares may be present. Not checked here: whether the variations normally occur in good ' +
+        'packing practice, whether the listed ingredients are those common to all packages, ' +
+        'whether those named are all the others that may be present, and whether the statement is ' +
+        'as informative as practicable and not misleading.',
+      US_FOOD_ELEMENTS.assortmentStatement,
+      ASSORTMENT,
+    ),
+  ]
 }
 
 export const FDA_INGREDIENT_THRESHOLD_EXCEEDED = 'FDA_INGREDIENT_THRESHOLD_EXCEEDED'

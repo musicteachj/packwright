@@ -330,6 +330,73 @@ describe('POST /api/labels/us-food/export', () => {
     expect(response.status).toBe(400)
   })
 
+  it('takes an exemption by the paragraph claimed, and refuses one no paragraph names', async () => {
+    // The kinds come from label-core's lists, so a claim the rules could not judge
+    // never reaches them. The old bare flags are still accepted, so a label saved
+    // with one exports as it did.
+    const { ingredients: _list, ...withoutList } = FOOD_BODY
+    const exempt = { ...withoutList, ingredientThreshold: undefined }
+    expect(
+      (
+        await postFood({
+          ...exempt,
+          ingredientsExemption: { kind: 'bulk-at-retail' },
+          nutritionExemption: { kind: 'small-business' },
+        })
+      ).status,
+    ).toBe(200)
+    expect(
+      (await postFood({ ...exempt, ingredientsExempt: true, nutritionFactsExempt: true })).status,
+    ).toBe(200)
+    expect(
+      (await postFood({ ...exempt, nutritionExemption: { kind: 'we-asked-nicely' } })).status,
+    ).toBe(400)
+    expect(
+      (await postFood({ ...exempt, ingredientsExemption: { kind: 'assortment-of-sorts' } })).status,
+    ).toBe(400)
+  })
+
+  it('takes a small package with its area and line, and refuses one without the area', async () => {
+    const { ingredients: _list, ...withoutList } = FOOD_BODY
+    const exempt = { ...withoutList, ingredientThreshold: undefined }
+    const smallPackage = {
+      kind: 'small-package',
+      availableSurfaceSqInches: 11.5,
+      contactLine: 'For nutrition information, call 1-800-555-0100',
+    }
+    const drawn = await postFood({ ...exempt, nutritionExemption: smallPackage })
+    expect(drawn.status).toBe(200)
+    // The line reached the renderer, which a status code alone would not show: the same
+    // label with no line to print draws fewer glyphs.
+    const blank = await postFood({
+      ...exempt,
+      nutritionExemption: { ...smallPackage, contactLine: '' },
+    })
+    expect(drawn.body.length).toBeGreaterThan(blank.body.length)
+
+    const { availableSurfaceSqInches: _area, ...withoutArea } = smallPackage
+    expect((await postFood({ ...exempt, nutritionExemption: withoutArea })).status).toBe(400)
+  })
+
+  it('takes an assortment with its statement, and prints it', async () => {
+    const assortment = {
+      kind: 'assortment',
+      statement: 'May also contain pecans or walnuts.',
+      mayBePresent: ['pecans', 'walnuts'],
+    }
+    const drawn = await postFood({ ...FOOD_BODY, ingredientsExemption: assortment })
+    expect(drawn.status).toBe(200)
+    const blank = await postFood({
+      ...FOOD_BODY,
+      ingredientsExemption: { ...assortment, statement: '' },
+    })
+    expect(drawn.body.length, 'the statement reached the renderer').toBeGreaterThan(
+      blank.body.length,
+    )
+    const { mayBePresent: _names, ...withoutNames } = assortment
+    expect((await postFood({ ...FOOD_BODY, ingredientsExemption: withoutNames })).status).toBe(400)
+  })
+
   it('names the download after the food', async () => {
     const response = await postFood(FOOD_BODY)
     expect(response.headers['content-disposition']).toContain('Rolled-oats.pdf')

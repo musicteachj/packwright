@@ -490,8 +490,16 @@ counted as fixture coverage and escaped the check that every such document reach
 
 ### What reading the US food provisions turned up
 
-**Neither exemption rule knows which exemption it grants, so the conditions they put on the label go
-unchecked.** `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
+**~~Neither exemption rule knows which exemption it grants, so the conditions they put on the label go
+unchecked.~~ Fixed** on `fix/exemption-conditions`, in three commits. The paragraph claimed is recorded —
+`ingredientsExemption` and `nutritionExemption`, each a `kind` naming one paragraph — and every exempt pass cites
+it and says what of it goes unchecked; a label saved with a bare flag is excused and advised rather than
+cleared. (j)(13)(i)(A)'s line and (a)(1)'s statement are both declared, printed by the engine, required by a
+rule, and named by the pass so that one which did not print withholds it. (a)(1) turned out reachable after
+all: its common ingredients are listed and judged as any list, and where none is common to all packages only
+the statement is owed. What either line says beyond the names it must carry is not judged. Still open, each
+below: (j)(14), (j)(15), and the nutrition-claims condition most (j) paragraphs share. What follows is the
+entry as it stood. `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
 §101.100(a)(1) excuses an assortment "on the condition that the label shall bear, in conjunction with the
 names of such ingredients as are common to all packages, a statement … indicating by name other ingredients
 which may be present". And 101.9(j)(13)(i)(A) says the manufacturer "shall provide on the label of packages
@@ -501,6 +509,44 @@ ingredients listed, so an assortment claiming it goes down the ordinary path and
 statement. Both passes now rest on the artwork, which is right, but a stamp cannot supply a check that does
 not exist. The fix is to record which paragraph is claimed and check what that paragraph requires the label
 to bear.
+
+**101.9(j)(15)'s unit container is not offered, because its condition is a statement nothing checks.** Read
+from the eCFR on 2026-09-16: the unit containers in a multiunit retail package are exempt where the outer
+package carries the nutrition information, the units are "securely enclosed within and not intended to be
+separated from the retail package", and "each unit container is labeled with the statement 'This Unit Not
+Labeled For Retail Sale' in type size not less than 1/16-inch in height" — with "individual" permitted in or
+before "Retail", and no statement needed where the units bear no labeling at all. Offering the exemption
+before the engine draws that exact text, and a rule measures it, would issue a pass on a label condition no
+one reads. It needs the statement taken verbatim from the regulation, its two permitted variants, and a
+height check at the 101.2(c) floor it shares. Left out of the exemption work on the scope agreed for it.
+
+(j)(14)'s egg carton is left out for the same reason, found by the review of the commit that recorded the
+paragraphs — which had offered it. Shell eggs in a carton with a conforming top lid "are exempt from outer carton
+label requirements where the required nutrition information is clearly presented immediately beneath the
+carton lid or in an insert that can be clearly seen when the carton is opened". The information is relocated,
+not excused, and this engine draws neither the underside of a lid nor an insert, so a pass saying no panel is
+required would certify a declaration nothing printed.
+
+**The small-package display route trusts a typed area that the label and its panel rule out.** Found by the
+`high` review of PR #34, and reproduced. The 101.9(j)(13)(i) exemption now refuses a package whose label or
+principal display panel is itself 12 in² or more, since each is a floor under the surface available to bear
+labeling. The (j)(13)(ii) display route in `fda/nutritionFormats.ts` — `smallPackageRouteApplies` and
+`formatIsPermitted` — reads the same declared `availableSurfaceSqInches` with no such floor. On
+`US_FOOD_CONFORMANT`'s 120 × 240 mm label, whose panel is also 44.64 in², a panel declaring
+`availableSurfaceSqInches: 5` and `format: 'tabular'` returns `FDA_NUTRITION_FORMAT_MET`, "A package of 5.0 in²
+may present its nutrition information in a tabular display". The sweep's "tabular display, small package"
+permission document is built exactly that way. The fix is the same floor, applied where the entitlement is
+decided, with that document moved onto a small label and container. Not done in that PR because the file is
+outside it, and the display type sizes that follow from the route need re-checking with it.
+
+**No rule models nutrition claims, so the condition most 101.9(j) exemptions share goes unchecked.** (j)(1),
+(2)(i)–(iii), (3), (4), (10), (13)(i) and (18) each hold only while the food "bears no nutrition claims or other
+nutrition information in any context on the label or in labeling or advertising" (read from the eCFR on
+2026-09-16). This project has no representation of a claim — 21 CFR 101.13 and 101.14 are unmodelled — so every
+one of those passes says the condition is not checked, and none can be withdrawn when a claim appears. The
+same gap already keeps (c)(2)(i), (c)(3) and (c)(6)'s "if no claims are made" relaxations unapplied. Modelling
+claims, even as a declared list the label prints, is a piece of work of its own; "or in labeling or
+advertising" reaches beyond the label and could never be checked here at all.
 
 **~~`FDA_SERVING_SIZE_MET` names a row the engine never omits.~~ Fixed** on
 `fix/passes-rest-on-what-printed`. The rule now declines unless the panel and the row both `wasFullyDrawn`.
