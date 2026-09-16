@@ -78,6 +78,7 @@ const PACKAGING_NAMES: Record<(typeof US_FOOD_PACKAGINGS)[number], string> = {
  */
 const INGREDIENTS_EXEMPTION_NAMES: Record<(typeof US_FOOD_INGREDIENTS_EXEMPTIONS)[number], string> =
   {
+    assortment: '§ 101.100(a)(1) — assortment, with a statement of what may be present',
     'bulk-at-retail': '§ 101.100(a)(2) — received in bulk, displayed at retail',
   }
 
@@ -281,7 +282,42 @@ const ingredientsExemption = computed({
     if (next === 'unstated') return
     delete data.ingredientsExempt
     if (next === '') delete data.ingredientsExemption
-    else data.ingredientsExemption = { kind: next as UsFoodIngredientsExemptionKind }
+    else if (next === 'assortment') {
+      data.ingredientsExemption = { kind: 'assortment', statement: '', mayBePresent: [] }
+    } else {
+      data.ingredientsExemption = {
+        kind: next as Exclude<UsFoodIngredientsExemptionKind, 'assortment'>,
+      }
+    }
+  },
+})
+
+/** The assortment's statement and names, where that is the exemption claimed. */
+const assortment = () =>
+  data.ingredientsExemption?.kind === 'assortment' ? data.ingredientsExemption : undefined
+
+const assortmentStatement = computed({
+  get: () => assortment()?.statement ?? '',
+  set: (next: string) => {
+    const claimed = assortment()
+    if (claimed !== undefined) claimed.statement = next
+  },
+})
+
+/**
+ * The names the statement must carry, typed as one comma-separated field. Bound lazily,
+ * so the list is rewritten when the field is left rather than on every keystroke — which
+ * would swallow a trailing comma the moment it was typed.
+ */
+const assortmentNames = computed({
+  get: () => (assortment()?.mayBePresent ?? []).join(', '),
+  set: (next: string) => {
+    const claimed = assortment()
+    if (claimed === undefined) return
+    claimed.mayBePresent = next
+      .split(',')
+      .map((name) => name.trim())
+      .filter((name) => name !== '')
   },
 })
 
@@ -978,7 +1014,11 @@ const packaging = computed({
       title="Ingredients"
       :element-id="US_FOOD_ELEMENTS.ingredients"
       :selected-element-id="store.selectedElementId"
-      :status="ingredientsExemption !== '' ? 'exempt' : `${ingredients.length} listed`"
+      :status="
+        ingredientsExemption !== '' && ingredientsExemption !== 'assortment'
+          ? 'exempt'
+          : `${ingredients.length} listed`
+      "
       @select="select"
     >
       <label :class="LABEL" for="field-food-ing-exemption">
@@ -993,7 +1033,37 @@ const packaging = computed({
           </option>
         </select>
       </label>
-      <p v-if="ingredientsExemption !== ''" class="text-chrome-400 text-xs">
+      <template v-if="ingredientsExemption === 'assortment'">
+        <label :class="LABEL" for="field-food-ing-assortment-statement">
+          Statement of other ingredients that may be present
+          <input
+            id="field-food-ing-assortment-statement"
+            v-model="assortmentStatement"
+            :class="INPUT"
+            type="text"
+          />
+        </label>
+        <label :class="LABEL" for="field-food-ing-may-be-present">
+          Ingredients it must name, separated by commas
+          <input
+            id="field-food-ing-may-be-present"
+            v-model.lazy="assortmentNames"
+            :class="INPUT"
+            type="text"
+          />
+        </label>
+        <p class="text-chrome-400 text-xs">
+          § 101.100(a)(1) exempts an assortment from listing the ingredients not common to every
+          package, on the condition that the label bears a statement naming the others which may be
+          present. The list below holds the ingredients common to all packages. The statement is
+          printed as typed; the regulation asks only that it be as informative as practicable and
+          not misleading.
+        </p>
+      </template>
+      <p
+        v-if="ingredientsExemption !== '' && ingredientsExemption !== 'assortment'"
+        class="text-chrome-400 text-xs"
+      >
         The statement is not required. Listing one anyway is allowed — and a list that is printed
         still runs in descending order, because a reader has no way of knowing it was voluntary.
       </p>

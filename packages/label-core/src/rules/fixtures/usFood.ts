@@ -36,6 +36,8 @@ import type {
 import type { Severity } from '../../types/index'
 import {
   FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
+  FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
+  FDA_ASSORTMENT_STATEMENT_MISSING,
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_INGREDIENTS_EXEMPTION_UNSTATED,
   FDA_NUTRITION_CONTACT_MISSING,
@@ -644,6 +646,45 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_INGREDIENTS_EXEMPTION_UNSTATED,
       severity: 'advisory',
       citation: '21 CFR 101.100',
+    },
+  },
+  {
+    name: 'an assortment claiming its exemption with no statement of what may be present',
+    defect:
+      '§ 101.100(a)(1) exempts an assortment from listing the ingredients not common to all ' +
+      'packages "on the condition that the label shall bear, in conjunction with the names of ' +
+      'such ingredients as are common to all packages, a statement … indicating by name other ' +
+      'ingredients which may be present". This label claims the exemption and bears none.',
+    data: {
+      ...BASE,
+      ingredientsExemption: { kind: 'assortment', statement: '', mayBePresent: ['pecans'] },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_ASSORTMENT_STATEMENT_MISSING,
+      severity: 'blocking',
+      citation: '21 CFR 101.100(a)(1)',
+    },
+  },
+  {
+    name: 'an assortment statement that leaves out an ingredient the label says may be present',
+    defect:
+      'The statement names walnuts, and the label declares pecans may be present as well. ' +
+      '§ 101.100(a)(1) asks for a statement "indicating by name other ingredients which may be ' +
+      'present", and one that names only some of them indicates the rest by nothing.',
+    data: {
+      ...BASE,
+      ingredientsExemption: {
+        kind: 'assortment',
+        statement: 'May also contain walnuts.',
+        mayBePresent: ['walnuts', 'pecans'],
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
+      severity: 'violation',
+      citation: '21 CFR 101.100(a)(1)',
     },
   },
   {

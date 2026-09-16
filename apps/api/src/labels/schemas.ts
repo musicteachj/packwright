@@ -33,7 +33,7 @@ import {
   NUTRITION_FORMATS,
   MAJOR_FOOD_ALLERGEN_IDS,
   NUTRIENT_IDS,
-  US_FOOD_INGREDIENTS_EXEMPTIONS,
+  US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_PACKAGINGS,
   type ArtworkBlock,
@@ -583,7 +583,16 @@ export const UsFoodRequestBase = z.object({
     .optional(),
   // The paragraph claimed, from label-core's own list — a kind it does not name is an
   // exemption no rule could judge, so it is refused here rather than drawn.
-  ingredientsExemption: z.object({ kind: z.enum(US_FOOD_INGREDIENTS_EXEMPTIONS) }).optional(),
+  ingredientsExemption: z
+    .union([
+      z.object({ kind: z.enum(US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE) }),
+      z.object({
+        kind: z.literal('assortment'),
+        statement: z.string(),
+        mayBePresent: z.array(z.string()),
+      }),
+    ])
+    .optional(),
   // Superseded, and accepted so a label saved with it still opens and exports.
   ingredientsExempt: z.boolean().optional(),
   containsStatement: z.array(z.enum(MAJOR_FOOD_ALLERGEN_IDS)).optional(),

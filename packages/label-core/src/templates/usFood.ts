@@ -88,6 +88,14 @@ export const US_FOOD_ELEMENTS = {
    * size for this line, so it answers to 101.2(c)'s floor instead.
    */
   smallPackageContact: 'food-small-package-contact',
+  /**
+   * § 101.100(a)(1)'s statement naming the other ingredients an assortment may
+   * contain. Its own element, drawn after the list and any "Contains" statement: a
+   * block between those two would move the "Contains" statement away from the list
+   * §403(w)(1)(A) wants it beside, and folding it into the list's own text would let
+   * a name in it discharge an allergen declaration the list itself never made.
+   */
+  assortmentStatement: 'food-assortment-statement',
   containsStatement: 'food-contains-statement',
   netQuantity: 'food-net-quantity',
   ingredients: 'food-ingredients',
@@ -116,23 +124,46 @@ export type UsFoodPackaging = (typeof US_FOOD_PACKAGINGS)[number]
  * exempts a food from section 403(i)(2)'s ingredient statement, and its three
  * limbs differ in kind, which is why a bare "exempt" could not be judged:
  *
+ * - `assortment` — (a)(1): "An assortment of different items of food, when
+ *   variations in the items that make up different packages packed from such
+ *   assortment normally occur in good packing practice", exempt "with respect to
+ *   any ingredient that is not common to all packages" and "on the condition that
+ *   the label shall bear, in conjunction with the names of such ingredients as are
+ *   common to all packages, a statement (in terms that are as informative as
+ *   practicable and that are not misleading) indicating by name other ingredients
+ *   which may be present". Declared with that statement and the names it must
+ *   carry; the list holds the ingredients common to all packages.
  * - `bulk-at-retail` — (a)(2): "A food having been received in bulk containers at
  *   a retail establishment", displayed with the bulk container's labeling in view
  *   or a counter card or sign, either way in lettering "not less than one-fourth
  *   of an inch in height". The condition is on the display, not on this label.
  *
- * **Not offered, and why.** (a)(1)'s assortment keeps its common ingredients
- * listed "on the condition that the label shall bear" a statement naming the
- * others that may be present — it arrives with the check for that statement.
- * (a)(3) excuses incidental additives from the list rather than the list itself,
- * so nothing is claimed by leaving them out. (b), (c) and (h) exempt other
- * requirements, and (d) a shipment in transit rather than a retail label.
+ * **Not offered, and why.** (a)(3) excuses incidental additives from the list
+ * rather than the list itself, so nothing is claimed by leaving them out. (b), (c)
+ * and (h) exempt other requirements, and (d) a shipment in transit rather than a
+ * retail label.
  */
-export const US_FOOD_INGREDIENTS_EXEMPTIONS = ['bulk-at-retail'] as const
+export const US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE = ['bulk-at-retail'] as const
+
+/** Every kind, the one declared with particulars included. */
+export const US_FOOD_INGREDIENTS_EXEMPTIONS = [
+  ...US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
+  'assortment',
+] as const
 export type UsFoodIngredientsExemptionKind = (typeof US_FOOD_INGREDIENTS_EXEMPTIONS)[number]
-export interface UsFoodIngredientsExemption {
-  kind: UsFoodIngredientsExemptionKind
+
+/** § 101.100(a)(1): the statement the label bears, and the names it must carry. */
+export interface UsFoodAssortmentExemption {
+  kind: 'assortment'
+  /** Printed as typed. The regulation prescribes no wording, only what it must name. */
+  statement: string
+  /** The other ingredients that may be present, each of which the statement must name. */
+  mayBePresent: readonly string[]
 }
+
+export type UsFoodIngredientsExemption =
+  | { kind: (typeof US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE)[number] }
+  | UsFoodAssortmentExemption
 
 /**
  * The 21 CFR 101.9(j) exemptions from nutrition labelling a label can claim.

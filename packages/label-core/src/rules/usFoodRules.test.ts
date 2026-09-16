@@ -13,6 +13,7 @@ import { blockingOmissions } from '../layout/omissions'
 import { MAJOR_FOOD_ALLERGENS, majorFoodAllergen } from '../fda/allergens'
 import type {
   UsFoodIngredient,
+  UsFoodAssortmentExemption,
   UsFoodLabelData,
   UsFoodSmallPackageExemption,
 } from '../templates/usFood'
@@ -45,6 +46,10 @@ import {
   FDA_NET_QUANTITY_TYPE_SIZE_MET,
   FDA_NET_QUANTITY_TYPE_TOO_SMALL,
   FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
+  FDA_CONTAINS_NOT_ADJACENT,
+  FDA_ASSORTMENT_STATEMENT_MISSING,
+  FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
+  usFoodIngredientListRule,
 } from './index'
 import { US_FOOD_RULES, runRules } from './registry'
 
@@ -708,6 +713,179 @@ describe('findings from the phase 5 review', () => {
       ).map((f) => f.code)
       expect(codes).not.toContain(FDA_INGREDIENTS_EXEMPT)
       expect(codes).toContain(FDA_INGREDIENTS_OUT_OF_ORDER)
+    })
+  })
+
+  describe('the §101.100(a)(1) assortment, which must bear a statement of what may be present', () => {
+    // Read from the eCFR on 2026-09-16: exempt "with respect to any ingredient that is
+    // not common to all packages", "on the condition that the label shall bear, in
+    // conjunction with the names of such ingredients as are common to all packages, a
+    // statement … indicating by name other ingredients which may be present".
+    const assortment = (
+      statement: string,
+      mayBePresent: readonly string[] = ['pecans', 'walnuts'],
+    ): UsFoodAssortmentExemption => ({ kind: 'assortment', statement, mayBePresent })
+    const { ingredientThreshold: _threshold, ...withoutThreshold } = US_FOOD_CONFORMANT.data
+    const named = 'May also contain pecans or walnuts.'
+    const printedStatement = (data: UsFoodLabelData, onStock: LabelStock = stock) =>
+      layOutUsFoodLabel({ data, stock: onStock })
+        .primitives.filter(
+          (p): p is TextPrimitive =>
+            p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.assortmentStatement,
+        )
+        .map((p) => p.text)
+        .join(' ')
+
+    it('prints the statement as typed, after the list and its "Contains" statement', () => {
+      const data = { ...US_FOOD_CONFORMANT.data, ingredientsExemption: assortment(named) }
+      expect(printedStatement(data)).toBe(named)
+      const boxes = layOutUsFoodLabel({ data, stock }).elements
+      const top = (id: string) => boxes.find((e) => e.elementId === id)!.box.yMm
+      expect(top(US_FOOD_ELEMENTS.assortmentStatement)).toBeGreaterThan(
+        top(US_FOOD_ELEMENTS.containsStatement),
+      )
+      // Placed there so the "Contains" statement stays beside the list.
+      expect(findingsFor(data, stock).map((f) => f.code)).not.toContain(FDA_CONTAINS_NOT_ADJACENT)
+    })
+
+    it('clears the exemption on the statement, and still judges the common ingredients', () => {
+      const findings = findingsFor(
+        { ...US_FOOD_CONFORMANT.data, ingredientsExemption: assortment(named) },
+        stock,
+      )
+      const pass = findings.find((f) => f.code === FDA_INGREDIENTS_EXEMPT)
+      expect(pass!.citation.reference).toBe('21 CFR 101.100(a)(1)')
+      expect(pass!.elementId, 'naming the statement, so one that did not print withholds it').toBe(
+        US_FOOD_ELEMENTS.assortmentStatement,
+      )
+      expect(
+        findings.map((f) => f.code),
+        'the list is judged as any list',
+      ).toContain(FDA_INGREDIENTS_ORDER_MET)
+
+      const misordered = findingsFor(
+        {
+          ...withoutThreshold,
+          ingredientsExemption: assortment(named),
+          ingredients: [...US_FOOD_CONFORMANT.data.ingredients!].reverse(),
+        },
+        stock,
+      ).map((f) => f.code)
+      expect(misordered, 'and a common list out of order is still reported').toContain(
+        FDA_INGREDIENTS_OUT_OF_ORDER,
+      )
+    })
+
+    it('owes only the statement where no ingredient is common to all packages', () => {
+      const findings = findingsFor(
+        {
+          ...withoutThreshold,
+          ingredients: [],
+          ingredientsExemption: assortment(named),
+        },
+        stock,
+      ).map((f) => f.code)
+      expect(findings).toContain(FDA_INGREDIENTS_EXEMPT)
+      expect(findings).not.toContain(FDA_INGREDIENTS_MISSING)
+    })
+
+    it('reports a claim with no statement, and one that leaves a name out', () => {
+      const none = findingsFor(
+        { ...US_FOOD_CONFORMANT.data, ingredientsExemption: assortment('  ') },
+        stock,
+      )
+      expect(none.find((f) => f.code === FDA_ASSORTMENT_STATEMENT_MISSING)!.severity).toBe(
+        'blocking',
+      )
+      expect(none.map((f) => f.code)).not.toContain(FDA_INGREDIENTS_EXEMPT)
+
+      const partial = findingsFor(
+        { ...US_FOOD_CONFORMANT.data, ingredientsExemption: assortment('May contain walnuts.') },
+        stock,
+      )
+      const incomplete = partial.find((f) => f.code === FDA_ASSORTMENT_STATEMENT_INCOMPLETE)
+      expect(incomplete!.message).toContain('"pecans"')
+      expect(incomplete!.message).not.toContain('"walnuts"')
+      expect(partial.map((f) => f.code)).not.toContain(FDA_INGREDIENTS_EXEMPT)
+
+      const nothingDeclared = findingsFor(
+        { ...US_FOOD_CONFORMANT.data, ingredientsExemption: assortment(named, ['  ']) },
+        stock,
+      ).map((f) => f.code)
+      expect(nothingDeclared, 'a statement checked against no names has shown nothing').toContain(
+        FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
+      )
+    })
+
+    it.each([
+      ['egg', 'May also contain eggplant.', false],
+      ['pea', 'May also contain peanuts.', false],
+      ['oat', 'May also contain chocolate-coated raisins.', false],
+      ['egg', 'May also contain egg.', true],
+      ['Brazil nuts', 'May also contain pecans or brazil nuts.', true],
+      ['pecans', 'May also contain PECANS.', true],
+    ] as const)('names "%s" in "%s" only as a word of its own: %s', (name, statement, clears) => {
+      // A bare substring cleared the first three, naming nothing the label declared.
+      const codes = findingsFor(
+        { ...US_FOOD_CONFORMANT.data, ingredientsExemption: assortment(statement, [name]) },
+        stock,
+      ).map((f) => f.code)
+      expect(codes.includes(FDA_INGREDIENTS_EXEMPT)).toBe(clears)
+      expect(codes.includes(FDA_ASSORTMENT_STATEMENT_INCOMPLETE)).toBe(!clears)
+    })
+
+    it('withholds the exemption when the statement does not print', () => {
+      const data = { ...US_FOOD_CONFORMANT.data, ingredientsExemption: assortment(named) }
+      const short: LabelStock = { ...stock, heightMm: 170 }
+      const layout = layOutUsFoodLabel({ data, stock: short })
+      expect(
+        layout.omissions.map((o) => o.elementId),
+        'the premise: the statement did not print in full',
+      ).toContain(US_FOOD_ELEMENTS.assortmentStatement)
+      const context = { labelType: 'us-food' as const, data, stock: short, layout }
+      expect(
+        usFoodIngredientListRule.check(context).map((f) => f.code),
+        'the premise: the rule itself clears it',
+      ).toContain(FDA_INGREDIENTS_EXEMPT)
+      expect(runRules(context).map((f) => f.code)).not.toContain(FDA_INGREDIENTS_EXEMPT)
+    })
+
+    it('never lets a name in the statement declare an allergen the list did not', () => {
+      // The statement is its own element for this reason. Folded into the list's text,
+      // "may also contain almonds" would satisfy §403(w)(1)(B)(ii)'s "appears elsewhere
+      // in the ingredient list" for an almond ingredient declared nowhere.
+      const data: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        containsStatement: [],
+        ingredients: US_FOOD_CONFORMANT.data.ingredients!.map((ingredient) =>
+          ingredient.allergen === undefined
+            ? ingredient
+            : { ...ingredient, name: 'nut paste', declareInline: false },
+        ),
+        ingredientsExemption: assortment('May also contain almonds.', ['almonds']),
+      }
+      // Searched across every line the label prints, not only the statement's own
+      // element, so the premise still holds if the statement were folded into the list.
+      const everything = layOutUsFoodLabel({ data, stock })
+        .primitives.filter((p): p is TextPrimitive => p.kind === 'text')
+        .map((p) => p.text)
+        .join(' ')
+      expect(everything, 'the premise: the label prints "almonds" in the statement').toContain(
+        'May also contain almonds.',
+      )
+      expect(findingsFor(data, stock).map((f) => f.code)).toContain(FDA_ALLERGEN_NOT_DECLARED)
+    })
+
+    it('holds the statement to the 101.2(c) floor', () => {
+      const small = findingsFor(
+        {
+          ...US_FOOD_CONFORMANT.data,
+          ingredientsExemption: assortment(named),
+          informationPanelFontSizeMm: 2,
+        },
+        stock,
+      ).filter((f) => f.code === FDA_PANEL_TYPE_TOO_SMALL)
+      expect(small.map((f) => f.elementId)).toContain(US_FOOD_ELEMENTS.assortmentStatement)
     })
   })
 })

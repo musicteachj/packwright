@@ -23,6 +23,7 @@ export {
   INGREDIENT_THRESHOLD_PERCENTS,
   US_FOOD_ELEMENTS,
   US_FOOD_INGREDIENTS_EXEMPTIONS,
+  US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_NUTRITION_EXEMPTIONS,
   US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_PACKAGINGS,
@@ -33,6 +34,7 @@ export {
 } from './usFood'
 export type {
   IngredientThresholdPercent,
+  UsFoodAssortmentExemption,
   UsFoodIngredient,
   UsFoodIngredientsExemption,
   UsFoodIngredientsExemptionKind,

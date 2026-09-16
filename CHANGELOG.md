@@ -37,6 +37,21 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **An assortment claiming § 101.100(a)(1) must bear a statement naming what may be present.** (a)(1) exempts
+  an assortment "with respect to any ingredient that is not common to all packages", "on the condition that the
+  label shall bear, in conjunction with the names of such ingredients as are common to all packages, a
+  statement … indicating by name other ingredients which may be present". It was unreachable before the
+  paragraph was recorded — the exempt path required an empty list, and an assortment lists its common
+  ingredients — and unchecked, so it was not offered. It is now: the label declares the statement, typed as it
+  should print, and the names it must carry. The common ingredients are listed and judged by the ordinary list
+  rule, and where no ingredient is common to all packages only the statement is owed — the plan for this change would have reported it instead, and re-reading the paragraph reversed that. A claim with no statement is
+  `FDA_ASSORTMENT_STATEMENT_MISSING`; one that does not name every declared ingredient as a word of its own, or declares none, is `FDA_ASSORTMENT_STATEMENT_INCOMPLETE` — matched as a bare substring, "egg" was found in "eggplant" until the review of this change; the pass names the printed statement. It is drawn as its own element
+  after the list and any "Contains" statement, for two reasons: placed between them it would part the two
+  §403(w)(1)(A) wants adjacent, and folded into the list's text a name in it — "may also contain almonds" —
+  would have satisfied (w)(1)(B)(ii)'s "appears elsewhere in the ingredient list" for an allergen the list never
+  declared. A test pins that it does not. Whether the variations occur in good packing practice, whether the
+  names are all the others, and whether the statement is informative and not misleading are not judged.
+
 - **A small package claiming 101.9(j)(13)(i) must bear the line (A) requires, and qualify by area.** The
   exemption covers packages "that have a total surface area available to bear labeling of less than 12 square
   inches", and (A) says the manufacturer, packer or distributor "shall provide on the label of packages that

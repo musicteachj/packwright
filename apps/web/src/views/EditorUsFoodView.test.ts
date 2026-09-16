@@ -371,6 +371,36 @@ describe('the ingredient statement, from the form to the rail', () => {
     expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_MISSING')).toBe(false)
   })
 
+  it('takes an assortment with its statement, and prints it after the list', async () => {
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-ing-exemption').setValue('assortment')
+    await nextTick()
+    expect(
+      store.findings.some((f) => f.code === 'FDA_ASSORTMENT_STATEMENT_MISSING'),
+      'claimed with no statement yet',
+    ).toBe(true)
+
+    const statement = 'May also contain pecans or walnuts.'
+    await wrapper.find('#field-food-ing-assortment-statement').setValue(statement)
+    const names = wrapper.find('#field-food-ing-may-be-present')
+    await names.setValue('pecans, walnuts')
+    await names.trigger('change')
+    await nextTick()
+
+    expect(store.foodData.ingredientsExemption).toEqual({
+      kind: 'assortment',
+      statement,
+      mayBePresent: ['pecans', 'walnuts'],
+    })
+    const pass = store.findings.find((f) => f.code === 'FDA_INGREDIENTS_EXEMPT')
+    expect(pass?.citation.reference).toBe('21 CFR 101.100(a)(1)')
+    expect(wrapper.find('svg[role="img"]').text(), 'and the canvas prints it').toContain(statement)
+    expect(
+      store.findings.some((f) => f.code === 'FDA_INGREDIENTS_ORDER_MET'),
+      'the common ingredients are still listed and judged',
+    ).toBe(true)
+  })
+
   it('still checks a list printed despite the exemption', async () => {
     // The exemption excuses the absence of a statement, not the disorder of one
     // printed anyway. A consumer reading a printed list has no way of knowing it

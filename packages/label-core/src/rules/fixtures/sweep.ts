@@ -75,6 +75,19 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument }> = 
       ingredientsExemption: { kind: 'bulk-at-retail' },
     },
   },
+  // The same rule clears an assortment whose statement names what may be present,
+  // citing (a)(1) — the one citation no other document here emits.
+  {
+    label: 'assortment exempt',
+    data: {
+      ...US_FOOD_CONFORMANT.data,
+      ingredientsExemption: {
+        kind: 'assortment',
+        statement: 'May also contain pecans or walnuts.',
+        mayBePresent: ['pecans', 'walnuts'],
+      },
+    },
+  },
   // `us-food/nutrition-completeness` clears an exempt label with no panel. The
   // panel has to be *absent*, not merely unused: its exemption branch tests for it.
   {

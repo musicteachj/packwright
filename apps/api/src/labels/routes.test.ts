@@ -378,6 +378,25 @@ describe('POST /api/labels/us-food/export', () => {
     expect((await postFood({ ...exempt, nutritionExemption: withoutArea })).status).toBe(400)
   })
 
+  it('takes an assortment with its statement, and prints it', async () => {
+    const assortment = {
+      kind: 'assortment',
+      statement: 'May also contain pecans or walnuts.',
+      mayBePresent: ['pecans', 'walnuts'],
+    }
+    const drawn = await postFood({ ...FOOD_BODY, ingredientsExemption: assortment })
+    expect(drawn.status).toBe(200)
+    const blank = await postFood({
+      ...FOOD_BODY,
+      ingredientsExemption: { ...assortment, statement: '' },
+    })
+    expect(drawn.body.length, 'the statement reached the renderer').toBeGreaterThan(
+      blank.body.length,
+    )
+    const { mayBePresent: _names, ...withoutNames } = assortment
+    expect((await postFood({ ...FOOD_BODY, ingredientsExemption: withoutNames })).status).toBe(400)
+  })
+
   it('names the download after the food', async () => {
     const response = await postFood(FOOD_BODY)
     expect(response.headers['content-disposition']).toContain('Rolled-oats.pdf')

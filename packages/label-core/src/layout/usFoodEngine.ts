@@ -636,6 +636,22 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     }
   }
 
+  // § 101.100(a)(1) — an assortment bears, "in conjunction with the names of such
+  // ingredients as are common to all packages, a statement … indicating by name other
+  // ingredients which may be present". Typed and printed as given: the regulation asks
+  // that it be "as informative as practicable" and not misleading, and prescribes no
+  // words. Drawn after the list and any "Contains" statement rather than between them,
+  // which would part the two §403(w)(1)(A) wants adjacent; "in conjunction with" names
+  // no distance to keep.
+  if (data.ingredientsExemption?.kind === 'assortment') {
+    stackText(
+      US_FOOD_ELEMENTS.assortmentStatement,
+      'Assortment statement',
+      data.ingredientsExemption.statement,
+      panelTypeMm,
+    )
+  }
+
   // 21 CFR 101.5 — name and place of business. The qualifying phrase is printed
   // where the document carries one and omitted where it does not, so a label
   // that owes one and lacks it is drawn exactly as specified.

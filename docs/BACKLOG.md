@@ -490,8 +490,16 @@ counted as fixture coverage and escaped the check that every such document reach
 
 ### What reading the US food provisions turned up
 
-**Neither exemption rule knows which exemption it grants, so the conditions they put on the label go
-unchecked.** `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
+**~~Neither exemption rule knows which exemption it grants, so the conditions they put on the label go
+unchecked.~~ Fixed** on `fix/exemption-conditions`, in three commits. The paragraph claimed is recorded —
+`ingredientsExemption` and `nutritionExemption`, each a `kind` naming one paragraph — and every exempt pass cites
+it and says what of it goes unchecked; a label saved with a bare flag is excused and advised rather than
+cleared. (j)(13)(i)(A)'s line and (a)(1)'s statement are both declared, printed by the engine, required by a
+rule, and named by the pass so that one which did not print withholds it. (a)(1) turned out reachable after
+all: its common ingredients are listed and judged as any list, and where none is common to all packages only
+the statement is owed. What either line says beyond the names it must carry is not judged. Still open, each
+below: (j)(14), (j)(15), and the nutrition-claims condition most (j) paragraphs share. What follows is the
+entry as it stood. `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
 §101.100(a)(1) excuses an assortment "on the condition that the label shall bear, in conjunction with the
 names of such ingredients as are common to all packages, a statement … indicating by name other ingredients
 which may be present". And 101.9(j)(13)(i)(A) says the manufacturer "shall provide on the label of packages
@@ -501,14 +509,6 @@ ingredients listed, so an assortment claiming it goes down the ordinary path and
 statement. Both passes now rest on the artwork, which is right, but a stamp cannot supply a check that does
 not exist. The fix is to record which paragraph is claimed and check what that paragraph requires the label
 to bear.
-
-*In progress on `fix/exemption-conditions`.* The paragraph is now recorded — `ingredientsExemption` and
-`nutritionExemption`, each a `kind` naming one paragraph — and every exempt pass cites that paragraph and says
-what of it goes unchecked. A label saved with a bare flag is excused and advised rather than cleared.
-(j)(13)(i)(A) is now checked: the small package declares its area and the line, the engine prints the line, and
-the exemption is refused at 12 in² or more, without a line, or where the line did not print. What the line says
-is not judged. (a)(1)'s statement is the remaining commit on that branch, and the assortment is not offered
-until it lands.
 
 **101.9(j)(15)'s unit container is not offered, because its condition is a statement nothing checks.** Read
 from the eCFR on 2026-09-16: the unit containers in a multiunit retail package are exempt where the outer
