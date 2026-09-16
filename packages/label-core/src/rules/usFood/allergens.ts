@@ -215,8 +215,10 @@ export const usFoodAllergenRule: UsFoodRule = {
     }
 
     if (findings.length > 0) return findings
-    // Withheld, not reported: the omission already says the block did not print,
-    // and "not declared" would be a second finding for that one cause.
+    // Withheld, not reported. The omission says the block did not print in full,
+    // though not which line was lost — so "not declared" could be false of a
+    // statement whose source printed. What a declined declaration should say is
+    // an open question in `docs/BACKLOG.md`.
     if (declaredOnlyOffTheLabel) return []
 
     const names = bearing

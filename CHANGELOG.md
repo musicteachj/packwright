@@ -72,6 +72,14 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   from other omissions would need `LayoutOmission` to say which it is, and a pass withheld without cause is
   the failure this project can afford; a pass issued on ink that never printed is not.
 
+  The pull request's `high` review found the other edge of declining silently, recorded in
+  `docs/BACKLOG.md` rather than fixed here: an allergen whose only declaration is cut off partway now gets
+  no allergen finding at all, only an omission saying the statement runs past the bottom. Export is refused
+  when a responsible firm is drawn below it, since that is omitted whole, but a label with no firm exports
+  after the editor's confirm for the missing firm. Before this change the same label was told its allergen
+  was declared, so declining is still the lesser error. What a declined declaration should say needs either
+  omissions that name the lost line or a new advisory code, and either is a change of its own.
+
 - **Two GHS passes certified pictograms whose symbols were never drawn, and now decline to.**
   `GHS_PICTOGRAM_SET_MATCHES` named the strip while omissions are recorded per pictogram, and
   `GHS_SMALL_CONTAINER_COMPLETE` named no element at all, so the guard in `runRules` could withhold neither.

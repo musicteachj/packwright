@@ -435,9 +435,10 @@ on every label carrying a pictogram, which is the correct answer while no glyph 
 `GHS_PICTOGRAM_COMPLETE` is unreachable by any document and correctly so: `glyphDrawn` is only ever `false`,
 because the Annex V specimen artwork was never verified, and the rule continues past the pass whenever it is.
 The other four are reachable and not in the sweep — `GHS_SMALL_CONTAINER_COMPLETE`, `FDA_DUAL_COLUMN_MET`,
-`FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. `GHS_PICTOGRAM_SET_MATCHES` has since
-joined `GHS_PICTOGRAM_COMPLETE` as unreachable, for the same reason and as correctly: it certifies a set of
-pictograms, and no glyph is drawn. It matters less than it did, because
+`FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. `GHS_PICTOGRAM_SET_MATCHES` and
+`GHS_SMALL_CONTAINER_COMPLETE` have since joined `GHS_PICTOGRAM_COMPLETE` as unreachable, for the same reason
+and as correctly: each certifies a pictogram, and no glyph is drawn. The small-container pass was listed here
+as reachable for a commit after that stopped being true. It matters less than it did, because
 the guarantee that every pass states what it certifies is now the compiler's, not the sweep's. It still
 matters for every reading that flips one of them, since a flip ships with a fixture that reaches it.
 `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` has since been flipped, and `FDA_DUAL_COLUMN_MET` and
@@ -507,6 +508,25 @@ is recorded as an `element` omission, the printed list never names almonds, and 
 pass names the element that did not make the declaration. The fix is to name, or require `wasFullyDrawn` of,
 whichever element's text discharged it — the same shape as the serving-size, panel type-size and
 pictogram-set entries, which are worth fixing together.
+
+**A declared allergen whose only declaration is cut off gets no allergen finding at all.** Found by the `high`
+review of PR #29 and reproduced. Since that branch, the allergen rule declines its pass when every element
+declaring a source has an omission, and reports nothing in its place. Where the statement is wholly off the
+label, the `element` omission says so plainly. Where it is only cut, the omission is `detail` — on
+`US_FOOD_CONFORMANT` with the almonds renamed `nut paste`, a 161.74 mm label puts "Contains: almonds." on a
+baseline at 162.77 mm — and the only explanation is "runs past the bottom", which names no allergen. No pass
+is issued, so it is not a false clearance, **but it can ship.** Export is refused only for `element`
+omissions (`blockingOmissions`). The firm, drawn below the statement, is one — but only when the label has a
+firm. Without one, `FDA_RESPONSIBLE_FIRM_MISSING` is reported, and a blocking *finding* only asks the editor's
+user to confirm before exporting, so the PDF goes out with the declaration cut off and no allergen finding.
+A first draft of this entry said export was always blocked; the review of it read `usFoodEngine` and found
+the firm is drawn only when present. A missing allergen declaration is the most consequential thing on a food
+label to leave unnamed, and "not declared" cannot simply be raised instead: the
+omission is per element, so the rule cannot tell whether the lost line held the source. The reverse also
+shows: at 163.15 mm the whole line prints and only its line box overhangs, and the pass is withheld anyway.
+Deciding this needs omissions that say which lines were lost, or an advisory finding that says the
+declaration could not be confirmed on the label. The advisory is a new code with a citation and a fixture, so
+it is a change of its own.
 
 ### What reading the GHS provisions turned up
 
