@@ -47,7 +47,14 @@ import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_ALLERGEN_NOT_DECLARED = 'FDA_ALLERGEN_NOT_DECLARED'
 export const FDA_ALLERGEN_SOURCE_NOT_SPECIFIC = 'FDA_ALLERGEN_SOURCE_NOT_SPECIFIC'
+export const FDA_ALLERGEN_DECLARATION_UNCONFIRMED = 'FDA_ALLERGEN_DECLARATION_UNCONFIRMED'
 export const FDA_ALLERGEN_DECLARED_MET = 'FDA_ALLERGEN_DECLARED_MET'
+
+/** The declaring elements in words, for a message a reader can act on. */
+const DECLARING_ELEMENT_NAMES: Readonly<Record<string, string>> = {
+  [US_FOOD_ELEMENTS.containsStatement]: 'the "Contains" statement',
+  [US_FOOD_ELEMENTS.ingredients]: 'the ingredient list',
+}
 
 const CITATION: Citation = {
   authority: 'FDA',
@@ -134,7 +141,12 @@ export const usFoodAllergenRule: UsFoodRule = {
   title: 'Every major food allergen is declared, naming the food source the Act requires.',
   citation: CITATION,
   citations: [CITATION, SPECIFIC],
-  codes: [FDA_ALLERGEN_NOT_DECLARED, FDA_ALLERGEN_SOURCE_NOT_SPECIFIC, FDA_ALLERGEN_DECLARED_MET],
+  codes: [
+    FDA_ALLERGEN_NOT_DECLARED,
+    FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
+    FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
+    FDA_ALLERGEN_DECLARED_MET,
+  ],
   appliesTo: 'us-food',
 
   check({ data, layout }: UsFoodContext): Finding[] {
@@ -156,13 +168,6 @@ export const usFoodAllergenRule: UsFoodRule = {
     const printedList = textOf(US_FOOD_ELEMENTS.ingredients)
     const printedContains = textOf(US_FOOD_ELEMENTS.containsStatement)
     const findings: Finding[] = []
-    // Declared only by a block with an omission recorded against it — so neither
-    // cleared nor reported. `textOf` reads every primitive, including those of a
-    // block drawn off the label, which is the text a declaration must not rest on.
-    // `wasFullyDrawn` counts any omission, as the guard does, so a Contains
-    // statement carrying a detail omission (an entry no ingredient carries) cannot
-    // clear on its own either: stricter than necessary, never looser.
-    let declaredOnlyOffTheLabel = false
 
     for (const ingredient of bearing) {
       const id = ingredient.allergen!
@@ -195,9 +200,40 @@ export const usFoodAllergenRule: UsFoodRule = {
       // demanding both would report a violation against a compliant label.
       const declaring = elementsDeclaring(source, id, printedList, printedContains, ingredients)
       if (declaring.length > 0) {
-        if (!declaring.some((elementId) => wasFullyDrawn(layout, elementId))) {
-          declaredOnlyOffTheLabel = true
-        }
+        if (declaring.some((elementId) => wasFullyDrawn(layout, elementId))) continue
+
+        // **Declared only by a block with an omission recorded against it.**
+        // `textOf` reads every primitive, including those of a block drawn off the
+        // label, which is the text a declaration must not rest on — so this cannot
+        // clear. Nor can it say "not declared": the omission is recorded per
+        // element, not per line, so the rule cannot tell whether the line that was
+        // lost is the one carrying the source. Silence was the answer once, and a
+        // label with no responsible firm then exported with its Contains statement
+        // cut off and no allergen finding at all, because a `detail` omission does
+        // not block export.
+        //
+        // So an advisory, as `GHS_PICTOGRAM_MISSING` is where a violation cannot be
+        // established: it names the allergen and points at the element that
+        // declared it. `wasFullyDrawn` counts any omission, as the guard does, so a
+        // Contains statement whose only omission is an entry no ingredient carries
+        // raises this too, though its source printed — and so does one whose last
+        // line printed with only its line box overhanging. Stricter than necessary,
+        // never looser; telling those apart needs omissions that say what was lost.
+        findings.push(
+          finding(usFoodAllergenRule, {
+            code: FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
+            severity: 'advisory',
+            message:
+              `"${ingredient.name}" contains ${source}, and it is declared only in ` +
+              `${declaring.map((elementId) => DECLARING_ELEMENT_NAMES[elementId]).join(' and ')}, ` +
+              'which did not print in full — so the declaration cannot be confirmed on the label.',
+            measurement: {
+              actual: 'declared only in text that did not print in full',
+              required: `a printed declaration naming ${source}`,
+            },
+            elementId: declaring[0]!,
+          }),
+        )
         continue
       }
 
@@ -214,12 +250,9 @@ export const usFoodAllergenRule: UsFoodRule = {
       )
     }
 
+    // Any finding withholds the pass — the advisory above included, which is how a
+    // declaration resting only on text that did not print stays uncleared.
     if (findings.length > 0) return findings
-    // Withheld, not reported. The omission says the block did not print in full,
-    // though not which line was lost — so "not declared" could be false of a
-    // statement whose source printed. What a declined declaration should say is
-    // an open question in `docs/BACKLOG.md`.
-    if (declaredOnlyOffTheLabel) return []
 
     const names = bearing
       .map((ingredient) => foodSourceName(ingredient.allergen!, ingredient.allergenSpecificType))

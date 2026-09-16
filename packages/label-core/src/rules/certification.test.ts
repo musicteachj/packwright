@@ -20,6 +20,7 @@ import * as bwip from 'bwip-js/generic'
 import { layOutUpcALabel } from '../layout/engine'
 import { layOutGhsLabel } from '../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
+import { blockingOmissions } from '../layout/omissions'
 import { GHS_CONFORMANT } from './fixtures/ghs'
 import type { ResolvedLayout, TextPrimitive } from '../layout/types'
 import { GHS_ELEMENTS } from '../templates/ghs'
@@ -59,6 +60,7 @@ import {
   FDA_PANEL_TYPE_SIZE_MET,
   FDA_SERVING_SIZE_MET,
   FDA_ALLERGEN_NOT_DECLARED,
+  FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
   GHS_PICTOGRAM_SET_MATCHES,
   GHS_PICTOGRAM_SIZE_MET,
   GHS_SIGNAL_WORD_SINGLE,
@@ -635,17 +637,19 @@ describe('a US food pass the guard cannot reach is withheld by its own rule', ()
     ).toContain(FDA_SERVING_SIZE_MET)
   })
 
+  // The almonds, renamed so the list no longer names their source and not
+  // declared inline: only the Contains statement says "almonds".
+  const declaredOnlyByContains: UsFoodLabelData = {
+    ...US_FOOD_CONFORMANT.data,
+    ingredients: US_FOOD_CONFORMANT.data.ingredients!.map((ingredient) =>
+      ingredient.allergen === undefined
+        ? ingredient
+        : { ...ingredient, name: 'nut paste', declareInline: false },
+    ),
+  }
+
   it('does not clear an allergen declared only by a Contains statement that did not print', () => {
-    // The almonds, renamed so the list no longer names their source and not
-    // declared inline: only the Contains statement says "almonds".
-    const data: UsFoodLabelData = {
-      ...US_FOOD_CONFORMANT.data,
-      ingredients: US_FOOD_CONFORMANT.data.ingredients!.map((ingredient) =>
-        ingredient.allergen === undefined
-          ? ingredient
-          : { ...ingredient, name: 'nut paste', declareInline: false },
-      ),
-    }
+    const data = declaredOnlyByContains
     const short: LabelStock = { ...US_FOOD_CONFORMANT.stock, heightMm: 158 }
     const { layout, omitted, findings } = judge(data, short)
     const list = layout.primitives
@@ -668,18 +672,56 @@ describe('a US food pass the guard cannot reach is withheld by its own rule', ()
     expect(codes, 'a declaration that did not print has not declared').not.toContain(
       FDA_ALLERGEN_DECLARED_MET,
     )
-    // Declined, not reported: the omission is the finding, and "not declared"
-    // would be a second one for the same cause.
+    // Not "not declared", which could be false: the omission is per element, so
+    // the rule cannot tell whether the lost line carried the source. An advisory
+    // instead, naming the allergen and pointing at the statement that declared it.
     expect(codes).not.toContain(FDA_ALLERGEN_NOT_DECLARED)
-    expect(codesOf(data, US_FOOD_CONFORMANT.stock), 'the control: printed, it clears').toContain(
-      FDA_ALLERGEN_DECLARED_MET,
+    const unconfirmed = findings.filter(
+      (result) => result.code === FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
+    )
+    expect(unconfirmed, 'the declaration that did not print is named').toHaveLength(1)
+    expect(unconfirmed[0]!.severity).toBe('advisory')
+    expect(unconfirmed[0]!.elementId).toBe(US_FOOD_ELEMENTS.containsStatement)
+    expect(unconfirmed[0]!.message).toContain('almonds')
+
+    const printed = codesOf(data, US_FOOD_CONFORMANT.stock)
+    expect(printed, 'the control: printed, it clears').toContain(FDA_ALLERGEN_DECLARED_MET)
+    expect(printed, 'and nothing is left unconfirmed').not.toContain(
+      FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
     )
     // And either form still suffices. Declared inline as well, the same lost
     // Contains statement costs nothing, because the list that printed says it.
+    const eitherForm = codesOf(US_FOOD_CONFORMANT.data, short)
+    expect(eitherForm, 'a declaration that printed in the list still clears').toContain(
+      FDA_ALLERGEN_DECLARED_MET,
+    )
+    expect(eitherForm, 'and is not reported unconfirmed').not.toContain(
+      FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
+    )
+  })
+
+  it('names an allergen whose Contains statement is cut off on a label that can still export', () => {
+    // The case that shipped. With no responsible firm drawn below it, a statement
+    // only partly past the edge carries a `detail` omission alone, which does not
+    // block export — and the rule used to say nothing at all about the allergen.
+    // The 161.74 mm height is the reproduction from `docs/BACKLOG.md`: it puts
+    // "Contains: almonds." on a baseline below the edge.
+    const { responsibleFirm: _firm, ...withoutFirm } = declaredOnlyByContains
+    const cut: LabelStock = { ...US_FOOD_CONFORMANT.stock, heightMm: 161.74 }
+    const { layout, findings } = judge(withoutFirm, cut)
+
     expect(
-      codesOf(US_FOOD_CONFORMANT.data, short),
-      'a declaration that printed in the list still clears',
-    ).toContain(FDA_ALLERGEN_DECLARED_MET)
+      layout.omissions.map((omission) => `${omission.elementId}/${omission.scope}`),
+      'the premise: the Contains statement is cut, not absent, and nothing else is omitted',
+    ).toEqual([`${US_FOOD_ELEMENTS.containsStatement}/detail`])
+    expect(blockingOmissions(layout), 'so export is not refused').toEqual([])
+
+    const codes = findings.map((result) => result.code)
+    expect(codes).not.toContain(FDA_ALLERGEN_DECLARED_MET)
+    expect(codes).not.toContain(FDA_ALLERGEN_NOT_DECLARED)
+    expect(codes, 'the allergen is named before the label ships').toContain(
+      FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
+    )
   })
 })
 

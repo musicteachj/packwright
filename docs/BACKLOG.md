@@ -517,8 +517,15 @@ pass names the element that did not make the declaration. The fix is to name, or
 whichever element's text discharged it — the same shape as the serving-size, panel type-size and
 pictogram-set entries, which are worth fixing together.
 
-**A declared allergen whose only declaration is cut off gets no allergen finding at all.** Found by the `high`
-review of PR #29 and reproduced. Since that branch, the allergen rule declines its pass when every element
+**~~A declared allergen whose only declaration is cut off gets no allergen finding at all.~~ Fixed** on
+`fix/unconfirmed-allergen-declaration`. The rule now raises `FDA_ALLERGEN_DECLARATION_UNCONFIRMED`, an
+advisory under §403(w)(1), for each ingredient whose source is declared only in elements that did not print in
+full. It names the source and points at the declaring element, and the pass stays withheld. It is not
+"not declared" for the reason below, and it does not block export: it makes the lost declaration visible rather
+than stopping it shipping. Because `wasFullyDrawn` counts any omission, it also fires where the source did
+print — a Contains statement whose only omission is an entry no ingredient carries, or the 163.15 mm case
+below. Telling those apart needs omissions that say what was lost. What follows is the entry as it stood.
+Found by the `high` review of PR #29 and reproduced. Since that branch, the allergen rule declines its pass when every element
 declaring a source has an omission, and reports nothing in its place. Where the statement is wholly off the
 label, the `element` omission says so plainly. Where it is only cut, the omission is `detail` — on
 `US_FOOD_CONFORMANT` with the almonds renamed `nut paste`, a 161.74 mm label puts "Contains: almonds." on a
