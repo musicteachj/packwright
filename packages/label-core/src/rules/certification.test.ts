@@ -59,6 +59,7 @@ import {
   FDA_ALLERGEN_NOT_DECLARED,
   GHS_PICTOGRAM_SET_MATCHES,
   GHS_PICTOGRAM_SIZE_MET,
+  GHS_SIGNAL_WORD_SINGLE,
   GHS_SMALL_CONTAINER_COMPLETE,
   GS1_DIGITAL_LINK_VALID,
   GS1_GTIN_CHECK_DIGIT_VALID,
@@ -568,10 +569,17 @@ describe('a GHS pass the guard cannot reach is withheld by its own rule', () => 
   // pictograms whose symbols were never drawn. Each case runs the engine's real
   // layout, then the same layout as if the glyphs had printed: the control, which
   // shows the rule still clears when there is nothing to withhold for.
+  // Only the missing glyph, which every pictogram carries. Stripping everything
+  // recorded against a pictogram would also strip a pictogram drawn off the label,
+  // and a review caught an assertion that could then never fail.
   const glyphsDrawn = (layout: ResolvedLayout): ResolvedLayout => ({
     ...layout,
     omissions: layout.omissions.filter(
-      (omission) => !omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`),
+      (omission) =>
+        !(
+          omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`) &&
+          omission.reason.includes('Annex V')
+        ),
     ),
   })
   const codesFor = (data: GhsLabelData, layout: ResolvedLayout) =>
@@ -612,9 +620,10 @@ describe('a GHS pass the guard cannot reach is withheld by its own rule', () => 
     }
     const layout = layOutGhsLabel({ data, stock: GHS_CONFORMANT.stock })
     const printed = glyphsDrawn(layout)
-    // The engine records no omission for text off the stock yet, so each listed
-    // text element is lost by hand, one at a time: the gate must honour every
-    // entry on the list, not rest on the pictogram alone.
+    // Each listed text element is lost by hand, one at a time. The engine does
+    // record text drawn off the stock now, but it stacks top to bottom, so it can
+    // never lose the product identifier alone while the rest prints: the gate
+    // must honour every entry on the list, not rest on the pictogram alone.
     const lost = (elementId: string): ResolvedLayout => ({
       ...printed,
       omissions: [
@@ -639,6 +648,53 @@ describe('a GHS pass the guard cannot reach is withheld by its own rule', () => 
     expect(codesFor(data, printed), 'the control: everything printed, it clears').toContain(
       GHS_SMALL_CONTAINER_COMPLETE,
     )
+  })
+
+  it('is reached by the engine, now that it records text drawn off the label', () => {
+    // The two cases above were added by hand. These are the reproductions
+    // `docs/BACKLOG.md` recorded, laid out for real.
+    const { data } = GHS_CONFORMANT
+    const tiny: LabelStock = { widthMm: 60, heightMm: 6, marginMm: 1 }
+    const onTiny = layOutGhsLabel({ data, stock: tiny })
+    expect(
+      onTiny.omissions.map((omission) => omission.elementId),
+      'the premise: the signal word is below a 6 mm label',
+    ).toContain(GHS_ELEMENTS.signalWord)
+    expect(
+      runRules({ labelType: 'ghs-chemical', data, stock: tiny, layout: onTiny }).map((r) => r.code),
+      'a signal word that did not print is not one signal word on the label',
+    ).not.toContain(GHS_SIGNAL_WORD_SINGLE)
+
+    // A 50 ml container whose pictogram fits a 33 mm label and whose outer-package
+    // statement and manufacturer do not. With the glyph set aside, what withholds
+    // the pass is the text alone.
+    const container: GhsLabelData = {
+      regime: 'us-osha',
+      productIdentifier: 'Example solvent',
+      capacityL: 0.05,
+      smallContainerLabelling: true,
+      signalWords: ['Danger'],
+      hazards: ['2.6/flammable-liquids-1-2-3'],
+      supplier: {
+        name: 'Example Chemicals Ltd',
+        address: '1 Example Way',
+        telephone: '+1 555 0100',
+      },
+      outerPackageStatement: 'Full label information is provided on the immediate outer package.',
+    }
+    const short: LabelStock = { widthMm: 50, heightMm: 33, marginMm: 2 }
+    const layout = glyphsDrawn(layOutGhsLabel({ data: container, stock: short }))
+    const omitted = layout.omissions.map((omission) => omission.elementId)
+    expect(omitted, 'the premise: the text is off the label').toEqual(
+      expect.arrayContaining([GHS_ELEMENTS.supplier, GHS_ELEMENTS.outerPackageStatement]),
+    )
+    expect(omitted, 'and the pictogram is not').not.toContain(`${GHS_ELEMENTS.pictograms}-GHS02`)
+    expect(
+      runRules({ labelType: 'ghs-chemical', data: container, stock: short, layout }).map(
+        (r) => r.code,
+      ),
+      'a manufacturer below the edge is not carried',
+    ).not.toContain(GHS_SMALL_CONTAINER_COMPLETE)
   })
 })
 

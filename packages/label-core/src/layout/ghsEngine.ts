@@ -29,7 +29,8 @@ import {
 import { requiredPictograms } from '../ghs/classification'
 import { applyPrecedence } from '../ghs/precedence'
 import { hazardStatementText, precautionaryStatementText } from '../ghs/statements'
-import { wrapTextMm } from '../text/measure'
+import { roundTo } from '../geometry/units'
+import { hasMetrics, measureTextMm, wrapTextMm } from '../text/measure'
 import { dimensionBandFor, pictogramAreaSqMm } from '../ghs/labelDimensions'
 import type { GhsLabelData } from '../templates/ghs'
 import { GHS_ELEMENTS, GHS_TYPE_DEFAULT } from '../templates/ghs'
@@ -48,6 +49,8 @@ export interface GhsLayoutRequest {
   data: GhsLabelData
   stock: LabelStock
 }
+
+const mmText = (value: number): string => `${roundTo(value, 2).toFixed(2)} mm`
 
 function assertFinitePositive(value: number, what: string): void {
   if (!Number.isFinite(value) || value <= 0) {
@@ -87,6 +90,87 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
   // panel is drawn hanging off it, because nudging it back would hide the defect.
   let cursorYMm = panel.yMm
 
+  /**
+   * Says so when a block is drawn past the bottom of the stock.
+   *
+   * **Drawing it off the label was deliberate; saying nothing was not.** This
+   * engine recorded no omission for a block below the edge, so a signal word on a
+   * baseline 13.4 mm down a 6 mm label was cleared by `GHS_SIGNAL_WORD_SINGLE`,
+   * and a 50 ml container's manufacturer and outer-package statement, both wholly
+   * below a 25 mm label, were counted as carried. The same check `usFoodEngine`
+   * makes for every stacked block, and in the same two scopes: a block that begins
+   * past the edge is absent, and one that runs past it has lost a detail.
+   */
+  function recordOverrun(elementId: string, label: string, topMm: number, bottomMm: number): void {
+    if (topMm >= stock.heightMm) {
+      omissions.push({
+        elementId,
+        reason:
+          `${label} begins ${mmText(topMm)} down a ${mmText(stock.heightMm)} label, past its ` +
+          'bottom edge, so none of it is printed.',
+        scope: 'element',
+      })
+    } else if (bottomMm > stock.heightMm) {
+      omissions.push({
+        elementId,
+        reason:
+          `${label} runs ${mmText(bottomMm - stock.heightMm)} past the bottom of a ` +
+          `${mmText(stock.heightMm)} label, so part of it is not printed.`,
+        scope: 'detail',
+      })
+    }
+  }
+
+  /**
+   * The same, across. A pictogram strip is one row and runs off the right of a
+   * label narrower than it; a text block wraps, but the wrapper never breaks
+   * inside a word, so one wider than the panel does too. A review of the bottom-edge
+   * check found the second: a 40-letter chemical name printed past the edge of a
+   * 30 mm label with nothing recorded, and the small-container rule would have
+   * counted the product identifier as carried.
+   */
+  function recordRightOverrun(
+    elementId: string,
+    label: string,
+    leftMm: number,
+    rightMm: number,
+  ): void {
+    if (leftMm >= stock.widthMm) {
+      omissions.push({
+        elementId,
+        reason:
+          `${label} begins ${mmText(leftMm)} across a ${mmText(stock.widthMm)} label, past its ` +
+          'right edge, so none of it is printed.',
+        scope: 'element',
+      })
+    } else if (rightMm > stock.widthMm) {
+      omissions.push({
+        elementId,
+        reason:
+          `${label} runs ${mmText(rightMm - stock.widthMm)} past the right edge of a ` +
+          `${mmText(stock.widthMm)} label, so part of it is not printed.`,
+        scope: 'detail',
+      })
+    }
+  }
+
+  /**
+   * The face a line is measured in for that check: the one it prints in.
+   *
+   * `measureTextMm` takes a family and no weight, and a bold line measured in
+   * Regular widths reads 3–5% narrow — so the signal word, drawn at weight 600,
+   * could print past the edge by that much with nothing recorded, and a review
+   * caught exactly that. Resolved as `embeddedFontFor` resolves the face the PDF
+   * embeds. The wrap still uses Regular widths; `docs/BACKLOG.md` keeps that as
+   * its own stage, and a line it wraps too long is now recorded rather than lost.
+   */
+  const measuredFamilyFor = (bold: boolean): string => {
+    const semibold = `${type.fontFamily} SemiBold`
+    return bold && hasMetrics(semibold) ? semibold : type.fontFamily
+  }
+  const widestLineMm = (lines: readonly string[], fontSizeMm: number, bold = false): number =>
+    Math.max(0, ...lines.map((line) => measureTextMm(line, fontSizeMm, measuredFamilyFor(bold))))
+
   function pushText(
     elementId: string,
     label: string,
@@ -125,6 +209,13 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       label,
       box: { xMm: panel.xMm, yMm: startYMm, widthMm: panel.widthMm, heightMm: boxHeightMm },
     })
+    recordOverrun(elementId, label, startYMm, startYMm + boxHeightMm)
+    recordRightOverrun(
+      elementId,
+      label,
+      panel.xMm,
+      panel.xMm + widestLineMm(lines, fontSizeMm, bold),
+    )
     cursorYMm = startYMm + boxHeightMm + type.blockGapMm
   }
 
@@ -225,6 +316,13 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
           'verified vector of that specimen was available. The frame is drawn to its resolved ' +
           'size; an approximation of the symbol would look compliant without being so.',
       })
+
+      // Recorded after the glyph, which every pictogram carries. A strip is one
+      // row, so it can run off the right as well as the bottom — a label with more
+      // pictograms than its width holds draws the last of them past the edge.
+      const pictogramLabel = `The ${code} pictogram`
+      recordOverrun(elementId, pictogramLabel, cursorYMm, cursorYMm + boxMm)
+      recordRightOverrun(elementId, pictogramLabel, xMm, xMm + boxMm)
     })
 
     cursorYMm += boxMm + type.blockGapMm
@@ -253,7 +351,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       if (text !== undefined) return [text]
       omissions.push({
         // Suffixed with the code: several statements can be omitted from one
-        // block, and `LabelTextView` keys its list on this id.
+        // block, and each omission should say which statement it is.
         elementId: `${elementId}-${code}`,
         scope: 'detail',
         reason:
@@ -264,8 +362,11 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       return []
     })
     if (statements.length === 0) continue
+    let widestMm = 0
     statements.forEach((statement) => {
-      for (const line of wrapTextMm(statement, panel.widthMm, type.statementMm, type.fontFamily)) {
+      const lines = wrapTextMm(statement, panel.widthMm, type.statementMm, type.fontFamily)
+      widestMm = Math.max(widestMm, widestLineMm(lines, type.statementMm))
+      for (const line of lines) {
         primitives.push({
           kind: 'text',
           elementId,
@@ -290,6 +391,8 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
         heightMm: cursorYMm - startYMm,
       },
     })
+    recordOverrun(elementId, label, startYMm, cursorYMm)
+    recordRightOverrun(elementId, label, panel.xMm, panel.xMm + widestMm)
     cursorYMm += type.blockGapMm
   }
 

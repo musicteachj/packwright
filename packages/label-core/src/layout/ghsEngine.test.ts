@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { measureTextMm } from '../text/measure'
-import { GHS_ELEMENTS, type GhsLabelData } from '../templates/ghs'
+import { GHS_ELEMENTS, GHS_TYPE_DEFAULT, type GhsLabelData } from '../templates/ghs'
 import type { LabelStock } from '../templates/stock'
 import { LayoutError } from './engine'
 import { layOutGhsLabel } from './ghsEngine'
+import type { TextPrimitive } from './types'
 
 const STOCK: LabelStock = { widthMm: 74, heightMm: 105, marginMm: 4 }
 
@@ -156,5 +157,139 @@ describe('statements are wrapped at layout time', () => {
     const box = (l: typeof oneLine) =>
       l.elements.find((e) => e.elementId === GHS_ELEMENTS.hazardStatements)!.box.heightMm
     expect(box(manyLines)).toBeGreaterThan(box(oneLine))
+  })
+})
+
+describe('a block drawn off the stock says so', () => {
+  // Drawn as asked, and recorded. This engine used to record nothing for a block
+  // below the edge, so the rules certified text that never printed.
+  const positional = (layout: ReturnType<typeof layOutGhsLabel>, elementId: string) =>
+    layout.omissions.filter(
+      (omission) => omission.elementId === elementId && !omission.reason.includes('Annex V'),
+    )
+
+  it('records a block that begins past the bottom edge as absent', () => {
+    // On 40 mm the statements and the supplier start below the label entirely.
+    const layout = layOutGhsLabel({ data: DATA, stock: { ...STOCK, heightMm: 40 } })
+    const supplier = positional(layout, GHS_ELEMENTS.supplier)
+    const box = layout.elements.find((e) => e.elementId === GHS_ELEMENTS.supplier)!.box
+
+    expect(box.yMm, 'the premise: the supplier starts below the label').toBeGreaterThanOrEqual(40)
+    expect(supplier.map((omission) => omission.scope)).toEqual(['element'])
+  })
+
+  it('records the statements block too, which is drawn by its own loop', () => {
+    const layout = layOutGhsLabel({ data: DATA, stock: { ...STOCK, heightMm: 40 } })
+    const box = layout.elements.find((e) => e.elementId === GHS_ELEMENTS.hazardStatements)!.box
+    expect(box.yMm + box.heightMm, 'the premise: the statements run past 40 mm').toBeGreaterThan(40)
+    expect(positional(layout, GHS_ELEMENTS.hazardStatements)).not.toEqual([])
+  })
+
+  it('records a block that runs past the bottom edge as a lost detail', () => {
+    // Cut through the product identifier's box, so it starts on the label and ends off it.
+    const probe = layOutGhsLabel({ data: DATA, stock: STOCK })
+    const id = probe.elements.find((e) => e.elementId === GHS_ELEMENTS.productIdentifier)!.box
+    const heightMm = id.yMm + id.heightMm / 2
+    const layout = layOutGhsLabel({ data: DATA, stock: { ...STOCK, heightMm } })
+
+    expect(positional(layout, GHS_ELEMENTS.productIdentifier).map((o) => o.scope)).toEqual([
+      'detail',
+    ])
+  })
+
+  it('records a pictogram past the right edge of a strip wider than its label', () => {
+    // Two 23 mm pictograms set as diamonds are wider together than a 50 mm label,
+    // which holds the first of them.
+    const layout = layOutGhsLabel({ data: DATA, stock: { ...STOCK, widthMm: 50 } })
+    const last = `${GHS_ELEMENTS.pictograms}-GHS07`
+    const box = layout.elements.find((e) => e.elementId === last)!.box
+
+    expect(box.xMm + box.widthMm, 'the premise: GHS07 runs past 50 mm').toBeGreaterThan(50)
+    expect(positional(layout, last)).not.toEqual([])
+    expect(positional(layout, `${GHS_ELEMENTS.pictograms}-GHS02`), 'GHS02 fits').toEqual([])
+  })
+
+  it('records a pictogram that begins past the right edge as absent', () => {
+    // A third pictogram on the same 50 mm label starts beyond it altogether.
+    const data: GhsLabelData = { ...DATA, pictograms: ['GHS02', 'GHS07', 'GHS05'] }
+    const layout = layOutGhsLabel({ data, stock: { ...STOCK, widthMm: 50 } })
+    const third = `${GHS_ELEMENTS.pictograms}-GHS05`
+    const box = layout.elements.find((e) => e.elementId === third)!.box
+
+    expect(box.xMm, 'the premise: GHS05 starts past 50 mm').toBeGreaterThanOrEqual(50)
+    expect(positional(layout, third).map((o) => o.scope)).toEqual(['element'])
+    expect(
+      positional(layout, `${GHS_ELEMENTS.pictograms}-GHS07`).map((o) => o.scope),
+      'the one it follows only runs past',
+    ).toEqual(['detail'])
+  })
+
+  it('records a pictogram past the bottom edge', () => {
+    const probe = layOutGhsLabel({ data: DATA, stock: STOCK })
+    const strip = probe.elements.find((e) => e.elementId === GHS_ELEMENTS.pictograms)!.box
+    const heightMm = strip.yMm + strip.heightMm / 2
+    const layout = layOutGhsLabel({ data: DATA, stock: { ...STOCK, heightMm } })
+
+    expect(positional(layout, `${GHS_ELEMENTS.pictograms}-GHS02`).map((o) => o.scope)).toEqual([
+      'detail',
+    ])
+  })
+
+  it('records a word too long to wrap running past the right edge', () => {
+    // The wrapper never breaks inside a word. Found by review: a 40-letter
+    // chemical name ran past a 30 mm label with nothing recorded.
+    const data: GhsLabelData = {
+      ...DATA,
+      productIdentifier: 'Tetramethylammoniumhydroxidepentahydrate',
+    }
+    const stock: LabelStock = { ...STOCK, widthMm: 30 }
+    const layout = layOutGhsLabel({ data, stock })
+    const line = layout.primitives.find(
+      (p): p is TextPrimitive =>
+        p.kind === 'text' && p.elementId === GHS_ELEMENTS.productIdentifier,
+    )!
+    const widthMm = measureTextMm(line.text, line.fontSizeMm, line.fontFamily)
+
+    expect(line.xMm + widthMm, 'the premise: the name runs past 30 mm').toBeGreaterThan(30)
+    expect(positional(layout, GHS_ELEMENTS.productIdentifier).map((o) => o.scope)).toEqual([
+      'detail',
+    ])
+  })
+
+  it('records a statement word too long for a very narrow label', () => {
+    const stock: LabelStock = { widthMm: 12, heightMm: 400, marginMm: 1 }
+    const layout = layOutGhsLabel({ data: DATA, stock })
+    const widest = Math.max(
+      ...layout.primitives
+        .filter((p) => p.kind === 'text' && p.elementId === GHS_ELEMENTS.hazardStatements)
+        .map((p) =>
+          p.kind === 'text' ? p.xMm + measureTextMm(p.text, p.fontSizeMm, p.fontFamily) : 0,
+        ),
+    )
+
+    expect(widest, 'the premise: a statement word runs past 12 mm').toBeGreaterThan(12)
+    expect(positional(layout, GHS_ELEMENTS.hazardStatements)).not.toEqual([])
+  })
+
+  it('measures a bold signal word in the face it prints in', () => {
+    // A width that holds "Danger Warning" in Regular and not in SemiBold, with a
+    // margin small enough that the wrap (still Regular) keeps it on one line.
+    const data: GhsLabelData = { ...DATA, signalWords: ['Danger', 'Warning'] }
+    const text = 'Danger Warning'
+    const sizeMm = GHS_TYPE_DEFAULT.signalWordMm
+    const regularMm = measureTextMm(text, sizeMm, GHS_TYPE_DEFAULT.fontFamily)
+    const boldMm = measureTextMm(text, sizeMm, `${GHS_TYPE_DEFAULT.fontFamily} SemiBold`)
+    const marginMm = 0.5
+    const widthMm = marginMm + (regularMm + boldMm) / 2
+    const layout = layOutGhsLabel({ data, stock: { widthMm, heightMm: 400, marginMm } })
+
+    expect(marginMm + regularMm, 'the premise: in Regular it fits').toBeLessThanOrEqual(widthMm)
+    expect(marginMm + boldMm, 'and in the face it prints in it does not').toBeGreaterThan(widthMm)
+    expect(positional(layout, GHS_ELEMENTS.signalWord).map((o) => o.scope)).toEqual(['detail'])
+  })
+
+  it('records nothing positional for a label that fits', () => {
+    const layout = layOutGhsLabel({ data: DATA, stock: STOCK })
+    expect(layout.omissions.every((omission) => omission.reason.includes('Annex V'))).toBe(true)
   })
 })

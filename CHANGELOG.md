@@ -37,6 +37,40 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **The GHS engine says when it draws something off the label.** `layOutGhsLabel` stacks its blocks and
+  clamps nothing, by design, but unlike `usFoodEngine` it recorded nothing either. A signal word on a baseline
+  13.4 mm down a 6 mm label was cleared as the label's one signal word, and a 50 ml container's manufacturer
+  and outer-package statement, both wholly below a 25 mm label, were counted as carried. It now records an
+  `element` omission for a block that begins past the bottom edge and a `detail` for one that runs past it —
+  the text blocks, the statements it draws by its own loop, and each pictogram. The right edge is checked the
+  same way: a pictogram strip is one row wider than a narrow label, and the text wrapper never breaks inside a
+  word, so a long chemical name runs off the side. The review of this change found the second — a 40-letter
+  name printed past a 30 mm label with nothing recorded — after the first draft checked the bottom alone. The guard, and the rules that gate on `wasFullyDrawn`, now have
+  something to read: the signal-word pass is withheld, and the small container's supplier and statement gates
+  are reached by a real layout rather than only by hand.
+
+  **Export follows.** An `element` omission blocks export, so a GHS label with a block wholly off its stock is
+  refused by the export route, and the editor disables export with the omission's reason, as it already did
+  for a US food label. The GHS
+  fixtures and the landing sample on its default stock were laid out to check, and none records one.
+
+  Each recording path — both edges, for text blocks, statements and pictograms, in both scopes — is pinned by
+  a named engine test and was mutation-tested. A pictogram beginning wholly past the right edge survived the
+  first round, because both test pictograms started on the label; a third pictogram now reaches it. The same
+  review caught a test helper that stripped every omission on a pictogram, positional ones included, which
+  left an assertion that could never fail; it strips only the missing glyph now.
+
+  A second review found two more. The signal word is drawn at weight 600, and the right-edge check measured
+  it in Regular widths, 3–5% narrow — enough to print past the edge unrecorded and still clear. The check now
+  measures bold text in the SemiBold face, resolved as `embeddedFontFor` resolves the face the PDF embeds; the
+  wrap still uses Regular widths, which `docs/BACKLOG.md` keeps as its own stage. And one element can now
+  carry several omissions — a pictogram's missing glyph and its overrun — while `LabelTextView` keyed its
+  list on the element id, so Vue saw duplicate keys whenever the list reordered. It keys on position and id
+  now, pinned by a component test that fails with Vue's duplicate-key warning when the old key is restored.
+
+  `usFoodEngine` has the same right-edge gap and is recorded in `docs/BACKLOG.md`, reproduced: a statement of
+  identity running to 114.8 mm on a 60 mm label is recorded nowhere and still clears.
+
 - **Three US food passes certified text that never printed, and now decline to.** Each named an element the
   engine never records as omitted, so the guard in `runRules` could not withhold it, and each was reproduced
   first.
