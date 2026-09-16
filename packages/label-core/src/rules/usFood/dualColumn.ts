@@ -41,7 +41,7 @@ import { DUAL_COLUMN_BASIS_REFERENCE } from '../../fda/nutritionFormats'
 import type { MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed, passedOnDocument, untitled } from '../finding'
+import { finding, passedOnArtwork, passedOnDocument, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_DUAL_COLUMN_MISSING = 'FDA_DUAL_COLUMN_MISSING'
@@ -207,7 +207,7 @@ export const usFoodDualColumnRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodDualColumnRule,
         FDA_DUAL_COLUMN_MET,
         `This package holds ${percent} percent of its reference amount and carries the second ` +

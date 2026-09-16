@@ -14,7 +14,7 @@
 
 import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_SIGNAL_WORD_CONFLICT = 'GHS_SIGNAL_WORD_CONFLICT'
@@ -64,7 +64,7 @@ export const ghsSignalWordRule: GhsChemicalRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         ghsSignalWordRule,
         GHS_SIGNAL_WORD_SINGLE,
         `The label carries one signal word, “${words[0]}”.`,

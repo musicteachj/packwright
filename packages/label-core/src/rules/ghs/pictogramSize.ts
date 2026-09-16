@@ -30,7 +30,7 @@
 
 import { dimensionBandFor } from '../../ghs/labelDimensions'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_PICTOGRAM_BELOW_MINIMUM_SIZE = 'GHS_PICTOGRAM_BELOW_MINIMUM_SIZE'
@@ -78,7 +78,7 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
 
       if (!tooSmall) {
         findings.push(
-          passed(
+          passedOnArtwork(
             ghsPictogramSizeRule,
             GHS_PICTOGRAM_SIZE_MET,
             `The ${pictogram.code} pictogram is ${mm(pictogram.drawnSideMm)} square, covering ` +

@@ -19,7 +19,7 @@
  */
 
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_HRI_MISSING = 'GS1_HRI_MISSING'
@@ -45,7 +45,7 @@ export const humanReadableRule: Gs1RetailRule = {
       )
 
       if (hasDigits) {
-        return passed(
+        return passedOnArtwork(
           humanReadableRule,
           GS1_HRI_PRESENT,
           `The symbol prints ${symbol.value} beneath the bars.`,

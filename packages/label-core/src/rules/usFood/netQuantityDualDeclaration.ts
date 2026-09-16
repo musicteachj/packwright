@@ -29,7 +29,7 @@
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { UsFoodPackaging } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NET_QUANTITY_METRIC_MISSING = 'FDA_NET_QUANTITY_METRIC_MISSING'
@@ -95,7 +95,7 @@ export const usFoodNetQuantityDualDeclarationRule: UsFoodRule = {
       // is wrong costs more than the one it replaces.
       const carriesMetric = metric !== undefined && metric.trim() !== ''
       return [
-        passed(
+        passedOnArtwork(
           usFoodNetQuantityDualDeclarationRule,
           FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
           carriesMetric
@@ -122,7 +122,7 @@ export const usFoodNetQuantityDualDeclarationRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodNetQuantityDualDeclarationRule,
         FDA_NET_QUANTITY_DUAL_MET,
         `The label declares "${inchPound}" and "${metric}", covering both measurement systems.`,

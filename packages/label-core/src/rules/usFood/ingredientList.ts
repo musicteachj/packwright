@@ -29,7 +29,7 @@
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { INGREDIENT_THRESHOLD_PERCENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_INGREDIENTS_MISSING = 'FDA_INGREDIENTS_MISSING'
@@ -75,7 +75,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // listed — otherwise what is on the label is checked like any other list.
     if (data.ingredientsExempt === true && ingredients.length === 0) {
       return [
-        passed(
+        passedOnArtwork(
           usFoodIngredientListRule,
           FDA_INGREDIENTS_EXEMPT,
           'The label claims an exemption from ingredient labelling, so the statement is not ' +
@@ -169,7 +169,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodIngredientListRule,
         FDA_INGREDIENTS_ORDER_MET,
         `${ordered.length} ingredient${ordered.length === 1 ? '' : 's'} run in descending order ` +
@@ -249,7 +249,7 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodIngredientThresholdRule,
         FDA_INGREDIENT_THRESHOLD_MET,
         `${grouped.length} ingredient${grouped.length === 1 ? '' : 's'} sit behind the ` +

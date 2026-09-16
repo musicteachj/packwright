@@ -21,7 +21,7 @@
 
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NET_QUANTITY_MISSING = 'FDA_NET_QUANTITY_MISSING'
@@ -60,7 +60,7 @@ export const usFoodNetQuantityPresentRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodNetQuantityPresentRule,
         FDA_NET_QUANTITY_DECLARED_MET,
         `The panel bears a net quantity declaration, "${data.netQuantity.inchPound.trim()}".`,

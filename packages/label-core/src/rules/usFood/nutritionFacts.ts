@@ -43,7 +43,7 @@ import type { NutrientId } from '../../fda/nutrients'
 import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../../templates/usFood'
 import type { UsFoodNutritionFacts } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed, untitled } from '../finding'
+import { finding, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NUTRITION_MISSING = 'FDA_NUTRITION_MISSING'
@@ -120,7 +120,7 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
 
     if (data.nutritionFactsExempt === true && panel === undefined) {
       return [
-        passed(
+        passedOnArtwork(
           usFoodNutritionCompletenessRule,
           FDA_NUTRITION_EXEMPT,
           'The label claims an exemption from nutrition labelling, so no panel is required. ' +
@@ -169,7 +169,7 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodNutritionCompletenessRule,
         FDA_NUTRITION_COMPLETE,
         `All ${NUTRIENTS.length} mandatory nutrients are declared.`,
@@ -224,7 +224,7 @@ export const usFoodNutritionOrderRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodNutritionOrderRule,
         FDA_NUTRITION_ORDER_MET,
         `${listed.length} nutrients run in the order 101.9(c) sets.`,
@@ -313,7 +313,7 @@ export const usFoodNutritionRoundingRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodNutritionRoundingRule,
         FDA_NUTRITION_ROUNDING_MET,
         `${checked.length} declared amount${checked.length === 1 ? '' : 's'} round as 101.9(c) ` +
@@ -397,7 +397,7 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodNutritionPercentDvRule,
         FDA_NUTRITION_PERCENT_DV_MET,
         `${measured.length} percentage${measured.length === 1 ? '' : 's'} match the Daily Values, ` +
@@ -462,7 +462,7 @@ export const usFoodServingSizeRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodServingSizeRule,
         FDA_SERVING_SIZE_MET,
         `The panel declares a serving size of ${panel.servingSize.trim()}. Whether that amount ` +

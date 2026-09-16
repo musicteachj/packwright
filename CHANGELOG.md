@@ -191,6 +191,52 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Changed
 
+- **A pass that does not say what it certifies no longer compiles.** `Finding` is discriminated on
+  `severity`: the `pass` arm requires `certifies: 'artwork' | 'document'`, and every other severity carries
+  `certifies?: never`. `passed` is now `passedOnArtwork`, beside `passedOnDocument`, and both set the field.
+
+  The field used to be optional, and absent meant the artwork, so thirty-seven of the thirty-nine passes in
+  the registry took that answer because it was the default rather than because anyone read the provision.
+  The distinction is not decorative: a pass on `'artwork'` is withheld when the engine could not draw the
+  element it names, and a pass on `'document'` is not.
+
+  **No verdict changes, and that was measured rather than assumed.** Every fixture, plus four documents that
+  reach permission branches, was run through `runRules` on `dev` and on this branch with `certifies` stripped:
+  833 findings, 743 of them passes, identical once key order is normalised. The order did change — `finding()`
+  now builds the two arms separately — which is why a byte comparison is not the evidence.
+
+  **The thirty-seven `passedOnArtwork` stamps preserve the old default. They are not yet decisions.** They
+  were renamed in bulk so that no verdict moved in the same commit as the mechanism; the provisions are read
+  after this, rule set by rule set, and a judged call site carries a note saying what its provision governs.
+
+  The guarantee is the compiler's. An earlier draft enforced it with a runtime sweep over the fixtures, which
+  a `max` review showed could not see what mattered most: an exemption is not a *bad* label, so no known-bad
+  fixture reaches one, and the sweep never observed a single `passedOnDocument` pass. `certification.test.ts`
+  now carries a `@ts-expect-error` that fails `npm run typecheck` if the type stops refusing an uncertified
+  pass — confirmed by loosening the type and watching it report the directive unused.
+
+  The sweep survives as a second check, moved to `rules/fixtures/sweep.ts` and shared with
+  `citations.test.ts`. The two had grown separate copies; the newer one dropped the permission documents the
+  older had added deliberately, which is how it went blind. It reaches 34 of the 39 pass codes, observes both
+  answers, asserts each rule set clears rather than one pooled count, and asserts that every permission
+  document reaches a pass no fixture does — because two of the four were dead on the day they were written.
+  One kept a panel its rule's exemption branch requires to be absent. The other paraphrased 21 CFR
+  101.9(d)(11)(iii) without its condition — the tabular display is permitted where continuous vertical space
+  runs short — so it never declared that fact and got a violation instead of the pass its comment named. An
+  earlier draft of this entry blamed the rule's docblock for the paraphrase; the paragraph, read from the eCFR,
+  says what the docblock says.
+
+  **The guard's own docblock gave a reason that was not true.** It said a pass with no `elementId` is exempt
+  because such passes judge the document, citing a check digit — but `GS1_GTIN_CHECK_DIGIT_VALID` names an
+  element. The real reason is mechanical: omissions are recorded per element, so a pass naming none has
+  nothing to look up. Which means three `passedOnArtwork` passes are beyond the guard whatever they declare.
+
+  What the review found that this commit does not fix is in `docs/BACKLOG.md`, each reproduced first: a panel
+  type-size pass that counts a firm printed at 645 mm down a 240 mm label; a small-container pass stating the
+  container carries everything required while its only pictogram has no symbol; a pictogram-set pass that
+  names the strip while omissions are recorded per pictogram; the five pass codes the sweep does not reach;
+  and duplication a reuse review reported between the sweep's documents and the rule tests' own.
+
 - **`FindingsRail` takes its heading id, its title, whether it announces, and whether its findings can be
   selected.** All three default to what it
   All four default to what it did before, so the editor is untouched. It hardcoded `id="findings-heading"`

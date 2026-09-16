@@ -40,7 +40,7 @@
 import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { TextPrimitive } from '../../layout/types'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 import { MM_PER_POINT } from '../../geometry/units'
 
@@ -255,7 +255,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     if (findings.length > 0) return findings
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodDualColumnFormRule,
         FDA_DUAL_COLUMN_FORM_MET,
         'The panel declares every nutrient in both columns, heads them, separates them by a ' +

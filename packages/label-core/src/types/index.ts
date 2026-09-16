@@ -60,32 +60,58 @@ export interface Measurement {
   required: string
 }
 
-export interface Finding {
+interface FindingBase {
   /** Stable machine code, e.g. 'GS1_QUIET_ZONE_TOO_NARROW'. Never localised. */
   code: string
-  severity: Severity
   /** One plain sentence stating the defect. */
   message: string
   citation: Citation
   /** Links the finding to an element in the resolved layout, for canvas highlighting. */
   elementId?: string
   measurement?: Measurement
-  /**
-   * What the verdict rests on — the printed artwork, or the document alone.
-   *
-   * `elementId` cannot answer this, and assuming it could was a bug. That field
-   * says *where to look*; it does not say what was judged. An exemption under
-   * 101.9(b)(12)(i)(C) points at the nutrition panel so the canvas can highlight
-   * it, but what it reports is that this food is excused from carrying a second
-   * column — which is true of the food whether or not the panel printed.
-   *
-   * It matters because a pass on `artwork` is withheld when the engine could not
-   * draw the element it names, and a pass on `document` is not. Defaulting to
-   * `artwork` is the safe direction: a wrong guess withholds a pass that was
-   * earned, where the other way round certifies ink that was never laid down.
-   */
-  certifies?: 'artwork' | 'document'
 }
+
+/**
+ * What a passing verdict rests on — the printed artwork, or the document alone.
+ *
+ * `elementId` cannot answer this, and assuming it could was a bug. That field
+ * says *where to look*; it does not say what was judged. An exemption under
+ * 101.9(b)(12)(i)(C) points at the nutrition panel so the canvas can highlight
+ * it, but what it reports is that this food is excused from carrying a second
+ * column — which is true of the food whether or not the panel printed.
+ *
+ * It matters because a pass on `artwork` is withheld when the engine could not
+ * draw the element it names, and a pass on `document` is not. It is the
+ * difference between reporting a label compliant and reporting it compliant on
+ * ink that was never laid down.
+ */
+export type Certifies = 'artwork' | 'document'
+
+/**
+ * A finding, discriminated on severity so that **a pass must say what it rests
+ * on**.
+ *
+ * It was one interface with `certifies?: 'artwork' | 'document'`, and optional
+ * meant the artwork — so thirty-seven of the thirty-nine passes in the registry
+ * took that answer because it was the default rather than because anyone read
+ * the provision, and a fortieth would have done the same, silently, whichever
+ * answer was right for it.
+ *
+ * A runtime sweep over the fixtures can only catch that where a fixture drives
+ * the rule down its pass branch, and several passes are structurally out of
+ * reach of one — an exemption is not a *bad* label, so no known-bad fixture
+ * exercises it. The compiler has no such gap. Making the field required on the
+ * `pass` arm cost nothing to adopt: no call site changed, because both pass
+ * builders already set it.
+ *
+ * Violations carry `certifies?: never`. Nothing reads it there, and the audit
+ * report that would want it — separating a verdict about the user's label from
+ * one about our reconstruction of it — is a design question in `docs/BACKLOG.md`,
+ * not a field to leave open in the meantime.
+ */
+export type Finding =
+  | (FindingBase & { severity: 'pass'; certifies: Certifies })
+  | (FindingBase & { severity: Exclude<Severity, 'pass'>; certifies?: never })
 
 // --- Extraction --------------------------------------------------------------
 

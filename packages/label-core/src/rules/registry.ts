@@ -167,13 +167,21 @@ export function listRules(labelType?: LabelType): readonly Rule[] {
  * the first. An element that could not be drawn has not been cleared, and it has
  * not been absolved either.
  *
- * A pass carrying no `elementId`, or one built by `passedOnDocument`, is left
- * alone. Those judge the document rather than the artwork — a check digit is a
- * fact about a number, an exemption is a fact about the food — and nothing the
- * engine failed to draw changes whether they ran. `elementId` alone cannot make
- * that distinction, and an earlier version of this guard that tried to read it
- * that way deleted two entitlements: `elementId` says where to look, not what
- * was judged. `Finding.certifies` says what was judged.
+ * A pass built by `passedOnDocument` is left alone, because it judges something
+ * the engine's drawing cannot change — an exemption is a fact about the food.
+ * `elementId` cannot make that distinction, and an earlier version of this guard
+ * that tried to read it that way deleted two entitlements: `elementId` says where
+ * to look, not what was judged. `Finding.certifies` says what was judged.
+ *
+ * **A pass carrying no `elementId` is also left alone, and for a narrower reason
+ * than this comment used to give.** It said such passes judge the document, and
+ * offered a check digit as the example. Neither holds: `GS1_GTIN_CHECK_DIGIT_VALID`
+ * names an element, and a pass that names none has not thereby said anything
+ * about what it rests on. The real reason is mechanical — omissions are recorded
+ * per element, so a pass naming no element has nothing this guard can look up.
+ * Which means a pass that certifies the artwork and names no element is a pass
+ * this guard cannot withhold, whatever `certifies` says. Three do today;
+ * `docs/BACKLOG.md` says which, and that one of them is live.
  */
 function withholdUncertifiablePasses(findings: Finding[], layout: ResolvedLayout): Finding[] {
   if (layout.omissions.length === 0) return findings

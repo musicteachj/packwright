@@ -16,8 +16,13 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import * as bwip from 'bwip-js/generic'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import { US_FOOD_CONFORMANT } from './fixtures/usFood'
+import { PERMISSION_PATHS, sweepEveryRule } from './fixtures/sweep'
+import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES } from './registry'
+import { finding } from './finding'
+import type { Finding } from '../types/index'
 import type { LabelStock } from '../templates/stock'
 import { US_FOOD_ELEMENTS } from '../templates/usFood'
 import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
@@ -166,5 +171,100 @@ describe('the statement of identity is bounded like every other block', () => {
         result.severity === 'pass' && result.elementId === US_FOOD_ELEMENTS.statementOfIdentity,
     )
     expect(certified, 'an identity printed off the label cannot be reported met').toBe(false)
+  })
+})
+
+/** One sweep for the whole file. It lays out every fixture; the assertions below do not each need their own. */
+const SWEPT = sweepEveryRule(bwip)
+const PASSES = SWEPT.filter(({ finding: result }) => result.severity === 'pass')
+
+describe('every pass says what it certifies', () => {
+  it('will not compile if a pass omits it', () => {
+    // **The guarantee, and it is the compiler's rather than this file's.**
+    // `Finding` is discriminated on `severity`, so the `pass` arm requires
+    // `certifies`. That holds for every rule ever written, including the ones no
+    // fixture reaches — which matters, because an entitlement is not a *bad*
+    // label, so no known-bad fixture exercises one and a runtime sweep is
+    // structurally blind to exactly the passes most likely to be mis-stamped.
+    //
+    // `@ts-expect-error` fails the build if the error stops happening, so this
+    // is a check rather than a comment about one. **It sits inside the arrow on
+    // purpose:** above the `const`, Prettier's line break moved the call off the
+    // line the directive governs, and the typecheck reported it unused.
+    const uncertified = () =>
+      // @ts-expect-error a pass must say what it rests on
+      finding(GS1_RETAIL_RULES[0]!, { code: 'x', severity: 'pass', message: 'm' })
+    expect(typeof uncertified).toBe('function')
+  })
+
+  it('will not compile a finding assembled by hand as a pass without it either', () => {
+    // The test above goes through `finding()`, so it pins `FindingInput` and
+    // nothing else. `Finding` itself could be widened back to an optional field
+    // and that test would still pass — a review did exactly that, and the whole
+    // suite stayed green. This one names the type directly.
+    // @ts-expect-error a finding that passes must say what it rests on
+    const handBuilt: Finding = {
+      code: 'x',
+      severity: 'pass',
+      message: 'm',
+      citation: { authority: 'GS1', reference: 'r' },
+    }
+    expect(handBuilt.severity).toBe('pass')
+  })
+
+  it('and none of the passes the fixtures do reach has been left to a default', () => {
+    // Belt and braces under the type: it would catch a `Finding` object built by
+    // hand somewhere that bypassed `finding()` altogether.
+    const undeclared = PASSES.filter(({ finding: result }) => result.certifies === undefined).map(
+      ({ rule, finding: result }) => `${rule.id} / ${result.code}`,
+    )
+    expect([...new Set(undeclared)].sort(), 'a pass that did not say what it rests on').toEqual([])
+  })
+
+  it('reaches every rule set, so neither assertion is vacuous for one of them', () => {
+    // Asserted per set against the registry's own arrays rather than as one
+    // pooled threshold. A pooled count reads green while a whole rule set goes
+    // dark: with three rules' slack today, all seven GHS rules could stop
+    // emitting passes and a `> 25` check would not notice.
+    const cleared = (rules: readonly { id: string }[]) =>
+      rules.filter((rule) => PASSES.some(({ rule: seen }) => seen.id === rule.id)).length
+
+    expect(cleared(GS1_RETAIL_RULES), 'GS1 rules that cleared at least once').toBe(
+      GS1_RETAIL_RULES.length,
+    )
+    // Not all of them: `docs/BACKLOG.md` records which pass codes no fixture
+    // reaches, and why one of them cannot be reached at all today.
+    expect(cleared(GHS_RULES), 'GHS rules that cleared at least once').toBeGreaterThanOrEqual(5)
+    expect(
+      cleared(US_FOOD_RULES),
+      'us-food rules that cleared at least once',
+    ).toBeGreaterThanOrEqual(18)
+  })
+
+  it('reaches something with every permission path it carries', () => {
+    // Two of the four were dead on the day they were written. One kept a panel
+    // its rule's exemption branch requires to be absent; the other paraphrased a
+    // paragraph's permission without its condition, so it never declared the fact
+    // the permission turns on and got a violation instead of the pass its comment
+    // named. Both would have sat in the sweep looking like coverage.
+    const fromFixtures = new Set(
+      PASSES.filter(({ source }) => source === 'fixtures').map(({ finding: r }) => r.code),
+    )
+    for (const { label } of PERMISSION_PATHS) {
+      const reached = PASSES.filter(({ source }) => source === label)
+        .map(({ finding: r }) => r.code)
+        .filter((code) => !fromFixtures.has(code))
+      expect(reached, `${label} must reach a pass no fixture does`).not.toEqual([])
+    }
+  })
+
+  it('observes both answers, not just the default one', () => {
+    // The gap this file shipped with for one commit: the sweep was copied from
+    // `citations.test.ts` minus the permission paths, so it saw 708 passes and
+    // every one of them `artwork`. Both `passedOnDocument` sites sit on rules it
+    // never reached, which is to say the half of the distinction that changes a
+    // verdict was untested by the test written to police it.
+    const kinds = new Set(PASSES.map(({ finding: result }) => result.certifies))
+    expect([...kinds].sort()).toEqual(['artwork', 'document'])
   })
 })

@@ -37,7 +37,7 @@
 
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_STATEMENT_OF_IDENTITY_MISSING = 'FDA_STATEMENT_OF_IDENTITY_MISSING'
@@ -80,7 +80,7 @@ export const usFoodStatementOfIdentityRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodStatementOfIdentityRule,
         FDA_STATEMENT_OF_IDENTITY_MET,
         `The panel identifies the food as “${statement}”. Whether that is its common or usual ` +

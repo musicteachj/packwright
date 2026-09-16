@@ -31,7 +31,7 @@
 import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { GhsRegime } from '../../ghs/statements'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_SMALL_CONTAINER_INCOMPLETE = 'GHS_SMALL_CONTAINER_INCOMPLETE'
@@ -149,7 +149,7 @@ export const ghsSmallContainerRule: GhsChemicalRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         ghsSmallContainerRule,
         GHS_SMALL_CONTAINER_COMPLETE,
         'The container carries everything the small-container provision requires of it.',

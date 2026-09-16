@@ -39,7 +39,7 @@ import { MM_PER_POINT } from '../../geometry/units'
 import type { TextPrimitive } from '../../layout/types'
 import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, passed, untitled } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NUTRITION_TYPE_TOO_SMALL = 'FDA_NUTRITION_TYPE_TOO_SMALL'
@@ -209,7 +209,7 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      passedOnArtwork(
         usFoodNutritionTypeSizeRule,
         FDA_NUTRITION_TYPE_SIZE_MET,
         `${checks.length} parts of the panel meet the type sizes 101.9(d) sets.`,

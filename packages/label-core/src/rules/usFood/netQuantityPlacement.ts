@@ -28,7 +28,7 @@ import {
 } from '../../geometry/pdp'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NET_QUANTITY_OUTSIDE_ZONE = 'FDA_NET_QUANTITY_OUTSIDE_ZONE'
@@ -65,7 +65,7 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
 
     if (!isNetQuantityZoneRequired(pdpSqInches)) {
       return [
-        passed(
+        passedOnArtwork(
           usFoodNetQuantityPlacementRule,
           FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
           `The panel is ${pdpSqInches.toFixed(1)} in², so the bottom-30 percent placement ` +
@@ -86,7 +86,7 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
 
     if (declaration.box.yMm >= zoneTopMm - MEASUREMENT_TOLERANCE_MM) {
       return [
-        passed(
+        passedOnArtwork(
           usFoodNetQuantityPlacementRule,
           FDA_NET_QUANTITY_PLACEMENT_MET,
           `The declaration starts ${measurement.actual} from the top of the label, inside the ` +

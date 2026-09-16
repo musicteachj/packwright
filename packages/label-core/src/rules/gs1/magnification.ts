@@ -14,7 +14,7 @@ import {
   xDimensionMmToMagnification,
 } from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed, xDimensionMm } from '../finding'
+import { finding, passedOnArtwork, xDimensionMm } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_MAGNIFICATION_OUT_OF_RANGE = 'GS1_MAGNIFICATION_OUT_OF_RANGE'
@@ -41,7 +41,7 @@ export const magnificationRule: Gs1RetailRule = {
       const actual = `${magnification.toFixed(2)}x (X = ${xDimensionMm(symbol.xDimensionMm)})`
 
       if (isMagnificationInRange(magnification)) {
-        return passed(
+        return passedOnArtwork(
           magnificationRule,
           GS1_MAGNIFICATION_IN_RANGE,
           `The symbol is drawn at ${actual}, within the permitted ${RANGE}.`,

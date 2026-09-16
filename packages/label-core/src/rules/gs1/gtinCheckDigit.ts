@@ -11,7 +11,7 @@
 
 import { calculateCheckDigit, isValidCheckDigit } from '../../gs1/checkDigit'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_GTIN_CHECK_DIGIT_INVALID = 'GS1_GTIN_CHECK_DIGIT_INVALID'
@@ -41,7 +41,7 @@ export const gtinCheckDigitRule: Gs1RetailRule = {
 
     if (isValidCheckDigit(data.gtin)) {
       return [
-        passed(
+        passedOnArtwork(
           gtinCheckDigitRule,
           GS1_GTIN_CHECK_DIGIT_VALID,
           `The check digit for ${data.gtin} is correct.`,

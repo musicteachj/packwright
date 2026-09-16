@@ -343,15 +343,87 @@ not become a rule on the strength of an illustration.
 
 The extraction endpoint, and what writing it turned up.
 
-**`Finding.certifies` is the right idea and is set in two places.** `'document'` versus `'artwork'` is exactly
-the distinction an audit report needs: the engine judges a label rebuilt from what a user confirmed, so a
-verdict resting on the document describes their label and a verdict resting on the artwork describes our
-reconstruction. Today `passedOnDocument` is called at `usFood/nutritionFormat.ts:108` and
-`usFood/dualColumn.ts:166` and nowhere else, so everything else defaults to `'artwork'` — and filtering an
-audit report on it would empty the report, which is misleading in the opposite direction to not filtering at
-all. Widening it means reading every rule and deciding what it actually judges, and it alters
-`withholdUncertifiablePasses`, the guard standing between this project and a pass issued on ink that was never
-laid down. Its own stage, and a `max` review.
+**`Finding.certifies` is the right idea, and nothing defaults it any more — but the widening is in progress,
+and this entry's original framing of *why* was wrong.** It said filtering an audit report on the field
+would empty the report. No such filter exists: `withholdUncertifiablePasses` is the field's only reader, and
+the audit report builds its "cannot be checked" block from `layout.omissions` directly. So widening
+`certifies` changes one thing only — which passes survive an omission — and can only ever make that guard
+*looser*. A report that separates a verdict about the user's label from one about our reconstruction would
+need `certifies` on violations too, which `Finding` now forbids (`certifies?: never`) until someone designs
+it.
+
+Where it stands: `Finding` is discriminated on `severity`, so a `pass` without `certifies` does not compile.
+When the builders were split, every existing `passed` call became `passedOnArtwork` so that no verdict
+changed in the same commit as the mechanism. **Those thirty-seven stamps preserve the old default; they are
+not yet decisions.** The provisions are read rule set by rule set, and a call site that has been judged
+carries a note saying what its provision governs.
+
+### What reviewing the mechanism turned up
+
+Each reproduced before being written here. None is fixed by choosing `artwork` or `document`, which is why
+they are separate entries rather than part of the reading.
+
+**`us-food/information-panel-type-size` clears type that was never printed.** Its pass names
+`food-pdp`, and the engine never records an omission against that id, so the guard cannot withhold it. On
+`US_FOOD_CONFORMANT` with 400 ingredients, the responsible firm is recorded as an `element`-scope omission
+— "begins 645.22 mm down a 240.00 mm label, past its bottom edge, so none of it is printed" — and the engine
+still emits its text primitives. The rule counts them: `FDA_PANEL_TYPE_SIZE_MET`, "3 elements on the panel
+clear the 1.59 mm floor", where the three are the statement of identity, the ingredients (itself partly
+omitted) and a firm that is not on the label. `certification.test.ts` asserts `FDA_RESPONSIBLE_FIRM_MET` is
+withheld for this exact document, so two rules disagree about the same undrawn element and the one that
+survives is the one certifying more. A live false clearance.
+
+**`GHS_SMALL_CONTAINER_COMPLETE` names no element, so nothing can withhold it.** On a complete EU small
+container (0.1 L, GHS02) it reports "The container carries everything the small-container provision requires
+of it" while the only pictogram is a frame with no symbol in it. The rule's own list includes "at least one
+hazard pictogram", which it checks as `layout.pictograms.length > 0` — frames, not glyphs. The violation
+branch names `GHS_ELEMENTS.supplier`, so an id was available. `GHS_PICTOGRAM_SYMBOL_MISSING` is still raised
+on the same label, so the label is not silently clean, but this pass states something false.
+
+Two other `passedOnArtwork` sites name no element and are equally beyond the guard's reach:
+`GS1_DIGITAL_LINK_VALID` and `GHS_PICTOGRAM_PRECEDENCE_MET`. Whether either is a false clearance depends on
+what its provision governs, which is the reading.
+
+**`GHS_PICTOGRAM_SET_MATCHES` names the strip; omissions are recorded per pictogram.** It carries
+`ghs-pictograms`, and the engine records `ghs-pictograms-GHS02` — so on `GHS_CONFORMANT` the guard never
+matches, and the pass "Every pictogram on the label is required by a declared hazard class" survives beside
+a `GHS_PICTOGRAM_SYMBOL_MISSING` violation for the same pictogram. `ghs/pictogram-size` names the suffixed id
+and *is* withheld. **Recorded as a mechanism, not yet as a defect:** whether a set rule is judging the codes a
+label declares or the glyphs it prints is exactly the question the GHS reading has to answer, and the answer
+decides whether this survival is right.
+
+**Five pass codes are reached by no fixture.** The sweep in `fixtures/sweep.ts` reaches 34 of 39.
+`GHS_PICTOGRAM_COMPLETE` is unreachable by any document and correctly so: `glyphDrawn` is only ever `false`,
+because the Annex V specimen artwork was never verified, and the rule continues past the pass whenever it is.
+The other four are reachable and not in the sweep — `GHS_SMALL_CONTAINER_COMPLETE`, `FDA_DUAL_COLUMN_MET`,
+`FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. It matters less than it did, because
+the guarantee that every pass states what it certifies is now the compiler's, not the sweep's. It still
+matters for every reading that flips one of them, since a flip ships with a fixture that reaches it.
+
+**~~`us-food/nutrition-format`'s docblock and its behaviour disagree about (d)(11)(iii).~~ They do not, and
+this entry was wrong.** It recorded a disagreement while declining to read the paragraph, which `CLAUDE.md`
+says to fetch in the session that writes about it. Read from the eCFR on 2026-09-16: "If there is not
+sufficient continuous vertical space (i.e., approximately 3 in) to accommodate the required components of the
+nutrition label up to and including the mandatory declaration of potassium, the nutrition label may be
+presented in a tabular display". A permission, conditional on vertical space and on nothing about package
+size. `fda/nutritionFormats.ts` quotes it and `formatIsPermitted` implements it. The sweep document that
+"reached nothing" was built on a paraphrase that dropped the condition, so it never declared
+`continuousVerticalSpaceInches`, and the rule refused it under (j)(13) as it should.
+
+Kept rather than deleted, because acting on the old entry meant "fixing" one of the two, and the likeliest
+fix removes the route that entitles a tall, thin, large package to the tabular display.
+
+**The sweep's documents duplicate ones the rule tests already build — reported by review, not yet
+verified.** A reuse pass over the `certifies` mechanism reported that the permission documents in
+`fixtures/sweep.ts` repeat documents `usFoodRules.test.ts` builds and asserts exactly; that the second-column
+exemption document now exists in three places; that `passedOnArtwork` and `passedOnDocument` have identical
+bodies; that `FindingInput` restates `Finding`'s severity split; and that the sweep's three loops re-derive
+the dispatch `listRules(labelType)` provides. Its suggested direction is to export each exemption document
+from `fixtures/usFood.ts`, built from the known-bad fixture it excuses, so an exemption document is always
+the violating label plus its exemption and the two cannot drift. Not done in the mechanism commit, which had
+already grown by fixing a review's findings in place. One item from that pass was fixed there: only the
+US-food loop labelled where its findings came from, so a GHS permission document added later would have
+counted as fixture coverage and escaped the check that every such document reaches something.
 
 **~~`ExtractionResult` admits a field that is present with no value.~~ Fixed in stage 2**, the stage this
 entry said should carry it. `fields` is now `{ [K in keyof T]?: ExtractedField<NonNullable<T[K]>> }`, so
