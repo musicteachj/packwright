@@ -37,6 +37,105 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **`usFoodEngine` looks across as well as down.** Its bounds checks have recorded a block drawn past the bottom
+  of the stock since phase 5, but nothing looked past the right edge, and `wrapTextMm` never breaks inside a
+  word. A statement of identity reading "Supercalifragilisticexpialidociousgranola" was set as one line
+  ending 114.8 mm across a 60 mm label, recorded nowhere, and cleared by `us-food/statement-of-identity`.
+  The statement of identity and every block `stackText` draws — the ingredients, the Contains statement, the
+  responsible firm — now record a `detail` omission when their widest line runs past the stock, and an
+  `element` omission when they begin past it. The first draft filed every case as a detail on the reasoning
+  that each block starts at the panel's margin, on the label; its review pointed out the engine accepts a
+  margin as wide as the stock, where nothing prints and a detail would have left export open. The UPC-A
+  engine's overflow check, one commit earlier, rested on the same assumption about its anchored symbol, and
+  a probe confirmed a corner anchor places it wholly off the label with export still offered; it is
+  corrected in the same change. A last review found a block recorded as absent below the label
+  also measured across, so one element carried "none of it is printed" beside "part of it is not", and a
+  block past both edges was listed as blocking twice. Both engines now skip the right-edge check for a block
+  already absent, at all five sites, each pinned by a test that fails with the two notes restored.
+
+  **Measured in the face it prints in.** The statement of identity is bold, and in Regular widths it reads
+  3–5% narrow, which the GHS engine's review had already shown is enough to escape a check. The face is
+  resolved by one function now, `measuredFamilyFor` in `text/measure`, mirroring `renderPdf`'s
+  `embeddedFontFor`; the GHS engine's local copy is gone, and its bold test still pins it.
+
+  Each call site and the face resolution were mutation-tested, each failing a named test: the identity check,
+  the stacked-block check, the identity measured in Regular, the shared function never resolving SemiBold —
+  which fails the GHS and US food bold tests both — the absent-block branch and the recording itself. The test for the stacked block
+  failed on its premise the first time, because the firm is set smaller than the statement and fitted a
+  60 mm label; it asserts the overrun it depends on now.
+
+- **A UPC-A drawn off its stock is recorded as not printed in full.** `verticalOverflowMm` has measured it
+  since phase 3, but only the quiet-zone rule read it and no omission did, so on a 100 × 20 mm label bar
+  height and the human-readable digits both cleared — "The symbol prints 036000291452 beneath the bars" with
+  every digit below the edge. `layOutUpcALabel` now records a `detail` omission against the symbol whenever
+  its ink runs past an edge, naming which. Across, the ink is the bars and the digits: an EAN/UPC prints its
+  first and last digits in the quiet zones, so a stock that holds every bar can still cut a digit off, and
+  the digits are measured from the primitives where they are drawn.
+
+  **Magnification is withheld with the rest.** It is still measurable on the part that printed, and the
+  entry that recorded this defect left that as the choice between an omission and a gate in two rules. The
+  omission won because a symbol not printed as asked for has not been cleared, and because it is the rule the
+  guard already applies to every other element. The check digit, which rests on the document, stands. It is
+  a detail where some of the symbol prints, and an `element` omission where none does, which refuses the
+  export. (This entry first said it was always a detail, because the anchor keeps a symbol on the panel. The
+  engine accepts a margin as wide as the stock, and a corner anchor then places the symbol wholly off the
+  label — found while reviewing the US food check below, which made the same assumption, and fixed with a
+  case for each side.)
+
+  **The editor stops saying it twice.** The web store has stated a symbol's vertical overflow itself since phase
+  3, when no omission did. With the engine now recording one, the "Cannot be checked" list carried both — and
+  for a symbol wholly off the label, "part of it will not be printed" beside "none of it is printed". The
+  pull request's `high` review found it. The store's sentence is gone, the engine's covers every edge, and the
+  editor test that pinned the old wording now asserts the symbol has exactly one reason.
+
+  **Float noise is not an overrun.** Its review found a symbol on a label typed to its exact height — 22.16 mm
+  at 0.8x, where the drawn height is 22.160000000000004 — recorded as running "0.00 mm past the top and
+  0.00 mm past the bottom", withholding every pass on a symbol that printed whole. Anything within
+  `MEASUREMENT_TOLERANCE_MM` now counts as fitting. That also settles `verticalOverflowMm`, which carried the
+  same 3.6e-15 mm before this change and made the quiet-zone rule decline to certify such a symbol. The
+  tolerance moved to `geometry/units`, so the engines can use it without importing from `rules/`, and
+  `rules/finding` re-exports it for every rule that already did. A second pass caught the message rounding an overrun just
+  past the tolerance to "0.00 mm", which reads as nothing wrong beside an omission saying otherwise; an
+  overrun under 0.01 mm is stated to three places.
+
+  Each edge, the digit measurement, the tolerance and the recording itself were mutation-tested, each failing
+  a named test. The one branch no test reaches measures the middle digit groups, which sit inside the bars
+  and so never set the symbol's extent.
+
+- **The GHS engine says when it draws something off the label.** `layOutGhsLabel` stacks its blocks and
+  clamps nothing, by design, but unlike `usFoodEngine` it recorded nothing either. A signal word on a baseline
+  13.4 mm down a 6 mm label was cleared as the label's one signal word, and a 50 ml container's manufacturer
+  and outer-package statement, both wholly below a 25 mm label, were counted as carried. It now records an
+  `element` omission for a block that begins past the bottom edge and a `detail` for one that runs past it —
+  the text blocks, the statements it draws by its own loop, and each pictogram. The right edge is checked the
+  same way: a pictogram strip is one row wider than a narrow label, and the text wrapper never breaks inside a
+  word, so a long chemical name runs off the side. The review of this change found the second — a 40-letter
+  name printed past a 30 mm label with nothing recorded — after the first draft checked the bottom alone. The guard, and the rules that gate on `wasFullyDrawn`, now have
+  something to read: the signal-word pass is withheld, and the small container's supplier and statement gates
+  are reached by a real layout rather than only by hand.
+
+  **Export follows.** An `element` omission blocks export, so a GHS label with a block wholly off its stock is
+  refused by the export route, and the editor disables export with the omission's reason, as it already did
+  for a US food label. The GHS
+  fixtures and the landing sample on its default stock were laid out to check, and none records one.
+
+  Each recording path — both edges, for text blocks, statements and pictograms, in both scopes — is pinned by
+  a named engine test and was mutation-tested. A pictogram beginning wholly past the right edge survived the
+  first round, because both test pictograms started on the label; a third pictogram now reaches it. The same
+  review caught a test helper that stripped every omission on a pictogram, positional ones included, which
+  left an assertion that could never fail; it strips only the missing glyph now.
+
+  A second review found two more. The signal word is drawn at weight 600, and the right-edge check measured
+  it in Regular widths, 3–5% narrow — enough to print past the edge unrecorded and still clear. The check now
+  measures bold text in the SemiBold face, resolved as `embeddedFontFor` resolves the face the PDF embeds; the
+  wrap still uses Regular widths, which `docs/BACKLOG.md` keeps as its own stage. And one element can now
+  carry several omissions — a pictogram's missing glyph and its overrun — while `LabelTextView` keyed its
+  list on the element id, so Vue saw duplicate keys whenever the list reordered. It keys on position and id
+  now, pinned by a component test that fails with Vue's duplicate-key warning when the old key is restored.
+
+  `usFoodEngine` has the same right-edge gap and is recorded in `docs/BACKLOG.md`, reproduced: a statement of
+  identity running to 114.8 mm on a 60 mm label is recorded nowhere and still clears.
+
 - **Three US food passes certified text that never printed, and now decline to.** Each named an element the
   engine never records as omitted, so the guard in `runRules` could not withhold it, and each was reproduced
   first.

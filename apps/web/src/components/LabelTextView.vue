@@ -60,9 +60,12 @@ const rows = computed(() =>
     </table>
 
     <ul v-if="layout.omissions.length" class="mt-3 flex flex-col gap-1">
+      <!-- Keyed on position as well as element: one element can carry several omissions — a
+           pictogram's missing glyph and its overrun, or a block past two edges — and a key
+           shared between them lets Vue reuse the wrong row when the list changes. -->
       <li
-        v-for="omission in layout.omissions"
-        :key="omission.elementId"
+        v-for="(omission, index) in layout.omissions"
+        :key="`${index}:${omission.elementId}`"
         class="text-danger text-xs"
       >
         <span aria-hidden="true">⊘</span> {{ omission.reason }}

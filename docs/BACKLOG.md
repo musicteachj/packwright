@@ -241,6 +241,14 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
   `glyphHeightMm` and `wrapTextMm`, and touches every text call site in `label-core`. That is a change to the
   layer everything else sits on, for a defect that changes no verdict, so it wants its own stage rather than
   a detour inside someone else's.
+
+  **"Changes no verdict" stopped being true once a bounds check read widths.** `layOutGhsLabel` now records a
+  line that runs past the right edge, and a bold signal word measured in Regular widths could print up to
+  that 3–5% past it unrecorded — and still clear `GHS_SIGNAL_WORD_SINGLE`. The check resolves the SemiBold face
+  for bold text the way `embeddedFontFor` does, so the omission is right; the wrap it follows still uses
+  Regular widths, which is this entry. `usFoodEngine`'s right-edge check measures the bold statement of
+  identity the same way, and the resolution is one function, `measuredFamilyFor`, rather than a copy in each
+  engine.
 - **The Calories word and numeral sit on different baselines on the vertical display.** Claimed: `text()`
   derives the baseline from each run's own size, so a 16 pt word and a 22 pt figure sharing a `yMm` are
   ~2.1 mm apart. The tabular branch already takes the max of the pair; the vertical branch is said not to.
@@ -528,10 +536,41 @@ Deciding this needs omissions that say which lines were lost, or an advisory fin
 declaration could not be confirmed on the label. The advisory is a new code with a citation and a fixture, so
 it is a change of its own.
 
+**~~`usFoodEngine` records nothing for a word that runs off the right edge.~~ Fixed** on
+`fix/engines-record-what-runs-off`. The statement of identity, measured in the SemiBold face it prints in, and
+every block `stackText` draws now record a `detail` omission when their widest line runs past the stock, or
+an `element` omission when they begin past it. The
+face resolution is shared with the GHS engine as `measuredFamilyFor` in `text/measure`. What follows is the
+entry as it stood. Found while fixing the same gap in
+the GHS engine, and reproduced. `wrapTextMm` never breaks inside a word, and the engine's bounds checks look at
+the bottom edge alone — only the net quantity declaration is checked across. On `US_FOOD_CONFORMANT` on a
+60 mm label, a statement of identity of "Supercalifragilisticexpialidociousgranola" is set as one line whose
+right edge is 114.8 mm, nothing is recorded against it, and `FDA_STATEMENT_OF_IDENTITY_MET` still clears. A
+live false clearance, and the fix is the one `layOutGhsLabel` now has: measure each block's widest line
+against the stock, for the stacked blocks and the statement of identity's own loop — in the face it prints
+in, since the statement of identity is bold.
+
+**A margin as wide as the stock describes no panel, and all three engines accept it.** Found reviewing the
+right-edge checks on `fix/engines-record-what-runs-off`, and reproduced. Every engine requires only a finite,
+non-negative margin, so `{ widthMm: 60, marginMm: 65 }` resolves a panel of negative width, and anchors then
+place elements wholly off the label. That branch made each engine record such an element as an `element`
+omission, so no empty label exports — except that `usFoodEngine`'s net quantity check, which predates it, still
+files a declaration wholly outside the label (x 65.0–153.1 mm on a 60 mm stock) as a `detail`. Nothing ships
+because of it: under that margin every stacked block also begins off the label and blocks export. But the
+honest answer to such a stock is probably a `LayoutError` — "input that describes no drawing at all" — which
+would make every one of these cases unreachable rather than handled one by one. A decision about the engines'
+contract, not a fix to make in passing.
+
 ### What reading the GHS provisions turned up
 
-**The GHS engine records no omission for a block drawn off its stock, so no GHS pass about text can be
-withheld.** `layOutGhsLabel` stacks its blocks top to bottom and, by design, clamps nothing — but unlike
+**~~The GHS engine records no omission for a block drawn off its stock, so no GHS pass about text can be
+withheld.~~ Fixed** on `fix/engines-record-what-runs-off`. `layOutGhsLabel` now records what `usFoodEngine`
+does for every stacked block — an `element` omission for one that begins past the bottom edge, a `detail` for
+one that runs past it — including the statements, which it draws by its own loop, and each pictogram. It checks
+the right edge too, for pictograms and for text, since the wrapper never breaks inside a word. Both reproductions below are laid out for real
+in `certification.test.ts`. An `element` omission blocks export, so a GHS label with a block wholly off its
+stock is now refused by the export route, as a US food label already was. What follows is the entry as it
+stood. `layOutGhsLabel` stacks its blocks top to bottom and, by design, clamps nothing — but unlike
 `usFoodEngine` it records nothing either. On `GHS_CONFORMANT`'s data and a 60 × 6 mm stock the signal word's
 baseline sits at 13.4 mm, wholly below the edge, and `GHS_SIGNAL_WORD_SINGLE` still reports "The label carries
 one signal word, “Danger”". The realistic case is the small container. A US 50 ml container invoking
@@ -542,14 +581,19 @@ carries everything the small-container provision requires of it", beside `GHS_PI
 half-printed strip, while the manufacturer's name and telephone and the outer-package statement — three
 entries on the rule's own list — are not on the label. Reproduced 2026-09-16. **Both passes are now withheld by
 their own rules** — but on this label only because the glyph is missing. The small-container rule also gates
-on the supplier and the outer-package statement printing, and that gate has nothing to act on until this
-engine records the omission, so the entry stands: the signal-word pass is still reachable today, and the
-supplier and statement gates wait on it. It is the GHS sibling of the GS1 off-stock entry
+on the supplier and the outer-package statement printing, and that gate had nothing to act on until this
+engine recorded the omission. It is the GHS sibling of the GS1 off-stock entry
 below, and `usFoodEngine`'s bounds check is the precedent for the fix.
 
 ### What reading the GS1 provisions turned up
 
-**A UPC-A drawn off its stock clears bar height and its digits on ink that is not on the label.** On
+**~~A UPC-A drawn off its stock clears bar height and its digits on ink that is not on the label.~~ Fixed** on
+`fix/engines-record-what-runs-off`, as an omission from the engine rather than a gate in the two rules.
+`layOutUpcALabel` records a `detail` omission against the symbol when its ink runs past any edge, or an
+`element` omission when it lies wholly outside the label — the bars,
+and the digits the quiet zones carry, measured from the primitives. The guard then withholds every pass
+measured off the symbol, magnification included, and the check digit stands. What follows is the entry as it
+stood. On
 100 × 20 mm stock — the document `rules.test.ts` already uses for vertical overflow — the nominal symbol
 starts at y −3.85 mm. That puts 3.85 mm of its 22.85 mm bars above the top edge, and the digits' baselines at
 23.85 mm, below the bottom one. `runRules` returns four passes and nothing else, among them

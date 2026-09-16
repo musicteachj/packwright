@@ -30,6 +30,7 @@ import {
   nominalBarHeightMm,
   quietZoneFor,
 } from '../geometry/symbol'
+import { MEASUREMENT_TOLERANCE_MM, roundTo } from '../geometry/units'
 import { isValidCheckDigit } from '../gs1/checkDigit'
 import type { HriStyle } from '../symbology/layOutSymbol'
 import { layOutSymbol } from '../symbology/layOutSymbol'
@@ -37,6 +38,7 @@ import type { LabelStock } from '../templates/stock'
 import { ARTWORK_DEFAULT, anchorBox, panelFor } from '../templates/stock'
 import type { UpcALabelData } from '../templates/upcA'
 import { UPC_A_ELEMENTS, upcAHriFor } from '../templates/upcA'
+import { measureTextMm } from '../text/measure'
 import { measureClearSpace } from './clearSpace'
 import type {
   LayoutOmission,
@@ -229,9 +231,13 @@ export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest):
     // Vertical containment is measured here rather than in `measureClearSpace`,
     // which only ever knew the label's width. Nothing checked it, so a symbol
     // drawn off the top and bottom of its stock reported every check passing.
-    const topOverflowMm = Math.max(0, -placed.symbol.yMm)
-    const bottomOverflowMm = Math.max(
-      0,
+    // Within a micrometre is float noise, not an overrun: a symbol on a label typed
+    // to its exact height measured 3.6e-15 mm over, which read as running "0.00 mm
+    // past the top and 0.00 mm past the bottom" and withheld every pass on it.
+    const beyond = (overrunMm: number): number =>
+      overrunMm > MEASUREMENT_TOLERANCE_MM ? overrunMm : 0
+    const topOverflowMm = beyond(-placed.symbol.yMm)
+    const bottomOverflowMm = beyond(
       placed.symbol.yMm + placed.symbol.drawnHeightMm - stock.heightMm,
     )
 
@@ -244,6 +250,74 @@ export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest):
       }),
       verticalOverflowMm: Math.max(topOverflowMm, bottomOverflowMm),
     })
+
+    // **Recorded, not only measured.** `verticalOverflowMm` has said since phase 3
+    // that a symbol ran off its stock, and the quiet-zone rule read it — but no
+    // omission did, so the guard never heard, and on a 20 mm label bar height and
+    // the human-readable digits both cleared with every digit below the edge.
+    //
+    // Across, the ink is the bars *and* the digits: an EAN/UPC prints its first
+    // and last digits in the quiet zones, so a stock that holds the bars can still
+    // cut a digit off. Measured from the primitives, where the digits actually are.
+    //
+    // A detail where some of it prints, and the whole element where none does. The
+    // anchor keeps a symbol on the panel, but the engine accepts a margin as wide
+    // as the stock, and a corner anchor then places it wholly outside the label —
+    // an empty label, which an element omission refuses to export. Every pass
+    // measured off the symbol is withheld either way, the magnification included,
+    // because a symbol not printed as asked for has not been cleared.
+    const digitExtents = placed.primitives.flatMap((primitive) => {
+      if (primitive.kind !== 'text') return []
+      const widthMm = measureTextMm(primitive.text, primitive.fontSizeMm, primitive.fontFamily)
+      const leftMm =
+        primitive.anchor === 'end'
+          ? primitive.xMm - widthMm
+          : primitive.anchor === 'middle'
+            ? primitive.xMm - widthMm / 2
+            : primitive.xMm
+      return [{ leftMm, rightMm: leftMm + widthMm }]
+    })
+    const inkLeftMm = Math.min(placed.symbol.xMm, ...digitExtents.map((extent) => extent.leftMm))
+    const inkRightMm = Math.max(
+      placed.symbol.xMm + placed.symbol.barPatternWidthMm,
+      ...digitExtents.map((extent) => extent.rightMm),
+    )
+    const mmText = (value: number) => `${roundTo(value, 2).toFixed(2)} mm`
+    // An overrun just past the tolerance rounds to "0.00 mm" at two places, which
+    // is a message saying there is nothing wrong beside an omission saying there is.
+    const overrunText = (value: number) =>
+      value < 0.01 ? `${roundTo(value, 3).toFixed(3)} mm` : mmText(value)
+    const overruns = [
+      topOverflowMm > 0 ? `${overrunText(topOverflowMm)} past the top` : '',
+      bottomOverflowMm > 0 ? `${overrunText(bottomOverflowMm)} past the bottom` : '',
+      beyond(-inkLeftMm) > 0 ? `${overrunText(-inkLeftMm)} past the left edge` : '',
+      beyond(inkRightMm - stock.widthMm) > 0
+        ? `${overrunText(inkRightMm - stock.widthMm)} past the right edge`
+        : '',
+    ].filter((overrun) => overrun !== '')
+    const whollyOutside =
+      inkLeftMm >= stock.widthMm ||
+      inkRightMm <= 0 ||
+      placed.symbol.yMm >= stock.heightMm ||
+      placed.symbol.yMm + placed.symbol.drawnHeightMm <= 0
+    if (whollyOutside) {
+      omissions.push({
+        elementId: UPC_A_ELEMENTS.symbol,
+        reason:
+          `The UPC-A symbol is drawn wholly outside a ${mmText(stock.widthMm)} × ` +
+          `${mmText(stock.heightMm)} label, so none of it is printed.`,
+        scope: 'element',
+      })
+    } else if (overruns.length > 0) {
+      omissions.push({
+        elementId: UPC_A_ELEMENTS.symbol,
+        reason:
+          `The UPC-A symbol runs ${overruns.join(' and ')} of a ` +
+          `${mmText(stock.widthMm)} × ${mmText(stock.heightMm)} label, so part of its bars or ` +
+          'digits is not printed.',
+        scope: 'detail',
+      })
+    }
   }
 
   return {

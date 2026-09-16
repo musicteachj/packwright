@@ -27,7 +27,11 @@ const FLAMMABLE = '2.6/flammable-liquids-1-2-3'
 const withGlyphsDrawn = (layout: ResolvedLayout): ResolvedLayout => ({
   ...layout,
   omissions: layout.omissions.filter(
-    (omission) => !omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`),
+    (omission) =>
+      !(
+        omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`) &&
+        omission.reason.includes('Annex V')
+      ),
   ),
 })
 
