@@ -209,6 +209,7 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
     }
 
     return [
+      // 101.9(d) sets the size of the type the panel is printed in: the artwork.
       passedOnArtwork(
         usFoodNutritionTypeSizeRule,
         FDA_NUTRITION_TYPE_SIZE_MET,

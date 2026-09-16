@@ -35,6 +35,14 @@ import { runRules } from './registry'
 import {
   FDA_DUAL_COLUMN_EXEMPT,
   FDA_INGREDIENTS_EXEMPT,
+  FDA_NUTRITION_EXEMPT,
+  FDA_NUTRITION_COMPLETE,
+  FDA_NUTRITION_ORDER_MET,
+  FDA_NUTRITION_ROUNDING_MET,
+  FDA_NUTRITION_PERCENT_DV_MET,
+  FDA_NUTRITION_TYPE_SIZE_MET,
+  FDA_DUAL_COLUMN_MET,
+  FDA_DUAL_COLUMN_FORM_MET,
   FDA_NET_QUANTITY_CROWDED,
   FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
   FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
@@ -212,6 +220,111 @@ describe('the US food passes that rest on the artwork', () => {
       'none of them may survive the omission of the element it names',
     ).toEqual([])
   })
+
+  it('withholds a claimed exemption, because what it is conditional on is printed', () => {
+    // Both exemptions read as facts about the food, and both were once stamped so.
+    // The text says otherwise. §101.100(a)(1) excuses an assortment only "on the
+    // condition that the label shall bear" a statement naming the ingredients that
+    // may be present, and 101.9(j)(13)(i)(A) puts an address or telephone number
+    // on the label of a small package using its exemption. Neither rule knows which
+    // exemption was claimed, so neither pass is true whatever printed.
+    //
+    // The engine draws no list for an exempt food and never omits the panel, so the
+    // omissions are added by hand, as the GS1 case below does.
+    const { nutritionFacts: _panel, ...withoutPanel } = US_FOOD_CONFORMANT.data
+    const data: UsFoodLabelData = {
+      ...withoutPanel,
+      ingredients: [],
+      ingredientsExempt: true,
+      nutritionFactsExempt: true,
+    }
+    const { stock } = US_FOOD_CONFORMANT
+    const drawn = layOutUsFoodLabel({ data, stock })
+    const layout = {
+      ...drawn,
+      omissions: [
+        ...drawn.omissions,
+        ...[US_FOOD_ELEMENTS.ingredients, US_FOOD_ELEMENTS.principalDisplayPanel].map(
+          (elementId) => ({
+            elementId,
+            reason: 'Omitted for this test.',
+            scope: 'element' as const,
+          }),
+        ),
+      ],
+    }
+    const context = { labelType: 'us-food' as const, data, stock, layout }
+    const exemptions = [FDA_INGREDIENTS_EXEMPT, FDA_NUTRITION_EXEMPT]
+
+    const cleared = US_FOOD_RULES.flatMap((rule) => rule.check(context))
+    expect(
+      cleared.map((result) => result.code),
+      'the premise: both exemptions are claimed and cleared before the guard sees them',
+    ).toEqual(expect.arrayContaining(exemptions))
+    // Their messages said applicability was "a fact about the product, not about
+    // the label" — the reading this test exists for, told to the user.
+    expect(
+      cleared
+        .filter((result) => exemptions.includes(result.code))
+        .filter((result) => result.message.includes('not about the label'))
+        .map((result) => result.code),
+      'an exemption with conditions on the label must not say it has none',
+    ).toEqual([])
+    expect(
+      exemptions.filter((code) => runRules(context).some((result) => result.code === code)),
+      'an exemption conditional on the label cannot outlive the label',
+    ).toEqual([])
+  })
+
+  it('withholds what the panel declares when the panel runs off the label', () => {
+    // 101.9(c) says the nutrients "shall be presented" in its order and each amount
+    // "expressed" to its increment, and (b)(12)(i) and (e) are about a column and
+    // its form. Every one is a requirement on the printed panel, and none of these
+    // seven was held by any test: each could have been stamped `document` with the
+    // suite green. A dual-column label, so the column passes are reached as well.
+    const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: {
+        ...panel,
+        referenceAmount: { amount: 22, unit: 'g', category: 'Snacks' },
+        packageContent: 55,
+        packagedAndSoldIndividually: true,
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { ...panel.amounts },
+        },
+      },
+    }
+    const stock: LabelStock = { ...US_FOOD_CONFORMANT.stock, heightMm: 120 }
+    const layout = layOutUsFoodLabel({ data, stock })
+    const context = { labelType: 'us-food' as const, data, stock, layout }
+    const judged = [
+      FDA_NUTRITION_COMPLETE,
+      FDA_NUTRITION_ORDER_MET,
+      FDA_NUTRITION_ROUNDING_MET,
+      FDA_NUTRITION_PERCENT_DV_MET,
+      FDA_NUTRITION_TYPE_SIZE_MET,
+      FDA_DUAL_COLUMN_MET,
+      FDA_DUAL_COLUMN_FORM_MET,
+    ]
+
+    expect(
+      layout.omissions.map((omission) => omission.elementId),
+      'the premise: a 120 mm label is too short for the panel',
+    ).toContain(US_FOOD_ELEMENTS.nutritionPanel)
+    expect(
+      US_FOOD_RULES.flatMap((rule) => rule.check(context)).map((result) => result.code),
+      'the premise: every rule clears the panel before the guard sees it',
+    ).toEqual(expect.arrayContaining(judged))
+    const reported = runRules(context).map((result) => result.code)
+    expect(
+      judged.filter((code) => reported.includes(code)),
+      'a panel that did not print in full has not presented, expressed or columned anything',
+    ).toEqual([])
+  })
 })
 
 describe('the US food passes that rest on the document', () => {
@@ -239,45 +352,6 @@ describe('the US food passes that rest on the document', () => {
     expect(exemption!.message, 'it says what is excused, not what the panel shows').not.toMatch(
       /carries|stands alone/,
     )
-  })
-
-  it('keeps the ingredient exemption, which leaves no list to omit', () => {
-    // §101.100 excuses the food from bearing a statement at all, so the engine
-    // draws no list and can record no omission against one. The omission is added
-    // by hand, as the GS1 case below does, to pin the answer for the day a list
-    // element exists on an exempt label.
-    const data: UsFoodLabelData = {
-      ...US_FOOD_CONFORMANT.data,
-      ingredients: [],
-      ingredientsExempt: true,
-    }
-    const { stock } = US_FOOD_CONFORMANT
-    const drawn = layOutUsFoodLabel({ data, stock })
-    expect(
-      drawn.elements.map((element) => element.elementId),
-      'the premise: an exempt food draws no ingredient statement',
-    ).not.toContain(US_FOOD_ELEMENTS.ingredients)
-
-    const findings = runRules({
-      labelType: 'us-food',
-      data,
-      stock,
-      layout: {
-        ...drawn,
-        omissions: [
-          ...drawn.omissions,
-          {
-            elementId: US_FOOD_ELEMENTS.ingredients,
-            reason: 'Omitted for this test.',
-            scope: 'element',
-          },
-        ],
-      },
-    })
-    expect(
-      findings.map((result) => result.code),
-      'an exemption is a fact about the food and survives an omission',
-    ).toContain(FDA_INGREDIENTS_EXEMPT)
   })
 })
 

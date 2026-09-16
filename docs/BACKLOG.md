@@ -366,9 +366,9 @@ carries a note saying what its provision governs.
 
 GS1's six were read on 2026-09-16. The check digit and the Digital Link rest on the document; the four that
 measure the printed symbol rest on the artwork. GHS's seven were read the same day, and all seven rest on
-the artwork. The fifteen US food passes outside the nutrition panel were read next. The SI exemption and the
-ingredient exemption rest on the document; the other thirteen rest on the artwork. Nine stamps remain, all on
-the nutrition panel, beside the two `passedOnDocument` sites there that were judged when they were written.
+the artwork. US food was read last. The SI exemption, the nutrition format entitlement and the second-column
+exemption rest on the document, and the other twenty-three rest on the artwork. The ingredient exemption was
+stamped `document` first and reversed once §101.100 was read. **No stamp is left undecided.**
 
 ### What reviewing the mechanism turned up
 
@@ -429,8 +429,9 @@ The other four are reachable and not in the sweep — `GHS_SMALL_CONTAINER_COMPL
 `FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. It matters less than it did, because
 the guarantee that every pass states what it certifies is now the compiler's, not the sweep's. It still
 matters for every reading that flips one of them, since a flip ships with a fixture that reaches it.
-`FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` has since been flipped, and its fixture is in `certification.test.ts`
-rather than in the sweep.
+`FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` has since been flipped, and `FDA_DUAL_COLUMN_MET` and
+`FDA_DUAL_COLUMN_FORM_MET` pinned to the artwork. All three are reached by `certification.test.ts`, not by the
+sweep.
 
 **~~`us-food/nutrition-format`'s docblock and its behaviour disagree about (d)(11)(iii).~~ They do not, and
 this entry was wrong.** It recorded a disagreement while declining to read the paragraph, which `CLAUDE.md`
@@ -456,6 +457,27 @@ the violating label plus its exemption and the two cannot drift. Not done in the
 already grown by fixing a review's findings in place. One item from that pass was fixed there: only the
 US-food loop labelled where its findings came from, so a GHS permission document added later would have
 counted as fixture coverage and escaped the check that every such document reaches something.
+
+### What reading the US food provisions turned up
+
+**Neither exemption rule knows which exemption it grants, so the conditions they put on the label go
+unchecked.** `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
+§101.100(a)(1) excuses an assortment "on the condition that the label shall bear, in conjunction with the
+names of such ingredients as are common to all packages, a statement … indicating by name other ingredients
+which may be present". And 101.9(j)(13)(i)(A) says the manufacturer "shall provide on the label of packages
+that qualify for and use this exemption an address or telephone number". No rule checks either, and (a)(1)
+is not reachable at all. The exempt path requires an empty ingredient list, while (a)(1) keeps the common
+ingredients listed, so an assortment claiming it goes down the ordinary path and is never asked for its
+statement. Both passes now rest on the artwork, which is right, but a stamp cannot supply a check that does
+not exist. The fix is to record which paragraph is claimed and check what that paragraph requires the label
+to bear.
+
+**`FDA_SERVING_SIZE_MET` names a row the engine never omits.** The engine records a Nutrition Facts panel
+running past the bottom of the stock against `food-nutrition-panel`, and never against its rows. On
+`US_FOOD_CONFORMANT` on a 120 × 25 mm label, the panel begins at 16.8 mm, the serving-size row prints at
+32.2–36.0 mm (wholly below the edge), and the only omission is `food-nutrition-panel/detail`. `runRules`
+still returns "The panel declares a serving size of …". The stamp is right; the id is out of the guard's
+reach. The same shape as the panel type-size entry above. Reproduced 2026-09-16.
 
 ### What reading the GHS provisions turned up
 

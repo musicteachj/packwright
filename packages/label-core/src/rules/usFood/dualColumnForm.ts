@@ -255,6 +255,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     if (findings.length > 0) return findings
 
     return [
+      // 101.9(e): headings, separating lines and equal prominence are all ink: the artwork.
       passedOnArtwork(
         usFoodDualColumnFormRule,
         FDA_DUAL_COLUMN_FORM_MET,

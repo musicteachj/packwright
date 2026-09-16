@@ -191,11 +191,43 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Changed
 
-- **Two US food exemptions now survive an omission; the other thirteen passes outside the nutrition panel
-  stay on the artwork, and say why.** `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` and `FDA_INGREDIENTS_EXEMPT` rest
-  on the document. A random package, a food packaged at retail, and a food §101.100 excuses from bearing an
-  ingredient list are facts about the package and the food, and they stay true whatever the engine managed
-  to draw. Every other pass here is about the panel: 101.3(a) and 101.7(a) say what it "shall bear", 101.7(f)
+- **The nutrition panel's passes rest on the artwork, and so do both claimed exemptions — one of them
+  reversed on reading the regulation it rests on.** Completeness, order, rounding, the percentages, serving
+  size, type size and both dual-column passes are requirements on the printed panel. 101.9(c) says the
+  nutrients "shall be presented" in its order and each amount "expressed" to its increment. (d) sets the type
+  the panel is printed in, and (b)(12)(i) and (e) are about a column and its form. The rules read the
+  document's figures as a means. The module header that called rounding "a fact about a number … the same
+  distinction that has the GTIN check-digit rule read the document" now says why it is not: a check digit
+  belongs to the number whether or not it prints, and a rounding does not.
+
+  **`FDA_NUTRITION_EXEMPT` and `FDA_INGREDIENTS_EXEMPT` rest on the artwork, and the second was committed
+  the other way one commit ago.** Neither module recorded a reading of the provision it cites, so both were
+  read from the eCFR before deciding. Most of 101.9(j)'s exemptions turn on the seller, the food and the
+  setting, but not all of them. (j)(13)(i)(A) puts "an address or telephone number" on the label of a small
+  package using its exemption, and (j)(15) holds only where each unit "is labeled with the statement 'This
+  Unit Not Labeled For Retail Sale'". §101.100(a)(1) excuses an assortment only "on the condition that the
+  label shall bear" a statement naming the ingredients that may be present, and (d)(3) needs a caution tag on
+  each container. Neither rule records which exemption was claimed, so neither pass is true whatever
+  printed. The previous commit had stamped the ingredient exemption `document` on the strength of a phrase
+  in its own module, "facts about the product and its packaging rather than on anything drawable", which
+  the section does not bear out. The format entitlement and the second-column exemption stay on the
+  document: (j)(13)(ii)(A) and (b)(12)(i)(A)–(C) turn on the package alone.
+
+  **Pinned, and mutation-tested.** One test adds the omissions an exempt label cannot produce and asserts
+  both exemptions are withheld. Another lays a dual-column label on stock too short for its panel and
+  asserts all seven panel passes the suite did not hold are withheld; each of the seven fails it when
+  stamped `document`. Both exemption messages also told the user applicability was "a fact about the
+  product, not about the label", which the reading disproves, so they now say which things are unchecked;
+  the first test fails on the old wording. The serving-size pass is the eighth, and it is out of reach. It names its own row, the
+  engine records omissions against the whole panel, and on a 25 mm label the row prints wholly below the edge
+  while the pass reports a serving size declared. A live false clearance, recorded in `docs/BACKLOG.md`
+  with the exemption conditions no rule checks.
+
+- **The SI exemption now survives an omission; the other fourteen passes outside the nutrition panel stay on
+  the artwork, and say why.** `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` rests on the document: a random package
+  and a food packaged at retail are facts about the package, and stay true whatever the engine managed to
+  draw. (This entry first named `FDA_INGREDIENTS_EXEMPT` beside it; reading §101.100 reversed that — see the
+  entry above.) Every other pass here is about the panel: 101.3(a) and 101.7(a) say what it "shall bear", 101.7(f)
   and (i) place and size the printed declaration, 101.5(a) says the label "shall specify" the firm, 101.2(c)
   bounds printed letters, and §403(w) is satisfied by what the package prints.
 
@@ -210,9 +242,9 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   condition on the printed declaration. `docs/BACKLOG.md` already records the rule applying it
   unconditionally, and a `document` stamp would have deepened that.
 
-  **Each answer is pinned, not just the flips.** Both flips have fixtures showing the pass survives. The
-  ingredient exemption's omission is added by hand, because an exempt food draws no list for the engine to
-  omit. Every artwork answer was then flipped in turn against the whole suite, and five of the thirteen —
+  **Each answer is pinned, not just the flip.** The flip has a fixture showing the pass survives. Every
+  artwork answer was then flipped in turn against the whole suite — thirteen at the time, the ingredient
+  exemption still being stamped `document`; it is pinned in the entry above — and five of the thirteen —
   the proviso, ingredient order, the threshold, allergens and the Contains statement — changed nothing. One
   new document now covers all five: a 50 × 50 mm package on 20 × 60 mm stock, whose declaration, list and
   Contains statement all run off the label. The panel type-size pass is the thirteenth, and it cannot be

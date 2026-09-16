@@ -6,10 +6,12 @@
  * in `fda/nutrients.ts`, each quoting the paragraph it came from; these four
  * rules measure a label against them.
  *
- * **They read the document, not the layout.** Whether 8.7 grams of fat was
- * rounded to 9 is a fact about a number, not about where ink lands — the same
- * distinction that has the GTIN check-digit rule read the document. The panel's
- * geometry is a later stage, and these rules will not change when it arrives.
+ * **They read the document, not the layout — as a means.** The declared figures
+ * are held on the document, so that is where rounding is checked. But 101.9(c)
+ * says the nutrients "shall be presented" in its order and each amount is
+ * "expressed" to its increment: requirements on what the panel prints, so every
+ * pass here rests on the artwork. A check digit is different in kind: it belongs
+ * to the number whether or not anything was printed, and a rounding does not.
  *
  * **Not modelled, and recorded rather than left unsaid:**
  *
@@ -22,7 +24,12 @@
  *   is given, (c)(7)(ii) corrects the amount by a digestibility score no label
  *   carries. A declared protein percentage is therefore not checked.
  * - The (j) exemptions, which run to eighteen subparagraphs turning on business
- *   size, units sold and what the food is. Declared, never inferred.
+ *   size, units sold and what the food is — and, for several, on what the label
+ *   bears. (j)(13)(i)(A) puts "an address or telephone number" on the label of a
+ *   small package using its exemption, and (j)(15) holds only where each unit
+ *   "is labeled with the statement 'This Unit Not Labeled For Retail Sale'".
+ *   Declared, never inferred, and which one is claimed is not recorded. Read from
+ *   the eCFR on 2026-09-16.
  * - The *weights* of the four vitamins and minerals. 101.9(c)(8)(ii) permits
  *   "additional levels of significance" beyond the whole units (c)(8)(iv) gives,
  *   so 235 mg of potassium and 235.4 mg are both proper declarations and no
@@ -120,12 +127,13 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
 
     if (data.nutritionFactsExempt === true && panel === undefined) {
       return [
+        // (j)(13)(i)(A) and (j)(15)(iii) turn on what the label bears, so the artwork.
         passedOnArtwork(
           usFoodNutritionCompletenessRule,
           FDA_NUTRITION_EXEMPT,
           'The label claims an exemption from nutrition labelling, so no panel is required. ' +
-            'Whether the exemption applies is a fact about the firm and the food, not about the ' +
-            'label, and is not checked here.',
+            'Which exemption applies, and whether the label bears what that exemption requires of ' +
+            'it, are not checked here.',
           US_FOOD_ELEMENTS.principalDisplayPanel,
           EXEMPTION,
         ),
@@ -169,6 +177,7 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     }
 
     return [
+      // 101.9(c): the declaration "on the label" shall contain these nutrients: the artwork.
       passedOnArtwork(
         usFoodNutritionCompletenessRule,
         FDA_NUTRITION_COMPLETE,
@@ -224,6 +233,7 @@ export const usFoodNutritionOrderRule: UsFoodRule = {
     }
 
     return [
+      // 101.9(c): nutrients "shall be presented" in this order — printed, so the artwork.
       passedOnArtwork(
         usFoodNutritionOrderRule,
         FDA_NUTRITION_ORDER_MET,
@@ -313,6 +323,7 @@ export const usFoodNutritionRoundingRule: UsFoodRule = {
     }
 
     return [
+      // Each amount is "expressed" to its increment on the panel: the artwork.
       passedOnArtwork(
         usFoodNutritionRoundingRule,
         FDA_NUTRITION_ROUNDING_MET,
@@ -397,6 +408,7 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     }
 
     return [
+      // (d)(7)(ii) governs the percentages the panel shows: the artwork.
       passedOnArtwork(
         usFoodNutritionPercentDvRule,
         FDA_NUTRITION_PERCENT_DV_MET,
@@ -462,6 +474,7 @@ export const usFoodServingSizeRule: UsFoodRule = {
     }
 
     return [
+      // (d)(3): the panel's servings information "shall include" it — printed, so the artwork.
       passedOnArtwork(
         usFoodServingSizeRule,
         FDA_SERVING_SIZE_MET,

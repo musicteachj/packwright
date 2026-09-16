@@ -207,6 +207,7 @@ export const usFoodDualColumnRule: UsFoodRule = {
     }
 
     return [
+      // (b)(12)(i): the package "must provide an additional column" — printed, so the artwork.
       passedOnArtwork(
         usFoodDualColumnRule,
         FDA_DUAL_COLUMN_MET,

@@ -21,15 +21,20 @@
  * weight share turns it into a claim that can be wrong, which is the only kind
  * this engine can report on.
  *
- * The § 101.100 exemptions are not modelled and are not inferred: they turn on
- * facts about the product and its packaging rather than on anything drawable. A
- * label claiming one says so, the way a GHS small container does.
+ * The § 101.100 exemptions are not modelled and are not inferred. Most turn on
+ * facts about the product and its packaging, but not all of them: (a)(1) excuses
+ * an assortment "on the condition that the label shall bear, in conjunction with
+ * the names of such ingredients as are common to all packages, a statement …
+ * indicating by name other ingredients which may be present", and (d)(3) needs a
+ * caution tag on each container. So the exemption pass rests on the artwork like
+ * the rest. A label claiming one says so, the way a GHS small container does.
+ * Read from the eCFR on 2026-09-16.
  */
 
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { INGREDIENT_THRESHOLD_PERCENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnArtwork, passedOnDocument } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_INGREDIENTS_MISSING = 'FDA_INGREDIENTS_MISSING'
@@ -75,13 +80,13 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // listed — otherwise what is on the label is checked like any other list.
     if (data.ingredientsExempt === true && ingredients.length === 0) {
       return [
-        // §101.100 excuses the food from bearing a list: an entitlement, so the document.
-        passedOnDocument(
+        // §101.100(a)(1) holds only on "the condition that the label shall bear" a statement: artwork.
+        passedOnArtwork(
           usFoodIngredientListRule,
           FDA_INGREDIENTS_EXEMPT,
           'The label claims an exemption from ingredient labelling, so the statement is not ' +
-            'required. Whether the exemption applies is a fact about the product, not about the ' +
-            'label, and is not checked here.',
+            'required. Which exemption applies, and whether the label bears what that exemption ' +
+            'requires of it, are not checked here.',
           US_FOOD_ELEMENTS.ingredients,
           EXEMPTION,
         ),
