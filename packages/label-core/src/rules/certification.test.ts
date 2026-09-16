@@ -32,7 +32,8 @@ import { finding } from './finding'
 import type { Finding } from '../types/index'
 import type { LabelStock } from '../templates/stock'
 import { UPC_A_ELEMENTS } from '../templates/upcA'
-import { US_FOOD_ELEMENTS } from '../templates/usFood'
+import { US_FOOD_ELEMENTS, US_FOOD_TYPE_DEFAULT } from '../templates/usFood'
+import { measureTextMm } from '../text/measure'
 import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
 import { runRules } from './registry'
 import {
@@ -52,6 +53,7 @@ import {
   FDA_ALLERGEN_DECLARED_MET,
   FDA_CONTAINS_TYPE_MET,
   FDA_INGREDIENTS_ORDER_MET,
+  FDA_STATEMENT_OF_IDENTITY_MET,
   FDA_INGREDIENT_THRESHOLD_MET,
   FDA_RESPONSIBLE_FIRM_MET,
   FDA_PANEL_TYPE_SIZE_MET,
@@ -388,6 +390,124 @@ describe('the statement of identity is bounded like every other block', () => {
         result.severity === 'pass' && result.elementId === US_FOOD_ELEMENTS.statementOfIdentity,
     )
     expect(certified, 'an identity printed off the label cannot be reported met').toBe(false)
+  })
+
+  describe('and bounded across', () => {
+    // `wrapTextMm` never breaks inside a word, and nothing looked past the right
+    // edge, so an unbreakable word printed off the side of the label recorded
+    // nowhere and cleared.
+    const acrossOmissions = (data: UsFoodLabelData, stock: LabelStock, elementId: string) =>
+      judge(data, stock).layout.omissions.filter(
+        (omission) => omission.elementId === elementId && omission.reason.includes('right edge'),
+      )
+    const identity = 'Supercalifragilisticexpialidociousgranola'
+
+    it('records a statement of identity too long to wrap, and does not clear it', () => {
+      const stock: LabelStock = { ...US_FOOD_CONFORMANT.stock, widthMm: 60 }
+      const data = { ...US_FOOD_CONFORMANT.data, statementOfIdentity: identity }
+
+      expect(
+        acrossOmissions(data, stock, US_FOOD_ELEMENTS.statementOfIdentity).map((o) => o.scope),
+      ).toEqual(['detail'])
+      expect(judge(data, stock).findings.map((r) => r.code)).not.toContain(
+        FDA_STATEMENT_OF_IDENTITY_MET,
+      )
+      expect(
+        judge(US_FOOD_CONFORMANT.data, US_FOOD_CONFORMANT.stock).findings.map((r) => r.code),
+        'the control: a statement that fits still clears',
+      ).toContain(FDA_STATEMENT_OF_IDENTITY_MET)
+    })
+
+    it('measures the bold statement in the face it prints in', () => {
+      // Wide enough for the statement in Regular widths and not in SemiBold, with a
+      // margin small enough that the wrap, still Regular, keeps it on one line.
+      const text = 'Oat and almond granola'
+      const sizeMm = US_FOOD_TYPE_DEFAULT.statementOfIdentityMm
+      const regularMm = measureTextMm(text, sizeMm, US_FOOD_TYPE_DEFAULT.fontFamily)
+      const boldMm = measureTextMm(text, sizeMm, `${US_FOOD_TYPE_DEFAULT.fontFamily} SemiBold`)
+      const marginMm = 0.2
+      const stock: LabelStock = {
+        widthMm: marginMm + (regularMm + boldMm) / 2,
+        heightMm: 400,
+        marginMm,
+      }
+      const data = { ...US_FOOD_CONFORMANT.data, statementOfIdentity: text }
+
+      expect(marginMm + regularMm, 'the premise: in Regular it fits').toBeLessThanOrEqual(
+        stock.widthMm,
+      )
+      expect(marginMm + boldMm, 'and in the face it prints in it does not').toBeGreaterThan(
+        stock.widthMm,
+      )
+      expect(
+        acrossOmissions(data, stock, US_FOOD_ELEMENTS.statementOfIdentity).map((o) => o.scope),
+      ).toEqual(['detail'])
+    })
+
+    it('records a block that begins past the right edge as absent', () => {
+      // A margin wider than the stock, which the engine accepts: nothing prints, so
+      // the omission has to block export as one below the label would.
+      const stock: LabelStock = { widthMm: 40, heightMm: 400, marginMm: 45 }
+      const data = { ...US_FOOD_CONFORMANT.data, statementOfIdentity: identity }
+
+      expect(
+        acrossOmissions(data, stock, US_FOOD_ELEMENTS.statementOfIdentity).map((o) => o.scope),
+      ).toEqual(['element'])
+    })
+
+    it('does not also measure across a block already recorded as absent', () => {
+      // Pushed below the label by 400 ingredients, with a name too long to wrap: one
+      // note saying none of it printed, not that beside one saying part of it did.
+      const ingredients: UsFoodIngredient[] = Array.from({ length: 400 }, (_, index) => ({
+        name: `ingredient number ${index}`,
+        percentByWeight: (400 - index) / 400,
+      }))
+      const stock: LabelStock = { ...US_FOOD_CONFORMANT.stock, widthMm: 40 }
+      const data = {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients,
+        responsibleFirm: { ...US_FOOD_CONFORMANT.data.responsibleFirm!, name: identity },
+      }
+      const firm = judge(data, stock).layout.omissions.filter(
+        (omission) => omission.elementId === US_FOOD_ELEMENTS.responsibleFirm,
+      )
+      expect(firm.map((omission) => omission.scope)).toEqual(['element'])
+    })
+
+    it('gives an absent statement of identity one omission, not two', () => {
+      // A margin deeper than the label puts the identity below it, and its long word
+      // would overrun a 40 mm width as well.
+      const stock: LabelStock = { widthMm: 40, heightMm: 5, marginMm: 6 }
+      const data = { ...US_FOOD_CONFORMANT.data, statementOfIdentity: identity }
+      const omissions = judge(data, stock).layout.omissions.filter(
+        (omission) => omission.elementId === US_FOOD_ELEMENTS.statementOfIdentity,
+      )
+      expect(omissions.map((omission) => omission.scope)).toEqual(['element'])
+    })
+
+    it('records a stacked block too, which is drawn by a different loop', () => {
+      // The firm is set smaller than the statement, so it needs a narrower label.
+      const stock: LabelStock = { ...US_FOOD_CONFORMANT.stock, widthMm: 40 }
+      const data = {
+        ...US_FOOD_CONFORMANT.data,
+        responsibleFirm: { ...US_FOOD_CONFORMANT.data.responsibleFirm!, name: identity },
+      }
+      const { layout, findings } = judge(data, stock)
+      const widestMm = Math.max(
+        ...layout.primitives
+          .filter(
+            (primitive): primitive is TextPrimitive =>
+              primitive.kind === 'text' && primitive.elementId === US_FOOD_ELEMENTS.responsibleFirm,
+          )
+          .map((line) => line.xMm + measureTextMm(line.text, line.fontSizeMm, line.fontFamily)),
+      )
+
+      expect(widestMm, 'the premise: the firm name runs past 40 mm').toBeGreaterThan(40)
+      expect(
+        acrossOmissions(data, stock, US_FOOD_ELEMENTS.responsibleFirm).map((o) => o.scope),
+      ).toEqual(['detail'])
+      expect(findings.map((r) => r.code)).not.toContain(FDA_RESPONSIBLE_FIRM_MET)
+    })
   })
 })
 

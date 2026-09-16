@@ -29,6 +29,28 @@ function faceFor(fontFamily: string): FaceMetrics {
   )
 }
 
+/** The weight from which a face is set in SemiBold, as `renderPdf` embeds it. */
+const SEMIBOLD_FROM_WEIGHT = 600
+
+/**
+ * The family a string should be measured in: the face it prints in.
+ *
+ * `measureTextMm` takes a family and no weight, so bold text measured under its
+ * own family reads 3–5% narrow — narrow enough for a bold line to print past the
+ * edge of its stock while a bounds check says it fits. Resolved the way
+ * `renderPdf`'s `embeddedFontFor` resolves the face it embeds, so the width
+ * checked and the width printed come from the same face.
+ *
+ * Only the bounds checks use it so far. Wrapping still measures in the family's
+ * Regular widths, which `docs/BACKLOG.md` keeps as a stage of its own; a line it
+ * wraps too long is at least recorded by the check rather than lost.
+ */
+export function measuredFamilyFor(fontFamily: string, fontWeight?: number): string {
+  if (fontWeight === undefined || fontWeight < SEMIBOLD_FROM_WEIGHT) return fontFamily
+  const semibold = `${fontFamily} SemiBold`
+  return hasMetrics(semibold) ? semibold : fontFamily
+}
+
 /**
  * Width of a string in millimetres, at the given em size.
  *

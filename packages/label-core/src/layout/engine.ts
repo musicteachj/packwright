@@ -260,10 +260,12 @@ export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest):
     // and last digits in the quiet zones, so a stock that holds the bars can still
     // cut a digit off. Measured from the primitives, where the digits actually are.
     //
-    // Always a detail: the symbol is anchored inside the panel, so some of it
-    // prints. Every pass measured off the symbol is withheld with it — the
-    // magnification included, which is still measurable on what printed, because
-    // a symbol not printed as asked for has not been cleared.
+    // A detail where some of it prints, and the whole element where none does. The
+    // anchor keeps a symbol on the panel, but the engine accepts a margin as wide
+    // as the stock, and a corner anchor then places it wholly outside the label —
+    // an empty label, which an element omission refuses to export. Every pass
+    // measured off the symbol is withheld either way, the magnification included,
+    // because a symbol not printed as asked for has not been cleared.
     const digitExtents = placed.primitives.flatMap((primitive) => {
       if (primitive.kind !== 'text') return []
       const widthMm = measureTextMm(primitive.text, primitive.fontSizeMm, primitive.fontFamily)
@@ -293,7 +295,20 @@ export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest):
         ? `${overrunText(inkRightMm - stock.widthMm)} past the right edge`
         : '',
     ].filter((overrun) => overrun !== '')
-    if (overruns.length > 0) {
+    const whollyOutside =
+      inkLeftMm >= stock.widthMm ||
+      inkRightMm <= 0 ||
+      placed.symbol.yMm >= stock.heightMm ||
+      placed.symbol.yMm + placed.symbol.drawnHeightMm <= 0
+    if (whollyOutside) {
+      omissions.push({
+        elementId: UPC_A_ELEMENTS.symbol,
+        reason:
+          `The UPC-A symbol is drawn wholly outside a ${mmText(stock.widthMm)} × ` +
+          `${mmText(stock.heightMm)} label, so none of it is printed.`,
+        scope: 'element',
+      })
+    } else if (overruns.length > 0) {
       omissions.push({
         elementId: UPC_A_ELEMENTS.symbol,
         reason:

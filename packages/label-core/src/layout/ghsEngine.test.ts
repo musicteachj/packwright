@@ -288,6 +288,29 @@ describe('a block drawn off the stock says so', () => {
     expect(positional(layout, GHS_ELEMENTS.signalWord).map((o) => o.scope)).toEqual(['detail'])
   })
 
+  it('does not also measure across a block already recorded as absent', () => {
+    // Below a 40 mm label, with a supplier name too long to wrap on 30 mm.
+    const data: GhsLabelData = {
+      ...DATA,
+      supplier: { name: 'Tetramethylammoniumhydroxidepentahydrate', address: 'X' },
+    }
+    const layout = layOutGhsLabel({ data, stock: { ...STOCK, widthMm: 30, heightMm: 40 } })
+    expect(positional(layout, GHS_ELEMENTS.supplier).map((o) => o.scope)).toEqual(['element'])
+  })
+
+  it('gives an absent statements block and pictogram one omission each', () => {
+    // A 12 mm high label drops the pictograms and the statements below it, and at
+    // 12 mm and 50 mm wide respectively each would also overrun across.
+    const narrow = layOutGhsLabel({ data: DATA, stock: { widthMm: 12, heightMm: 12, marginMm: 1 } })
+    expect(positional(narrow, GHS_ELEMENTS.hazardStatements).map((o) => o.scope)).toEqual([
+      'element',
+    ])
+    const wide = layOutGhsLabel({ data: DATA, stock: { widthMm: 50, heightMm: 12, marginMm: 1 } })
+    expect(positional(wide, `${GHS_ELEMENTS.pictograms}-GHS07`).map((o) => o.scope)).toEqual([
+      'element',
+    ])
+  })
+
   it('records nothing positional for a label that fits', () => {
     const layout = layOutGhsLabel({ data: DATA, stock: STOCK })
     expect(layout.omissions.every((omission) => omission.reason.includes('Annex V'))).toBe(true)

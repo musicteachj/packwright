@@ -22,7 +22,12 @@
  */
 
 import { minNetQuantityTypeHeightMm, regulatedGlyphBasis, pdpAreaSqInches } from '../geometry/pdp'
-import { fontSizeMmForGlyphHeight, measureTextMm, wrapTextMm } from '../text/measure'
+import {
+  fontSizeMmForGlyphHeight,
+  measuredFamilyFor,
+  measureTextMm,
+  wrapTextMm,
+} from '../text/measure'
 import { roundTo } from '../geometry/units'
 import { foodSourceName } from '../fda/allergens'
 import { layOutNutritionPanel, willDrawSecondColumn } from './nutritionPanel'
@@ -36,6 +41,62 @@ import type { LayoutOmission, LayoutPrimitive, ResolvedElement, ResolvedLayout }
 /** Millimetres for an omission's prose. `rules/finding` owns the same format for
  *  findings, and `label-core`'s layout layer must not import from `rules`. */
 const mmText = (value: number): string => `${roundTo(value, 2).toFixed(2)} mm`
+
+/**
+ * An omission for a block whose widest line runs past the right edge of the stock.
+ *
+ * The bottom-edge checks below have recorded a block drawn off the stock since
+ * phase 5, but nothing looked across: `wrapTextMm` never breaks inside a word, so
+ * a statement of identity reading "Supercalifragilisticexpialidociousgranola" was
+ * set as one line ending 114.8 mm across a 60 mm label, recorded nowhere, and
+ * cleared by `us-food/statement-of-identity`. A block that begins past the edge —
+ * a margin at least as wide as the stock, which the engine accepts — is absent,
+ * exactly as the bottom-edge checks treat one below the label; a review of this
+ * check caught it filing that case as a detail, which left export open.
+ */
+function rightOverrun(
+  elementId: string,
+  label: string,
+  leftMm: number,
+  rightMm: number,
+  stockWidthMm: number,
+): LayoutOmission[] {
+  if (leftMm >= stockWidthMm) {
+    return [
+      {
+        elementId,
+        reason:
+          `${label} begins ${mmText(leftMm)} across a ${mmText(stockWidthMm)} label, past its ` +
+          'right edge, so none of it is printed.',
+        scope: 'element',
+      },
+    ]
+  }
+  if (rightMm <= stockWidthMm) return []
+  return [
+    {
+      elementId,
+      reason:
+        `${label} runs ${mmText(rightMm - stockWidthMm)} past the right edge of a ` +
+        `${mmText(stockWidthMm)} label, so part of it is not printed.`,
+      scope: 'detail',
+    },
+  ]
+}
+
+/** The widest of a block's lines, measured in the face they print in. */
+const widestLineMm = (
+  lines: readonly string[],
+  fontSizeMm: number,
+  fontFamily: string,
+  fontWeight?: number,
+): number =>
+  Math.max(
+    0,
+    ...lines.map((line) =>
+      measureTextMm(line, fontSizeMm, measuredFamilyFor(fontFamily, fontWeight)),
+    ),
+  )
 
 /**
  * Width of the Nutrition Facts box. FDA's illustrations draw the standard
@@ -218,6 +279,25 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
         scope: 'detail',
       })
     }
+    // Across as well, in the face it prints in: the statement is bold. Not when it
+    // is absent already — "none of it" beside "part of it" contradicts itself.
+    if (panel.yMm < stock.heightMm) {
+      omissions.push(
+        ...rightOverrun(
+          US_FOOD_ELEMENTS.statementOfIdentity,
+          'The statement of identity',
+          panel.xMm,
+          panel.xMm +
+            widestLineMm(
+              identityLines,
+              type.statementOfIdentityMm,
+              type.fontFamily,
+              type.emphasisFontWeight,
+            ),
+          stock.widthMm,
+        ),
+      )
+    }
   }
 
   // Drawn as one run. 15 U.S.C. 1453(a)(2) wants both systems on the panel and
@@ -291,6 +371,17 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
           `${mmText(stock.heightMm)} label, so part of it is not printed.`,
         scope: 'detail',
       })
+    }
+    if (startYMm < stock.heightMm) {
+      omissions.push(
+        ...rightOverrun(
+          elementId,
+          label,
+          panel.xMm,
+          panel.xMm + widestLineMm(lines, fontSizeMm, type.fontFamily),
+          stock.widthMm,
+        ),
+      )
     }
   }
 

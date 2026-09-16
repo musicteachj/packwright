@@ -5,6 +5,7 @@ export {
   glyphHeightMm,
   hasMetrics,
   measureTextMm,
+  measuredFamilyFor,
   wrapTextMm,
 } from './measure'
 export type { GlyphBasis } from './measure'

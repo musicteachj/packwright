@@ -246,8 +246,9 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
   line that runs past the right edge, and a bold signal word measured in Regular widths could print up to
   that 3–5% past it unrecorded — and still clear `GHS_SIGNAL_WORD_SINGLE`. The check resolves the SemiBold face
   for bold text the way `embeddedFontFor` does, so the omission is right; the wrap it follows still uses
-  Regular widths, which is this entry. Any bounds check added to `usFoodEngine` needs the same care for the
-  bold statement of identity.
+  Regular widths, which is this entry. `usFoodEngine`'s right-edge check measures the bold statement of
+  identity the same way, and the resolution is one function, `measuredFamilyFor`, rather than a copy in each
+  engine.
 - **The Calories word and numeral sit on different baselines on the vertical display.** Claimed: `text()`
   derives the baseline from each run's own size, so a 16 pt word and a 22 pt figure sharing a `yMm` are
   ~2.1 mm apart. The tabular branch already takes the max of the pair; the vertical branch is said not to.
@@ -535,7 +536,12 @@ Deciding this needs omissions that say which lines were lost, or an advisory fin
 declaration could not be confirmed on the label. The advisory is a new code with a citation and a fixture, so
 it is a change of its own.
 
-**`usFoodEngine` records nothing for a word that runs off the right edge.** Found while fixing the same gap in
+**~~`usFoodEngine` records nothing for a word that runs off the right edge.~~ Fixed** on
+`fix/engines-record-what-runs-off`. The statement of identity, measured in the SemiBold face it prints in, and
+every block `stackText` draws now record a `detail` omission when their widest line runs past the stock, or
+an `element` omission when they begin past it. The
+face resolution is shared with the GHS engine as `measuredFamilyFor` in `text/measure`. What follows is the
+entry as it stood. Found while fixing the same gap in
 the GHS engine, and reproduced. `wrapTextMm` never breaks inside a word, and the engine's bounds checks look at
 the bottom edge alone — only the net quantity declaration is checked across. On `US_FOOD_CONFORMANT` on a
 60 mm label, a statement of identity of "Supercalifragilisticexpialidociousgranola" is set as one line whose
@@ -543,6 +549,17 @@ right edge is 114.8 mm, nothing is recorded against it, and `FDA_STATEMENT_OF_ID
 live false clearance, and the fix is the one `layOutGhsLabel` now has: measure each block's widest line
 against the stock, for the stacked blocks and the statement of identity's own loop — in the face it prints
 in, since the statement of identity is bold.
+
+**A margin as wide as the stock describes no panel, and all three engines accept it.** Found reviewing the
+right-edge checks on `fix/engines-record-what-runs-off`, and reproduced. Every engine requires only a finite,
+non-negative margin, so `{ widthMm: 60, marginMm: 65 }` resolves a panel of negative width, and anchors then
+place elements wholly off the label. That branch made each engine record such an element as an `element`
+omission, so no empty label exports — except that `usFoodEngine`'s net quantity check, which predates it, still
+files a declaration wholly outside the label (x 65.0–153.1 mm on a 60 mm stock) as a `detail`. Nothing ships
+because of it: under that margin every stacked block also begins off the label and blocks export. But the
+honest answer to such a stock is probably a `LayoutError` — "input that describes no drawing at all" — which
+would make every one of these cases unreachable rather than handled one by one. A decision about the engines'
+contract, not a fix to make in passing.
 
 ### What reading the GHS provisions turned up
 
@@ -572,7 +589,8 @@ below, and `usFoodEngine`'s bounds check is the precedent for the fix.
 
 **~~A UPC-A drawn off its stock clears bar height and its digits on ink that is not on the label.~~ Fixed** on
 `fix/engines-record-what-runs-off`, as an omission from the engine rather than a gate in the two rules.
-`layOutUpcALabel` records a `detail` omission against the symbol when its ink runs past any edge — the bars,
+`layOutUpcALabel` records a `detail` omission against the symbol when its ink runs past any edge, or an
+`element` omission when it lies wholly outside the label — the bars,
 and the digits the quiet zones carry, measured from the primitives. The guard then withholds every pass
 measured off the symbol, magnification included, and the check digit stands. What follows is the entry as it
 stood. On

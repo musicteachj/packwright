@@ -37,6 +37,33 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **`usFoodEngine` looks across as well as down.** Its bounds checks have recorded a block drawn past the bottom
+  of the stock since phase 5, but nothing looked past the right edge, and `wrapTextMm` never breaks inside a
+  word. A statement of identity reading "Supercalifragilisticexpialidociousgranola" was set as one line
+  ending 114.8 mm across a 60 mm label, recorded nowhere, and cleared by `us-food/statement-of-identity`.
+  The statement of identity and every block `stackText` draws — the ingredients, the Contains statement, the
+  responsible firm — now record a `detail` omission when their widest line runs past the stock, and an
+  `element` omission when they begin past it. The first draft filed every case as a detail on the reasoning
+  that each block starts at the panel's margin, on the label; its review pointed out the engine accepts a
+  margin as wide as the stock, where nothing prints and a detail would have left export open. The UPC-A
+  engine's overflow check, one commit earlier, rested on the same assumption about its anchored symbol, and
+  a probe confirmed a corner anchor places it wholly off the label with export still offered; it is
+  corrected in the same change. A last review found a block recorded as absent below the label
+  also measured across, so one element carried "none of it is printed" beside "part of it is not", and a
+  block past both edges was listed as blocking twice. Both engines now skip the right-edge check for a block
+  already absent, at all five sites, each pinned by a test that fails with the two notes restored.
+
+  **Measured in the face it prints in.** The statement of identity is bold, and in Regular widths it reads
+  3–5% narrow, which the GHS engine's review had already shown is enough to escape a check. The face is
+  resolved by one function now, `measuredFamilyFor` in `text/measure`, mirroring `renderPdf`'s
+  `embeddedFontFor`; the GHS engine's local copy is gone, and its bold test still pins it.
+
+  Each call site and the face resolution were mutation-tested, each failing a named test: the identity check,
+  the stacked-block check, the identity measured in Regular, the shared function never resolving SemiBold —
+  which fails the GHS and US food bold tests both — the absent-block branch and the recording itself. The test for the stacked block
+  failed on its premise the first time, because the firm is set smaller than the statement and fitted a
+  60 mm label; it asserts the overrun it depends on now.
+
 - **A UPC-A drawn off its stock is recorded as not printed in full.** `verticalOverflowMm` has measured it
   since phase 3, but only the quiet-zone rule read it and no omission did, so on a 100 × 20 mm label bar
   height and the human-readable digits both cleared — "The symbol prints 036000291452 beneath the bars" with
@@ -49,7 +76,11 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   entry that recorded this defect left that as the choice between an omission and a gate in two rules. The
   omission won because a symbol not printed as asked for has not been cleared, and because it is the rule the
   guard already applies to every other element. The check digit, which rests on the document, stands. It is
-  always a detail: the symbol is anchored inside the panel, so some of it prints, and export is unaffected.
+  a detail where some of the symbol prints, and an `element` omission where none does, which refuses the
+  export. (This entry first said it was always a detail, because the anchor keeps a symbol on the panel. The
+  engine accepts a margin as wide as the stock, and a corner anchor then places the symbol wholly off the
+  label — found while reviewing the US food check below, which made the same assumption, and fixed with a
+  case for each side.)
 
   **Float noise is not an overrun.** Its review found a symbol on a label typed to its exact height — 22.16 mm
   at 0.8x, where the drawn height is 22.160000000000004 — recorded as running "0.00 mm past the top and

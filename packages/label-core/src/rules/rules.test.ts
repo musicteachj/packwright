@@ -1,6 +1,7 @@
 import * as bwip from 'bwip-js/generic'
 import { describe, expect, it } from 'vitest'
 import { layOutUpcALabel } from '../layout/engine'
+import { blockingOmissions } from '../layout/omissions'
 import type { LabelStock } from '../templates/stock'
 import type { UpcALabelData } from '../templates/upcA'
 import type { Finding } from '../types/index'
@@ -248,6 +249,23 @@ describe('a symbol drawn off the stock is recorded as not printed in full', () =
     expect(omission!.reason).toContain('past the left edge')
     expect(passesOnTheSymbol({ gtin: '036000291452' }, stock)).not.toContain('GS1_HRI_PRESENT')
   })
+
+  // A margin wider than the stock, which the engine accepts, lets an anchor place
+  // the symbol wholly outside the label. Filed as a detail it exported empty. One
+  // case per side, each outside on that side alone, so every bound is exercised.
+  it.each([
+    ['right', 'top-left', { widthMm: 60, heightMm: 200, marginMm: 65 }],
+    ['left', 'top-right', { widthMm: 60, heightMm: 200, marginMm: 65 }],
+    ['bottom', 'top-centre', { widthMm: 200, heightMm: 60, marginMm: 65 }],
+    ['top', 'bottom-centre', { widthMm: 200, heightMm: 60, marginMm: 65 }],
+  ] as const)(
+    'records a symbol wholly past the %s of the label as absent, which blocks export',
+    (_side, symbolPlacement, stock) => {
+      const data = { gtin: '036000291452', symbolPlacement }
+      expect(symbolOmissions(data, stock).map((o) => o.scope)).toEqual(['element'])
+      expect(blockingOmissions(layoutOn(data, stock))).toHaveLength(1)
+    },
+  )
 
   it('records nothing for a symbol that fits', () => {
     expect(symbolOmissions({ gtin: '036000291452' }, CONFORMANT_FIXTURE.stock)).toEqual([])

@@ -30,7 +30,7 @@ import { requiredPictograms } from '../ghs/classification'
 import { applyPrecedence } from '../ghs/precedence'
 import { hazardStatementText, precautionaryStatementText } from '../ghs/statements'
 import { roundTo } from '../geometry/units'
-import { hasMetrics, measureTextMm, wrapTextMm } from '../text/measure'
+import { measureTextMm, measuredFamilyFor, wrapTextMm } from '../text/measure'
 import { dimensionBandFor, pictogramAreaSqMm } from '../ghs/labelDimensions'
 import type { GhsLabelData } from '../templates/ghs'
 import { GHS_ELEMENTS, GHS_TYPE_DEFAULT } from '../templates/ghs'
@@ -101,7 +101,12 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
    * makes for every stacked block, and in the same two scopes: a block that begins
    * past the edge is absent, and one that runs past it has lost a detail.
    */
-  function recordOverrun(elementId: string, label: string, topMm: number, bottomMm: number): void {
+  function recordOverrun(
+    elementId: string,
+    label: string,
+    topMm: number,
+    bottomMm: number,
+  ): boolean {
     if (topMm >= stock.heightMm) {
       omissions.push({
         elementId,
@@ -110,7 +115,11 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
           'bottom edge, so none of it is printed.',
         scope: 'element',
       })
-    } else if (bottomMm > stock.heightMm) {
+      // Absent, so there is nothing across to measure. Checking the right edge as
+      // well gave one element "none of it is printed" beside "part of it is not".
+      return true
+    }
+    if (bottomMm > stock.heightMm) {
       omissions.push({
         elementId,
         reason:
@@ -119,6 +128,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
         scope: 'detail',
       })
     }
+    return false
   }
 
   /**
@@ -154,22 +164,13 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     }
   }
 
-  /**
-   * The face a line is measured in for that check: the one it prints in.
-   *
-   * `measureTextMm` takes a family and no weight, and a bold line measured in
-   * Regular widths reads 3–5% narrow — so the signal word, drawn at weight 600,
-   * could print past the edge by that much with nothing recorded, and a review
-   * caught exactly that. Resolved as `embeddedFontFor` resolves the face the PDF
-   * embeds. The wrap still uses Regular widths; `docs/BACKLOG.md` keeps that as
-   * its own stage, and a line it wraps too long is now recorded rather than lost.
-   */
-  const measuredFamilyFor = (bold: boolean): string => {
-    const semibold = `${type.fontFamily} SemiBold`
-    return bold && hasMetrics(semibold) ? semibold : type.fontFamily
+  // Measured in the face each line prints in — the signal word is drawn at weight
+  // 600, and in Regular widths it reads narrow enough to escape the check. A review
+  // caught exactly that; see `measuredFamilyFor`.
+  const widestLineMm = (lines: readonly string[], fontSizeMm: number, bold = false): number => {
+    const family = measuredFamilyFor(type.fontFamily, bold ? type.emphasisFontWeight : undefined)
+    return Math.max(0, ...lines.map((line) => measureTextMm(line, fontSizeMm, family)))
   }
-  const widestLineMm = (lines: readonly string[], fontSizeMm: number, bold = false): number =>
-    Math.max(0, ...lines.map((line) => measureTextMm(line, fontSizeMm, measuredFamilyFor(bold))))
 
   function pushText(
     elementId: string,
@@ -209,13 +210,14 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       label,
       box: { xMm: panel.xMm, yMm: startYMm, widthMm: panel.widthMm, heightMm: boxHeightMm },
     })
-    recordOverrun(elementId, label, startYMm, startYMm + boxHeightMm)
-    recordRightOverrun(
-      elementId,
-      label,
-      panel.xMm,
-      panel.xMm + widestLineMm(lines, fontSizeMm, bold),
-    )
+    if (!recordOverrun(elementId, label, startYMm, startYMm + boxHeightMm)) {
+      recordRightOverrun(
+        elementId,
+        label,
+        panel.xMm,
+        panel.xMm + widestLineMm(lines, fontSizeMm, bold),
+      )
+    }
     cursorYMm = startYMm + boxHeightMm + type.blockGapMm
   }
 
@@ -321,8 +323,9 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       // row, so it can run off the right as well as the bottom — a label with more
       // pictograms than its width holds draws the last of them past the edge.
       const pictogramLabel = `The ${code} pictogram`
-      recordOverrun(elementId, pictogramLabel, cursorYMm, cursorYMm + boxMm)
-      recordRightOverrun(elementId, pictogramLabel, xMm, xMm + boxMm)
+      if (!recordOverrun(elementId, pictogramLabel, cursorYMm, cursorYMm + boxMm)) {
+        recordRightOverrun(elementId, pictogramLabel, xMm, xMm + boxMm)
+      }
     })
 
     cursorYMm += boxMm + type.blockGapMm
@@ -391,8 +394,9 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
         heightMm: cursorYMm - startYMm,
       },
     })
-    recordOverrun(elementId, label, startYMm, cursorYMm)
-    recordRightOverrun(elementId, label, panel.xMm, panel.xMm + widestMm)
+    if (!recordOverrun(elementId, label, startYMm, cursorYMm)) {
+      recordRightOverrun(elementId, label, panel.xMm, panel.xMm + widestMm)
+    }
     cursorYMm += type.blockGapMm
   }
 
