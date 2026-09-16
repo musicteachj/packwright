@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { layOutGhsLabel } from '../../layout/ghsEngine'
+import type { ResolvedLayout } from '../../layout/types'
+import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { GhsLabelData } from '../../templates/ghs'
 import type { LabelStock } from '../../templates/stock'
 import { runRules } from '../registry'
@@ -12,12 +14,29 @@ import {
 const STOCK: LabelStock = { widthMm: 74, heightMm: 105, marginMm: 4 }
 const FLAMMABLE = '2.6/flammable-liquids-1-2-3'
 
+/**
+ * The layout as it would be with the pictogram artwork verified.
+ *
+ * Every pictogram this engine draws is a frame with its symbol recorded as
+ * omitted, and the rule declines to certify a container whose pictogram did not
+ * print — correctly, and `certification.test.ts` pins it on the real layout.
+ * These tests are about what each regime lists, so they strip that one omission
+ * and nothing else. Without it every expectation of a pass below would fail for a
+ * reason that has nothing to do with the list its name describes.
+ */
+const withGlyphsDrawn = (layout: ResolvedLayout): ResolvedLayout => ({
+  ...layout,
+  omissions: layout.omissions.filter(
+    (omission) => !omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`),
+  ),
+})
+
 const findingsFor = (data: GhsLabelData) =>
   runRules({
     labelType: 'ghs-chemical',
     data,
     stock: STOCK,
-    layout: layOutGhsLabel({ data, stock: STOCK }),
+    layout: withGlyphsDrawn(layOutGhsLabel({ data, stock: STOCK })),
   })
 
 const codes = (data: GhsLabelData) =>

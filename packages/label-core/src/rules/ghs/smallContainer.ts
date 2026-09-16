@@ -28,6 +28,7 @@
  * would let a label drop its pictograms on a capacity check alone.
  */
 
+import { wasFullyDrawn } from '../../layout/omissions'
 import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { GhsRegime } from '../../ghs/statements'
 import type { Citation, Finding } from '../../types/index'
@@ -147,6 +148,22 @@ export const ghsSmallContainerRule: GhsChemicalRule = {
         }),
       ]
     }
+
+    // **Carried means printed.** `missing` reads the document, which says what was
+    // asked for; this asks whether it reached the label. A frame with no symbol is
+    // not a pictogram, and a supplier line that did not print is not carried — yet
+    // this pass said "carries everything" beside `GHS_PICTOGRAM_SYMBOL_MISSING` for
+    // the only pictogram. It names no element, so the guard in `runRules` has
+    // nothing to look up and cannot withhold it; the rule has to. Declined rather
+    // than reported, because the omission and the integrity rule already say what
+    // did not print, and a second finding would report one defect twice.
+    const listed = [
+      GHS_ELEMENTS.productIdentifier,
+      ...layout.pictograms.map((pictogram) => pictogram.elementId),
+      GHS_ELEMENTS.supplier,
+      ...(isUs ? [GHS_ELEMENTS.signalWord, GHS_ELEMENTS.outerPackageStatement] : []),
+    ]
+    if (!listed.every((elementId) => wasFullyDrawn(layout, elementId))) return []
 
     return [
       // Both provisions list what the container's own label must still carry: the artwork.

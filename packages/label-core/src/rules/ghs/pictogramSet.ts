@@ -22,6 +22,7 @@ import { requiredPictograms } from '../../ghs/classification'
 import { applyPrecedence } from '../../ghs/precedence'
 import type { GhsPictogramCode } from '../../ghs/pictograms'
 import { GHS_PICTOGRAM_SYMBOLS } from '../../ghs/pictograms'
+import { wasFullyDrawn } from '../../layout/omissions'
 import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
@@ -93,7 +94,19 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
       )
     }
 
-    if (findings.length === 0) {
+    // **A frame is not a pictogram, so a set of frames has not been certified.**
+    // This judges the pictograms the label carries, and one whose symbol was not
+    // drawn is not carried (C.2.3.1). The pass names the strip so the canvas can
+    // outline it, while omissions are recorded per pictogram — so the guard in
+    // `runRules` never matched, and this cleared the set on every GHS label beside
+    // a `GHS_PICTOGRAM_SYMBOL_MISSING` for the same frame. Declined rather than
+    // reported: the integrity rule owns that defect. While no glyph artwork is
+    // verified, that is every label carrying a pictogram.
+    const everyMemberPrinted = layout.pictograms.every((pictogram) =>
+      wasFullyDrawn(layout, pictogram.elementId),
+    )
+
+    if (findings.length === 0 && everyMemberPrinted) {
       findings.push(
         // Whether the pictograms the label carries are the ones Annex V requires: the artwork.
         passedOnArtwork(

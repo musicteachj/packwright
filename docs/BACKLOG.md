@@ -389,7 +389,11 @@ The US food reading kept it on the artwork — 101.2(c) bounds the height of pri
 right and cannot reach the defect. The pass names an element the engine never omits. The fix belongs in the
 rule, counting only elements that `wasFullyDrawn`.
 
-**`GHS_SMALL_CONTAINER_COMPLETE` names no element, so nothing can withhold it.** On a complete EU small
+**~~`GHS_SMALL_CONTAINER_COMPLETE` names no element, so nothing can withhold it.~~ Fixed** on
+`fix/passes-rest-on-what-printed`: the rule now declines the pass unless every element its list names
+`wasFullyDrawn` — the product identifier, each pictogram, the supplier, and under OSHA the signal word and the
+outer-package statement. While no glyph is drawn that is every container carrying a pictogram. What follows is
+the entry as it stood. On a complete EU small
 container (0.1 L, GHS02) it reports "The container carries everything the small-container provision requires
 of it" while the only pictogram is a frame with no symbol in it. The rule's own list includes "at least one
 hazard pictogram", which it checks as `layout.pictograms.length > 0` — frames, not glyphs. The violation
@@ -410,7 +414,9 @@ appears. `GS1_DIGITAL_LINK_VALID` was the second site, and the GS1 reading settl
 Syntax governs a string, and this engine prints no carrier for the link, so there is no ink to withhold the
 pass over.
 
-**`GHS_PICTOGRAM_SET_MATCHES` names the strip; omissions are recorded per pictogram.** It carries
+**~~`GHS_PICTOGRAM_SET_MATCHES` names the strip; omissions are recorded per pictogram.~~ Fixed** on
+`fix/passes-rest-on-what-printed`, as the entry proposed: the pass is withheld unless every member pictogram
+`wasFullyDrawn`. It carries
 `ghs-pictograms`, and the engine records `ghs-pictograms-GHS02` — so on `GHS_CONFORMANT` the guard never
 matches, and the pass "Every pictogram on the label is required by a declared hazard class" survives beside
 a `GHS_PICTOGRAM_SYMBOL_MISSING` violation for the same pictogram. `ghs/pictogram-size` names the suffixed id
@@ -426,7 +432,9 @@ on every label carrying a pictogram, which is the correct answer while no glyph 
 `GHS_PICTOGRAM_COMPLETE` is unreachable by any document and correctly so: `glyphDrawn` is only ever `false`,
 because the Annex V specimen artwork was never verified, and the rule continues past the pass whenever it is.
 The other four are reachable and not in the sweep — `GHS_SMALL_CONTAINER_COMPLETE`, `FDA_DUAL_COLUMN_MET`,
-`FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. It matters less than it did, because
+`FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. `GHS_PICTOGRAM_SET_MATCHES` has since
+joined `GHS_PICTOGRAM_COMPLETE` as unreachable, for the same reason and as correctly: it certifies a set of
+pictograms, and no glyph is drawn. It matters less than it did, because
 the guarantee that every pass states what it certifies is now the compiler's, not the sweep's. It still
 matters for every reading that flips one of them, since a flip ships with a fixture that reaches it.
 `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` has since been flipped, and `FDA_DUAL_COLUMN_MET` and
@@ -499,12 +507,14 @@ baseline sits at 13.4 mm, wholly below the edge, and `GHS_SIGNAL_WORD_SINGLE` st
 one signal word, “Danger”". The realistic case is the small container. A US 50 ml container invoking
 (f)(12), on a 50 × 25 mm label, prints its outer-package statement at 34.3–41.3 mm and its manufacturer at
 43.3–49.8 mm — both wholly off the label — and its only pictogram at 18.1–32.3 mm, more than half off. The
-only omission recorded is the missing glyph. `runRules` returns `GHS_SMALL_CONTAINER_COMPLETE`, "The container
+only omission recorded is the missing glyph. `runRules` returned `GHS_SMALL_CONTAINER_COMPLETE`, "The container
 carries everything the small-container provision requires of it", beside `GHS_PICTOGRAM_SET_MATCHES` for the
 half-printed strip, while the manufacturer's name and telephone and the outer-package statement — three
-entries on the rule's own list — are not on the label. The blocking
-`GHS_PICTOGRAM_SYMBOL_MISSING` is all that keeps it from reading clean, and that finding exists only because
-the glyph artwork is unverified. Reproduced 2026-09-16. It is the GHS sibling of the GS1 off-stock entry
+entries on the rule's own list — are not on the label. Reproduced 2026-09-16. **Both passes are now withheld by
+their own rules** — but on this label only because the glyph is missing. The small-container rule also gates
+on the supplier and the outer-package statement printing, and that gate has nothing to act on until this
+engine records the omission, so the entry stands: the signal-word pass is still reachable today, and the
+supplier and statement gates wait on it. It is the GHS sibling of the GS1 off-stock entry
 below, and `usFoodEngine`'s bounds check is the precedent for the fix.
 
 ### What reading the GS1 provisions turned up

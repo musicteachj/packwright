@@ -37,6 +37,27 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **Two GHS passes certified pictograms whose symbols were never drawn, and now decline to.**
+  `GHS_PICTOGRAM_SET_MATCHES` named the strip while omissions are recorded per pictogram, and
+  `GHS_SMALL_CONTAINER_COMPLETE` named no element at all, so the guard in `runRules` could withhold neither.
+  Both are requirements on what the label carries, and a frame with no symbol is not a pictogram (29 CFR
+  1910.1200 App. C.2.3.1). Each rule now asks for itself: the set is certified only when every member
+  pictogram printed in full, and the small container only when everything its regime lists did — the
+  product identifier, each pictogram and the supplier, plus the signal word and outer-package statement
+  under OSHA. Withheld, not reported: `GHS_PICTOGRAM_SYMBOL_MISSING` and the omission already say what did
+  not print.
+
+  **While no glyph artwork is verified, neither pass can clear on any label carrying a pictogram**, and that
+  is the correct answer rather than a regression. The sweep's floor for GHS rules that clear drops from five
+  to four accordingly. The small-container tests that exercise what each regime lists now run as if the
+  glyphs had printed, and say so, so they still test the list rather than failing on the pictogram.
+
+  Every entry on the small-container gate is pinned separately, each mutation-tested: without the gate on
+  the product identifier, the pictograms, the supplier, the signal word or the outer statement, a named
+  assertion fails, and a control shows the pass still clears when everything printed. The supplier and
+  statement gates are reached by hand today, because `layOutGhsLabel` records no omission for text drawn off
+  the stock; that is the next entry in `docs/BACKLOG.md` to close.
+
 - **A `us-osha` label's statement codes were validated against the EU table.** Both arrays in `GhsRequest`
   were `z.enum(knownHazardStatementCodes('eu-clp'))` whatever the `regime` field three lines above them said,
   so the saved-label and export routes judged a US label against CLP. Latent only because H- and P-numbers are

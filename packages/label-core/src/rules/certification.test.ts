@@ -21,6 +21,9 @@ import { layOutUpcALabel } from '../layout/engine'
 import { layOutGhsLabel } from '../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import { GHS_CONFORMANT } from './fixtures/ghs'
+import type { ResolvedLayout } from '../layout/types'
+import { GHS_ELEMENTS } from '../templates/ghs'
+import type { GhsLabelData } from '../templates/ghs'
 import { CONFORMANT_FIXTURE as GS1_CONFORMANT } from './fixtures/gs1Retail'
 import { US_FOOD_CONFORMANT } from './fixtures/usFood'
 import { PERMISSION_PATHS, sweepEveryRule } from './fixtures/sweep'
@@ -51,7 +54,9 @@ import {
   FDA_INGREDIENTS_ORDER_MET,
   FDA_INGREDIENT_THRESHOLD_MET,
   FDA_RESPONSIBLE_FIRM_MET,
+  GHS_PICTOGRAM_SET_MATCHES,
   GHS_PICTOGRAM_SIZE_MET,
+  GHS_SMALL_CONTAINER_COMPLETE,
   GS1_DIGITAL_LINK_VALID,
   GS1_GTIN_CHECK_DIGIT_VALID,
   ghsPictogramSizeRule,
@@ -451,6 +456,86 @@ describe('a GHS pictogram is certified on its ink', () => {
   })
 })
 
+describe('a GHS pass the guard cannot reach is withheld by its own rule', () => {
+  // Both passes name something omissions are never recorded against — the strip,
+  // or nothing at all — so `runRules` could not withhold them, and both certified
+  // pictograms whose symbols were never drawn. Each case runs the engine's real
+  // layout, then the same layout as if the glyphs had printed: the control, which
+  // shows the rule still clears when there is nothing to withhold for.
+  const glyphsDrawn = (layout: ResolvedLayout): ResolvedLayout => ({
+    ...layout,
+    omissions: layout.omissions.filter(
+      (omission) => !omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`),
+    ),
+  })
+  const codesFor = (data: GhsLabelData, layout: ResolvedLayout) =>
+    runRules({ labelType: 'ghs-chemical', data, stock: GHS_CONFORMANT.stock, layout }).map(
+      (result) => result.code,
+    )
+
+  it('does not certify a pictogram set whose symbols did not print', () => {
+    const { data, stock } = GHS_CONFORMANT
+    const layout = layOutGhsLabel({ data, stock })
+
+    expect(
+      layout.omissions.map((omission) => omission.elementId),
+      'the premise: the only pictogram is a frame with its symbol omitted',
+    ).toContain(`${GHS_ELEMENTS.pictograms}-GHS02`)
+    expect(codesFor(data, layout), 'a set of frames is not a set of pictograms').not.toContain(
+      GHS_PICTOGRAM_SET_MATCHES,
+    )
+    expect(codesFor(data, glyphsDrawn(layout)), 'the control: printed, it clears').toContain(
+      GHS_PICTOGRAM_SET_MATCHES,
+    )
+  })
+
+  it('does not certify a small container as carrying what did not print', () => {
+    const data: GhsLabelData = {
+      regime: 'us-osha',
+      productIdentifier: 'Example solvent',
+      capacityL: 0.05,
+      smallContainerLabelling: true,
+      signalWords: ['Danger'],
+      hazards: ['2.6/flammable-liquids-1-2-3'],
+      supplier: {
+        name: 'Example Chemicals Ltd',
+        address: '1 Example Way',
+        telephone: '+1 555 0100',
+      },
+      outerPackageStatement: 'Full label information is provided on the immediate outer package.',
+    }
+    const layout = layOutGhsLabel({ data, stock: GHS_CONFORMANT.stock })
+    const printed = glyphsDrawn(layout)
+    // The engine records no omission for text off the stock yet, so each listed
+    // text element is lost by hand, one at a time: the gate must honour every
+    // entry on the list, not rest on the pictogram alone.
+    const lost = (elementId: string): ResolvedLayout => ({
+      ...printed,
+      omissions: [
+        ...printed.omissions,
+        { elementId, reason: 'Omitted for this test.', scope: 'element' },
+      ],
+    })
+
+    expect(codesFor(data, layout), 'its only pictogram is a bare frame').not.toContain(
+      GHS_SMALL_CONTAINER_COMPLETE,
+    )
+    for (const elementId of [
+      GHS_ELEMENTS.productIdentifier,
+      GHS_ELEMENTS.signalWord,
+      GHS_ELEMENTS.supplier,
+      GHS_ELEMENTS.outerPackageStatement,
+    ]) {
+      expect(codesFor(data, lost(elementId)), `${elementId} did not print`).not.toContain(
+        GHS_SMALL_CONTAINER_COMPLETE,
+      )
+    }
+    expect(codesFor(data, printed), 'the control: everything printed, it clears').toContain(
+      GHS_SMALL_CONTAINER_COMPLETE,
+    )
+  })
+})
+
 /** One sweep for the whole file. It lays out every fixture; the assertions below do not each need their own. */
 const SWEPT = sweepEveryRule(bwip)
 const PASSES = SWEPT.filter(({ finding: result }) => result.severity === 'pass')
@@ -510,8 +595,10 @@ describe('every pass says what it certifies', () => {
       GS1_RETAIL_RULES.length,
     )
     // Not all of them: `docs/BACKLOG.md` records which pass codes no fixture
-    // reaches, and why one of them cannot be reached at all today.
-    expect(cleared(GHS_RULES), 'GHS rules that cleared at least once').toBeGreaterThanOrEqual(5)
+    // reaches. Three cannot be reached at all while no pictogram glyph is drawn —
+    // the integrity, set and small-container passes each certify a pictogram, and
+    // a frame with no symbol is not one.
+    expect(cleared(GHS_RULES), 'GHS rules that cleared at least once').toBeGreaterThanOrEqual(4)
     expect(
       cleared(US_FOOD_RULES),
       'us-food rules that cleared at least once',
