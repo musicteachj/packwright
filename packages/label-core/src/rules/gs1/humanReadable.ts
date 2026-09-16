@@ -45,6 +45,7 @@ export const humanReadableRule: Gs1RetailRule = {
       )
 
       if (hasDigits) {
+        // §4.14.2: the HRI "SHALL be placed below the barcode" — digits in ink, so the artwork.
         return passedOnArtwork(
           humanReadableRule,
           GS1_HRI_PRESENT,

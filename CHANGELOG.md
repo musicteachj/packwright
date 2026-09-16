@@ -191,6 +191,31 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Changed
 
+- **The GS1 passes say what they rest on because the provisions were read, not because of a default.** Two
+  of the six rest on the document. `GS1_GTIN_CHECK_DIGIT_VALID` reports a check digit, which is computed from
+  the GTIN's own digits and is true of the number whether or not a symbol printed. `GS1_DIGITAL_LINK_VALID`
+  reports that a URI is well-formed under the URI Syntax standard, and this engine prints no carrier for the
+  link at all. The other four measure the printed symbol and stay on the artwork: magnification and bar
+  height (figure 5.12.3.1-1 and §5.2.3.2), the quiet zone (figure 5.2.3.4-1), and the digits §4.14.2 says
+  "SHALL be placed below the barcode". Each call site now carries a note saying which.
+
+  **No verdict the engine can reach changes.** `layOutUpcALabel` records one omission — a symbol that cannot
+  be encoded because its check digit is wrong — and on that label no GS1 rule passes. So a GS1 pass never
+  sits beside an omission today, and `certification.test.ts` adds one by hand to pin what happens on the day
+  one can: omit the symbol, and the check digit survives while the four passes measured off the bars are
+  withheld. The assertion is exact, so changing any of those five answers fails it, and each was mutated to
+  confirm that.
+
+  **The Digital Link's survival proves nothing, and its test says so.** The pass names no element, so the
+  guard has nothing to look up and keeps it whichever answer it gives; stamping it `artwork` again leaves
+  every survival assertion green. The test asserts the declaration itself, which is the assertion that failed
+  under the mutation. The registry's count of artwork passes naming no element drops from three to two.
+
+  Reading the rules turned up a live false clearance that neither answer reaches, now in `docs/BACKLOG.md`:
+  on 20 mm stock a UPC-A runs 3.85 mm past its top and bottom edges, and bar height and the human-readable
+  digits both pass with every digit below the edge of the label. Also recorded there: the check-digit and
+  Digital Link rules keep no reading of their source.
+
 - **A pass that does not say what it certifies no longer compiles.** `Finding` is discriminated on
   `severity`: the `pass` arm requires `certifies: 'artwork' | 'document'`, and every other severity carries
   `certifies?: never`. `passed` is now `passedOnArtwork`, beside `passedOnDocument`, and both set the field.

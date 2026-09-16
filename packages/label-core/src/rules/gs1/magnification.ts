@@ -41,6 +41,7 @@ export const magnificationRule: Gs1RetailRule = {
       const actual = `${magnification.toFixed(2)}x (X = ${xDimensionMm(symbol.xDimensionMm)})`
 
       if (isMagnificationInRange(magnification)) {
+        // Figure 5.12.3.1-1 bounds the X-dimension the bars are printed at: the artwork.
         return passedOnArtwork(
           magnificationRule,
           GS1_MAGNIFICATION_IN_RANGE,

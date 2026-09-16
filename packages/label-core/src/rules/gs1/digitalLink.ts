@@ -16,7 +16,7 @@ import { isValidCheckDigit } from '../../gs1/checkDigit'
 import { DigitalLinkError, buildDigitalLinkUri } from '../../gs1/digitalLink'
 import type { Gs1Element } from '../../gs1/elementString'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnArtwork } from '../finding'
+import { finding, passedOnDocument } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_DIGITAL_LINK_INVALID = 'GS1_DIGITAL_LINK_INVALID'
@@ -96,7 +96,8 @@ export const digitalLinkRule: Gs1RetailRule = {
       // faulted.
       if (!useConvenienceAlphas) {
         findings.push(
-          passedOnArtwork(
+          // URI Syntax governs the string, and this engine prints no carrier for it: the document.
+          passedOnDocument(
             digitalLinkRule,
             GS1_DIGITAL_LINK_VALID,
             `The Digital Link resolves to ${uri}.`,

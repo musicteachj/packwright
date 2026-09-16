@@ -70,6 +70,7 @@ export const quietZoneRule: Gs1RetailRule = {
         if (side.actualMm >= side.requiredMm - MEASUREMENT_TOLERANCE_MM) {
           if (!certifiable) continue
           findings.push(
+            // Figure 5.2.3.4-1 is about blank space either side on the printed label: the artwork.
             passedOnArtwork(
               quietZoneRule,
               GS1_QUIET_ZONE_CLEAR,

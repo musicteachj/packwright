@@ -180,7 +180,7 @@ export function listRules(labelType?: LabelType): readonly Rule[] {
  * about what it rests on. The real reason is mechanical — omissions are recorded
  * per element, so a pass naming no element has nothing this guard can look up.
  * Which means a pass that certifies the artwork and names no element is a pass
- * this guard cannot withhold, whatever `certifies` says. Three do today;
+ * this guard cannot withhold, whatever `certifies` says. Two do today;
  * `docs/BACKLOG.md` says which, and that one of them is live.
  */
 function withholdUncertifiablePasses(findings: Finding[], layout: ResolvedLayout): Finding[] {

@@ -358,6 +358,9 @@ changed in the same commit as the mechanism. **Those thirty-seven stamps preserv
 not yet decisions.** The provisions are read rule set by rule set, and a call site that has been judged
 carries a note saying what its provision governs.
 
+GS1's six were read on 2026-09-16. The check digit and the Digital Link rest on the document; the four that
+measure the printed symbol rest on the artwork. Thirty-one stamps remain — seven GHS, twenty-four US food.
+
 ### What reviewing the mechanism turned up
 
 Each reproduced before being written here. None is fixed by choosing `artwork` or `document`, which is why
@@ -380,9 +383,11 @@ hazard pictogram", which it checks as `layout.pictograms.length > 0` — frames,
 branch names `GHS_ELEMENTS.supplier`, so an id was available. `GHS_PICTOGRAM_SYMBOL_MISSING` is still raised
 on the same label, so the label is not silently clean, but this pass states something false.
 
-Two other `passedOnArtwork` sites name no element and are equally beyond the guard's reach:
-`GS1_DIGITAL_LINK_VALID` and `GHS_PICTOGRAM_PRECEDENCE_MET`. Whether either is a false clearance depends on
-what its provision governs, which is the reading.
+One other `passedOnArtwork` site names no element and is equally beyond the guard's reach:
+`GHS_PICTOGRAM_PRECEDENCE_MET`. Whether it is a false clearance depends on what its provision governs, which
+is the GHS reading. `GS1_DIGITAL_LINK_VALID` was the second, and the GS1 reading settled it on the document:
+URI Syntax governs a string, and this engine prints no carrier for the link, so there is no ink to withhold
+the pass over.
 
 **`GHS_PICTOGRAM_SET_MATCHES` names the strip; omissions are recorded per pictogram.** It carries
 `ghs-pictograms`, and the engine records `ghs-pictograms-GHS02` — so on `GHS_CONFORMANT` the guard never
@@ -424,6 +429,30 @@ the violating label plus its exemption and the two cannot drift. Not done in the
 already grown by fixing a review's findings in place. One item from that pass was fixed there: only the
 US-food loop labelled where its findings came from, so a GHS permission document added later would have
 counted as fixture coverage and escaped the check that every such document reaches something.
+
+### What reading the GS1 provisions turned up
+
+**A UPC-A drawn off its stock clears bar height and its digits on ink that is not on the label.** On
+100 × 20 mm stock — the document `rules.test.ts` already uses for vertical overflow — the nominal symbol
+starts at y −3.85 mm. That puts 3.85 mm of its 22.85 mm bars above the top edge, and the digits' baselines at
+23.85 mm, below the bottom one. `runRules` returns four passes and nothing else, among them
+`GS1_BAR_HEIGHT_SUFFICIENT`, "The bars are 22.85 mm, meeting the 22.85 mm minimum", and `GS1_HRI_PRESENT`,
+"The symbol prints 036000291452 beneath the bars", with every digit off the label. The quiet-zone rule
+declines to certify this symbol through `certifiable`; the two rules beside it never learned to. Neither
+`certifies` answer reaches it, because the engine records `verticalOverflowMm` on the symbol and no
+omission, so the guard has nothing to look up. A live false clearance, reproduced 2026-09-16. The fix is a
+containment gate in the two rules or an omission from the engine, and choosing between them decides whether
+magnification — still measurable on the part that did print — is withheld with them.
+
+**Two GS1 rules keep no reading of their source.** `gs1/gtin-check-digit` cites "GS1 General Specifications
+— check digit calculation", with no version and no section, and `gs1/checkDigit.ts` says only "Reference: GS1
+General Specifications, 'Check digit calculation'". `gs1/digital-link`'s primary citation is "GS1 Digital
+Link URI Syntax" with no version, beside an alphas citation that names 1.3.0. The other four GS1 rules rest
+on `geometry/symbol.ts`, which quotes GenSpec 25.0 by section and figure. Neither gap changed the GS1 reading
+— one answer turned on what a check digit is, the other on this engine drawing nothing — so neither document
+was fetched for it. But a later reader cannot re-check either citation against a paragraph. Fetch the
+check-digit section of the current General Specifications and the URI Syntax version `buildDigitalLinkUri`
+implements, and record what was read and when.
 
 **~~`ExtractionResult` admits a field that is present with no value.~~ Fixed in stage 2**, the stage this
 entry said should carry it. `fields` is now `{ [K in keyof T]?: ExtractedField<NonNullable<T[K]>> }`, so

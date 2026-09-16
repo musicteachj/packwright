@@ -17,17 +17,26 @@
 
 import { describe, expect, it } from 'vitest'
 import * as bwip from 'bwip-js/generic'
+import { layOutUpcALabel } from '../layout/engine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
+import { CONFORMANT_FIXTURE as GS1_CONFORMANT } from './fixtures/gs1Retail'
 import { US_FOOD_CONFORMANT } from './fixtures/usFood'
 import { PERMISSION_PATHS, sweepEveryRule } from './fixtures/sweep'
 import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES } from './registry'
 import { finding } from './finding'
 import type { Finding } from '../types/index'
 import type { LabelStock } from '../templates/stock'
+import { UPC_A_ELEMENTS } from '../templates/upcA'
 import { US_FOOD_ELEMENTS } from '../templates/usFood'
 import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
 import { runRules } from './registry'
-import { FDA_DUAL_COLUMN_EXEMPT, FDA_NET_QUANTITY_CROWDED, FDA_RESPONSIBLE_FIRM_MET } from './index'
+import {
+  FDA_DUAL_COLUMN_EXEMPT,
+  FDA_NET_QUANTITY_CROWDED,
+  FDA_RESPONSIBLE_FIRM_MET,
+  GS1_DIGITAL_LINK_VALID,
+  GS1_GTIN_CHECK_DIGIT_VALID,
+} from './index'
 
 /** Layout and findings together, because every case here asserts its own premise. */
 const judge = (data: UsFoodLabelData, stock: LabelStock) => {
@@ -171,6 +180,52 @@ describe('the statement of identity is bounded like every other block', () => {
         result.severity === 'pass' && result.elementId === US_FOOD_ELEMENTS.statementOfIdentity,
     )
     expect(certified, 'an identity printed off the label cannot be reported met').toBe(false)
+  })
+})
+
+describe('the GS1 passes that rest on the document', () => {
+  // **The omission is added by hand, and no verdict the engine can reach moves.**
+  // `layOutUpcALabel` records one omission — no symbol, because the check digit
+  // is wrong — and on that label no GS1 rule passes at all. So a GS1 pass never
+  // sits beside an omission today. These pin what each pass does on the day one
+  // can: the same element omitted, and the two answers parting company over it.
+  const drawn = layOutUpcALabel(bwip as never, GS1_CONFORMANT)
+  const findings = runRules({
+    labelType: 'gs1-retail',
+    ...GS1_CONFORMANT,
+    layout: {
+      ...drawn,
+      omissions: [
+        { elementId: UPC_A_ELEMENTS.symbol, reason: 'Omitted for this test.', scope: 'element' },
+      ],
+    },
+  })
+
+  it('keeps the check digit, a fact about the number, when the symbol is omitted', () => {
+    expect(drawn.omissions, 'the premise: the conformant label draws in full').toEqual([])
+
+    const onTheSymbol = findings
+      .filter((result) => result.severity === 'pass' && result.elementId === UPC_A_ELEMENTS.symbol)
+      .map((result) => result.code)
+
+    // Exact, so it fails in both directions: the check digit withheld, or any of
+    // the four passes that measure the printed symbol surviving beside it.
+    expect(
+      onTheSymbol,
+      'only the check digit survives; everything measured off the bars is withheld',
+    ).toEqual([GS1_GTIN_CHECK_DIGIT_VALID])
+  })
+
+  it('keeps the Digital Link, and says why rather than surviving by accident', () => {
+    const link = findings.find((result) => result.code === GS1_DIGITAL_LINK_VALID)
+
+    // It names no element, so the guard has nothing to look up and would keep it
+    // whichever answer it gave. Survival alone therefore cannot tell the two
+    // apart — stamping it `artwork` again leaves this test's first two
+    // assertions green. The declaration is the part a regression changes.
+    expect(link, 'the premise: the conformant label configures a valid Digital Link').toBeDefined()
+    expect(link!.elementId, 'the premise: nothing is drawn for it to name').toBeUndefined()
+    expect(link!.severity === 'pass' && link!.certifies).toBe('document')
   })
 })
 

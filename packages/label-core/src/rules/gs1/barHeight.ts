@@ -40,6 +40,7 @@ export const barHeightRule: Gs1RetailRule = {
 
       if (symbol.barHeightMm >= requiredMm - MEASUREMENT_TOLERANCE_MM) {
         findings.push(
+          // §5.2.3.2 and figure 5.12.3.1-1 set the height of the printed bars: the artwork.
           passedOnArtwork(
             barHeightRule,
             GS1_BAR_HEIGHT_SUFFICIENT,

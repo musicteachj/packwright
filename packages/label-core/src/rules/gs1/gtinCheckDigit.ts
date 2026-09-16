@@ -1,17 +1,18 @@
 /**
  * The GTIN's check digit must be the one the GS1 algorithm computes.
  *
- * This is the one rule in the set that reads the label document rather than the
- * resolved geometry, and deliberately so: a check digit is a fact about a
- * number, not about ink. It is also the only rule whose failure means there is
- * no geometry to read — no encoder will produce a UPC-A with a wrong check
- * digit, because the twelfth digit *is* the check digit. The engine records the
- * omission; this says why it happened, and cites the algorithm.
+ * One of two rules in the set that read the label document rather than the
+ * resolved geometry — the Digital Link is the other — and deliberately so: a
+ * check digit is a fact about a number, not about ink. It is also the only rule
+ * whose failure means there is no geometry to read — no encoder will produce a
+ * UPC-A with a wrong check digit, because the twelfth digit *is* the check digit.
+ * The engine records the omission; this says why it happened, and cites the
+ * algorithm.
  */
 
 import { calculateCheckDigit, isValidCheckDigit } from '../../gs1/checkDigit'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnArtwork } from '../finding'
+import { finding, passedOnDocument } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_GTIN_CHECK_DIGIT_INVALID = 'GS1_GTIN_CHECK_DIGIT_INVALID'
@@ -41,7 +42,8 @@ export const gtinCheckDigitRule: Gs1RetailRule = {
 
     if (isValidCheckDigit(data.gtin)) {
       return [
-        passedOnArtwork(
+        // Computed from the GTIN's own digits: true of the number whether or not a symbol printed.
+        passedOnDocument(
           gtinCheckDigitRule,
           GS1_GTIN_CHECK_DIGIT_VALID,
           `The check digit for ${data.gtin} is correct.`,
