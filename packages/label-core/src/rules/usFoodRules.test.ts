@@ -1462,8 +1462,15 @@ describe('the §101.9(j) nutrition exemption', () => {
     // nutrition information".
     const line = 'For nutrition information, call 1-800-555-0100'
     const codesOf = (findings: { code: string }[]) => findings.map((f) => f.code)
+    // A 60 × 70 mm label is 6.51 in². A package bears at least the labeling on it, so a
+    // label of 12 in² or more rules the exemption out — which the full-size stock the
+    // rest of this file uses would do before any of these cases were reached.
+    const fullSize = US_FOOD_CONFORMANT.stock
+    const stock: LabelStock = { widthMm: 60, heightMm: 70, marginMm: 3 }
+    // And a small package: 50 × 60 mm is a 4.65 in² panel, which does not rule it out either.
     const claim = (patch: Partial<UsFoodSmallPackageExemption> = {}): UsFoodLabelData => ({
       ...withoutPanel,
+      container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
       nutritionExemption: {
         kind: 'small-package',
         availableSurfaceSqInches: 11.5,
@@ -1489,6 +1496,27 @@ describe('the §101.9(j) nutrition exemption', () => {
         US_FOOD_ELEMENTS.smallPackageContact,
       )
       expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_MISSING')
+    })
+
+    it('refuses it on a label of 12 square inches or more, whatever area is typed', () => {
+      // The PR review found the first fixtures declaring 11.5 in² on a 120 × 240 mm label.
+      const findings = findingsFor(claim(), fullSize)
+      const missing = findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
+      expect(missing!.message).toContain('The label is itself 44.6 in²')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(j)(13)(i)')
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+      // Nor on a small label on a package whose panel alone is 44.6 in².
+      const onBigPackage = findingsFor(
+        { ...claim(), container: US_FOOD_CONFORMANT.data.container },
+        stock,
+      )
+      expect(onBigPackage.find((f) => f.code === 'FDA_NUTRITION_MISSING')!.message).toContain(
+        'The principal display panel is itself 44.6 in²',
+      )
+      // 12 in² exactly is not "less than 12": 3 × 4 inches.
+      expect(
+        codesOf(findingsFor(claim(), { widthMm: 76.2, heightMm: 101.6, marginMm: 3 })),
+      ).not.toContain('FDA_NUTRITION_EXEMPT')
     })
 
     it('refuses it for a package of 12 square inches or more, which "less than 12" excludes', () => {
@@ -1562,8 +1590,8 @@ describe('the §101.9(j) nutrition exemption', () => {
           contactLine: line,
         },
       }
-      expect(contactText(data)).toBe('')
-      const codes = codesOf(findingsFor(data, stock))
+      expect(contactText(data, fullSize)).toBe('')
+      const codes = codesOf(findingsFor(data, fullSize))
       expect(codes).toContain('FDA_NUTRITION_COMPLETE')
       expect(codes).not.toContain('FDA_NUTRITION_EXEMPT')
     })

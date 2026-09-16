@@ -924,13 +924,18 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       'number" a consumer can use to obtain it. This label bears none.',
     data: {
       ...WITHOUT_NUTRITION,
+      // A 6.51 in² panel: under the 12 in² the exemption allows, and over the 5 in² at which
+      // 101.7(f) would stop asking where the net quantity sits — so this label reaches
+      // nothing it was not written for.
+      container: { shape: 'rectangular', widthMm: 60, heightMm: 70 },
       nutritionExemption: {
         kind: 'small-package',
         availableSurfaceSqInches: 11.5,
         contactLine: '',
       },
     },
-    stock: CONFORMING_STOCK,
+    // On a 60 × 70 mm label, 6.51 in², so the label itself does not rule the package out.
+    stock: { widthMm: 60, heightMm: 70, marginMm: 3 },
     expected: {
       code: FDA_NUTRITION_CONTACT_MISSING,
       severity: 'blocking',

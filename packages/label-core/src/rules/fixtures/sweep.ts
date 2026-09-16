@@ -24,6 +24,7 @@
 import { layOutUpcALabel } from '../../layout/engine'
 import { layOutGhsLabel } from '../../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../../layout/usFoodEngine'
+import type { LabelStock } from '../../templates/stock'
 import type { Finding } from '../../types/index'
 import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES } from '../registry'
 import type { Rule } from '../types'
@@ -65,89 +66,93 @@ const { nutritionFacts: _panel, ...WITHOUT_A_PANEL } = US_FOOD_CONFORMANT.data
  * conformant fixtures do not, so a document that reaches nothing fails rather
  * than decorates.
  */
-export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument }> = [
-  // `us-food/ingredient-list` clears an exempt label with no list.
-  {
-    label: 'ingredients exempt',
-    data: {
-      ...US_FOOD_CONFORMANT.data,
-      ingredients: [],
-      ingredientsExemption: { kind: 'bulk-at-retail' },
-    },
-  },
-  // The same rule clears an assortment whose statement names what may be present,
-  // citing (a)(1) — the one citation no other document here emits.
-  {
-    label: 'assortment exempt',
-    data: {
-      ...US_FOOD_CONFORMANT.data,
-      ingredientsExemption: {
-        kind: 'assortment',
-        statement: 'May also contain pecans or walnuts.',
-        mayBePresent: ['pecans', 'walnuts'],
+export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument; stock?: LabelStock }> =
+  [
+    // `us-food/ingredient-list` clears an exempt label with no list.
+    {
+      label: 'ingredients exempt',
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients: [],
+        ingredientsExemption: { kind: 'bulk-at-retail' },
       },
     },
-  },
-  // `us-food/nutrition-completeness` clears an exempt label with no panel. The
-  // panel has to be *absent*, not merely unused: its exemption branch tests for it.
-  {
-    label: 'nutrition exempt',
-    data: { ...WITHOUT_A_PANEL, nutritionExemption: { kind: 'small-business' } },
-  },
-  // The same rule clears a small package bearing (j)(13)(i)(A)'s line, citing the
-  // subparagraph rather than (j) — the one citation no other document here emits.
-  {
-    label: 'small package nutrition exempt',
-    data: {
-      ...WITHOUT_A_PANEL,
-      nutritionExemption: {
-        kind: 'small-package',
-        availableSurfaceSqInches: 11.5,
-        contactLine: 'For nutrition information, call 1-800-555-0100',
+    // The same rule clears an assortment whose statement names what may be present,
+    // citing (a)(1) — the one citation no other document here emits.
+    {
+      label: 'assortment exempt',
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        ingredientsExemption: {
+          kind: 'assortment',
+          statement: 'May also contain pecans or walnuts.',
+          mayBePresent: ['pecans', 'walnuts'],
+        },
       },
     },
-  },
-  // `us-food/net-quantity-placement` exempts a 4.65 in² package whose declaration
-  // clears its presence, type size and separation. `US_FOOD_SMALL_PANEL` reached
-  // this until the exemption learned to ask, and its declaration is crowded.
-  {
-    label: 'small package placement exempt',
-    data: {
-      ...US_FOOD_CONFORMANT.data,
-      container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
+    // `us-food/nutrition-completeness` clears an exempt label with no panel. The
+    // panel has to be *absent*, not merely unused: its exemption branch tests for it.
+    {
+      label: 'nutrition exempt',
+      data: { ...WITHOUT_A_PANEL, nutritionExemption: { kind: 'small-business' } },
     },
-  },
-  // `us-food/nutrition-format` clears a small package on the tabular display.
-  // It declines outright for the vertical display, which needs no entitlement.
-  {
-    label: 'tabular display, small package',
-    data: {
-      ...US_FOOD_CONFORMANT.data,
-      nutritionFacts: {
-        ...US_FOOD_CONFORMANT.data.nutritionFacts!,
-        format: 'tabular',
-        availableSurfaceSqInches: 5,
+    // The same rule clears a small package bearing (j)(13)(i)(A)'s line, citing the
+    // subparagraph rather than (j) — the one citation no other document here emits.
+    {
+      label: 'small package nutrition exempt',
+      data: {
+        ...WITHOUT_A_PANEL,
+        container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
+        nutritionExemption: {
+          kind: 'small-package',
+          availableSurfaceSqInches: 11.5,
+          contactLine: 'For nutrition information, call 1-800-555-0100',
+        },
+      },
+      // A label and a panel under 12 in² too, since each is a floor under the package's surface.
+      stock: { widthMm: 60, heightMm: 70, marginMm: 3 },
+    },
+    // `us-food/net-quantity-placement` exempts a 4.65 in² package whose declaration
+    // clears its presence, type size and separation. `US_FOOD_SMALL_PANEL` reached
+    // this until the exemption learned to ask, and its declaration is crowded.
+    {
+      label: 'small package placement exempt',
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
       },
     },
-  },
-  // `us-food/dual-column-required` reports a second column excused. It is built
-  // with `passedOnDocument`, and without it the sweep observes only one of the
-  // two answers `certifies` can take.
-  {
-    label: 'second column excused',
-    data: {
-      ...US_FOOD_CONFORMANT.data,
-      nutritionFacts: {
-        ...US_FOOD_CONFORMANT.data.nutritionFacts!,
-        availableSurfaceSqInches: 60,
-        referenceAmount: { amount: 22, unit: 'g', category: 'Snacks' },
-        packageContent: 55,
-        packagedAndSoldIndividually: true,
-        dualColumnExemption: { rawCommodityVoluntary: true },
+    // `us-food/nutrition-format` clears a small package on the tabular display.
+    // It declines outright for the vertical display, which needs no entitlement.
+    {
+      label: 'tabular display, small package',
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionFacts: {
+          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+          format: 'tabular',
+          availableSurfaceSqInches: 5,
+        },
       },
     },
-  },
-]
+    // `us-food/dual-column-required` reports a second column excused. It is built
+    // with `passedOnDocument`, and without it the sweep observes only one of the
+    // two answers `certifies` can take.
+    {
+      label: 'second column excused',
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionFacts: {
+          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+          availableSurfaceSqInches: 60,
+          referenceAmount: { amount: 22, unit: 'g', category: 'Snacks' },
+          packageContent: 55,
+          packagedAndSoldIndividually: true,
+          dualColumnExemption: { rawCommodityVoluntary: true },
+        },
+      },
+    },
+  ]
 
 export function sweepEveryRule(bwip: unknown): SweptFinding[] {
   const swept: SweptFinding[] = []
@@ -184,9 +189,9 @@ export function sweepEveryRule(bwip: unknown): SweptFinding[] {
     ...US_FOOD_FIXTURES.map((f) => ({ ...f, source: 'fixtures' })),
     { ...US_FOOD_CONFORMANT, source: 'fixtures' },
     { ...US_FOOD_SMALL_PANEL, source: 'fixtures' },
-    ...PERMISSION_PATHS.map(({ label, data }) => ({
+    ...PERMISSION_PATHS.map(({ label, data, stock }) => ({
       data,
-      stock: US_FOOD_CONFORMANT.stock,
+      stock: stock ?? US_FOOD_CONFORMANT.stock,
       source: label,
     })),
   ]) {

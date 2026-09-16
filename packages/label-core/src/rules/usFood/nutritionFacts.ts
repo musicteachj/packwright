@@ -28,9 +28,10 @@
  *   and each pass says what of it goes unchecked; most share one condition this
  *   project cannot evaluate, that the food "bears no nutrition claims or other
  *   nutrition information in any context on the label or in labeling or
- *   advertising", because it models no claims. (j)(13)(i), (j)(14) and (j)(15)
- *   hold only on something printed on the package and are not offered until that
- *   is checked. Read from the eCFR on 2026-09-16.
+ *   advertising", because it models no claims. (j)(13)(i) holds only on a line
+ *   printed on the package, and is checked below. (j)(14) and (j)(15) hold only on
+ *   something printed that nothing here checks, and are not offered until it is.
+ *   Read from the eCFR on 2026-09-16.
  * - The *weights* of the four vitamins and minerals. 101.9(c)(8)(ii) permits
  *   "additional levels of significance" beyond the whole units (c)(8)(iv) gives,
  *   so 235 mg of potassium and 235.4 mg are both proper declarations and no
@@ -56,6 +57,8 @@ import type {
   UsFoodSmallPackageExemption,
 } from '../../templates/usFood'
 import { SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES } from '../../fda/nutritionFormats'
+import { MM_PER_INCH } from '../../geometry/units'
+import { pdpAreaSqInches } from '../../geometry/pdp'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
@@ -234,12 +237,13 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
   ],
   appliesTo: 'us-food',
 
-  check({ data }: UsFoodContext): Finding[] {
+  check(context: UsFoodContext): Finding[] {
+    const { data } = context
     const panel = panelOf(data)
 
     const claimed = data.nutritionExemption
     if (claimed?.kind === 'small-package' && panel === undefined) {
-      return smallPackage(claimed)
+      return smallPackage(claimed, context)
     }
     if (claimed !== undefined && claimed.kind !== 'small-package' && panel === undefined) {
       const exemption = EXEMPTIONS[claimed.kind]
@@ -331,18 +335,60 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
  * 101.9(j)(13)(i), judged: the exemption holds only for a package under 12 in², and
  * only where the label bears the line (A) requires.
  *
- * **The area is declared, and a blank one does not qualify.** It is the package's
- * surface available to bear labeling, which the label stock does not measure, so the
- * user states it — and a missing figure reads as not shown to be under 12 rather than
- * as zero, which would grant the exemption to a package nobody measured. Where it does
- * not qualify, the panel is missing and says why: the claim is the reason there is none.
+ * **The area is declared, and what is drawn is a floor under it.** It is the package's
+ * surface available to bear labeling, which nothing here measures, so the user states
+ * it — and a missing figure reads as not shown to be under 12 rather than as zero, which
+ * would grant the exemption to a package nobody measured. But two figures the engine
+ * does have bound it from below: the label, since a package bears at least the labeling
+ * on it, and the principal display panel, which is part of that surface. Either at 12 in²
+ * or more rules the package out whatever is typed. Where it does not qualify, the panel
+ * is missing and says why: the claim is the reason there is none.
  *
  * **The pass names the printed line**, not the panel, so a line that ran off the label
  * withholds it. What the line says is not judged: whether it gives an address or
  * telephone number a consumer can use is a question about the words, and the
  * regulation prescribes none.
  */
-function smallPackage(claimed: UsFoodSmallPackageExemption): Finding[] {
+function smallPackage(
+  claimed: UsFoodSmallPackageExemption,
+  { data, stock }: UsFoodContext,
+): Finding[] {
+  // The PR review found the first fixtures declaring 11.5 in² on a 120 × 240 mm label of
+  // 44.6 in², and its follow-up the same figure on a container whose panel alone was 44.6
+  // — each exempt from the panel it had room for four times over.
+  const floors = [
+    {
+      what: 'label',
+      sqInches: (stock.widthMm * stock.heightMm) / MM_PER_INCH ** 2,
+      why: 'a package bears at least the labeling on it',
+    },
+    {
+      what: 'principal display panel',
+      sqInches: pdpAreaSqInches(data.container),
+      why: 'that panel is part of the surface available to bear labeling',
+    },
+  ]
+  const ruledOut = floors.find((floor) => floor.sqInches >= SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES)
+  if (ruledOut !== undefined) {
+    return [
+      finding(usFoodNutritionCompletenessRule, {
+        code: FDA_NUTRITION_MISSING,
+        severity: 'blocking',
+        message:
+          'The label bears no nutrition label and claims the 101.9(j)(13)(i) exemption, which ' +
+          `covers only packages with less than ${SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES} in² available ` +
+          `to bear labeling. The ${ruledOut.what} is itself ${ruledOut.sqInches.toFixed(1)} in², ` +
+          `and ${ruledOut.why}, so it cannot qualify.`,
+        measurement: {
+          actual: `a ${ruledOut.sqInches.toFixed(1)} in² ${ruledOut.what}`,
+          required: `less than ${SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES} in² for the exemption`,
+        },
+        elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+        citation: SMALL_PACKAGE,
+      }),
+    ]
+  }
+
   const area = claimed.availableSurfaceSqInches
   // Above zero as well as under 12. A package with no surface cannot bear the label
   // being judged, and reading 0 as qualifying would grant the exemption to exactly the
@@ -393,7 +439,8 @@ function smallPackage(claimed: UsFoodSmallPackageExemption): Finding[] {
       FDA_NUTRITION_EXEMPT,
       `The label claims the ${SMALL_PACKAGE.reference} exemption for a package with ${area} in² ` +
         `available to bear labeling, and bears the contact line (j)(13)(i)(A) requires, so no ` +
-        'panel is required. Not checked here: the area itself, whether the line gives an address ' +
+        'panel is required. Not checked here: the declared area, beyond its being under 12 in² ' +
+        'and not ruled out by the label or its principal display panel, whether the line gives an address ' +
         `or telephone number a consumer can use to obtain the nutrition information, and ${NO_CLAIMS}.`,
       US_FOOD_ELEMENTS.smallPackageContact,
       SMALL_PACKAGE,

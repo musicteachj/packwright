@@ -862,6 +862,11 @@ describe('the Nutrition Facts panel in the editor', () => {
 
   it('takes a small package only with its area, and prints the line it asks for', async () => {
     const { store, wrapper } = await mountFood()
+    // A label under 12 in² as well: a package bears at least the labeling on it, so the
+    // default 120 × 240 mm stock rules the exemption out on its own.
+    Object.assign(store.foodStock, { widthMm: 60, heightMm: 70, marginMm: 3 })
+    store.foodData.container = { shape: 'rectangular', widthMm: 50, heightMm: 60 }
+    await nextTick()
     await wrapper.find('#field-food-nf-present').setValue(false)
     await wrapper.find('#field-food-nf-exemption').setValue('small-package')
     await nextTick()
@@ -882,7 +887,17 @@ describe('the Nutrition Facts panel in the editor', () => {
     await nextTick()
     expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_EXEMPT')).toBe(true)
     expect(store.findings.some((f) => f.code === 'FDA_NUTRITION_CONTACT_MISSING')).toBe(false)
-    expect(wrapper.find('svg[role="img"]').text(), 'and the canvas prints it').toContain(line)
+    expect(
+      wrapper.find('svg[role="img"]').text(),
+      'and the canvas prints it, wrapped on a label this narrow',
+    ).toContain('1-800-555-0100')
+
+    Object.assign(store.foodStock, { widthMm: 120, heightMm: 240, marginMm: 6 })
+    await nextTick()
+    expect(
+      store.findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')?.message,
+      'and a label too big for the package it claims to be on is refused',
+    ).toContain('The label is itself')
   })
 
   it('asks a label saved with the old bare flag which paragraph it claims', async () => {

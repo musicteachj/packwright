@@ -58,8 +58,7 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   qualify for and use this exemption an address or telephone number that a consumer can use to obtain the
   required nutrition information". Neither was checked, so the exemption was not offered. It is now: the label
   declares the package's area and the line, typed as it should print, and the engine prints it where the panel
-  would sit. The rule refuses the exemption for 12 in² or more — the missing panel then reported blocking under
-  (j)(13)(i) — and for a blank area or one of zero or less, which reads as not shown to qualify — a review caught 0 clearing it; it reports a claim
+  would sit. The rule refuses the exemption for 12 in² or more — the missing panel then reported blocking under (j)(13)(i) — and where the label or the package's principal display panel is itself 12 in² or more, whatever area is typed, since a package bears at least the labeling on it and that panel is part of its surface (the PR's review found the first fixtures declaring 11.5 in² on a 44.6 in² label, and then on a 44.6 in² panel); and for a blank area or one of zero or less, which reads as not shown to qualify — a review caught 0 clearing it; it reports a claim
   with no line as `FDA_NUTRITION_CONTACT_MISSING`; and its pass names the printed line, so a line that ran off
   the label withholds it. The manufacturer's 101.5 address does not stand in for the line: the regulation does
   not settle that it would, and FDA's own sample prints a dedicated one. What the line says is not judged, and

@@ -527,6 +527,18 @@ carton lid or in an insert that can be clearly seen when the carton is opened". 
 not excused, and this engine draws neither the underside of a lid nor an insert, so a pass saying no panel is
 required would certify a declaration nothing printed.
 
+**The small-package display route trusts a typed area that the label and its panel rule out.** Found by the
+`high` review of PR #34, and reproduced. The 101.9(j)(13)(i) exemption now refuses a package whose label or
+principal display panel is itself 12 in² or more, since each is a floor under the surface available to bear
+labeling. The (j)(13)(ii) display route in `fda/nutritionFormats.ts` — `smallPackageRouteApplies` and
+`formatIsPermitted` — reads the same declared `availableSurfaceSqInches` with no such floor. On
+`US_FOOD_CONFORMANT`'s 120 × 240 mm label, whose panel is also 44.64 in², a panel declaring
+`availableSurfaceSqInches: 5` and `format: 'tabular'` returns `FDA_NUTRITION_FORMAT_MET`, "A package of 5.0 in²
+may present its nutrition information in a tabular display". The sweep's "tabular display, small package"
+permission document is built exactly that way. The fix is the same floor, applied where the entitlement is
+decided, with that document moved onto a small label and container. Not done in that PR because the file is
+outside it, and the display type sizes that follow from the route need re-checking with it.
+
 **No rule models nutrition claims, so the condition most 101.9(j) exemptions share goes unchecked.** (j)(1),
 (2)(i)–(iii), (3), (4), (10), (13)(i) and (18) each hold only while the food "bears no nutrition claims or other
 nutrition information in any context on the label or in labeling or advertising" (read from the eCFR on
