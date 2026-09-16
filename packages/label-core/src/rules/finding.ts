@@ -137,17 +137,9 @@ export function passedOnDocument(
   })
 }
 
-/**
- * A micrometre. Below this, a difference between two millimetre figures is
- * floating-point noise rather than a real one.
- *
- * Shared, because it was not: `barHeight.ts` guarded the comparison and
- * `quietZone.ts` did not, so a symbol on stock exactly its own footprint wide
- * produced "the right quiet zone measures 2.97 mm; UPC-A requires 2.97 mm" — a
- * violation whose own message says the values are equal, carrying a real GS1
- * citation, while the left side passed on identical numbers.
- */
-export const MEASUREMENT_TOLERANCE_MM = 0.001
+// Defined in `geometry/units`, where the layout engines can reach it without
+// importing from `rules/`, and re-exported so every rule keeps its import.
+export { MEASUREMENT_TOLERANCE_MM } from '../geometry/units'
 
 /**
  * Discards representation error before a value is rounded for display.

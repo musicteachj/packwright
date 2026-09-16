@@ -189,6 +189,103 @@ describe('a symbol drawn off the stock', () => {
   })
 })
 
+describe('a symbol drawn off the stock is recorded as not printed in full', () => {
+  // Measured since phase 3 and read by the quiet-zone rule alone, so bar height
+  // and the digits still cleared on a symbol half off its label. Now an omission,
+  // which withholds every pass measured off the symbol and leaves the check
+  // digit, a fact about the number, standing.
+  const layoutOn = (data: UpcALabelData, stock: LabelStock) =>
+    layOutUpcALabel(bwip as never, { data, stock })
+  const symbolOmissions = (data: UpcALabelData, stock: LabelStock) =>
+    layoutOn(data, stock).omissions.filter((omission) => omission.elementId === 'upca-symbol')
+  const passesOnTheSymbol = (data: UpcALabelData, stock: LabelStock) =>
+    findingsFor(data, stock)
+      .filter((f) => f.severity === 'pass' && f.elementId === 'upca-symbol')
+      .map((f) => f.code)
+
+  it('withholds everything measured off a symbol running past both edges of a short label', () => {
+    const stock = { widthMm: 100, heightMm: 20, marginMm: 3 }
+    const omissions = symbolOmissions({ gtin: '036000291452' }, stock)
+
+    expect(omissions.map((o) => o.scope)).toEqual(['detail'])
+    expect(omissions[0]!.reason).toContain('past the top')
+    expect(omissions[0]!.reason).toContain('past the bottom')
+    expect(passesOnTheSymbol({ gtin: '036000291452' }, stock)).toEqual([
+      'GS1_GTIN_CHECK_DIGIT_VALID',
+    ])
+  })
+
+  it('names only the edge it runs past', () => {
+    // Anchored to the bottom of a 20 mm label, the symbol rises past the top alone.
+    const stock = { widthMm: 100, heightMm: 20, marginMm: 3 }
+    const [omission] = symbolOmissions(
+      { gtin: '036000291452', symbolPlacement: 'bottom-left' },
+      stock,
+    )
+    expect(omission!.reason).toContain('past the top')
+    expect(omission!.reason).not.toContain('past the bottom')
+  })
+
+  it('records bars running past the right edge', () => {
+    // Anchored top-left on a 36 mm label, the 31.35 mm of bars begin after the
+    // margin and the quiet zone and end past the edge.
+    const stock = { widthMm: 36, heightMm: 40, marginMm: 3 }
+    const [omission] = symbolOmissions({ gtin: '036000291452', symbolPlacement: 'top-left' }, stock)
+    expect(omission!.reason).toContain('past the right edge')
+    expect(omission!.reason).not.toContain('past the left edge')
+  })
+
+  it('records a digit cut off by the edge while every bar prints', () => {
+    // The first digit sits in the left quiet zone. On a 33 mm label with no margin
+    // the centred bars fit and the digit beside them does not.
+    const stock = { widthMm: 33, heightMm: 40, marginMm: 0 }
+    const layout = layoutOn({ gtin: '036000291452' }, stock)
+    const symbol = layout.symbols[0]!
+
+    expect(symbol.xMm, 'the premise: the bars start on the label').toBeGreaterThanOrEqual(0)
+    expect(symbol.xMm + symbol.barPatternWidthMm, 'and end on it').toBeLessThanOrEqual(33)
+    const [omission] = symbolOmissions({ gtin: '036000291452' }, stock)
+    expect(omission!.reason).toContain('past the left edge')
+    expect(passesOnTheSymbol({ gtin: '036000291452' }, stock)).not.toContain('GS1_HRI_PRESENT')
+  })
+
+  it('records nothing for a symbol that fits', () => {
+    expect(symbolOmissions({ gtin: '036000291452' }, CONFORMANT_FIXTURE.stock)).toEqual([])
+    expect(
+      symbolOmissions({ gtin: '036000291452' }, { widthMm: 37.29, heightMm: 40, marginMm: 3 }),
+      'nor for one on stock exactly its own footprint wide',
+    ).toEqual([])
+  })
+
+  it('records nothing for a symbol on a label typed to its exact height', () => {
+    // A review found it: the drawn height is 22.160000000000004 mm at 0.8x, so a
+    // 22.16 mm label read as an overrun of float noise on both edges, withholding
+    // every pass on a symbol that printed whole.
+    for (const [magnification, heightMm] of [
+      [0.8, 22.16],
+      [1.1, 30.47],
+      [1.5, 41.55],
+    ] as const) {
+      const stock = { widthMm: 80, heightMm, marginMm: 0 }
+      const data = { gtin: '036000291452', magnification }
+      expect(symbolOmissions(data, stock), `${magnification}x on ${heightMm} mm`).toEqual([])
+      expect(layoutOn(data, stock).symbols[0]!.verticalOverflowMm, 'nor measures it').toBe(0)
+    }
+  })
+
+  it('states an overrun just past the tolerance without rounding it to nothing', () => {
+    // 4 µm short of the symbol, centred, so 2 µm over each edge — past the 1 µm
+    // tolerance, so recorded, and the message must not read "0.00 mm".
+    const [omission] = symbolOmissions(
+      { gtin: '036000291452', magnification: 0.8 },
+      { widthMm: 80, heightMm: 22.156, marginMm: 0 },
+    )
+    expect(omission!.reason).toContain('0.002 mm past the top')
+    expect(omission!.reason).toContain('0.002 mm past the bottom')
+    expect(omission!.reason).not.toContain('0.00 mm past')
+  })
+})
+
 describe('measurements compared with a tolerance', () => {
   it('does not fault a quiet zone that is exactly the minimum', () => {
     // 37.29 mm stock is exactly the 113-module footprint. The two sides reach

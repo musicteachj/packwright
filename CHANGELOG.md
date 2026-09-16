@@ -37,6 +37,34 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A UPC-A drawn off its stock is recorded as not printed in full.** `verticalOverflowMm` has measured it
+  since phase 3, but only the quiet-zone rule read it and no omission did, so on a 100 × 20 mm label bar
+  height and the human-readable digits both cleared — "The symbol prints 036000291452 beneath the bars" with
+  every digit below the edge. `layOutUpcALabel` now records a `detail` omission against the symbol whenever
+  its ink runs past an edge, naming which. Across, the ink is the bars and the digits: an EAN/UPC prints its
+  first and last digits in the quiet zones, so a stock that holds every bar can still cut a digit off, and
+  the digits are measured from the primitives where they are drawn.
+
+  **Magnification is withheld with the rest.** It is still measurable on the part that printed, and the
+  entry that recorded this defect left that as the choice between an omission and a gate in two rules. The
+  omission won because a symbol not printed as asked for has not been cleared, and because it is the rule the
+  guard already applies to every other element. The check digit, which rests on the document, stands. It is
+  always a detail: the symbol is anchored inside the panel, so some of it prints, and export is unaffected.
+
+  **Float noise is not an overrun.** Its review found a symbol on a label typed to its exact height — 22.16 mm
+  at 0.8x, where the drawn height is 22.160000000000004 — recorded as running "0.00 mm past the top and
+  0.00 mm past the bottom", withholding every pass on a symbol that printed whole. Anything within
+  `MEASUREMENT_TOLERANCE_MM` now counts as fitting. That also settles `verticalOverflowMm`, which carried the
+  same 3.6e-15 mm before this change and made the quiet-zone rule decline to certify such a symbol. The
+  tolerance moved to `geometry/units`, so the engines can use it without importing from `rules/`, and
+  `rules/finding` re-exports it for every rule that already did. A second pass caught the message rounding an overrun just
+  past the tolerance to "0.00 mm", which reads as nothing wrong beside an omission saying otherwise; an
+  overrun under 0.01 mm is stated to three places.
+
+  Each edge, the digit measurement, the tolerance and the recording itself were mutation-tested, each failing
+  a named test. The one branch no test reaches measures the middle digit groups, which sit inside the bars
+  and so never set the symbol's extent.
+
 - **The GHS engine says when it draws something off the label.** `layOutGhsLabel` stacks its blocks and
   clamps nothing, by design, but unlike `usFoodEngine` it recorded nothing either. A signal word on a baseline
   13.4 mm down a 6 mm label was cleared as the label's one signal word, and a 50 ml container's manufacturer

@@ -570,7 +570,12 @@ below, and `usFoodEngine`'s bounds check is the precedent for the fix.
 
 ### What reading the GS1 provisions turned up
 
-**A UPC-A drawn off its stock clears bar height and its digits on ink that is not on the label.** On
+**~~A UPC-A drawn off its stock clears bar height and its digits on ink that is not on the label.~~ Fixed** on
+`fix/engines-record-what-runs-off`, as an omission from the engine rather than a gate in the two rules.
+`layOutUpcALabel` records a `detail` omission against the symbol when its ink runs past any edge — the bars,
+and the digits the quiet zones carry, measured from the primitives. The guard then withholds every pass
+measured off the symbol, magnification included, and the check digit stands. What follows is the entry as it
+stood. On
 100 × 20 mm stock — the document `rules.test.ts` already uses for vertical overflow — the nominal symbol
 starts at y −3.85 mm. That puts 3.85 mm of its 22.85 mm bars above the top edge, and the digits' baselines at
 23.85 mm, below the bottom one. `runRules` returns four passes and nothing else, among them

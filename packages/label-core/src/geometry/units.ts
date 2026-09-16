@@ -31,3 +31,19 @@ export function roundTo(value: number, decimals: number): number {
   const factor = 10 ** decimals
   return Math.round(value * factor) / factor
 }
+
+/**
+ * A micrometre. Below this, a difference between two millimetre figures is
+ * floating-point noise rather than a real one.
+ *
+ * Shared, because it was not: `barHeight.ts` guarded the comparison and
+ * `quietZone.ts` did not, so a symbol on stock exactly its own footprint wide
+ * produced "the right quiet zone measures 2.97 mm; UPC-A requires 2.97 mm" — a
+ * violation whose own message says the values are equal, carrying a real GS1
+ * citation, while the left side passed on identical numbers.
+ *
+ * It lives here rather than in `rules/finding` so the layout engines can use it
+ * too: the UPC-A engine recorded a symbol on a 22.16 mm label, typed to its exact
+ * height, as running "0.00 mm past the top and 0.00 mm past the bottom".
+ */
+export const MEASUREMENT_TOLERANCE_MM = 0.001
