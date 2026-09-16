@@ -37,6 +37,21 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **The small-package placement exemption is granted only on the condition 101.7(f) sets.** The proviso
+  excuses a package of 5 in² or less from the bottom-30 percent placement "when the declaration of net quantity
+  of contents meets the other requirements of this part", and `us-food/net-quantity-placement` quoted it and
+  then granted the exemption on panel area alone. So a declaration too small for 101.7(i) was reported too
+  small and exempt at once, a crowded one crowded and exempt — which a test asserted, on
+  `US_FOOD_SMALL_PANEL` — and a blank inch-pound declaration exempt beside the blocking finding that the panel
+  bore none. The rule now asks the presence, type-size and separation rules for their verdict on the same
+  declaration and grants the exemption only when all three cleared it. Where they did not, the placement
+  requirement applies and is judged like any other package's, and the violation says which requirement
+  cost the exemption. The dual declaration is not a condition, because its mandate is the Fair Packaging and
+  Labeling Act's rather than part 101's, where 101.7(p) only permits a metric statement; the rest of 101.7 is
+  not modelled, and the pass says the exemption rests on the three it checks. A declaration alone on its panel
+  keeps the exemption, since the separation rule declines rather than passes when nothing could crowd it. The
+  sweep reached this pass through `US_FOOD_SMALL_PANEL` and now reaches it through a permission path.
+
 - **A margin that leaves no panel is refused, rather than drawn.** Every engine required only a finite,
   non-negative margin, so a margin of half the stock or more resolved a panel of zero or negative size and
   anchored everything relative to it. The omissions filed for what then ran off the label did not agree with

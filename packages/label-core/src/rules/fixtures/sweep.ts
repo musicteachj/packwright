@@ -74,6 +74,16 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument }> = 
   // `us-food/nutrition-completeness` clears an exempt label with no panel. The
   // panel has to be *absent*, not merely unused: its exemption branch tests for it.
   { label: 'nutrition exempt', data: { ...WITHOUT_A_PANEL, nutritionFactsExempt: true } },
+  // `us-food/net-quantity-placement` exempts a 4.65 in² package whose declaration
+  // clears its presence, type size and separation. `US_FOOD_SMALL_PANEL` reached
+  // this until the exemption learned to ask, and its declaration is crowded.
+  {
+    label: 'small package placement exempt',
+    data: {
+      ...US_FOOD_CONFORMANT.data,
+      container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
+    },
+  },
   // `us-food/nutrition-format` clears a small package on the tabular display.
   // It declines outright for the vertical display, which needs no entitlement.
   {

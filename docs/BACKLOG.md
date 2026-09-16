@@ -181,7 +181,17 @@ contradicting each other, and the mis-declared-percentage defect made undrawable
 
 ### Verified, no stage yet
 
-**101.7(f)'s exemption is conditional and is applied unconditionally.** The proviso reads that the
+**~~101.7(f)'s exemption is conditional and is applied unconditionally.~~ Fixed** on
+`fix/net-quantity-zone-proviso`. The placement rule now grants `FDA_NET_QUANTITY_ZONE_NOT_REQUIRED` only when the
+declaration clears the three part 101 requirements this project checks on it — presence under 101.7(a), type
+size under 101.7(i), separation under 101.7(f) — asked of those rules rather than re-derived. Where it does not,
+the placement requirement applies and is judged as for any package, and an `FDA_NET_QUANTITY_OUTSIDE_ZONE` on a
+small package says which requirement cost it the exemption. The dual declaration is not a condition: its
+mandate is the FPLA's, and 101.7(p), read from the eCFR on 2026-09-16, says only that a metric statement "may
+also appear". The rest of 101.7 is not modelled, and the pass says it rests on the three. The same defect had two
+more forms than the one reproduced below: `US_FOOD_SMALL_PANEL` was reported crowded and exempt at once, which
+a test asserted, and a small package with a blank inch-pound declaration got the exemption beside the blocking
+finding that it had none. What follows is the entry as it stood. The proviso reads that the
 bottom-30 percent requirement "shall not apply … **when the declaration of net quantity of contents meets the
 other requirements of this part**", and `netQuantityPlacement.ts` quotes that clause in its own doc block and
 then keys the exemption on package area alone. Reproduced on a 0.9 in² panel with undersized type:

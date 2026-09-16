@@ -559,6 +559,27 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     },
   },
   {
+    name: 'a small package whose undersized declaration loses the placement exemption',
+    defect:
+      'A 50 × 60 mm panel is 4.65 in², at or under the 5 in² at which 101.7(f) stops requiring ' +
+      'the bottom-30 percent placement — but only "when the declaration … meets the other ' +
+      'requirements of this part". Set in a 1 mm em, the lowercase "o" is 0.54 mm against ' +
+      "101.7(i)(1)'s 1/16 inch, 1.5875 mm, so the requirement applies, and a declaration set " +
+      'mid-panel is outside the zone. Drawn on 400 mm of stock so that nothing crowds it.',
+    data: {
+      ...BASE,
+      container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
+      netQuantityAnchor: 'centre',
+      netQuantityFontSizeMm: 1,
+    },
+    stock: { ...CONFORMING_STOCK, heightMm: 400 },
+    expected: {
+      code: FDA_NET_QUANTITY_OUTSIDE_ZONE,
+      severity: 'violation',
+      citation: '21 CFR 101.7(f)',
+    },
+  },
+  {
     name: 'declaration printed on top of the statement of identity',
     defect:
       'Anchored to the panel top, the declaration lands in the same space as the statement of ' +
@@ -1003,12 +1024,15 @@ export const US_FOOD_CONFORMANT: { data: UsFoodLabelData; stock: LabelStock } = 
 }
 
 /**
- * A panel small enough that 101.7(f) stops asking where the declaration sits.
+ * A panel small enough for 101.7(f)'s placement exemption, and a declaration that
+ * does not earn it.
  *
- * It is *not* otherwise clean: the declaration still sits on top of the
- * statement of identity, and the separation requirement in the same paragraph
- * still bites. The exemption covers placement within the bottom 30 percent and
- * nothing else, and the suite asserts both halves of that.
+ * The declaration sits on top of the statement of identity, so the separation
+ * requirement in the same paragraph is not met — and the exemption applies only
+ * "when the declaration … meets the other requirements of this part". So this
+ * label is reported crowded *and* outside the bottom 30 percent. It was once
+ * reported crowded and exempt at the same time; the suite now asserts both halves
+ * of the correction.
  */
 export const US_FOOD_SMALL_PANEL: { data: UsFoodLabelData; stock: LabelStock } = {
   data: {
