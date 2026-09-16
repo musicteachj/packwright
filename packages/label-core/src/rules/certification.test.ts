@@ -203,36 +203,45 @@ describe('the US food passes that rest on the artwork', () => {
       ...withoutPanel,
       container: { shape: 'rectangular', widthMm: 50, heightMm: 50 },
     }
-    const stock: LabelStock = { widthMm: 20, heightMm: 60, marginMm: 1 }
-    const layout = layOutUsFoodLabel({ data, stock })
-    const context = { labelType: 'us-food' as const, data, stock, layout }
-    const judged = [
-      FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
-      FDA_INGREDIENTS_ORDER_MET,
-      FDA_INGREDIENT_THRESHOLD_MET,
-      FDA_CONTAINS_TYPE_MET,
-    ]
+    // Two stocks, because the proviso now asks for more than area. On 60 mm the
+    // stacked text reaches the declaration and crowds it, so the rule withholds the
+    // exemption itself and the guard would be tested against nothing. On 120 mm the
+    // declaration still runs off the 20 mm width, and nothing crowds it.
+    const cases = [
+      {
+        stock: { widthMm: 20, heightMm: 120, marginMm: 1 },
+        judged: [FDA_NET_QUANTITY_ZONE_NOT_REQUIRED],
+        names: [US_FOOD_ELEMENTS.netQuantity],
+      },
+      {
+        stock: { widthMm: 20, heightMm: 60, marginMm: 1 },
+        judged: [FDA_INGREDIENTS_ORDER_MET, FDA_INGREDIENT_THRESHOLD_MET, FDA_CONTAINS_TYPE_MET],
+        names: [US_FOOD_ELEMENTS.ingredients, US_FOOD_ELEMENTS.containsStatement],
+      },
+    ] satisfies { stock: LabelStock; judged: string[]; names: string[] }[]
 
-    const omitted = layout.omissions.map((omission) => omission.elementId)
-    expect(omitted, 'the premise: a 3.9 in² panel on stock too narrow for it').toEqual(
-      expect.arrayContaining([
-        US_FOOD_ELEMENTS.netQuantity,
-        US_FOOD_ELEMENTS.ingredients,
-        US_FOOD_ELEMENTS.containsStatement,
-      ]),
-    )
-    const cleared = US_FOOD_RULES.flatMap((rule) => rule.check(context)).map(
-      (result) => result.code,
-    )
-    expect(cleared, 'the premise: every rule clears before the guard sees it').toEqual(
-      expect.arrayContaining(judged),
-    )
+    for (const { stock, judged, names } of cases) {
+      const layout = layOutUsFoodLabel({ data, stock })
+      const context = { labelType: 'us-food' as const, data, stock, layout }
 
-    const reported = runRules(context).map((result) => result.code)
-    expect(
-      judged.filter((code) => reported.includes(code)),
-      'none of them may survive the omission of the element it names',
-    ).toEqual([])
+      const omitted = layout.omissions.map((omission) => omission.elementId)
+      expect(
+        omitted,
+        `the premise: a 3.9 in² panel on ${stock.heightMm} mm of narrow stock`,
+      ).toEqual(expect.arrayContaining(names))
+      const cleared = US_FOOD_RULES.flatMap((rule) => rule.check(context)).map(
+        (result) => result.code,
+      )
+      expect(cleared, 'the premise: every rule clears before the guard sees it').toEqual(
+        expect.arrayContaining(judged),
+      )
+
+      const reported = runRules(context).map((result) => result.code)
+      expect(
+        judged.filter((code) => reported.includes(code)),
+        'none of them may survive the omission of the element it names',
+      ).toEqual([])
+    }
   })
 
   it('withholds a claimed exemption, because what it is conditional on is printed', () => {

@@ -28,6 +28,7 @@ import {
   FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
   FDA_NET_QUANTITY_MISSING,
   FDA_NET_QUANTITY_OUTSIDE_ZONE,
+  FDA_NET_QUANTITY_SEPARATION_MET,
   FDA_NET_QUANTITY_TYPE_SIZE_MET,
   FDA_NET_QUANTITY_TYPE_TOO_SMALL,
   FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
@@ -116,22 +117,132 @@ describe('the panel belongs to the package, not to the label stock', () => {
     expect(match!.measurement!.required).toBe('4.76 mm')
   })
 
+  // 101.7(f)'s proviso, read from the eCFR on 2026-09-16: the bottom-30 percent
+  // requirement "shall not apply when the declaration of net quantity of contents
+  // meets the other requirements of this part". A 4.65 in² package with its
+  // declaration set mid-panel, drawn on 400 mm of stock so that nothing crowds it —
+  // the one layout on which the exemption is the only question.
+  const smallMidPanel: UsFoodLabelData = {
+    ...US_FOOD_CONFORMANT.data,
+    container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
+    netQuantityAnchor: 'centre',
+  }
+  const tall: LabelStock = { ...US_FOOD_CONFORMANT.stock, heightMm: 400 }
+  const netQuantityFindings = (data: UsFoodLabelData, stock = tall) =>
+    findingsFor(data, stock).filter((f) => f.code.startsWith('FDA_NET_QUANTITY'))
+  const codesOf = (findings: { code: string }[]) => findings.map((f) => f.code)
+
   it('exempts a small package from the placement rule instead of reporting it', () => {
-    // 101.7(f)'s proviso is an exemption, not a relaxation. The identical layout
-    // on a 31.62 in² panel is a violation; on a 4.65 in² one it is not, and a
-    // rule that skipped this check would report against a compliant package.
-    const findings = findingsFor(US_FOOD_SMALL_PANEL.data, US_FOOD_SMALL_PANEL.stock)
-    expect(findings.map((f) => f.code)).toContain(FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)
-    expect(findings.map((f) => f.code)).not.toContain(FDA_NET_QUANTITY_OUTSIDE_ZONE)
+    // An exemption, not a relaxation. The identical layout on the 44.64 in² panel
+    // is a violation; on a 4.65 in² one whose declaration meets the rest it is
+    // not, and a rule that skipped this check would report against a compliant
+    // package.
+    const smallFindings = netQuantityFindings(smallMidPanel)
+    const small = codesOf(smallFindings)
+    expect(small, 'the premise: nothing else is wrong with the declaration').toEqual(
+      expect.not.arrayContaining([FDA_NET_QUANTITY_CROWDED, FDA_NET_QUANTITY_TYPE_TOO_SMALL]),
+    )
+    expect(small).toContain(FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)
+    expect(small).not.toContain(FDA_NET_QUANTITY_OUTSIDE_ZONE)
+    expect(
+      smallFindings.find((f) => f.code === FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)!.message,
+      'naming the separation it measured',
+    ).toContain("meets 101.7(a) and (i) and (f)'s separation")
+
+    const large = codesOf(
+      netQuantityFindings({ ...smallMidPanel, container: US_FOOD_CONFORMANT.data.container }),
+    )
+    expect(large, 'the control: the same layout on a large panel').toContain(
+      FDA_NET_QUANTITY_OUTSIDE_ZONE,
+    )
   })
 
-  it('exempts that package from placement only, not from the rest of 101.7(f)', () => {
-    // The proviso covers placement within the bottom 30 percent and nothing
-    // else. The declaration on this package is still printed over the statement
-    // of identity, and the separation requirement in the same paragraph still
-    // applies — reading the exemption as blanket would drop a real finding.
-    const findings = findingsFor(US_FOOD_SMALL_PANEL.data, US_FOOD_SMALL_PANEL.stock)
-    expect(findings.map((f) => f.code)).toContain(FDA_NET_QUANTITY_CROWDED)
+  it('does not exempt a small package whose declaration is too small, and judges its placement', () => {
+    // The pass once issued beside `FDA_NET_QUANTITY_TYPE_TOO_SMALL` for the same
+    // declaration, resting on the condition that finding had just said was unmet.
+    const findings = netQuantityFindings({ ...smallMidPanel, netQuantityFontSizeMm: 1 })
+    const codes = codesOf(findings)
+
+    expect(codes, 'the premise: 101.7(i) is not met').toContain(FDA_NET_QUANTITY_TYPE_TOO_SMALL)
+    expect(codes, 'and nothing crowds it').not.toContain(FDA_NET_QUANTITY_CROWDED)
+    expect(codes, 'so the proviso does not apply').not.toContain(FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)
+    // "Shall not apply when" the rest is met, so where it is not, the requirement
+    // does — and a declaration set mid-panel is outside the bottom 30 percent.
+    const outside = findings.find((f) => f.code === FDA_NET_QUANTITY_OUTSIDE_ZONE)
+    expect(outside, 'the placement requirement is back in force').toBeDefined()
+    expect(outside!.message, 'and says why the exemption was not given').toContain(
+      "does not meet 101.7(i)'s type size",
+    )
+  })
+
+  it('does not exempt a crowded one either, and still reports the crowding', () => {
+    // Separation is one of "the other requirements" too, though it sits in the same
+    // paragraph. `US_FOOD_SMALL_PANEL` prints its declaration over the statement of
+    // identity, and was once reported crowded and exempt at the same time.
+    const findings = netQuantityFindings(US_FOOD_SMALL_PANEL.data, US_FOOD_SMALL_PANEL.stock)
+    const codes = codesOf(findings)
+
+    expect(codes).toContain(FDA_NET_QUANTITY_CROWDED)
+    expect(codes).not.toContain(FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)
+    expect(
+      findings.find((f) => f.code === FDA_NET_QUANTITY_OUTSIDE_ZONE)?.message,
+      'judged at the top of its panel, and told why',
+    ).toContain("does not meet 101.7(f)'s separation")
+  })
+
+  it('does not exempt a small package with no inch-pound declaration', () => {
+    // The metric statement still prints, so type size and separation both clear —
+    // and the exemption used to be issued beside the blocking finding that says the
+    // panel bears no declaration at all.
+    const blank: UsFoodLabelData = {
+      ...smallMidPanel,
+      netQuantity: { ...smallMidPanel.netQuantity, inchPound: '' },
+    }
+    const findings = netQuantityFindings(blank)
+    const codes = codesOf(findings)
+
+    expect(codes, 'the premise: 101.7(a) is not met').toContain(FDA_NET_QUANTITY_MISSING)
+    expect(codes, 'and nothing else is').toEqual(
+      expect.not.arrayContaining([FDA_NET_QUANTITY_CROWDED, FDA_NET_QUANTITY_TYPE_TOO_SMALL]),
+    )
+    expect(codes).not.toContain(FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)
+    expect(findings.find((f) => f.code === FDA_NET_QUANTITY_OUTSIDE_ZONE)?.message).toContain(
+      'does not meet 101.7(a)',
+    )
+  })
+
+  it('still exempts a declaration with nothing else on its panel to be crowded by', () => {
+    // The separation rule declines rather than passes when nothing else is printed,
+    // and a declaration alone on its panel has not failed to stand clear of anything.
+    // Reading that decline as unmet would take the exemption from the plainest label
+    // there is.
+    const {
+      nutritionFacts: _panel,
+      responsibleFirm: _firm,
+      ingredientThreshold: _threshold,
+      ...rest
+    } = smallMidPanel
+    const alone: UsFoodLabelData = {
+      ...rest,
+      statementOfIdentity: '',
+      ingredients: [],
+      containsStatement: [],
+      ingredientsExempt: true,
+      nutritionFactsExempt: true,
+    }
+    const findings = netQuantityFindings(alone)
+    const codes = codesOf(findings)
+
+    expect(codes, 'the premise: separation had nothing to measure').not.toContain(
+      FDA_NET_QUANTITY_SEPARATION_MET,
+    )
+    expect(codes).not.toContain(FDA_NET_QUANTITY_CROWDED)
+    expect(codes).toContain(FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)
+    // And it says so, rather than claiming a separation it never measured — which
+    // the first message did, and the review of PR #33 caught.
+    const message = findings.find((f) => f.code === FDA_NET_QUANTITY_ZONE_NOT_REQUIRED)!.message
+    expect(message).not.toContain("meets 101.7(a) and (i) and (f)'s separation")
+    expect(message).toContain("nothing else on the panel for (f)'s separation to measure")
   })
 })
 
