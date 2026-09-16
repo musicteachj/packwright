@@ -15,7 +15,7 @@
 import { dimensionBandFor } from '../../ghs/labelDimensions'
 import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_LABEL_BELOW_MINIMUM_SIZE = 'GHS_LABEL_BELOW_MINIMUM_SIZE'
@@ -59,7 +59,8 @@ export const ghsLabelDimensionsRule: GhsChemicalRule = {
 
     if (fits) {
       return [
-        passed(
+        // Table 1.3 sizes the label itself, not anything it declares: the artwork.
+        passedOnArtwork(
           ghsLabelDimensionsRule,
           GHS_LABEL_SIZE_MET,
           `The label is ${actual}, meeting the ${required} minimum for a package of ` +

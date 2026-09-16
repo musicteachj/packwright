@@ -21,15 +21,16 @@
  * level." Citing the general clause on a finding about a specific exemption is
  * the mistake `finding.ts` records having shipped once already.
  *
- * Reading the document rather than the geometry, because whether a second
- * declaration exists is a fact about what the label says, not about where ink
- * lands — the same distinction the GTIN check-digit rule draws.
+ * Reading the document rather than the geometry is a means, not what is judged.
+ * (a)(2) governs what is stated upon the panel, so the pass for both systems rests
+ * on the artwork. Only the two exemptions rest on the document, because whether a
+ * package is random or packaged at retail is a fact about the package.
  */
 
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { UsFoodPackaging } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork, passedOnDocument } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NET_QUANTITY_METRIC_MISSING = 'FDA_NET_QUANTITY_METRIC_MISSING'
@@ -53,7 +54,7 @@ const EXEMPTION: Record<
       reference: '15 U.S.C. 1453(a)(3)(A)(ii)',
       title: 'Random packages — SI declaration permitted, not required',
     },
-    why: 'a random package is not required to carry an SI declaration',
+    why: 'this is a random package',
   },
   'packaged-at-retail': {
     citation: {
@@ -61,7 +62,7 @@ const EXEMPTION: Record<
       reference: '15 U.S.C. 1453(a)(6)',
       title: 'Foods packaged at the retail store level — SI requirement does not apply',
     },
-    why: 'the SI requirement does not apply to foods packaged at the retail store level',
+    why: 'this food is packaged at the retail store level',
   },
 }
 
@@ -93,14 +94,20 @@ export const usFoodNetQuantityDualDeclarationRule: UsFoodRule = {
       // may, include" one. Saying "stands alone" of a label that plainly carries
       // both is a finding a user can see is wrong, and a finding a user can see
       // is wrong costs more than the one it replaces.
+      //
+      // Worded as the entitlement, not as what the panel shows. This pass rests on
+      // the document and survives a declaration drawn off the stock, and "the label
+      // carries an SI declaration" is false of one that never printed.
       const carriesMetric = metric !== undefined && metric.trim() !== ''
       return [
-        passed(
+        // An exemption for this kind of package, true whether or not either declaration printed.
+        passedOnDocument(
           usFoodNetQuantityDualDeclarationRule,
           FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
           carriesMetric
-            ? `The label carries an SI declaration, "${metric.trim()}", though ${why}.`
-            : `The inch/pound declaration stands alone, and ${why}.`,
+            ? `No SI declaration is required, because ${why}; "${metric.trim()}" is permitted ` +
+                'all the same.'
+            : `No SI declaration is required, because ${why}.`,
           US_FOOD_ELEMENTS.netQuantity,
           citation,
         ),
@@ -122,7 +129,8 @@ export const usFoodNetQuantityDualDeclarationRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      // 1453(a)(2): both are "stated ... upon the principal display panel" — so the artwork.
+      passedOnArtwork(
         usFoodNetQuantityDualDeclarationRule,
         FDA_NET_QUANTITY_DUAL_MET,
         `The label declares "${inchPound}" and "${metric}", covering both measurement systems.`,

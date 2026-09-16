@@ -191,6 +191,172 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Changed
 
+- **The nutrition panel's passes rest on the artwork, and so do both claimed exemptions — one of them
+  reversed on reading the regulation it rests on.** Completeness, order, rounding, the percentages, serving
+  size, type size and both dual-column passes are requirements on the printed panel. 101.9(c) says the
+  nutrients "shall be presented" in its order and each amount "expressed" to its increment. (d) sets the type
+  the panel is printed in, and (b)(12)(i) and (e) are about a column and its form. The rules read the
+  document's figures as a means. The module header that called rounding "a fact about a number … the same
+  distinction that has the GTIN check-digit rule read the document" now says why it is not: a check digit
+  belongs to the number whether or not it prints, and a rounding does not.
+
+  **`FDA_NUTRITION_EXEMPT` and `FDA_INGREDIENTS_EXEMPT` rest on the artwork, and the second was committed
+  the other way one commit ago.** Neither module recorded a reading of the provision it cites, so both were
+  read from the eCFR before deciding. Most of 101.9(j)'s exemptions turn on the seller, the food and the
+  setting, but not all of them. (j)(13)(i)(A) puts "an address or telephone number" on the label of a small
+  package using its exemption, and (j)(15) holds only where each unit "is labeled with the statement 'This
+  Unit Not Labeled For Retail Sale'". §101.100(a)(1) excuses an assortment only "on the condition that the
+  label shall bear" a statement naming the ingredients that may be present, and (d)(3) needs a caution tag on
+  each container. Neither rule records which exemption was claimed, so neither pass is true whatever
+  printed. The previous commit had stamped the ingredient exemption `document` on the strength of a phrase
+  in its own module, "facts about the product and its packaging rather than on anything drawable", which
+  the section does not bear out. The format entitlement and the second-column exemption stay on the
+  document: (j)(13)(ii)(A) and (b)(12)(i)(A)–(C) turn on the package alone.
+
+  **Pinned, and mutation-tested.** One test adds the omissions an exempt label cannot produce and asserts
+  both exemptions are withheld. Another lays a dual-column label on stock too short for its panel and
+  asserts all seven panel passes the suite did not hold are withheld; each of the seven fails it when
+  stamped `document`. Both exemption messages also told the user applicability was "a fact about the
+  product, not about the label", which the reading disproves, so they now say which things are unchecked;
+  the first test fails on the old wording. The serving-size pass is the eighth, and it is out of reach. It names its own row, the
+  engine records omissions against the whole panel, and on a 25 mm label the row prints wholly below the edge
+  while the pass reports a serving size declared. A live false clearance, recorded in `docs/BACKLOG.md`
+  with the exemption conditions no rule checks. The `high` review of the pull request found one more of the
+  same shape and it is recorded beside them: the allergen pass names the ingredient list, so it survives a
+  Contains statement that carried the only declaration and never printed.
+
+- **The SI exemption now survives an omission; the other fourteen passes outside the nutrition panel stay on
+  the artwork, and say why.** `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` rests on the document: a random package
+  and a food packaged at retail are facts about the package, and stay true whatever the engine managed to
+  draw. (This entry first named `FDA_INGREDIENTS_EXEMPT` beside it; reading §101.100 reversed that — see the
+  entry above.) Every other pass here is about the panel: 101.3(a) and 101.7(a) say what it "shall bear", 101.7(f)
+  and (i) place and size the printed declaration, 101.5(a) says the label "shall specify" the firm, 101.2(c)
+  bounds printed letters, and §403(w) is satisfied by what the package prints.
+
+  **The SI exemption's message had to change with it.** It read "The label carries an SI declaration, …" or
+  "The inch/pound declaration stands alone", and a pass that survives a declaration drawn off the stock
+  cannot say either. It now states the entitlement: "No SI declaration is required, because this is a random
+  package", naming a carried SI declaration as permitted all the same. That keeps what the "stands alone"
+  test was written to protect.
+
+  **`FDA_NET_QUANTITY_ZONE_NOT_REQUIRED` looks like an exemption and stays on the artwork.** It is keyed on
+  panel area, but 101.7(f)'s proviso applies only "when the declaration … meets the other requirements", a
+  condition on the printed declaration. `docs/BACKLOG.md` already records the rule applying it
+  unconditionally, and a `document` stamp would have deepened that.
+
+  **Each answer is pinned, not just the flip.** The flip has a fixture showing the pass survives. Every
+  artwork answer was then flipped in turn against the whole suite — thirteen at the time, the ingredient
+  exemption still being stamped `document`; it is pinned in the entry above — and five of the thirteen —
+  the proviso, ingredient order, the threshold, allergens and the Contains statement — changed nothing. One
+  new document now covers all five: a 50 × 50 mm package on 20 × 60 mm stock, whose declaration, list and
+  Contains statement all run off the label. The panel type-size pass is the thirteenth, and it cannot be
+  observed, because it names an element the engine never omits. That is the live false clearance
+  `docs/BACKLOG.md` already records.
+
+  Two module headers argued that reading the document meant judging it. `netQuantityDualDeclaration` even
+  cited the check digit as its precedent, which now rests on the document for a reason that does not carry
+  over. Both headers now say the reading is a means.
+
+- **All seven GHS passes rest on the artwork, and now say why.** Each provision governs what the label
+  carries. Article 20(3) says a second signal word "shall not appear on the label". C.2.3.1 says a pictogram
+  "shall include a black hazard symbol". Annex V and Article 26 decide which pictograms appear. Table 1.3 and
+  1.2.1.3 size the label and the printed pictogram. And both small-container provisions list what the
+  container's own label must still carry. None is an entitlement or a fact about the chemical. Each call site
+  carries the note.
+
+  **Nothing reappears in the audit report, though that was the effect this rule set was expected to show.** The
+  expectation was that some pictogram passes would rest on the document and survive the glyph omission every
+  audit carries.
+  The only GHS pass that omission withholds is `GHS_PICTOGRAM_SIZE_MET`, and it must stay withheld: a frame
+  with no symbol is not a pictogram, and on the audit path `pictogramSideMm` is never measured, so a pass on
+  the document would clear a size nobody measured on every audit carrying a pictogram.
+
+  **That answer was the only one of the seven a verdict turns on, and nothing tested it.** Stamped `document`,
+  the whole suite stayed green. `certification.test.ts` now asserts the rule clears the frame and `runRules`
+  withholds it, and fails under that mutation. The other six are unobservable today, which is why they carry
+  notes and not tests. `GHS_PICTOGRAM_COMPLETE` cannot be reached. The signal word, set and label-size passes
+  name elements this engine never omits. The precedence and small-container passes name none.
+
+  The reading settled the two GHS questions `docs/BACKLOG.md` left for it. `GHS_PICTOGRAM_SET_MATCHES` is a
+  live false clearance: it judges the pictograms the label carries, but names the strip while omissions are
+  recorded per pictogram, so it survives beside a symbol-less frame. `GHS_PICTOGRAM_PRECEDENCE_MET` is not:
+  glyph omissions change neither the codes it reads nor the truth of a "shall not appear". Neither is fixed
+  by a stamp, so both are recorded rather than fixed. So is what reading turned up: `layOutGhsLabel` records no
+  omission for a block drawn off its stock, so a 50 ml container on a 50 × 25 mm label reports that it
+  "carries everything the small-container provision requires" with its manufacturer and outer-package
+  statement printed below the edge.
+
+- **The GS1 passes say what they rest on because the provisions were read, not because of a default.** Two
+  of the six rest on the document. `GS1_GTIN_CHECK_DIGIT_VALID` reports a check digit, which is computed from
+  the GTIN's own digits and is true of the number whether or not a symbol printed. `GS1_DIGITAL_LINK_VALID`
+  reports that a URI is well-formed under the URI Syntax standard, and this engine prints no carrier for the
+  link at all. The other four measure the printed symbol and stay on the artwork: magnification and bar
+  height (figure 5.12.3.1-1 and §5.2.3.2), the quiet zone (figure 5.2.3.4-1), and the digits §4.14.2 says
+  "SHALL be placed below the barcode". Each call site now carries a note saying which.
+
+  **No verdict the engine can reach changes.** `layOutUpcALabel` records one omission — a symbol that cannot
+  be encoded because its check digit is wrong — and on that label no GS1 rule passes. So a GS1 pass never
+  sits beside an omission today, and `certification.test.ts` adds one by hand to pin what happens on the day
+  one can: omit the symbol, and the check digit survives while the four passes measured off the bars are
+  withheld. The assertion is exact, so changing any of those five answers fails it, and each was mutated to
+  confirm that.
+
+  **The Digital Link's survival proves nothing, and its test says so.** The pass names no element, so the
+  guard has nothing to look up and keeps it whichever answer it gives; stamping it `artwork` again leaves
+  every survival assertion green. The test asserts the declaration itself, which is the assertion that failed
+  under the mutation. The registry's count of artwork passes naming no element drops from three to two.
+
+  Reading the rules turned up a live false clearance that neither answer reaches, now in `docs/BACKLOG.md`:
+  on 20 mm stock a UPC-A runs 3.85 mm past its top and bottom edges, and bar height and the human-readable
+  digits both pass with every digit below the edge of the label. Also recorded there: the check-digit and
+  Digital Link rules keep no reading of their source.
+
+- **A pass that does not say what it certifies no longer compiles.** `Finding` is discriminated on
+  `severity`: the `pass` arm requires `certifies: 'artwork' | 'document'`, and every other severity carries
+  `certifies?: never`. `passed` is now `passedOnArtwork`, beside `passedOnDocument`, and both set the field.
+
+  The field used to be optional, and absent meant the artwork, so thirty-seven of the thirty-nine passes in
+  the registry took that answer because it was the default rather than because anyone read the provision.
+  The distinction is not decorative: a pass on `'artwork'` is withheld when the engine could not draw the
+  element it names, and a pass on `'document'` is not.
+
+  **No verdict changes, and that was measured rather than assumed.** Every fixture, plus four documents that
+  reach permission branches, was run through `runRules` on `dev` and on this branch with `certifies` stripped:
+  833 findings, 743 of them passes, identical once key order is normalised. The order did change — `finding()`
+  now builds the two arms separately — which is why a byte comparison is not the evidence.
+
+  **The thirty-seven `passedOnArtwork` stamps preserve the old default. They are not yet decisions.** They
+  were renamed in bulk so that no verdict moved in the same commit as the mechanism; the provisions are read
+  after this, rule set by rule set, and a judged call site carries a note saying what its provision governs.
+
+  The guarantee is the compiler's. An earlier draft enforced it with a runtime sweep over the fixtures, which
+  a `max` review showed could not see what mattered most: an exemption is not a *bad* label, so no known-bad
+  fixture reaches one, and the sweep never observed a single `passedOnDocument` pass. `certification.test.ts`
+  now carries a `@ts-expect-error` that fails `npm run typecheck` if the type stops refusing an uncertified
+  pass — confirmed by loosening the type and watching it report the directive unused.
+
+  The sweep survives as a second check, moved to `rules/fixtures/sweep.ts` and shared with
+  `citations.test.ts`. The two had grown separate copies; the newer one dropped the permission documents the
+  older had added deliberately, which is how it went blind. It reaches 34 of the 39 pass codes, observes both
+  answers, asserts each rule set clears rather than one pooled count, and asserts that every permission
+  document reaches a pass no fixture does — because two of the four were dead on the day they were written.
+  One kept a panel its rule's exemption branch requires to be absent. The other paraphrased 21 CFR
+  101.9(d)(11)(iii) without its condition — the tabular display is permitted where continuous vertical space
+  runs short — so it never declared that fact and got a violation instead of the pass its comment named. An
+  earlier draft of this entry blamed the rule's docblock for the paraphrase; the paragraph, read from the eCFR,
+  says what the docblock says.
+
+  **The guard's own docblock gave a reason that was not true.** It said a pass with no `elementId` is exempt
+  because such passes judge the document, citing a check digit — but `GS1_GTIN_CHECK_DIGIT_VALID` names an
+  element. The real reason is mechanical: omissions are recorded per element, so a pass naming none has
+  nothing to look up. Which means three `passedOnArtwork` passes are beyond the guard whatever they declare.
+
+  What the review found that this commit does not fix is in `docs/BACKLOG.md`, each reproduced first: a panel
+  type-size pass that counts a firm printed at 645 mm down a 240 mm label; a small-container pass stating the
+  container carries everything required while its only pictogram has no symbol; a pictogram-set pass that
+  names the strip while omissions are recorded per pictogram; the five pass codes the sweep does not reach;
+  and duplication a reuse review reported between the sweep's documents and the rule tests' own.
+
 - **`FindingsRail` takes its heading id, its title, whether it announces, and whether its findings can be
   selected.** All three default to what it
   All four default to what it did before, so the editor is untouched. It hardcoded `id="findings-heading"`

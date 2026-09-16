@@ -32,7 +32,7 @@ import { glyphHeightMm } from '../../text/measure'
 import type { TextPrimitive } from '../../layout/types'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NET_QUANTITY_TYPE_TOO_SMALL = 'FDA_NET_QUANTITY_TYPE_TOO_SMALL'
@@ -81,7 +81,8 @@ export const usFoodNetQuantityTypeSizeRule: UsFoodRule = {
 
     if (actualMm >= requiredMm - MEASUREMENT_TOLERANCE_MM) {
       return [
-        passed(
+        // 101.7(i) sets the height of the printed letters: the artwork.
+        passedOnArtwork(
           usFoodNetQuantityTypeSizeRule,
           FDA_NET_QUANTITY_TYPE_SIZE_MET,
           `The declaration measures ${measurement.actual} on ${BASIS_NAME[basis]}, meeting the ` +

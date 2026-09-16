@@ -10,20 +10,28 @@
  */
 
 import { roundTo } from '../geometry/units'
-import type { Citation, Finding, Measurement, Severity } from '../types/index'
+import type { Certifies, Citation, Finding, Measurement, Severity } from '../types/index'
 import type { Rule } from './types'
 
-interface FindingInput {
+interface FindingInputBase {
   code: string
-  severity: Severity
   message: string
   elementId?: string
   measurement?: Measurement
   /** Overrides the rule's citation, for a rule enforcing more than one clause. */
   citation?: Finding['citation']
-  /** See `Finding.certifies`. Omitted means the artwork, which is the safe default. */
-  certifies?: Finding['certifies']
 }
+
+/**
+ * Mirrors `Finding`'s own discrimination: a `pass` states what it certifies and
+ * everything else may not. `severity: 'pass'` without `certifies` does not
+ * compile, which is the guarantee — a fixture sweep can only catch a missing one
+ * where a fixture reaches that branch, and several passes are entitlements no
+ * known-bad label exercises.
+ */
+type FindingInput =
+  | (FindingInputBase & { severity: 'pass'; certifies: Certifies })
+  | (FindingInputBase & { severity: Exclude<Severity, 'pass'>; certifies?: never })
 
 export function finding(rule: Rule, input: FindingInput): Finding {
   if (!rule.codes.includes(input.code)) {
@@ -34,19 +42,46 @@ export function finding(rule: Rule, input: FindingInput): Finding {
     )
   }
 
-  return {
+  const common = {
     code: input.code,
-    severity: input.severity,
     message: input.message,
     citation: input.citation ?? rule.citation,
     ...(input.elementId === undefined ? {} : { elementId: input.elementId }),
     ...(input.measurement === undefined ? {} : { measurement: input.measurement }),
-    ...(input.certifies === undefined ? {} : { certifies: input.certifies }),
   }
+
+  // Branched rather than spread, because the discrimination is the point: one
+  // object literal carrying a widened `severity` satisfies neither arm.
+  return input.severity === 'pass'
+    ? { ...common, severity: 'pass', certifies: input.certifies }
+    : { ...common, severity: input.severity }
 }
 
 /**
- * A check that ran and cleared.
+ * A check that ran and cleared **on the artwork** — on what was printed.
+ *
+ * The strict one, and the default in spirit: a pass built here is withheld when
+ * the engine could not draw the element it names. Use it for any requirement the
+ * regulation states about the label itself, even where the rule reads the
+ * document to judge it. `us-food/responsible-firm` is the shape to keep in mind
+ * — it inspects `data.responsibleFirm` and nothing else, but 21 CFR 101.5 is
+ * about a name and address *appearing on the label*, so a firm that did not
+ * print has not been cleared. Reading the document is a means; what the
+ * provision governs is the question.
+ *
+ * **It is spelled out rather than left to a default.** This used to be `passed`,
+ * and omitting `certifies` meant the artwork — so thirty-seven of the thirty-nine
+ * passes in the registry took that answer without anyone choosing it, and a
+ * fortieth would have done the same. Two named builders make the choice
+ * unskippable at the call site, and `Finding` is discriminated on `severity` so a
+ * `pass` built any other way does not compile.
+ *
+ * **Reaching for this name is not, by itself, evidence that anyone read the
+ * provision.** When the builders were split, every existing `passed` call became
+ * a `passedOnArtwork` call so that no verdict changed in the same commit as the
+ * mechanism; the provisions were read afterwards, rule set by rule set. A call
+ * site that has been judged carries a note saying what the provision governs. One
+ * without such a note has not been.
  *
  * `citation` overrides the rule's own, for the same reason `finding()` allows it
  * — a rule that enforces the same requirement under two regulators must cite the
@@ -54,7 +89,7 @@ export function finding(rule: Rule, input: FindingInput): Finding {
  * on a US label reported against the EU regulation, which is a wrong citation on
  * a finding a user is being asked to trust.
  */
-export function passed(
+export function passedOnArtwork(
   rule: Rule,
   code: string,
   message: string,
@@ -65,6 +100,7 @@ export function passed(
     code,
     severity: 'pass',
     message,
+    certifies: 'artwork',
     ...(elementId === undefined ? {} : { elementId }),
     ...(citation === undefined ? {} : { citation }),
   })
@@ -80,8 +116,9 @@ export function passed(
  * would delete the only explanation of why no column was demanded — and would
  * leave the label reporting nothing at all on the point.
  *
- * Everything else uses `passed`, whose verdict is withheld when the element it
- * names was not printed in full. The default is the strict one on purpose.
+ * Everything else uses `passedOnArtwork`, whose verdict is withheld when the
+ * element it names was not printed in full. Neither is a default: the call site
+ * says which, and there is no third spelling that declines to answer.
  */
 export function passedOnDocument(
   rule: Rule,

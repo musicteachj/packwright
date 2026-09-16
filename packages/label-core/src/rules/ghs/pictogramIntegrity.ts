@@ -25,7 +25,7 @@
 
 import { isPictogramRecognised, type GhsPictogramCode } from '../../ghs/pictograms'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_PICTOGRAM_SYMBOL_MISSING = 'GHS_PICTOGRAM_SYMBOL_MISSING'
@@ -107,7 +107,8 @@ export const ghsPictogramIntegrityRule: GhsChemicalRule = {
       }
 
       findings.push(
-        passed(
+        // C.2.3.1: a pictogram "shall include a black hazard symbol" — ink, so the artwork.
+        passedOnArtwork(
           ghsPictogramIntegrityRule,
           GHS_PICTOGRAM_COMPLETE,
           `The ${code} pictogram carries its ${pictogram.symbolName} symbol.`,

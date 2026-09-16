@@ -28,7 +28,7 @@ import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { glyphHeightMm } from '../../text/measure'
 import type { GlyphBasis } from '../../text/measure'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_CONTAINS_TYPE_TOO_SMALL = 'FDA_CONTAINS_TYPE_TOO_SMALL'
@@ -164,7 +164,8 @@ export const usFoodContainsStatementTypeRule: UsFoodRule = {
     if (findings.length > 0) return findings
 
     return [
-      passed(
+      // §403(w)(1)(A): "printed immediately after" the list, in type no smaller: the artwork.
+      passedOnArtwork(
         usFoodContainsStatementTypeRule,
         FDA_CONTAINS_TYPE_MET,
         `The "Contains" statement is set at ${mm(containsMm)} beside an ingredient list at ` +

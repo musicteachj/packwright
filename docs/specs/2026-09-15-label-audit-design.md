@@ -58,6 +58,13 @@ Filtering on it now would empty the report and be misleading in the opposite dir
 `rules/` is real work that alters `withholdUncertifiablePasses`, so it goes to `BACKLOG.md` with a stage of
 its own rather than being done in passing here.
 
+**Corrected 2026-09-16.** Two things in the paragraph above no longer hold, and one never did. Nothing
+defaults any more: `Finding` is discriminated on `severity`, so every pass states `certifies` or does not
+compile. And the premise that filtering on it "would empty the report" assumed a filter this report never
+had — `withholdUncertifiablePasses` is the field's only reader, and a report that separated a verdict about
+the user's label from one about our reconstruction would need `certifies` on violations, which `Finding` now
+forbids until that is designed. See `docs/BACKLOG.md`.
+
 ---
 
 ## Four things established by running the code

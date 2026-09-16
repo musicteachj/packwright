@@ -32,7 +32,7 @@
 
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_RESPONSIBLE_FIRM_MISSING = 'FDA_RESPONSIBLE_FIRM_MISSING'
@@ -143,7 +143,8 @@ export const usFoodResponsibleFirmRule: UsFoodRule = {
     if (findings.length > 0) return findings
 
     return [
-      passed(
+      // 101.5(a): the label "shall specify" the firm — printed, so the artwork.
+      passedOnArtwork(
         usFoodResponsibleFirmRule,
         FDA_RESPONSIBLE_FIRM_MET,
         `The label names ${firm.name.trim()} and gives a complete place of business.`,

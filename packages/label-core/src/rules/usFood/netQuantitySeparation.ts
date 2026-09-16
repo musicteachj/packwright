@@ -30,7 +30,7 @@ import { regulatedGlyphBasis } from '../../geometry/pdp'
 import type { BoundingBox, Citation, Finding } from '../../types/index'
 import type { TextPrimitive } from '../../layout/types'
 import { NUTRITION_ELEMENT_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
-import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NET_QUANTITY_CROWDED = 'FDA_NET_QUANTITY_CROWDED'
@@ -123,7 +123,8 @@ export const usFoodNetQuantitySeparationRule: UsFoodRule = {
 
     if (crowded.length === 0) {
       return [
-        passed(
+        // 101.7(f) separates it "from other printed label information": the artwork.
+        passedOnArtwork(
           usFoodNetQuantitySeparationRule,
           FDA_NET_QUANTITY_SEPARATION_MET,
           `The declaration stands clear of the ${neighbours.length === 1 ? 'one other element' : `${neighbours.length} other elements`} ` +

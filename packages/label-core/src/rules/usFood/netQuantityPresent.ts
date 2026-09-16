@@ -14,14 +14,15 @@
  * rules each honestly reporting "not applicable" add up to "checked and clear"
  * unless one of them owns the case where the element is missing entirely.
  *
- * Reading the document rather than the geometry: whether the label bears a
- * declaration is a fact about what it says, not about where ink lands, and there
- * is by definition no geometry to read.
+ * Reading the document rather than the geometry, because a missing declaration
+ * has by definition no geometry to read. That is a means, not what is judged:
+ * 101.7(a) is about what the panel bears, so the pass rests on the artwork and a
+ * declaration drawn off the stock has not been cleared.
  */
 
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NET_QUANTITY_MISSING = 'FDA_NET_QUANTITY_MISSING'
@@ -60,7 +61,8 @@ export const usFoodNetQuantityPresentRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      // 101.7(a): the panel "shall bear" a declaration — printed, so the artwork.
+      passedOnArtwork(
         usFoodNetQuantityPresentRule,
         FDA_NET_QUANTITY_DECLARED_MET,
         `The panel bears a net quantity declaration, "${data.netQuantity.inchPound.trim()}".`,

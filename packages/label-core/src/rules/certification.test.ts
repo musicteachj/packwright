@@ -16,13 +16,46 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import * as bwip from 'bwip-js/generic'
+import { layOutUpcALabel } from '../layout/engine'
+import { layOutGhsLabel } from '../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
+import { GHS_CONFORMANT } from './fixtures/ghs'
+import { CONFORMANT_FIXTURE as GS1_CONFORMANT } from './fixtures/gs1Retail'
 import { US_FOOD_CONFORMANT } from './fixtures/usFood'
+import { PERMISSION_PATHS, sweepEveryRule } from './fixtures/sweep'
+import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES } from './registry'
+import { finding } from './finding'
+import type { Finding } from '../types/index'
 import type { LabelStock } from '../templates/stock'
+import { UPC_A_ELEMENTS } from '../templates/upcA'
 import { US_FOOD_ELEMENTS } from '../templates/usFood'
 import type { UsFoodIngredient, UsFoodLabelData } from '../templates/usFood'
 import { runRules } from './registry'
-import { FDA_DUAL_COLUMN_EXEMPT, FDA_NET_QUANTITY_CROWDED, FDA_RESPONSIBLE_FIRM_MET } from './index'
+import {
+  FDA_DUAL_COLUMN_EXEMPT,
+  FDA_INGREDIENTS_EXEMPT,
+  FDA_NUTRITION_EXEMPT,
+  FDA_NUTRITION_COMPLETE,
+  FDA_NUTRITION_ORDER_MET,
+  FDA_NUTRITION_ROUNDING_MET,
+  FDA_NUTRITION_PERCENT_DV_MET,
+  FDA_NUTRITION_TYPE_SIZE_MET,
+  FDA_DUAL_COLUMN_MET,
+  FDA_DUAL_COLUMN_FORM_MET,
+  FDA_NET_QUANTITY_CROWDED,
+  FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
+  FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
+  FDA_ALLERGEN_DECLARED_MET,
+  FDA_CONTAINS_TYPE_MET,
+  FDA_INGREDIENTS_ORDER_MET,
+  FDA_INGREDIENT_THRESHOLD_MET,
+  FDA_RESPONSIBLE_FIRM_MET,
+  GHS_PICTOGRAM_SIZE_MET,
+  GS1_DIGITAL_LINK_VALID,
+  GS1_GTIN_CHECK_DIGIT_VALID,
+  ghsPictogramSizeRule,
+} from './index'
 
 /** Layout and findings together, because every case here asserts its own premise. */
 const judge = (data: UsFoodLabelData, stock: LabelStock) => {
@@ -143,6 +176,185 @@ describe('a rule never certifies what the engine did not print', () => {
   })
 })
 
+describe('the US food passes that rest on the artwork', () => {
+  it('withholds the small-package proviso and the ingredient passes with what they judged', () => {
+    // Five artwork answers no test held: each could have been stamped `document`
+    // with the suite green. The proviso is the one most likely to be, since it
+    // reads like an entitlement from panel area — but 101.7(f) grants it only
+    // "when the declaration … meets the other requirements", which a declaration
+    // running off the stock has not been shown to do.
+    const { nutritionFacts: _panel, ...withoutPanel } = US_FOOD_CONFORMANT.data
+    const data: UsFoodLabelData = {
+      ...withoutPanel,
+      container: { shape: 'rectangular', widthMm: 50, heightMm: 50 },
+    }
+    const stock: LabelStock = { widthMm: 20, heightMm: 60, marginMm: 1 }
+    const layout = layOutUsFoodLabel({ data, stock })
+    const context = { labelType: 'us-food' as const, data, stock, layout }
+    const judged = [
+      FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
+      FDA_INGREDIENTS_ORDER_MET,
+      FDA_INGREDIENT_THRESHOLD_MET,
+      FDA_ALLERGEN_DECLARED_MET,
+      FDA_CONTAINS_TYPE_MET,
+    ]
+
+    const omitted = layout.omissions.map((omission) => omission.elementId)
+    expect(omitted, 'the premise: a 3.9 in² panel on stock too narrow for it').toEqual(
+      expect.arrayContaining([
+        US_FOOD_ELEMENTS.netQuantity,
+        US_FOOD_ELEMENTS.ingredients,
+        US_FOOD_ELEMENTS.containsStatement,
+      ]),
+    )
+    const cleared = US_FOOD_RULES.flatMap((rule) => rule.check(context)).map(
+      (result) => result.code,
+    )
+    expect(cleared, 'the premise: every rule clears before the guard sees it').toEqual(
+      expect.arrayContaining(judged),
+    )
+
+    const reported = runRules(context).map((result) => result.code)
+    expect(
+      judged.filter((code) => reported.includes(code)),
+      'none of them may survive the omission of the element it names',
+    ).toEqual([])
+  })
+
+  it('withholds a claimed exemption, because what it is conditional on is printed', () => {
+    // Both exemptions read as facts about the food, and both were once stamped so.
+    // The text says otherwise. §101.100(a)(1) excuses an assortment only "on the
+    // condition that the label shall bear" a statement naming the ingredients that
+    // may be present, and 101.9(j)(13)(i)(A) puts an address or telephone number
+    // on the label of a small package using its exemption. Neither rule knows which
+    // exemption was claimed, so neither pass is true whatever printed.
+    //
+    // The engine draws no list for an exempt food and never omits the panel, so the
+    // omissions are added by hand, as the GS1 case below does.
+    const { nutritionFacts: _panel, ...withoutPanel } = US_FOOD_CONFORMANT.data
+    const data: UsFoodLabelData = {
+      ...withoutPanel,
+      ingredients: [],
+      ingredientsExempt: true,
+      nutritionFactsExempt: true,
+    }
+    const { stock } = US_FOOD_CONFORMANT
+    const drawn = layOutUsFoodLabel({ data, stock })
+    const layout = {
+      ...drawn,
+      omissions: [
+        ...drawn.omissions,
+        ...[US_FOOD_ELEMENTS.ingredients, US_FOOD_ELEMENTS.principalDisplayPanel].map(
+          (elementId) => ({
+            elementId,
+            reason: 'Omitted for this test.',
+            scope: 'element' as const,
+          }),
+        ),
+      ],
+    }
+    const context = { labelType: 'us-food' as const, data, stock, layout }
+    const exemptions = [FDA_INGREDIENTS_EXEMPT, FDA_NUTRITION_EXEMPT]
+
+    const cleared = US_FOOD_RULES.flatMap((rule) => rule.check(context))
+    expect(
+      cleared.map((result) => result.code),
+      'the premise: both exemptions are claimed and cleared before the guard sees them',
+    ).toEqual(expect.arrayContaining(exemptions))
+    // Their messages said applicability was "a fact about the product, not about
+    // the label" — the reading this test exists for, told to the user.
+    expect(
+      cleared
+        .filter((result) => exemptions.includes(result.code))
+        .filter((result) => result.message.includes('not about the label'))
+        .map((result) => result.code),
+      'an exemption with conditions on the label must not say it has none',
+    ).toEqual([])
+    expect(
+      exemptions.filter((code) => runRules(context).some((result) => result.code === code)),
+      'an exemption conditional on the label cannot outlive the label',
+    ).toEqual([])
+  })
+
+  it('withholds what the panel declares when the panel runs off the label', () => {
+    // 101.9(c) says the nutrients "shall be presented" in its order and each amount
+    // "expressed" to its increment, and (b)(12)(i) and (e) are about a column and
+    // its form. Every one is a requirement on the printed panel, and none of these
+    // seven was held by any test: each could have been stamped `document` with the
+    // suite green. A dual-column label, so the column passes are reached as well.
+    const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: {
+        ...panel,
+        referenceAmount: { amount: 22, unit: 'g', category: 'Snacks' },
+        packageContent: 55,
+        packagedAndSoldIndividually: true,
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { ...panel.amounts },
+        },
+      },
+    }
+    const stock: LabelStock = { ...US_FOOD_CONFORMANT.stock, heightMm: 120 }
+    const layout = layOutUsFoodLabel({ data, stock })
+    const context = { labelType: 'us-food' as const, data, stock, layout }
+    const judged = [
+      FDA_NUTRITION_COMPLETE,
+      FDA_NUTRITION_ORDER_MET,
+      FDA_NUTRITION_ROUNDING_MET,
+      FDA_NUTRITION_PERCENT_DV_MET,
+      FDA_NUTRITION_TYPE_SIZE_MET,
+      FDA_DUAL_COLUMN_MET,
+      FDA_DUAL_COLUMN_FORM_MET,
+    ]
+
+    expect(
+      layout.omissions.map((omission) => omission.elementId),
+      'the premise: a 120 mm label is too short for the panel',
+    ).toContain(US_FOOD_ELEMENTS.nutritionPanel)
+    expect(
+      US_FOOD_RULES.flatMap((rule) => rule.check(context)).map((result) => result.code),
+      'the premise: every rule clears the panel before the guard sees it',
+    ).toEqual(expect.arrayContaining(judged))
+    const reported = runRules(context).map((result) => result.code)
+    expect(
+      judged.filter((code) => reported.includes(code)),
+      'a panel that did not print in full has not presented, expressed or columned anything',
+    ).toEqual([])
+  })
+})
+
+describe('the US food passes that rest on the document', () => {
+  it('keeps the SI exemption when the declaration it excuses is drawn off the label', () => {
+    // 15 U.S.C. 1453(a)(3)(A)(ii) excuses a random package from the SI declaration.
+    // That is a fact about the package, true whatever printed, so it survives the
+    // same omission that withholds every pass measured off the declaration.
+    const { findings, omitted } = judge(
+      {
+        ...OVERSIZED_PACKAGE,
+        netQuantity: { ...OVERSIZED_PACKAGE.netQuantity, packaging: 'random' },
+      },
+      US_FOOD_CONFORMANT.stock,
+    )
+
+    expect(omitted, 'the premise: the declaration the exemption names is omitted').toContain(
+      US_FOOD_ELEMENTS.netQuantity,
+    )
+    const exemption = findings.find(
+      (result) => result.code === FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
+    )
+    expect(exemption, 'an exemption is a fact about the package and survives').toBeDefined()
+    // Surviving is why the message had to change: "the label carries an SI
+    // declaration" is false of a declaration at x −57.5 mm.
+    expect(exemption!.message, 'it says what is excused, not what the panel shows').not.toMatch(
+      /carries|stands alone/,
+    )
+  })
+})
+
 describe('the statement of identity is bounded like every other block', () => {
   it('records an omission when it runs off the stock, and is then not certified', () => {
     const { findings, omitted } = judge(
@@ -166,5 +378,171 @@ describe('the statement of identity is bounded like every other block', () => {
         result.severity === 'pass' && result.elementId === US_FOOD_ELEMENTS.statementOfIdentity,
     )
     expect(certified, 'an identity printed off the label cannot be reported met').toBe(false)
+  })
+})
+
+describe('the GS1 passes that rest on the document', () => {
+  // **The omission is added by hand, and no verdict the engine can reach moves.**
+  // `layOutUpcALabel` records one omission — no symbol, because the check digit
+  // is wrong — and on that label no GS1 rule passes at all. So a GS1 pass never
+  // sits beside an omission today. These pin what each pass does on the day one
+  // can: the same element omitted, and the two answers parting company over it.
+  const drawn = layOutUpcALabel(bwip as never, GS1_CONFORMANT)
+  const findings = runRules({
+    labelType: 'gs1-retail',
+    ...GS1_CONFORMANT,
+    layout: {
+      ...drawn,
+      omissions: [
+        { elementId: UPC_A_ELEMENTS.symbol, reason: 'Omitted for this test.', scope: 'element' },
+      ],
+    },
+  })
+
+  it('keeps the check digit, a fact about the number, when the symbol is omitted', () => {
+    expect(drawn.omissions, 'the premise: the conformant label draws in full').toEqual([])
+
+    const onTheSymbol = findings
+      .filter((result) => result.severity === 'pass' && result.elementId === UPC_A_ELEMENTS.symbol)
+      .map((result) => result.code)
+
+    // Exact, so it fails in both directions: the check digit withheld, or any of
+    // the four passes that measure the printed symbol surviving beside it.
+    expect(
+      onTheSymbol,
+      'only the check digit survives; everything measured off the bars is withheld',
+    ).toEqual([GS1_GTIN_CHECK_DIGIT_VALID])
+  })
+
+  it('keeps the Digital Link, and says why rather than surviving by accident', () => {
+    const link = findings.find((result) => result.code === GS1_DIGITAL_LINK_VALID)
+
+    // It names no element, so the guard has nothing to look up and would keep it
+    // whichever answer it gave. Survival alone therefore cannot tell the two
+    // apart — stamping it `artwork` again leaves this test's first two
+    // assertions green. The declaration is the part a regression changes.
+    expect(link, 'the premise: the conformant label configures a valid Digital Link').toBeDefined()
+    expect(link!.elementId, 'the premise: nothing is drawn for it to name').toBeUndefined()
+    expect(link!.severity === 'pass' && link!.certifies).toBe('document')
+  })
+})
+
+describe('a GHS pictogram is certified on its ink', () => {
+  it('withholds its size when the symbol inside the frame was not drawn', () => {
+    // The one GHS answer a verdict turns on today, and nothing pinned it: stamped
+    // `document`, the whole suite stayed green. Every pictogram this engine draws
+    // is a frame with its symbol recorded as omitted, and a frame with no symbol
+    // is not a pictogram (C.2.3.1), so there is no printed pictogram whose size
+    // 1.2.1.3 could be met by. On the audit path it would be worse: nobody measures
+    // `pictogramSideMm` there, so a pass on the document would clear a size that was
+    // never measured, on every audit carrying a pictogram.
+    const { data, stock } = GHS_CONFORMANT
+    const layout = layOutGhsLabel({ data, stock })
+    const context = { labelType: 'ghs-chemical' as const, data, stock, layout }
+
+    expect(
+      ghsPictogramSizeRule.check(context).map((result) => result.code),
+      'the premise: the rule clears the frame before the guard sees it',
+    ).toContain(GHS_PICTOGRAM_SIZE_MET)
+    expect(
+      runRules(context).map((result) => result.code),
+      'a pictogram whose symbol was not printed has not met a size requirement',
+    ).not.toContain(GHS_PICTOGRAM_SIZE_MET)
+  })
+})
+
+/** One sweep for the whole file. It lays out every fixture; the assertions below do not each need their own. */
+const SWEPT = sweepEveryRule(bwip)
+const PASSES = SWEPT.filter(({ finding: result }) => result.severity === 'pass')
+
+describe('every pass says what it certifies', () => {
+  it('will not compile if a pass omits it', () => {
+    // **The guarantee, and it is the compiler's rather than this file's.**
+    // `Finding` is discriminated on `severity`, so the `pass` arm requires
+    // `certifies`. That holds for every rule ever written, including the ones no
+    // fixture reaches — which matters, because an entitlement is not a *bad*
+    // label, so no known-bad fixture exercises one and a runtime sweep is
+    // structurally blind to exactly the passes most likely to be mis-stamped.
+    //
+    // `@ts-expect-error` fails the build if the error stops happening, so this
+    // is a check rather than a comment about one. **It sits inside the arrow on
+    // purpose:** above the `const`, Prettier's line break moved the call off the
+    // line the directive governs, and the typecheck reported it unused.
+    const uncertified = () =>
+      // @ts-expect-error a pass must say what it rests on
+      finding(GS1_RETAIL_RULES[0]!, { code: 'x', severity: 'pass', message: 'm' })
+    expect(typeof uncertified).toBe('function')
+  })
+
+  it('will not compile a finding assembled by hand as a pass without it either', () => {
+    // The test above goes through `finding()`, so it pins `FindingInput` and
+    // nothing else. `Finding` itself could be widened back to an optional field
+    // and that test would still pass — a review did exactly that, and the whole
+    // suite stayed green. This one names the type directly.
+    // @ts-expect-error a finding that passes must say what it rests on
+    const handBuilt: Finding = {
+      code: 'x',
+      severity: 'pass',
+      message: 'm',
+      citation: { authority: 'GS1', reference: 'r' },
+    }
+    expect(handBuilt.severity).toBe('pass')
+  })
+
+  it('and none of the passes the fixtures do reach has been left to a default', () => {
+    // Belt and braces under the type: it would catch a `Finding` object built by
+    // hand somewhere that bypassed `finding()` altogether.
+    const undeclared = PASSES.filter(({ finding: result }) => result.certifies === undefined).map(
+      ({ rule, finding: result }) => `${rule.id} / ${result.code}`,
+    )
+    expect([...new Set(undeclared)].sort(), 'a pass that did not say what it rests on').toEqual([])
+  })
+
+  it('reaches every rule set, so neither assertion is vacuous for one of them', () => {
+    // Asserted per set against the registry's own arrays rather than as one
+    // pooled threshold. A pooled count reads green while a whole rule set goes
+    // dark: with three rules' slack today, all seven GHS rules could stop
+    // emitting passes and a `> 25` check would not notice.
+    const cleared = (rules: readonly { id: string }[]) =>
+      rules.filter((rule) => PASSES.some(({ rule: seen }) => seen.id === rule.id)).length
+
+    expect(cleared(GS1_RETAIL_RULES), 'GS1 rules that cleared at least once').toBe(
+      GS1_RETAIL_RULES.length,
+    )
+    // Not all of them: `docs/BACKLOG.md` records which pass codes no fixture
+    // reaches, and why one of them cannot be reached at all today.
+    expect(cleared(GHS_RULES), 'GHS rules that cleared at least once').toBeGreaterThanOrEqual(5)
+    expect(
+      cleared(US_FOOD_RULES),
+      'us-food rules that cleared at least once',
+    ).toBeGreaterThanOrEqual(18)
+  })
+
+  it('reaches something with every permission path it carries', () => {
+    // Two of the four were dead on the day they were written. One kept a panel
+    // its rule's exemption branch requires to be absent; the other paraphrased a
+    // paragraph's permission without its condition, so it never declared the fact
+    // the permission turns on and got a violation instead of the pass its comment
+    // named. Both would have sat in the sweep looking like coverage.
+    const fromFixtures = new Set(
+      PASSES.filter(({ source }) => source === 'fixtures').map(({ finding: r }) => r.code),
+    )
+    for (const { label } of PERMISSION_PATHS) {
+      const reached = PASSES.filter(({ source }) => source === label)
+        .map(({ finding: r }) => r.code)
+        .filter((code) => !fromFixtures.has(code))
+      expect(reached, `${label} must reach a pass no fixture does`).not.toEqual([])
+    }
+  })
+
+  it('observes both answers, not just the default one', () => {
+    // The gap this file shipped with for one commit: the sweep was copied from
+    // `citations.test.ts` minus the permission paths, so it saw 708 passes and
+    // every one of them `artwork`. Both of the two `passedOnDocument` sites there
+    // were then sat on rules it never reached, which is to say the half of the
+    // distinction that changes a verdict was untested by the test written to
+    // police it.
+    const kinds = new Set(PASSES.map(({ finding: result }) => result.certifies))
+    expect([...kinds].sort()).toEqual(['artwork', 'document'])
   })
 })

@@ -17,7 +17,7 @@ export {
   MEASUREMENT_TOLERANCE_MM,
   finding,
   mm,
-  passed,
+  passedOnArtwork,
   passedOnDocument,
   untitled,
   xDimensionMm,

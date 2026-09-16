@@ -30,7 +30,7 @@ import type { TextPrimitive } from '../../layout/types'
 import { NUTRITION_ELEMENT_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { glyphHeightMm } from '../../text/measure'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_PANEL_TYPE_TOO_SMALL = 'FDA_PANEL_TYPE_TOO_SMALL'
@@ -156,7 +156,8 @@ export const usFoodInformationPanelTypeSizeRule: UsFoodRule = {
     }
 
     return [
-      passed(
+      // 101.2(c) bounds the height of the letters on the panel: the artwork.
+      passedOnArtwork(
         usFoodInformationPanelTypeSizeRule,
         FDA_PANEL_TYPE_SIZE_MET,
         `${byElement.size} element${byElement.size === 1 ? '' : 's'} on the panel clear the ` +

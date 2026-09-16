@@ -190,6 +190,12 @@ declaration, the second predicated on a condition the first has just reported un
 others here — the type-size violation is still reported, so nothing is wholly cleared — but it is a pass
 issued on an unsatisfied condition, and the fix is a conditional the rule already has the inputs for.
 
+The US food reading kept `FDA_NET_QUANTITY_ZONE_NOT_REQUIRED` on the artwork, and this entry is the reason.
+Keyed on panel area it reads like an entitlement, which makes it the obvious candidate for the document. But the
+proviso's condition is about the printed declaration, so stamping it `document` would have let it survive
+the omission of the very declaration it is conditional on — this defect, deepened. `certification.test.ts`
+now fails if it survives one.
+
 **A "Contains" statement can vanish unannounced.** `usFoodEngine.ts` records an omission for an allergen no
 ingredient carries, but not for the case where every bearing ingredient yields no food-source name — which is
 what `tree nuts`, `fish` and `crustacean shellfish` do without an `allergenSpecificType`. Reproduced:
@@ -343,15 +349,187 @@ not become a rule on the strength of an illustration.
 
 The extraction endpoint, and what writing it turned up.
 
-**`Finding.certifies` is the right idea and is set in two places.** `'document'` versus `'artwork'` is exactly
-the distinction an audit report needs: the engine judges a label rebuilt from what a user confirmed, so a
-verdict resting on the document describes their label and a verdict resting on the artwork describes our
-reconstruction. Today `passedOnDocument` is called at `usFood/nutritionFormat.ts:108` and
-`usFood/dualColumn.ts:166` and nowhere else, so everything else defaults to `'artwork'` — and filtering an
-audit report on it would empty the report, which is misleading in the opposite direction to not filtering at
-all. Widening it means reading every rule and deciding what it actually judges, and it alters
-`withholdUncertifiablePasses`, the guard standing between this project and a pass issued on ink that was never
-laid down. Its own stage, and a `max` review.
+**`Finding.certifies` is the right idea, and nothing defaults it any more — but the widening is in progress,
+and this entry's original framing of *why* was wrong.** It said filtering an audit report on the field
+would empty the report. No such filter exists: `withholdUncertifiablePasses` is the field's only reader, and
+the audit report builds its "cannot be checked" block from `layout.omissions` directly. So widening
+`certifies` changes one thing only — which passes survive an omission — and can only ever make that guard
+*looser*. A report that separates a verdict about the user's label from one about our reconstruction would
+need `certifies` on violations too, which `Finding` now forbids (`certifies?: never`) until someone designs
+it.
+
+Where it stands: `Finding` is discriminated on `severity`, so a `pass` without `certifies` does not compile.
+When the builders were split, every existing `passed` call became `passedOnArtwork` so that no verdict
+changed in the same commit as the mechanism. **Those thirty-seven stamps preserve the old default; they are
+not yet decisions.** The provisions are read rule set by rule set, and a call site that has been judged
+carries a note saying what its provision governs.
+
+GS1's six were read on 2026-09-16. The check digit and the Digital Link rest on the document; the four that
+measure the printed symbol rest on the artwork. GHS's seven were read the same day, and all seven rest on
+the artwork. US food was read last. The SI exemption, the nutrition format entitlement and the second-column
+exemption rest on the document, and the other twenty-three rest on the artwork. The ingredient exemption was
+stamped `document` first and reversed once §101.100 was read. **No stamp is left undecided.**
+
+### What reviewing the mechanism turned up
+
+Each reproduced before being written here. None is fixed by choosing `artwork` or `document`, which is why
+they are separate entries rather than part of the reading.
+
+**`us-food/information-panel-type-size` clears type that was never printed.** Its pass names
+`food-pdp`, and the engine never records an omission against that id, so the guard cannot withhold it. On
+`US_FOOD_CONFORMANT` with 400 ingredients, the responsible firm is recorded as an `element`-scope omission
+— "begins 645.22 mm down a 240.00 mm label, past its bottom edge, so none of it is printed" — and the engine
+still emits its text primitives. The rule counts them: `FDA_PANEL_TYPE_SIZE_MET`, "3 elements on the panel
+clear the 1.59 mm floor", where the three are the statement of identity, the ingredients (itself partly
+omitted) and a firm that is not on the label. `certification.test.ts` asserts `FDA_RESPONSIBLE_FIRM_MET` is
+withheld for this exact document, so two rules disagree about the same undrawn element and the one that
+survives is the one certifying more. A live false clearance.
+
+The US food reading kept it on the artwork — 101.2(c) bounds the height of printed letters — so the stamp is
+right and cannot reach the defect. The pass names an element the engine never omits. The fix belongs in the
+rule, counting only elements that `wasFullyDrawn`.
+
+**`GHS_SMALL_CONTAINER_COMPLETE` names no element, so nothing can withhold it.** On a complete EU small
+container (0.1 L, GHS02) it reports "The container carries everything the small-container provision requires
+of it" while the only pictogram is a frame with no symbol in it. The rule's own list includes "at least one
+hazard pictogram", which it checks as `layout.pictograms.length > 0` — frames, not glyphs. The violation
+branch names `GHS_ELEMENTS.supplier`, so an id was available. `GHS_PICTOGRAM_SYMBOL_MISSING` is still raised
+on the same label, so the label is not silently clean, but this pass states something false.
+
+The GHS reading kept it on the artwork — both provisions list what the container's own label must carry — and
+found it reaches further than the pictogram. It reads the supplier and the outer-package statement from the
+document, so it also counts them when they were never printed: see the GHS engine entry under "What reading
+the GHS provisions turned up".
+
+One other `passedOnArtwork` site names no element and is equally beyond the guard's reach:
+`GHS_PICTOGRAM_PRECEDENCE_MET`. **The GHS reading found it is not a false clearance on today's engine.**
+Article 26 and C.2.1 say which pictograms "shall not appear", so it rests on the artwork. But the only
+omissions `layOutGhsLabel` records against pictograms are missing glyphs, one on every pictogram alike, and
+those change neither the codes `precedenceSuppressions` reads nor the truth of a claim that nothing forbidden
+appears. `GS1_DIGITAL_LINK_VALID` was the second site, and the GS1 reading settled it on the document: URI
+Syntax governs a string, and this engine prints no carrier for the link, so there is no ink to withhold the
+pass over.
+
+**`GHS_PICTOGRAM_SET_MATCHES` names the strip; omissions are recorded per pictogram.** It carries
+`ghs-pictograms`, and the engine records `ghs-pictograms-GHS02` — so on `GHS_CONFORMANT` the guard never
+matches, and the pass "Every pictogram on the label is required by a declared hazard class" survives beside
+a `GHS_PICTOGRAM_SYMBOL_MISSING` violation for the same pictogram. `ghs/pictogram-size` names the suffixed id
+and *is* withheld. ~~Recorded as a mechanism, not yet as a defect~~ — **the GHS reading makes it a defect, and
+a live false clearance.** The rule judges whether the pictograms the label *carries* are the ones Annex V
+requires. That is the artwork, in the same way 101.5's firm is: the codes are read from the layout as a proxy
+for what is printed, and a frame with no symbol is not a pictogram (C.2.3.1). So this pass should fall with
+the pictograms it vouches for, and the guard never gets the chance. The fix is in the rule or the id, not the
+stamp: withhold the pass unless every member pictogram `wasFullyDrawn`. On today's engine that withholds it
+on every label carrying a pictogram, which is the correct answer while no glyph is drawn.
+
+**Five pass codes are reached by no fixture.** The sweep in `fixtures/sweep.ts` reaches 34 of 39.
+`GHS_PICTOGRAM_COMPLETE` is unreachable by any document and correctly so: `glyphDrawn` is only ever `false`,
+because the Annex V specimen artwork was never verified, and the rule continues past the pass whenever it is.
+The other four are reachable and not in the sweep — `GHS_SMALL_CONTAINER_COMPLETE`, `FDA_DUAL_COLUMN_MET`,
+`FDA_DUAL_COLUMN_FORM_MET` and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. It matters less than it did, because
+the guarantee that every pass states what it certifies is now the compiler's, not the sweep's. It still
+matters for every reading that flips one of them, since a flip ships with a fixture that reaches it.
+`FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` has since been flipped, and `FDA_DUAL_COLUMN_MET` and
+`FDA_DUAL_COLUMN_FORM_MET` pinned to the artwork. All three are reached by `certification.test.ts`, not by the
+sweep.
+
+**~~`us-food/nutrition-format`'s docblock and its behaviour disagree about (d)(11)(iii).~~ They do not, and
+this entry was wrong.** It recorded a disagreement while declining to read the paragraph, which `CLAUDE.md`
+says to fetch in the session that writes about it. Read from the eCFR on 2026-09-16: "If there is not
+sufficient continuous vertical space (i.e., approximately 3 in) to accommodate the required components of the
+nutrition label up to and including the mandatory declaration of potassium, the nutrition label may be
+presented in a tabular display". A permission, conditional on vertical space and on nothing about package
+size. `fda/nutritionFormats.ts` quotes it and `formatIsPermitted` implements it. The sweep document that
+"reached nothing" was built on a paraphrase that dropped the condition, so it never declared
+`continuousVerticalSpaceInches`, and the rule refused it under (j)(13) as it should.
+
+Kept rather than deleted, because acting on the old entry meant "fixing" one of the two, and the likeliest
+fix removes the route that entitles a tall, thin, large package to the tabular display.
+
+**The sweep's documents duplicate ones the rule tests already build — reported by review, not yet
+verified.** A reuse pass over the `certifies` mechanism reported that the permission documents in
+`fixtures/sweep.ts` repeat documents `usFoodRules.test.ts` builds and asserts exactly; that the second-column
+exemption document now exists in three places; that `passedOnArtwork` and `passedOnDocument` have identical
+bodies; that `FindingInput` restates `Finding`'s severity split; and that the sweep's three loops re-derive
+the dispatch `listRules(labelType)` provides. Its suggested direction is to export each exemption document
+from `fixtures/usFood.ts`, built from the known-bad fixture it excuses, so an exemption document is always
+the violating label plus its exemption and the two cannot drift. Not done in the mechanism commit, which had
+already grown by fixing a review's findings in place. One item from that pass was fixed there: only the
+US-food loop labelled where its findings came from, so a GHS permission document added later would have
+counted as fixture coverage and escaped the check that every such document reaches something.
+
+### What reading the US food provisions turned up
+
+**Neither exemption rule knows which exemption it grants, so the conditions they put on the label go
+unchecked.** `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
+§101.100(a)(1) excuses an assortment "on the condition that the label shall bear, in conjunction with the
+names of such ingredients as are common to all packages, a statement … indicating by name other ingredients
+which may be present". And 101.9(j)(13)(i)(A) says the manufacturer "shall provide on the label of packages
+that qualify for and use this exemption an address or telephone number". No rule checks either, and (a)(1)
+is not reachable at all. The exempt path requires an empty ingredient list, while (a)(1) keeps the common
+ingredients listed, so an assortment claiming it goes down the ordinary path and is never asked for its
+statement. Both passes now rest on the artwork, which is right, but a stamp cannot supply a check that does
+not exist. The fix is to record which paragraph is claimed and check what that paragraph requires the label
+to bear.
+
+**`FDA_SERVING_SIZE_MET` names a row the engine never omits.** The engine records a Nutrition Facts panel
+running past the bottom of the stock against `food-nutrition-panel`, and never against its rows. On
+`US_FOOD_CONFORMANT` on a 120 × 25 mm label, the panel begins at 16.8 mm, the serving-size row prints at
+32.2–36.0 mm (wholly below the edge), and the only omission is `food-nutrition-panel/detail`. `runRules`
+still returns "The panel declares a serving size of …". The stamp is right; the id is out of the guard's
+reach. The same shape as the panel type-size entry above. Reproduced 2026-09-16.
+
+**`FDA_ALLERGEN_DECLARED_MET` names the ingredient list, and can rest on the Contains statement instead.**
+Found by the `high` review of PR #28 and reproduced. §403(w)(1) is satisfied by either form, and the rule
+searches both printed texts — but the pass always names `food-ingredients`, and the engine still emits text
+primitives for a block it records as off the label. On `US_FOOD_CONFORMANT` with the almond ingredient renamed
+`nut paste` and `declareInline: false`, on a 120 × 158 mm label, the Contains statement begins at 159.8 mm and
+is recorded as an `element` omission, the printed list never names almonds, and `runRules` still returns
+"almonds is declared." `FDA_CONTAINS_TYPE_MET` beside it is correctly withheld. The artwork stamp is right; the
+pass names the element that did not make the declaration. The fix is to name, or require `wasFullyDrawn` of,
+whichever element's text discharged it — the same shape as the serving-size, panel type-size and
+pictogram-set entries, which are worth fixing together.
+
+### What reading the GHS provisions turned up
+
+**The GHS engine records no omission for a block drawn off its stock, so no GHS pass about text can be
+withheld.** `layOutGhsLabel` stacks its blocks top to bottom and, by design, clamps nothing — but unlike
+`usFoodEngine` it records nothing either. On `GHS_CONFORMANT`'s data and a 60 × 6 mm stock the signal word's
+baseline sits at 13.4 mm, wholly below the edge, and `GHS_SIGNAL_WORD_SINGLE` still reports "The label carries
+one signal word, “Danger”". The realistic case is the small container. A US 50 ml container invoking
+(f)(12), on a 50 × 25 mm label, prints its outer-package statement at 34.3–41.3 mm and its manufacturer at
+43.3–49.8 mm — both wholly off the label — and its only pictogram at 18.1–32.3 mm, more than half off. The
+only omission recorded is the missing glyph. `runRules` returns `GHS_SMALL_CONTAINER_COMPLETE`, "The container
+carries everything the small-container provision requires of it", beside `GHS_PICTOGRAM_SET_MATCHES` for the
+half-printed strip, while the manufacturer's name and telephone and the outer-package statement — three
+entries on the rule's own list — are not on the label. The blocking
+`GHS_PICTOGRAM_SYMBOL_MISSING` is all that keeps it from reading clean, and that finding exists only because
+the glyph artwork is unverified. Reproduced 2026-09-16. It is the GHS sibling of the GS1 off-stock entry
+below, and `usFoodEngine`'s bounds check is the precedent for the fix.
+
+### What reading the GS1 provisions turned up
+
+**A UPC-A drawn off its stock clears bar height and its digits on ink that is not on the label.** On
+100 × 20 mm stock — the document `rules.test.ts` already uses for vertical overflow — the nominal symbol
+starts at y −3.85 mm. That puts 3.85 mm of its 22.85 mm bars above the top edge, and the digits' baselines at
+23.85 mm, below the bottom one. `runRules` returns four passes and nothing else, among them
+`GS1_BAR_HEIGHT_SUFFICIENT`, "The bars are 22.85 mm, meeting the 22.85 mm minimum", and `GS1_HRI_PRESENT`,
+"The symbol prints 036000291452 beneath the bars", with every digit off the label. The quiet-zone rule
+declines to certify this symbol through `certifiable`; the two rules beside it never learned to. Neither
+`certifies` answer reaches it, because the engine records `verticalOverflowMm` on the symbol and no
+omission, so the guard has nothing to look up. A live false clearance, reproduced 2026-09-16. The fix is a
+containment gate in the two rules or an omission from the engine, and choosing between them decides whether
+magnification — still measurable on the part that did print — is withheld with them.
+
+**Two GS1 rules keep no reading of their source.** `gs1/gtin-check-digit` cites "GS1 General Specifications
+— check digit calculation", with no version and no section, and `gs1/checkDigit.ts` says only "Reference: GS1
+General Specifications, 'Check digit calculation'". `gs1/digital-link`'s primary citation is "GS1 Digital
+Link URI Syntax" with no version, beside an alphas citation that names 1.3.0. The other four GS1 rules rest
+on `geometry/symbol.ts`, which quotes GenSpec 25.0 by section and figure. Neither gap changed the GS1 reading
+— one answer turned on what a check digit is, the other on this engine drawing nothing — so neither document
+was fetched for it. But a later reader cannot re-check either citation against a paragraph. Fetch the
+check-digit section of the current General Specifications and the URI Syntax version `buildDigitalLinkUri`
+implements, and record what was read and when.
 
 **~~`ExtractionResult` admits a field that is present with no value.~~ Fixed in stage 2**, the stage this
 entry said should carry it. `fields` is now `{ [K in keyof T]?: ExtractedField<NonNullable<T[K]>> }`, so

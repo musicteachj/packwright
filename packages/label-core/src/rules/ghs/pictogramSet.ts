@@ -24,7 +24,7 @@ import type { GhsPictogramCode } from '../../ghs/pictograms'
 import { GHS_PICTOGRAM_SYMBOLS } from '../../ghs/pictograms'
 import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_PICTOGRAM_NOT_REQUIRED = 'GHS_PICTOGRAM_NOT_REQUIRED'
@@ -95,7 +95,8 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
 
     if (findings.length === 0) {
       findings.push(
-        passed(
+        // Whether the pictograms the label carries are the ones Annex V requires: the artwork.
+        passedOnArtwork(
           ghsPictogramSetRule,
           GHS_PICTOGRAM_SET_MATCHES,
           'Every pictogram on the label is required by a declared hazard class.',

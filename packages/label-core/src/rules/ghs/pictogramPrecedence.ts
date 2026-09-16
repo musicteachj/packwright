@@ -28,7 +28,7 @@
 import { precedenceSuppressions } from '../../ghs/precedence'
 import type { GhsPictogramCode } from '../../ghs/pictograms'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_PICTOGRAM_PRECEDENCE_VIOLATED = 'GHS_PICTOGRAM_PRECEDENCE_VIOLATED'
@@ -96,7 +96,8 @@ export const ghsPictogramPrecedenceRule: GhsChemicalRule = {
 
     if (!findings.some((f) => f.code === GHS_PICTOGRAM_PRECEDENCE_VIOLATED)) {
       findings.push(
-        passed(
+        // Article 26 and C.2.1 say which pictograms "shall not appear" on a label: the artwork.
+        passedOnArtwork(
           ghsPictogramPrecedenceRule,
           GHS_PICTOGRAM_PRECEDENCE_MET,
           'The pictogram set is consistent with the precedence rules for this regime.',

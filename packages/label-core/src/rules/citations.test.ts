@@ -29,16 +29,10 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { layOutUpcALabel } from '../layout/engine'
-import { layOutGhsLabel } from '../layout/ghsEngine'
-import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import * as bwip from 'bwip-js/generic'
-import { GS1_RETAIL_FIXTURES, CONFORMANT_FIXTURE } from './fixtures/gs1Retail'
-import { GHS_FIXTURES, GHS_CONFORMANT } from './fixtures/ghs'
-import { US_FOOD_FIXTURES, US_FOOD_CONFORMANT, US_FOOD_SMALL_PANEL } from './fixtures/usFood'
-import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES, listRules } from './registry'
+import { sweepEveryRule } from './fixtures/sweep'
+import { listRules } from './registry'
 import { citationsOf } from './types'
-import type { Citation, Finding } from '../types/index'
 
 /**
  * Every finding, **attributed to the rule that emitted it**.
@@ -50,76 +44,23 @@ import type { Citation, Finding } from '../types/index'
  * `us-food/serving-size` happens to declare it too. A check that another rule can
  * satisfy on your behalf is not a check on you.
  *
- * Each rule set is therefore run rule by rule against a context it already
- * matches, rather than through `runRules` — which also means withheld passes are
- * seen, since a pass a rule emitted still carries a citation it must have
- * declared.
+ * The sweep it runs on lives in `fixtures/sweep.ts`, shared with
+ * `certification.test.ts`. It runs each rule set rule by rule against a context
+ * it already matches, rather than through `runRules` — which also means withheld
+ * passes are seen, since a pass a rule emitted still carries a citation it must
+ * have declared. The documents that reach permission paths moved there with it;
+ * they were written here, and a second sweep copied from this one without them
+ * is how `certification.test.ts` shipped blind to both of the registry's
+ * document-resting passes.
  */
 function undeclaredByRule(): string[] {
   const problems: string[] = []
 
-  const check = (
-    rule: { id: string; citations?: readonly Citation[]; citation: Citation },
-    findings: Finding[],
-  ) => {
-    const declared = new Set(citationsOf(rule as never).map((citation) => citation.reference))
-    for (const result of findings) {
-      if (!declared.has(result.citation.reference)) {
-        problems.push(`${rule.id} emitted ${result.citation.reference} without declaring it`)
-      }
+  for (const { rule, finding } of sweepEveryRule(bwip)) {
+    const declared = new Set(citationsOf(rule).map((citation) => citation.reference))
+    if (!declared.has(finding.citation.reference)) {
+      problems.push(`${rule.id} emitted ${finding.citation.reference} without declaring it`)
     }
-  }
-
-  for (const fixture of [...GS1_RETAIL_FIXTURES, CONFORMANT_FIXTURE]) {
-    const layout = layOutUpcALabel(bwip as never, { data: fixture.data, stock: fixture.stock })
-    const context = {
-      labelType: 'gs1-retail',
-      data: fixture.data,
-      stock: fixture.stock,
-      layout,
-    } as const
-    for (const rule of GS1_RETAIL_RULES) check(rule, rule.check(context))
-  }
-
-  for (const fixture of [...GHS_FIXTURES, GHS_CONFORMANT]) {
-    const layout = layOutGhsLabel({ data: fixture.data, stock: fixture.stock })
-    const context = {
-      labelType: 'ghs-chemical',
-      data: fixture.data,
-      stock: fixture.stock,
-      layout,
-    } as const
-    for (const rule of GHS_RULES) check(rule, rule.check(context))
-  }
-
-  /**
-   * Documents that reach paragraphs no fixture does.
-   *
-   * The fixtures are known-bad labels, one per violation code, so a provision
-   * cited only from a *permission* is never exercised by them — 101.100 excuses a
-   * label from bearing an ingredient list, and no fixture is exempt because there
-   * is nothing bad about being exempt. Without this the check passed whether or
-   * not `us-food/ingredient-statement` declared the paragraph it reports under,
-   * which is how the omission survived the first pass.
-   */
-  const conditionalPaths = [
-    { ...US_FOOD_CONFORMANT.data, ingredients: [], ingredientsExempt: true },
-  ]
-
-  for (const fixture of [
-    ...US_FOOD_FIXTURES,
-    US_FOOD_CONFORMANT,
-    US_FOOD_SMALL_PANEL,
-    ...conditionalPaths.map((data) => ({ data, stock: US_FOOD_CONFORMANT.stock })),
-  ]) {
-    const layout = layOutUsFoodLabel({ data: fixture.data, stock: fixture.stock })
-    const context = {
-      labelType: 'us-food',
-      data: fixture.data,
-      stock: fixture.stock,
-      layout,
-    } as const
-    for (const rule of US_FOOD_RULES) check(rule, rule.check(context))
   }
 
   return [...new Set(problems)].sort()

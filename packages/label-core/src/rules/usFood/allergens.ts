@@ -41,7 +41,7 @@ import type { TextPrimitive } from '../../layout/types'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { UsFoodIngredient } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passed } from '../finding'
+import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_ALLERGEN_NOT_DECLARED = 'FDA_ALLERGEN_NOT_DECLARED'
@@ -197,7 +197,8 @@ export const usFoodAllergenRule: UsFoodRule = {
       .map((ingredient) => foodSourceName(ingredient.allergen!, ingredient.allergenSpecificType))
       .filter((name): name is string => name !== undefined)
     return [
-      passed(
+      // §403(w)(1) is satisfied by what the package prints, in either form: the artwork.
+      passedOnArtwork(
         usFoodAllergenRule,
         FDA_ALLERGEN_DECLARED_MET,
         `${[...new Set(names)].join(', ')} ${names.length === 1 ? 'is' : 'are'} declared.`,

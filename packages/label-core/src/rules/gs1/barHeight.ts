@@ -11,7 +11,7 @@
 
 import { nominalBarHeightMm } from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed, xDimensionMm } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, xDimensionMm } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_BAR_HEIGHT_BELOW_MINIMUM = 'GS1_BAR_HEIGHT_BELOW_MINIMUM'
@@ -40,7 +40,8 @@ export const barHeightRule: Gs1RetailRule = {
 
       if (symbol.barHeightMm >= requiredMm - MEASUREMENT_TOLERANCE_MM) {
         findings.push(
-          passed(
+          // §5.2.3.2 and figure 5.12.3.1-1 set the height of the printed bars: the artwork.
+          passedOnArtwork(
             barHeightRule,
             GS1_BAR_HEIGHT_SUFFICIENT,
             `The bars are ${mm(symbol.barHeightMm)}, meeting the ${mm(requiredMm)} minimum ` +

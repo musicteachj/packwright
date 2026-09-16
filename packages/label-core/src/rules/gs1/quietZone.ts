@@ -14,7 +14,7 @@
 
 import { hasVerifiedQuietZone } from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
-import { MEASUREMENT_TOLERANCE_MM, finding, mm, passed } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
 
 export const GS1_QUIET_ZONE_TOO_NARROW = 'GS1_QUIET_ZONE_TOO_NARROW'
@@ -70,7 +70,8 @@ export const quietZoneRule: Gs1RetailRule = {
         if (side.actualMm >= side.requiredMm - MEASUREMENT_TOLERANCE_MM) {
           if (!certifiable) continue
           findings.push(
-            passed(
+            // Figure 5.2.3.4-1 is about blank space either side on the printed label: the artwork.
+            passedOnArtwork(
               quietZoneRule,
               GS1_QUIET_ZONE_CLEAR,
               `The ${side.name} quiet zone is ${mm(side.actualMm)}, clearing the ` +
