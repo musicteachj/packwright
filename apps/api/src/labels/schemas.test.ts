@@ -291,3 +291,34 @@ describe('a panel declared for children 1 through 3', () => {
     ).toBe(false)
   })
 })
+
+describe('a second column that states its own percentages', () => {
+  // Zod strips what it does not list, and `toColumns` copies field by field, so a field
+  // missing from either previews with the stated figures in the browser and exports the
+  // derived ones — the split this file exists to catch.
+  const panel = {
+    servingSize: '1/2 cup (40g)',
+    amounts: { 'total-fat': 3, protein: 5 },
+    columns: {
+      mode: 'dual',
+      basis: 'per-container',
+      headings: ['Per serving', 'Per container'],
+      secondAmounts: { 'total-fat': 7.5, protein: 12.5 },
+      secondPercentDv: { protein: 96 },
+    },
+  }
+
+  it('carries the second column percentages through to the label data', () => {
+    const parsed = NutritionFactsSchema.parse(panel)
+    expect(toNutritionFacts(parsed).columns?.secondPercentDv).toEqual({ protein: 96 })
+  })
+
+  it('refuses a percentage for a nutrient the tables do not name', () => {
+    expect(
+      NutritionFactsSchema.safeParse({
+        ...panel,
+        columns: { ...panel.columns, secondPercentDv: { 'vitamin-q': 10 } },
+      }).success,
+    ).toBe(false)
+  })
+})

@@ -273,14 +273,45 @@ protein. The engine cannot derive the figure, because (c)(7)(ii) corrects the am
 label carries, and the percentage rule excludes protein for the same reason. What is missing is a rule requiring a
 declared protein percentage on a toddler food, and whether a declared one can be judged at all without that score.
 
-**A dual-column panel cannot state a protein percentage in its second column, so a toddler food on one cannot
-comply.** Found by the review of `us-food/protein-percent` on `feat/toddler-protein-percent`, and reproduced. Read from
+**~~A dual-column panel cannot state a protein percentage in its second column, so a toddler food on one cannot
+comply.~~ Fixed** on `feat/second-column-percentages`. `columns.secondPercentDv` states the second column's
+percentages, the panel prints them in place of the figures it derives, and `us-food/nutrition-percent-dv` judges
+them against the second column's own amounts. What follows is the entry as it stood. Found by the review of `us-food/protein-percent` on `feat/toddler-protein-percent`, and reproduced. Read from
 the eCFR on 2026-09-17, 101.9(e)(2), (e)(3) and (e)(6) each present the percent Daily Value in every column, by what
 the second column counts, and for a food for children 1 through 3 that includes the protein percentage (c)(7)(i)
 requires. The first column prints a stated percentage, but `UsFoodNutritionFacts` has no field to state one for the
 second column, and the engine derives none for protein, so the second column prints "5g" with nothing beside it.
 The rule reports that under the paragraph for the column's basis, which is true of the printed label, and nothing in the editor can fix it. The
 fix is a declared second-column percentage, at least for protein, with the rail offering it.
+
+**No form rule judges the columns an egg carton declares.** Found by `/code-review high` on PR #41, and verified.
+`us-food/dual-column-form` returns as soon as no `food-nutrition-second-column` element is drawn, which is always
+true of a carton claiming (j)(14): its information is presented beneath the lid and the outer carton draws no panel.
+So a carton declaring two columns is judged on neither their headings, their separation, their equal prominence nor
+their completeness — a second column declaring one figure of fourteen is reported on an ordinary label and not on a
+carton. `us-food/protein-percent` asks the carton for its second column's protein percentage where that column
+declares a protein amount, and deliberately says nothing where it declares none, on the ground that the form rule
+reports the incomplete column; for a carton, nothing does. Judging a declared column that nothing drew is the
+question (j)(14) keeps raising, and the answer wants a reading of which of (e)'s requirements are about the
+information and which are about the panel.
+
+**A primitive does not say which column it belongs to, so rules infer it from the cells drawn.** Four review
+rounds on `feat/second-column-percentages` went to that inference, each on a case the last had not covered: a
+panel whose mode went back to single, a nutrient left out of `order`, a row whose first column states no amount,
+and a nutrient `order` lists twice. `us-food/nutrition-percent-dv` now asks for the second column's band, then
+counts a row's right-aligned cells against what each column declares, which is correct but is arithmetic about
+geometry rather than a fact the layout states. `TextPrimitive` carries `elementId` and `anchor` and nothing about
+the column, and `us-food/protein-percent` does the same counting for its own reason. A `column` on the primitive,
+or a second-column row element as `nutritionSecondColumn` is a band element, would let both rules read what was
+drawn instead of deducing it. It is a change to the layout's contract, so it wants its own branch.
+
+**A percentage stated for a nutrient with no Daily Value is printed and cannot be judged.** Found by the review of
+`feat/second-column-percentages`, and true of both columns. `declaredPercentDv` and now `columns.secondPercentDv`
+accept a figure for trans fat or total sugars, which 101.9(c)(9) and (c)(8)(iv) give no Daily Value, so the panel
+prints "0g 99%" and `us-food/nutrition-percent-dv` skips it: there is nothing to recompute it against. (d)(7)(ii)
+requires the percentage "for each nutrient" with a DRV or RDI and the (d)(12) display leaves those two cells blank,
+so a figure there is a defect a rule could report from the document alone. The field pre-dates this branch on the
+first column; the second column widened it. A rule would need its own code, citation and fixture.
 
 **(e)(6) is cited for every per-container column, though its own words reach only the mandatory ones.** Found by
 `/code-review high` on PR #40. 101.9(e)(6), read from the eCFR on 2026-09-17, opens "When dual labeling is presented
@@ -305,7 +336,9 @@ The finding is right and its citation is wrong for most of the bases the engine 
 per-container column. `us-food/protein-percent` already chooses by `columns.basis`, and the same table fits here.
 Left for its own change because it alters an existing finding's citation and its fixtures.
 
-An egg carton escapes the same check. With no panel drawn, `us-food/protein-percent` asks the carton only for a
+**Struck with it:** the carton is now asked for the second column its information declares, under the paragraph
+for what that column counts. What follows is that entry as it stood. An egg carton escapes the same check. With no
+panel drawn, `us-food/protein-percent` asks the carton only for a
 declared first-column percentage. Reproduced: a carton claiming (j)(14), declared for children 1 through 3 with two
 columns and 38 percent stated for protein, gets no protein finding at all. It is never passed either. Found by the
 review of the dual-column fix, and left here because a toddler food in an egg carton with a second column is

@@ -478,6 +478,18 @@ export interface UsFoodNutritionFacts {
      */
     secondAmounts?: Partial<Record<NutrientId, number>>
     /**
+     * What the second column prints in its % Daily Value cells, where it differs from the
+     * figure derived from `secondAmounts`.
+     *
+     * The first column's `declaredPercentDv` with a column of its own, and for the same two
+     * reasons. 101.9(d)(7)(ii) permits the percentage to be worked from either the declared
+     * amount or the actual one, so two labels may print different figures and both comply;
+     * and protein's percentage is corrected by a score no label carries, so the engine
+     * derives none — which left a food for children 1 through 3, whose protein percentage
+     * (c)(7)(i) requires, unable to comply on a dual-column panel at all.
+     */
+    secondPercentDv?: Partial<Record<NutrientId, number>>
+    /**
      * 101.9(e)(3)'s vertical lines, drawn unless the label says otherwise.
      *
      * It exists so the panel can be drawn **wrong**, which is the same reason

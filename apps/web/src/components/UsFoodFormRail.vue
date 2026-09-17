@@ -546,6 +546,20 @@ function setSecondAmount(id: NutrientId, raw: string): void {
   columns.secondAmounts = amounts
 }
 
+/** What the second column prints in its % Daily Value cells, where it states its own. */
+const secondPercentOf = (id: NutrientId): number | '' =>
+  data.nutritionFacts?.columns?.secondPercentDv?.[id] ?? ''
+
+function setSecondPercent(id: NutrientId, raw: string): void {
+  const columns = data.nutritionFacts?.columns
+  if (columns === undefined) return
+  const stated = { ...(columns.secondPercentDv ?? {}) }
+  if (raw.trim() === '') delete stated[id]
+  else stated[id] = Number(raw)
+  if (Object.keys(stated).length === 0) delete columns.secondPercentDv
+  else columns.secondPercentDv = stated
+}
+
 /** What the panel will print, so the form shows the rounding as it happens. */
 const printedAmount = (id: NutrientId): string => {
   const facts = data.nutritionFacts
@@ -1571,6 +1585,24 @@ const packaging = computed({
                     ($event.target as HTMLInputElement).value,
                   )
                 "
+              />
+            </label>
+            <label
+              v-if="data.nutritionFacts.columns"
+              :class="LABEL"
+              class="w-20"
+              :for="`field-food-nf2-dv-${entry.id}`"
+            >
+              <span class="sr-only">
+                {{ entry.name }} percent Daily Value as printed, second column
+              </span>
+              <input
+                :id="`field-food-nf2-dv-${entry.id}`"
+                :value="secondPercentOf(entry.id)"
+                :class="INPUT"
+                type="number"
+                placeholder="% DV, 2nd"
+                @input="setSecondPercent(entry.id, ($event.target as HTMLInputElement).value)"
               />
             </label>
           </div>

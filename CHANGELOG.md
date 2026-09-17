@@ -37,6 +37,25 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A second column may state its own percent Daily Values.** 101.9(e)(2), (e)(3) and (e)(6) each present the
+  (d)(7)(ii) percentages in every column a panel declares, and only the first column could state one: the second
+  derived every figure, and `printedPercentDailyValue` derives none for protein. So a food for children 1 through 3,
+  whose protein percentage (c)(7)(i) requires, could not comply on a dual-column panel at all, and its label was
+  reported with nothing in the editor able to fix it. `columns.secondPercentDv` now states them, the panel prints
+  what is stated in place of what it derives, and `us-food/nutrition-percent-dv` judges both columns against their
+  own figures — the second against its `secondAmounts`, declared and unrounded as the first is judged against its
+  own two bases. A stated second-column figure that does not match is reported as the first is, saying which column
+  it is in; and the pass no longer counts one column's percentages while the other's go unread. An egg carton, which draws no panel, is asked for the second column
+  its information declares, where that column declares a protein amount — a column declaring none is an incomplete
+  column, which the form rule reports, as it does on a panel the engine draws. The rule asks the layout, row by row, which cells each column drew before reading any of those figures: two reviews of the change found it reading them from the
+  document, so a panel whose mode went back to single was judged on the figures it kept, and a nutrient left out of
+  `order`, which draws no cell in either column, had its stated figure counted in the pass — each certifying a
+  percentage nothing printed. A percentage stated for a nutrient the second column gives no amount
+  for, for Calories, or on a panel that draws a single column, is recorded as a layout omission rather than dropped,
+  as a second-column Calories amount already was. The API carries the field to the export, and the editor takes
+  it beside the first column's printed figures, so a toddler food on a dual-column panel can be made compliant in the
+  browser.
+
 - **A dual-column finding cites the paragraph for what its second column counts.** 21 CFR 101.9(e), read from the
   eCFR on 2026-09-17, sets the columns out in three subparagraphs, each naming the dual labeling it reaches:
   (e)(2) for the form as packaged "and for any other form", (e)(3) for forms, combinations, "different units, or

@@ -53,6 +53,7 @@ import {
 } from '../../fda/nutrients'
 import type { NutrientId } from '../../fda/nutrients'
 import { wasFullyDrawn } from '../../layout/omissions'
+import type { TextPrimitive } from '../../layout/types'
 import {
   US_FOOD_EGG_CARTON_PRESENTED,
   US_FOOD_ELEMENTS,
@@ -805,31 +806,91 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
   codes: [FDA_NUTRITION_PERCENT_DV_WRONG, FDA_NUTRITION_PERCENT_DV_MET],
   appliesTo: 'us-food',
 
-  check({ data }: UsFoodContext): Finding[] {
+  check({ data, layout }: UsFoodContext): Finding[] {
     const panel = panelOf(data)
-    const stated = panel?.declaredPercentDv
-    if (panel === undefined || stated === undefined) return []
+    if (panel === undefined) return []
 
-    const checked = NUTRIENTS.filter(
-      (entry) =>
-        stated[entry.id] !== undefined &&
-        entry.dailyValue !== undefined &&
-        // Protein's percentage is corrected by a digestibility score no label
-        // carries, so it cannot be recomputed from what is here.
-        entry.id !== 'protein',
+    // **Asked of the layout, row by row.** A panel whose mode went back to single keeps its
+    // second column's figures, and reading them from the document judged a column nothing
+    // drew — clearing a correct one into the pass. Per row, because a nutrient left out of
+    // `order` draws neither column while the panel around it draws two. The dual-column
+    // rules learned this with `columns.mode`; the percentages are the same question.
+    // **Asked of the layout: the band first, then the row's own cells.** Reading these
+    // figures from the document judged a column nothing drew, and counting the cells alone
+    // then read a single-column panel's lone cell as a second column's. A panel draws the
+    // band only where a second column was actually drawn, and each column that declares an
+    // amount adds a cell to the row — so a row carries a second cell where the band is on
+    // the label, the second column declares an amount for it, and the row drew more cells
+    // than the first column alone would give it. More, not exactly two: `order` may list a
+    // nutrient twice, which draws its row twice over.
+    const bandDrawn = layout.elements.some(
+      (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
     )
-    if (checked.length === 0) return []
+    const cellsDrawn = (id: NutrientId): number =>
+      layout.primitives.filter(
+        (primitive): primitive is TextPrimitive =>
+          primitive.kind === 'text' &&
+          primitive.elementId === nutritionRowElementId(id) &&
+          primitive.anchor === 'end',
+      ).length
+    // The first column prints its percentage in the row's own cell on a single-column panel
+    // and in the first of two on a dual one, so a row with no cell drew neither. This was
+    // hard-coded true while the second column was being gated, which left a nutrient the
+    // panel's `order` leaves out counted into the pass — the same defect, a column over.
+    const firstColumnDrawn = (id: NutrientId): boolean => cellsDrawn(id) > 0
+    const secondColumnDrawn = (id: NutrientId): boolean => {
+      if (!bandDrawn || panel.columns?.secondAmounts?.[id] === undefined) return false
+      return cellsDrawn(id) >= (declaredAmount(panel, id) === undefined ? 1 : 2)
+    }
+
+    // **Both columns, each against its own figures.** (e)(2), (e)(3) and (e)(6) present the
+    // (d)(7)(ii) percentages in every column a panel declares, and a second column may state
+    // its own. Judging only the first left a stated second-column figure unchecked while the
+    // pass beside it counted the first column's and said the percentages matched.
+    const columns = [
+      {
+        second: false,
+        stated: panel.declaredPercentDv,
+        bases: (id: NutrientId) => [declaredAmount(panel, id), panel.amounts[id]],
+        drawn: firstColumnDrawn,
+      },
+      {
+        second: true,
+        stated: panel.columns?.secondPercentDv,
+        drawn: secondColumnDrawn,
+        bases: (id: NutrientId) => {
+          const amount = panel.columns?.secondAmounts?.[id]
+          return [amount === undefined ? undefined : roundNutrientAmount(id, amount), amount]
+        },
+      },
+    ] as const
+    if (columns.every((column) => column.stated === undefined)) return []
 
     // (c)(8)(i): a food for children 1 through 3 "shall use the RDIs that are specified
     // for the intended group", and the DRVs follow it. Taken from the panel, as the
     // engine takes it, so the figures printed and the figures judged share one column.
     const population = dailyValuePopulationOf(panel)
-    const wrong = checked.flatMap((entry) => {
+    const checked = columns.flatMap((column) =>
+      column.stated === undefined
+        ? []
+        : NUTRIENTS.filter(
+            (entry) =>
+              column.stated![entry.id] !== undefined &&
+              entry.dailyValue !== undefined &&
+              // Protein's percentage is corrected by a digestibility score no label
+              // carries, so it cannot be recomputed from what is here.
+              entry.id !== 'protein',
+          )
+            .filter((entry) => column.drawn(entry.id))
+            .map((entry) => ({ entry, column })),
+    )
+    if (checked.length === 0) return []
+
+    const wrong = checked.flatMap(({ entry, column }) => {
       // 101.9(d)(7)(ii) permits **either** basis — the declared amount or the
       // actual one before rounding — and they often differ. Accepting only one
       // would report a violation against a label that took the other.
-      const fromDeclared = declaredAmount(panel, entry.id)
-      const fromActual = panel.amounts[entry.id]
+      const [fromDeclared, fromActual] = column.bases(entry.id)
       const permitted = [
         fromDeclared === undefined
           ? undefined
@@ -838,29 +899,39 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
       ].filter((value): value is number => value !== undefined)
       if (permitted.length === 0) return []
 
-      const declared = stated[entry.id]!
-      return permitted.includes(declared) ? [] : [{ entry, declared, permitted }]
+      const declared = column.stated![entry.id]!
+      return permitted.includes(declared)
+        ? []
+        : [
+            {
+              entry,
+              declared,
+              permitted,
+              second: column.second,
+              amount: fromDeclared ?? fromActual,
+            },
+          ]
     })
 
     // A declared percentage with no amount behind it could not be recomputed, so
     // it was neither reported nor checked — and the pass counted it anyway.
     // "11 percentages match the Daily Values" about ten is a rule declining and
     // reporting that it cleared.
-    const measured = checked.filter(
-      (entry) =>
-        declaredAmount(panel, entry.id) !== undefined || panel.amounts[entry.id] !== undefined,
+    const measured = checked.filter(({ entry, column }) =>
+      column.bases(entry.id).some((amount) => amount !== undefined),
     )
     if (measured.length === 0 && wrong.length === 0) return []
 
     if (wrong.length > 0) {
-      return wrong.map(({ entry, declared, permitted }) =>
+      return wrong.map(({ entry, declared, permitted, second, amount }) =>
         finding(usFoodNutritionPercentDvRule, {
           code: FDA_NUTRITION_PERCENT_DV_WRONG,
           severity: 'violation',
           message:
-            `${entry.name} shows ${declared}% of the Daily Value; ` +
+            `${entry.name} shows ${declared}% of the Daily Value` +
+            `${second ? ' in the second column' : ''}; ` +
             `${[...new Set(permitted)].sort((a, b) => a - b).join('% or ')}% is what ` +
-            `${declaredAmount(panel, entry.id) ?? panel.amounts[entry.id]}${entry.unit} of a ` +
+            `${amount}${entry.unit} of a ` +
             `${dailyValueFor(entry.id, population)!.amount}${entry.unit} Daily Value` +
             `${population === 'children-1-through-3' ? ' for children 1 through 3' : ''} gives.`,
           measurement: {
@@ -870,6 +941,8 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
               .map((p) => `${p}%`)
               .join(' or '),
           },
+          // The row, not the whole panel. Stage 5 gave every nutrient an element
+          // for exactly this; a defect on one line should outline that line.
           elementId: nutritionRowElementId(entry.id),
           citation: entry.dailyValue!.kind === 'rdi' ? VITAMIN_PERCENT : PERCENT,
         }),

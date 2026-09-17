@@ -109,11 +109,29 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       (element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel,
     )
     if (!drawn) {
-      return panel.declaredPercentDv?.protein === undefined
+      if (panel.declaredPercentDv?.protein === undefined) {
+        return [
+          missing(
+            US_FOOD_ELEMENTS.principalDisplayPanel,
+            'The nutrition information declared for presentation off this label states none.',
+          ),
+        ]
+      }
+      // A second column the information declares owes the percentage too, under the
+      // paragraph for what it counts, and is asked of the document for the same reason.
+      const basis = panel.columns?.basis
+      // Keyed on the second column's *protein* amount, as the drawn branch is: a column
+      // declaring no protein figure is an incomplete column, which the form rule reports.
+      // A panel declaring one column owes one percentage, whatever second amounts it kept.
+      return panel.columns?.mode === 'dual' &&
+        panel.columns?.secondAmounts?.protein !== undefined &&
+        panel.columns?.secondPercentDv?.protein === undefined
         ? [
             missing(
               US_FOOD_ELEMENTS.principalDisplayPanel,
-              'The nutrition information declared for presentation off this label states none.',
+              'Its second column states none.',
+              'no protein percentage in the second column',
+              basis === undefined ? CITATION : EACH_COLUMN_PARAGRAPHS[eachColumnReference(basis)],
             ),
           ]
         : []
