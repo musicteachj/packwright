@@ -826,15 +826,21 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     const bandDrawn = layout.elements.some(
       (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
     )
-    const secondColumnDrawn = (id: NutrientId): boolean => {
-      if (!bandDrawn || panel.columns?.secondAmounts?.[id] === undefined) return false
-      const cells = layout.primitives.filter(
+    const cellsDrawn = (id: NutrientId): number =>
+      layout.primitives.filter(
         (primitive): primitive is TextPrimitive =>
           primitive.kind === 'text' &&
           primitive.elementId === nutritionRowElementId(id) &&
           primitive.anchor === 'end',
       ).length
-      return cells >= (declaredAmount(panel, id) === undefined ? 1 : 2)
+    // The first column prints its percentage in the row's own cell on a single-column panel
+    // and in the first of two on a dual one, so a row with no cell drew neither. This was
+    // hard-coded true while the second column was being gated, which left a nutrient the
+    // panel's `order` leaves out counted into the pass — the same defect, a column over.
+    const firstColumnDrawn = (id: NutrientId): boolean => cellsDrawn(id) > 0
+    const secondColumnDrawn = (id: NutrientId): boolean => {
+      if (!bandDrawn || panel.columns?.secondAmounts?.[id] === undefined) return false
+      return cellsDrawn(id) >= (declaredAmount(panel, id) === undefined ? 1 : 2)
     }
 
     // **Both columns, each against its own figures.** (e)(2), (e)(3) and (e)(6) present the
@@ -846,7 +852,7 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
         second: false,
         stated: panel.declaredPercentDv,
         bases: (id: NutrientId) => [declaredAmount(panel, id), panel.amounts[id]],
-        drawn: () => true,
+        drawn: firstColumnDrawn,
       },
       {
         second: true,

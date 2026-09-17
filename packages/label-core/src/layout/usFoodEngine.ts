@@ -535,7 +535,12 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
      * the field found it dropped in silence.
      */
     const secondColumn = data.nutritionFacts.columns
-    const secondColumnDrawn = willDrawSecondColumn(data.nutritionFacts)
+    // The element the panel emits for a column it drew, not `willDrawSecondColumn`'s
+    // prediction: a tabular or linear panel draws its rows and one column, and the
+    // prediction said two, so a stated figure was dropped with nothing naming it.
+    const secondColumnDrawn = drawn.elements.some(
+      (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+    )
     // **Read off the cells drawn, not predicted.** `willDrawSecondColumn` answers for the
     // panel, and a nutrient the panel's `order` leaves out draws no cell in either column —
     // so a figure stated for it disappeared in silence, which is what this block exists to

@@ -2158,6 +2158,43 @@ describe('a second column may state its own percentages', () => {
     expect(codes).toContain('FDA_NUTRITION_PERCENT_DV_WRONG')
   })
 
+  it('reads the first column only where its cell was drawn', () => {
+    // The gate was written for the second column and hard-coded true for the first, so a
+    // nutrient the panel's `order` leaves out — drawn in neither column — still had its
+    // first-column percentage counted into the pass, or reported. Found by the PR's review.
+    const withoutIron = (percent: number): UsFoodLabelData =>
+      dual(
+        {},
+        {
+          order: NUTRIENT_IDS.filter((id) => id !== 'iron'),
+          declaredPercentDv: { ...panel.declaredPercentDv, iron: percent },
+        },
+      )
+    expect(rowTexts(withoutIron(45), 'iron'), 'premise: no iron cell is drawn').toEqual([])
+    expect(codesOf(findingsFor(withoutIron(999), stock))).not.toContain(
+      'FDA_NUTRITION_PERCENT_DV_WRONG',
+    )
+  })
+
+  it('records a stated second-column percentage a tabular panel draws one column for', () => {
+    // The engine gated its omission on a prediction. A tabular panel draws its rows but one
+    // column, so the figure was dropped with nothing saying so — which is what the block is
+    // for, and what its own comment says.
+    const tabular = dual({ secondPercentDv: { calcium: 45 } }, { format: 'tabular' })
+    const wide: LabelStock = { widthMm: 200, heightMm: 240, marginMm: 6 }
+    const layout = layOutUsFoodLabel({
+      data: { ...tabular, container: { shape: 'rectangular', widthMm: 200, heightMm: 240 } },
+      stock: wide,
+    })
+    expect(
+      layout.elements.map((e) => e.elementId),
+      'premise: the tabular panel draws one column',
+    ).not.toContain(US_FOOD_ELEMENTS.nutritionSecondColumn)
+    expect(
+      layout.omissions.filter((o) => o.reason.includes('second-column percentage')),
+    ).toHaveLength(1)
+  })
+
   it('asks an egg carton for the second column its information declares', () => {
     // No panel is drawn, so the figures are asked of the document: the same question, put
     // to a carton whose information is presented beneath the lid.

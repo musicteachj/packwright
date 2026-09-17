@@ -284,6 +284,17 @@ second column, and the engine derives none for protein, so the second column pri
 The rule reports that under the paragraph for the column's basis, which is true of the printed label, and nothing in the editor can fix it. The
 fix is a declared second-column percentage, at least for protein, with the rail offering it.
 
+**No form rule judges the columns an egg carton declares.** Found by `/code-review high` on PR #41, and verified.
+`us-food/dual-column-form` returns as soon as no `food-nutrition-second-column` element is drawn, which is always
+true of a carton claiming (j)(14): its information is presented beneath the lid and the outer carton draws no panel.
+So a carton declaring two columns is judged on neither their headings, their separation, their equal prominence nor
+their completeness — a second column declaring one figure of fourteen is reported on an ordinary label and not on a
+carton. `us-food/protein-percent` asks the carton for its second column's protein percentage where that column
+declares a protein amount, and deliberately says nothing where it declares none, on the ground that the form rule
+reports the incomplete column; for a carton, nothing does. Judging a declared column that nothing drew is the
+question (j)(14) keeps raising, and the answer wants a reading of which of (e)'s requirements are about the
+information and which are about the panel.
+
 **A primitive does not say which column it belongs to, so rules infer it from the cells drawn.** Four review
 rounds on `feat/second-column-percentages` went to that inference, each on a case the last had not covered: a
 panel whose mode went back to single, a nutrient left out of `order`, a row whose first column states no amount,
