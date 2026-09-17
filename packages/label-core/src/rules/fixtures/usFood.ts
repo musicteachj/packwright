@@ -42,6 +42,7 @@ import {
   FDA_INGREDIENTS_EXEMPTION_UNSTATED,
   FDA_NUTRITION_CONTACT_MISSING,
   FDA_NUTRITION_EXEMPTION_UNSTATED,
+  FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
   FDA_DUAL_COLUMN_HEADINGS_MISSING,
   FDA_DUAL_COLUMN_INCOMPLETE,
   FDA_DUAL_COLUMN_NOT_SEPARATED,
@@ -940,6 +941,25 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_NUTRITION_CONTACT_MISSING,
       severity: 'blocking',
       citation: '21 CFR 101.9(j)(13)(i)(A)',
+    },
+  },
+  {
+    name: 'a unit container whose not-for-retail statement is under 1/16 inch',
+    defect:
+      'A unit of a multiunit package claims 101.9(j)(15), which holds only where "each unit ' +
+      "container is labeled with the statement 'This Unit Not Labeled For Retail Sale' in type " +
+      'size not less than 1/16-inch in height". The statement is set at 2 mm of em, which puts ' +
+      'its lowercase "o" at 0.540 × 2 = 1.08 mm against a floor of 1.5875.',
+    data: {
+      ...WITHOUT_NUTRITION,
+      nutritionExemption: { kind: 'unit-container', wording: 'retail' },
+      informationPanelFontSizeMm: 2,
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
+      severity: 'blocking',
+      citation: '21 CFR 101.9(j)(15)(iii)',
     },
   },
   {

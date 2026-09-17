@@ -37,6 +37,27 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A unit container claiming 101.9(j)(15) bears the statement (iii) requires, at the size it sets.** (j)(15)
+  exempts the unit containers of a multiunit retail package on three conditions, read from the eCFR on
+  2026-09-17: that the package's labeling "contains all nutrition information in accordance with the
+  requirements of this section", that the units are "securely enclosed within and not intended to be separated
+  from the retail package under conditions of retail sale", and that "each unit container is labeled with the
+  statement 'This Unit Not Labeled For Retail Sale' in type size not less than 1/16-inch in height", where "the
+  word 'individual' may be used in lieu of or immediately preceding the word 'Retail'". Only the third is on
+  this label, and nothing printed or measured it, so the exemption was not offered. It is now: the label
+  declares which of the three wordings the unit bears; the engine prints that wording from
+  `fda/unitContainerStatement.ts` — the regulation's words, looked up and never typed, so a paraphrase cannot
+  be claimed — where the panel would sit; and the rule reads the printed statement back from the layout rather
+  than from the claim. A statement the engine did not draw, or whose text is not the wording claimed, is
+  `FDA_NUTRITION_MISSING` under (iii); one under 1/16 inch is `FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL`,
+  blocking as the missing contact line is, since it is the condition the exemption stands on — the fixture sets
+  it at 2 mm of em, whose lowercase "o" stands 1.08 mm against the 1.59 mm floor; and the pass names the printed
+  statement, so one that ran off the label withholds it. (iii) names no letter to measure, so the height is
+  taken on the basis 101.2(c) incorporates from 101.7(h)(2) for the same panel, and the 101.2(c) rule leaves this
+  element to (iii) so that one dimension is not reported twice. The two conditions on the outer package are not
+  checked, and the exception for units that "bear no labeling at all" is not reachable here, since this project
+  exists to draw the label being judged.
+
 - **The small-package display route no longer trusts an area the label and its panel contradict.** 101.9(j)(13)(ii)(A)
   lets a package with "less than 12 square inches" available to bear labeling — or 40 or less, where its shape
   cannot take a vertical column — use the tabular or linear display, and three things follow from that route:
@@ -95,9 +116,10 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   project does not model. Only exemptions whose remaining conditions lie off the label or in that claims gap are
   offered: § 101.100(a)(2) and ten 101.9(j) paragraphs, among them (j)(8)'s medical foods and (j)(11)(ii)'s custom
   processed fish and game, which a first draft wrongly listed as not exemptions at all. The (a)(1) assortment and
-  the (j)(13)(i) small package each put a statement on the label and arrive with the checks for them; (j)(14)'s
-  egg carton, whose nutrition information moves beneath the lid rather than going away, and (j)(15)'s unit
-  container are recorded in `docs/BACKLOG.md`. A draft offered (j)(14), and its review caught it. A label saved with a bare flag still opens and exports, keeps its missing
+  the (j)(13)(i) small package each put a statement on the label and arrive with the checks for them; (j)(15)'s
+  unit container followed on `feat/egg-carton-and-unit-container`, above; (j)(14)'s egg carton, whose nutrition
+  information moves beneath the lid rather than going away, is recorded in `docs/BACKLOG.md`. A draft offered
+  (j)(14), and its review caught it. A label saved with a bare flag still opens and exports, keeps its missing
   list or panel excused, and gets an advisory asking which paragraph it claims instead of a pass. Picking one in
   the editor clears the old flag. The API refuses a kind label-core does not name.
 

@@ -29,9 +29,9 @@
  *   project cannot evaluate, that the food "bears no nutrition claims or other
  *   nutrition information in any context on the label or in labeling or
  *   advertising", because it models no claims. (j)(13)(i) holds only on a line
- *   printed on the package, and is checked below. (j)(14) and (j)(15) hold only on
- *   something printed that nothing here checks, and are not offered until it is.
- *   Read from the eCFR on 2026-09-16.
+ *   printed on the package, and is checked below, as is (j)(15)'s statement. (j)(14)
+ *   holds only on something printed that nothing here checks, and is not offered
+ *   until it is. Read from the eCFR on 2026-09-16, and (j)(15) again on 2026-09-17.
  * - The *weights* of the four vitamins and minerals. 101.9(c)(8)(ii) permits
  *   "additional levels of significance" beyond the whole units (c)(8)(iv) gives,
  *   so 235 mg of potassium and 235.4 mg are both proper declarations and no
@@ -50,16 +50,23 @@ import {
 } from '../../fda/nutrients'
 import type { NutrientId } from '../../fda/nutrients'
 import { wasFullyDrawn } from '../../layout/omissions'
+import type { TextPrimitive } from '../../layout/types'
 import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../../templates/usFood'
 import type {
   UsFoodNutritionExemptionKind,
   UsFoodNutritionFacts,
   UsFoodSmallPackageExemption,
+  UsFoodUnitContainerExemption,
 } from '../../templates/usFood'
 import { SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES } from '../../fda/nutritionFormats'
-import { labelingSurfaceFloor } from '../../geometry/pdp'
+import {
+  UNIT_CONTAINER_STATEMENTS,
+  UNIT_CONTAINER_STATEMENT_MIN_TYPE_HEIGHT_MM,
+} from '../../fda/unitContainerStatement'
+import { labelingSurfaceFloor, regulatedGlyphBasis } from '../../geometry/pdp'
+import { glyphHeightMm } from '../../text/measure'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnArtwork, untitled } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_NUTRITION_MISSING = 'FDA_NUTRITION_MISSING'
@@ -68,6 +75,7 @@ export const FDA_NUTRITION_COMPLETE = 'FDA_NUTRITION_COMPLETE'
 export const FDA_NUTRITION_EXEMPT = 'FDA_NUTRITION_EXEMPT'
 export const FDA_NUTRITION_EXEMPTION_UNSTATED = 'FDA_NUTRITION_EXEMPTION_UNSTATED'
 export const FDA_NUTRITION_CONTACT_MISSING = 'FDA_NUTRITION_CONTACT_MISSING'
+export const FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL = 'FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL'
 export const FDA_NUTRITION_OUT_OF_ORDER = 'FDA_NUTRITION_OUT_OF_ORDER'
 export const FDA_NUTRITION_ORDER_MET = 'FDA_NUTRITION_ORDER_MET'
 export const FDA_NUTRITION_ROUNDING_WRONG = 'FDA_NUTRITION_ROUNDING_WRONG'
@@ -100,7 +108,7 @@ const NO_CLAIMS =
  * Worded from 101.9(j) as read from the eCFR on 2026-09-16.
  */
 const EXEMPTIONS: Record<
-  Exclude<UsFoodNutritionExemptionKind, 'small-package'>,
+  Exclude<UsFoodNutritionExemptionKind, 'small-package' | 'unit-container'>,
   { citation: Citation; grants: string; unchecked: string }
 > = {
   'small-business': {
@@ -184,6 +192,16 @@ const EXEMPTIONS: Record<
 const SMALL_PACKAGE = untitled(EXEMPTION, '21 CFR 101.9(j)(13)(i)')
 const SMALL_PACKAGE_CONTACT = untitled(EXEMPTION, '21 CFR 101.9(j)(13)(i)(A)')
 
+/**
+ * 101.9(j)(15), the unit container — declared with the wording it bears, and checked
+ * because (iii) puts the condition on the label: "each unit container is labeled with
+ * the statement 'This Unit Not Labeled For Retail Sale' in type size not less than
+ * 1/16-inch in height". Read from the eCFR on 2026-09-17. (i) and (ii) are about the
+ * outer package and are not checked.
+ */
+const UNIT_CONTAINER = untitled(EXEMPTION, '21 CFR 101.9(j)(15)')
+const UNIT_CONTAINER_STATEMENT = untitled(EXEMPTION, '21 CFR 101.9(j)(15)(iii)')
+
 const PERCENT: Citation = {
   authority: 'FDA',
   reference: '21 CFR 101.9(d)(7)(ii)',
@@ -225,6 +243,8 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     ...Object.values(EXEMPTIONS).map((exemption) => exemption.citation),
     SMALL_PACKAGE,
     SMALL_PACKAGE_CONTACT,
+    UNIT_CONTAINER,
+    UNIT_CONTAINER_STATEMENT,
   ],
   codes: [
     FDA_NUTRITION_MISSING,
@@ -233,6 +253,7 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     FDA_NUTRITION_EXEMPT,
     FDA_NUTRITION_EXEMPTION_UNSTATED,
     FDA_NUTRITION_CONTACT_MISSING,
+    FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
   ],
   appliesTo: 'us-food',
 
@@ -244,7 +265,15 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     if (claimed?.kind === 'small-package' && panel === undefined) {
       return smallPackage(claimed, context)
     }
-    if (claimed !== undefined && claimed.kind !== 'small-package' && panel === undefined) {
+    if (claimed?.kind === 'unit-container' && panel === undefined) {
+      return unitContainer(claimed, context)
+    }
+    if (
+      claimed !== undefined &&
+      claimed.kind !== 'small-package' &&
+      claimed.kind !== 'unit-container' &&
+      panel === undefined
+    ) {
       const exemption = EXEMPTIONS[claimed.kind]
       return [
         // Most (j) exemptions hold only while the label bears no nutrition claims: the artwork.
@@ -434,6 +463,89 @@ function smallPackage(
         `or telephone number a consumer can use to obtain the nutrition information, and ${NO_CLAIMS}.`,
       US_FOOD_ELEMENTS.smallPackageContact,
       SMALL_PACKAGE,
+    ),
+  ]
+}
+
+/**
+ * 101.9(j)(15), judged: the exemption holds only where the unit bears the statement
+ * (iii) prescribes, at the height it sets.
+ *
+ * **Read from the artwork, not the claim.** The engine prints the statement whenever
+ * the kind is claimed, so a rule reading the claim could never be wrong about the
+ * words — and would clear a unit whose statement never printed. This one finds the
+ * element the engine drew and reads its text and its size from the primitives, so a
+ * statement the engine did not draw is reported missing, and the pass names the
+ * element so one that ran off the label withholds it.
+ *
+ * **One dimension, one finding.** (iii)'s 1/16 inch is the figure 101.2(c) sets for
+ * the whole panel, measured here on the basis 101.2(c) incorporates from 101.7(h)(2)
+ * because (iii) names none of its own; the panel-wide rule leaves this element to the
+ * specific provision, as it leaves the net quantity to 101.7(i). A shortfall is
+ * blocking, as a missing contact line is: it is the condition the exemption stands
+ * on, and without it the unit owes a panel.
+ */
+function unitContainer(
+  claimed: UsFoodUnitContainerExemption,
+  { layout }: UsFoodContext,
+): Finding[] {
+  const lines = layout.primitives.filter(
+    (primitive): primitive is TextPrimitive =>
+      primitive.kind === 'text' && primitive.elementId === US_FOOD_ELEMENTS.unitContainerStatement,
+  )
+  const statement = UNIT_CONTAINER_STATEMENTS[claimed.wording]
+  const printed = lines.map((line) => line.text).join(' ')
+  if (lines.length === 0 || printed !== statement) {
+    return [
+      finding(usFoodNutritionCompletenessRule, {
+        code: FDA_NUTRITION_MISSING,
+        severity: 'blocking',
+        message:
+          'The label bears no nutrition label and claims the 101.9(j)(15) unit container ' +
+          `exemption, which holds only where the unit is labeled "${statement}" under (iii). ` +
+          (lines.length === 0 ? 'No such statement is printed.' : `It prints "${printed}".`),
+        measurement: {
+          actual: lines.length === 0 ? 'no statement' : printed,
+          required: `"${statement}"`,
+        },
+        elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+        citation: UNIT_CONTAINER_STATEMENT,
+      }),
+    ]
+  }
+
+  const fontSizeMm = Math.min(...lines.map((line) => line.fontSizeMm))
+  const actualMm = glyphHeightMm(fontSizeMm, lines[0]!.fontFamily, regulatedGlyphBasis(printed))
+  const requiredMm = UNIT_CONTAINER_STATEMENT_MIN_TYPE_HEIGHT_MM
+  if (actualMm < requiredMm - MEASUREMENT_TOLERANCE_MM) {
+    return [
+      finding(usFoodNutritionCompletenessRule, {
+        code: FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
+        severity: 'blocking',
+        message:
+          `The unit container statement is set at ${mm(actualMm)}; 101.9(j)(15)(iii) requires ` +
+          `"type size not less than 1/16-inch in height", ${mm(requiredMm)}, and the exemption ` +
+          'holds only where the statement meets it.',
+        measurement: { actual: mm(actualMm), required: mm(requiredMm) },
+        elementId: US_FOOD_ELEMENTS.unitContainerStatement,
+        citation: UNIT_CONTAINER_STATEMENT,
+      }),
+    ]
+  }
+
+  return [
+    // (iii) puts the statement on the unit, and the pass names it: the artwork.
+    passedOnArtwork(
+      usFoodNutritionCompletenessRule,
+      FDA_NUTRITION_EXEMPT,
+      `The label claims the ${UNIT_CONTAINER.reference} exemption for a unit container in a ` +
+        `multiunit retail package, and bears the statement "${statement}" at ${mm(actualMm)}, ` +
+        'as (iii) requires, so no panel is required. Not checked here: that the multiunit ' +
+        'package’s labeling contains all the nutrition information (i), and that the units are ' +
+        'securely enclosed within it and not intended to be separated from it under conditions ' +
+        'of retail sale (ii).',
+      US_FOOD_ELEMENTS.unitContainerStatement,
+      UNIT_CONTAINER,
     ),
   ]
 }

@@ -33,6 +33,8 @@ import {
   US_FOOD_ELEMENTS,
   US_FOOD_INGREDIENTS_EXEMPTIONS,
   US_FOOD_NUTRITION_EXEMPTIONS,
+  UNIT_CONTAINER_STATEMENTS,
+  UNIT_CONTAINER_WORDINGS,
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
   fontSizeMmForGlyphHeight,
@@ -50,6 +52,7 @@ import {
   type NutrientId,
   type UsFoodIngredientsExemptionKind,
   type UsFoodNutritionExemptionKind,
+  type UnitContainerWording,
 } from '@packwright/label-core'
 import { computed, ref } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
@@ -92,6 +95,7 @@ const NUTRITION_EXEMPTION_NAMES: Record<(typeof US_FOOD_NUTRITION_EXEMPTIONS)[nu
   'raw-produce-or-fish': '§ 101.9(j)(10) — raw fruit, vegetables or fish',
   'custom-processed-fish-or-game': '§ 101.9(j)(11)(ii) — custom processed fish or game meat',
   'small-package': '§ 101.9(j)(13)(i) — package under 12 in², with a line to ask',
+  'unit-container': '§ 101.9(j)(15) — unit of a multiunit package, marked not for retail sale',
   'bulk-at-retail': '§ 101.9(j)(16) — sold from bulk containers',
   'low-volume': '§ 101.9(j)(18) — low-volume product of a small business',
 }
@@ -474,9 +478,12 @@ const nutritionExemption = computed({
         availableSurfaceSqInches: Number.NaN,
         contactLine: '',
       }
+    } else if (next === 'unit-container') {
+      // The statement as the paragraph writes it; the other two wordings are offered beside it.
+      data.nutritionExemption = { kind: 'unit-container', wording: 'retail' }
     } else {
       data.nutritionExemption = {
-        kind: next as Exclude<UsFoodNutritionExemptionKind, 'small-package'>,
+        kind: next as Exclude<UsFoodNutritionExemptionKind, 'small-package' | 'unit-container'>,
       }
     }
   },
@@ -681,6 +688,16 @@ const smallPackageContactLine = computed({
   set: (next: string) => {
     const claimed = smallPackage()
     if (claimed !== undefined) claimed.contactLine = next
+  },
+})
+
+/** Which of (j)(15)(iii)'s three wordings the unit bears, where that is the exemption claimed. */
+const unitContainerWording = computed({
+  get: (): UnitContainerWording =>
+    data.nutritionExemption?.kind === 'unit-container' ? data.nutritionExemption.wording : 'retail',
+  set: (next: UnitContainerWording) => {
+    const claimed = data.nutritionExemption
+    if (claimed?.kind === 'unit-container') claimed.wording = next
   },
 })
 const containerSurfaceAreaSqMm = requiredNumber(() => shaped('other'), 'totalSurfaceAreaSqMm')
@@ -1321,6 +1338,25 @@ const packaging = computed({
           to bear labeling — the package, not this label — on the condition that the label bears an
           address or telephone number a consumer can use to obtain the nutrition information. Typed
           as it should print; the placeholder is the regulation's own example.
+        </p>
+      </template>
+
+      <template v-if="nutritionExemption === 'unit-container'">
+        <label :class="LABEL" for="field-food-nf-unit-wording">
+          Statement the unit bears
+          <select id="field-food-nf-unit-wording" v-model="unitContainerWording" :class="INPUT">
+            <option v-for="wording in UNIT_CONTAINER_WORDINGS" :key="wording" :value="wording">
+              {{ UNIT_CONTAINER_STATEMENTS[wording] }}
+            </option>
+          </select>
+        </label>
+        <p class="text-chrome-400 text-xs">
+          21 CFR 101.9(j)(15) exempts the unit containers of a multiunit retail package whose
+          labeling carries the nutrition information, where the units are securely enclosed and not
+          intended to be separated, and each is labeled "This Unit Not Labeled For Retail Sale" in
+          type not less than 1/16 inch high — "individual" may stand in lieu of or before "Retail".
+          The statement is the regulation's own words, printed where the panel would sit and
+          measured; the two conditions on the outer package are not checked.
         </p>
       </template>
 

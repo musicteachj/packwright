@@ -378,6 +378,31 @@ describe('POST /api/labels/us-food/export', () => {
     expect((await postFood({ ...exempt, nutritionExemption: withoutArea })).status).toBe(400)
   })
 
+  it('takes a unit container by the wording it bears, and refuses one the paragraph does not permit', async () => {
+    const { ingredients: _list, ...withoutList } = FOOD_BODY
+    const exempt = { ...withoutList, ingredientThreshold: undefined }
+    const drawn = await postFood({
+      ...exempt,
+      nutritionExemption: { kind: 'unit-container', wording: 'individual' },
+    })
+    expect(drawn.status).toBe(200)
+    // The statement reached the renderer: the same unit claiming a paragraph that
+    // prints nothing draws fewer glyphs.
+    const silent = await postFood({ ...exempt, nutritionExemption: { kind: 'small-business' } })
+    expect(drawn.body.length).toBeGreaterThan(silent.body.length)
+    expect(
+      (
+        await postFood({
+          ...exempt,
+          nutritionExemption: { kind: 'unit-container', wording: 'wholesale' },
+        })
+      ).status,
+    ).toBe(400)
+    expect(
+      (await postFood({ ...exempt, nutritionExemption: { kind: 'unit-container' } })).status,
+    ).toBe(400)
+  })
+
   it('takes an assortment with its statement, and prints it', async () => {
     const assortment = {
       kind: 'assortment',

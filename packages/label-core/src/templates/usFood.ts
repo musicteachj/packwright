@@ -24,6 +24,7 @@ import type { MajorFoodAllergenId } from '../fda/allergens'
 import type { NutrientId } from '../fda/nutrients'
 import type { DualColumnBasis, NutritionColumnMode, NutritionFormat } from '../fda/nutritionFormats'
 import type { Anchor, LabelStock } from './stock'
+import type { UnitContainerWording } from '../fda/unitContainerStatement'
 
 /**
  * One id per nutrient row, so a finding outlines the line it is about.
@@ -88,6 +89,13 @@ export const US_FOOD_ELEMENTS = {
    * size for this line, so it answers to 101.2(c)'s floor instead.
    */
   smallPackageContact: 'food-small-package-contact',
+  /**
+   * 101.9(j)(15)(iii)'s "This Unit Not Labeled For Retail Sale", on a unit container
+   * using that exemption. Outside `food-nutrition-` as the contact line is; unlike the
+   * line, (iii) sets its size by name, and the rule that grants the exemption measures
+   * it, so 101.2(c)'s rule leaves it alone.
+   */
+  unitContainerStatement: 'food-unit-container-statement',
   /**
    * § 101.100(a)(1)'s statement naming the other ingredients an assortment may
    * contain. Its own element, drawn after the list and any "Contains" statement: a
@@ -193,6 +201,12 @@ export type UsFoodIngredientsExemption =
  *   or telephone number that a consumer can use to obtain the required nutrition
  *   information" under (A). The only one declared with particulars: the area, and
  *   the line, which the engine prints and a rule requires.
+ * - `unit-container` — (j)(15), a unit container in a multiunit retail package whose
+ *   outer package carries the nutrition information, "labeled with the statement
+ *   'This Unit Not Labeled For Retail Sale' in type size not less than 1/16-inch in
+ *   height" under (iii). Declared with the wording claimed, since "individual" may
+ *   stand in lieu of or before "Retail"; the engine prints the statement from
+ *   `fda/unitContainerStatement.ts` and a rule measures it.
  * - `bulk-at-retail` — (j)(16), food sold from bulk containers.
  * - `low-volume` — (j)(18), low-volume products of a small business.
  *
@@ -200,13 +214,13 @@ export type UsFoodIngredientsExemption =
  * labelling: (j)(5) sets what foods for infants and young children declare, (j)(6)
  * and (j)(7) move dietary supplements and infant formula to § 101.36 and part 107,
  * and (j)(11)(i), (j)(12) and (j)(17) permit where or on what basis the information
- * is given rather than excusing it. Two hold only on something printed on the
- * package that nothing here checks, and are offered when it is: (j)(14)'s egg
+ * is given rather than excusing it. One holds only on something printed on the
+ * package that nothing here checks, and is offered when it is: (j)(14)'s egg
  * carton, whose information must be "clearly presented immediately beneath the
- * carton lid or in an insert" — relocated, not excused; and (j)(15)'s unit
- * container, which must bear "This Unit Not Labeled For Retail Sale". The first
- * draft of this list offered (j)(14) and called (j)(8) and (j)(11) not exemptions
- * at all; a review of it read the paragraphs again.
+ * carton lid or in an insert" — relocated, not excused. The first draft of this
+ * list offered (j)(14) and called (j)(8) and (j)(11) not exemptions at all; a
+ * review of it read the paragraphs again. (j)(15) was left out on the same
+ * ground until its statement was printed and measured.
  */
 export const US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE = [
   'small-business',
@@ -221,10 +235,11 @@ export const US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE = [
   'low-volume',
 ] as const
 
-/** Every kind, the one declared with particulars included. */
+/** Every kind, those declared with particulars included. */
 export const US_FOOD_NUTRITION_EXEMPTIONS = [
   ...US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
   'small-package',
+  'unit-container',
 ] as const
 export type UsFoodNutritionExemptionKind = (typeof US_FOOD_NUTRITION_EXEMPTIONS)[number]
 
@@ -237,9 +252,16 @@ export interface UsFoodSmallPackageExemption {
   contactLine: string
 }
 
+/** 101.9(j)(15): which of the wordings (iii) permits the unit bears. */
+export interface UsFoodUnitContainerExemption {
+  kind: 'unit-container'
+  wording: UnitContainerWording
+}
+
 export type UsFoodNutritionExemption =
   | { kind: (typeof US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE)[number] }
   | UsFoodSmallPackageExemption
+  | UsFoodUnitContainerExemption
 
 /**
  * The net quantity of contents declaration.

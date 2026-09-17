@@ -42,6 +42,7 @@ import type { LabelStock } from '../templates/stock'
 import { anchorBox, panelFor } from '../templates/stock'
 import { LayoutError, assertMarginLeavesPanel } from './engine'
 import type { LayoutOmission, LayoutPrimitive, ResolvedElement, ResolvedLayout } from './types'
+import { UNIT_CONTAINER_STATEMENTS } from '../fda/unitContainerStatement'
 
 /** Millimetres for an omission's prose. `rules/finding` owns the same format for
  *  findings, and `label-core`'s layout layer must not import from `rules`. */
@@ -536,6 +537,22 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       US_FOOD_ELEMENTS.smallPackageContact,
       'Nutrition information contact',
       data.nutritionExemption.contactLine,
+      panelTypeMm,
+    )
+  }
+
+  // 21 CFR 101.9(j)(15)(iii) — a unit container in a multiunit package, using that
+  // exemption, "is labeled with the statement 'This Unit Not Labeled For Retail Sale'".
+  // Looked up by the wording the label claims and never typed: the words are the
+  // regulation's, and a paraphrase is not the statement. Drawn in the panel's place and
+  // only where no panel is carried, as the contact line is, and outside the
+  // `food-nutrition-` prefix for the same reason — though its size answers to (iii)
+  // rather than 101.2(c), which the rule that grants the exemption measures.
+  if (data.nutritionFacts === undefined && data.nutritionExemption?.kind === 'unit-container') {
+    stackText(
+      US_FOOD_ELEMENTS.unitContainerStatement,
+      'Unit container statement',
+      UNIT_CONTAINER_STATEMENTS[data.nutritionExemption.wording],
       panelTypeMm,
     )
   }

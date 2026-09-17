@@ -931,6 +931,31 @@ describe('the Nutrition Facts panel in the editor', () => {
       'and the placeholder for an unstated paragraph is gone',
     ).toBe(false)
   })
+
+  it('takes a unit container, prints its statement, and lets the wording be chosen', async () => {
+    const { store, wrapper } = await mountFood()
+    delete store.foodData.nutritionFacts
+    await nextTick()
+    await wrapper.find('#field-food-nf-exemption').setValue('unit-container')
+    await nextTick()
+
+    expect(store.foodData.nutritionExemption).toEqual({ kind: 'unit-container', wording: 'retail' })
+    const pass = store.findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')
+    expect(pass?.citation.reference).toBe('21 CFR 101.9(j)(15)')
+    const canvas = () => wrapper.find('svg[role="img"]').text()
+    expect(canvas(), 'and the canvas prints the statement').toContain(
+      'This Unit Not Labeled For Retail Sale',
+    )
+
+    await wrapper.find('#field-food-nf-unit-wording').setValue('individual')
+    await nextTick()
+    expect(store.foodData.nutritionExemption).toEqual({
+      kind: 'unit-container',
+      wording: 'individual',
+    })
+    expect(canvas()).toContain('This Unit Not Labeled For Individual Sale')
+    expect(canvas()).not.toContain('For Retail Sale')
+  })
 })
 
 /**

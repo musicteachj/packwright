@@ -195,6 +195,7 @@ export {
   FDA_NUTRITION_ROUNDING_WRONG,
   FDA_SERVING_SIZE_MET,
   FDA_SERVING_SIZE_MISSING,
+  FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
   usFoodNutritionCompletenessRule,
   usFoodNutritionOrderRule,
   usFoodNutritionPercentDvRule,

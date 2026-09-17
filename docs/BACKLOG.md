@@ -508,9 +508,9 @@ it and says what of it goes unchecked; a label saved with a bare flag is excused
 cleared. (j)(13)(i)(A)'s line and (a)(1)'s statement are both declared, printed by the engine, required by a
 rule, and named by the pass so that one which did not print withholds it. (a)(1) turned out reachable after
 all: its common ingredients are listed and judged as any list, and where none is common to all packages only
-the statement is owed. What either line says beyond the names it must carry is not judged. Still open, each
-below: (j)(14), (j)(15), and the nutrition-claims condition most (j) paragraphs share. What follows is the
-entry as it stood. `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
+the statement is owed. What either line says beyond the names it must carry is not judged. (j)(15) followed
+on `feat/egg-carton-and-unit-container`. Still open, each below: (j)(14), and the nutrition-claims condition
+most (j) paragraphs share. What follows is the entry as it stood. `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
 §101.100(a)(1) excuses an assortment "on the condition that the label shall bear, in conjunction with the
 names of such ingredients as are common to all packages, a statement … indicating by name other ingredients
 which may be present". And 101.9(j)(13)(i)(A) says the manufacturer "shall provide on the label of packages
@@ -521,8 +521,14 @@ statement. Both passes now rest on the artwork, which is right, but a stamp cann
 not exist. The fix is to record which paragraph is claimed and check what that paragraph requires the label
 to bear.
 
-**101.9(j)(15)'s unit container is not offered, because its condition is a statement nothing checks.** Read
-from the eCFR on 2026-09-16: the unit containers in a multiunit retail package are exempt where the outer
+**~~101.9(j)(15)'s unit container is not offered, because its condition is a statement nothing checks.~~
+Fixed** on `feat/egg-carton-and-unit-container`. The label declares which of the three wordings the unit
+bears, the engine prints it from `fda/unitContainerStatement.ts` where the panel would sit, and the
+completeness rule reads the printed statement back — its words against the wording claimed, its height
+against (iii)'s 1/16 inch on the basis 101.2(c) incorporates from 101.7(h)(2) — and names it in the pass, so
+one that did not print withholds the exemption. The 101.2(c) rule leaves the element to (iii), so one
+dimension is not reported twice. The two conditions on the outer package are not checked. What follows is the
+entry as it stood. Read from the eCFR on 2026-09-16: the unit containers in a multiunit retail package are exempt where the outer
 package carries the nutrition information, the units are "securely enclosed within and not intended to be
 separated from the retail package", and "each unit container is labeled with the statement 'This Unit Not
 Labeled For Retail Sale' in type size not less than 1/16-inch in height" — with "individual" permitted in or

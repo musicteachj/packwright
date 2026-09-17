@@ -35,6 +35,7 @@ import {
   NUTRIENT_IDS,
   US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
+  UNIT_CONTAINER_WORDINGS,
   US_FOOD_PACKAGINGS,
   type ArtworkBlock,
   type DigitalLinkData,
@@ -599,9 +600,11 @@ export const UsFoodRequestBase = z.object({
   containsStatementFontSizeMm: z.number().positive().optional(),
   containsStatementGapMm: z.number().min(0).optional(),
   nutritionFacts: NutritionFactsSchema.optional(),
-  // Claimed by paragraph alone, or the small package with the area that qualifies it
-  // and the line (j)(13)(i)(A) puts on its label. A blank area is not accepted here:
-  // the rule would refuse it anyway, and a saved label should not carry one.
+  // Claimed by paragraph alone; or the small package with the area that qualifies it
+  // and the line (j)(13)(i)(A) puts on its label — a blank area is not accepted here,
+  // since the rule would refuse it anyway and a saved label should not carry one; or
+  // the unit container with the wording of (j)(15)(iii)'s statement it bears, from the
+  // three the paragraph permits.
   nutritionExemption: z
     .union([
       z.object({ kind: z.enum(US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE) }),
@@ -610,6 +613,7 @@ export const UsFoodRequestBase = z.object({
         availableSurfaceSqInches: z.number().positive(),
         contactLine: z.string(),
       }),
+      z.object({ kind: z.literal('unit-container'), wording: z.enum(UNIT_CONTAINER_WORDINGS) }),
     ])
     .optional(),
   // Superseded, as `ingredientsExempt` is.
