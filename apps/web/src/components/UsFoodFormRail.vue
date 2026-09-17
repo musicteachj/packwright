@@ -29,6 +29,7 @@ import {
   NUTRITION_FORMATS,
   DUAL_COLUMN_BASES,
   printedPercentDailyValue,
+  DAILY_VALUE_POPULATIONS,
   dailyValuePopulationOf,
   roundNutrientAmount,
   US_FOOD_ELEMENTS,
@@ -59,6 +60,7 @@ import {
   type UsFoodEggCartonExemption,
   type UsFoodEggCartonPresentation,
   type UnitContainerWording,
+  type DailyValuePopulation,
 } from '@packwright/label-core'
 import { computed, ref } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
@@ -775,6 +777,28 @@ const BASIS_NAMES: Record<DualColumnBasis, string> = {
   'per-unit': 'Per serving and per unit — (b)(2)(i)(D)',
 }
 
+/**
+ * Whom the food is represented or purported to be for, by the columns of the Daily Value
+ * tables. Named from those columns' own headings in 21 CFR 101.9(c)(8)(iv) and (c)(9).
+ */
+const DAILY_VALUE_POPULATION_NAMES: Record<DailyValuePopulation, string> = {
+  'adults-and-children-4-plus': 'Adults and children 4 years and older',
+  'children-1-through-3': 'Children 1 through 3 years',
+}
+
+const representedFor = computed({
+  get: (): DailyValuePopulation =>
+    data.nutritionFacts?.representedFor ?? 'adults-and-children-4-plus',
+  set: (next: DailyValuePopulation) => {
+    const facts = data.nutritionFacts
+    if (facts === undefined) return
+    // Omitted means adults and children 4 or more years, as (c)(8)(i)'s "all other foods"
+    // does, so choosing that group clears the field rather than writing the default back.
+    if (next === 'adults-and-children-4-plus') delete facts.representedFor
+    else facts.representedFor = next
+  },
+})
+
 const displayFormat = computed({
   get: (): NutritionFormat => data.nutritionFacts?.format ?? 'vertical',
   set: (next: NutritionFormat) => {
@@ -1436,6 +1460,23 @@ const packaging = computed({
             min="1"
           />
         </label>
+        <label :class="LABEL" for="field-food-nf-represented-for">
+          Represented or purported to be for
+          <select id="field-food-nf-represented-for" v-model="representedFor" :class="INPUT">
+            <option
+              v-for="population in DAILY_VALUE_POPULATIONS"
+              :key="population"
+              :value="population"
+            >
+              {{ DAILY_VALUE_POPULATION_NAMES[population] }}
+            </option>
+          </select>
+        </label>
+        <p v-if="representedFor === 'children-1-through-3'" class="text-chrome-400 text-xs">
+          21 CFR 101.9(c)(8)(i) labels a food for children 1 through 3 against that group's Daily
+          Values, and (d)(9) substitutes "1,000 calories" in its footnote. Both follow this choice.
+          Its protein percentage, which (c)(7)(i) requires, is not calculated or checked.
+        </p>
 
         <p class="text-chrome-400 text-xs">
           The amounts are what the food contains. What the panel prints is rounded from them by 21
