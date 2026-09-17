@@ -274,6 +274,13 @@ declared protein percentage on a toddler food, and whether a declared one can be
 
 Recorded as reviewer claims rather than as facts. Each is checked before it is picked up.
 
+- **The two small-package displays abbreviate the footnote in two ways, and neither matches the regulation's
+  string.** 101.9(j)(13)(i), read from the eCFR on 2026-09-17, permits "the abbreviated footnote statement '% DV =
+  % Daily Value'". Reproduced on `feat/childrens-footnote`: the tabular display prints `*% DV = % Daily Value`,
+  with an asterisk, and the linear display prints `% DV = % Daily Value.`, with a full stop. What is not verified
+  is whether either mark is wrong — an asterisk may be what ties the statement to "% DV*" in the heading, and FDA's
+  sample small-package labels were not read. No rule judges the footnote, so nothing reports either.
+
 - ~~**Bold text is measured with Regular metrics.**~~ **Verified, and narrower than reported.** The
   mechanism is real: `measureTextMm` and `glyphHeightMm` take only `fontFamily`, while `TextPrimitive`
   carries `fontWeight` and `renderPdf` resolves `>= 600` to a separate face. Both faces' figures were checked

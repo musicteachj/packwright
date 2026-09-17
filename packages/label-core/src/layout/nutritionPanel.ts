@@ -148,7 +148,15 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
    * accommodations that permits the arrangement and relieves nothing — so it owes
    * the full (d)(9) footnote.
    */
-  const abbreviatedFootnote = display === 'tabularSmallJ13' || display === 'linearSmallJ13'
+  //
+  // **And only for a food whose footnote comes from (d)(9) alone.** (j)(5)(iii) says a food
+  // for children 1 through 3 "shall include" the full footnote, and (j)(13)(i) names (d)(9)
+  // and (f)(5), not (j)(5)(iii). So a toddler food keeps its sentence on these displays too.
+  // Printing it is compliant on either reading, since the exemption only relaxes; the review
+  // of PR #38 found the abbreviation printed in its place.
+  const abbreviatedFootnote =
+    (display === 'tabularSmallJ13' || display === 'linearSmallJ13') &&
+    dailyValuePopulationOf(facts) !== 'children-1-through-3'
   const primitives: LayoutPrimitive[] = []
   const elements: ResolvedElement[] = []
 
@@ -322,7 +330,9 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     }
     comma()
     span(
-      '% DV = % Daily Value.',
+      abbreviatedFootnote
+        ? '% DV = % Daily Value.'
+        : nutritionFootnoteFor(dailyValuePopulationOf(facts)),
       NUTRITION_PANEL_TYPE.footnotePt,
       false,
       US_FOOD_ELEMENTS.nutritionFootnote,

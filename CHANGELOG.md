@@ -52,7 +52,9 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   unnoticed. On the conformant panel declared for toddlers, eight of its eleven stated percentages are now reported
   wrong, and 3 g of fat prints as 8 percent rather than 4. The footnote follows the population too: (d)(9) says a
   toddler food's "second sentence of the footnote shall substitute '1,000 calories' for '2,000 calories'", and both
-  places the panel draws a footnote now look it up by population, pinned by a test against the footnote (j)(5)(iii)
+  places the panel draws a footnote now look it up by population. The small-package displays keep the full footnote
+  for such a food, because (j)(13)(i) excuses the footnote (d)(9) requires and not the one (j)(5)(iii) requires; the
+  high review of the PR found the abbreviation printed in its place. The toddler wording is pinned by a test against the footnote (j)(5)(iii)
   states whole. No rule judges the footnote, because the engine always draws it from the table and no label document
   can make it wrong, which is the reason `docs/BACKLOG.md` records. A toddler food's protein percentage, which
   (c)(7)(i) says "shall be given", is not required by any rule, and is recorded there too. Infants through 12 months are not carried.

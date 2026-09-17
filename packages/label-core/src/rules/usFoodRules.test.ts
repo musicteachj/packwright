@@ -2066,6 +2066,40 @@ describe('a food for children 1 through 3, labelled against their Daily Values',
     ).toBe(toddlerFootnote)
   })
 
+  it('keeps the full footnote on the small-package displays, which (j)(13)(i) does not excuse', () => {
+    // (j)(13)(i) relieves packages on the (j)(13)(ii)(A)(1) and (2) displays of "the
+    // information in paragraphs (d)(9) and (f)(5) related to the footnote". (j)(5)(iii) is
+    // not named, and it says such a food "shall include" the full footnote on its own —
+    // so the abbreviation stays for adult foods and a toddler food keeps its sentence.
+    // Printing it is compliant on either reading, since the exemption only relaxes. Found
+    // by the review of PR #38.
+    const small: LabelStock = { widthMm: 100, heightMm: 70, marginMm: 3 }
+    const onSmallPackage = (format: 'tabular' | 'linear', data: UsFoodLabelData) => ({
+      ...data,
+      container: { shape: 'rectangular' as const, widthMm: 100, heightMm: 70 },
+      nutritionFacts: { ...data.nutritionFacts!, format, availableSurfaceSqInches: 9 },
+    })
+    const footnoteOf = (data: UsFoodLabelData) =>
+      layOutUsFoodLabel({ data, stock: small })
+        .primitives.filter(
+          (p): p is TextPrimitive =>
+            p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionFootnote,
+        )
+        .map((p) => p.text)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    for (const format of ['tabular', 'linear'] as const) {
+      expect(
+        footnoteOf(onSmallPackage(format, US_FOOD_CONFORMANT.data)),
+        `premise: an adult food on the ${format} display abbreviates`,
+      ).toContain('% DV = % Daily Value')
+      expect(footnoteOf(onSmallPackage(format, forToddlers())), format).toContain(
+        '1,000 calories a day is used for general nutrition advice.',
+      )
+    }
+  })
+
   it('prints the percentages it derives against that column', () => {
     const { declaredPercentDv: _stated, ...derived } = panel
     const adult: UsFoodLabelData = { ...US_FOOD_CONFORMANT.data, nutritionFacts: derived }
