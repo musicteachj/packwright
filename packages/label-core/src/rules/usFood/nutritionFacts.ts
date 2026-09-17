@@ -438,10 +438,12 @@ function eggCarton(claimed: UsFoodEggCartonExemption, { data }: UsFoodContext): 
       FDA_NUTRITION_EXEMPT,
       `The carton claims the ${EGG_CARTON.reference} exemption for shell eggs, with its nutrition ` +
         `information presented ${presented}, so no panel is required on the outer carton. All ` +
-        `${NUTRIENTS.length} mandatory nutrients are declared for it, and its figures are judged ` +
-        'as any panel’s are. Not checked here: that the lid is designed to conform to the shape of ' +
-        'the eggs, that the information is clearly presented where it is declared to be, and how ' +
-        'it is laid out there, none of which this engine draws.',
+        `${NUTRIENTS.length} mandatory nutrients are declared for it, and its figures are held to ` +
+        '101.9’s order, rounding and percentages, and to any second column the package owes. ' +
+        'Not checked here: that the lid is designed to conform to the shape of the eggs, that the ' +
+        'information is clearly presented where it is declared to be, and how it is laid out ' +
+        'there — its type sizes, and a second column’s headings, figures and separation — none ' +
+        'of which this engine draws.',
       US_FOOD_ELEMENTS.principalDisplayPanel,
       EGG_CARTON,
     ),

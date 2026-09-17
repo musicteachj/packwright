@@ -1782,6 +1782,12 @@ describe('the §101.9(j) nutrition exemption', () => {
       expect(pass!.citation.reference).toBe('21 CFR 101.9(j)(14)')
       expect(pass!.message).toContain(words)
       expect(pass!.message, 'and says what it cannot check').toContain('Not checked here:')
+      expect(pass!.message, 'naming the column among what is judged').toContain(
+        'any second column the package owes',
+      )
+      expect(pass!.message, 'and its layout among what is not').toContain(
+        'a second column’s headings, figures and separation',
+      )
       expect(codesOf(findings)).not.toContain('FDA_NUTRITION_MISSING')
     })
 
@@ -1826,15 +1832,47 @@ describe('the §101.9(j) nutrition exemption', () => {
       for (const code of artworkPasses) expect(claimed, code).not.toContain(code)
     })
 
-    it('reports no missing second column on a panel it did not draw', () => {
-      const dual = fixture('a 250 percent package carrying one column')
+    it('still requires a second column the carton owes, judged on what it declares', () => {
+      // (j)(14) moves the required nutrition information, and a package inside
+      // (b)(12)(i)'s band is required to carry a second column in it. The panel is not
+      // drawn here, so the column cannot be read off the layout — but saying nothing
+      // would excuse a column the regulation still demands.
+      const oneColumn = fixture('a 250 percent package carrying one column')
       expect(
-        codesOf(findingsFor(dual.data, dual.stock)),
+        codesOf(findingsFor(oneColumn.data, oneColumn.stock)),
         'premise: the outer label owes a second column',
       ).toContain('FDA_DUAL_COLUMN_MISSING')
-      expect(codesOf(findingsFor(carton('beneath-lid', dual.data), dual.stock))).not.toContain(
-        'FDA_DUAL_COLUMN_MISSING',
+      const findings = findingsFor(carton('beneath-lid', oneColumn.data), oneColumn.stock)
+      const missing = findings.find((f) => f.code === 'FDA_DUAL_COLUMN_MISSING')
+      expect(missing!.severity).toBe('violation')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(b)(12)(i)')
+      expect(missing!.message, 'and does not describe a panel as drawn').not.toContain('as drawn')
+      expect(missing!.elementId, 'naming the carton, since no panel is on it').toBe(
+        US_FOOD_ELEMENTS.principalDisplayPanel,
       )
+
+      // Declared with its figures, the column is not reported missing — and not certified,
+      // since nothing here printed it.
+      const facts = oneColumn.data.nutritionFacts!
+      const twoColumns: UsFoodLabelData = {
+        ...oneColumn.data,
+        nutritionFacts: {
+          ...facts,
+          columns: {
+            mode: 'dual',
+            basis: 'per-container',
+            headings: ['Per serving', 'Per container'],
+            secondAmounts: { ...facts.amounts },
+          },
+        },
+      }
+      expect(
+        codesOf(findingsFor(twoColumns, oneColumn.stock)),
+        'premise: on the outer label the declared column is drawn and passes',
+      ).toContain('FDA_DUAL_COLUMN_MET')
+      const declared = codesOf(findingsFor(carton('insert', twoColumns), oneColumn.stock))
+      expect(declared).not.toContain('FDA_DUAL_COLUMN_MISSING')
+      expect(declared).not.toContain('FDA_DUAL_COLUMN_MET')
     })
   })
 })
