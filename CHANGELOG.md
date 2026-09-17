@@ -46,10 +46,11 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   a panel declared for children 1 through 3. A row with no percentage is `FDA_PROTEIN_PERCENT_MISSING`, and its
   fixture is that panel with its other percentages worked against the children's Daily Values. A printed one
   passes, naming the row, and is withheld where the panel did not print in full. On a dual-column panel it is asked
-  of every column, because (e)(2) presents the percentages "for the form of the product as packaged and for any
-  other form": the review of this change found it passing on the first column's "5g 38%" beside a second column's
-  "5g". A second column cannot state a protein percentage yet, so a toddler food on a dual-column panel is reported
-  under (e)(2), which `docs/BACKLOG.md` records. An egg carton's information is
+  of every column, because the percent Daily Value is presented in each: (e)(2) for forms and combinations, (e)(3)
+  for units and RDI groups, (e)(6) for per-serving beside per-container or per-unit columns, and (c)(7)(i) itself
+  where no basis is stated. The review of this change found it passing on the first column's "5g 38%" beside a second
+  column's "5g", and the review of the PR found every basis cited to (e)(2). A second column cannot state a protein
+  percentage yet, so a toddler food on a dual-column panel is reported, which `docs/BACKLOG.md` records. An egg carton's information is
   asked of its declared figures, since no panel is drawn. The value is not judged: (c)(7)(ii) corrects it by a
   protein digestibility score no label carries. A protein claim, the other trigger, is not modelled. The editor
   already takes a stated percentage among its printed figures, and its note now says so.

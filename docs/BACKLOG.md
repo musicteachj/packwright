@@ -274,13 +274,22 @@ label carries, and the percentage rule excludes protein for the same reason. Wha
 declared protein percentage on a toddler food, and whether a declared one can be judged at all without that score.
 
 **A dual-column panel cannot state a protein percentage in its second column, so a toddler food on one cannot
-comply.** Found by the review of `us-food/protein-percent` on `feat/toddler-protein-percent`, and reproduced. 101.9(e)(2),
-read from the eCFR on 2026-09-17, presents the (d)(7)(ii) information "for the form of the product as packaged and
-for any other form", and for a food for children 1 through 3 that includes the protein percentage (c)(7)(i)
+comply.** Found by the review of `us-food/protein-percent` on `feat/toddler-protein-percent`, and reproduced. Read from
+the eCFR on 2026-09-17, 101.9(e)(2), (e)(3) and (e)(6) each present the percent Daily Value in every column, by what
+the second column counts, and for a food for children 1 through 3 that includes the protein percentage (c)(7)(i)
 requires. The first column prints a stated percentage, but `UsFoodNutritionFacts` has no field to state one for the
 second column, and the engine derives none for protein, so the second column prints "5g" with nothing beside it.
-The rule reports that under (e)(2), which is true of the printed label, and nothing in the editor can fix it. The
+The rule reports that under the paragraph for the column's basis, which is true of the printed label, and nothing in the editor can fix it. The
 fix is a declared second-column percentage, at least for protein, with the rail offering it.
+
+**`us-food/dual-column-form` cites (e)(2) for an incomplete second column whatever the column counts.** Found by
+`/code-review high` on PR #39, and read from the eCFR on 2026-09-17. `FDA_DUAL_COLUMN_INCOMPLETE` always carries 21 CFR
+101.9(e)(2), whose "for the form of the product as packaged and for any other form" is about forms and combinations.
+For per-serving beside per-container or per-unit columns, (e)(6) is the paragraph that puts "the quantitative
+information by weight as required in paragraph (d)(7)(i)" in two columns, and for units and RDI groups it is (e)(3).
+The finding is right and its citation is wrong for most of the bases the engine draws, including the mandatory
+per-container column. `us-food/protein-percent` already chooses by `columns.basis`, and the same table fits here.
+Left for its own change because it alters an existing finding's citation and its fixtures.
 
 An egg carton escapes the same check. With no panel drawn, `us-food/protein-percent` asks the carton only for a
 declared first-column percentage. Reproduced: a carton claiming (j)(14), declared for children 1 through 3 with two
@@ -297,7 +306,10 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
   % Daily Value'". Reproduced on `feat/childrens-footnote`: the tabular display prints `*% DV = % Daily Value`,
   with an asterisk, and the linear display prints `% DV = % Daily Value.`, with a full stop. What is not verified
   is whether either mark is wrong — an asterisk may be what ties the statement to "% DV*" in the heading, and FDA's
-  sample small-package labels were not read. No rule judges the footnote, so nothing reports either.
+  sample small-package labels were not read. No rule judges the footnote, so nothing reports either. One point
+  toward the asterisk: (f)(5), read the same day, has the simplified format carry "an asterisk ... at the bottom of
+  the label followed by the statement '% DV = % Daily Value'". That is a different paragraph from (j)(13)(i), so it
+  suggests the mark rather than settling it.
 
 - ~~**Bold text is measured with Regular metrics.**~~ **Verified, and narrower than reported.** The
   mechanism is real: `measureTextMm` and `glyphHeightMm` take only `fontFamily`, while `TextPrimitive`

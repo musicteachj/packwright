@@ -1022,9 +1022,10 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     name: 'a dual-column panel for children 1 through 3 with no protein percentage in its second column',
     defect:
       'A food for children 1 through 3 "shall" give its protein percentage under 101.9(c)(7)(i), ' +
-      'and 101.9(e)(2) presents the percentages "for the form of the product as packaged and for ' +
-      'any other form". The first column states 38 percent; the second prints its protein figure ' +
-      'with none, and this engine has no field to state one for it.',
+      'and where dual labeling is per serving and per container, 101.9(e)(6) says "the percent ' +
+      'Daily Value as required in paragraph (d)(7)(ii) shall be presented in two columns". The ' +
+      'first column states 38 percent; the second prints its protein figure with none, and this ' +
+      'engine has no field to state one for it.',
     data: {
       ...BASE,
       nutritionFacts: {
@@ -1059,7 +1060,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     expected: {
       code: FDA_PROTEIN_PERCENT_MISSING,
       severity: 'violation',
-      citation: '21 CFR 101.9(e)(2)',
+      citation: '21 CFR 101.9(e)(6)',
     },
   },
   {

@@ -25,6 +25,7 @@ import {
   nutritionRowElementId,
 } from '../../templates/usFood'
 import { wasFullyDrawn } from '../../layout/omissions'
+import type { DualColumnBasis } from '../../fda/nutritionFormats'
 import type { TextPrimitive } from '../../layout/types'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
@@ -41,15 +42,46 @@ const CITATION: Citation = {
 }
 
 /**
- * 101.9(e)(2), read from the eCFR on 2026-09-17: on dual labeling, "the information required
- * in paragraph (d)(7)(ii) of this section shall be presented for the form of the product as
- * packaged and for any other form". The percentages are part of it, so a percentage owed is
- * owed in every column.
+ * The paragraph that puts a percentage in every column, which depends on what the second
+ * column counts. Read from the eCFR on 2026-09-17:
+ *
+ * - (e)(2): the (d)(7)(ii) information "shall be presented for the form of the product as
+ *   packaged and for any other form of the product (e.g., 'as prepared' or combined with
+ *   another ingredient ...)" — forms and combinations.
+ * - (e)(3): "When the dual labeling is presented ... for different units, or for two or more
+ *   groups for which RDIs are established, the quantitative information by weight and the
+ *   percent Daily Value shall be presented in two columns". Popcorn's cup popped is one of
+ *   (e)'s "different units ... as provided for in paragraph (b)".
+ * - (e)(6): "When dual labeling is presented for a food on a per serving basis and per
+ *   container basis as required in paragraph (b)(12)(i) ... or on a per serving basis and per
+ *   unit basis as required in paragraph (b)(2)(i)(D) ... the percent Daily Value as required
+ *   in paragraph (d)(7)(ii) shall be presented in two columns".
+ *
+ * Every basis first cited (e)(2), which is about forms; the review of PR #39 read the rest.
  */
-const EACH_COLUMN: Citation = {
+const FORMS: Citation = {
   authority: 'FDA',
   reference: '21 CFR 101.9(e)(2)',
   title: 'Dual labeling presents the percent Daily Values for every form declared',
+}
+const UNITS_AND_GROUPS: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(e)(3)',
+  title: 'Dual labeling for units or RDI groups presents the percent Daily Value in two columns',
+}
+const SERVING_AND_CONTAINER: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(e)(6)',
+  title: 'Per-serving and per-container or per-unit columns each present the percent Daily Value',
+}
+const EACH_COLUMN: Record<DualColumnBasis, Citation> = {
+  'as-prepared': FORMS,
+  combination: FORMS,
+  'per-unit-measure': UNITS_AND_GROUPS,
+  'rdi-groups': UNITS_AND_GROUPS,
+  'per-cup-popped': UNITS_AND_GROUPS,
+  'per-container': SERVING_AND_CONTAINER,
+  'per-unit': SERVING_AND_CONTAINER,
 }
 
 const PROTEIN_ROW = nutritionRowElementId('protein')
@@ -61,7 +93,7 @@ export const usFoodProteinPercentRule: UsFoodRule = {
   id: 'us-food/protein-percent',
   title: 'A food for children 1 through 3 gives its protein as a percentage of the Daily Value.',
   citation: CITATION,
-  citations: [CITATION, EACH_COLUMN],
+  citations: [CITATION, FORMS, UNITS_AND_GROUPS, SERVING_AND_CONTAINER],
   codes: [FDA_PROTEIN_PERCENT_MISSING, FDA_PROTEIN_PERCENT_MET],
   appliesTo: 'us-food',
 
@@ -116,8 +148,8 @@ export const usFoodProteinPercentRule: UsFoodRule = {
     }
 
     // **Every column drawn, not the first found.** On a dual-column panel each column's
-    // figures are drawn as their own right-aligned run, and (e)(2) presents the percentages
-    // for every form declared. Reading the row as one string passed a panel whose second
+    // figures are drawn as their own right-aligned run, and the percent Daily Value is
+    // presented in each — under (e)(2), (e)(3) or (e)(6) by what the column counts. Reading the row as one string passed a panel whose second
     // column printed "5g" beside a first column's "5g 38%". The second column has no stated
     // percentage to draw, and the engine derives none for protein, so such a panel is
     // reported rather than cleared — true of the label, if not yet fixable in the editor.
@@ -136,13 +168,19 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       // Nor is it cleared.
       if (columns.length < 2) return []
       if (columns.some((column) => !PERCENT.test(column.text))) {
+        // No basis stated names no (e) paragraph, so the requirement itself is cited.
+        const basis = panel.columns?.basis
+        const citation = basis === undefined ? CITATION : EACH_COLUMN[basis]
         return [
           missing(
             PROTEIN_ROW,
-            'On a dual-column panel, 101.9(e)(2) presents the percentages for every form ' +
-              'declared, and the second column prints the protein row with no percentage.',
+            (basis === undefined
+              ? 'The panel draws a second column, and states no basis for it, '
+              : `On a dual-column panel, ${citation.reference} presents the percent Daily ` +
+                'Value in each column, ') +
+              'and the second column prints the protein row with no percentage.',
             'no protein percentage in the second column',
-            EACH_COLUMN,
+            citation,
           ),
         ]
       }
