@@ -957,6 +957,28 @@ describe('the Nutrition Facts panel in the editor', () => {
     expect(canvas()).not.toContain('For Retail Sale')
   })
 
+  it('declares a food for children 1 through 3, and draws it against their Daily Values', async () => {
+    // 101.9(c)(8)(i) moves such a food onto the children's column, and (d)(9) substitutes
+    // "1,000 calories" in its footnote. Omitted means adults and children 4 or more years,
+    // so choosing that group clears the field rather than writing the default back.
+    const { store, wrapper } = await mountFood()
+    const canvas = () => wrapper.find('svg[role="img"]').text()
+    const picker = wrapper.find<HTMLSelectElement>('#field-food-nf-represented-for')
+    expect(picker.element.value).toBe('adults-and-children-4-plus')
+    expect(canvas(), 'premise: an adult footnote').toContain('2,000 calories a day')
+
+    await picker.setValue('children-1-through-3')
+    await nextTick()
+    expect(store.foodData.nutritionFacts?.representedFor).toBe('children-1-through-3')
+    expect(canvas()).toContain('1,000 calories a day')
+    expect(canvas()).not.toContain('2,000 calories a day')
+
+    await picker.setValue('adults-and-children-4-plus')
+    await nextTick()
+    expect(store.foodData.nutritionFacts).not.toHaveProperty('representedFor')
+    expect(canvas()).toContain('2,000 calories a day')
+  })
+
   it('takes an egg carton, keeps its nutrition information, and draws no panel', async () => {
     const { store, wrapper } = await mountFood()
     const canvas = () => wrapper.find('svg[role="img"]').text()

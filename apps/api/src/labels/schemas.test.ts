@@ -7,7 +7,13 @@
  */
 import { DEFAULT_GHS_STOCK, DEFAULT_UPC_A_STOCK } from '@packwright/label-core'
 import { describe, expect, it } from 'vitest'
-import { GhsRequest, LABEL_TYPES, LabelDocumentInput } from './schemas'
+import {
+  GhsRequest,
+  LABEL_TYPES,
+  LabelDocumentInput,
+  NutritionFactsSchema,
+  toNutritionFacts,
+} from './schemas'
 
 // From the engine's own default rather than three numbers typed here. A copy
 // keeps passing after the default moves, which leaves a fixture asserting
@@ -260,5 +266,28 @@ describe('GHS statement codes are checked against the label\u2019s own regime', 
         ? parsed.data.data.hazardStatementCodes
         : undefined,
     ).toEqual(['H225'])
+  })
+})
+
+describe('a panel declared for children 1 through 3', () => {
+  // 101.9(c)(8)(i) moves such a food onto the children's Daily Values, and the browser
+  // preview calls label-core directly. A field this schema did not list was stripped on
+  // the way to the PDF, so the export printed and judged adult percentages for a panel the
+  // preview showed with toddler ones. The review of the change adding the field found it.
+  const panel = { servingSize: '1/2 cup (40g)', amounts: { 'total-fat': 3 } }
+
+  it('carries whom the food is for through to the label data', () => {
+    const parsed = NutritionFactsSchema.parse({ ...panel, representedFor: 'children-1-through-3' })
+    expect(toNutritionFacts(parsed).representedFor).toBe('children-1-through-3')
+    expect(toNutritionFacts(NutritionFactsSchema.parse(panel))).not.toHaveProperty('representedFor')
+  })
+
+  it('refuses a population the Daily Value table does not carry', () => {
+    // Infants through 12 months are a column of their own, and (j)(5)(ii) changes which
+    // percentages they may show at all. Accepting the name would label them as adults.
+    expect(
+      NutritionFactsSchema.safeParse({ ...panel, representedFor: 'infants-through-12-months' })
+        .success,
+    ).toBe(false)
   })
 })

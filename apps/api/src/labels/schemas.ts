@@ -33,6 +33,7 @@ import {
   NUTRITION_FORMATS,
   MAJOR_FOOD_ALLERGEN_IDS,
   NUTRIENT_IDS,
+  DAILY_VALUE_POPULATIONS,
   US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
   UNIT_CONTAINER_WORDINGS,
@@ -441,6 +442,7 @@ export function toNutritionFacts(
       ? {}
       : { declaredPercentDv: panel.declaredPercentDv }),
     ...(panel.order === undefined ? {} : { order: panel.order }),
+    ...(panel.representedFor === undefined ? {} : { representedFor: panel.representedFor }),
     ...(panel.typeScale === undefined ? {} : { typeScale: panel.typeScale }),
     ...(panel.format === undefined ? {} : { format: panel.format }),
     ...(panel.columns === undefined ? {} : { columns: toColumns(panel.columns) }),
@@ -515,6 +517,10 @@ export const NutritionFactsSchema = z.object({
   declaredAmounts: NutrientAmounts,
   declaredPercentDv: NutrientAmounts,
   order: z.array(z.enum(NUTRIENT_IDS)).optional(),
+  // Whom the food is for, which moves it onto that group's Daily Values under
+  // 101.9(c)(8)(i). Listed here and copied in `toNutritionFacts`, or Zod strips it
+  // and the export prints adult percentages beside a preview showing toddler ones.
+  representedFor: z.enum(DAILY_VALUE_POPULATIONS).optional(),
   typeScale: z.number().positive().optional(),
   format: z.enum(NUTRITION_FORMATS).optional(),
   // The second axis, derived from the same consts so a new column mode or basis

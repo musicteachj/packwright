@@ -20,9 +20,9 @@
 
 import type { LabelingSurfaceFloor } from '../geometry/pdp'
 import {
-  NUTRITION_FOOTNOTE,
   NUTRITION_PANEL_RULES,
   nutritionDisplayFor,
+  nutritionFootnoteFor,
   nutritionTypeForDisplay,
 } from '../fda/nutritionPanel'
 import {
@@ -34,7 +34,11 @@ import {
 import type { NutrientId } from '../fda/nutrients'
 import { MM_PER_POINT } from '../geometry/units'
 import { measureTextMm, wrapTextMm } from '../text/measure'
-import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../templates/usFood'
+import {
+  US_FOOD_ELEMENTS,
+  dailyValuePopulationOf,
+  nutritionRowElementId,
+} from '../templates/usFood'
 import type { UsFoodNutritionFacts } from '../templates/usFood'
 import type { LayoutPrimitive, ResolvedElement } from './types'
 
@@ -110,7 +114,9 @@ function percentOf(facts: UsFoodNutritionFacts, id: NutrientId): number | undefi
   // Which nutrients print a percentage at all is `printedPercentDailyValue`'s
   // question, not this one's — the editor's rail has to give the same answer, and
   // when the rule was spelled here alone it did not.
-  return amount === undefined ? undefined : printedPercentDailyValue(id, amount)
+  return amount === undefined
+    ? undefined
+    : printedPercentDailyValue(id, amount, dailyValuePopulationOf(facts))
 }
 
 export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionPanelResult {
@@ -142,7 +148,15 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
    * accommodations that permits the arrangement and relieves nothing — so it owes
    * the full (d)(9) footnote.
    */
-  const abbreviatedFootnote = display === 'tabularSmallJ13' || display === 'linearSmallJ13'
+  //
+  // **And only for a food whose footnote comes from (d)(9) alone.** (j)(5)(iii) says a food
+  // for children 1 through 3 "shall include" the full footnote, and (j)(13)(i) names (d)(9)
+  // and (f)(5), not (j)(5)(iii). So a toddler food keeps its sentence on these displays too.
+  // Printing it is compliant on either reading, since the exemption only relaxes; the review
+  // of PR #38 found the abbreviation printed in its place.
+  const abbreviatedFootnote =
+    (display === 'tabularSmallJ13' || display === 'linearSmallJ13') &&
+    dailyValuePopulationOf(facts) !== 'children-1-through-3'
   const primitives: LayoutPrimitive[] = []
   const elements: ResolvedElement[] = []
 
@@ -316,7 +330,9 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     }
     comma()
     span(
-      '% DV = % Daily Value.',
+      abbreviatedFootnote
+        ? '% DV = % Daily Value.'
+        : nutritionFootnoteFor(dailyValuePopulationOf(facts)),
       NUTRITION_PANEL_TYPE.footnotePt,
       false,
       US_FOOD_ELEMENTS.nutritionFootnote,
@@ -670,7 +686,12 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     const footnoteTopMm = bodyBottomMm + NUTRITION_PANEL_RULES.hairlineLeadingMm
     const footnoteLines = abbreviatedFootnote
       ? ['*% DV = % Daily Value']
-      : wrapTextMm(NUTRITION_FOOTNOTE.standard, rightMm - leftMm, footnoteMm, fontFamily)
+      : wrapTextMm(
+          nutritionFootnoteFor(dailyValuePopulationOf(facts)),
+          rightMm - leftMm,
+          footnoteMm,
+          fontFamily,
+        )
     footnoteLines.forEach((footnoteLine, index) => {
       primitives.push({
         kind: 'text',
@@ -932,7 +953,10 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
          * `UsFoodNutritionFacts` states a percentage for it — so it is derived,
          * and that asymmetry is real rather than an oversight.
          */
-        const percent = column === 0 ? percentOf(facts, id) : printedPercentDailyValue(id, value)
+        const percent =
+          column === 0
+            ? percentOf(facts, id)
+            : printedPercentDailyValue(id, value, dailyValuePopulationOf(facts))
         // (e)'s "equal prominence" is a requirement, so the second column is set
         // at the first's size unless the label asks for something else.
         const columnPt =
@@ -1030,7 +1054,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   bar(NUTRITION_PANEL_RULES.thickMm)
   const footnoteStart = yMm
   const footnoteSizeMm = mm(NUTRITION_PANEL_TYPE.footnotePt)
-  const words = NUTRITION_FOOTNOTE.standard.split(' ')
+  const words = nutritionFootnoteFor(dailyValuePopulationOf(facts)).split(' ')
   const lines: string[] = []
   let line = ''
   for (const word of words) {

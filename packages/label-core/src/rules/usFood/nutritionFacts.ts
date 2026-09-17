@@ -44,6 +44,7 @@
 import {
   NUTRIENTS,
   NUTRIENT_IDS,
+  dailyValueFor,
   nutrient,
   percentDailyValue,
   permittedNutrientAmounts,
@@ -55,6 +56,7 @@ import { wasFullyDrawn } from '../../layout/omissions'
 import {
   US_FOOD_EGG_CARTON_PRESENTED,
   US_FOOD_ELEMENTS,
+  dailyValuePopulationOf,
   nutritionRowElementId,
 } from '../../templates/usFood'
 import type {
@@ -818,6 +820,10 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     )
     if (checked.length === 0) return []
 
+    // (c)(8)(i): a food for children 1 through 3 "shall use the RDIs that are specified
+    // for the intended group", and the DRVs follow it. Taken from the panel, as the
+    // engine takes it, so the figures printed and the figures judged share one column.
+    const population = dailyValuePopulationOf(panel)
     const wrong = checked.flatMap((entry) => {
       // 101.9(d)(7)(ii) permits **either** basis — the declared amount or the
       // actual one before rounding — and they often differ. Accepting only one
@@ -825,8 +831,10 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
       const fromDeclared = declaredAmount(panel, entry.id)
       const fromActual = panel.amounts[entry.id]
       const permitted = [
-        fromDeclared === undefined ? undefined : percentDailyValue(entry.id, fromDeclared),
-        fromActual === undefined ? undefined : percentDailyValue(entry.id, fromActual),
+        fromDeclared === undefined
+          ? undefined
+          : percentDailyValue(entry.id, fromDeclared, population),
+        fromActual === undefined ? undefined : percentDailyValue(entry.id, fromActual, population),
       ].filter((value): value is number => value !== undefined)
       if (permitted.length === 0) return []
 
@@ -853,7 +861,8 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
             `${entry.name} shows ${declared}% of the Daily Value; ` +
             `${[...new Set(permitted)].sort((a, b) => a - b).join('% or ')}% is what ` +
             `${declaredAmount(panel, entry.id) ?? panel.amounts[entry.id]}${entry.unit} of a ` +
-            `${entry.dailyValue!.amount}${entry.unit} Daily Value gives.`,
+            `${dailyValueFor(entry.id, population)!.amount}${entry.unit} Daily Value` +
+            `${population === 'children-1-through-3' ? ' for children 1 through 3' : ''} gives.`,
           measurement: {
             actual: `${declared}%`,
             required: [...new Set(permitted)]

@@ -21,7 +21,7 @@
 
 import type { Container, NetQuantityMarkingMethod } from '../geometry/pdp'
 import type { MajorFoodAllergenId } from '../fda/allergens'
-import type { NutrientId } from '../fda/nutrients'
+import type { DailyValuePopulation, NutrientId } from '../fda/nutrients'
 import type { DualColumnBasis, NutritionColumnMode, NutritionFormat } from '../fda/nutritionFormats'
 import type { Anchor, LabelStock } from './stock'
 import type { UnitContainerWording } from '../fda/unitContainerStatement'
@@ -240,6 +240,11 @@ export const US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE = [
   'low-volume',
 ] as const
 
+/** The population a panel's Daily Values are taken for: (c)(8)(i)'s "all other foods" unless declared. */
+export function dailyValuePopulationOf(facts: UsFoodNutritionFacts): DailyValuePopulation {
+  return facts.representedFor ?? 'adults-and-children-4-plus'
+}
+
 /** Every kind, those declared with particulars included. */
 export const US_FOOD_NUTRITION_EXEMPTIONS = [
   ...US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
@@ -418,6 +423,15 @@ export interface UsFoodNutritionFacts {
   declaredPercentDv?: Partial<Record<NutrientId, number>>
   /** The order the panel lists them in. Omitted means 101.9(c)'s own order. */
   order?: readonly NutrientId[]
+  /**
+   * Whom the food is represented or purported to be for, where that changes the Daily
+   * Values it is labelled against. 21 CFR 101.9(c)(8)(i), read from the eCFR on
+   * 2026-09-17: such foods "shall use the RDIs that are specified for the intended group".
+   * Omitted means adults and children 4 or more years of age, the group "all other foods"
+   * use. Read it through `dailyValuePopulationOf`, never directly, so no caller supplies
+   * its own default.
+   */
+  representedFor?: DailyValuePopulation
   /**
    * A multiplier on every type size in the panel, where the label sets one.
    *

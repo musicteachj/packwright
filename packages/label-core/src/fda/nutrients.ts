@@ -54,6 +54,30 @@ export type NutrientRounding =
 /** Which table the Daily Value comes from, and therefore how %DV is rounded. */
 export type DailyValueKind = 'drv' | 'rdi'
 
+/**
+ * The populations whose Daily Values this table carries, named for the columns of the
+ * (c)(8)(iv) and (c)(9) tables that give them.
+ *
+ * Source: 21 CFR 101.9(c)(8)(i), (c)(8)(iv) and (c)(9), read from the eCFR on
+ * 2026-09-17, and the two tables checked against the versioner XML of the section,
+ * whose markup keeps footnote markers apart from figures. (c)(8)(i): foods "represented
+ * or purported to be specifically for infants through 12 months, children 1 through 3
+ * years, pregnant women, and lactating women shall use the RDIs that are specified for
+ * the intended group ... All other foods shall use the RDI for adults and children 4 or
+ * more years of age."
+ *
+ * Two of the four columns, because those are the two this engine can label. Infants
+ * through 12 months also change which percentages may be declared at all and drop the
+ * footnote under (j)(5)(ii), and a food for both infants and toddlers needs the separate
+ * declarations (c)(8)(i) describes; neither is drawn, so neither column is carried.
+ * Pregnant and lactating women are a further column with no label here that uses it.
+ */
+export const DAILY_VALUE_POPULATIONS = [
+  'adults-and-children-4-plus',
+  'children-1-through-3',
+] as const
+export type DailyValuePopulation = (typeof DAILY_VALUE_POPULATIONS)[number]
+
 export const NUTRIENT_IDS = [
   'calories',
   'total-fat',
@@ -85,12 +109,12 @@ export interface Nutrient {
   reference: string
   rounding: NutrientRounding
   /**
-   * The Daily Value for adults and children 4 or more years of age, and which
-   * table it came from. Absent where the regulation sets none — trans fat and
-   * total sugars have no Daily Value and their %DV column is blank, which is a
-   * fact about the label rather than a gap in this table.
+   * The Daily Value for each population carried, and which table it came from — the
+   * same table for both, since the columns sit side by side. Absent where the regulation
+   * sets none — trans fat and total sugars have no Daily Value and their %DV column is
+   * blank, which is a fact about the label rather than a gap in this table.
    */
-  dailyValue?: { amount: number; kind: DailyValueKind }
+  dailyValue?: { kind: DailyValueKind; amounts: Record<DailyValuePopulation, number> }
 }
 
 /**
@@ -115,7 +139,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     reference: '21 CFR 101.9(c)(2)',
     rounding: { kind: 'fat-grams' },
     // "Fat ... 78" — 101.9(c)(9), adults and children >= 4 years.
-    dailyValue: { amount: 78, kind: 'drv' },
+    dailyValue: {
+      kind: 'drv',
+      amounts: { 'adults-and-children-4-plus': 78, 'children-1-through-3': 39 },
+    },
   },
   {
     id: 'saturated-fat',
@@ -124,7 +151,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     indented: true,
     reference: '21 CFR 101.9(c)(2)(i)',
     rounding: { kind: 'fat-grams' },
-    dailyValue: { amount: 20, kind: 'drv' },
+    dailyValue: {
+      kind: 'drv',
+      amounts: { 'adults-and-children-4-plus': 20, 'children-1-through-3': 10 },
+    },
   },
   {
     id: 'trans-fat',
@@ -143,7 +173,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     reference: '21 CFR 101.9(c)(3)',
     // "expressed in milligrams to the nearest 5-milligram increment"
     rounding: { kind: 'nearest', increment: 5 },
-    dailyValue: { amount: 300, kind: 'drv' },
+    dailyValue: {
+      kind: 'drv',
+      amounts: { 'adults-and-children-4-plus': 300, 'children-1-through-3': 300 },
+    },
   },
   {
     id: 'sodium',
@@ -152,7 +185,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     indented: false,
     reference: '21 CFR 101.9(c)(4)',
     rounding: { kind: 'sodium' },
-    dailyValue: { amount: 2300, kind: 'drv' },
+    dailyValue: {
+      kind: 'drv',
+      amounts: { 'adults-and-children-4-plus': 2300, 'children-1-through-3': 1500 },
+    },
   },
   {
     id: 'total-carbohydrate',
@@ -161,7 +197,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     indented: false,
     reference: '21 CFR 101.9(c)(6)',
     rounding: { kind: 'whole-grams' },
-    dailyValue: { amount: 275, kind: 'drv' },
+    dailyValue: {
+      kind: 'drv',
+      amounts: { 'adults-and-children-4-plus': 275, 'children-1-through-3': 150 },
+    },
   },
   {
     id: 'dietary-fiber',
@@ -170,7 +209,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     indented: true,
     reference: '21 CFR 101.9(c)(6)(i)',
     rounding: { kind: 'whole-grams' },
-    dailyValue: { amount: 28, kind: 'drv' },
+    dailyValue: {
+      kind: 'drv',
+      amounts: { 'adults-and-children-4-plus': 28, 'children-1-through-3': 14 },
+    },
   },
   {
     id: 'total-sugars',
@@ -188,7 +230,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     indented: true,
     reference: '21 CFR 101.9(c)(6)(iii)',
     rounding: { kind: 'whole-grams' },
-    dailyValue: { amount: 50, kind: 'drv' },
+    dailyValue: {
+      kind: 'drv',
+      amounts: { 'adults-and-children-4-plus': 50, 'children-1-through-3': 25 },
+    },
   },
   {
     id: 'protein',
@@ -206,7 +251,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     // sends it to (c)(7)(ii), which corrects the amount by a digestibility score
     // this engine has no way to know. So a declared protein percentage is not
     // checked, and that is recorded rather than quietly skipped.
-    dailyValue: { amount: 50, kind: 'drv' },
+    dailyValue: {
+      kind: 'drv',
+      amounts: { 'adults-and-children-4-plus': 50, 'children-1-through-3': 13 },
+    },
   },
   {
     id: 'vitamin-d',
@@ -215,7 +263,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     indented: false,
     reference: '21 CFR 101.9(c)(8)(iv)',
     rounding: { kind: 'levels-of-significance' },
-    dailyValue: { amount: 20, kind: 'rdi' },
+    dailyValue: {
+      kind: 'rdi',
+      amounts: { 'adults-and-children-4-plus': 20, 'children-1-through-3': 15 },
+    },
   },
   {
     id: 'calcium',
@@ -224,7 +275,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     indented: false,
     reference: '21 CFR 101.9(c)(8)(iv)',
     rounding: { kind: 'levels-of-significance' },
-    dailyValue: { amount: 1300, kind: 'rdi' },
+    dailyValue: {
+      kind: 'rdi',
+      amounts: { 'adults-and-children-4-plus': 1300, 'children-1-through-3': 700 },
+    },
   },
   {
     id: 'iron',
@@ -233,7 +287,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     indented: false,
     reference: '21 CFR 101.9(c)(8)(iv)',
     rounding: { kind: 'levels-of-significance' },
-    dailyValue: { amount: 18, kind: 'rdi' },
+    dailyValue: {
+      kind: 'rdi',
+      amounts: { 'adults-and-children-4-plus': 18, 'children-1-through-3': 7 },
+    },
   },
   {
     id: 'potassium',
@@ -242,7 +299,10 @@ export const NUTRIENTS: readonly Nutrient[] = [
     indented: false,
     reference: '21 CFR 101.9(c)(8)(iv)',
     rounding: { kind: 'levels-of-significance' },
-    dailyValue: { amount: 4700, kind: 'rdi' },
+    dailyValue: {
+      kind: 'rdi',
+      amounts: { 'adults-and-children-4-plus': 4700, 'children-1-through-3': 3000 },
+    },
   },
 ]
 
@@ -372,8 +432,27 @@ export function roundNutrientAmount(id: NutrientId, value: number): number {
 }
 
 /**
+ * The Daily Value a food for this population is labelled against, and the table it
+ * comes from. Undefined where the regulation sets none.
+ *
+ * **The population is required, not defaulted.** Every caller must say whom the food is
+ * for, because a default would let a new caller label a toddler food against adult
+ * values without anything noticing — the percentages look entirely plausible either way.
+ */
+export function dailyValueFor(
+  id: NutrientId,
+  population: DailyValuePopulation,
+): { amount: number; kind: DailyValueKind } | undefined {
+  const dailyValue = BY_ID.get(id)?.dailyValue
+  return dailyValue === undefined
+    ? undefined
+    : { amount: dailyValue.amounts[population], kind: dailyValue.kind }
+}
+
+/**
  * The percentage of the Daily Value, rounded as the nutrient's own table
- * requires. Undefined where the regulation sets no Daily Value.
+ * requires, against the Daily Value for the population the food is for.
+ * Undefined where the regulation sets no Daily Value.
  *
  * **Which amount goes in is the caller's choice, and the regulation's.**
  * 101.9(d)(7)(ii): "The percent shall be calculated by dividing **either** the
@@ -391,12 +470,16 @@ export function roundNutrientAmount(id: NutrientId, value: number): number {
  * sits halfway between the 4 and 6 the 2-percent banding allows, and the
  * regulation prints 6.
  */
-export function percentDailyValue(id: NutrientId, amount: number): number | undefined {
-  const entry = BY_ID.get(id)
-  if (entry?.dailyValue === undefined || !Number.isFinite(amount)) return undefined
+export function percentDailyValue(
+  id: NutrientId,
+  amount: number,
+  population: DailyValuePopulation,
+): number | undefined {
+  const dailyValue = dailyValueFor(id, population)
+  if (dailyValue === undefined || !Number.isFinite(amount)) return undefined
 
-  const raw = (amount / entry.dailyValue.amount) * 100
-  if (entry.dailyValue.kind === 'drv') return toNearest(raw, 1)
+  const raw = (amount / dailyValue.amount) * 100
+  if (dailyValue.kind === 'drv') return toNearest(raw, 1)
 
   if (raw <= 10) return toNearest(raw, 2)
   if (raw <= 50) return toNearest(raw, 5)
@@ -418,7 +501,11 @@ export function percentDailyValue(id: NutrientId, amount: number): number | unde
  * *will* draw. Spelled twice, the rail showed a Protein percentage of 10% beside
  * a panel that printed none — a readout contradicting the preview beside it.
  */
-export function printedPercentDailyValue(id: NutrientId, amount: number): number | undefined {
+export function printedPercentDailyValue(
+  id: NutrientId,
+  amount: number,
+  population: DailyValuePopulation,
+): number | undefined {
   if (id === 'protein') return undefined
-  return percentDailyValue(id, amount)
+  return percentDailyValue(id, amount, population)
 }

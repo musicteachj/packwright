@@ -38,6 +38,7 @@
 
 import { MM_PER_POINT } from '../geometry/units'
 import type { LabelingSurfaceFloor } from '../geometry/pdp'
+import type { DailyValuePopulation } from './nutrients'
 import {
   type NutritionColumnMode,
   type NutritionFormat,
@@ -123,6 +124,22 @@ export const NUTRITION_FOOTNOTE = {
     '*The % Daily Value tells you how much a nutrient in a serving of food contributes to a ' +
     'daily diet.',
 } as const
+
+/**
+ * The footnote a panel for this population owes.
+ *
+ * 101.9(d)(9), read from the eCFR on 2026-09-17: "If the food product is represented or
+ * purported to be for children 1 through 3 years of age, the second sentence of the
+ * footnote **shall** substitute '1,000 calories' for '2,000 calories'", and (j)(5)(iii)
+ * states that footnote whole. A *shall*, so it follows the population the Daily Values
+ * are taken for rather than being offered as a choice. The calorie-free permissions are
+ * not reached: this project models no claims, so it cannot know a food may use them.
+ */
+export function nutritionFootnoteFor(population: DailyValuePopulation): string {
+  return population === 'children-1-through-3'
+    ? NUTRITION_FOOTNOTE.childrenOneToThree
+    : NUTRITION_FOOTNOTE.standard
+}
 
 /**
  * The displays 101.9 illustrates, named for the paragraph that illustrates each.

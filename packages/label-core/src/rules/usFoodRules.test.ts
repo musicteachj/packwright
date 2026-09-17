@@ -1958,6 +1958,162 @@ describe('the §101.9(j) nutrition exemption', () => {
   })
 })
 
+describe('a food for children 1 through 3, labelled against their Daily Values', () => {
+  // 21 CFR 101.9(c)(8)(i), read from the eCFR on 2026-09-17: foods "represented or
+  // purported to be specifically for ... children 1 through 3 years ... shall use the RDIs
+  // that are specified for the intended group". Every figure below is worked by hand from
+  // the "Children 1 through 3 years" columns of (c)(8)(iv) and (c)(9).
+  const stock = US_FOOD_CONFORMANT.stock
+  const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+  const forToddlers = (patch: Partial<typeof panel> = {}): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    nutritionFacts: { ...panel, representedFor: 'children-1-through-3', ...patch },
+  })
+  const codesOf = (findings: { code: string }[]) => findings.map((f) => f.code)
+  const rowText = (data: UsFoodLabelData, id: Parameters<typeof nutritionRowElementId>[0]) =>
+    layOutUsFoodLabel({ data, stock })
+      .primitives.filter(
+        (p): p is TextPrimitive => p.kind === 'text' && p.elementId === nutritionRowElementId(id),
+      )
+      .map((p) => p.text)
+      .join(' ')
+
+  it('reports percentages worked against the adult Daily Values', () => {
+    expect(
+      codesOf(findingsFor(US_FOOD_CONFORMANT.data, stock)),
+      'premise: they are right for an adult food',
+    ).toContain('FDA_NUTRITION_PERCENT_DV_MET')
+    const findings = findingsFor(forToddlers(), stock)
+    const wrong = findings.filter((f) => f.code === 'FDA_NUTRITION_PERCENT_DV_WRONG')
+    // Eight of the eleven differ; cholesterol, sodium and added sugars are 0 either way.
+    expect(wrong.map((f) => f.elementId)).toEqual(
+      (
+        [
+          'total-fat',
+          'saturated-fat',
+          'total-carbohydrate',
+          'dietary-fiber',
+          'vitamin-d',
+          'calcium',
+          'iron',
+          'potassium',
+        ] as const
+      ).map((id) => nutritionRowElementId(id)),
+    )
+    const fat = wrong.find((f) => f.elementId === nutritionRowElementId('total-fat'))!
+    // 3 g of 39 is 7.69 percent: 8.
+    expect(fat.measurement).toEqual({ actual: '4%', required: '8%' })
+    expect(fat.message).toContain('39g Daily Value for children 1 through 3')
+    expect(codesOf(findings)).not.toContain('FDA_NUTRITION_PERCENT_DV_MET')
+  })
+
+  it('clears percentages worked against the children 1 through 3 column', () => {
+    const findings = findingsFor(
+      forToddlers({
+        declaredPercentDv: {
+          'total-fat': 8, // 3 of 39
+          'saturated-fat': 5, // 0.5 of 10
+          cholesterol: 0,
+          sodium: 0,
+          'total-carbohydrate': 18, // 27 of 150
+          'dietary-fiber': 29, // 4 of 14 is 28.57
+          'added-sugars': 0,
+          'vitamin-d': 15, // 2 of 15 is 13.3, in the 5-percent band
+          calcium: 35, // 260 of 700 is 37.1
+          iron: 110, // 8 of 7 is 114.3, in the 10-percent band
+          potassium: 8, // 235 of 3,000 is 7.83, in the 2-percent band
+        },
+      }),
+      stock,
+    )
+    expect(codesOf(findings)).not.toContain('FDA_NUTRITION_PERCENT_DV_WRONG')
+    expect(codesOf(findings)).toContain('FDA_NUTRITION_PERCENT_DV_MET')
+  })
+
+  it('prints the 1,000-calorie footnote on the vertical and tabular displays', () => {
+    // 101.9(d)(9), read from the eCFR on 2026-09-17: "If the food product is represented or
+    // purported to be for children 1 through 3 years of age, the second sentence of the
+    // footnote shall substitute '1,000 calories' for '2,000 calories'." (j)(5)(iii) states
+    // the whole footnote for such a food, and it is copied from there, not from the table
+    // the engine draws with, so the two are checked against each other.
+    const toddlerFootnote =
+      '*The % Daily Value tells you how much a nutrient in a serving of food contributes to ' +
+      'a daily diet. 1,000 calories a day is used for general nutrition advice.'
+    const footnoteOf = (data: UsFoodLabelData, onStock: LabelStock = stock) =>
+      layOutUsFoodLabel({ data, stock: onStock })
+        .primitives.filter(
+          (p): p is TextPrimitive =>
+            p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionFootnote,
+        )
+        .map((p) => p.text)
+        .join(' ')
+    expect(footnoteOf(US_FOOD_CONFORMANT.data), 'premise: an adult food').toContain(
+      '2,000 calories a day',
+    )
+    expect(footnoteOf(forToddlers())).toBe(toddlerFootnote)
+    // (d)(11)'s tabular display draws its footnote on a separate path.
+    const wide = { widthMm: 200, heightMm: 240, marginMm: 6 }
+    const tabular = forToddlers({
+      format: 'tabular',
+      availableSurfaceSqInches: 80,
+      continuousVerticalSpaceInches: 2,
+    })
+    expect(
+      footnoteOf(
+        { ...tabular, container: { shape: 'rectangular', widthMm: 200, heightMm: 240 } },
+        wide,
+      ),
+    ).toBe(toddlerFootnote)
+  })
+
+  it('keeps the full footnote on the small-package displays, which (j)(13)(i) does not excuse', () => {
+    // (j)(13)(i) relieves packages on the (j)(13)(ii)(A)(1) and (2) displays of "the
+    // information in paragraphs (d)(9) and (f)(5) related to the footnote". (j)(5)(iii) is
+    // not named, and it says such a food "shall include" the full footnote on its own —
+    // so the abbreviation stays for adult foods and a toddler food keeps its sentence.
+    // Printing it is compliant on either reading, since the exemption only relaxes. Found
+    // by the review of PR #38.
+    const small: LabelStock = { widthMm: 100, heightMm: 70, marginMm: 3 }
+    const onSmallPackage = (format: 'tabular' | 'linear', data: UsFoodLabelData) => ({
+      ...data,
+      container: { shape: 'rectangular' as const, widthMm: 100, heightMm: 70 },
+      nutritionFacts: { ...data.nutritionFacts!, format, availableSurfaceSqInches: 9 },
+    })
+    const footnoteOf = (data: UsFoodLabelData) =>
+      layOutUsFoodLabel({ data, stock: small })
+        .primitives.filter(
+          (p): p is TextPrimitive =>
+            p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionFootnote,
+        )
+        .map((p) => p.text)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    for (const format of ['tabular', 'linear'] as const) {
+      expect(
+        footnoteOf(onSmallPackage(format, US_FOOD_CONFORMANT.data)),
+        `premise: an adult food on the ${format} display abbreviates`,
+      ).toContain('% DV = % Daily Value')
+      expect(footnoteOf(onSmallPackage(format, forToddlers())), format).toContain(
+        '1,000 calories a day is used for general nutrition advice.',
+      )
+    }
+  })
+
+  it('prints the percentages it derives against that column', () => {
+    const { declaredPercentDv: _stated, ...derived } = panel
+    const adult: UsFoodLabelData = { ...US_FOOD_CONFORMANT.data, nutritionFacts: derived }
+    const toddler: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: { ...derived, representedFor: 'children-1-through-3' },
+    }
+    expect(rowText(adult, 'total-fat'), 'premise: 3 g of 78 is 3.85 percent').toContain('4%')
+    expect(rowText(toddler, 'total-fat')).toContain('8%')
+    expect(rowText(adult, 'calcium'), 'premise: 260 mg of 1,300 is 20 percent').toContain('20%')
+    expect(rowText(toddler, 'calcium')).toContain('35%')
+  })
+})
+
 describe('findings from the stage 5 review', () => {
   const stock = US_FOOD_CONFORMANT.stock
   const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
