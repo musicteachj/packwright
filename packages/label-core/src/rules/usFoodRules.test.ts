@@ -20,6 +20,7 @@ import type {
   UsFoodUnitContainerExemption,
 } from '../templates/usFood'
 import { roundNutrientAmount } from '../fda/nutrients'
+import type { DualColumnBasis } from '../fda/nutritionFormats'
 import { UNIT_CONTAINER_STATEMENTS, UNIT_CONTAINER_WORDINGS } from '../fda/unitContainerStatement'
 import { nutritionDisplayFor, nutritionTypeForDisplay } from '../fda/nutritionPanel'
 import { MM_PER_POINT } from '../geometry/units'
@@ -1957,6 +1958,57 @@ describe('the §101.9(j) nutrition exemption', () => {
       expect(declared).not.toContain('FDA_DUAL_COLUMN_MET')
     })
   })
+})
+
+describe('a dual-column panel is judged under the paragraph for what its second column counts', () => {
+  // Read from the eCFR on 2026-09-17. (e)(2) presents the information "for the form of the
+  // product as packaged and for any other form"; (e)(3), for forms, combinations, "different
+  // units, or ... two or more groups for which RDIs are established", presents it "in two
+  // columns and the columns shall be separated by vertical lines"; (e)(6) does the same for
+  // "a per serving basis and per container basis" under (b)(12)(i) or "per unit basis" under
+  // (b)(2)(i)(D). Both findings cited (e)(2) or (e)(3) whatever the column counted, which the
+  // review of PR #39 found.
+  const withBasis = (name: string, basis: DualColumnBasis | undefined): UsFoodLabelData => {
+    const source = fixture(name).data
+    const { basis: _basis, ...columns } = source.nutritionFacts!.columns!
+    return {
+      ...source,
+      nutritionFacts: {
+        ...source.nutritionFacts!,
+        columns: { ...columns, ...(basis === undefined ? {} : { basis }) },
+      },
+    }
+  }
+  const citationOf = (data: UsFoodLabelData, code: string) =>
+    findingsFor(data, US_FOOD_CONFORMANT.stock).find((f) => f.code === code)?.citation.reference
+
+  it.each([
+    ['as-prepared', '21 CFR 101.9(e)(2)', '21 CFR 101.9(e)(3)'],
+    ['combination', '21 CFR 101.9(e)(2)', '21 CFR 101.9(e)(3)'],
+    ['per-unit-measure', '21 CFR 101.9(e)(3)', '21 CFR 101.9(e)(3)'],
+    ['rdi-groups', '21 CFR 101.9(e)(3)', '21 CFR 101.9(e)(3)'],
+    ['per-cup-popped', '21 CFR 101.9(e)(3)', '21 CFR 101.9(e)(3)'],
+    ['per-container', '21 CFR 101.9(e)(6)', '21 CFR 101.9(e)(6)'],
+    ['per-unit', '21 CFR 101.9(e)(6)', '21 CFR 101.9(e)(6)'],
+    // No basis names no subparagraph, so both cite (e), the dual labeling paragraph itself.
+    [undefined, '21 CFR 101.9(e)', '21 CFR 101.9(e)'],
+  ] as const)(
+    '%s: an incomplete column under %s, unseparated columns under %s',
+    (basis, incomplete, separated) => {
+      expect(
+        citationOf(
+          withBasis('a second column carrying one figure out of fourteen', basis),
+          'FDA_DUAL_COLUMN_INCOMPLETE',
+        ),
+      ).toBe(incomplete)
+      expect(
+        citationOf(
+          withBasis('two columns run together with no line between them', basis),
+          'FDA_DUAL_COLUMN_NOT_SEPARATED',
+        ),
+      ).toBe(separated)
+    },
+  )
 })
 
 describe('a food for children 1 through 3, labelled against their Daily Values', () => {

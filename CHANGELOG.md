@@ -37,6 +37,19 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A dual-column finding cites the paragraph for what its second column counts.** 21 CFR 101.9(e), read from the
+  eCFR on 2026-09-17, sets the columns out in three subparagraphs, each naming the dual labeling it reaches:
+  (e)(2) for the form as packaged "and for any other form", (e)(3) for forms, combinations, "different units, or
+  ... two or more groups for which RDIs are established", and (e)(6) for "a per serving basis and per container
+  basis as required in paragraph (b)(12)(i)" or per unit under (b)(2)(i)(D). `us-food/dual-column-form` cited
+  (e)(2) for every incomplete column and (e)(3) for every unseparated pair, whichever the label declared — wrong
+  for the column the engine most often draws, since the editor seeds per container and (b)(12)(i) makes it
+  mandatory between 200 and 300 percent of the reference amount. Both findings now choose by `columns.basis`,
+  from one table shared with `us-food/protein-percent`, which had the same table of its own. A label that states
+  no basis names no subparagraph, so its findings cite (e) itself and say why. The two fixtures and the editor
+  test that pinned the old references declare per-container columns and now expect (e)(6). The findings and their
+  reasoning are unchanged; only the paragraph each cites is.
+
 - **A food for children 1 through 3 must print its protein percentage.** 21 CFR 101.9(c)(7)(i), read from the eCFR on
   2026-09-17: a protein percentage "may be placed on the label, except that such a statement shall be given if a
   protein claim is made for the product, or if the product is represented or purported to be specifically for

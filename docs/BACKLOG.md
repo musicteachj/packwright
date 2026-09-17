@@ -282,7 +282,10 @@ second column, and the engine derives none for protein, so the second column pri
 The rule reports that under the paragraph for the column's basis, which is true of the printed label, and nothing in the editor can fix it. The
 fix is a declared second-column percentage, at least for protein, with the rail offering it.
 
-**`us-food/dual-column-form` cites (e)(2) for an incomplete second column whatever the column counts.** Found by
+**~~`us-food/dual-column-form` cites (e)(2) for an incomplete second column whatever the column counts.~~ Fixed**
+on `fix/dual-column-citations`, and the unseparated-columns finding with it, which cited (e)(3) the same way. Both
+choose by `columns.basis` from a table shared with `us-food/protein-percent`; a label stating no basis cites (e)
+itself. What follows is the entry as it stood. Found by
 `/code-review high` on PR #39, and read from the eCFR on 2026-09-17. `FDA_DUAL_COLUMN_INCOMPLETE` always carries 21 CFR
 101.9(e)(2), whose "for the form of the product as packaged and for any other form" is about forms and combinations.
 For per-serving beside per-container or per-unit columns, (e)(6) is the paragraph that puts "the quantitative
