@@ -282,6 +282,12 @@ second column, and the engine derives none for protein, so the second column pri
 The rule reports that under (e)(2), which is true of the printed label, and nothing in the editor can fix it. The
 fix is a declared second-column percentage, at least for protein, with the rail offering it.
 
+An egg carton escapes the same check. With no panel drawn, `us-food/protein-percent` asks the carton only for a
+declared first-column percentage. Reproduced: a carton claiming (j)(14), declared for children 1 through 3 with two
+columns and 38 percent stated for protein, gets no protein finding at all. It is never passed either. Found by the
+review of the dual-column fix, and left here because a toddler food in an egg carton with a second column is
+unlikely and the declared second column has no percentage field to ask about anyway; it closes with the field.
+
 ### Reported, not yet verified
 
 Recorded as reviewer claims rather than as facts. Each is checked before it is picked up.

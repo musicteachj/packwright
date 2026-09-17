@@ -1019,6 +1019,50 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     },
   },
   {
+    name: 'a dual-column panel for children 1 through 3 with no protein percentage in its second column',
+    defect:
+      'A food for children 1 through 3 "shall" give its protein percentage under 101.9(c)(7)(i), ' +
+      'and 101.9(e)(2) presents the percentages "for the form of the product as packaged and for ' +
+      'any other form". The first column states 38 percent; the second prints its protein figure ' +
+      'with none, and this engine has no field to state one for it.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        representedFor: 'children-1-through-3',
+        // Every percentage worked against the children 1 through 3 column, as the
+        // single-column fixture above does, so the second column's protein is its only
+        // defect; 5 g of 13 is 38 percent before correction.
+        declaredPercentDv: {
+          'total-fat': 8,
+          'saturated-fat': 5,
+          cholesterol: 0,
+          sodium: 0,
+          'total-carbohydrate': 18,
+          'dietary-fiber': 29,
+          'added-sugars': 0,
+          protein: 38,
+          'vitamin-d': 15,
+          calcium: 35,
+          iron: 110,
+          potassium: 8,
+        },
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_PROTEIN_PERCENT_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(e)(2)',
+    },
+  },
+  {
     name: 'a panel with no potassium on it',
     defect:
       'Potassium is one of the four 101.9(c)(8)(ii) names explicitly, and the last of them, which ' +
