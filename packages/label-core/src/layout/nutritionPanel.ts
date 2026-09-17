@@ -949,14 +949,16 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
          * undrawable on every dual-column label: the rule could not be right
          * about that panel in either direction.
          *
-         * The second column has no declared equivalent to honour — nothing in
-         * `UsFoodNutritionFacts` states a percentage for it — so it is derived,
-         * and that asymmetry is real rather than an oversight.
+         * The second column honours `columns.secondPercentDv` the same way. It had no
+         * declared equivalent, so it derived every figure and derived none for protein —
+         * which is (c)(7)(i)'s requirement of a food for children 1 through 3, and left
+         * such a food unable to comply on a dual-column panel.
          */
         const percent =
           column === 0
             ? percentOf(facts, id)
-            : printedPercentDailyValue(id, value, dailyValuePopulationOf(facts))
+            : (facts.columns?.secondPercentDv?.[id] ??
+              printedPercentDailyValue(id, value, dailyValuePopulationOf(facts)))
         // (e)'s "equal prominence" is a requirement, so the second column is set
         // at the first's size unless the label asks for something else.
         const columnPt =

@@ -1960,6 +1960,95 @@ describe('the §101.9(j) nutrition exemption', () => {
   })
 })
 
+describe('a second column may state its own percentages', () => {
+  // 101.9(e)(2), (e)(3) and (e)(6) each present the (d)(7)(ii) percentages in both columns,
+  // and until now only the first column could state one: the second derived every figure,
+  // and derived none for protein. So a toddler food on a dual-column panel could not comply.
+  const stock = US_FOOD_CONFORMANT.stock
+  const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+  const dual = (
+    columns: Partial<NonNullable<typeof panel.columns>> = {},
+    facts: Partial<typeof panel> = {},
+  ): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    nutritionFacts: {
+      ...panel,
+      ...facts,
+      columns: {
+        mode: 'dual',
+        basis: 'per-container',
+        headings: ['Per serving', 'Per container'],
+        // 250 percent of each serving figure, the other fixtures' second column.
+        secondAmounts: { ...panel.amounts, calcium: 650, 'total-fat': 7.5 },
+        ...columns,
+      },
+    },
+  })
+  const codesOf = (findings: { code: string }[]) => findings.map((f) => f.code)
+  const rowTexts = (data: UsFoodLabelData, id: Parameters<typeof nutritionRowElementId>[0]) =>
+    layOutUsFoodLabel({ data, stock })
+      .primitives.filter(
+        (p): p is TextPrimitive => p.kind === 'text' && p.elementId === nutritionRowElementId(id),
+      )
+      .map((p) => p.text)
+
+  it('prints a stated second-column percentage rather than the derived one', () => {
+    // 650 mg of calcium against the 1,300 mg Daily Value derives 50 percent. A label may
+    // state its own figure, as the first column may, and the panel prints what it states.
+    expect(rowTexts(dual(), 'calcium').at(-1), 'premise: derived').toBe('650mg 50%')
+    expect(rowTexts(dual({ secondPercentDv: { calcium: 45 } }), 'calcium').at(-1)).toBe('650mg 45%')
+  })
+
+  it('judges a stated second-column percentage as it judges the first', () => {
+    const wrong = findingsFor(dual({ secondPercentDv: { calcium: 45 } }), stock).find(
+      (f) => f.code === 'FDA_NUTRITION_PERCENT_DV_WRONG',
+    )
+    expect(wrong!.message).toContain('second column')
+    expect(wrong!.measurement).toEqual({ actual: '45%', required: '50%' })
+    expect(wrong!.elementId).toBe(nutritionRowElementId('calcium'))
+    expect(
+      codesOf(findingsFor(dual({ secondPercentDv: { calcium: 50 } }), stock)),
+      'and clears the figure the column derives',
+    ).toContain('FDA_NUTRITION_PERCENT_DV_MET')
+  })
+
+  it('lets a food for children 1 through 3 comply on a dual-column panel', () => {
+    // The gap this field closes: (c)(7)(i) requires the protein percentage, the second
+    // column could not state one, and the engine derives none for protein.
+    const toddler = (columns: Partial<NonNullable<typeof panel.columns>> = {}) =>
+      dual(columns, {
+        representedFor: 'children-1-through-3',
+        declaredPercentDv: { ...panel.declaredPercentDv, protein: 38 },
+      })
+    expect(
+      codesOf(findingsFor(toddler(), stock)),
+      'premise: without one, the second column is reported',
+    ).toContain('FDA_PROTEIN_PERCENT_MISSING')
+    const stated = codesOf(findingsFor(toddler({ secondPercentDv: { protein: 96 } }), stock))
+    expect(stated).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+    expect(stated).toContain('FDA_PROTEIN_PERCENT_MET')
+  })
+
+  it('asks an egg carton for the second column its information declares', () => {
+    // No panel is drawn, so the figures are asked of the document: the same question, put
+    // to a carton whose information is presented beneath the lid.
+    const carton = (columns: Partial<NonNullable<typeof panel.columns>> = {}): UsFoodLabelData => ({
+      ...dual(columns, {
+        representedFor: 'children-1-through-3',
+        declaredPercentDv: { ...panel.declaredPercentDv, protein: 38 },
+      }),
+      nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+    })
+    expect(
+      findingsFor(carton(), stock).map((f) => f.code),
+      'the second column declares no protein percentage',
+    ).toContain('FDA_PROTEIN_PERCENT_MISSING')
+    expect(codesOf(findingsFor(carton({ secondPercentDv: { protein: 96 } }), stock))).not.toContain(
+      'FDA_PROTEIN_PERCENT_MISSING',
+    )
+  })
+})
+
 describe('a dual-column panel is judged under the paragraph for what its second column counts', () => {
   // Read from the eCFR on 2026-09-17. (e)(2) presents the information "for the form of the
   // product as packaged and for any other form"; (e)(3), for forms, combinations, "different

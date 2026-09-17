@@ -31,6 +31,7 @@ import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
+import { willDrawSecondColumn } from '../../layout/nutritionPanel'
 import { smallestOf } from './printedText'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
@@ -109,11 +110,24 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       (element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel,
     )
     if (!drawn) {
-      return panel.declaredPercentDv?.protein === undefined
+      if (panel.declaredPercentDv?.protein === undefined) {
+        return [
+          missing(
+            US_FOOD_ELEMENTS.principalDisplayPanel,
+            'The nutrition information declared for presentation off this label states none.',
+          ),
+        ]
+      }
+      // A second column the information declares owes the percentage too, under the
+      // paragraph for what it counts, and is asked of the document for the same reason.
+      const basis = panel.columns?.basis
+      return willDrawSecondColumn(panel) && panel.columns?.secondPercentDv?.protein === undefined
         ? [
             missing(
               US_FOOD_ELEMENTS.principalDisplayPanel,
-              'The nutrition information declared for presentation off this label states none.',
+              'Its second column states none.',
+              'no protein percentage in the second column',
+              basis === undefined ? CITATION : EACH_COLUMN_PARAGRAPHS[eachColumnReference(basis)],
             ),
           ]
         : []
