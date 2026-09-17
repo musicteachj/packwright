@@ -37,11 +37,16 @@ import { roundTo } from '../geometry/units'
 import { foodSourceName } from '../fda/allergens'
 import { layOutNutritionPanel, willDrawSecondColumn } from './nutritionPanel'
 import type { UsFoodLabelData } from '../templates/usFood'
-import { US_FOOD_ELEMENTS, US_FOOD_TYPE_DEFAULT } from '../templates/usFood'
+import {
+  US_FOOD_EGG_CARTON_PRESENTED,
+  US_FOOD_ELEMENTS,
+  US_FOOD_TYPE_DEFAULT,
+} from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
 import { anchorBox, panelFor } from '../templates/stock'
 import { LayoutError, assertMarginLeavesPanel } from './engine'
 import type { LayoutOmission, LayoutPrimitive, ResolvedElement, ResolvedLayout } from './types'
+import { UNIT_CONTAINER_STATEMENTS } from '../fda/unitContainerStatement'
 
 /** Millimetres for an omission's prose. `rules/finding` owns the same format for
  *  findings, and `label-core`'s layout layer must not import from `rules`. */
@@ -388,10 +393,31 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     }
   }
 
+  // 21 CFR 101.9(j)(14) — an egg carton presents its nutrition information "immediately
+  // beneath the carton lid or in an insert", exempt from outer carton label requirements.
+  // This engine draws the outer carton and neither of those, so the panel is not drawn,
+  // and says so. A detail, not an element: the carton without its panel is the whole of
+  // what this label should carry, and an export of it is worth having. The omission is
+  // what keeps every pass about the panel's printed figures from being issued on it.
+  const relocated =
+    data.nutritionExemption?.kind === 'egg-carton' ? data.nutritionExemption : undefined
+  if (data.nutritionFacts !== undefined && relocated !== undefined) {
+    omissions.push({
+      elementId: US_FOOD_ELEMENTS.nutritionPanel,
+      reason:
+        'The nutrition information is presented ' +
+        `${US_FOOD_EGG_CARTON_PRESENTED[relocated.presentedIn]}, as the label claims under 21 CFR ` +
+        '101.9(j)(14). This engine draws neither the underside of a lid nor an insert, so the ' +
+        'information is not on this label, and how it is laid out where it is presented is not ' +
+        'judged.',
+      scope: 'detail',
+    })
+  }
+
   // 21 CFR 101.9(d) — the Nutrition Facts panel, above the ingredient statement,
   // which is the order an information panel runs in. It is boxed and narrower
   // than the label, so it takes a width of its own rather than the panel's.
-  if (data.nutritionFacts !== undefined) {
+  else if (data.nutritionFacts !== undefined) {
     // The 2.5 inch figure is the illustrations' width for a panel carrying **one**
     // column of values, and no paragraph sets a panel width at all. A second
     // column has to come from somewhere, and taking it out of the nutrient names
@@ -536,6 +562,22 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       US_FOOD_ELEMENTS.smallPackageContact,
       'Nutrition information contact',
       data.nutritionExemption.contactLine,
+      panelTypeMm,
+    )
+  }
+
+  // 21 CFR 101.9(j)(15)(iii) — a unit container in a multiunit package, using that
+  // exemption, "is labeled with the statement 'This Unit Not Labeled For Retail Sale'".
+  // Looked up by the wording the label claims and never typed: the words are the
+  // regulation's, and a paraphrase is not the statement. Drawn in the panel's place and
+  // only where no panel is carried, as the contact line is, and outside the
+  // `food-nutrition-` prefix for the same reason — though its size answers to (iii)
+  // rather than 101.2(c), which the rule that grants the exemption measures.
+  if (data.nutritionFacts === undefined && data.nutritionExemption?.kind === 'unit-container') {
+    stackText(
+      US_FOOD_ELEMENTS.unitContainerStatement,
+      'Unit container statement',
+      UNIT_CONTAINER_STATEMENTS[data.nutritionExemption.wording],
       panelTypeMm,
     )
   }

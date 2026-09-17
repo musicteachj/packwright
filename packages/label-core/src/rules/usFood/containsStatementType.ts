@@ -23,13 +23,13 @@
  */
 
 import { regulatedGlyphBasis } from '../../geometry/pdp'
-import type { TextPrimitive } from '../../layout/types'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { glyphHeightMm } from '../../text/measure'
 import type { GlyphBasis } from '../../text/measure'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { smallestOf } from './printedText'
 
 export const FDA_CONTAINS_TYPE_TOO_SMALL = 'FDA_CONTAINS_TYPE_TOO_SMALL'
 export const FDA_CONTAINS_NOT_ADJACENT = 'FDA_CONTAINS_NOT_ADJACENT'
@@ -40,23 +40,6 @@ const CITATION: Citation = {
   reference: 'FD&C Act §403(w)(1)(A)',
   title:
     'A "Contains" statement sits adjacent to the ingredient list, in type no smaller than it uses',
-}
-
-/** The em of the smallest line drawn for an element, with its face and text. */
-function smallestOf(
-  layout: UsFoodContext['layout'],
-  elementId: string,
-): { fontSizeMm: number; fontFamily: string; text: string } | undefined {
-  const lines = layout.primitives.filter(
-    (primitive): primitive is TextPrimitive =>
-      primitive.kind === 'text' && primitive.elementId === elementId,
-  )
-  if (lines.length === 0) return undefined
-  return {
-    fontSizeMm: Math.min(...lines.map((line) => line.fontSizeMm)),
-    fontFamily: lines[0]!.fontFamily,
-    text: lines.map((line) => line.text).join(' '),
-  }
 }
 
 /**

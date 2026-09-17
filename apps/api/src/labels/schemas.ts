@@ -35,6 +35,8 @@ import {
   NUTRIENT_IDS,
   US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
+  UNIT_CONTAINER_WORDINGS,
+  US_FOOD_EGG_CARTON_PRESENTATIONS,
   US_FOOD_PACKAGINGS,
   type ArtworkBlock,
   type DigitalLinkData,
@@ -599,9 +601,12 @@ export const UsFoodRequestBase = z.object({
   containsStatementFontSizeMm: z.number().positive().optional(),
   containsStatementGapMm: z.number().min(0).optional(),
   nutritionFacts: NutritionFactsSchema.optional(),
-  // Claimed by paragraph alone, or the small package with the area that qualifies it
-  // and the line (j)(13)(i)(A) puts on its label. A blank area is not accepted here:
-  // the rule would refuse it anyway, and a saved label should not carry one.
+  // Claimed by paragraph alone; or the small package with the area that qualifies it
+  // and the line (j)(13)(i)(A) puts on its label — a blank area is not accepted here,
+  // since the rule would refuse it anyway and a saved label should not carry one; or
+  // the unit container with the wording of (j)(15)(iii)'s statement it bears, from the
+  // three the paragraph permits; or the egg carton with where (j)(14) has its nutrition
+  // information presented, which it still declares in `nutritionFacts`.
   nutritionExemption: z
     .union([
       z.object({ kind: z.enum(US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE) }),
@@ -609,6 +614,11 @@ export const UsFoodRequestBase = z.object({
         kind: z.literal('small-package'),
         availableSurfaceSqInches: z.number().positive(),
         contactLine: z.string(),
+      }),
+      z.object({ kind: z.literal('unit-container'), wording: z.enum(UNIT_CONTAINER_WORDINGS) }),
+      z.object({
+        kind: z.literal('egg-carton'),
+        presentedIn: z.enum(US_FOOD_EGG_CARTON_PRESENTATIONS),
       }),
     ])
     .optional(),

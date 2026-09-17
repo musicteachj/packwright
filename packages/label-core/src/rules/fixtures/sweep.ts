@@ -112,6 +112,25 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument; stoc
       // A label and a panel under 12 in² too, since each is a floor under the package's surface.
       stock: { widthMm: 60, heightMm: 70, marginMm: 3 },
     },
+    // The same rule clears a unit container bearing (j)(15)(iii)'s statement at its size,
+    // citing (j)(15) — the one citation no other document here emits.
+    {
+      label: 'unit container nutrition exempt',
+      data: {
+        ...WITHOUT_A_PANEL,
+        nutritionExemption: { kind: 'unit-container', wording: 'retail' },
+      },
+    },
+    // The same rule clears an egg carton whose nutrition information is declared for
+    // beneath its lid, citing (j)(14). The panel is *present* here, unlike the other
+    // exemptions: the information is relocated, not excused.
+    {
+      label: 'egg carton nutrition exempt',
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+      },
+    },
     // `us-food/net-quantity-placement` exempts a 4.65 in² package whose declaration
     // clears its presence, type size and separation. `US_FOOD_SMALL_PANEL` reached
     // this until the exemption learned to ask, and its declaration is crowded.

@@ -33,6 +33,11 @@ import {
   US_FOOD_ELEMENTS,
   US_FOOD_INGREDIENTS_EXEMPTIONS,
   US_FOOD_NUTRITION_EXEMPTIONS,
+  US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
+  UNIT_CONTAINER_STATEMENTS,
+  UNIT_CONTAINER_WORDINGS,
+  US_FOOD_EGG_CARTON_PRESENTATIONS,
+  US_FOOD_EGG_CARTON_PRESENTED,
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
   fontSizeMmForGlyphHeight,
@@ -49,7 +54,10 @@ import {
   type MajorFoodAllergenId,
   type NutrientId,
   type UsFoodIngredientsExemptionKind,
-  type UsFoodNutritionExemptionKind,
+  type UsFoodUnitContainerExemption,
+  type UsFoodEggCartonExemption,
+  type UsFoodEggCartonPresentation,
+  type UnitContainerWording,
 } from '@packwright/label-core'
 import { computed, ref } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
@@ -92,6 +100,8 @@ const NUTRITION_EXEMPTION_NAMES: Record<(typeof US_FOOD_NUTRITION_EXEMPTIONS)[nu
   'raw-produce-or-fish': '§ 101.9(j)(10) — raw fruit, vegetables or fish',
   'custom-processed-fish-or-game': '§ 101.9(j)(11)(ii) — custom processed fish or game meat',
   'small-package': '§ 101.9(j)(13)(i) — package under 12 in², with a line to ask',
+  'egg-carton': '§ 101.9(j)(14) — egg carton, information beneath the lid or in an insert',
+  'unit-container': '§ 101.9(j)(15) — unit of a multiunit package, marked not for retail sale',
   'bulk-at-retail': '§ 101.9(j)(16) — sold from bulk containers',
   'low-volume': '§ 101.9(j)(18) — low-volume product of a small business',
 }
@@ -474,9 +484,16 @@ const nutritionExemption = computed({
         availableSurfaceSqInches: Number.NaN,
         contactLine: '',
       }
+    } else if (next === 'egg-carton') {
+      // The information moves beneath the lid and is kept, so the panel's figures are
+      // left as they are: nothing here clears them, and the rules still judge them.
+      data.nutritionExemption = { kind: 'egg-carton', presentedIn: 'beneath-lid' }
+    } else if (next === 'unit-container') {
+      // The statement as the paragraph writes it; the other two wordings are offered beside it.
+      data.nutritionExemption = { kind: 'unit-container', wording: 'retail' }
     } else {
       data.nutritionExemption = {
-        kind: next as Exclude<UsFoodNutritionExemptionKind, 'small-package'>,
+        kind: next as (typeof US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE)[number],
       }
     }
   },
@@ -681,6 +698,32 @@ const smallPackageContactLine = computed({
   set: (next: string) => {
     const claimed = smallPackage()
     if (claimed !== undefined) claimed.contactLine = next
+  },
+})
+
+/** The unit container's particulars, where that is the exemption claimed. */
+const unitContainer = (): UsFoodUnitContainerExemption | undefined =>
+  data.nutritionExemption?.kind === 'unit-container' ? data.nutritionExemption : undefined
+
+/** The egg carton's particulars, where that is the exemption claimed. */
+const eggCarton = (): UsFoodEggCartonExemption | undefined =>
+  data.nutritionExemption?.kind === 'egg-carton' ? data.nutritionExemption : undefined
+
+/** Where (j)(14) has the carton's nutrition information presented. */
+const eggCartonPresentedIn = computed({
+  get: (): UsFoodEggCartonPresentation => eggCarton()?.presentedIn ?? 'beneath-lid',
+  set: (next: UsFoodEggCartonPresentation) => {
+    const claimed = eggCarton()
+    if (claimed !== undefined) claimed.presentedIn = next
+  },
+})
+
+/** Which of (j)(15)(iii)'s three wordings the unit bears. */
+const unitContainerWording = computed({
+  get: (): UnitContainerWording => unitContainer()?.wording ?? 'retail',
+  set: (next: UnitContainerWording) => {
+    const claimed = unitContainer()
+    if (claimed !== undefined) claimed.wording = next
   },
 })
 const containerSurfaceAreaSqMm = requiredNumber(() => shaped('other'), 'totalSurfaceAreaSqMm')
@@ -1321,6 +1364,48 @@ const packaging = computed({
           to bear labeling — the package, not this label — on the condition that the label bears an
           address or telephone number a consumer can use to obtain the nutrition information. Typed
           as it should print; the placeholder is the regulation's own example.
+        </p>
+      </template>
+
+      <template v-if="nutritionExemption === 'egg-carton'">
+        <label :class="LABEL" for="field-food-nf-egg-location">
+          Where the nutrition information is presented
+          <select id="field-food-nf-egg-location" v-model="eggCartonPresentedIn" :class="INPUT">
+            <option
+              v-for="presentation in US_FOOD_EGG_CARTON_PRESENTATIONS"
+              :key="presentation"
+              :value="presentation"
+            >
+              {{ US_FOOD_EGG_CARTON_PRESENTED[presentation] }}
+            </option>
+          </select>
+        </label>
+        <p class="text-chrome-400 text-xs">
+          21 CFR 101.9(j)(14) exempts shell eggs in a carton whose top lid conforms to the shape of
+          the eggs from outer carton label requirements, where the required nutrition information is
+          clearly presented immediately beneath the lid or in an insert that can be clearly seen
+          when the carton is opened. The information moves rather than going away: it is declared
+          below, and its figures are judged, but no panel is drawn on the outer carton. Where and
+          how it is presented is not checked.
+        </p>
+      </template>
+
+      <template v-if="nutritionExemption === 'unit-container'">
+        <label :class="LABEL" for="field-food-nf-unit-wording">
+          Statement the unit bears
+          <select id="field-food-nf-unit-wording" v-model="unitContainerWording" :class="INPUT">
+            <option v-for="wording in UNIT_CONTAINER_WORDINGS" :key="wording" :value="wording">
+              {{ UNIT_CONTAINER_STATEMENTS[wording] }}
+            </option>
+          </select>
+        </label>
+        <p class="text-chrome-400 text-xs">
+          21 CFR 101.9(j)(15) exempts the unit containers of a multiunit retail package whose
+          labeling carries the nutrition information, where the units are securely enclosed and not
+          intended to be separated, and each is labeled "This Unit Not Labeled For Retail Sale" in
+          type not less than 1/16 inch high — "individual" may stand in lieu of or before "Retail".
+          The statement is the regulation's own words, printed where the panel would sit and
+          measured; the two conditions on the outer package are not checked.
         </p>
       </template>
 

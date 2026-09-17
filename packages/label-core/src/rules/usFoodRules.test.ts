@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import type { TextPrimitive } from '../layout/types'
 import {
+  NUTRITION_ELEMENT_PREFIX,
   US_FOOD_ELEMENTS,
   US_FOOD_NUTRITION_EXEMPTIONS,
   US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
@@ -16,8 +17,10 @@ import type {
   UsFoodAssortmentExemption,
   UsFoodLabelData,
   UsFoodSmallPackageExemption,
+  UsFoodUnitContainerExemption,
 } from '../templates/usFood'
 import { roundNutrientAmount } from '../fda/nutrients'
+import { UNIT_CONTAINER_STATEMENTS, UNIT_CONTAINER_WORDINGS } from '../fda/unitContainerStatement'
 import { nutritionDisplayFor, nutritionTypeForDisplay } from '../fda/nutritionPanel'
 import { MM_PER_POINT } from '../geometry/units'
 import {
@@ -36,6 +39,7 @@ import {
   FDA_PANEL_TYPE_SIZE_MET,
   FDA_PANEL_TYPE_TOO_SMALL,
   FDA_NUTRITION_CONTACT_MISSING,
+  FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
   usFoodNutritionCompletenessRule,
   FDA_NET_QUANTITY_CROWDED,
   FDA_NET_QUANTITY_DUAL_MET,
@@ -1408,14 +1412,16 @@ describe('the §101.9(j) nutrition exemption', () => {
     // (j)(13)(i)'s address or telephone number, (j)(14)'s information beneath the
     // carton lid and (j)(15)'s "This Unit Not Labeled For Retail Sale" are each a
     // condition on the package. A first draft offered (j)(14), and its pass said no
-    // panel was required of a carton whose panel had only moved. (j)(13)(i) is
-    // offered now, as the one kind declared with particulars — because its line is
-    // checked, below — and nothing claimed by paragraph alone reaches any of them.
+    // panel was required of a carton whose panel had only moved. All three are
+    // offered now, as kinds declared with particulars — the line and the statement
+    // because they are checked, below, and the carton because it keeps its nutrition
+    // information and has it judged — and nothing claimed by paragraph alone reaches
+    // any of them.
     expect(
       US_FOOD_NUTRITION_EXEMPTIONS.filter(
         (kind) => !(US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE as readonly string[]).includes(kind),
       ),
-    ).toEqual(['small-package'])
+    ).toEqual(['small-package', 'unit-container', 'egg-carton'])
     const cited = US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE.map((kind) =>
       findingsFor({ ...withoutPanel, nutritionExemption: { kind } }, stock).find(
         (f) => f.code === 'FDA_NUTRITION_EXEMPT',
@@ -1594,6 +1600,279 @@ describe('the §101.9(j) nutrition exemption', () => {
       const codes = codesOf(findingsFor(data, fullSize))
       expect(codes).toContain('FDA_NUTRITION_COMPLETE')
       expect(codes).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+  })
+
+  describe('the (j)(15) unit container, which must bear the statement (iii) requires', () => {
+    // Read from the eCFR on 2026-09-17: the unit containers in a multiunit retail
+    // package are exempt where, among two conditions on the outer package, "each unit
+    // container is labeled with the statement 'This Unit Not Labeled For Retail Sale'
+    // in type size not less than 1/16-inch in height", and "the word 'individual' may
+    // be used in lieu of or immediately preceding the word 'Retail'".
+    const codesOf = (findings: { code: string }[]) => findings.map((f) => f.code)
+    const claim = (patch: Partial<UsFoodUnitContainerExemption> = {}): UsFoodLabelData => ({
+      ...withoutPanel,
+      nutritionExemption: { kind: 'unit-container', wording: 'retail', ...patch },
+    })
+    const statementText = (data: UsFoodLabelData, onStock: LabelStock = stock) =>
+      layOutUsFoodLabel({ data, stock: onStock })
+        .primitives.filter(
+          (p): p is TextPrimitive =>
+            p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.unitContainerStatement,
+        )
+        .map((p) => p.text)
+        .join(' ')
+
+    it('carries the three wordings the paragraph permits, word for word', () => {
+      // The regulation's own text, with "individual" in lieu of "Retail" and then
+      // immediately preceding it. Written out here rather than derived, so the table
+      // is checked against the paragraph and not against itself.
+      expect(UNIT_CONTAINER_STATEMENTS).toEqual({
+        retail: 'This Unit Not Labeled For Retail Sale',
+        individual: 'This Unit Not Labeled For Individual Sale',
+        'individual-retail': 'This Unit Not Labeled For Individual Retail Sale',
+      })
+    })
+
+    it.each(UNIT_CONTAINER_WORDINGS)('prints the %s wording from the table', (wording) => {
+      expect(statementText(claim({ wording }))).toBe(UNIT_CONTAINER_STATEMENTS[wording])
+    })
+
+    it('clears the exemption on the printed statement, citing (j)(15)', () => {
+      const findings = findingsFor(claim(), stock)
+      const pass = findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')
+      expect(pass!.citation.reference).toBe('21 CFR 101.9(j)(15)')
+      expect(pass!.elementId, 'naming the statement, so one that did not print withholds it').toBe(
+        US_FOOD_ELEMENTS.unitContainerStatement,
+      )
+      expect(pass!.message, 'and says what it cannot check').toContain('Not checked here:')
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_MISSING')
+    })
+
+    it('reports a statement under 1/16 inch under (iii), and withholds the exemption', () => {
+      // 2 mm of em puts the lowercase "o" at 0.540 × 2 = 1.08 mm, under the 1.5875 mm floor.
+      const findings = findingsFor({ ...claim(), informationPanelFontSizeMm: 2 }, stock)
+      const small = findings.find((f) => f.code === FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL)
+      expect(small!.severity).toBe('blocking')
+      expect(small!.citation.reference).toBe('21 CFR 101.9(j)(15)(iii)')
+      expect(small!.elementId).toBe(US_FOOD_ELEMENTS.unitContainerStatement)
+      expect(small!.measurement).toEqual({ actual: '1.08 mm', required: '1.59 mm' })
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('judges that height under (iii) alone, not under 101.2(c) as well', () => {
+      // One dimension, one finding: (iii) sets the same 1/16 inch for the statement by
+      // name, so the panel-wide rule leaves it to the specific provision, as it leaves
+      // the net quantity to 101.7(i).
+      const under101_2c = findingsFor({ ...claim(), informationPanelFontSizeMm: 2 }, stock)
+        .filter((f) => f.code === FDA_PANEL_TYPE_TOO_SMALL)
+        .map((f) => f.elementId)
+      expect(under101_2c).not.toContain(US_FOOD_ELEMENTS.unitContainerStatement)
+    })
+
+    it('reports a claim whose statement is not on the label, rather than trusting the claim', () => {
+      // The engine prints it whenever it is claimed, so this strips it from the layout
+      // and asks the rule alone: does the pass rest on the artwork, or on the document?
+      const data = claim()
+      const drawn = layOutUsFoodLabel({ data, stock })
+      const without = (id: string | undefined) => id !== US_FOOD_ELEMENTS.unitContainerStatement
+      const layout = {
+        ...drawn,
+        primitives: drawn.primitives.filter((p) => without(p.elementId)),
+        elements: drawn.elements.filter((e) => without(e.elementId)),
+      }
+      const findings = usFoodNutritionCompletenessRule.check({
+        labelType: 'us-food',
+        data,
+        stock,
+        layout,
+      })
+      const missing = findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
+      expect(missing!.severity).toBe('blocking')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(j)(15)(iii)')
+      expect(missing!.elementId, 'nothing printed, so the panel it would sit on').toBe(
+        US_FOOD_ELEMENTS.principalDisplayPanel,
+      )
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('reports a statement printed in words other than those claimed, and outlines it', () => {
+      // A layout drawn for one wording, judged against a claim of another: the words on the
+      // unit are the thing at fault, so the finding names the element that carries them.
+      const layout = layOutUsFoodLabel({ data: claim({ wording: 'retail' }), stock })
+      const data = claim({ wording: 'individual' })
+      const findings = usFoodNutritionCompletenessRule.check({
+        labelType: 'us-food',
+        data,
+        stock,
+        layout,
+      })
+      const missing = findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(j)(15)(iii)')
+      expect(missing!.measurement).toEqual({
+        actual: 'This Unit Not Labeled For Retail Sale',
+        required: '"This Unit Not Labeled For Individual Sale"',
+      })
+      expect(missing!.elementId).toBe(US_FOOD_ELEMENTS.unitContainerStatement)
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('withholds the exemption when the statement does not print in full', () => {
+      const short: LabelStock = { ...stock, heightMm: 16 }
+      const data = claim()
+      const layout = layOutUsFoodLabel({ data, stock: short })
+      expect(
+        layout.omissions.map((o) => o.elementId),
+        'the premise: the statement did not print in full',
+      ).toContain(US_FOOD_ELEMENTS.unitContainerStatement)
+      const context = { labelType: 'us-food' as const, data, stock: short, layout }
+      expect(
+        usFoodNutritionCompletenessRule.check(context).map((f) => f.code),
+        'the premise: the rule itself clears it',
+      ).toContain('FDA_NUTRITION_EXEMPT')
+      expect(codesOf(runRules(context))).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('prints no statement on a label that carries a panel, which is not using the exemption', () => {
+      const data: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionExemption: { kind: 'unit-container', wording: 'retail' },
+      }
+      expect(statementText(data)).toBe('')
+      const codes = codesOf(findingsFor(data, stock))
+      expect(codes).toContain('FDA_NUTRITION_COMPLETE')
+      expect(codes).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+  })
+
+  describe('the (j)(14) egg carton, whose nutrition information moves beneath the lid', () => {
+    // Read from the eCFR on 2026-09-17: shell eggs in a carton with a top lid "designed
+    // to conform to the shape of the eggs are exempt from outer carton label requirements
+    // where the required nutrition information is clearly presented immediately beneath
+    // the carton lid or in an insert that can be clearly seen when the carton is opened".
+    // Relocated, not excused: the information is still declared, and still judged.
+    const codesOf = (findings: { code: string }[]) => findings.map((f) => f.code)
+    const carton = (
+      presentedIn: 'beneath-lid' | 'insert' = 'beneath-lid',
+      data: UsFoodLabelData = US_FOOD_CONFORMANT.data,
+    ): UsFoodLabelData => ({ ...data, nutritionExemption: { kind: 'egg-carton', presentedIn } })
+
+    it('draws no panel on the outer carton, says so, and still exports', () => {
+      const layout = layOutUsFoodLabel({ data: carton(), stock })
+      expect(
+        layout.primitives.filter((p) => p.elementId?.startsWith(NUTRITION_ELEMENT_PREFIX)),
+        'nothing of the panel is drawn on the outer carton',
+      ).toEqual([])
+      const omitted = layout.omissions.filter(
+        (o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+      )
+      expect(omitted).toHaveLength(1)
+      expect(omitted[0]!.scope, 'the outer carton is a whole label without it').toBe('detail')
+      expect(omitted[0]!.reason).toContain('101.9(j)(14)')
+      expect(omitted[0]!.reason).toContain('beneath the carton lid')
+      expect(blockingOmissions(layout)).toEqual([])
+    })
+
+    it.each([
+      ['beneath-lid', 'beneath the carton lid'],
+      ['insert', 'in an insert'],
+    ] as const)('clears it on information declared %s, citing (j)(14)', (presentedIn, words) => {
+      const findings = findingsFor(carton(presentedIn), stock)
+      const pass = findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')
+      expect(pass!.citation.reference).toBe('21 CFR 101.9(j)(14)')
+      expect(pass!.message).toContain(words)
+      expect(pass!.message, 'and says what it cannot check').toContain('Not checked here:')
+      expect(pass!.message, 'naming the column among what is judged').toContain(
+        'any second column the package owes',
+      )
+      expect(pass!.message, 'and its layout among what is not').toContain(
+        'a second column’s headings, figures and separation',
+      )
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_MISSING')
+    })
+
+    it('refuses it where no nutrition information is declared at all', () => {
+      const findings = findingsFor(carton('beneath-lid', withoutPanel), stock)
+      const missing = findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
+      expect(missing!.severity).toBe('blocking')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(j)(14)')
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('still reports a nutrient missing from the information declared', () => {
+      const findings = findingsFor(
+        carton('beneath-lid', fixture('a panel with no potassium on it').data),
+        stock,
+      )
+      expect(codesOf(findings)).toContain('FDA_NUTRITION_NUTRIENT_MISSING')
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('still judges the declared figures, and certifies none of them as printed', () => {
+      const wrong = findingsFor(
+        carton('beneath-lid', fixture('sodium rounded in the wrong band').data),
+        stock,
+      )
+      expect(codesOf(wrong), 'a figure wrong on the lid is wrong').toContain(
+        'FDA_NUTRITION_ROUNDING_WRONG',
+      )
+
+      // Premise: on the outer label these pass, each on the artwork of the panel.
+      const artworkPasses = [
+        'FDA_NUTRITION_COMPLETE',
+        'FDA_NUTRITION_ORDER_MET',
+        'FDA_NUTRITION_ROUNDING_MET',
+        'FDA_NUTRITION_PERCENT_DV_MET',
+        'FDA_SERVING_SIZE_MET',
+      ]
+      const unclaimed = codesOf(findingsFor(US_FOOD_CONFORMANT.data, stock))
+      for (const code of artworkPasses) expect(unclaimed, `premise: ${code}`).toContain(code)
+      // Nothing here drew them, so none of them is certified.
+      const claimed = codesOf(findingsFor(carton(), stock))
+      for (const code of artworkPasses) expect(claimed, code).not.toContain(code)
+    })
+
+    it('still requires a second column the carton owes, judged on what it declares', () => {
+      // (j)(14) moves the required nutrition information, and a package inside
+      // (b)(12)(i)'s band is required to carry a second column in it. The panel is not
+      // drawn here, so the column cannot be read off the layout — but saying nothing
+      // would excuse a column the regulation still demands.
+      const oneColumn = fixture('a 250 percent package carrying one column')
+      expect(
+        codesOf(findingsFor(oneColumn.data, oneColumn.stock)),
+        'premise: the outer label owes a second column',
+      ).toContain('FDA_DUAL_COLUMN_MISSING')
+      const findings = findingsFor(carton('beneath-lid', oneColumn.data), oneColumn.stock)
+      const missing = findings.find((f) => f.code === 'FDA_DUAL_COLUMN_MISSING')
+      expect(missing!.severity).toBe('violation')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(b)(12)(i)')
+      expect(missing!.message, 'and does not describe a panel as drawn').not.toContain('as drawn')
+      expect(missing!.elementId, 'naming the carton, since no panel is on it').toBe(
+        US_FOOD_ELEMENTS.principalDisplayPanel,
+      )
+
+      // Declared with its figures, the column is not reported missing — and not certified,
+      // since nothing here printed it.
+      const facts = oneColumn.data.nutritionFacts!
+      const twoColumns: UsFoodLabelData = {
+        ...oneColumn.data,
+        nutritionFacts: {
+          ...facts,
+          columns: {
+            mode: 'dual',
+            basis: 'per-container',
+            headings: ['Per serving', 'Per container'],
+            secondAmounts: { ...facts.amounts },
+          },
+        },
+      }
+      expect(
+        codesOf(findingsFor(twoColumns, oneColumn.stock)),
+        'premise: on the outer label the declared column is drawn and passes',
+      ).toContain('FDA_DUAL_COLUMN_MET')
+      const declared = codesOf(findingsFor(carton('insert', twoColumns), oneColumn.stock))
+      expect(declared).not.toContain('FDA_DUAL_COLUMN_MISSING')
+      expect(declared).not.toContain('FDA_DUAL_COLUMN_MET')
     })
   })
 })

@@ -38,6 +38,7 @@
 
 import { labelingSurfaceFloor } from '../../geometry/pdp'
 import { dualColumnDuty, smallPackageRouteApplies } from '../../fda/nutritionFormats'
+import { willDrawSecondColumn } from '../../layout/nutritionPanel'
 import { DUAL_COLUMN_BASIS_REFERENCE } from '../../fda/nutritionFormats'
 import type { MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
@@ -178,6 +179,39 @@ export const usFoodDualColumnRule: UsFoodRule = {
           US_FOOD_ELEMENTS.nutritionPanel,
           { ...CITATION, reference: duty.exemption },
         ),
+      ]
+    }
+
+    // **No panel drawn at all, and the column is still owed.** Only (j)(14) reaches this: an
+    // egg carton's information is presented beneath the lid or in an insert, and a panel run
+    // off the stock still records its elements. The layout has no column to read, and
+    // "the panel as drawn carries one column" would describe a panel not on the label. But
+    // (j)(14) moves the required information rather than excusing it, so the column is
+    // judged on the figures declared for it: whether a second column is asked for and given
+    // figures, which is all `willDrawSecondColumn` asks. Not whether this engine could draw it
+    // in the display declared — the dual-column tabular display is one (e)(6)(ii) illustrates
+    // and this engine has not built, and a carton presenting it beneath the lid breaks no
+    // rule by that. A column declared is not certified, because nothing here printed it; the
+    // pass that would say so is simply not issued. The first cut of this returned nothing
+    // either way, and its review found it excusing a column the regulation still demands.
+    if (!layout.elements.some((element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel)) {
+      if (willDrawSecondColumn(panel)) return []
+      return [
+        finding(usFoodDualColumnRule, {
+          code: FDA_DUAL_COLUMN_MISSING,
+          severity: 'violation',
+          message:
+            `This package holds ${percent} percent of its reference amount, so its nutrition ` +
+            `information must carry a second column for ${BASIS_NAME[duty.basis]} beside the one ` +
+            'per serving. The information declared for presentation off this label carries one ' +
+            `column${panel.columns?.mode === 'dual' ? ', though the label asks for two' : ''}.`,
+          measurement: {
+            actual: 'one column declared',
+            required: `a second column for ${BASIS_NAME[duty.basis]}`,
+          },
+          elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+          citation: { ...CITATION, reference },
+        }),
       ]
     }
 

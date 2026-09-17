@@ -60,8 +60,15 @@ const CITATION: Citation = {
  * it here would report every compliant Nutrition Facts label in the country.
  * The specific provision governs, 101.2(d)(1) already defers to 101.9 by name
  * elsewhere, and stage 5's own rules check the sizes 101.9 does set.
+ *
+ * The unit container statement is the same shape at the same figure: 101.9(j)(15)(iii)
+ * sets 1/16 inch for it by name, and the rule granting that exemption measures it, so
+ * judging it here too would report one dimension twice.
  */
-const JUDGED_ELSEWHERE = new Set<string>([US_FOOD_ELEMENTS.netQuantity])
+const JUDGED_ELSEWHERE = new Set<string>([
+  US_FOOD_ELEMENTS.netQuantity,
+  US_FOOD_ELEMENTS.unitContainerStatement,
+])
 
 /**
  * The Nutrition Facts panel, all of it, by prefix.

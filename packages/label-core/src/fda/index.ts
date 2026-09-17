@@ -40,6 +40,13 @@ export {
   formatIsPermitted,
   smallPackageRouteApplies,
 } from './nutritionFormats'
+export {
+  UNIT_CONTAINER_STATEMENTS,
+  UNIT_CONTAINER_STATEMENT_MIN_TYPE_HEIGHT_INCHES,
+  UNIT_CONTAINER_STATEMENT_MIN_TYPE_HEIGHT_MM,
+  UNIT_CONTAINER_WORDINGS,
+} from './unitContainerStatement'
+export type { UnitContainerWording } from './unitContainerStatement'
 export type {
   DualColumnBasis,
   DualColumnDuty,

@@ -29,9 +29,11 @@
  *   project cannot evaluate, that the food "bears no nutrition claims or other
  *   nutrition information in any context on the label or in labeling or
  *   advertising", because it models no claims. (j)(13)(i) holds only on a line
- *   printed on the package, and is checked below. (j)(14) and (j)(15) hold only on
- *   something printed that nothing here checks, and are not offered until it is.
- *   Read from the eCFR on 2026-09-16.
+ *   printed on the package, and is checked below, as is (j)(15)'s statement.
+ *   (j)(14)'s egg carton moves its information beneath the lid rather than going
+ *   without, so the information is still required and judged, and what goes unchecked
+ *   is only where and how it is presented. Read from the eCFR on 2026-09-16, and
+ *   (j)(14) and (j)(15) again on 2026-09-17.
  * - The *weights* of the four vitamins and minerals. 101.9(c)(8)(ii) permits
  *   "additional levels of significance" beyond the whole units (c)(8)(iv) gives,
  *   so 235 mg of potassium and 235.4 mg are both proper declarations and no
@@ -50,17 +52,29 @@ import {
 } from '../../fda/nutrients'
 import type { NutrientId } from '../../fda/nutrients'
 import { wasFullyDrawn } from '../../layout/omissions'
-import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../../templates/usFood'
+import {
+  US_FOOD_EGG_CARTON_PRESENTED,
+  US_FOOD_ELEMENTS,
+  nutritionRowElementId,
+} from '../../templates/usFood'
 import type {
-  UsFoodNutritionExemptionKind,
+  US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
+  UsFoodEggCartonExemption,
   UsFoodNutritionFacts,
   UsFoodSmallPackageExemption,
+  UsFoodUnitContainerExemption,
 } from '../../templates/usFood'
 import { SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES } from '../../fda/nutritionFormats'
-import { labelingSurfaceFloor } from '../../geometry/pdp'
+import {
+  UNIT_CONTAINER_STATEMENTS,
+  UNIT_CONTAINER_STATEMENT_MIN_TYPE_HEIGHT_MM,
+} from '../../fda/unitContainerStatement'
+import { labelingSurfaceFloor, regulatedGlyphBasis } from '../../geometry/pdp'
+import { glyphHeightMm } from '../../text/measure'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnArtwork, untitled } from '../finding'
+import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { smallestOf } from './printedText'
 
 export const FDA_NUTRITION_MISSING = 'FDA_NUTRITION_MISSING'
 export const FDA_NUTRITION_NUTRIENT_MISSING = 'FDA_NUTRITION_NUTRIENT_MISSING'
@@ -68,6 +82,7 @@ export const FDA_NUTRITION_COMPLETE = 'FDA_NUTRITION_COMPLETE'
 export const FDA_NUTRITION_EXEMPT = 'FDA_NUTRITION_EXEMPT'
 export const FDA_NUTRITION_EXEMPTION_UNSTATED = 'FDA_NUTRITION_EXEMPTION_UNSTATED'
 export const FDA_NUTRITION_CONTACT_MISSING = 'FDA_NUTRITION_CONTACT_MISSING'
+export const FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL = 'FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL'
 export const FDA_NUTRITION_OUT_OF_ORDER = 'FDA_NUTRITION_OUT_OF_ORDER'
 export const FDA_NUTRITION_ORDER_MET = 'FDA_NUTRITION_ORDER_MET'
 export const FDA_NUTRITION_ROUNDING_WRONG = 'FDA_NUTRITION_ROUNDING_WRONG'
@@ -100,7 +115,7 @@ const NO_CLAIMS =
  * Worded from 101.9(j) as read from the eCFR on 2026-09-16.
  */
 const EXEMPTIONS: Record<
-  Exclude<UsFoodNutritionExemptionKind, 'small-package'>,
+  (typeof US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE)[number],
   { citation: Citation; grants: string; unchecked: string }
 > = {
   'small-business': {
@@ -184,6 +199,25 @@ const EXEMPTIONS: Record<
 const SMALL_PACKAGE = untitled(EXEMPTION, '21 CFR 101.9(j)(13)(i)')
 const SMALL_PACKAGE_CONTACT = untitled(EXEMPTION, '21 CFR 101.9(j)(13)(i)(A)')
 
+/**
+ * 101.9(j)(15), the unit container — declared with the wording it bears, and checked
+ * because (iii) puts the condition on the label: "each unit container is labeled with
+ * the statement 'This Unit Not Labeled For Retail Sale' in type size not less than
+ * 1/16-inch in height". Read from the eCFR on 2026-09-17. (i) and (ii) are about the
+ * outer package and are not checked.
+ */
+const UNIT_CONTAINER = untitled(EXEMPTION, '21 CFR 101.9(j)(15)')
+
+/**
+ * 101.9(j)(14), the egg carton. Read from the eCFR on 2026-09-17: "Shell eggs packaged in
+ * a carton that has a top lid designed to conform to the shape of the eggs are exempt
+ * from outer carton label requirements where the required nutrition information is
+ * clearly presented immediately beneath the carton lid or in an insert that can be
+ * clearly seen when the carton is opened." The information is relocated, not excused.
+ */
+const EGG_CARTON = untitled(EXEMPTION, '21 CFR 101.9(j)(14)')
+const UNIT_CONTAINER_STATEMENT = untitled(EXEMPTION, '21 CFR 101.9(j)(15)(iii)')
+
 const PERCENT: Citation = {
   authority: 'FDA',
   reference: '21 CFR 101.9(d)(7)(ii)',
@@ -225,6 +259,9 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     ...Object.values(EXEMPTIONS).map((exemption) => exemption.citation),
     SMALL_PACKAGE,
     SMALL_PACKAGE_CONTACT,
+    UNIT_CONTAINER,
+    UNIT_CONTAINER_STATEMENT,
+    EGG_CARTON,
   ],
   codes: [
     FDA_NUTRITION_MISSING,
@@ -233,6 +270,7 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     FDA_NUTRITION_EXEMPT,
     FDA_NUTRITION_EXEMPTION_UNSTATED,
     FDA_NUTRITION_CONTACT_MISSING,
+    FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
   ],
   appliesTo: 'us-food',
 
@@ -241,24 +279,38 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     const panel = panelOf(data)
 
     const claimed = data.nutritionExemption
-    if (claimed?.kind === 'small-package' && panel === undefined) {
-      return smallPackage(claimed, context)
-    }
-    if (claimed !== undefined && claimed.kind !== 'small-package' && panel === undefined) {
-      const exemption = EXEMPTIONS[claimed.kind]
-      return [
-        // Most (j) exemptions hold only while the label bears no nutrition claims: the artwork.
-        // (j)(8), (9) and (11)(ii) turn on facts about the food alone and are stamped with them —
-        // stricter than they need, never looser, since a pass withheld reports nothing false.
-        passedOnArtwork(
-          usFoodNutritionCompletenessRule,
-          FDA_NUTRITION_EXEMPT,
-          `The label claims the ${exemption.citation.reference} exemption for ${exemption.grants}, ` +
-            `so no panel is required. Not checked here: ${exemption.unchecked}.`,
-          US_FOOD_ELEMENTS.principalDisplayPanel,
-          exemption.citation,
-        ),
-      ]
+    // The egg carton first, and whether or not it carries a panel: (j)(14) moves the
+    // information rather than excusing it, so the panel is expected rather than absent.
+    if (claimed?.kind === 'egg-carton') return eggCarton(claimed, context)
+
+    // Every other kind: a label printing a panel is not using its exemption, and the
+    // panel is judged below. Dispatched by kind, so a kind declared with particulars is
+    // one more case here and the rest reach `EXEMPTIONS` with no list to keep in step.
+    if (claimed !== undefined && panel === undefined) {
+      switch (claimed.kind) {
+        case 'small-package':
+          return smallPackage(claimed, context)
+        case 'unit-container':
+          return unitContainer(claimed, context)
+        default: {
+          const exemption = EXEMPTIONS[claimed.kind]
+          return [
+            // Most (j) exemptions hold only while the label bears no nutrition claims: the
+            // artwork. (j)(8), (9) and (11)(ii) turn on facts about the food alone and are
+            // stamped with them — stricter than they need, never looser, since a pass
+            // withheld reports nothing false.
+            passedOnArtwork(
+              usFoodNutritionCompletenessRule,
+              FDA_NUTRITION_EXEMPT,
+              `The label claims the ${exemption.citation.reference} exemption for ` +
+                `${exemption.grants}, so no panel is required. Not checked here: ` +
+                `${exemption.unchecked}.`,
+              US_FOOD_ELEMENTS.principalDisplayPanel,
+              exemption.citation,
+            ),
+          ]
+        }
+      }
     }
 
     // A label saved before the paragraph was recorded: the panel stays excused, but
@@ -296,27 +348,8 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
       ]
     }
 
-    // Declared *and printed*. Where the panel states an `order`, that order is
-    // the printed panel — a nutrient held in `amounts` but left out of it is not
-    // on the label. Reading `amounts` alone gave "All 15 mandatory nutrients are
-    // declared" beside "14 nutrients run in the order 101.9(c) sets", with
-    // nobody owning the line that had been dropped: the order rule narrows its
-    // expectation to what is listed and delegates omissions here, and here was
-    // looking somewhere else.
-    const printed = (id: (typeof NUTRIENTS)[number]['id']) =>
-      declaredAmount(panel, id) !== undefined && (panel.order?.includes(id) ?? true)
-    const missing = NUTRIENTS.filter((entry) => !printed(entry.id))
-    if (missing.length > 0) {
-      return missing.map((entry) =>
-        finding(usFoodNutritionCompletenessRule, {
-          code: FDA_NUTRITION_NUTRIENT_MISSING,
-          severity: 'violation',
-          message: `The panel declares no ${entry.name}, which ${entry.reference} makes mandatory.`,
-          measurement: { actual: 'not declared', required: entry.name },
-          elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
-        }),
-      )
-    }
+    const missing = missingNutrients(panel)
+    if (missing.length > 0) return missing
 
     return [
       // 101.9(c): the declaration "on the label" shall contain these nutrients: the artwork.
@@ -328,6 +361,93 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
       ),
     ]
   },
+}
+
+/**
+ * A finding for each mandatory nutrient the panel does not declare.
+ *
+ * Declared *and printed*. Where the panel states an `order`, that order is the printed
+ * panel — a nutrient held in `amounts` but left out of it is not on the label. Reading
+ * `amounts` alone gave "All 15 mandatory nutrients are declared" beside "14 nutrients run
+ * in the order 101.9(c) sets", with nobody owning the line that had been dropped: the
+ * order rule narrows its expectation to what is listed and delegates omissions here, and
+ * here was looking somewhere else.
+ */
+function missingNutrients(panel: UsFoodNutritionFacts): Finding[] {
+  const printed = (id: (typeof NUTRIENTS)[number]['id']) =>
+    declaredAmount(panel, id) !== undefined && (panel.order?.includes(id) ?? true)
+  return NUTRIENTS.filter((entry) => !printed(entry.id)).map((entry) =>
+    finding(usFoodNutritionCompletenessRule, {
+      code: FDA_NUTRITION_NUTRIENT_MISSING,
+      severity: 'violation',
+      message: `The panel declares no ${entry.name}, which ${entry.reference} makes mandatory.`,
+      measurement: { actual: 'not declared', required: entry.name },
+      elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+    }),
+  )
+}
+
+/**
+ * 101.9(j)(14), judged: the carton is excused a panel on its outer label only because
+ * the information is presented beneath the lid or in an insert instead.
+ *
+ * **The information is declared, and judged as any panel's.** A carton declaring none
+ * has nothing to present, and is refused. One declaring the information is held to
+ * 101.9(c)'s nutrients here, and to its order, rounding and percentages by the rules
+ * that judge those — every one of which still reports a wrong figure. Their passes are
+ * a different matter: each says the panel *prints* its figures correctly, and nothing
+ * here prints them, so the engine records the panel as not drawn and those passes are
+ * withheld.
+ *
+ * **Where the information goes is declared, and not checked.** Whether it is clearly
+ * presented beneath the lid, whether an insert can be clearly seen, whether the lid
+ * conforms to the eggs, and the format the information takes there, are all off this
+ * label. The pass says so, and names the principal display panel rather than the
+ * panel, since it is the outer carton being excused.
+ */
+function eggCarton(claimed: UsFoodEggCartonExemption, { data }: UsFoodContext): Finding[] {
+  const presented = US_FOOD_EGG_CARTON_PRESENTED[claimed.presentedIn]
+  const panel = panelOf(data)
+  if (panel === undefined) {
+    return [
+      finding(usFoodNutritionCompletenessRule, {
+        code: FDA_NUTRITION_MISSING,
+        severity: 'blocking',
+        message:
+          'The carton claims the 101.9(j)(14) exemption, which moves the required nutrition ' +
+          `information to be presented ${presented} rather than excusing it, and declares no ` +
+          'nutrition information to present there.',
+        measurement: {
+          actual: 'no nutrition information',
+          required: `the nutrition information, presented ${presented}`,
+        },
+        elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+        citation: EGG_CARTON,
+      }),
+    ]
+  }
+
+  const missing = missingNutrients(panel)
+  if (missing.length > 0) return missing
+
+  return [
+    // (j)(14) excuses the outer carton on a condition about what is printed elsewhere
+    // on the package: the artwork, and stricter than it needs, never looser.
+    passedOnArtwork(
+      usFoodNutritionCompletenessRule,
+      FDA_NUTRITION_EXEMPT,
+      `The carton claims the ${EGG_CARTON.reference} exemption for shell eggs, with its nutrition ` +
+        `information presented ${presented}, so no panel is required on the outer carton. All ` +
+        `${NUTRIENTS.length} mandatory nutrients are declared for it, and its figures are held to ` +
+        '101.9’s order, rounding and percentages, and to any second column the package owes. ' +
+        'Not checked here: that the lid is designed to conform to the shape of the eggs, that the ' +
+        'information is clearly presented where it is declared to be, and how it is laid out ' +
+        'there — its type sizes, and a second column’s headings, figures and separation — none ' +
+        'of which this engine draws.',
+      US_FOOD_ELEMENTS.principalDisplayPanel,
+      EGG_CARTON,
+    ),
+  ]
 }
 
 /**
@@ -434,6 +554,95 @@ function smallPackage(
         `or telephone number a consumer can use to obtain the nutrition information, and ${NO_CLAIMS}.`,
       US_FOOD_ELEMENTS.smallPackageContact,
       SMALL_PACKAGE,
+    ),
+  ]
+}
+
+/**
+ * 101.9(j)(15), judged: the exemption holds only where the unit bears the statement
+ * (iii) prescribes, at the height it sets.
+ *
+ * **Read from the artwork, not the claim.** The engine prints the statement whenever
+ * the kind is claimed, so a rule reading the claim could never be wrong about the
+ * words — and would clear a unit whose statement never printed. This one finds the
+ * element the engine drew and reads its text and its size from the primitives, so a
+ * statement the engine did not draw is reported missing, and the pass names the
+ * element so one that ran off the label withholds it.
+ *
+ * **One dimension, one finding.** (iii)'s 1/16 inch is the figure 101.2(c) sets for
+ * the whole panel, measured here on the basis 101.2(c) incorporates from 101.7(h)(2)
+ * because (iii) names none of its own; the panel-wide rule leaves this element to the
+ * specific provision, as it leaves the net quantity to 101.7(i). A shortfall is
+ * blocking, as a missing contact line is: it is the condition the exemption stands
+ * on, and without it the unit owes a panel.
+ */
+function unitContainer(
+  claimed: UsFoodUnitContainerExemption,
+  { layout }: UsFoodContext,
+): Finding[] {
+  const statement = UNIT_CONTAINER_STATEMENTS[claimed.wording]
+  const printed = smallestOf(layout, US_FOOD_ELEMENTS.unitContainerStatement)
+  if (printed?.text !== statement) {
+    return [
+      finding(usFoodNutritionCompletenessRule, {
+        code: FDA_NUTRITION_MISSING,
+        severity: 'blocking',
+        message:
+          'The label bears no nutrition label and claims the 101.9(j)(15) unit container ' +
+          `exemption, which holds only where the unit is labeled "${statement}" under (iii). ` +
+          (printed === undefined
+            ? 'No such statement is printed.'
+            : `It prints "${printed.text}".`),
+        measurement: {
+          actual: printed?.text ?? 'no statement',
+          required: `"${statement}"`,
+        },
+        // The statement where one printed in the wrong words, since those are what is wrong;
+        // the panel it would sit on where nothing printed at all.
+        elementId:
+          printed === undefined
+            ? US_FOOD_ELEMENTS.principalDisplayPanel
+            : US_FOOD_ELEMENTS.unitContainerStatement,
+        citation: UNIT_CONTAINER_STATEMENT,
+      }),
+    ]
+  }
+
+  const actualMm = glyphHeightMm(
+    printed.fontSizeMm,
+    printed.fontFamily,
+    regulatedGlyphBasis(printed.text),
+  )
+  const requiredMm = UNIT_CONTAINER_STATEMENT_MIN_TYPE_HEIGHT_MM
+  if (actualMm < requiredMm - MEASUREMENT_TOLERANCE_MM) {
+    return [
+      finding(usFoodNutritionCompletenessRule, {
+        code: FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
+        severity: 'blocking',
+        message:
+          `The unit container statement is set at ${mm(actualMm)}; 101.9(j)(15)(iii) requires ` +
+          `"type size not less than 1/16-inch in height", ${mm(requiredMm)}, and the exemption ` +
+          'holds only where the statement meets it.',
+        measurement: { actual: mm(actualMm), required: mm(requiredMm) },
+        elementId: US_FOOD_ELEMENTS.unitContainerStatement,
+        citation: UNIT_CONTAINER_STATEMENT,
+      }),
+    ]
+  }
+
+  return [
+    // (iii) puts the statement on the unit, and the pass names it: the artwork.
+    passedOnArtwork(
+      usFoodNutritionCompletenessRule,
+      FDA_NUTRITION_EXEMPT,
+      `The label claims the ${UNIT_CONTAINER.reference} exemption for a unit container in a ` +
+        `multiunit retail package, and bears the statement "${statement}" at ${mm(actualMm)}, ` +
+        'as (iii) requires, so no panel is required. Not checked here: that the multiunit ' +
+        'package’s labeling contains all the nutrition information (i), and that the units are ' +
+        'securely enclosed within it and not intended to be separated from it under conditions ' +
+        'of retail sale (ii).',
+      US_FOOD_ELEMENTS.unitContainerStatement,
+      UNIT_CONTAINER,
     ),
   ]
 }
