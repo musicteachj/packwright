@@ -53,6 +53,7 @@ import {
 } from '../../fda/nutrients'
 import type { NutrientId } from '../../fda/nutrients'
 import { wasFullyDrawn } from '../../layout/omissions'
+import type { TextPrimitive } from '../../layout/types'
 import {
   US_FOOD_EGG_CARTON_PRESENTED,
   US_FOOD_ELEMENTS,
@@ -805,9 +806,22 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
   codes: [FDA_NUTRITION_PERCENT_DV_WRONG, FDA_NUTRITION_PERCENT_DV_MET],
   appliesTo: 'us-food',
 
-  check({ data }: UsFoodContext): Finding[] {
+  check({ data, layout }: UsFoodContext): Finding[] {
     const panel = panelOf(data)
     if (panel === undefined) return []
+
+    // **Asked of the layout, row by row.** A panel whose mode went back to single keeps its
+    // second column's figures, and reading them from the document judged a column nothing
+    // drew — clearing a correct one into the pass. Per row, because a nutrient left out of
+    // `order` draws neither column while the panel around it draws two. The dual-column
+    // rules learned this with `columns.mode`; the percentages are the same question.
+    const secondColumnDrawn = (id: NutrientId): boolean =>
+      layout.primitives.filter(
+        (primitive): primitive is TextPrimitive =>
+          primitive.kind === 'text' &&
+          primitive.elementId === nutritionRowElementId(id) &&
+          primitive.anchor === 'end',
+      ).length >= 2
 
     // **Both columns, each against its own figures.** (e)(2), (e)(3) and (e)(6) present the
     // (d)(7)(ii) percentages in every column a panel declares, and a second column may state
@@ -818,10 +832,12 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
         second: false,
         stated: panel.declaredPercentDv,
         bases: (id: NutrientId) => [declaredAmount(panel, id), panel.amounts[id]],
+        drawn: () => true,
       },
       {
         second: true,
         stated: panel.columns?.secondPercentDv,
+        drawn: secondColumnDrawn,
         bases: (id: NutrientId) => {
           const amount = panel.columns?.secondAmounts?.[id]
           return [amount === undefined ? undefined : roundNutrientAmount(id, amount), amount]
@@ -844,7 +860,9 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
               // Protein's percentage is corrected by a digestibility score no label
               // carries, so it cannot be recomputed from what is here.
               entry.id !== 'protein',
-          ).map((entry) => ({ entry, column })),
+          )
+            .filter((entry) => column.drawn(entry.id))
+            .map((entry) => ({ entry, column })),
     )
     if (checked.length === 0) return []
 

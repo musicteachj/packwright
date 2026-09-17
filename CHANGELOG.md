@@ -45,9 +45,16 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   what is stated in place of what it derives, and `us-food/nutrition-percent-dv` judges both columns against their
   own figures — the second against its `secondAmounts`, declared and unrounded as the first is judged against its
   own two bases. A stated second-column figure that does not match is reported as the first is, saying which column
-  it is in; and the pass no longer counts one column's percentages while the other's go unread. An egg carton, which
-  draws no panel, is asked for the second column its information declares. The editor and the API follow in the next
-  commit; until then the field is reachable only from label-core.
+  it is in; and the pass no longer counts one column's percentages while the other's go unread. An egg carton, which draws no panel, is asked for the second column
+  its information declares, where that column declares a protein amount — a column declaring none is an incomplete
+  column, which the form rule reports, as it does on a panel the engine draws. The rule asks the layout, row by row, whether a second
+  cell was drawn before reading any of those figures: two reviews of the change found it reading them from the
+  document, so a panel whose mode went back to single was judged on the figures it kept, and a nutrient left out of
+  `order`, which draws no cell in either column, had its stated figure counted in the pass — each certifying a
+  percentage nothing printed. A percentage stated for a nutrient the second column gives no amount
+  for, for Calories, or on a panel that draws a single column, is recorded as a layout omission rather than dropped,
+  as a second-column Calories amount already was. The editor and the API follow in the next commit; until then the field is reachable only from
+  label-core.
 
 - **A dual-column finding cites the paragraph for what its second column counts.** 21 CFR 101.9(e), read from the
   eCFR on 2026-09-17, sets the columns out in three subparagraphs, each naming the dual labeling it reaches:

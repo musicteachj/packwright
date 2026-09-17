@@ -284,6 +284,14 @@ second column, and the engine derives none for protein, so the second column pri
 The rule reports that under the paragraph for the column's basis, which is true of the printed label, and nothing in the editor can fix it. The
 fix is a declared second-column percentage, at least for protein, with the rail offering it.
 
+**A percentage stated for a nutrient with no Daily Value is printed and cannot be judged.** Found by the review of
+`feat/second-column-percentages`, and true of both columns. `declaredPercentDv` and now `columns.secondPercentDv`
+accept a figure for trans fat or total sugars, which 101.9(c)(9) and (c)(8)(iv) give no Daily Value, so the panel
+prints "0g 99%" and `us-food/nutrition-percent-dv` skips it: there is nothing to recompute it against. (d)(7)(ii)
+requires the percentage "for each nutrient" with a DRV or RDI and the (d)(12) display leaves those two cells blank,
+so a figure there is a defect a rule could report from the document alone. The field pre-dates this branch on the
+first column; the second column widened it. A rule would need its own code, citation and fixture.
+
 **(e)(6) is cited for every per-container column, though its own words reach only the mandatory ones.** Found by
 `/code-review high` on PR #40. 101.9(e)(6), read from the eCFR on 2026-09-17, opens "When dual labeling is presented
 for a food on a per serving basis and per container basis **as required in paragraph (b)(12)(i)** of this section or

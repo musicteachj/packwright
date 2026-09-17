@@ -31,7 +31,6 @@ import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
-import { willDrawSecondColumn } from '../../layout/nutritionPanel'
 import { smallestOf } from './printedText'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
@@ -121,7 +120,10 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       // A second column the information declares owes the percentage too, under the
       // paragraph for what it counts, and is asked of the document for the same reason.
       const basis = panel.columns?.basis
-      return willDrawSecondColumn(panel) && panel.columns?.secondPercentDv?.protein === undefined
+      // Keyed on the second column's *protein* amount, as the drawn branch is: a column
+      // declaring no protein figure is an incomplete column, which the form rule reports.
+      return panel.columns?.secondAmounts?.protein !== undefined &&
+        panel.columns?.secondPercentDv?.protein === undefined
         ? [
             missing(
               US_FOOD_ELEMENTS.principalDisplayPanel,

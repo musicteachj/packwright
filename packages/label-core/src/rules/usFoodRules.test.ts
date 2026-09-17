@@ -19,7 +19,7 @@ import type {
   UsFoodSmallPackageExemption,
   UsFoodUnitContainerExemption,
 } from '../templates/usFood'
-import { roundNutrientAmount } from '../fda/nutrients'
+import { NUTRIENT_IDS, roundNutrientAmount } from '../fda/nutrients'
 import type { DualColumnBasis } from '../fda/nutritionFormats'
 import { UNIT_CONTAINER_STATEMENTS, UNIT_CONTAINER_WORDINGS } from '../fda/unitContainerStatement'
 import { nutritionDisplayFor, nutritionTypeForDisplay } from '../fda/nutritionPanel'
@@ -2029,6 +2029,73 @@ describe('a second column may state its own percentages', () => {
     expect(stated).toContain('FDA_PROTEIN_PERCENT_MET')
   })
 
+  it('reads the second column only where one was drawn', () => {
+    // The review of the commit adding the field found the rule reading these figures from
+    // the document alone. A panel left with a second column's figures after its mode went
+    // back to single draws one column, and a correct figure there was counted in the pass —
+    // certifying a percentage nothing printed, which is the shape this project guards.
+    const leftovers = (secondPercentDv: Record<string, number>): UsFoodLabelData =>
+      dual({ mode: 'single', secondPercentDv })
+    for (const [label, percent] of [
+      ['wrong', 45],
+      ['right', 50],
+    ] as const) {
+      const data = leftovers({ calcium: percent })
+      expect(
+        layOutUsFoodLabel({ data, stock }).elements.map((e) => e.elementId),
+        `premise: ${label}, no second column is drawn`,
+      ).not.toContain(US_FOOD_ELEMENTS.nutritionSecondColumn)
+      const codes = codesOf(findingsFor(data, stock))
+      expect(codes, label).not.toContain('FDA_NUTRITION_PERCENT_DV_WRONG')
+    }
+    // The first column's own percentages are still judged, and still pass.
+    expect(codesOf(findingsFor(leftovers({ calcium: 50 }), stock))).toContain(
+      'FDA_NUTRITION_PERCENT_DV_MET',
+    )
+  })
+
+  it('says so when it cannot print a stated second-column percentage', () => {
+    // The engine prints a percentage beside an amount, so a figure stated for a nutrient
+    // the second column gives no amount for has nowhere to go — as a second-column Calories
+    // figure has nowhere to go, which the engine already records.
+    const omissions = (data: UsFoodLabelData) =>
+      layOutUsFoodLabel({ data, stock }).omissions.filter((o) =>
+        o.reason.includes('second-column percentage'),
+      )
+    const dropped = omissions(
+      dual({ secondPercentDv: { iron: 40 }, secondAmounts: { calcium: 650 } }),
+    )
+    expect(dropped).toHaveLength(1)
+    expect(dropped[0]!.scope).toBe('detail')
+    expect(dropped[0]!.elementId).toBe(nutritionRowElementId('iron'))
+    expect(dropped[0]!.reason).toContain('Iron')
+    expect(
+      omissions(dual({ secondPercentDv: { calcium: 50 } })),
+      'and nothing where the column has the amount to print it beside',
+    ).toEqual([])
+  })
+
+  it('reads a row the panel left out of neither column', () => {
+    // `order` decides which nutrients print, so a nutrient left out of it draws no cell in
+    // either column while the panel around it draws two. Read panel-wide, the rule counted
+    // its stated second-column figure — certifying one nothing printed.
+    const withoutIron = dual(
+      { secondPercentDv: { iron: 999 } },
+      { order: NUTRIENT_IDS.filter((id) => id !== 'iron') },
+    )
+    expect(rowTexts(withoutIron, 'iron'), 'premise: neither column prints an iron cell').toEqual([])
+    expect(codesOf(findingsFor(withoutIron, stock))).not.toContain('FDA_NUTRITION_PERCENT_DV_WRONG')
+  })
+
+  it('records a stated percentage the panel draws no second column for', () => {
+    const single = dual({ mode: 'single', secondPercentDv: { calcium: 50 } })
+    const dropped = layOutUsFoodLabel({ data: single, stock }).omissions.filter((o) =>
+      o.reason.includes('second-column percentage'),
+    )
+    expect(dropped).toHaveLength(1)
+    expect(dropped[0]!.reason).toContain('draws a single column')
+  })
+
   it('asks an egg carton for the second column its information declares', () => {
     // No panel is drawn, so the figures are asked of the document: the same question, put
     // to a carton whose information is presented beneath the lid.
@@ -2043,6 +2110,13 @@ describe('a second column may state its own percentages', () => {
       findingsFor(carton(), stock).map((f) => f.code),
       'the second column declares no protein percentage',
     ).toContain('FDA_PROTEIN_PERCENT_MISSING')
+    // And says nothing where that column declares no protein amount either: an incomplete
+    // column is the form rule's finding, as it is on a panel the engine draws.
+    const { protein: _none, ...withoutProtein } = panel.amounts
+    expect(
+      codesOf(findingsFor(carton({ secondAmounts: withoutProtein }), stock)),
+      'an incomplete second column is not a missing percentage',
+    ).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
     expect(codesOf(findingsFor(carton({ secondPercentDv: { protein: 96 } }), stock))).not.toContain(
       'FDA_PROTEIN_PERCENT_MISSING',
     )

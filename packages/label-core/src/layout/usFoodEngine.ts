@@ -35,12 +35,14 @@ import {
 } from '../text/measure'
 import { roundTo } from '../geometry/units'
 import { foodSourceName, majorFoodAllergen } from '../fda/allergens'
+import { nutrient } from '../fda/nutrients'
 import { layOutNutritionPanel, willDrawSecondColumn } from './nutritionPanel'
 import type { UsFoodLabelData } from '../templates/usFood'
 import {
   US_FOOD_EGG_CARTON_PRESENTED,
   US_FOOD_ELEMENTS,
   US_FOOD_TYPE_DEFAULT,
+  nutritionRowElementId,
 } from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
 import { anchorBox, panelFor } from '../templates/stock'
@@ -520,6 +522,36 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
         reason:
           'The label states a second-column Calories figure, and this engine draws Calories as a ' +
           'single figure above the nutrient rows. It is not printed.',
+        scope: 'detail',
+      })
+    }
+
+    /**
+     * A second-column percentage with no amount beside it, said out loud for the same
+     * reason. The panel prints a percentage after the amount its column declares, so a
+     * figure stated for a nutrient that column gives no amount for — or for Calories,
+     * drawn in its own block — has nowhere to go. The review of the commit that added
+     * the field found it dropped in silence.
+     */
+    const secondColumn = data.nutritionFacts.columns
+    const secondColumnDrawn = willDrawSecondColumn(data.nutritionFacts)
+    for (const [id, percent] of Object.entries(secondColumn?.secondPercentDv ?? {})) {
+      const entry = nutrient(id)
+      if (percent === undefined || entry === undefined) continue
+      const hasAmount = id !== 'calories' && secondColumn?.secondAmounts?.[entry.id] !== undefined
+      if (secondColumnDrawn && hasAmount) continue
+      omissions.push({
+        elementId:
+          id === 'calories' ? US_FOOD_ELEMENTS.nutritionCalories : nutritionRowElementId(entry.id),
+        reason:
+          `The label states a second-column percentage for ${entry.name}, and ` +
+          (!secondColumnDrawn
+            ? 'the panel draws a single column of figures. It is not printed.'
+            : id === 'calories'
+              ? 'the second column carries no Calories cell to print it in — Calories is drawn in ' +
+                'its own block above the nutrient rows. It is not printed.'
+              : 'the second column declares no amount for it to be printed beside. It is not ' +
+                'printed.'),
         scope: 'detail',
       })
     }
