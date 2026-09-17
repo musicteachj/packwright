@@ -10,6 +10,44 @@ forward. A finding worth keeping is not automatically a finding worth doing next
 
 ---
 
+## What is in here, as of 2026-09-17
+
+Every entry was read against the code on 2026-09-17 and sorted into four kinds. Nothing was struck on this
+pass: the entries describing work already done had been struck as the work landed, and no open entry turned out
+to be finished. What the reading changed is the shape of the file rather than its contents — a count of open
+entries was frightening and meaningless, because most of them are not work anybody intends to do.
+
+**Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
+provision that does not say what the finding claims. Two:
+
+- **A voluntary per-container column is cited to (e)(6)**, whose own words reach "as required in paragraph
+  (b)(12)(i)" or (b)(2)(i)(D). Below, under the phase 6 opening review.
+- **Two GS1 rules keep no reading of their source.** `gs1/gtin-check-digit` and `gs1/digital-link` cite the
+  General Specifications and the Digital Link syntax with no version, section or reading date, where
+  `geometry/symbol.ts` quotes GenSpec 25.0 by clause. Unverifiable rather than shown wrong, which this project
+  treats as the same thing. Below, under phase 7, stage 1.
+
+**Requirements nothing checks, and the findings say so.** Real regulatory ground the engine does not cover,
+where every pass it issues admits the gap in its own message. Schedulable, and safe to leave: the reference
+amounts of §101.12(b), the aggregate and bilingual displays, (j)(13)(ii)(B)'s permitted abbreviations, an egg
+carton's declared second column, a percentage stated for a nutrient with no Daily Value, the two spellings of
+a bracketed GHS combination code, the printed text of a GHS statement, and which mark belongs on the
+small-package abbreviated footnote.
+
+**What this engine does not check, by decision.** Not work, and not going to become work without a change of
+scope. These belong in front of a user rather than in a backlog: the Nutrition Facts footnote, which no
+document can make wrong; 101.3(b) and (d); the single-typeface assumption behind every type-size measurement;
+nutrition claims, whose condition reaches "labeling or advertising" beyond any label; the allergen advisory's
+deliberate over-strictness; a hazard classification derived from statement codes; the calorie-free footnote
+variant; and where the "% Daily Value*" heading sits on a dual-column panel.
+
+**Notes, history and chores.** The rest: decision records, reviewer claims since disproved, entries struck as
+they were fixed, and editor, API, scanner, security and test-hygiene work with no compliance meaning. One
+chore is worth doing before anything else that reads a nutrition panel's columns — **a primitive does not say
+which column it belongs to**, which cost four review rounds on one pull request.
+
+---
+
 ## Rules that do not exist yet
 
 **Nothing checks the Nutrition Facts footnote.** 21 CFR 101.9(d)(9) sets the footnote verbatim and
@@ -52,7 +90,9 @@ numbers were fixed — blank means unset, which is a thing the regulation permit
 dimensions are required, so a blank has no defined meaning, and the fix is a design question rather than a
 guard: retaining the last value snaps the digits back mid-edit, which is worse than the bug for anyone
 clearing a field to retype it. Sites: `UsFoodFormRail.vue` container width/height/circumference/surface area
-and stock width/height/margin.
+and stock width/height/margin. Re-read on 2026-09-17: the container fields now go through `requiredNumber`,
+which writes `NaN` rather than the empty string; the three stock fields are still bound raw, so that half
+stands.
 
 **The entry that stood here claimed a false clearance, and there was none.** It said `'' * 240` is `0` rather
 than `NaN`, so a cleared "Panel width" made the panel area a valid zero, `isNetQuantityZoneRequired(0)`
@@ -125,14 +165,16 @@ into each, and two review passes flagged the duplication independently. The read
 subset relationship holds, so what remains is the deletion itself — which is a commit of its own, not a line
 in one that was making the schema stricter.
 
-**Three export tests prove a statement reached the PDF by comparing file sizes.** The small-package line, the
-assortment statement and the unit container statement are each checked in `apps/api/src/labels/routes.test.ts`
-by asserting the PDF with the text is longer than one without. `renderPdf` compresses its content streams by
-default, so the size is the deflated size, and forty characters more text is not bound to make it larger. None
-has failed, and none is known to be wrong today. The check is simply weaker than it reads, and a change to font
-subsetting or stream compression could break it with nothing broken. Reading the text back, from an
-uncompressed render, would test what the assertion means. Found by the review of the (j)(15) change, which added
-the third instance.
+**Four export tests prove a statement reached the PDF by comparing file sizes.** The small-package line, the
+assortment statement, the unit container statement and the second column's figures are each checked in
+`apps/api/src/labels/routes.test.ts` by asserting the PDF with the text is longer than one without. `renderPdf`
+compresses its content streams by default, so the size is the deflated size, and forty characters more text is
+not bound to make it larger. None has failed, and none is known to be wrong today. The check is simply weaker
+than it reads, and a change to font subsetting or stream compression could break it with nothing broken.
+Reading the text back, from an uncompressed render, would test what the assertion means. Found by the review of
+the (j)(15) change, which added the third instance. Re-counted on 2026-09-17: there are four, and the fourth
+is older than the dual-column work it looks like it belongs to — the second column's figures have been checked
+this way since `6681343`, which is where the assertion came in.
 
 ## The scanner
 
@@ -585,7 +627,11 @@ the pictograms it vouches for, and the guard never gets the chance. The fix is i
 stamp: withhold the pass unless every member pictogram `wasFullyDrawn`. On today's engine that withholds it
 on every label carrying a pictogram, which is the correct answer while no glyph is drawn.
 
-**Five pass codes are reached by no fixture.** The sweep in `fixtures/sweep.ts` reaches 34 of 39.
+**Five pass codes are reached by no fixture.** The sweep in `fixtures/sweep.ts` reaches 35 of 40, re-counted on
+2026-09-17; the figures below were 34 of 39 when this was written, and the rule set has grown since. Both
+figures are counted by hand, and that is itself a small gap: nothing asserts either one. The nearest check,
+`certification.test.ts`, counts *rules* that cleared at least once, not pass codes, so the sweep could lose a
+code without a test noticing.
 `GHS_PICTOGRAM_COMPLETE` is unreachable by any document and correctly so: `glyphDrawn` is only ever `false`,
 because the Annex V specimen artwork was never verified, and the rule continues past the pass whenever it is.
 The other four are reachable and not in the sweep — `GHS_SMALL_CONTAINER_COMPLETE`, `FDA_DUAL_COLUMN_MET`,
@@ -597,7 +643,10 @@ the guarantee that every pass states what it certifies is now the compiler's, no
 matters for every reading that flips one of them, since a flip ships with a fixture that reaches it.
 `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` has since been flipped, and `FDA_DUAL_COLUMN_MET` and
 `FDA_DUAL_COLUMN_FORM_MET` pinned to the artwork. All three are reached by `certification.test.ts`, not by the
-sweep.
+sweep. Re-read on 2026-09-17: `FDA_DUAL_COLUMN_FORM_MET` is now reached by the known-bad fixtures and
+`FDA_PROTEIN_PERCENT_MET` by the sweep's toddler document, so the five unreached are
+`GHS_PICTOGRAM_COMPLETE`, `GHS_PICTOGRAM_SET_MATCHES`, `GHS_SMALL_CONTAINER_COMPLETE`, `FDA_DUAL_COLUMN_MET`
+and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`.
 
 **~~`us-food/nutrition-format`'s docblock and its behaviour disagree about (d)(11)(iii).~~ They do not, and
 this entry was wrong.** It recorded a disagreement while declining to read the paragraph, which `CLAUDE.md`
@@ -932,9 +981,10 @@ read path that repairs rather than refuses, and this is the first change that wo
 
 **Whether an unrecognised statement code should be a 400 at all is still open.** The schema refuses one; the
 layout engine, handed the same code, records an omission saying it drew nothing for it and carries on
-(`ghsEngine.ts:249-264`). Those are two different answers to one question, and only the schema's is visible to
-a user — as a rejected label rather than as a label that says what is missing from it. The audit path already
-chose the third position: show the code, refuse to confirm it, save the rest.
+(`ghsEngine.ts` — the block at 249-264 when this was written, 346-361 today). Those are two different answers
+to one question, and only the schema's is visible to a user — as a rejected label rather than as a label that
+says what is missing from it. The audit path already chose the third position: show the code, refuse to confirm
+it, save the rest.
 
 Rejecting is kept for now because it is what the audit endpoint's own warnings promise, and because a silently
 accepted code produces a label that looks complete and is not. But the alternative is defensible and arguably
@@ -997,14 +1047,17 @@ takes one frame and stops — so the extraction is a `useCameraStream` holding s
 error wording, with each caller keeping what it does with the frames. Worth doing before a third caller
 appears, and the two differ enough that it is not mechanical.
 
-**`api/savedLabels.ts` and `api/audit.ts` have near-duplicate `request` helpers.** The guarded parse of an
-error body — keep the server's sentence, fall back to a status-only message, never let a failed parse of an
-error page replace the real failure — is the subtle part and it is now written twice. The BACKLOG's own rule
-for the export helper was that a shared thing with one caller is a guess at what a second one wants; there
-are two callers now, so that objection is gone. What remains is that merging them means editing a shipped and
-tested module in the middle of a feature, which this project's habit says is done deliberately rather than
-while passing through. They differ in two ways worth keeping: saved labels handle a 204, and each carries its
-own error class.
+**`api/savedLabels.ts` and `api/audit.ts` have near-duplicate request handling.** Re-read on 2026-09-17: only
+`savedLabels.ts` has a named `request` helper; `audit.ts` carries the same guarded parse inline in
+`readGhsLabel`, which is the same duplication one step less visible — and `audit.ts`'s own docblock still says
+"The two `request` helpers are now near-duplicates", describing a helper it no longer has. The guarded parse
+of an error body — keep the server's sentence, fall back to a status-only message, never let a failed parse of
+an error page replace the real failure — is the subtle part and it is now written twice. The BACKLOG's own
+rule for the export helper was that a shared thing with one caller is a guess at what a second one wants;
+there are two callers now, so that objection is gone. What remains is that merging them means editing a
+shipped and tested module in the middle of a feature, which this project's habit says is done deliberately
+rather than while passing through. They differ in two ways worth keeping: saved labels handle a 204, and each
+carries its own error class.
 
 ---
 
