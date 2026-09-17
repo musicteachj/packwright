@@ -34,7 +34,11 @@ import {
 import type { NutrientId } from '../fda/nutrients'
 import { MM_PER_POINT } from '../geometry/units'
 import { measureTextMm, wrapTextMm } from '../text/measure'
-import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../templates/usFood'
+import {
+  US_FOOD_ELEMENTS,
+  dailyValuePopulationOf,
+  nutritionRowElementId,
+} from '../templates/usFood'
 import type { UsFoodNutritionFacts } from '../templates/usFood'
 import type { LayoutPrimitive, ResolvedElement } from './types'
 
@@ -110,7 +114,9 @@ function percentOf(facts: UsFoodNutritionFacts, id: NutrientId): number | undefi
   // Which nutrients print a percentage at all is `printedPercentDailyValue`'s
   // question, not this one's — the editor's rail has to give the same answer, and
   // when the rule was spelled here alone it did not.
-  return amount === undefined ? undefined : printedPercentDailyValue(id, amount)
+  return amount === undefined
+    ? undefined
+    : printedPercentDailyValue(id, amount, dailyValuePopulationOf(facts))
 }
 
 export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionPanelResult {
@@ -932,7 +938,10 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
          * `UsFoodNutritionFacts` states a percentage for it — so it is derived,
          * and that asymmetry is real rather than an oversight.
          */
-        const percent = column === 0 ? percentOf(facts, id) : printedPercentDailyValue(id, value)
+        const percent =
+          column === 0
+            ? percentOf(facts, id)
+            : printedPercentDailyValue(id, value, dailyValuePopulationOf(facts))
         // (e)'s "equal prominence" is a requirement, so the second column is set
         // at the first's size unless the label asks for something else.
         const columnPt =

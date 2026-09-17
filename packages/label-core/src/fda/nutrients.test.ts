@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   NUTRIENTS,
   NUTRIENT_IDS,
+  dailyValueFor,
   nutrient,
   percentDailyValue,
   permittedNutrientAmounts,
@@ -42,8 +43,11 @@ describe('the declared nutrients', () => {
     ])
   })
 
+  const adults = 'adults-and-children-4-plus' as const
+  const toddlers = 'children-1-through-3' as const
+
   it('carries the DRVs from 101.9(c)(9) for adults and children 4 or more years', () => {
-    const dv = (id: string) => nutrient(id)!.dailyValue!
+    const dv = (id: string) => dailyValueFor(id as never, adults)
     expect(dv('total-fat')).toEqual({ amount: 78, kind: 'drv' })
     expect(dv('saturated-fat')).toEqual({ amount: 20, kind: 'drv' })
     expect(dv('cholesterol')).toEqual({ amount: 300, kind: 'drv' })
@@ -55,11 +59,41 @@ describe('the declared nutrients', () => {
   })
 
   it('carries the RDIs from 101.9(c)(8)(iv)', () => {
-    const dv = (id: string) => nutrient(id)!.dailyValue!
+    const dv = (id: string) => dailyValueFor(id as never, adults)
     expect(dv('vitamin-d')).toEqual({ amount: 20, kind: 'rdi' })
     expect(dv('calcium')).toEqual({ amount: 1300, kind: 'rdi' })
     expect(dv('iron')).toEqual({ amount: 18, kind: 'rdi' })
     expect(dv('potassium')).toEqual({ amount: 4700, kind: 'rdi' })
+  })
+
+  it('carries the children 1 through 3 column of both tables', () => {
+    // Written out from the eCFR on 2026-09-17, where each table has a column headed
+    // "Children 1 through 3 years", and checked against the versioner XML of the same
+    // section, whose markup keeps the footnote markers apart from the figures. The HTML
+    // text runs them together — "2 39" for fat — which is how a marker becomes a digit.
+    const dv = (id: string) => dailyValueFor(id as never, toddlers)
+    // (c)(9), the DRVs, based on "the reference caloric intake of 1,000 calories".
+    expect(dv('total-fat')).toEqual({ amount: 39, kind: 'drv' })
+    expect(dv('saturated-fat')).toEqual({ amount: 10, kind: 'drv' })
+    expect(dv('cholesterol')).toEqual({ amount: 300, kind: 'drv' })
+    expect(dv('sodium')).toEqual({ amount: 1500, kind: 'drv' })
+    expect(dv('total-carbohydrate')).toEqual({ amount: 150, kind: 'drv' })
+    expect(dv('dietary-fiber')).toEqual({ amount: 14, kind: 'drv' })
+    expect(dv('added-sugars')).toEqual({ amount: 25, kind: 'drv' })
+    expect(dv('protein')).toEqual({ amount: 13, kind: 'drv' })
+    // (c)(8)(iv), the RDIs.
+    expect(dv('vitamin-d')).toEqual({ amount: 15, kind: 'rdi' })
+    expect(dv('calcium')).toEqual({ amount: 700, kind: 'rdi' })
+    expect(dv('iron')).toEqual({ amount: 7, kind: 'rdi' })
+    expect(dv('potassium')).toEqual({ amount: 3000, kind: 'rdi' })
+  })
+
+  it('sets no Daily Value for either population where the regulation sets none', () => {
+    for (const population of [adults, toddlers]) {
+      expect(dailyValueFor('trans-fat', population), population).toBeUndefined()
+      expect(dailyValueFor('total-sugars', population), population).toBeUndefined()
+      expect(dailyValueFor('calories', population), population).toBeUndefined()
+    }
   })
 
   it('returns nothing for an id it does not carry', () => {
@@ -155,21 +189,21 @@ describe('the percent Daily Value column carries two rounding rules', () => {
 
   it('rounds a DRV nutrient to the nearest whole percent', () => {
     // 9 g of 78 is 11.538 percent.
-    expect(percentDailyValue('total-fat', 9)).toBe(12)
+    expect(percentDailyValue('total-fat', 9, 'adults-and-children-4-plus')).toBe(12)
     // 160 mg of 2,300 is 6.956 percent.
-    expect(percentDailyValue('sodium', 160)).toBe(7)
+    expect(percentDailyValue('sodium', 160, 'adults-and-children-4-plus')).toBe(7)
     // 12 g of 50 is exactly 24.
-    expect(percentDailyValue('added-sugars', 12)).toBe(24)
+    expect(percentDailyValue('added-sugars', 12, 'adults-and-children-4-plus')).toBe(24)
   })
 
   it('reproduces the four examples 101.9(d)(8) prints', () => {
     // "(e.g., Vitamin D 2 mcg 10%, Calcium 260 mg 20%, Iron 8 mg 45%, Potassium
     // 235 mg 6%)" — the regulation's own worked answers, which is the strongest
     // golden vector available for this table.
-    expect(percentDailyValue('vitamin-d', 2)).toBe(10)
-    expect(percentDailyValue('calcium', 260)).toBe(20)
-    expect(percentDailyValue('iron', 8)).toBe(45)
-    expect(percentDailyValue('potassium', 235)).toBe(6)
+    expect(percentDailyValue('vitamin-d', 2, 'adults-and-children-4-plus')).toBe(10)
+    expect(percentDailyValue('calcium', 260, 'adults-and-children-4-plus')).toBe(20)
+    expect(percentDailyValue('iron', 8, 'adults-and-children-4-plus')).toBe(45)
+    expect(percentDailyValue('potassium', 235, 'adults-and-children-4-plus')).toBe(6)
   })
 
   it('settles a tie upward, which only the potassium example proves', () => {
@@ -178,28 +212,47 @@ describe('the percent Daily Value column carries two rounding rules', () => {
     // way a tie goes; the printed 6 does. Round half down and this example
     // breaks, which is the point of keeping it.
     expect((235 / 4700) * 100).toBe(5)
-    expect(percentDailyValue('potassium', 235)).toBe(6)
+    expect(percentDailyValue('potassium', 235, 'adults-and-children-4-plus')).toBe(6)
   })
 
   it('applies the 5-percent band above 10 and the 10-percent band above 50', () => {
     // 8 of 18 is 44.4 percent, in the 5-percent band: 45.
-    expect(percentDailyValue('iron', 8)).toBe(45)
+    expect(percentDailyValue('iron', 8, 'adults-and-children-4-plus')).toBe(45)
     // 12 of 18 is 66.7 percent, in the 10-percent band: 70.
-    expect(percentDailyValue('iron', 12)).toBe(70)
+    expect(percentDailyValue('iron', 12, 'adults-and-children-4-plus')).toBe(70)
     // 1 of 20 is 5 percent, in the 2-percent band: 6, by the same tie as above.
-    expect(percentDailyValue('vitamin-d', 1)).toBe(6)
+    expect(percentDailyValue('vitamin-d', 1, 'adults-and-children-4-plus')).toBe(6)
   })
 
   it('would give different answers under the wrong rule, which is why both exist', () => {
     // Iron at 44.4 percent: 44 under the whole-percent rule, 45 under the
     // banded one. A single rule applied to both columns is wrong here.
-    expect(percentDailyValue('iron', 8)).toBe(45)
+    expect(percentDailyValue('iron', 8, 'adults-and-children-4-plus')).toBe(45)
     expect(Math.round((8 / 18) * 100)).toBe(44)
   })
 
+  it('computes a food for children 1 through 3 against that column', () => {
+    // 101.9(c)(8)(i): foods "represented or purported to be specifically for ...
+    // children 1 through 3 years ... shall use the RDIs that are specified for the
+    // intended group". Worked by hand from the column above, avoiding ties.
+    const toddlers = 'children-1-through-3' as const
+    // 9 g of 39 is 23.08 percent, to the whole percent: 23. For an adult, 12.
+    expect(percentDailyValue('total-fat', 9, toddlers)).toBe(23)
+    // 160 mg of 1,500 is 10.67 percent: 11.
+    expect(percentDailyValue('sodium', 160, toddlers)).toBe(11)
+    // 3 g of 14 is 21.43 percent: 21.
+    expect(percentDailyValue('dietary-fiber', 3, toddlers)).toBe(21)
+    // 260 mg of 700 is 37.14 percent, in the 5-percent band: 35. For an adult, 20.
+    expect(percentDailyValue('calcium', 260, toddlers)).toBe(35)
+    // 8 mg of 7 is 114.29 percent, in the 10-percent band: 110.
+    expect(percentDailyValue('iron', 8, toddlers)).toBe(110)
+    // 235 mg of 3,000 is 7.83 percent, in the 2-percent band: 8.
+    expect(percentDailyValue('potassium', 235, toddlers)).toBe(8)
+  })
+
   it('gives nothing where the regulation sets no Daily Value', () => {
-    expect(percentDailyValue('trans-fat', 3)).toBeUndefined()
-    expect(percentDailyValue('total-sugars', 12)).toBeUndefined()
-    expect(percentDailyValue('calories', 200)).toBeUndefined()
+    expect(percentDailyValue('trans-fat', 3, 'adults-and-children-4-plus')).toBeUndefined()
+    expect(percentDailyValue('total-sugars', 12, 'adults-and-children-4-plus')).toBeUndefined()
+    expect(percentDailyValue('calories', 200, 'adults-and-children-4-plus')).toBeUndefined()
   })
 })

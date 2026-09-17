@@ -6,8 +6,10 @@ export {
 } from './allergens'
 export type { MajorFoodAllergen, MajorFoodAllergenId } from './allergens'
 export {
+  DAILY_VALUE_POPULATIONS,
   NUTRIENTS,
   NUTRIENT_IDS,
+  dailyValueFor,
   nutrient,
   percentDailyValue,
   permittedNutrientAmounts,
@@ -15,7 +17,13 @@ export {
   roundNutrientAmount,
   roundingIsCheckable,
 } from './nutrients'
-export type { DailyValueKind, Nutrient, NutrientId, NutrientRounding } from './nutrients'
+export type {
+  DailyValueKind,
+  DailyValuePopulation,
+  Nutrient,
+  NutrientId,
+  NutrientRounding,
+} from './nutrients'
 export {
   NUTRITION_DISPLAYS,
   NUTRITION_FOOTNOTE,

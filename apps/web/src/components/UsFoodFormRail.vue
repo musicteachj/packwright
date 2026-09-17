@@ -29,6 +29,7 @@ import {
   NUTRITION_FORMATS,
   DUAL_COLUMN_BASES,
   printedPercentDailyValue,
+  dailyValuePopulationOf,
   roundNutrientAmount,
   US_FOOD_ELEMENTS,
   US_FOOD_INGREDIENTS_EXEMPTIONS,
@@ -563,7 +564,7 @@ const printedPercent = (id: NutrientId): string => {
   // The same function the renderer uses, so this column says what the panel
   // beside it will actually print. Spelled separately it showed Protein at 10%
   // against a panel that prints none, which 101.9(d)(7)(ii) permits it to omit.
-  const value = printedPercentDailyValue(id, Number(printed))
+  const value = printedPercentDailyValue(id, Number(printed), dailyValuePopulationOf(facts))
   return value === undefined ? '—' : `${value}%`
 }
 

@@ -37,6 +37,21 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A food for children 1 through 3 is labelled against their Daily Values.** 21 CFR 101.9(c)(8)(i), read from
+  the eCFR on 2026-09-17: foods "represented or purported to be specifically for ... children 1 through 3 years ...
+  shall use the RDIs that are specified for the intended group". The nutrient table carried the adult column of the
+  (c)(8)(iv) and (c)(9) tables alone, and nothing could say whom a food was for. The panel now declares
+  `representedFor`, and the table carries the "Children 1 through 3 years" column of both, taken from the eCFR's
+  HTML and checked against its versioner XML, whose markup keeps the footnote markers apart from the figures: fat 39
+  g, saturated fat 10 g, cholesterol 300 mg, sodium 1,500 mg, total carbohydrate 150 g, dietary fiber 14 g, added
+  sugars 25 g, protein 13 g, vitamin D 15 mcg, calcium 700 mg, iron 7 mg and potassium 3,000 mg. The engine derives
+  percentages against the declared population, and the percentage rule judges against the same one. The population
+  is a required argument everywhere a percentage is computed, so a new caller cannot fall back to the adult values
+  unnoticed. On the conformant panel declared for toddlers, eight of its eleven stated percentages are now reported
+  wrong, and 3 g of fat prints as 8 percent rather than 4. The 1,000-calorie footnote (d)(9) requires of such a food
+  is not drawn yet, and a toddler food's protein percentage, which (c)(7)(i) says "shall be given", is not required
+  by any rule; both are recorded in `docs/BACKLOG.md`. Infants through 12 months are not carried.
+
 - **A "Contains" statement no longer drops an allergen it cannot name without saying so.** Tree nuts, fish and
   crustacean shellfish are declared by their specific type under §403(w)(2), and an ingredient stating none gives
   the statement nothing to print for it. The engine printed nothing for such an ingredient and recorded nothing.

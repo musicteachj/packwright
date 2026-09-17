@@ -31,6 +31,7 @@ export {
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
   NUTRITION_ELEMENT_PREFIX,
+  dailyValuePopulationOf,
   NUTRITION_ROW_PREFIX,
   nutritionRowElementId,
 } from './usFood'
