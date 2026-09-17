@@ -1006,6 +1006,36 @@ describe('the Nutrition Facts panel in the editor', () => {
     expect(codes()).toContain('FDA_PROTEIN_PERCENT_MET')
   })
 
+  it('takes a second-column percentage, which a toddler food needs to comply', async () => {
+    // (c)(7)(i) requires the protein percentage of such a food, and (e)(6) requires it in
+    // both columns of a per-serving and per-container panel. The engine derives none for
+    // protein, so until the column could state one the label could not be made compliant.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-represented-for').setValue('children-1-through-3')
+    await wrapper.find('#field-food-nf-dual').setValue(true)
+    await nextTick()
+    const amounts = store.foodData.nutritionFacts!.amounts
+    for (const [id, value] of Object.entries(amounts)) {
+      if (id === 'calories' || value === undefined) continue
+      const field = wrapper.find(`#field-food-nf2-${id}`)
+      if (field.exists()) await field.setValue(String(value * 2.5))
+    }
+    await wrapper.find('#field-food-nf-override').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-nf-dv-protein').setValue(38)
+    await nextTick()
+    expect(
+      store.findings.map((f) => f.code),
+      'premise: the second column still states none',
+    ).toContain('FDA_PROTEIN_PERCENT_MISSING')
+
+    await wrapper.find('#field-food-nf2-dv-protein').setValue(96)
+    await nextTick()
+    expect(store.foodData.nutritionFacts!.columns!.secondPercentDv).toEqual({ protein: 96 })
+    expect(store.findings.map((f) => f.code)).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+    expect(wrapper.find('svg[role="img"]').text(), 'and the panel prints it').toContain('96%')
+  })
+
   it('takes an egg carton, keeps its nutrition information, and draws no panel', async () => {
     const { store, wrapper } = await mountFood()
     const canvas = () => wrapper.find('svg[role="img"]').text()

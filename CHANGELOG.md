@@ -53,8 +53,9 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   `order`, which draws no cell in either column, had its stated figure counted in the pass — each certifying a
   percentage nothing printed. A percentage stated for a nutrient the second column gives no amount
   for, for Calories, or on a panel that draws a single column, is recorded as a layout omission rather than dropped,
-  as a second-column Calories amount already was. The editor and the API follow in the next commit; until then the field is reachable only from
-  label-core.
+  as a second-column Calories amount already was. The API carries the field to the export, and the editor takes
+  it beside the first column's printed figures, so a toddler food on a dual-column panel can be made compliant in the
+  browser.
 
 - **A dual-column finding cites the paragraph for what its second column counts.** 21 CFR 101.9(e), read from the
   eCFR on 2026-09-17, sets the columns out in three subparagraphs, each naming the dual labeling it reaches:

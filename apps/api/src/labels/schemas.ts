@@ -407,6 +407,7 @@ export function toColumns(
     ...(columns.basis === undefined ? {} : { basis: columns.basis }),
     ...(columns.headings === undefined ? {} : { headings: columns.headings }),
     ...(columns.secondAmounts === undefined ? {} : { secondAmounts: columns.secondAmounts }),
+    ...(columns.secondPercentDv === undefined ? {} : { secondPercentDv: columns.secondPercentDv }),
     ...(columns.separated === undefined ? {} : { separated: columns.separated }),
     ...(columns.secondColumnTypeScale === undefined
       ? {}
@@ -539,6 +540,10 @@ export const NutritionFactsSchema = z.object({
       // `separated` also made `FDA_DUAL_COLUMN_NOT_SEPARATED` unprovokable through
       // the API — a rule with a fixture and no route to it.
       secondAmounts: NutrientAmounts,
+      // The percentages that column prints, where it states its own rather than letting
+      // them derive — which is the only way a food for children 1 through 3 can give the
+      // protein percentage (c)(7)(i) requires of it in both columns.
+      secondPercentDv: NutrientAmounts,
       separated: z.boolean().optional(),
       secondColumnTypeScale: z.number().positive().optional(),
     })
