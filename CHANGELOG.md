@@ -37,6 +37,20 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A "Contains" statement no longer drops an allergen it cannot name without saying so.** Tree nuts, fish and
+  crustacean shellfish are declared by their specific type under §403(w)(2), and an ingredient stating none gives
+  the statement nothing to print for it. The engine printed nothing for such an ingredient and recorded nothing.
+  With `containsStatement: ['tree-nuts']` and a "praline" carrying tree nuts with no type, no Contains statement
+  was drawn and the layout's omissions were empty. `FDA_ALLERGEN_SOURCE_NOT_SPECIFIC` still reported the
+  ingredient, so no pass was false, but a declared element left the artwork with no trace. The engine now records
+  a detail omission naming each ingredient it could not name. Beside an ingredient that does name its nut, the
+  statement still prints for that one, "Contains: almonds.", and the omission now withholds two passes that
+  label used to receive: the Contains type size and 101.2(c)'s panel-wide type size. It also raises the
+  advisory `FDA_ALLERGEN_DECLARATION_UNCONFIRMED` for an allergen declared only in that statement, though it printed
+  whole, because the allergen rule cannot tell which part of the statement an omission affects. That over-firing was
+  already recorded in `docs/BACKLOG.md`, the review of this change found this case of it, and a test pins it. Nothing is recorded where
+  every ingredient names its source.
+
 - **An egg carton claiming 101.9(j)(14) keeps its nutrition information, and the outer carton draws none of it.**
   (j)(14), read from the eCFR on 2026-09-17: "Shell eggs packaged in a carton that has a top lid designed to
   conform to the shape of the eggs are exempt from outer carton label requirements where the required nutrition
@@ -53,7 +67,8 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   on the principal display panel. A second column the package owes under (b)(12)(i) is still required, judged on the figures declared
   for it since no panel is drawn to read it from, and a declared one is not certified. The first cut returned
   nothing either way, and the review of that commit caught it excusing the column. Not checked: that the lid conforms to the eggs, that the information is clearly presented where it
-  is declared to be, and how it is laid out there.
+  is declared to be, and how it is laid out there, including whether a declared second column states every
+  figure the first does.
 
 - **A unit container claiming 101.9(j)(15) bears the statement (iii) requires, at the size it sets.** (j)(15)
   exempts the unit containers of a multiunit retail package on three conditions, read from the eCFR on

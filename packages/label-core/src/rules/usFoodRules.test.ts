@@ -1087,6 +1087,87 @@ describe('findings from the stage 3 review', () => {
       expect(textOf(layout, US_FOOD_ELEMENTS.containsStatement)).toBe('')
       expect(layout.omissions.map((o) => o.reason).join(' ')).toContain('no ingredient carries')
     })
+
+    it('says so when an allergen it names has no source name to print', () => {
+      // Tree nuts, fish and crustacean shellfish are declared by their specific type,
+      // and an ingredient that states none gives the statement nothing to name. It used
+      // to draw nothing for it and record nothing, so a declared statement could leave
+      // the label with no trace. §403(w)(2)'s finding reports the ingredient; the
+      // omission reports what the artwork lost.
+      const containsOmissions = (layout: ReturnType<typeof layOutUsFoodLabel>) =>
+        layout.omissions.filter((o) => o.elementId === US_FOOD_ELEMENTS.containsStatement)
+      const praline = { name: 'praline', percentByWeight: 10, allergen: 'tree-nuts' as const }
+      const alone: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients: [{ name: 'sugar', percentByWeight: 90 }, praline],
+        ingredientThreshold: { percent: 2, count: 0 },
+        containsStatement: ['tree-nuts'],
+      }
+      const nothingNamed = layOutUsFoodLabel({ data: alone, stock })
+      expect(textOf(nothingNamed, US_FOOD_ELEMENTS.containsStatement)).toBe('')
+      const [lost] = containsOmissions(nothingNamed)
+      expect(lost!.scope).toBe('detail')
+      expect(lost!.reason).toContain('"praline"')
+      expect(lost!.reason).toContain('tree nuts')
+      expect(findingsFor(alone, stock).map((f) => f.code)).toContain(
+        FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
+      )
+
+      // Beside an ingredient that does name its nut, the statement prints for that one and
+      // still says what it could not name for the other.
+      const beside: UsFoodLabelData = {
+        ...alone,
+        ingredients: [
+          { name: 'sugar', percentByWeight: 80 },
+          praline,
+          {
+            name: 'almonds',
+            percentByWeight: 10,
+            allergen: 'tree-nuts',
+            allergenSpecificType: 'almonds',
+          },
+        ],
+      }
+      const partlyNamed = layOutUsFoodLabel({ data: beside, stock })
+      expect(textOf(partlyNamed, US_FOOD_ELEMENTS.containsStatement)).toBe('Contains: almonds.')
+      expect(containsOmissions(partlyNamed).map((o) => o.reason)).toEqual([
+        expect.stringContaining('"praline"'),
+      ])
+
+      // And nothing is recorded where every ingredient names its source.
+      expect(containsOmissions(layOutUsFoodLabel(US_FOOD_CONFORMANT))).toEqual([])
+    })
+
+    it('leaves another allergen in that statement unconfirmed, though it printed whole', () => {
+      // Pinned so the cost is a decision rather than an accident. The allergen rule asks
+      // whether a declaring element has any omission, not which part of it was lost, so
+      // the omission for an unnamed praline also withholds confirmation of the marzipan's
+      // almonds, which "Contains: almonds." declares in full. Stricter than necessary,
+      // never looser, and the over-firing `docs/BACKLOG.md` already records; the review
+      // of this change found it. Fixing that entry should change this expectation.
+      const data: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients: [
+          { name: 'sugar', percentByWeight: 80 },
+          { name: 'praline', percentByWeight: 10, allergen: 'tree-nuts' },
+          {
+            name: 'marzipan',
+            percentByWeight: 10,
+            allergen: 'tree-nuts',
+            allergenSpecificType: 'almonds',
+          },
+        ],
+        ingredientThreshold: { percent: 2, count: 0 },
+        containsStatement: ['tree-nuts'],
+      }
+      const layout = layOutUsFoodLabel({ data, stock })
+      expect(textOf(layout, US_FOOD_ELEMENTS.containsStatement)).toBe('Contains: almonds.')
+      const findings = findingsFor(data, stock)
+      const unconfirmed = findings.find((f) => f.code === 'FDA_ALLERGEN_DECLARATION_UNCONFIRMED')
+      expect(unconfirmed!.severity).toBe('advisory')
+      expect(unconfirmed!.message).toContain('"marzipan" contains almonds')
+      expect(findings.map((f) => f.code)).not.toContain('FDA_CONTAINS_TYPE_MET')
+    })
   })
 
   it('does not walk a prototype chain to find an allergen', () => {
@@ -1783,10 +1864,10 @@ describe('the §101.9(j) nutrition exemption', () => {
       expect(pass!.message).toContain(words)
       expect(pass!.message, 'and says what it cannot check').toContain('Not checked here:')
       expect(pass!.message, 'naming the column among what is judged').toContain(
-        'any second column the package owes',
+        'must declare any second column the package owes',
       )
       expect(pass!.message, 'and its layout among what is not').toContain(
-        'a second column’s headings, figures and separation',
+        'whether a second column states every figure the first does',
       )
       expect(codesOf(findings)).not.toContain('FDA_NUTRITION_MISSING')
     })

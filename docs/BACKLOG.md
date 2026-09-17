@@ -232,7 +232,10 @@ proviso's condition is about the printed declaration, so stamping it `document` 
 the omission of the very declaration it is conditional on — this defect, deepened. `certification.test.ts`
 now fails if it survives one.
 
-**A "Contains" statement can vanish unannounced.** `usFoodEngine.ts` records an omission for an allergen no
+**~~A "Contains" statement can vanish unannounced.~~ Fixed** on `fix/contains-unnamed-allergen`. The engine
+records a detail omission for each ingredient whose allergen needs a specific type and states none, naming the
+ingredient, whether or not the statement prints for others. Reproduced again before the fix on 2026-09-17. What
+follows is the entry as it stood. `usFoodEngine.ts` records an omission for an allergen no
 ingredient carries, but not for the case where every bearing ingredient yields no food-source name — which is
 what `tree nuts`, `fish` and `crustacean shellfish` do without an `allergenSpecificType`. Reproduced:
 `containsStatement: ['tree-nuts']` with `{ name: 'praline', allergen: 'tree-nuts' }` draws no Contains
@@ -571,6 +574,17 @@ carton lid or in an insert that can be clearly seen when the carton is opened". 
 not excused, and this engine draws neither the underside of a lid nor an insert, so a pass saying no panel is
 required would certify a declaration nothing printed.
 
+**An egg carton's second column is required, but not checked for completeness.** Found by `/code-review high`
+on PR #36 and reproduced on `feat/egg-carton-and-unit-container`. A package in (b)(12)(i)'s band declaring a
+second column with a figure for total fat alone gets `FDA_DUAL_COLUMN_MET` and `FDA_DUAL_COLUMN_INCOMPLETE` on
+the ordinary label. Claiming (j)(14), the same declaration gets no dual-column finding at all. The mandate rule
+reads the declared figures for a carton, since no panel is drawn, and is satisfied by any second-column figure.
+The completeness check lives in `us-food/dual-column-form`, which reads the drawn column, and nothing is
+drawn. No false pass is issued, and the carton's exemption pass lists the column's completeness among what it
+does not check. Checking it from the declared figures is possible, but (e)(1)'s form rules are written about a
+drawn panel, and deciding which of them hold of information presented beneath a lid wants a reading of its
+own rather than a patch.
+
 **~~The small-package display route trusts a typed area that the label and its panel rule out.~~ Fixed** on
 `fix/small-package-display-floor`. One helper, `labelingSurfaceFloor` in `geometry/pdp.ts`, takes the larger of
 the label's area and the principal display panel's, and `smallPackageRouteApplies` and `formatIsPermitted` let it
@@ -658,14 +672,17 @@ it is a change of its own.
 
 **`FDA_ALLERGEN_DECLARATION_UNCONFIRMED` fires on a declaration that printed whole.** Recorded from the `high`
 review of PR #31, and reproduced. The allergen rule asks `wasFullyDrawn` of each declaring element, which counts
-every omission, positional or not. Two cases where the source prints raise the advisory anyway. On
+every omission, positional or not. Cases where the source prints raise the advisory anyway. On
 `US_FOOD_CONFORMANT` with the almonds renamed `nut paste`, not declared inline, and `containsStatement:
 ['tree-nuts', 'milk']` on the full 240 mm stock, "Contains: almonds." prints on a baseline at 162.77 mm, and the
 only omission is the engine's `detail` for the milk entry no ingredient carries. The editor reaches this
 routinely: `UsFoodFormRail.vue` keeps a Contains tick after its ingredient's allergen is cleared, on purpose.
-The other case is 163.15 mm with no firm, where the line prints and only its line box overhangs. Neither is a
-false clearance, and since that PR the message claims only that an omission is recorded. It is still an
-advisory about a label that is fine.
+The other case is 163.15 mm with no firm, where the line prints and only its line box overhangs. A third arrived
+on `fix/contains-unnamed-allergen`, found by its review and pinned by a test: the engine now records an omission
+for each ingredient the Contains statement cannot name, so a praline with no nut type beside a marzipan typed as
+almonds prints "Contains: almonds." whole and still raises the advisory for the marzipan. None is a
+false clearance, and since that PR the message claims only that an omission is recorded. It is still an advisory about a declaration that is fine,
+though in the third case the label also carries the praline's real violation.
 The review suggested the rule read line by line — keep only the Contains and list lines that landed on the
 stock and search those — which would need no engine change. It is not a small fix, for two reasons. First, a
 baseline on the stock does not put the glyphs there: descenders hang below it, and `FaceMetrics` in

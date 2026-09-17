@@ -34,7 +34,7 @@ import {
   wrapTextMm,
 } from '../text/measure'
 import { roundTo } from '../geometry/units'
-import { foodSourceName } from '../fda/allergens'
+import { foodSourceName, majorFoodAllergen } from '../fda/allergens'
 import { layOutNutritionPanel, willDrawSecondColumn } from './nutritionPanel'
 import type { UsFoodLabelData } from '../templates/usFood'
 import {
@@ -656,7 +656,23 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       }
       for (const entry of bearing) {
         const source = foodSourceName(id, entry.allergenSpecificType)
-        if (source !== undefined && !sources.includes(source)) sources.push(source)
+        if (source !== undefined) {
+          if (!sources.includes(source)) sources.push(source)
+          continue
+        }
+        // §403(w)(2): tree nuts, fish and crustacean shellfish are named by their
+        // specific type, and an ingredient stating none gives this statement nothing
+        // to print for it. Inventing one is not this engine's to do, and saying nothing
+        // let a declared statement vanish from the label with no trace — so it is
+        // recorded, once for each ingredient it could not name.
+        omissions.push({
+          elementId: US_FOOD_ELEMENTS.containsStatement,
+          reason:
+            `The "Contains" statement names nothing for "${entry.name}", which contains ` +
+            `${majorFoodAllergen(id)?.name ?? id} and states no specific type, and a food source ` +
+            "name for it is not this engine's to invent.",
+          scope: 'detail',
+        })
       }
     }
     if (sources.length > 0) {
