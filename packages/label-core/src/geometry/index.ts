@@ -23,6 +23,7 @@ export {
   minNetQuantityTypeHeightMm,
   regulatedGlyphBasis,
   netQuantityZoneTopMm,
+  labelingSurfaceFloor,
   pdpAreaSqInches,
   pdpAreaSqMm,
 } from './pdp'
@@ -30,6 +31,7 @@ export type {
   Container,
   ContainerShape,
   CylindricalContainer,
+  LabelingSurfaceFloor,
   NetQuantityMarkingMethod,
   OtherContainer,
   RectangularPanel,

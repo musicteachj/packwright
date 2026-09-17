@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   isNetQuantityZoneRequired,
+  labelingSurfaceFloor,
   minNetQuantityTypeHeightInches,
   minNetQuantityTypeHeightMm,
   netQuantityZoneTopMm,
@@ -144,5 +145,29 @@ describe('isNetQuantityZoneRequired', () => {
     // rule that skips this check reports a violation against a small package
     // that is fully compliant.
     expect(isNetQuantityZoneRequired(sqIn)).toBe(expected)
+  })
+})
+
+describe('labelingSurfaceFloor', () => {
+  // Worked by hand: 1 in² is 25.4² = 645.16 mm². A 120 × 240 mm label is 28,800 mm²,
+  // 44.64 in²; a 50 × 60 mm panel 3,000 mm², 4.65 in²; a cylinder 100 mm tall and 150 mm
+  // round has a 101.1(b) panel of 0.4 × 100 × 150 = 6,000 mm², 9.30 in².
+  it('takes the label where the label is larger, and says why it counts', () => {
+    const floor = labelingSurfaceFloor(
+      { widthMm: 120, heightMm: 240 },
+      { shape: 'rectangular', widthMm: 50, heightMm: 60 },
+    )
+    expect(floor.what).toBe('label')
+    expect(floor.sqInches).toBeCloseTo(28_800 / 645.16, 9)
+    expect(floor.why).toContain('bears at least the labeling on it')
+  })
+
+  it('takes the principal display panel where the panel is larger', () => {
+    const floor = labelingSurfaceFloor(
+      { widthMm: 60, heightMm: 70 },
+      { shape: 'cylindrical', heightMm: 100, circumferenceMm: 150 },
+    )
+    expect(floor.what).toBe('principal display panel')
+    expect(floor.sqInches).toBeCloseTo(6_000 / 645.16, 9)
   })
 })

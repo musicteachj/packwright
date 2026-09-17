@@ -33,6 +33,8 @@
  * and §101.100 already get.
  */
 
+import type { LabelingSurfaceFloor } from '../geometry/pdp'
+
 export const NUTRITION_FORMATS = ['vertical', 'tabular', 'linear'] as const
 export type NutritionFormat = (typeof NUTRITION_FORMATS)[number]
 
@@ -125,8 +127,13 @@ export const REDUCED_FORMAT_MAX_SQ_INCHES = 40
 export const TABULAR_VERTICAL_SPACE_INCHES = 3
 
 export interface FormatEntitlement {
-  /** Total surface area available to bear labeling, in square inches. */
+  /** Total surface area available to bear labeling, in square inches, as declared. */
   availableSqInches: number
+  /**
+   * What the drawn label and panel show the area to be at least. Where it exceeds the
+   * declared figure it governs — see `labelingSurfaceFloor`.
+   */
+  floor?: LabelingSurfaceFloor
   /**
    * 101.9(j)(13)(ii)(A): "the package shape or size cannot accommodate a
    * standard vertical column or tabular display on any label panel". A fact
@@ -165,9 +172,30 @@ export interface FormatVerdict {
  * package took.
  */
 export function smallPackageRouteApplies(entitlement: FormatEntitlement): boolean {
-  const under12 = entitlement.availableSqInches < SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES
-  const under40 = entitlement.availableSqInches <= REDUCED_FORMAT_MAX_SQ_INCHES
+  const area = governingArea(entitlement).sqInches
+  const under12 = area < SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES
+  const under40 = area <= REDUCED_FORMAT_MAX_SQ_INCHES
   return under12 || (under40 && entitlement.cannotAccommodateVertical === true)
+}
+
+/**
+ * The area the entitlement turns on: the declared figure, unless what is drawn shows the
+ * package has more — and a sentence saying which, for a finding.
+ */
+function governingArea(entitlement: FormatEntitlement): { sqInches: number; describe: string } {
+  const { availableSqInches, floor } = entitlement
+  if (floor !== undefined && floor.sqInches > availableSqInches) {
+    return {
+      sqInches: floor.sqInches,
+      describe:
+        `the ${floor.what} is itself ${floor.sqInches.toFixed(1)} in², and ${floor.why}, so ` +
+        `the package has at least that much available to bear labeling however much is declared`,
+    }
+  }
+  return {
+    sqInches: availableSqInches,
+    describe: `the package has ${availableSqInches.toFixed(1)} in² available to bear labeling`,
+  }
 }
 
 /**
@@ -181,13 +209,14 @@ export function formatIsPermitted(
   format: NutritionFormat,
   entitlement: FormatEntitlement,
 ): FormatVerdict {
-  const { availableSqInches, cannotAccommodateTabular } = entitlement
+  const { cannotAccommodateTabular } = entitlement
 
   if (format === 'vertical') {
     return { permitted: true, reason: '', reference: '21 CFR 101.9(d)' }
   }
 
-  const under40 = availableSqInches <= REDUCED_FORMAT_MAX_SQ_INCHES
+  const area = governingArea(entitlement)
+  const under40 = area.sqInches <= REDUCED_FORMAT_MAX_SQ_INCHES
   const reduced = smallPackageRouteApplies(entitlement)
 
   // (d)(11)(iii) is a second route to the tabular display and does not run
@@ -205,11 +234,9 @@ export function formatIsPermitted(
     return {
       permitted: false,
       reason: under40
-        ? `the package is ${availableSqInches.toFixed(1)} in², which permits a reduced display ` +
-          'only where its shape or size cannot accommodate a standard vertical column, and the ' +
-          'label does not say so'
-        : `the package has ${availableSqInches.toFixed(1)} in² available to bear labeling, and a ` +
-          'reduced display is permitted only at 40 in² or less',
+        ? `${area.describe}, which permits a reduced display only where its shape or size ` +
+          'cannot accommodate a standard vertical column, and the label does not say so'
+        : `${area.describe}, and a reduced display is permitted only at 40 in² or less`,
       reference: '21 CFR 101.9(j)(13)(ii)(A)',
     }
   }

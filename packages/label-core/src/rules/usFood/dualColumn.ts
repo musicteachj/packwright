@@ -36,6 +36,7 @@
  * that is broken.
  */
 
+import { labelingSurfaceFloor } from '../../geometry/pdp'
 import { dualColumnDuty, smallPackageRouteApplies } from '../../fda/nutritionFormats'
 import { DUAL_COLUMN_BASIS_REFERENCE } from '../../fda/nutritionFormats'
 import type { MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
@@ -115,7 +116,7 @@ export const usFoodDualColumnRule: UsFoodRule = {
   codes: [FDA_DUAL_COLUMN_MISSING, FDA_DUAL_COLUMN_MET, FDA_DUAL_COLUMN_EXEMPT],
   appliesTo: 'us-food',
 
-  check({ data, layout }: UsFoodContext): Finding[] {
+  check({ data, layout, stock }: UsFoodContext): Finding[] {
     const panel = data.nutritionFacts
     if (panel === undefined) return []
 
@@ -126,6 +127,10 @@ export const usFoodDualColumnRule: UsFoodRule = {
       panel.availableSurfaceSqInches !== undefined &&
       smallPackageRouteApplies({
         availableSqInches: panel.availableSurfaceSqInches,
+        // A package whose label or panel is too big for the route cannot meet its
+        // requirements, whatever area is declared — and the exemption this grants is
+        // stamped on the document, so no omission would ever withhold it.
+        floor: labelingSurfaceFloor(stock, data.container),
         ...(panel.cannotAccommodateVertical === undefined
           ? {}
           : { cannotAccommodateVertical: panel.cannotAccommodateVertical }),

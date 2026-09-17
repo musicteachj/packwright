@@ -128,12 +128,17 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument; stoc
       label: 'tabular display, small package',
       data: {
         ...US_FOOD_CONFORMANT.data,
+        container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
         nutritionFacts: {
           ...US_FOOD_CONFORMANT.data.nutritionFacts!,
           format: 'tabular',
           availableSurfaceSqInches: 5,
         },
       },
+      // A label and panel under 12 in², so the declared 5 in² is not ruled out. Built on
+      // the conformant 44.64 in² label, this document reached the pass it existed for
+      // by trusting a figure the label contradicted.
+      stock: { widthMm: 60, heightMm: 70, marginMm: 3 },
     },
     // `us-food/dual-column-required` reports a second column excused. It is built
     // with `passedOnDocument`, and without it the sweep observes only one of the

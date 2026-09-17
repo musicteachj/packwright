@@ -573,6 +573,11 @@ describe('the Nutrition Facts displays, from the editor', () => {
 
   it('declares the facts no artwork can show, rather than inferring them', async () => {
     const { store, wrapper } = await mountFood()
+    // A label and panel that do not rule out the 9 in² declared below: 120 × 60 mm is
+    // 11.16 in². On the default 44.64 in² label no declaration could reach the route.
+    Object.assign(store.foodStock, { widthMm: 120, heightMm: 60, marginMm: 3 })
+    store.foodData.container = { shape: 'rectangular', widthMm: 50, heightMm: 60 }
+    await nextTick()
     await wrapper.find('#field-food-nf-format').setValue('linear')
     await nextTick()
     await wrapper.find('#field-food-nf-area').setValue(9)

@@ -37,6 +37,23 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **The small-package display route no longer trusts an area the label and its panel contradict.** 101.9(j)(13)(ii)(A)
+  lets a package with "less than 12 square inches" available to bear labeling — or 40 or less, where its shape
+  cannot take a vertical column — use the tabular or linear display, and three things follow from that route:
+  the format entitlement; the display chosen, which lowers the Calories numeral from 22 point to 14 and the
+  servings statement from 10 to 9; and the (b)(12)(i)(A) exemption from a mandatory second column, for
+  "products that meet the requirements to use" that display. All three read the declared area alone. On
+  `US_FOOD_CONFORMANT`'s 120 × 240 mm label, whose panel is also 44.64 in², typing 5 in² returned
+  `FDA_NUTRITION_FORMAT_MET`, drew the Calories numeral at 14 point and cleared it, and returned
+  `FDA_DUAL_COLUMN_EXEMPT` on a package the second column was mandatory for — a `document` pass, which no
+  omission would ever withhold. The label and its principal display panel are floors under that surface, as the
+  (j)(13)(i) exemption already treats them, so one helper, `labelingSurfaceFloor`, gives the larger of the two,
+  and the entitlement lets it overrule a smaller declared figure and says so in the finding. The engine passes it
+  to the display choice and the type-size, format and dual-column rules compute it the same way, so the drawing
+  and its judgement cannot pick different displays for one package; the (j)(13)(i) exemption uses it too. The
+  tests and the sweep's permission document that declared small areas on the full-size label now use small labels
+  and containers, and each keeps a case on the large label asserting the route is refused.
+
 - **An assortment claiming § 101.100(a)(1) must bear a statement naming what may be present.** (a)(1) exempts
   an assortment "with respect to any ingredient that is not common to all packages", "on the condition that the
   label shall bear, in conjunction with the names of such ingredients as are common to all packages, a

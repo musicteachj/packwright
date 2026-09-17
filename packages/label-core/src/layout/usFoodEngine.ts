@@ -21,7 +21,12 @@
  * shape as the GHS engine deriving a pictogram set unless one is stated.
  */
 
-import { minNetQuantityTypeHeightMm, regulatedGlyphBasis, pdpAreaSqInches } from '../geometry/pdp'
+import {
+  labelingSurfaceFloor,
+  minNetQuantityTypeHeightMm,
+  regulatedGlyphBasis,
+  pdpAreaSqInches,
+} from '../geometry/pdp'
 import {
   fontSizeMmForGlyphHeight,
   measuredFamilyFor,
@@ -409,6 +414,7 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       widthMm: panelWidthMm,
       fontFamily: type.fontFamily,
       emphasisFontWeight: type.emphasisFontWeight,
+      availableSurfaceFloor: labelingSurfaceFloor(stock, data.container),
     })
     primitives.push(...drawn.primitives)
     elements.push(...drawn.elements)
