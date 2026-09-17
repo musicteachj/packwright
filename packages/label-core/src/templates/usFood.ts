@@ -206,7 +206,8 @@ export type UsFoodIngredientsExemption =
  *   'This Unit Not Labeled For Retail Sale' in type size not less than 1/16-inch in
  *   height" under (iii). Declared with the wording claimed, since "individual" may
  *   stand in lieu of or before "Retail"; the engine prints the statement from
- *   `fda/unitContainerStatement.ts` and a rule measures it.
+ *   `fda/unitContainerStatement.ts` and a rule measures it. Left out until both
+ *   did, for the reason (j)(14) still is.
  * - `bulk-at-retail` — (j)(16), food sold from bulk containers.
  * - `low-volume` — (j)(18), low-volume products of a small business.
  *
@@ -219,8 +220,7 @@ export type UsFoodIngredientsExemption =
  * carton, whose information must be "clearly presented immediately beneath the
  * carton lid or in an insert" — relocated, not excused. The first draft of this
  * list offered (j)(14) and called (j)(8) and (j)(11) not exemptions at all; a
- * review of it read the paragraphs again. (j)(15) was left out on the same
- * ground until its statement was printed and measured.
+ * review of it read the paragraphs again.
  */
 export const US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE = [
   'small-business',

@@ -21,6 +21,18 @@
  * case is used. The statement sits on that panel and is set in mixed case, so the rule
  * that judges it borrows that basis (`regulatedGlyphBasis`) rather than inventing one,
  * and cites (iii) for the figure.
+ *
+ * **"Type size … in height" is a letter height, not a point size.** A review asked
+ * whether (iii)'s "type size not less than 1/16-inch" meant the em, which would allow a
+ * statement set at 4.5 point. Part 101 was read on the eCFR on 2026-09-17 to settle it.
+ * Where it means the em it says "point" — 101.9(d)(1)(iii)'s "type size no smaller than
+ * 8 point". Where it gives inches it means the letters, and 101.2 uses the two phrasings
+ * for one measure: (c) sets "letters and/or numbers" of one-sixteenth inch "in height",
+ * and both (c)(2), which exempts serving-size packages lacking room for "a type size of
+ * 1/16 inch in height", and (f), which allows "a type size smaller than one-sixteenth
+ * inch in height", describe that same floor. 101.9(j)(13)(i)(B) keeps the two apart
+ * outright: "type size no smaller than 6 point or all upper-case type of 1/16 inches
+ * minimum height".
  */
 
 import { MM_PER_INCH } from '../geometry/units'

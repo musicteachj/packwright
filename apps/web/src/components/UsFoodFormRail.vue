@@ -33,6 +33,7 @@ import {
   US_FOOD_ELEMENTS,
   US_FOOD_INGREDIENTS_EXEMPTIONS,
   US_FOOD_NUTRITION_EXEMPTIONS,
+  US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
   UNIT_CONTAINER_STATEMENTS,
   UNIT_CONTAINER_WORDINGS,
   US_FOOD_PACKAGINGS,
@@ -51,7 +52,7 @@ import {
   type MajorFoodAllergenId,
   type NutrientId,
   type UsFoodIngredientsExemptionKind,
-  type UsFoodNutritionExemptionKind,
+  type UsFoodUnitContainerExemption,
   type UnitContainerWording,
 } from '@packwright/label-core'
 import { computed, ref } from 'vue'
@@ -483,7 +484,7 @@ const nutritionExemption = computed({
       data.nutritionExemption = { kind: 'unit-container', wording: 'retail' }
     } else {
       data.nutritionExemption = {
-        kind: next as Exclude<UsFoodNutritionExemptionKind, 'small-package' | 'unit-container'>,
+        kind: next as (typeof US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE)[number],
       }
     }
   },
@@ -691,13 +692,16 @@ const smallPackageContactLine = computed({
   },
 })
 
-/** Which of (j)(15)(iii)'s three wordings the unit bears, where that is the exemption claimed. */
+/** The unit container's particulars, where that is the exemption claimed. */
+const unitContainer = (): UsFoodUnitContainerExemption | undefined =>
+  data.nutritionExemption?.kind === 'unit-container' ? data.nutritionExemption : undefined
+
+/** Which of (j)(15)(iii)'s three wordings the unit bears. */
 const unitContainerWording = computed({
-  get: (): UnitContainerWording =>
-    data.nutritionExemption?.kind === 'unit-container' ? data.nutritionExemption.wording : 'retail',
+  get: (): UnitContainerWording => unitContainer()?.wording ?? 'retail',
   set: (next: UnitContainerWording) => {
-    const claimed = data.nutritionExemption
-    if (claimed?.kind === 'unit-container') claimed.wording = next
+    const claimed = unitContainer()
+    if (claimed !== undefined) claimed.wording = next
   },
 })
 const containerSurfaceAreaSqMm = requiredNumber(() => shaped('other'), 'totalSurfaceAreaSqMm')

@@ -93,6 +93,17 @@ now, so the 32 MB in-memory sort ceiling is no longer the limit, but the respons
 Pagination is an API shape decision — cursor or offset, and what the client does with it — and it belongs
 with the list view that will consume it rather than ahead of it.
 
+**The Nutrition Facts section reads "exempt" while the label also carries a panel.** The status line is
+`nutritionExemption !== '' ? 'exempt' : …`, and neither the exemption picker nor the panel checkbox clears the
+other. Reproduced in jsdom on `feat/egg-carton-and-unit-container`: claim the (j)(15) unit container, then tick
+"The label bears a Nutrition Facts panel". The section says "exempt", while the rules treat the label as
+carrying a panel. They grant no exemption, report the new empty panel's missing nutrients, and the engine
+draws no statement. The rules are right, because a label printing a panel is not using its exemption, so
+nothing false is certified. But the rail tells the user the opposite of what the report does, and the saved
+document carries a claim nothing judges. It was already true of the (j)(13)(i) small package and every kind
+claimed alone. Whether ticking one should clear the other, or the status should read the panel first, is a
+design choice for the editor rather than a fix to slip into the exemption work.
+
 ## The API's tests
 
 **`loadEnv` is tested twice, in two files.** `apps/api/src/env.test.ts` and a `describe('loadEnv')` block
@@ -109,6 +120,15 @@ The cost has since been paid twice more. Repairing both copies meant pasting the
 into each, and two review passes flagged the duplication independently. The reading has now been done and the
 subset relationship holds, so what remains is the deletion itself — which is a commit of its own, not a line
 in one that was making the schema stricter.
+
+**Three export tests prove a statement reached the PDF by comparing file sizes.** The small-package line, the
+assortment statement and the unit container statement are each checked in `apps/api/src/labels/routes.test.ts`
+by asserting the PDF with the text is longer than one without. `renderPdf` compresses its content streams by
+default, so the size is the deflated size, and forty characters more text is not bound to make it larger. None
+has failed, and none is known to be wrong today. The check is simply weaker than it reads, and a change to font
+subsetting or stream compression could break it with nothing broken. Reading the text back, from an
+uncompressed render, would test what the assertion means. Found by the review of the (j)(15) change, which added
+the third instance.
 
 ## The scanner
 

@@ -46,4 +46,5 @@ export type {
   UsFoodPackaging,
   UsFoodSmallPackageExemption,
   UsFoodResponsibleFirm,
+  UsFoodUnitContainerExemption,
 } from './usFood'

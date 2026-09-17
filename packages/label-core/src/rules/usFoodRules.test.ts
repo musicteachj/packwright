@@ -1688,6 +1688,30 @@ describe('the §101.9(j) nutrition exemption', () => {
       const missing = findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
       expect(missing!.severity).toBe('blocking')
       expect(missing!.citation.reference).toBe('21 CFR 101.9(j)(15)(iii)')
+      expect(missing!.elementId, 'nothing printed, so the panel it would sit on').toBe(
+        US_FOOD_ELEMENTS.principalDisplayPanel,
+      )
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('reports a statement printed in words other than those claimed, and outlines it', () => {
+      // A layout drawn for one wording, judged against a claim of another: the words on the
+      // unit are the thing at fault, so the finding names the element that carries them.
+      const layout = layOutUsFoodLabel({ data: claim({ wording: 'retail' }), stock })
+      const data = claim({ wording: 'individual' })
+      const findings = usFoodNutritionCompletenessRule.check({
+        labelType: 'us-food',
+        data,
+        stock,
+        layout,
+      })
+      const missing = findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(j)(15)(iii)')
+      expect(missing!.measurement).toEqual({
+        actual: 'This Unit Not Labeled For Retail Sale',
+        required: '"This Unit Not Labeled For Individual Sale"',
+      })
+      expect(missing!.elementId).toBe(US_FOOD_ELEMENTS.unitContainerStatement)
       expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
     })
 

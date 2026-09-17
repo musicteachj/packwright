@@ -54,7 +54,11 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   it at 2 mm of em, whose lowercase "o" stands 1.08 mm against the 1.59 mm floor; and the pass names the printed
   statement, so one that ran off the label withholds it. (iii) names no letter to measure, so the height is
   taken on the basis 101.2(c) incorporates from 101.7(h)(2) for the same panel, and the 101.2(c) rule leaves this
-  element to (iii) so that one dimension is not reported twice. The two conditions on the outer package are not
+  element to (iii) so that one dimension is not reported twice. The review of this change asked whether "type
+  size not less than 1/16-inch in height" meant the point size, which would allow 4.5 point. Part 101 says
+  "point" where it means the em, and 101.2 itself calls its "letters and/or numbers" floor "a type size of 1/16
+  inch in height", so it is read as a letter height. A statement printed in words other than those claimed is
+  outlined on the canvas, rather than the panel it sits on. The two conditions on the outer package are not
   checked, and the exception for units that "bear no labeling at all" is not reachable here, since this project
   exists to draw the label being judged.
 

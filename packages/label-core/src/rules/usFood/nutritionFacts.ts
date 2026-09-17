@@ -50,10 +50,9 @@ import {
 } from '../../fda/nutrients'
 import type { NutrientId } from '../../fda/nutrients'
 import { wasFullyDrawn } from '../../layout/omissions'
-import type { TextPrimitive } from '../../layout/types'
 import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../../templates/usFood'
 import type {
-  UsFoodNutritionExemptionKind,
+  US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
   UsFoodNutritionFacts,
   UsFoodSmallPackageExemption,
   UsFoodUnitContainerExemption,
@@ -68,6 +67,7 @@ import { glyphHeightMm } from '../../text/measure'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { smallestOf } from './printedText'
 
 export const FDA_NUTRITION_MISSING = 'FDA_NUTRITION_MISSING'
 export const FDA_NUTRITION_NUTRIENT_MISSING = 'FDA_NUTRITION_NUTRIENT_MISSING'
@@ -108,7 +108,7 @@ const NO_CLAIMS =
  * Worded from 101.9(j) as read from the eCFR on 2026-09-16.
  */
 const EXEMPTIONS: Record<
-  Exclude<UsFoodNutritionExemptionKind, 'small-package' | 'unit-container'>,
+  (typeof US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE)[number],
   { citation: Citation; grants: string; unchecked: string }
 > = {
   'small-business': {
@@ -262,32 +262,34 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     const panel = panelOf(data)
 
     const claimed = data.nutritionExemption
-    if (claimed?.kind === 'small-package' && panel === undefined) {
-      return smallPackage(claimed, context)
-    }
-    if (claimed?.kind === 'unit-container' && panel === undefined) {
-      return unitContainer(claimed, context)
-    }
-    if (
-      claimed !== undefined &&
-      claimed.kind !== 'small-package' &&
-      claimed.kind !== 'unit-container' &&
-      panel === undefined
-    ) {
-      const exemption = EXEMPTIONS[claimed.kind]
-      return [
-        // Most (j) exemptions hold only while the label bears no nutrition claims: the artwork.
-        // (j)(8), (9) and (11)(ii) turn on facts about the food alone and are stamped with them —
-        // stricter than they need, never looser, since a pass withheld reports nothing false.
-        passedOnArtwork(
-          usFoodNutritionCompletenessRule,
-          FDA_NUTRITION_EXEMPT,
-          `The label claims the ${exemption.citation.reference} exemption for ${exemption.grants}, ` +
-            `so no panel is required. Not checked here: ${exemption.unchecked}.`,
-          US_FOOD_ELEMENTS.principalDisplayPanel,
-          exemption.citation,
-        ),
-      ]
+    // A label printing a panel is not using its exemption, whichever it claims, and the
+    // panel is judged below. Dispatched by kind, so a kind declared with particulars is
+    // one more case here and the rest reach `EXEMPTIONS` with no list to keep in step.
+    if (claimed !== undefined && panel === undefined) {
+      switch (claimed.kind) {
+        case 'small-package':
+          return smallPackage(claimed, context)
+        case 'unit-container':
+          return unitContainer(claimed, context)
+        default: {
+          const exemption = EXEMPTIONS[claimed.kind]
+          return [
+            // Most (j) exemptions hold only while the label bears no nutrition claims: the
+            // artwork. (j)(8), (9) and (11)(ii) turn on facts about the food alone and are
+            // stamped with them — stricter than they need, never looser, since a pass
+            // withheld reports nothing false.
+            passedOnArtwork(
+              usFoodNutritionCompletenessRule,
+              FDA_NUTRITION_EXEMPT,
+              `The label claims the ${exemption.citation.reference} exemption for ` +
+                `${exemption.grants}, so no panel is required. Not checked here: ` +
+                `${exemption.unchecked}.`,
+              US_FOOD_ELEMENTS.principalDisplayPanel,
+              exemption.citation,
+            ),
+          ]
+        }
+      }
     }
 
     // A label saved before the paragraph was recorded: the panel stays excused, but
@@ -489,13 +491,9 @@ function unitContainer(
   claimed: UsFoodUnitContainerExemption,
   { layout }: UsFoodContext,
 ): Finding[] {
-  const lines = layout.primitives.filter(
-    (primitive): primitive is TextPrimitive =>
-      primitive.kind === 'text' && primitive.elementId === US_FOOD_ELEMENTS.unitContainerStatement,
-  )
   const statement = UNIT_CONTAINER_STATEMENTS[claimed.wording]
-  const printed = lines.map((line) => line.text).join(' ')
-  if (lines.length === 0 || printed !== statement) {
+  const printed = smallestOf(layout, US_FOOD_ELEMENTS.unitContainerStatement)
+  if (printed?.text !== statement) {
     return [
       finding(usFoodNutritionCompletenessRule, {
         code: FDA_NUTRITION_MISSING,
@@ -503,19 +501,29 @@ function unitContainer(
         message:
           'The label bears no nutrition label and claims the 101.9(j)(15) unit container ' +
           `exemption, which holds only where the unit is labeled "${statement}" under (iii). ` +
-          (lines.length === 0 ? 'No such statement is printed.' : `It prints "${printed}".`),
+          (printed === undefined
+            ? 'No such statement is printed.'
+            : `It prints "${printed.text}".`),
         measurement: {
-          actual: lines.length === 0 ? 'no statement' : printed,
+          actual: printed?.text ?? 'no statement',
           required: `"${statement}"`,
         },
-        elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+        // The statement where one printed in the wrong words, since those are what is wrong;
+        // the panel it would sit on where nothing printed at all.
+        elementId:
+          printed === undefined
+            ? US_FOOD_ELEMENTS.principalDisplayPanel
+            : US_FOOD_ELEMENTS.unitContainerStatement,
         citation: UNIT_CONTAINER_STATEMENT,
       }),
     ]
   }
 
-  const fontSizeMm = Math.min(...lines.map((line) => line.fontSizeMm))
-  const actualMm = glyphHeightMm(fontSizeMm, lines[0]!.fontFamily, regulatedGlyphBasis(printed))
+  const actualMm = glyphHeightMm(
+    printed.fontSizeMm,
+    printed.fontFamily,
+    regulatedGlyphBasis(printed.text),
+  )
   const requiredMm = UNIT_CONTAINER_STATEMENT_MIN_TYPE_HEIGHT_MM
   if (actualMm < requiredMm - MEASUREMENT_TOLERANCE_MM) {
     return [
