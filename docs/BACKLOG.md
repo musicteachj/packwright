@@ -571,6 +571,17 @@ carton lid or in an insert that can be clearly seen when the carton is opened". 
 not excused, and this engine draws neither the underside of a lid nor an insert, so a pass saying no panel is
 required would certify a declaration nothing printed.
 
+**An egg carton's second column is required, but not checked for completeness.** Found by `/code-review high`
+on PR #36 and reproduced on `feat/egg-carton-and-unit-container`. A package in (b)(12)(i)'s band declaring a
+second column with a figure for total fat alone gets `FDA_DUAL_COLUMN_MET` and `FDA_DUAL_COLUMN_INCOMPLETE` on
+the ordinary label. Claiming (j)(14), the same declaration gets no dual-column finding at all. The mandate rule
+reads the declared figures for a carton, since no panel is drawn, and is satisfied by any second-column figure.
+The completeness check lives in `us-food/dual-column-form`, which reads the drawn column, and nothing is
+drawn. No false pass is issued, and the carton's exemption pass lists the column's completeness among what it
+does not check. Checking it from the declared figures is possible, but (e)(1)'s form rules are written about a
+drawn panel, and deciding which of them hold of information presented beneath a lid wants a reading of its
+own rather than a patch.
+
 **~~The small-package display route trusts a typed area that the label and its panel rule out.~~ Fixed** on
 `fix/small-package-display-floor`. One helper, `labelingSurfaceFloor` in `geometry/pdp.ts`, takes the larger of
 the label's area and the principal display panel's, and `smallPackageRouteApplies` and `formatIsPermitted` let it

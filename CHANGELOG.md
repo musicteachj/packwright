@@ -53,7 +53,8 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   on the principal display panel. A second column the package owes under (b)(12)(i) is still required, judged on the figures declared
   for it since no panel is drawn to read it from, and a declared one is not certified. The first cut returned
   nothing either way, and the review of that commit caught it excusing the column. Not checked: that the lid conforms to the eggs, that the information is clearly presented where it
-  is declared to be, and how it is laid out there.
+  is declared to be, and how it is laid out there, including whether a declared second column states every
+  figure the first does.
 
 - **A unit container claiming 101.9(j)(15) bears the statement (iii) requires, at the size it sets.** (j)(15)
   exempts the unit containers of a multiunit retail package on three conditions, read from the eCFR on

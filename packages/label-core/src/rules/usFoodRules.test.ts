@@ -1783,10 +1783,10 @@ describe('the §101.9(j) nutrition exemption', () => {
       expect(pass!.message).toContain(words)
       expect(pass!.message, 'and says what it cannot check').toContain('Not checked here:')
       expect(pass!.message, 'naming the column among what is judged').toContain(
-        'any second column the package owes',
+        'must declare any second column the package owes',
       )
       expect(pass!.message, 'and its layout among what is not').toContain(
-        'a second column’s headings, figures and separation',
+        'whether a second column states every figure the first does',
       )
       expect(codesOf(findings)).not.toContain('FDA_NUTRITION_MISSING')
     })
