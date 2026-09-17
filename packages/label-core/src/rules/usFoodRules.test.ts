@@ -1137,6 +1137,37 @@ describe('findings from the stage 3 review', () => {
       // And nothing is recorded where every ingredient names its source.
       expect(containsOmissions(layOutUsFoodLabel(US_FOOD_CONFORMANT))).toEqual([])
     })
+
+    it('leaves another allergen in that statement unconfirmed, though it printed whole', () => {
+      // Pinned so the cost is a decision rather than an accident. The allergen rule asks
+      // whether a declaring element has any omission, not which part of it was lost, so
+      // the omission for an unnamed praline also withholds confirmation of the marzipan's
+      // almonds, which "Contains: almonds." declares in full. Stricter than necessary,
+      // never looser, and the over-firing `docs/BACKLOG.md` already records; the review
+      // of this change found it. Fixing that entry should change this expectation.
+      const data: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients: [
+          { name: 'sugar', percentByWeight: 80 },
+          { name: 'praline', percentByWeight: 10, allergen: 'tree-nuts' },
+          {
+            name: 'marzipan',
+            percentByWeight: 10,
+            allergen: 'tree-nuts',
+            allergenSpecificType: 'almonds',
+          },
+        ],
+        ingredientThreshold: { percent: 2, count: 0 },
+        containsStatement: ['tree-nuts'],
+      }
+      const layout = layOutUsFoodLabel({ data, stock })
+      expect(textOf(layout, US_FOOD_ELEMENTS.containsStatement)).toBe('Contains: almonds.')
+      const findings = findingsFor(data, stock)
+      const unconfirmed = findings.find((f) => f.code === 'FDA_ALLERGEN_DECLARATION_UNCONFIRMED')
+      expect(unconfirmed!.severity).toBe('advisory')
+      expect(unconfirmed!.message).toContain('"marzipan" contains almonds')
+      expect(findings.map((f) => f.code)).not.toContain('FDA_CONTAINS_TYPE_MET')
+    })
   })
 
   it('does not walk a prototype chain to find an allergen', () => {

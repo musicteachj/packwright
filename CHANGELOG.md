@@ -45,7 +45,10 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   ingredient, so no pass was false, but a declared element left the artwork with no trace. The engine now records
   a detail omission naming each ingredient it could not name. Beside an ingredient that does name its nut, the
   statement still prints for that one, "Contains: almonds.", and the omission now withholds two passes that
-  label used to receive: the Contains type size and 101.2(c)'s panel-wide type size. Nothing is recorded where
+  label used to receive: the Contains type size and 101.2(c)'s panel-wide type size. It also raises the
+  advisory `FDA_ALLERGEN_DECLARATION_UNCONFIRMED` for an allergen declared only in that statement, though it printed
+  whole, because the allergen rule cannot tell which part of the statement an omission affects. That over-firing was
+  already recorded in `docs/BACKLOG.md`, the review of this change found this case of it, and a test pins it. Nothing is recorded where
   every ingredient names its source.
 
 - **An egg carton claiming 101.9(j)(14) keeps its nutrition information, and the outer carton draws none of it.**

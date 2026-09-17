@@ -672,14 +672,17 @@ it is a change of its own.
 
 **`FDA_ALLERGEN_DECLARATION_UNCONFIRMED` fires on a declaration that printed whole.** Recorded from the `high`
 review of PR #31, and reproduced. The allergen rule asks `wasFullyDrawn` of each declaring element, which counts
-every omission, positional or not. Two cases where the source prints raise the advisory anyway. On
+every omission, positional or not. Cases where the source prints raise the advisory anyway. On
 `US_FOOD_CONFORMANT` with the almonds renamed `nut paste`, not declared inline, and `containsStatement:
 ['tree-nuts', 'milk']` on the full 240 mm stock, "Contains: almonds." prints on a baseline at 162.77 mm, and the
 only omission is the engine's `detail` for the milk entry no ingredient carries. The editor reaches this
 routinely: `UsFoodFormRail.vue` keeps a Contains tick after its ingredient's allergen is cleared, on purpose.
-The other case is 163.15 mm with no firm, where the line prints and only its line box overhangs. Neither is a
-false clearance, and since that PR the message claims only that an omission is recorded. It is still an
-advisory about a label that is fine.
+The other case is 163.15 mm with no firm, where the line prints and only its line box overhangs. A third arrived
+on `fix/contains-unnamed-allergen`, found by its review and pinned by a test: the engine now records an omission
+for each ingredient the Contains statement cannot name, so a praline with no nut type beside a marzipan typed as
+almonds prints "Contains: almonds." whole and still raises the advisory for the marzipan. None is a
+false clearance, and since that PR the message claims only that an omission is recorded. It is still an advisory about a declaration that is fine,
+though in the third case the label also carries the praline's real violation.
 The review suggested the rule read line by line — keep only the Contains and list lines that landed on the
 stock and search those — which would need no engine change. It is not a small fix, for two reasons. First, a
 baseline on the stock does not put the glyphs there: descenders hang below it, and `FaceMetrics` in
