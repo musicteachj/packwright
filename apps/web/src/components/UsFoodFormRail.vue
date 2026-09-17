@@ -1475,7 +1475,8 @@ const packaging = computed({
         <p v-if="representedFor === 'children-1-through-3'" class="text-chrome-400 text-xs">
           21 CFR 101.9(c)(8)(i) labels a food for children 1 through 3 against that group's Daily
           Values, and (d)(9) substitutes "1,000 calories" in its footnote. Both follow this choice.
-          Its protein percentage, which (c)(7)(i) requires, is not calculated or checked.
+          Its protein percentage, which (c)(7)(i) requires, is not calculated: state it among the
+          printed figures below. The rules check that it is printed, not its value.
         </p>
 
         <p class="text-chrome-400 text-xs">

@@ -108,11 +108,12 @@ describe('the conformant control', () => {
     // "Reported nothing" and "everything passed" are different answers, and only
     // one of them means the rules ran. Four rules, one finding each.
     const passes = findings.filter((f) => f.severity === 'pass')
-    // One short of the registry, and deliberately: the format rule declines on a
+    // Short of the registry, and deliberately: the format rule declines on a
     // panel using the standard vertical display, because every package may use
     // it and there is no entitlement to judge. A pass there would be a check
-    // that clears every label carrying the default.
-    expect(passes).toHaveLength(US_FOOD_RULES.length - 3)
+    // that clears every label carrying the default. So does the protein
+    // percentage rule on a food for adults, which (c)(7)(i) permits to omit it.
+    expect(passes).toHaveLength(US_FOOD_RULES.length - 4)
     expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_FORMAT_MET')
   })
 
@@ -2098,6 +2099,163 @@ describe('a food for children 1 through 3, labelled against their Daily Values',
         '1,000 calories a day is used for general nutrition advice.',
       )
     }
+  })
+
+  describe('its protein percentage, which (c)(7)(i) says shall be given', () => {
+    // 21 CFR 101.9(c)(7)(i), read from the eCFR on 2026-09-17: the protein percentage "may
+    // be placed on the label, except that such a statement shall be given if a protein
+    // claim is made for the product, or if the product is represented or purported to be
+    // specifically for infants through 12 months or children 1 through 3 years of age".
+    // Its value is corrected by a digestibility score no label carries, so only that it
+    // is printed can be checked.
+    const withProtein = (percent: number) =>
+      forToddlers({ declaredPercentDv: { ...panel.declaredPercentDv, protein: percent } })
+
+    it('reports a toddler food that prints none', () => {
+      expect(
+        codesOf(findingsFor(US_FOOD_CONFORMANT.data, stock)),
+        'premise: an adult food may omit it',
+      ).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+      const missing = findingsFor(forToddlers(), stock).find(
+        (f) => f.code === 'FDA_PROTEIN_PERCENT_MISSING',
+      )
+      expect(missing!.severity).toBe('violation')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(c)(7)(i)')
+      expect(missing!.elementId).toBe(nutritionRowElementId('protein'))
+    })
+
+    it('clears one that is printed, and says its value is not checked', () => {
+      // 5 g of 13 is 38 percent before correction; the corrected figure can only be lower.
+      const data = withProtein(38)
+      expect(rowText(data, 'protein')).toContain('38%')
+      const findings = findingsFor(data, stock)
+      expect(codesOf(findings)).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+      const pass = findings.find((f) => f.code === 'FDA_PROTEIN_PERCENT_MET')
+      expect(pass!.elementId).toBe(nutritionRowElementId('protein'))
+      expect(pass!.message).toContain('38%')
+      expect(pass!.message).toContain('Not checked here:')
+    })
+
+    it('asks it of every column a dual-column panel draws', () => {
+      // Read from the eCFR on 2026-09-17: where dual labeling is per serving and per
+      // container, 101.9(e)(6) says "the percent Daily Value as required in paragraph
+      // (d)(7)(ii) shall be presented in two columns". A toddler food's protein percentage is
+      // part of that, so a second column without one is missing it. The review of the change
+      // adding this rule found it passing on the first column's percentage alone.
+      const band = fixture('a 250 percent package carrying one column')
+      const facts = band.data.nutritionFacts!
+      const data: UsFoodLabelData = {
+        ...band.data,
+        nutritionFacts: {
+          ...facts,
+          representedFor: 'children-1-through-3',
+          declaredPercentDv: { ...facts.declaredPercentDv, protein: 38 },
+          columns: {
+            mode: 'dual',
+            basis: 'per-container',
+            headings: ['Per serving', 'Per container'],
+            secondAmounts: { ...facts.amounts },
+          },
+        },
+      }
+      const layout = layOutUsFoodLabel({ data, stock: band.stock })
+      expect(
+        layout.elements.map((e) => e.elementId),
+        'premise: the second column is drawn',
+      ).toContain(US_FOOD_ELEMENTS.nutritionSecondColumn)
+      const findings = findingsFor(data, band.stock)
+      const missing = findings.find((f) => f.code === 'FDA_PROTEIN_PERCENT_MISSING')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(e)(6)')
+      expect(missing!.elementId).toBe(nutritionRowElementId('protein'))
+      expect(missing!.measurement?.actual).toBe('no protein percentage in the second column')
+      expect(codesOf(findings)).not.toContain('FDA_PROTEIN_PERCENT_MET')
+
+      // A second column with no protein figure at all is the form rule's incomplete column,
+      // reported once there, and neither reported nor cleared here.
+      const { protein: _dropped, ...secondWithoutProtein } = facts.amounts
+      const incomplete: UsFoodLabelData = {
+        ...data,
+        nutritionFacts: {
+          ...data.nutritionFacts!,
+          columns: { ...data.nutritionFacts!.columns!, secondAmounts: secondWithoutProtein },
+        },
+      }
+      const codes = codesOf(findingsFor(incomplete, band.stock))
+      expect(codes, 'premise: the form rule reports it').toContain('FDA_DUAL_COLUMN_INCOMPLETE')
+      expect(codes).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+      expect(codes).not.toContain('FDA_PROTEIN_PERCENT_MET')
+    })
+
+    it.each([
+      // (e)(2): "for the form of the product as packaged and for any other form of the
+      // product (e.g., 'as prepared' or combined with another ingredient ...)".
+      ['as-prepared', '21 CFR 101.9(e)(2)'],
+      ['combination', '21 CFR 101.9(e)(2)'],
+      // (e)(3): "for different units, or for two or more groups for which RDIs are
+      // established, the quantitative information by weight and the percent Daily Value
+      // shall be presented in two columns". Popcorn's cup popped is (e)'s "different units
+      // ... as provided for in paragraph (b)".
+      ['per-unit-measure', '21 CFR 101.9(e)(3)'],
+      ['rdi-groups', '21 CFR 101.9(e)(3)'],
+      ['per-cup-popped', '21 CFR 101.9(e)(3)'],
+      // (e)(6): per serving and per container under (b)(12)(i), or per unit under (b)(2)(i)(D).
+      ['per-container', '21 CFR 101.9(e)(6)'],
+      ['per-unit', '21 CFR 101.9(e)(6)'],
+      // No basis stated names no (e) paragraph, so the finding cites the requirement itself.
+      [undefined, '21 CFR 101.9(c)(7)(i)'],
+    ] as const)('cites the paragraph a %s second column answers to: %s', (basis, reference) => {
+      // The review of PR #39 found every basis cited to (e)(2), which is about forms.
+      const band = fixture('a 250 percent package carrying one column')
+      const facts = band.data.nutritionFacts!
+      const data: UsFoodLabelData = {
+        ...band.data,
+        nutritionFacts: {
+          ...facts,
+          representedFor: 'children-1-through-3',
+          declaredPercentDv: { ...facts.declaredPercentDv, protein: 38 },
+          columns: {
+            mode: 'dual',
+            ...(basis === undefined ? {} : { basis }),
+            headings: ['Per serving', 'Per container'],
+            secondAmounts: { ...facts.amounts },
+          },
+        },
+      }
+      const missing = findingsFor(data, band.stock).find(
+        (f) => f.code === 'FDA_PROTEIN_PERCENT_MISSING',
+      )
+      expect(missing!.citation.reference).toBe(reference)
+    })
+
+    it('does not clear one that did not print in full', () => {
+      const short: LabelStock = { ...stock, heightMm: 120 }
+      const data = withProtein(38)
+      const layout = layOutUsFoodLabel({ data, stock: short })
+      expect(
+        layout.omissions.map((o) => o.elementId),
+        'premise: the panel runs off a 120 mm label',
+      ).toContain(US_FOOD_ELEMENTS.nutritionPanel)
+      const codes = codesOf(runRules({ labelType: 'us-food', data, stock: short, layout }))
+      expect(codes).not.toContain('FDA_PROTEIN_PERCENT_MET')
+    })
+
+    it('asks it of an egg carton’s declared figures, since no panel is drawn', () => {
+      const carton = (data: UsFoodLabelData): UsFoodLabelData => ({
+        ...data,
+        nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+      })
+      const missing = findingsFor(carton(forToddlers()), stock).find(
+        (f) => f.code === 'FDA_PROTEIN_PERCENT_MISSING',
+      )
+      expect(missing!.elementId, 'the carton, since no row is on it').toBe(
+        US_FOOD_ELEMENTS.principalDisplayPanel,
+      )
+      const declared = codesOf(findingsFor(carton(withProtein(38)), stock))
+      expect(declared).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+      expect(declared, 'and certifies nothing it did not print').not.toContain(
+        'FDA_PROTEIN_PERCENT_MET',
+      )
+    })
   })
 
   it('prints the percentages it derives against that column', () => {

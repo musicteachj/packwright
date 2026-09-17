@@ -1,0 +1,207 @@
+/**
+ * A food for children 1 through 3 prints its protein percentage.
+ *
+ * Source: 21 CFR 101.9(c)(7)(i), read from the eCFR on 2026-09-17. A protein percentage
+ * "may be placed on the label, **except that such a statement shall be given** if a
+ * protein claim is made for the product, or if the product is represented or purported to
+ * be specifically for infants through 12 months or children 1 through 3 years of age."
+ *
+ * **A permission for most foods and a requirement for these.** The percentage rule leaves
+ * protein alone, and the panel prints none unless one is stated, which is right for every
+ * food the permission covers. For a food declared for children 1 through 3 the modal verb
+ * turns to *shall*, and nothing asked for it until this rule.
+ *
+ * **Whether it is printed, not whether it is right.** (c)(7)(ii) computes the figure from
+ * the protein "multiplied by the amino acid score corrected for protein digestibility",
+ * which no label carries, so a stated percentage cannot be recomputed. The pass says so.
+ *
+ * **Not reached.** A protein claim is the other trigger, and this project models no
+ * claims. Infants through 12 months are the third, and are not carried.
+ */
+
+import {
+  US_FOOD_ELEMENTS,
+  dailyValuePopulationOf,
+  nutritionRowElementId,
+} from '../../templates/usFood'
+import { wasFullyDrawn } from '../../layout/omissions'
+import type { DualColumnBasis } from '../../fda/nutritionFormats'
+import type { TextPrimitive } from '../../layout/types'
+import type { Citation, Finding } from '../../types/index'
+import { finding, passedOnArtwork } from '../finding'
+import type { UsFoodContext, UsFoodRule } from '../types'
+import { smallestOf } from './printedText'
+
+export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
+export const FDA_PROTEIN_PERCENT_MET = 'FDA_PROTEIN_PERCENT_MET'
+
+const CITATION: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(c)(7)(i)',
+  title: 'A protein percentage, given where the food is for young children or claims protein',
+}
+
+/**
+ * The paragraph that puts a percentage in every column, which depends on what the second
+ * column counts. Read from the eCFR on 2026-09-17:
+ *
+ * - (e)(2): the (d)(7)(ii) information "shall be presented for the form of the product as
+ *   packaged and for any other form of the product (e.g., 'as prepared' or combined with
+ *   another ingredient ...)" — forms and combinations.
+ * - (e)(3): "When the dual labeling is presented ... for different units, or for two or more
+ *   groups for which RDIs are established, the quantitative information by weight and the
+ *   percent Daily Value shall be presented in two columns". Popcorn's cup popped is one of
+ *   (e)'s "different units ... as provided for in paragraph (b)".
+ * - (e)(6): "When dual labeling is presented for a food on a per serving basis and per
+ *   container basis as required in paragraph (b)(12)(i) ... or on a per serving basis and per
+ *   unit basis as required in paragraph (b)(2)(i)(D) ... the percent Daily Value as required
+ *   in paragraph (d)(7)(ii) shall be presented in two columns".
+ *
+ * Every basis first cited (e)(2), which is about forms; the review of PR #39 read the rest.
+ */
+const FORMS: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(e)(2)',
+  title: 'Dual labeling presents the percent Daily Values for every form declared',
+}
+const UNITS_AND_GROUPS: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(e)(3)',
+  title: 'Dual labeling for units or RDI groups presents the percent Daily Value in two columns',
+}
+const SERVING_AND_CONTAINER: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(e)(6)',
+  title: 'Per-serving and per-container or per-unit columns each present the percent Daily Value',
+}
+const EACH_COLUMN: Record<DualColumnBasis, Citation> = {
+  'as-prepared': FORMS,
+  combination: FORMS,
+  'per-unit-measure': UNITS_AND_GROUPS,
+  'rdi-groups': UNITS_AND_GROUPS,
+  'per-cup-popped': UNITS_AND_GROUPS,
+  'per-container': SERVING_AND_CONTAINER,
+  'per-unit': SERVING_AND_CONTAINER,
+}
+
+const PROTEIN_ROW = nutritionRowElementId('protein')
+
+/** A printed percentage in a row's text: the figure, where one is there. */
+const PERCENT = /(\d+(?:\.\d+)?)\s*%/
+
+export const usFoodProteinPercentRule: UsFoodRule = {
+  id: 'us-food/protein-percent',
+  title: 'A food for children 1 through 3 gives its protein as a percentage of the Daily Value.',
+  citation: CITATION,
+  citations: [CITATION, FORMS, UNITS_AND_GROUPS, SERVING_AND_CONTAINER],
+  codes: [FDA_PROTEIN_PERCENT_MISSING, FDA_PROTEIN_PERCENT_MET],
+  appliesTo: 'us-food',
+
+  check({ data, layout }: UsFoodContext): Finding[] {
+    const panel = data.nutritionFacts
+    if (panel === undefined || dailyValuePopulationOf(panel) !== 'children-1-through-3') return []
+
+    const missing = (
+      elementId: string,
+      where: string,
+      actual = 'no protein percentage',
+      citation = CITATION,
+    ): Finding =>
+      finding(usFoodProteinPercentRule, {
+        code: FDA_PROTEIN_PERCENT_MISSING,
+        severity: 'violation',
+        message:
+          'The food is declared for children 1 through 3, and 101.9(c)(7)(i) says the protein ' +
+          `percentage "shall be given" for such a food. ${where}`,
+        measurement: { actual, required: 'a protein percentage' },
+        elementId,
+        citation,
+      })
+
+    // **No panel drawn, and the figure still owed.** Only (j)(14) reaches this: an egg
+    // carton's information is presented beneath the lid, and a panel run off the stock
+    // still records its elements. The requirement moves with the information, so it is
+    // asked of the declared figures, and a declared one is not certified, since nothing
+    // here printed it — as the dual-column rule treats the carton's second column.
+    const drawn = layout.elements.some(
+      (element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+    )
+    if (!drawn) {
+      return panel.declaredPercentDv?.protein === undefined
+        ? [
+            missing(
+              US_FOOD_ELEMENTS.principalDisplayPanel,
+              'The nutrition information declared for presentation off this label states none.',
+            ),
+          ]
+        : []
+    }
+
+    // A panel with no protein row is missing a mandatory nutrient, which the completeness
+    // rule reports; reporting its percentage too would be one absence twice.
+    const row = smallestOf(layout, PROTEIN_ROW)
+    if (row === undefined) return []
+
+    const printed = PERCENT.exec(row.text)
+    if (printed === null) {
+      return [missing(PROTEIN_ROW, 'The panel prints the protein row with no percentage.')]
+    }
+
+    // **Every column drawn, not the first found.** On a dual-column panel each column's
+    // figures are drawn as their own right-aligned run, and the percent Daily Value is
+    // presented in each — under (e)(2), (e)(3) or (e)(6) by what the column counts. Reading the row as one string passed a panel whose second
+    // column printed "5g" beside a first column's "5g 38%". The second column has no stated
+    // percentage to draw, and the engine derives none for protein, so such a panel is
+    // reported rather than cleared — true of the label, if not yet fixable in the editor.
+    const secondColumnDrawn = layout.elements.some(
+      (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+    )
+    if (secondColumnDrawn) {
+      const columns = layout.primitives.filter(
+        (primitive): primitive is TextPrimitive =>
+          primitive.kind === 'text' &&
+          primitive.elementId === PROTEIN_ROW &&
+          primitive.anchor === 'end',
+      )
+      // A second column with no protein figure at all is an incomplete column, which the
+      // dual-column form rule reports; its percentage is not a second absence to report.
+      // Nor is it cleared.
+      if (columns.length < 2) return []
+      if (columns.some((column) => !PERCENT.test(column.text))) {
+        // No basis stated names no (e) paragraph, so the requirement itself is cited.
+        const basis = panel.columns?.basis
+        const citation = basis === undefined ? CITATION : EACH_COLUMN[basis]
+        return [
+          missing(
+            PROTEIN_ROW,
+            (basis === undefined
+              ? 'The panel draws a second column, and states no basis for it, '
+              : `On a dual-column panel, ${citation.reference} presents the percent Daily ` +
+                'Value in each column, ') +
+              'and the second column prints the protein row with no percentage.',
+            'no protein percentage in the second column',
+            citation,
+          ),
+        ]
+      }
+    }
+
+    // Printed means printed in full: a row the engine recorded anything against, or a
+    // panel run off the label, is not certified — the serving-size rule's reasoning.
+    if (![US_FOOD_ELEMENTS.nutritionPanel, PROTEIN_ROW].every((id) => wasFullyDrawn(layout, id))) {
+      return []
+    }
+
+    return [
+      // (c)(7)(i): the statement "shall be given" on the label — printed, so the artwork.
+      passedOnArtwork(
+        usFoodProteinPercentRule,
+        FDA_PROTEIN_PERCENT_MET,
+        `The panel gives protein as ${printed[1]}% of the Daily Value, as 101.9(c)(7)(i) requires ` +
+          'of a food for children 1 through 3. Not checked here: the figure itself, which ' +
+          '(c)(7)(ii) corrects by a protein digestibility score no label carries.',
+        PROTEIN_ROW,
+      ),
+    ]
+  },
+}

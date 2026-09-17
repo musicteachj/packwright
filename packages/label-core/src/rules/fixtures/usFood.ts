@@ -43,6 +43,7 @@ import {
   FDA_NUTRITION_CONTACT_MISSING,
   FDA_NUTRITION_EXEMPTION_UNSTATED,
   FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
+  FDA_PROTEIN_PERCENT_MISSING,
   FDA_DUAL_COLUMN_HEADINGS_MISSING,
   FDA_DUAL_COLUMN_INCOMPLETE,
   FDA_DUAL_COLUMN_NOT_SEPARATED,
@@ -978,6 +979,88 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_NUTRITION_MISSING,
       severity: 'blocking',
       citation: '21 CFR 101.9(j)(14)',
+    },
+  },
+  {
+    name: 'a food for children 1 through 3 with no protein percentage',
+    defect:
+      '101.9(c)(7)(i) lets a protein percentage be left off, "except that such a statement ' +
+      'shall be given ... if the product is represented or purported to be specifically for ' +
+      '... children 1 through 3 years of age". This panel is declared for that group, its ' +
+      'other percentages worked against their Daily Values, and it prints none for protein.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        representedFor: 'children-1-through-3',
+        // Against the children 1 through 3 column: 3 of 39 g fat, 0.5 of 10 g saturated
+        // fat, 27 of 150 g carbohydrate, 4 of 14 g fiber, 2 of 15 mcg vitamin D, 260 of 700
+        // mg calcium, 8 of 7 mg iron, 235 of 3,000 mg potassium.
+        declaredPercentDv: {
+          'total-fat': 8,
+          'saturated-fat': 5,
+          cholesterol: 0,
+          sodium: 0,
+          'total-carbohydrate': 18,
+          'dietary-fiber': 29,
+          'added-sugars': 0,
+          'vitamin-d': 15,
+          calcium: 35,
+          iron: 110,
+          potassium: 8,
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_PROTEIN_PERCENT_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(c)(7)(i)',
+    },
+  },
+  {
+    name: 'a dual-column panel for children 1 through 3 with no protein percentage in its second column',
+    defect:
+      'A food for children 1 through 3 "shall" give its protein percentage under 101.9(c)(7)(i), ' +
+      'and where dual labeling is per serving and per container, 101.9(e)(6) says "the percent ' +
+      'Daily Value as required in paragraph (d)(7)(ii) shall be presented in two columns". The ' +
+      'first column states 38 percent; the second prints its protein figure with none, and this ' +
+      'engine has no field to state one for it.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        representedFor: 'children-1-through-3',
+        // Every percentage worked against the children 1 through 3 column, as the
+        // single-column fixture above does, so the second column's protein is its only
+        // defect; 5 g of 13 is 38 percent before correction.
+        declaredPercentDv: {
+          'total-fat': 8,
+          'saturated-fat': 5,
+          cholesterol: 0,
+          sodium: 0,
+          'total-carbohydrate': 18,
+          'dietary-fiber': 29,
+          'added-sugars': 0,
+          protein: 38,
+          'vitamin-d': 15,
+          calcium: 35,
+          iron: 110,
+          potassium: 8,
+        },
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_PROTEIN_PERCENT_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(e)(6)',
     },
   },
   {
