@@ -260,7 +260,10 @@ children's food is drawn with the 2,000-calorie wording and no rule looks at the
 declare the food as being for that age group, so the substitution is currently unreachable from the app as
 well as undrawn. Needs a selector before it needs a rule.
 
-**A food for children 1 through 3 must give its protein percentage, and nothing asks for it.** 21 CFR
+**~~A food for children 1 through 3 must give its protein percentage, and nothing asks for it.~~ Fixed** on
+`feat/toddler-protein-percent`. `us-food/protein-percent` reads the printed protein row of a panel declared for
+children 1 through 3 and reports one with no percentage; an egg carton's is asked of its declared figures. The value
+is still not judged, and a protein claim, the other trigger, is not modelled. What follows is the entry as it stood. 21 CFR
 101.9(c)(7)(i), read from the eCFR on 2026-09-17: the protein percentage "may be placed on the label, except that
 such a statement shall be given if a protein claim is made for the product, or if the product is represented or
 purported to be specifically for infants through 12 months or children 1 through 3 years of age". A *shall* for

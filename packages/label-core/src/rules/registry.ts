@@ -30,6 +30,7 @@ import { usFoodAllergenRule } from './usFood/allergens'
 import { usFoodContainsStatementTypeRule } from './usFood/containsStatementType'
 import { usFoodIngredientListRule, usFoodIngredientThresholdRule } from './usFood/ingredientList'
 import { usFoodInformationPanelTypeSizeRule } from './usFood/informationPanelTypeSize'
+import { usFoodProteinPercentRule } from './usFood/proteinPercent'
 import {
   usFoodNutritionCompletenessRule,
   usFoodServingSizeRule,
@@ -131,6 +132,7 @@ export const US_FOOD_RULES: readonly UsFoodRule[] = [
   usFoodNutritionOrderRule,
   usFoodNutritionRoundingRule,
   usFoodNutritionPercentDvRule,
+  usFoodProteinPercentRule,
   usFoodNutritionTypeSizeRule,
   usFoodNutritionFormatRule,
   usFoodDualColumnRule,

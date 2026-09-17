@@ -203,6 +203,11 @@ export {
   usFoodServingSizeRule,
 } from './usFood/nutritionFacts'
 export {
+  FDA_PROTEIN_PERCENT_MET,
+  FDA_PROTEIN_PERCENT_MISSING,
+  usFoodProteinPercentRule,
+} from './usFood/proteinPercent'
+export {
   FDA_NUTRITION_TYPE_SIZE_MET,
   FDA_NUTRITION_TYPE_TOO_SMALL,
   usFoodNutritionTypeSizeRule,

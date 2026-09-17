@@ -69,6 +69,9 @@ describe('the editor on a US food label', () => {
       'dual-column-required',
       // And its form rule, which has nothing to judge on a single-column panel.
       'dual-column-form',
+      // (c)(7)(i) permits an adult food to omit its protein percentage, so there is
+      // nothing to require of the seeded label and nothing to clear.
+      'protein-percent',
     ]
     expect(store.passes.length).toBe(US_FOOD_RULES.length - declining.length)
     for (const code of ['FDA_NUTRITION_ORDER_MET', 'FDA_NUTRITION_ROUNDING_MET']) {
@@ -977,6 +980,29 @@ describe('the Nutrition Facts panel in the editor', () => {
     await nextTick()
     expect(store.foodData.nutritionFacts).not.toHaveProperty('representedFor')
     expect(canvas()).toContain('2,000 calories a day')
+  })
+
+  it('asks a food for children 1 through 3 for its protein percentage, and takes one', async () => {
+    // 101.9(c)(7)(i): the protein percentage "shall be given" for such a food. The panel
+    // prints none unless one is stated, so the rail's printed-figure inputs are where a
+    // user answers it.
+    const { store, wrapper } = await mountFood()
+    const codes = () => store.findings.map((f) => f.code)
+    expect(codes(), 'premise: an adult food may omit it').not.toContain(
+      'FDA_PROTEIN_PERCENT_MISSING',
+    )
+
+    await wrapper.find('#field-food-nf-represented-for').setValue('children-1-through-3')
+    await nextTick()
+    expect(codes()).toContain('FDA_PROTEIN_PERCENT_MISSING')
+
+    await wrapper.find('#field-food-nf-override').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-nf-dv-protein').setValue(20)
+    await nextTick()
+    expect(store.foodData.nutritionFacts?.declaredPercentDv?.protein).toBe(20)
+    expect(codes()).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+    expect(codes()).toContain('FDA_PROTEIN_PERCENT_MET')
   })
 
   it('takes an egg carton, keeps its nutrition information, and draws no panel', async () => {

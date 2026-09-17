@@ -38,6 +38,7 @@ import * as usFoodIngredientListRule from './rules/usFood/ingredientList'
 import * as usFoodInformationPanelTypeSizeRule from './rules/usFood/informationPanelTypeSize'
 import * as usFoodNetQuantityDualDeclarationRule from './rules/usFood/netQuantityDualDeclaration'
 import * as usFoodNutritionFactsRule from './rules/usFood/nutritionFacts'
+import * as usFoodProteinPercentRule from './rules/usFood/proteinPercent'
 import * as usFoodNutritionFormatRule from './rules/usFood/nutritionFormat'
 import * as usFoodNutritionTypeSizeRule from './rules/usFood/nutritionTypeSize'
 import * as usFoodNetQuantityPlacementRule from './rules/usFood/netQuantityPlacement'
@@ -196,6 +197,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
       ['usFood/containsStatementType.ts', usFoodContainsStatementTypeRule],
       ['usFood/ingredientList.ts', usFoodIngredientListRule],
       ['usFood/nutritionFacts.ts', usFoodNutritionFactsRule],
+      ['usFood/proteinPercent.ts', usFoodProteinPercentRule],
       ['usFood/nutritionTypeSize.ts', usFoodNutritionTypeSizeRule],
       ['usFood/nutritionFormat.ts', usFoodNutritionFormatRule],
       ['usFood/informationPanelTypeSize.ts', usFoodInformationPanelTypeSizeRule],

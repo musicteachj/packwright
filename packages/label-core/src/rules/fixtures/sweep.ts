@@ -121,6 +121,23 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument; stoc
         nutritionExemption: { kind: 'unit-container', wording: 'retail' },
       },
     },
+    // `us-food/protein-percent` clears a food for children 1 through 3 that prints the
+    // protein percentage (c)(7)(i) requires of it. 5 g of 13 is 38 percent before
+    // correction; the value is not judged.
+    {
+      label: 'toddler protein percentage',
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionFacts: {
+          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+          representedFor: 'children-1-through-3',
+          declaredPercentDv: {
+            ...US_FOOD_CONFORMANT.data.nutritionFacts!.declaredPercentDv,
+            protein: 38,
+          },
+        },
+      },
+    },
     // The same rule clears an egg carton whose nutrition information is declared for
     // beneath its lid, citing (j)(14). The panel is *present* here, unlike the other
     // exemptions: the information is relocated, not excused.

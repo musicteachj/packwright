@@ -37,6 +37,19 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A food for children 1 through 3 must print its protein percentage.** 21 CFR 101.9(c)(7)(i), read from the eCFR on
+  2026-09-17: a protein percentage "may be placed on the label, except that such a statement shall be given if a
+  protein claim is made for the product, or if the product is represented or purported to be specifically for
+  infants through 12 months or children 1 through 3 years of age". The percentage rule leaves protein alone and the
+  panel prints none unless one is stated, which is right for every food the permission covers, and nothing asked
+  it of the food where the verb is *shall*. A new rule, `us-food/protein-percent`, reads the printed protein row of
+  a panel declared for children 1 through 3. A row with no percentage is `FDA_PROTEIN_PERCENT_MISSING`, and its
+  fixture is that panel with its other percentages worked against the children's Daily Values. A printed one
+  passes, naming the row, and is withheld where the panel did not print in full. An egg carton's information is
+  asked of its declared figures, since no panel is drawn. The value is not judged: (c)(7)(ii) corrects it by a
+  protein digestibility score no label carries. A protein claim, the other trigger, is not modelled. The editor
+  already takes a stated percentage among its printed figures, and its note now says so.
+
 - **A food for children 1 through 3 is labelled against their Daily Values.** 21 CFR 101.9(c)(8)(i), read from
   the eCFR on 2026-09-17: foods "represented or purported to be specifically for ... children 1 through 3 years ...
   shall use the RDIs that are specified for the intended group". The nutrient table carried the adult column of the

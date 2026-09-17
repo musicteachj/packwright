@@ -43,6 +43,7 @@ import {
   FDA_NUTRITION_CONTACT_MISSING,
   FDA_NUTRITION_EXEMPTION_UNSTATED,
   FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
+  FDA_PROTEIN_PERCENT_MISSING,
   FDA_DUAL_COLUMN_HEADINGS_MISSING,
   FDA_DUAL_COLUMN_INCOMPLETE,
   FDA_DUAL_COLUMN_NOT_SEPARATED,
@@ -978,6 +979,43 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_NUTRITION_MISSING,
       severity: 'blocking',
       citation: '21 CFR 101.9(j)(14)',
+    },
+  },
+  {
+    name: 'a food for children 1 through 3 with no protein percentage',
+    defect:
+      '101.9(c)(7)(i) lets a protein percentage be left off, "except that such a statement ' +
+      'shall be given ... if the product is represented or purported to be specifically for ' +
+      '... children 1 through 3 years of age". This panel is declared for that group, its ' +
+      'other percentages worked against their Daily Values, and it prints none for protein.',
+    data: {
+      ...BASE,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        representedFor: 'children-1-through-3',
+        // Against the children 1 through 3 column: 3 of 39 g fat, 0.5 of 10 g saturated
+        // fat, 27 of 150 g carbohydrate, 4 of 14 g fiber, 2 of 15 mcg vitamin D, 260 of 700
+        // mg calcium, 8 of 7 mg iron, 235 of 3,000 mg potassium.
+        declaredPercentDv: {
+          'total-fat': 8,
+          'saturated-fat': 5,
+          cholesterol: 0,
+          sodium: 0,
+          'total-carbohydrate': 18,
+          'dietary-fiber': 29,
+          'added-sugars': 0,
+          'vitamin-d': 15,
+          calcium: 35,
+          iron: 110,
+          potassium: 8,
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_PROTEIN_PERCENT_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(c)(7)(i)',
     },
   },
   {
