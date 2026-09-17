@@ -624,7 +624,8 @@ describe('the Nutrition Facts displays, from the editor', () => {
     // how a column of fourteen rows carrying one figure passed for compliant.
     const incomplete = store.failures.find((f) => f.code === 'FDA_DUAL_COLUMN_INCOMPLETE')
     expect(incomplete, 'one figure is not a second declaration').toBeDefined()
-    expect(incomplete!.citation.reference).toBe('21 CFR 101.9(e)(2)')
+    // The rail seeds a per-serving and per-container column, which (e)(6) governs.
+    expect(incomplete!.citation.reference).toBe('21 CFR 101.9(e)(6)')
   })
 
   it('clears a second column once every nutrient carries one', async () => {

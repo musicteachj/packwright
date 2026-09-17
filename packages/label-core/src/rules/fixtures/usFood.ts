@@ -326,9 +326,10 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     name: 'a second column carrying one figure out of fourteen',
     defect:
       'The panel heads two columns, separates them, gives them equal prominence — and declares a ' +
-      'second quantity for Total Fat alone. 101.9(e)(2): the quantitative information by weight ' +
-      '"shall be presented for the form of the product as packaged and for any other form of the ' +
-      'product". A second column is a second declaration of the nutrients the first one declares, ' +
+      'second quantity for Total Fat alone. Its columns are per serving and per container, and ' +
+      '101.9(e)(6) says "the quantitative information by weight as required in paragraph ' +
+      '(d)(7)(i) ... shall be presented in two columns". A second column is a second declaration ' +
+      'of the nutrients the first one declares, ' +
       'not a place to put one number. The engine draws the column it was asked for, so nothing ' +
       'else here reports it: the mandate rule sees a column present and the form rules see it ' +
       'headed, separated and equally prominent.',
@@ -348,14 +349,15 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     expected: {
       code: FDA_DUAL_COLUMN_INCOMPLETE,
       severity: 'violation',
-      citation: '21 CFR 101.9(e)(2)',
+      citation: '21 CFR 101.9(e)(6)',
     },
   },
   {
     name: 'two columns run together with no line between them',
     defect:
-      '101.9(e)(3): the quantitative information and the percent Daily Value "shall be presented ' +
-      'in two columns and the columns shall be separated by vertical lines". Dropped to save ' +
+      'Per serving and per container, 101.9(e)(6): the quantitative information and the percent ' +
+      'Daily Value "shall be presented in two columns, and the columns shall be separated by ' +
+      'vertical lines". Dropped to save ' +
       'width on a crowded panel, the two sets of figures read as one run and a reader has no way ' +
       'to tell which column a number belongs to.',
     data: {
@@ -375,7 +377,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     expected: {
       code: FDA_DUAL_COLUMN_NOT_SEPARATED,
       severity: 'violation',
-      citation: '21 CFR 101.9(e)(3)',
+      citation: '21 CFR 101.9(e)(6)',
     },
   },
   {

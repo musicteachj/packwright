@@ -22,7 +22,9 @@
  *   more column headings accurately describing the amount per serving size".
  *   Presence and distinctness are checkable; *accuracy* is not — whether "Per
  *   prepared portion" describes the portion is a question about the food.
- * - **(e)(3)** the two columns "**shall** be separated by vertical lines".
+ * - **(e)(3)** the two columns "**shall** be separated by vertical lines" — and (e)(6) says
+ *   the same of the per-container and per-unit columns, so which paragraph a finding cites
+ *   follows what the second column counts. See `dualColumnParagraphs.ts`.
  * - **(e)(4)**, and (e)(6)(i) for the mandatory bases, put the vitamins and
  *   minerals after a bar "arrayed vertically in the following order: Vitamin D,
  *   calcium, iron, potassium". **Not checked here** — `us-food/nutrition-order`
@@ -42,6 +44,12 @@ import type { TextPrimitive } from '../../layout/types'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import {
+  DUAL_COLUMN_REFERENCES,
+  eachColumnReference,
+  separatedColumnsReference,
+} from './dualColumnParagraphs'
+import type { DualColumnReference } from './dualColumnParagraphs'
 import { MM_PER_POINT } from '../../geometry/units'
 
 export const FDA_DUAL_COLUMN_HEADINGS_MISSING = 'FDA_DUAL_COLUMN_HEADINGS_MISSING'
@@ -62,16 +70,29 @@ const HEADINGS: Citation = {
   title: 'Column headings describing what each column declares',
 }
 
-const SEPARATED: Citation = {
-  authority: 'FDA',
-  reference: '21 CFR 101.9(e)(3)',
-  title: 'The two columns are separated by vertical lines',
-}
-
-const BOTH_FORMS: Citation = {
-  authority: 'FDA',
-  reference: '21 CFR 101.9(e)(2)',
-  title: 'The quantitative information is presented for each form declared',
+/**
+ * What each of 101.9(e)'s column paragraphs requires of the *form* of the panel, which is
+ * what this rule measures: both columns filled, and a line between them.
+ */
+const COLUMN_PARAGRAPHS: Record<DualColumnReference, Citation> = {
+  [DUAL_COLUMN_REFERENCES.forms]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.forms,
+    title:
+      'The quantitative information is presented for the form as packaged and for every other form',
+  },
+  [DUAL_COLUMN_REFERENCES.unitsAndGroups]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.unitsAndGroups,
+    title:
+      'Dual labeling for forms, combinations, units or RDI groups fills two columns and separates them by vertical lines',
+  },
+  [DUAL_COLUMN_REFERENCES.servingAndContainer]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.servingAndContainer,
+    title:
+      'Per-serving and per-container or per-unit information fills two columns and separates them by vertical lines',
+  },
 }
 
 export const usFoodDualColumnFormRule: UsFoodRule = {
@@ -79,7 +100,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
   title:
     'A dual-column panel declares both forms, heads its columns, separates them and gives both equal prominence.',
   citation: CITATION,
-  citations: [CITATION, HEADINGS, BOTH_FORMS, SEPARATED],
+  citations: [CITATION, HEADINGS, ...Object.values(COLUMN_PARAGRAPHS)],
   codes: [
     FDA_DUAL_COLUMN_HEADINGS_MISSING,
     FDA_DUAL_COLUMN_NOT_SEPARATED,
@@ -89,7 +110,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
   ],
   appliesTo: 'us-food',
 
-  check({ layout }: UsFoodContext): Finding[] {
+  check({ data, layout }: UsFoodContext): Finding[] {
     // Asked of the layout throughout. A panel that declares two columns and draws
     // one has nothing here to judge — that absence is the mandate rule's finding,
     // and repeating it under (e) would report one defect twice.
@@ -97,6 +118,17 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
       (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
     )
     if (!drawn) return []
+
+    // The paragraphs that apply turn on what the second column counts. A label that states
+    // no basis names no subparagraph, so its findings cite (e), the dual labeling paragraph.
+    // Written as the sibling messages write it — "101.9(e)(6)" — since the finding's
+    // citation field already carries the full reference.
+    const paragraph = (citation: Citation) => citation.reference.replace('21 CFR ', '')
+    const basis = data.nutritionFacts?.columns?.basis
+    const bothColumns =
+      basis === undefined ? CITATION : COLUMN_PARAGRAPHS[eachColumnReference(basis)]
+    const separated =
+      basis === undefined ? CITATION : COLUMN_PARAGRAPHS[separatedColumnsReference(basis)]
 
     const textOf = (elementId: string): TextPrimitive[] =>
       layout.primitives.filter(
@@ -130,14 +162,16 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     }
 
     /**
-     * (e)(2) — the quantitative information is presented for *each* form.
+     * Both columns carry the information, under the paragraph for what the second
+     * column counts.
      *
-     * "The quantitative information by weight as required in paragraph (d)(7)(i)
-     * and the information required in paragraph (d)(7)(ii) of this section
-     * **shall** be presented for the form of the product as packaged **and for
-     * any other form** of the product." So a second column is not a place to put
-     * one figure; it is a second declaration of the nutrients the first one
-     * declares.
+     * (e)(2), for forms and combinations: "The quantitative information by weight as
+     * required in paragraph (d)(7)(i) and the information required in paragraph
+     * (d)(7)(ii) of this section **shall** be presented for the form of the product
+     * as packaged **and for any other form** of the product." (e)(3) says it of units
+     * and RDI groups and (e)(6) of the per-container and per-unit columns, each "in
+     * two columns". So a second column is not a place to put one figure; it is a
+     * second declaration of the nutrients the first one declares.
      *
      * The engine draws the second-column band as soon as any single nutrient
      * carries a second amount, which is right — it draws what it was asked for —
@@ -193,14 +227,17 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
           severity: 'violation',
           message:
             `The panel carries two columns, but ${clauses.join('; and ')}. ` +
-            '101.9(e)(2) requires the quantitative information for the form as packaged and for ' +
-            'any other form the label declares.',
+            (bothColumns === CITATION
+              ? 'The label states no basis for its second column, so the subparagraph of 101.9(e) ' +
+                'that applies cannot be named; each of them requires the quantitative information ' +
+                'in both columns.'
+              : `${paragraph(bothColumns)} requires the quantitative information in both columns.`),
           measurement: {
             actual: `${shortRows.length} of ${rows.length} rows carry one column`,
             required: 'both columns on every row that declares a quantity',
           },
           elementId: US_FOOD_ELEMENTS.nutritionPanel,
-          citation: BOTH_FORMS,
+          citation: bothColumns,
         }),
       )
     }
@@ -214,11 +251,15 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
           code: FDA_DUAL_COLUMN_NOT_SEPARATED,
           severity: 'violation',
           message:
-            'The panel’s two columns run together with nothing between them. 101.9(e)(3) requires ' +
-            'them to be separated by vertical lines.',
+            'The panel’s two columns run together with nothing between them. ' +
+            (separated === CITATION
+              ? 'The label states no basis for its second column, so the subparagraph of 101.9(e) ' +
+                'that applies cannot be named; each of them requires vertical lines between the ' +
+                'columns.'
+              : `${paragraph(separated)} requires them to be separated by vertical lines.`),
           measurement: { actual: 'no vertical line', required: 'a vertical line between columns' },
           elementId: US_FOOD_ELEMENTS.nutritionPanel,
-          citation: SEPARATED,
+          citation: separated,
         }),
       )
     }

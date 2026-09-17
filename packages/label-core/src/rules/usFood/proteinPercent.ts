@@ -25,11 +25,12 @@ import {
   nutritionRowElementId,
 } from '../../templates/usFood'
 import { wasFullyDrawn } from '../../layout/omissions'
-import type { DualColumnBasis } from '../../fda/nutritionFormats'
 import type { TextPrimitive } from '../../layout/types'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
+import type { DualColumnReference } from './dualColumnParagraphs'
 import { smallestOf } from './printedText'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
@@ -42,46 +43,27 @@ const CITATION: Citation = {
 }
 
 /**
- * The paragraph that puts a percentage in every column, which depends on what the second
- * column counts. Read from the eCFR on 2026-09-17:
- *
- * - (e)(2): the (d)(7)(ii) information "shall be presented for the form of the product as
- *   packaged and for any other form of the product (e.g., 'as prepared' or combined with
- *   another ingredient ...)" — forms and combinations.
- * - (e)(3): "When the dual labeling is presented ... for different units, or for two or more
- *   groups for which RDIs are established, the quantitative information by weight and the
- *   percent Daily Value shall be presented in two columns". Popcorn's cup popped is one of
- *   (e)'s "different units ... as provided for in paragraph (b)".
- * - (e)(6): "When dual labeling is presented for a food on a per serving basis and per
- *   container basis as required in paragraph (b)(12)(i) ... or on a per serving basis and per
- *   unit basis as required in paragraph (b)(2)(i)(D) ... the percent Daily Value as required
- *   in paragraph (d)(7)(ii) shall be presented in two columns".
- *
- * Every basis first cited (e)(2), which is about forms; the review of PR #39 read the rest.
+ * What each of 101.9(e)'s column paragraphs requires of the *percentages*, which is what
+ * this rule reads. Titled for that: the form rule titles the same references for the
+ * quantities and the vertical lines it measures instead.
  */
-const FORMS: Citation = {
-  authority: 'FDA',
-  reference: '21 CFR 101.9(e)(2)',
-  title: 'Dual labeling presents the percent Daily Values for every form declared',
-}
-const UNITS_AND_GROUPS: Citation = {
-  authority: 'FDA',
-  reference: '21 CFR 101.9(e)(3)',
-  title: 'Dual labeling for units or RDI groups presents the percent Daily Value in two columns',
-}
-const SERVING_AND_CONTAINER: Citation = {
-  authority: 'FDA',
-  reference: '21 CFR 101.9(e)(6)',
-  title: 'Per-serving and per-container or per-unit columns each present the percent Daily Value',
-}
-const EACH_COLUMN: Record<DualColumnBasis, Citation> = {
-  'as-prepared': FORMS,
-  combination: FORMS,
-  'per-unit-measure': UNITS_AND_GROUPS,
-  'rdi-groups': UNITS_AND_GROUPS,
-  'per-cup-popped': UNITS_AND_GROUPS,
-  'per-container': SERVING_AND_CONTAINER,
-  'per-unit': SERVING_AND_CONTAINER,
+const EACH_COLUMN_PARAGRAPHS: Record<DualColumnReference, Citation> = {
+  [DUAL_COLUMN_REFERENCES.forms]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.forms,
+    title: 'Dual labeling presents the percent Daily Value for every form declared',
+  },
+  [DUAL_COLUMN_REFERENCES.unitsAndGroups]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.unitsAndGroups,
+    title:
+      'Dual labeling for forms, combinations, units or RDI groups presents the percent Daily Value in two columns',
+  },
+  [DUAL_COLUMN_REFERENCES.servingAndContainer]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.servingAndContainer,
+    title: 'Per-serving and per-container or per-unit columns each present the percent Daily Value',
+  },
 }
 
 const PROTEIN_ROW = nutritionRowElementId('protein')
@@ -93,7 +75,7 @@ export const usFoodProteinPercentRule: UsFoodRule = {
   id: 'us-food/protein-percent',
   title: 'A food for children 1 through 3 gives its protein as a percentage of the Daily Value.',
   citation: CITATION,
-  citations: [CITATION, FORMS, UNITS_AND_GROUPS, SERVING_AND_CONTAINER],
+  citations: [CITATION, ...Object.values(EACH_COLUMN_PARAGRAPHS)],
   codes: [FDA_PROTEIN_PERCENT_MISSING, FDA_PROTEIN_PERCENT_MET],
   appliesTo: 'us-food',
 
@@ -170,7 +152,8 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       if (columns.some((column) => !PERCENT.test(column.text))) {
         // No basis stated names no (e) paragraph, so the requirement itself is cited.
         const basis = panel.columns?.basis
-        const citation = basis === undefined ? CITATION : EACH_COLUMN[basis]
+        const citation =
+          basis === undefined ? CITATION : EACH_COLUMN_PARAGRAPHS[eachColumnReference(basis)]
         return [
           missing(
             PROTEIN_ROW,
