@@ -166,14 +166,20 @@ source. Nothing below moves without the same check.
 
 ### Verified, deferred with a stage
 
-**A dual column is certified by one figure out of fifteen.** `nutritionPanel.ts` emits the
+**~~A dual column is certified by one figure out of fifteen.~~ Fixed**, and found so on 2026-09-16 when this file
+was counted rather than struck when the fix landed. A panel whose second column carries only
+`{ 'total-fat': 6 }` now returns `FDA_DUAL_COLUMN_INCOMPLETE`, naming the thirteen nutrients declared in the
+first column only. What follows is the entry as it stood. `nutritionPanel.ts` emits the
 `food-nutrition-second-column` band as soon as *any* nutrient carries a second value, and both
 `us-food/dual-column-required` and `us-food/dual-column-form` test only that the band exists. Reproduced: a
 panel with `secondAmounts: { 'total-fat': 6 }` and nothing else prints one figure in the second column and
 returns `FDA_DUAL_COLUMN_FORM_MET/pass`. (b)(12)(i)'s mandate reported satisfied by a fifteenth of a column.
 **Phase 6 stage 2**, with the rest of the dual-column work.
 
-**The dual-column branch discards `declaredPercentDv`.** The single-column path goes through `percentOf()`,
+**~~The dual-column branch discards `declaredPercentDv`.~~ Fixed**, and found so on the same day. Both column
+paths in `layout/nutritionPanel.ts` go through `percentOf()`, so a dual-column panel declaring Total Fat at
+9% prints "3g 9%" and `FDA_NUTRITION_PERCENT_DV_WRONG` reports it: the artefact and the finding agree. What
+follows is the entry as it stood. The single-column path goes through `percentOf()`,
 which honours a declared percentage; the dual path calls `printedPercentDailyValue(id, value)` directly. So
 on a dual-column panel the renderer silently prints the *correct* percentage while
 `us-food/nutrition-percent-dv` reads the document and reports the wrong one — the artefact and the finding
@@ -333,7 +339,9 @@ fix` will not resolve them without a major bump of the test runner, and taking a
 security change is how an unrelated breakage gets attributed to the wrong commit. Worth doing deliberately,
 on its own, when there is a reason to touch the tooling.
 
-**When stage 5 widens the CSP for the scanner, it must add `'wasm-unsafe-eval'` and not `'unsafe-eval'`.**
+**~~When stage 5 widens the CSP for the scanner, it must add `'wasm-unsafe-eval'` and not `'unsafe-eval'`.~~
+Done**, and found so on 2026-09-16. `apps/api/src/app.ts` sets `script-src` to `'self'` and
+`'wasm-unsafe-eval'`, with a note giving this entry's reason. What follows is the entry as it stood.
 Helmet's default `script-src 'self'` blocks `WebAssembly.instantiate`, so zxing cannot decode anything in the
 single artifact until the policy admits it. The two directives look interchangeable and are not: the second
 re-enables `eval` and `new Function` for the whole application, which is the larger grant by far and the easy
@@ -367,8 +375,11 @@ not become a rule on the strength of an illustration.
 
 The extraction endpoint, and what writing it turned up.
 
-**`Finding.certifies` is the right idea, and nothing defaults it any more — but the widening is in progress,
-and this entry's original framing of *why* was wrong.** It said filtering an audit report on the field
+**~~`Finding.certifies` is the right idea, and nothing defaults it any more — but the widening is in progress,
+and this entry's original framing of *why* was wrong.~~ The widening is done**: every stamp was decided on
+`feat/certifies-every-pass` and merged in PR #28, as the third paragraph below already said beneath a heading
+that had not caught up. What stays true is the note that `certifies` on violations would need designing. What
+follows is the entry as it stood. It said filtering an audit report on the field
 would empty the report. No such filter exists: `withholdUncertifiablePasses` is the field's only reader, and
 the audit report builds its "cannot be checked" block from `layout.omissions` directly. So widening
 `certifies` changes one thing only — which passes survive an omission — and can only ever make that guard
