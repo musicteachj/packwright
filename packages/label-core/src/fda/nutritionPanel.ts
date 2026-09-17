@@ -37,6 +37,7 @@
  */
 
 import { MM_PER_POINT } from '../geometry/units'
+import type { LabelingSurfaceFloor } from '../geometry/pdp'
 import {
   type NutritionColumnMode,
   type NutritionFormat,
@@ -260,6 +261,8 @@ export interface NutritionDisplayInput {
   format?: NutritionFormat
   /** (j)(13)'s area — the whole surface available to bear labeling. */
   availableSurfaceSqInches?: number
+  /** What the drawn label and panel show that area to be at least — see `labelingSurfaceFloor`. */
+  availableSurfaceFloor?: LabelingSurfaceFloor
   cannotAccommodateVertical?: boolean
   /** A second set of values makes a tabular panel (e)(6)(ii)'s rather than (d)(11)'s. */
   columns?: { mode: NutritionColumnMode }
@@ -273,6 +276,7 @@ export function nutritionDisplayFor(input: NutritionDisplayInput): NutritionDisp
     input.availableSurfaceSqInches !== undefined &&
     smallPackageRouteApplies({
       availableSqInches: input.availableSurfaceSqInches,
+      ...(input.availableSurfaceFloor === undefined ? {} : { floor: input.availableSurfaceFloor }),
       ...(input.cannotAccommodateVertical === undefined
         ? {}
         : { cannotAccommodateVertical: input.cannotAccommodateVertical }),

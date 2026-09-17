@@ -80,6 +80,46 @@ export function pdpAreaSqInches(container: Container): number {
   return pdpAreaSqMm(container) / squareInchesToSquareMm(1)
 }
 
+/** The least surface available to bear labeling a package can have, and what fixes it. */
+export interface LabelingSurfaceFloor {
+  sqInches: number
+  what: 'label' | 'principal display panel'
+  why: string
+}
+
+/**
+ * A floor under 21 CFR 101.9(j)(13)'s "total surface area available to bear labeling".
+ *
+ * That area is declared, because nothing the engine draws measures it. But two figures
+ * the engine does have bound it from below: the label, since a package bears at least
+ * the labeling on it, and the principal display panel, which is part of that surface.
+ * The larger governs. A package whose label or panel is 12 in² cannot be under 12, and
+ * one whose floor is over 40 cannot be at 40 or less, whatever area is typed.
+ *
+ * Found twice. The (j)(13)(i) exemption trusted the typed area until the review of the
+ * PR that added it; the (j)(13)(ii) display route kept trusting it afterwards, and on a
+ * 44.64 in² label with 5 in² typed it granted the tabular display, drew the Calories
+ * numeral at 14 point where (d)(11)'s tabular display needs 22, and excused a mandatory
+ * second column. Takes the stock's dimensions structurally so `geometry` imports
+ * nothing from `templates`.
+ */
+export function labelingSurfaceFloor(
+  stock: { widthMm: number; heightMm: number },
+  container: Container,
+): LabelingSurfaceFloor {
+  const label: LabelingSurfaceFloor = {
+    sqInches: (stock.widthMm * stock.heightMm) / squareInchesToSquareMm(1),
+    what: 'label',
+    why: 'a package bears at least the labeling on it',
+  }
+  const panel: LabelingSurfaceFloor = {
+    sqInches: pdpAreaSqInches(container),
+    what: 'principal display panel',
+    why: 'that panel is part of the surface available to bear labeling',
+  }
+  return panel.sqInches > label.sqInches ? panel : label
+}
+
 /**
  * How the declaration is formed on the package. 21 CFR 101.7(i) closes with a
  * sentence that is easy to read past: a declaration shaped into the surface

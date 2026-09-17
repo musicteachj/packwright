@@ -18,6 +18,7 @@
  * failed in exactly the place a user would try it.
  */
 
+import type { LabelingSurfaceFloor } from '../geometry/pdp'
 import {
   NUTRITION_FOOTNOTE,
   NUTRITION_PANEL_RULES,
@@ -47,6 +48,13 @@ export interface NutritionPanelRequest {
   fontFamily: string
   /** A weight, never a second family name — see `GHS_TYPE_DEFAULT`. */
   emphasisFontWeight: number
+  /**
+   * What the label and its panel show the package's labeling surface to be at least. The
+   * display, and so the type sizes drawn, turns on that area, and the rules judging them
+   * compute the same floor — so the drawing and its judgement cannot pick different
+   * displays for one package.
+   */
+  availableSurfaceFloor?: LabelingSurfaceFloor
 }
 
 export interface NutritionPanelResult {
@@ -106,7 +114,7 @@ function percentOf(facts: UsFoodNutritionFacts, id: NutrientId): number | undefi
 }
 
 export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionPanelResult {
-  const { facts, xMm, widthMm, fontFamily, emphasisFontWeight } = request
+  const { facts, xMm, widthMm, fontFamily, emphasisFontWeight, availableSurfaceFloor } = request
   // Drawn as asked. A scale below 1 puts the panel under the minimums 101.9
   // sets, which is what the type-size rule is there to report.
   const scale = facts.typeScale ?? 1
@@ -118,7 +126,10 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   // (d)(11)'s tabular display and (j)(13)(ii)(A)(1)'s are the same arrangement
   // with different figures.
   const format = facts.format ?? 'vertical'
-  const display = nutritionDisplayFor(facts)
+  const display = nutritionDisplayFor({
+    ...facts,
+    ...(availableSurfaceFloor === undefined ? {} : { availableSurfaceFloor }),
+  })
   const NUTRITION_PANEL_TYPE = nutritionTypeForDisplay(display)
   /**
    * 101.9(j)(13)(i): "Foods in packages **subject to requirements of paragraphs

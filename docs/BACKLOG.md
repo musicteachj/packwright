@@ -527,7 +527,16 @@ carton lid or in an insert that can be clearly seen when the carton is opened". 
 not excused, and this engine draws neither the underside of a lid nor an insert, so a pass saying no panel is
 required would certify a declaration nothing printed.
 
-**The small-package display route trusts a typed area that the label and its panel rule out.** Found by the
+**~~The small-package display route trusts a typed area that the label and its panel rule out.~~ Fixed** on
+`fix/small-package-display-floor`. One helper, `labelingSurfaceFloor` in `geometry/pdp.ts`, takes the larger of
+the label's area and the principal display panel's, and `smallPackageRouteApplies` and `formatIsPermitted` let it
+overrule a smaller declared figure. It reached further than this entry said. Three things turn on that route,
+and all three trusted the typed area: the format entitlement; the display chosen, and so the Calories numeral
+and servings statement the engine draws and the type-size rule accepts — 14 point where (d)(11)'s tabular
+display needs 22, on a 44.64 in² label with 5 in² typed; and the (b)(12)(i)(A) second-column exemption, a
+`document` pass, which excused a mandatory second column on the same label. The engine and every rule compute
+the floor the same way, and the (j)(13)(i) exemption now uses the same helper. What follows is the entry as it
+stood. Found by the
 `high` review of PR #34, and reproduced. The 101.9(j)(13)(i) exemption now refuses a package whose label or
 principal display panel is itself 12 in² or more, since each is a floor under the surface available to bear
 labeling. The (j)(13)(ii) display route in `fda/nutritionFormats.ts` — `smallPackageRouteApplies` and

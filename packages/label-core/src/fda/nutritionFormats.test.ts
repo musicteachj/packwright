@@ -3,6 +3,7 @@ import {
   REDUCED_FORMAT_MAX_SQ_INCHES,
   SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES,
   formatIsPermitted,
+  smallPackageRouteApplies,
 } from './nutritionFormats'
 
 describe('which display a package may use', () => {
@@ -16,6 +17,25 @@ describe('which display a package may use', () => {
     for (const area of [1, 12, 40, 400]) {
       expect(formatIsPermitted('vertical', { availableSqInches: area }).permitted).toBe(true)
     }
+  })
+
+  it('lets what is drawn overrule a declared area the label and panel contradict', () => {
+    // 5 in² declared on a 44.64 in² label. The reduced display turns on the package's
+    // surface, which is at least its label, so the declaration cannot bring it under 40.
+    const floor = {
+      sqInches: 44.64,
+      what: 'label' as const,
+      why: 'a package bears at least the labeling on it',
+    }
+    const verdict = formatIsPermitted('tabular', { availableSqInches: 5, floor })
+    expect(verdict.permitted).toBe(false)
+    expect(verdict.reason).toContain('the label is itself 44.6 in²')
+    expect(smallPackageRouteApplies({ availableSqInches: 5, floor })).toBe(false)
+    // A floor under the declared figure changes nothing: the declaration is the larger.
+    expect(
+      formatIsPermitted('tabular', { availableSqInches: 5, floor: { ...floor, sqInches: 4 } })
+        .permitted,
+    ).toBe(true)
   })
 
   it('permits a tabular display under 12 in² with nothing else declared', () => {

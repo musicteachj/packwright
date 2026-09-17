@@ -26,7 +26,16 @@ describe('the labels the landing page draws', () => {
   it('reports nothing against the food sample', () => {
     const layout = layOutUsFoodLabel({ data: FOOD_SAMPLE, stock: DEFAULT_US_FOOD_STOCK })
     expect(
-      notPassing(runRules({ layout, data: FOOD_SAMPLE, labelType: 'us-food' } as never)),
+      // With its stock, which the context requires and the cast hid: rules now measure
+      // the label's area, and a context without one is not a label anything draws.
+      notPassing(
+        runRules({
+          layout,
+          data: FOOD_SAMPLE,
+          stock: DEFAULT_US_FOOD_STOCK,
+          labelType: 'us-food',
+        } as never),
+      ),
     ).toEqual([])
   })
 
@@ -37,7 +46,12 @@ describe('the labels the landing page draws', () => {
     // the two that are expected.
     const layout = layOutGhsLabel({ data: GHS_SAMPLE, stock: DEFAULT_GHS_STOCK })
     const codes = notPassing(
-      runRules({ layout, data: GHS_SAMPLE, labelType: 'ghs-chemical' } as never),
+      runRules({
+        layout,
+        data: GHS_SAMPLE,
+        stock: DEFAULT_GHS_STOCK,
+        labelType: 'ghs-chemical',
+      } as never),
     )
     expect(codes).toEqual(['GHS_PICTOGRAM_SYMBOL_MISSING', 'GHS_PICTOGRAM_SYMBOL_MISSING'])
   })

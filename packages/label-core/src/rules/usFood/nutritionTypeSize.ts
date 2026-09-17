@@ -30,6 +30,7 @@
  * 1.59 mm floor 101.2(c) sets for everything else.
  */
 
+import { labelingSurfaceFloor } from '../../geometry/pdp'
 import {
   type NutritionDisplay,
   nutritionDisplayFor,
@@ -145,9 +146,14 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
   codes: [FDA_NUTRITION_TYPE_TOO_SMALL, FDA_NUTRITION_TYPE_SIZE_MET],
   appliesTo: 'us-food',
 
-  check({ data, layout }: UsFoodContext): Finding[] {
+  check({ data, layout, stock }: UsFoodContext): Finding[] {
     const facts = data.nutritionFacts
-    const display = nutritionDisplayFor(facts ?? {})
+    // The same floor the engine drew the panel with, so the minimums judged are those of
+    // the display the package can actually reach.
+    const display = nutritionDisplayFor({
+      ...(facts ?? {}),
+      availableSurfaceFloor: labelingSurfaceFloor(stock, data.container),
+    })
     const type = nutritionTypeForDisplay(display)
     const smallestOf = (predicate: (id: string) => boolean): number | undefined => {
       const sizes = layout.primitives

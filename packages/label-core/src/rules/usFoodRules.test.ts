@@ -1949,9 +1949,18 @@ describe('the second column (b)(12)(i) and (b)(2)(i)(D) make mandatory', () => {
   // The exemptions, each asserted on a label that would otherwise be reported.
   // An exemption that silently stops working is the failure mode for a rule that
   // reports an absence, and only a case that would fire without it can catch that.
-  const exempt = (patch: Record<string, unknown>, reference: string, name: string) => {
+  const exempt = (
+    patch: Record<string, unknown>,
+    reference: string,
+    name: string,
+    on: { stock: LabelStock; container?: UsFoodLabelData['container'] } = { stock },
+  ) => {
     it(`is excused by ${reference} — ${name}`, () => {
-      const findings = findingsFor(panel({ ...individually, packageContent: 55, ...patch }), stock)
+      const data = panel({ ...individually, packageContent: 55, ...patch })
+      const findings = findingsFor(
+        on.container === undefined ? data : { ...data, container: on.container },
+        on.stock,
+      )
       const match = findings.find((f) => f.code === 'FDA_DUAL_COLUMN_EXEMPT')
       expect(match, 'the exemption produced no finding at all').toBeDefined()
       expect(match!.citation.reference).toBe(reference)
@@ -1962,7 +1971,20 @@ describe('the second column (b)(12)(i) and (b)(2)(i)(D) make mandatory', () => {
   // (A) turns on entitlement — "products that meet the requirements to use the
   // tabular format", not products that use it — so a small package is excused
   // whatever display it actually carries. This one is the widest of the three.
-  exempt({ availableSurfaceSqInches: 9 }, '21 CFR 101.9(b)(12)(i)(A)', 'a small package')
+  // On a label and panel small enough not to rule the package out: 100 × 70 mm is 10.85 in².
+  exempt({ availableSurfaceSqInches: 9 }, '21 CFR 101.9(b)(12)(i)(A)', 'a small package', {
+    stock: { widthMm: 100, heightMm: 70, marginMm: 3 },
+    container: { shape: 'rectangular', widthMm: 100, heightMm: 70 },
+  })
+
+  it('is not excused by (b)(12)(i)(A) where the label rules the package out', () => {
+    // 9 in² declared on a 44.64 in² label and panel. The route's requirements cannot be
+    // met, and the exemption is stamped on the document, so no omission would have
+    // withheld it.
+    const codes = codesFor({ ...individually, packageContent: 55, availableSurfaceSqInches: 9 })
+    expect(codes).not.toContain('FDA_DUAL_COLUMN_EXEMPT')
+    expect(codes).toContain('FDA_DUAL_COLUMN_MISSING')
+  })
   exempt(
     { dualColumnExemption: { rawCommodityVoluntary: true } },
     '21 CFR 101.9(b)(12)(i)(B)',
@@ -2133,9 +2155,13 @@ describe('a permission the rounding rule has to accept either way', () => {
 })
 
 describe('the linear display', () => {
-  const stock = US_FOOD_CONFORMANT.stock
+  // A package the label and panel do not rule out: 120 × 60 mm is 11.16 in², and a
+  // 50 × 60 mm panel 4.65. On the conformant 44.64 in² label, the declared 9 in² could
+  // not stand, and the route would be refused before anything here was reached.
+  const stock: LabelStock = { widthMm: 120, heightMm: 60, marginMm: 3 }
   const small = (patch: Record<string, unknown> = {}): UsFoodLabelData => ({
     ...US_FOOD_CONFORMANT.data,
+    container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
     nutritionFacts: {
       ...US_FOOD_CONFORMANT.data.nutritionFacts!,
       format: 'linear',
@@ -2230,9 +2256,7 @@ describe('the linear display', () => {
 
   it('is not permitted on the same package without that declaration', () => {
     const { cannotAccommodateTabular: _drop, ...facts } = small().nutritionFacts!
-    const codes = findingsFor({ ...US_FOOD_CONFORMANT.data, nutritionFacts: facts }, stock).map(
-      (f) => f.code,
-    )
+    const codes = findingsFor({ ...small(), nutritionFacts: facts }, stock).map((f) => f.code)
     expect(codes).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
   })
 
@@ -2342,6 +2366,13 @@ describe('the tabular display', () => {
     )
   })
 
+  // A small package the label and panel do not rule out: 100 × 70 mm is 10.85 in².
+  const smallStock: LabelStock = { widthMm: 100, heightMm: 70, marginMm: 3 }
+  const smallTabular = (): UsFoodLabelData => ({
+    ...tabular({ availableSurfaceSqInches: 9, continuousVerticalSpaceInches: undefined }),
+    container: { shape: 'rectangular', widthMm: 100, heightMm: 70 },
+  })
+
   const caloriesNumeralPt = (data: UsFoodLabelData, on: LabelStock): number => {
     const drawn = layOutUsFoodLabel({ data, stock: on }).primitives.find(
       (p): p is TextPrimitive =>
@@ -2355,12 +2386,48 @@ describe('the tabular display', () => {
     // *not* (d)(11), so this display carries a 22 point numeral beside its 10
     // point word. Reading "the tabular display" as one thing put 14 on both.
     expect(caloriesNumeralPt(tabular(), stock)).toBeCloseTo(22, 5)
+    expect(caloriesNumeralPt(smallTabular(), smallStock)).toBeCloseTo(14, 5)
+    // And not on a label that rules the package out, whatever area it declares: 9 in²
+    // typed on this 74.4 in² label drew 14 point and cleared it.
     expect(
       caloriesNumeralPt(
         tabular({ availableSurfaceSqInches: 9, continuousVerticalSpaceInches: undefined }),
         stock,
       ),
-    ).toBeCloseTo(14, 5)
+    ).toBeCloseTo(22, 5)
+  })
+
+  it('refuses the small-package route on a label that rules the package out', () => {
+    // 9 in² declared on this 200 × 240 mm label, 74.4 in², with no short vertical space to
+    // fall back on. The route is (j)(13)(ii)(A)'s alone, and it is closed above 40.
+    const verdict = findingsFor(
+      tabular({ availableSurfaceSqInches: 9, continuousVerticalSpaceInches: undefined }),
+      stock,
+    ).find((f) => f.code === 'FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+    expect(verdict!.message).toContain('the label is itself 74.4 in²')
+    const entitled = findingsFor(smallTabular(), smallStock).find(
+      (f) => f.code === 'FDA_NUTRITION_FORMAT_MET',
+    )
+    expect(entitled, 'the control: on a small label and panel it is entitled').toBeDefined()
+    // And the pass names the area that decided it: the label, larger than the 9 declared.
+    expect(entitled!.message).toContain('its label, more than the 9.0 in² declared')
+  })
+
+  it('judges the numeral against the display the label can reach, not the one declared', () => {
+    // Scaled so the numeral lands at 16 point: over the small-package 14, under (d)(11)'s
+    // 22. On this 74.4 in² label the 9 in² declared cannot open the small-package route,
+    // so the rule must hold the numeral to 22 — the same display the engine chose.
+    const scaled = tabular({
+      availableSurfaceSqInches: 9,
+      continuousVerticalSpaceInches: undefined,
+      typeScale: 16 / 22,
+    })
+    expect(caloriesNumeralPt(scaled, stock), 'the premise').toBeCloseTo(16, 5)
+    const numeral = findingsFor(scaled, stock).find(
+      (f) => f.citation.reference === '21 CFR 101.9(d)(1)(iii)',
+    )
+    expect(numeral?.code).toBe('FDA_NUTRITION_TYPE_TOO_SMALL')
+    expect(numeral!.measurement!.required).toBe('22 pt')
   })
 
   it('keeps the servings statement at 10 point here, which only (j)(13) lowers', () => {
@@ -2387,12 +2454,10 @@ describe('the tabular display', () => {
   it('does not report the numeral on a small package drawn to its own 14 point', () => {
     // The over-strict direction. (j)(13)(ii)(A)(1) permits 14 here, and holding
     // this panel to 22 would report a label the paragraph allows.
-    const small = tabular({
-      availableSurfaceSqInches: 9,
-      continuousVerticalSpaceInches: undefined,
-    })
     expect(
-      findingsFor(small, stock).filter((f) => f.citation.reference === '21 CFR 101.9(d)(1)(iii)'),
+      findingsFor(smallTabular(), smallStock).filter(
+        (f) => f.citation.reference === '21 CFR 101.9(d)(1)(iii)',
+      ),
     ).toEqual([])
   })
 
@@ -2415,8 +2480,7 @@ describe('the tabular display', () => {
   })
 
   it('keeps the abbreviation for the small-package display that may use it', () => {
-    const small = tabular({ availableSurfaceSqInches: 9, continuousVerticalSpaceInches: undefined })
-    const text = textOf(small, stock).join(' ')
+    const text = textOf(smallTabular(), smallStock).join(' ')
     expect(text).toContain('% DV = % Daily Value')
     expect(text).not.toContain('2,000 calories a day')
   })

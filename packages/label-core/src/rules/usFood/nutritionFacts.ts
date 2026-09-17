@@ -57,8 +57,7 @@ import type {
   UsFoodSmallPackageExemption,
 } from '../../templates/usFood'
 import { SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES } from '../../fda/nutritionFormats'
-import { MM_PER_INCH } from '../../geometry/units'
-import { pdpAreaSqInches } from '../../geometry/pdp'
+import { labelingSurfaceFloor } from '../../geometry/pdp'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
@@ -356,20 +355,11 @@ function smallPackage(
   // The PR review found the first fixtures declaring 11.5 in² on a 120 × 240 mm label of
   // 44.6 in², and its follow-up the same figure on a container whose panel alone was 44.6
   // — each exempt from the panel it had room for four times over.
-  const floors = [
-    {
-      what: 'label',
-      sqInches: (stock.widthMm * stock.heightMm) / MM_PER_INCH ** 2,
-      why: 'a package bears at least the labeling on it',
-    },
-    {
-      what: 'principal display panel',
-      sqInches: pdpAreaSqInches(data.container),
-      why: 'that panel is part of the surface available to bear labeling',
-    },
-  ]
-  const ruledOut = floors.find((floor) => floor.sqInches >= SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES)
-  if (ruledOut !== undefined) {
+  // One floor, computed as the display route computes it, so the exemption and the
+  // reduced displays cannot come to disagree about how big a package is.
+  const floor = labelingSurfaceFloor(stock, data.container)
+  if (floor.sqInches >= SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES) {
+    const ruledOut = floor
     return [
       finding(usFoodNutritionCompletenessRule, {
         code: FDA_NUTRITION_MISSING,

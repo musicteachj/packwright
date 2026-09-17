@@ -17,6 +17,7 @@
  * different questions, and a label carries both.
  */
 
+import { labelingSurfaceFloor } from '../../geometry/pdp'
 import { formatIsPermitted } from '../../fda/nutritionFormats'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
@@ -57,7 +58,7 @@ export const usFoodNutritionFormatRule: UsFoodRule = {
   codes: [FDA_NUTRITION_FORMAT_NOT_PERMITTED, FDA_NUTRITION_FORMAT_MET],
   appliesTo: 'us-food',
 
-  check({ data }: UsFoodContext): Finding[] {
+  check({ data, stock }: UsFoodContext): Finding[] {
     const panel = data.nutritionFacts
     const format = panel?.format ?? 'vertical'
     // The vertical display needs no entitlement and every package may use it, so
@@ -70,8 +71,10 @@ export const usFoodNutritionFormatRule: UsFoodRule = {
     // principal display panel would answer a different paragraph's question.
     if (availableSqInches === undefined) return []
 
+    const floor = labelingSurfaceFloor(stock, data.container)
     const verdict = formatIsPermitted(format, {
       availableSqInches,
+      floor,
       ...(panel.cannotAccommodateVertical === undefined
         ? {}
         : { cannotAccommodateVertical: panel.cannotAccommodateVertical }),
@@ -100,16 +103,22 @@ export const usFoodNutritionFormatRule: UsFoodRule = {
     }
 
     return [
-      // On the document, not the artwork. This rule never reads the layout —
-      // `check({ data })` is its whole signature — because an entitlement is
-      // settled by the package's surface area, not by how much of the panel fit.
+      // On the document, not the artwork. This rule never reads the layout — the
+      // declared area and the stock whose size puts a floor under it are its whole
+      // input — because an entitlement is settled by the package's surface area,
+      // not by how much of the panel fit.
       // A panel drawn past the edge of its stock is still entitled to the
       // display it chose, and the omission reports the part that did not print.
       passedOnDocument(
         usFoodNutritionFormatRule,
         FDA_NUTRITION_FORMAT_MET,
-        `A package of ${availableSqInches.toFixed(1)} in² may present its nutrition information ` +
-          `in ${FORMAT_NAME[format]}.`,
+        // The area that decided it, which is the floor where the label or panel is larger
+        // than the figure declared — a review found this quoting the declaration anyway.
+        (floor.sqInches > availableSqInches
+          ? `A package of at least ${floor.sqInches.toFixed(1)} in² — its ${floor.what}, more ` +
+            `than the ${availableSqInches.toFixed(1)} in² declared — `
+          : `A package of ${availableSqInches.toFixed(1)} in² `) +
+          `may present its nutrition information in ${FORMAT_NAME[format]}.`,
         US_FOOD_ELEMENTS.nutritionPanel,
         // The paragraph that actually permitted it, which is not always this
         // rule's own: (d)(11)(iii) entitles a package of any size to the tabular
