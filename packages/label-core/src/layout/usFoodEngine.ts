@@ -37,7 +37,11 @@ import { roundTo } from '../geometry/units'
 import { foodSourceName } from '../fda/allergens'
 import { layOutNutritionPanel, willDrawSecondColumn } from './nutritionPanel'
 import type { UsFoodLabelData } from '../templates/usFood'
-import { US_FOOD_ELEMENTS, US_FOOD_TYPE_DEFAULT } from '../templates/usFood'
+import {
+  US_FOOD_EGG_CARTON_PRESENTED,
+  US_FOOD_ELEMENTS,
+  US_FOOD_TYPE_DEFAULT,
+} from '../templates/usFood'
 import type { LabelStock } from '../templates/stock'
 import { anchorBox, panelFor } from '../templates/stock'
 import { LayoutError, assertMarginLeavesPanel } from './engine'
@@ -389,10 +393,31 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     }
   }
 
+  // 21 CFR 101.9(j)(14) — an egg carton presents its nutrition information "immediately
+  // beneath the carton lid or in an insert", exempt from outer carton label requirements.
+  // This engine draws the outer carton and neither of those, so the panel is not drawn,
+  // and says so. A detail, not an element: the carton without its panel is the whole of
+  // what this label should carry, and an export of it is worth having. The omission is
+  // what keeps every pass about the panel's printed figures from being issued on it.
+  const relocated =
+    data.nutritionExemption?.kind === 'egg-carton' ? data.nutritionExemption : undefined
+  if (data.nutritionFacts !== undefined && relocated !== undefined) {
+    omissions.push({
+      elementId: US_FOOD_ELEMENTS.nutritionPanel,
+      reason:
+        'The nutrition information is presented ' +
+        `${US_FOOD_EGG_CARTON_PRESENTED[relocated.presentedIn]}, as the label claims under 21 CFR ` +
+        '101.9(j)(14). This engine draws neither the underside of a lid nor an insert, so the ' +
+        'information is not on this label, and how it is laid out where it is presented is not ' +
+        'judged.',
+      scope: 'detail',
+    })
+  }
+
   // 21 CFR 101.9(d) — the Nutrition Facts panel, above the ingredient statement,
   // which is the order an information panel runs in. It is boxed and narrower
   // than the label, so it takes a width of its own rather than the panel's.
-  if (data.nutritionFacts !== undefined) {
+  else if (data.nutritionFacts !== undefined) {
     // The 2.5 inch figure is the illustrations' width for a panel carrying **one**
     // column of values, and no paragraph sets a panel width at all. A second
     // column has to come from somewhere, and taking it out of the nutrient names

@@ -963,6 +963,24 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     },
   },
   {
+    name: 'an egg carton claiming (j)(14) with no nutrition information declared',
+    defect:
+      'Shell eggs in a carton with a conforming lid are exempt from outer carton label ' +
+      'requirements under 101.9(j)(14) "where the required nutrition information is clearly ' +
+      'presented immediately beneath the carton lid or in an insert". The information moves; ' +
+      'it does not go away, and this carton declares none to present.',
+    data: {
+      ...WITHOUT_NUTRITION,
+      nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NUTRITION_MISSING,
+      severity: 'blocking',
+      citation: '21 CFR 101.9(j)(14)',
+    },
+  },
+  {
     name: 'a panel with no potassium on it',
     defect:
       'Potassium is one of the four 101.9(c)(8)(ii) names explicitly, and the last of them, which ' +

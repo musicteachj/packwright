@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import type { TextPrimitive } from '../layout/types'
 import {
+  NUTRITION_ELEMENT_PREFIX,
   US_FOOD_ELEMENTS,
   US_FOOD_NUTRITION_EXEMPTIONS,
   US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
@@ -1411,15 +1412,16 @@ describe('the §101.9(j) nutrition exemption', () => {
     // (j)(13)(i)'s address or telephone number, (j)(14)'s information beneath the
     // carton lid and (j)(15)'s "This Unit Not Labeled For Retail Sale" are each a
     // condition on the package. A first draft offered (j)(14), and its pass said no
-    // panel was required of a carton whose panel had only moved. (j)(13)(i) and
-    // (j)(15) are offered now, as kinds declared with particulars — because the line
-    // and the statement are checked, below — and nothing claimed by paragraph alone
-    // reaches any of them.
+    // panel was required of a carton whose panel had only moved. All three are
+    // offered now, as kinds declared with particulars — the line and the statement
+    // because they are checked, below, and the carton because it keeps its nutrition
+    // information and has it judged — and nothing claimed by paragraph alone reaches
+    // any of them.
     expect(
       US_FOOD_NUTRITION_EXEMPTIONS.filter(
         (kind) => !(US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE as readonly string[]).includes(kind),
       ),
-    ).toEqual(['small-package', 'unit-container'])
+    ).toEqual(['small-package', 'unit-container', 'egg-carton'])
     const cited = US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE.map((kind) =>
       findingsFor({ ...withoutPanel, nutritionExemption: { kind } }, stock).find(
         (f) => f.code === 'FDA_NUTRITION_EXEMPT',
@@ -1740,6 +1742,99 @@ describe('the §101.9(j) nutrition exemption', () => {
       const codes = codesOf(findingsFor(data, stock))
       expect(codes).toContain('FDA_NUTRITION_COMPLETE')
       expect(codes).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+  })
+
+  describe('the (j)(14) egg carton, whose nutrition information moves beneath the lid', () => {
+    // Read from the eCFR on 2026-09-17: shell eggs in a carton with a top lid "designed
+    // to conform to the shape of the eggs are exempt from outer carton label requirements
+    // where the required nutrition information is clearly presented immediately beneath
+    // the carton lid or in an insert that can be clearly seen when the carton is opened".
+    // Relocated, not excused: the information is still declared, and still judged.
+    const codesOf = (findings: { code: string }[]) => findings.map((f) => f.code)
+    const carton = (
+      presentedIn: 'beneath-lid' | 'insert' = 'beneath-lid',
+      data: UsFoodLabelData = US_FOOD_CONFORMANT.data,
+    ): UsFoodLabelData => ({ ...data, nutritionExemption: { kind: 'egg-carton', presentedIn } })
+
+    it('draws no panel on the outer carton, says so, and still exports', () => {
+      const layout = layOutUsFoodLabel({ data: carton(), stock })
+      expect(
+        layout.primitives.filter((p) => p.elementId?.startsWith(NUTRITION_ELEMENT_PREFIX)),
+        'nothing of the panel is drawn on the outer carton',
+      ).toEqual([])
+      const omitted = layout.omissions.filter(
+        (o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+      )
+      expect(omitted).toHaveLength(1)
+      expect(omitted[0]!.scope, 'the outer carton is a whole label without it').toBe('detail')
+      expect(omitted[0]!.reason).toContain('101.9(j)(14)')
+      expect(omitted[0]!.reason).toContain('beneath the carton lid')
+      expect(blockingOmissions(layout)).toEqual([])
+    })
+
+    it.each([
+      ['beneath-lid', 'beneath the carton lid'],
+      ['insert', 'in an insert'],
+    ] as const)('clears it on information declared %s, citing (j)(14)', (presentedIn, words) => {
+      const findings = findingsFor(carton(presentedIn), stock)
+      const pass = findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')
+      expect(pass!.citation.reference).toBe('21 CFR 101.9(j)(14)')
+      expect(pass!.message).toContain(words)
+      expect(pass!.message, 'and says what it cannot check').toContain('Not checked here:')
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_MISSING')
+    })
+
+    it('refuses it where no nutrition information is declared at all', () => {
+      const findings = findingsFor(carton('beneath-lid', withoutPanel), stock)
+      const missing = findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
+      expect(missing!.severity).toBe('blocking')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(j)(14)')
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('still reports a nutrient missing from the information declared', () => {
+      const findings = findingsFor(
+        carton('beneath-lid', fixture('a panel with no potassium on it').data),
+        stock,
+      )
+      expect(codesOf(findings)).toContain('FDA_NUTRITION_NUTRIENT_MISSING')
+      expect(codesOf(findings)).not.toContain('FDA_NUTRITION_EXEMPT')
+    })
+
+    it('still judges the declared figures, and certifies none of them as printed', () => {
+      const wrong = findingsFor(
+        carton('beneath-lid', fixture('sodium rounded in the wrong band').data),
+        stock,
+      )
+      expect(codesOf(wrong), 'a figure wrong on the lid is wrong').toContain(
+        'FDA_NUTRITION_ROUNDING_WRONG',
+      )
+
+      // Premise: on the outer label these pass, each on the artwork of the panel.
+      const artworkPasses = [
+        'FDA_NUTRITION_COMPLETE',
+        'FDA_NUTRITION_ORDER_MET',
+        'FDA_NUTRITION_ROUNDING_MET',
+        'FDA_NUTRITION_PERCENT_DV_MET',
+        'FDA_SERVING_SIZE_MET',
+      ]
+      const unclaimed = codesOf(findingsFor(US_FOOD_CONFORMANT.data, stock))
+      for (const code of artworkPasses) expect(unclaimed, `premise: ${code}`).toContain(code)
+      // Nothing here drew them, so none of them is certified.
+      const claimed = codesOf(findingsFor(carton(), stock))
+      for (const code of artworkPasses) expect(claimed, code).not.toContain(code)
+    })
+
+    it('reports no missing second column on a panel it did not draw', () => {
+      const dual = fixture('a 250 percent package carrying one column')
+      expect(
+        codesOf(findingsFor(dual.data, dual.stock)),
+        'premise: the outer label owes a second column',
+      ).toContain('FDA_DUAL_COLUMN_MISSING')
+      expect(codesOf(findingsFor(carton('beneath-lid', dual.data), dual.stock))).not.toContain(
+        'FDA_DUAL_COLUMN_MISSING',
+      )
     })
   })
 })

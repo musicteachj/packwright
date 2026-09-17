@@ -956,6 +956,31 @@ describe('the Nutrition Facts panel in the editor', () => {
     expect(canvas()).toContain('This Unit Not Labeled For Individual Sale')
     expect(canvas()).not.toContain('For Retail Sale')
   })
+
+  it('takes an egg carton, keeps its nutrition information, and draws no panel', async () => {
+    const { store, wrapper } = await mountFood()
+    const canvas = () => wrapper.find('svg[role="img"]').text()
+    expect(canvas(), 'premise: the panel is drawn').toContain('Nutrition Facts')
+
+    await wrapper.find('#field-food-nf-exemption').setValue('egg-carton')
+    await nextTick()
+    expect(store.foodData.nutritionExemption).toEqual({
+      kind: 'egg-carton',
+      presentedIn: 'beneath-lid',
+    })
+    expect(store.foodData.nutritionFacts, 'the information is kept').toBeDefined()
+    expect(canvas(), 'and not drawn on the outer carton').not.toContain('Nutrition Facts')
+    const pass = store.findings.find((f) => f.code === 'FDA_NUTRITION_EXEMPT')
+    expect(pass?.citation.reference).toBe('21 CFR 101.9(j)(14)')
+    expect(
+      wrapper.find('#field-food-nf-serving').exists(),
+      'and its figures can still be edited',
+    ).toBe(true)
+
+    await wrapper.find('#field-food-nf-egg-location').setValue('insert')
+    await nextTick()
+    expect(store.foodData.nutritionExemption).toEqual({ kind: 'egg-carton', presentedIn: 'insert' })
+  })
 })
 
 /**

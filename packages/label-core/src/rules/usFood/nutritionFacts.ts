@@ -29,9 +29,11 @@
  *   project cannot evaluate, that the food "bears no nutrition claims or other
  *   nutrition information in any context on the label or in labeling or
  *   advertising", because it models no claims. (j)(13)(i) holds only on a line
- *   printed on the package, and is checked below, as is (j)(15)'s statement. (j)(14)
- *   holds only on something printed that nothing here checks, and is not offered
- *   until it is. Read from the eCFR on 2026-09-16, and (j)(15) again on 2026-09-17.
+ *   printed on the package, and is checked below, as is (j)(15)'s statement.
+ *   (j)(14)'s egg carton moves its information beneath the lid rather than going
+ *   without, so the information is still required and judged, and what goes unchecked
+ *   is only where and how it is presented. Read from the eCFR on 2026-09-16, and
+ *   (j)(14) and (j)(15) again on 2026-09-17.
  * - The *weights* of the four vitamins and minerals. 101.9(c)(8)(ii) permits
  *   "additional levels of significance" beyond the whole units (c)(8)(iv) gives,
  *   so 235 mg of potassium and 235.4 mg are both proper declarations and no
@@ -50,9 +52,14 @@ import {
 } from '../../fda/nutrients'
 import type { NutrientId } from '../../fda/nutrients'
 import { wasFullyDrawn } from '../../layout/omissions'
-import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../../templates/usFood'
+import {
+  US_FOOD_EGG_CARTON_PRESENTED,
+  US_FOOD_ELEMENTS,
+  nutritionRowElementId,
+} from '../../templates/usFood'
 import type {
   US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
+  UsFoodEggCartonExemption,
   UsFoodNutritionFacts,
   UsFoodSmallPackageExemption,
   UsFoodUnitContainerExemption,
@@ -200,6 +207,15 @@ const SMALL_PACKAGE_CONTACT = untitled(EXEMPTION, '21 CFR 101.9(j)(13)(i)(A)')
  * outer package and are not checked.
  */
 const UNIT_CONTAINER = untitled(EXEMPTION, '21 CFR 101.9(j)(15)')
+
+/**
+ * 101.9(j)(14), the egg carton. Read from the eCFR on 2026-09-17: "Shell eggs packaged in
+ * a carton that has a top lid designed to conform to the shape of the eggs are exempt
+ * from outer carton label requirements where the required nutrition information is
+ * clearly presented immediately beneath the carton lid or in an insert that can be
+ * clearly seen when the carton is opened." The information is relocated, not excused.
+ */
+const EGG_CARTON = untitled(EXEMPTION, '21 CFR 101.9(j)(14)')
 const UNIT_CONTAINER_STATEMENT = untitled(EXEMPTION, '21 CFR 101.9(j)(15)(iii)')
 
 const PERCENT: Citation = {
@@ -245,6 +261,7 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     SMALL_PACKAGE_CONTACT,
     UNIT_CONTAINER,
     UNIT_CONTAINER_STATEMENT,
+    EGG_CARTON,
   ],
   codes: [
     FDA_NUTRITION_MISSING,
@@ -262,7 +279,11 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     const panel = panelOf(data)
 
     const claimed = data.nutritionExemption
-    // A label printing a panel is not using its exemption, whichever it claims, and the
+    // The egg carton first, and whether or not it carries a panel: (j)(14) moves the
+    // information rather than excusing it, so the panel is expected rather than absent.
+    if (claimed?.kind === 'egg-carton') return eggCarton(claimed, context)
+
+    // Every other kind: a label printing a panel is not using its exemption, and the
     // panel is judged below. Dispatched by kind, so a kind declared with particulars is
     // one more case here and the rest reach `EXEMPTIONS` with no list to keep in step.
     if (claimed !== undefined && panel === undefined) {
@@ -327,27 +348,8 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
       ]
     }
 
-    // Declared *and printed*. Where the panel states an `order`, that order is
-    // the printed panel — a nutrient held in `amounts` but left out of it is not
-    // on the label. Reading `amounts` alone gave "All 15 mandatory nutrients are
-    // declared" beside "14 nutrients run in the order 101.9(c) sets", with
-    // nobody owning the line that had been dropped: the order rule narrows its
-    // expectation to what is listed and delegates omissions here, and here was
-    // looking somewhere else.
-    const printed = (id: (typeof NUTRIENTS)[number]['id']) =>
-      declaredAmount(panel, id) !== undefined && (panel.order?.includes(id) ?? true)
-    const missing = NUTRIENTS.filter((entry) => !printed(entry.id))
-    if (missing.length > 0) {
-      return missing.map((entry) =>
-        finding(usFoodNutritionCompletenessRule, {
-          code: FDA_NUTRITION_NUTRIENT_MISSING,
-          severity: 'violation',
-          message: `The panel declares no ${entry.name}, which ${entry.reference} makes mandatory.`,
-          measurement: { actual: 'not declared', required: entry.name },
-          elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
-        }),
-      )
-    }
+    const missing = missingNutrients(panel)
+    if (missing.length > 0) return missing
 
     return [
       // 101.9(c): the declaration "on the label" shall contain these nutrients: the artwork.
@@ -359,6 +361,91 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
       ),
     ]
   },
+}
+
+/**
+ * A finding for each mandatory nutrient the panel does not declare.
+ *
+ * Declared *and printed*. Where the panel states an `order`, that order is the printed
+ * panel — a nutrient held in `amounts` but left out of it is not on the label. Reading
+ * `amounts` alone gave "All 15 mandatory nutrients are declared" beside "14 nutrients run
+ * in the order 101.9(c) sets", with nobody owning the line that had been dropped: the
+ * order rule narrows its expectation to what is listed and delegates omissions here, and
+ * here was looking somewhere else.
+ */
+function missingNutrients(panel: UsFoodNutritionFacts): Finding[] {
+  const printed = (id: (typeof NUTRIENTS)[number]['id']) =>
+    declaredAmount(panel, id) !== undefined && (panel.order?.includes(id) ?? true)
+  return NUTRIENTS.filter((entry) => !printed(entry.id)).map((entry) =>
+    finding(usFoodNutritionCompletenessRule, {
+      code: FDA_NUTRITION_NUTRIENT_MISSING,
+      severity: 'violation',
+      message: `The panel declares no ${entry.name}, which ${entry.reference} makes mandatory.`,
+      measurement: { actual: 'not declared', required: entry.name },
+      elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+    }),
+  )
+}
+
+/**
+ * 101.9(j)(14), judged: the carton is excused a panel on its outer label only because
+ * the information is presented beneath the lid or in an insert instead.
+ *
+ * **The information is declared, and judged as any panel's.** A carton declaring none
+ * has nothing to present, and is refused. One declaring the information is held to
+ * 101.9(c)'s nutrients here, and to its order, rounding and percentages by the rules
+ * that judge those — every one of which still reports a wrong figure. Their passes are
+ * a different matter: each says the panel *prints* its figures correctly, and nothing
+ * here prints them, so the engine records the panel as not drawn and those passes are
+ * withheld.
+ *
+ * **Where the information goes is declared, and not checked.** Whether it is clearly
+ * presented beneath the lid, whether an insert can be clearly seen, whether the lid
+ * conforms to the eggs, and the format the information takes there, are all off this
+ * label. The pass says so, and names the principal display panel rather than the
+ * panel, since it is the outer carton being excused.
+ */
+function eggCarton(claimed: UsFoodEggCartonExemption, { data }: UsFoodContext): Finding[] {
+  const presented = US_FOOD_EGG_CARTON_PRESENTED[claimed.presentedIn]
+  const panel = panelOf(data)
+  if (panel === undefined) {
+    return [
+      finding(usFoodNutritionCompletenessRule, {
+        code: FDA_NUTRITION_MISSING,
+        severity: 'blocking',
+        message:
+          'The carton claims the 101.9(j)(14) exemption, which moves the required nutrition ' +
+          `information to be presented ${presented} rather than excusing it, and declares no ` +
+          'nutrition information to present there.',
+        measurement: {
+          actual: 'no nutrition information',
+          required: `the nutrition information, presented ${presented}`,
+        },
+        elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+        citation: EGG_CARTON,
+      }),
+    ]
+  }
+
+  const missing = missingNutrients(panel)
+  if (missing.length > 0) return missing
+
+  return [
+    // (j)(14) excuses the outer carton on a condition about what is printed elsewhere
+    // on the package: the artwork, and stricter than it needs, never looser.
+    passedOnArtwork(
+      usFoodNutritionCompletenessRule,
+      FDA_NUTRITION_EXEMPT,
+      `The carton claims the ${EGG_CARTON.reference} exemption for shell eggs, with its nutrition ` +
+        `information presented ${presented}, so no panel is required on the outer carton. All ` +
+        `${NUTRIENTS.length} mandatory nutrients are declared for it, and its figures are judged ` +
+        'as any panel’s are. Not checked here: that the lid is designed to conform to the shape of ' +
+        'the eggs, that the information is clearly presented where it is declared to be, and how ' +
+        'it is laid out there, none of which this engine draws.',
+      US_FOOD_ELEMENTS.principalDisplayPanel,
+      EGG_CARTON,
+    ),
+  ]
 }
 
 /**

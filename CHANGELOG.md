@@ -37,6 +37,23 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **An egg carton claiming 101.9(j)(14) keeps its nutrition information, and the outer carton draws none of it.**
+  (j)(14), read from the eCFR on 2026-09-17: "Shell eggs packaged in a carton that has a top lid designed to
+  conform to the shape of the eggs are exempt from outer carton label requirements where the required nutrition
+  information is clearly presented immediately beneath the carton lid or in an insert that can be clearly seen when
+  the carton is opened." The information is relocated, not excused, and this engine draws neither the underside of
+  a lid nor an insert, so a pass saying no panel was required would have certified information nothing printed. A
+  draft of the exemption work offered it on that reading and its review caught it. It is offered now on the other
+  one. The label declares where the information is presented and keeps its `nutritionFacts`. The engine draws no
+  panel on the outer carton and records that as a detail omission, so the carton still exports. A carton declaring
+  no nutrition information is `FDA_NUTRITION_MISSING` under (j)(14), and one missing a mandatory nutrient is
+  reported as any panel is. The order, rounding and percentage rules still report every wrong figure, and the
+  omission withholds every pass that says the panel printed its figures correctly: on the conformant label the
+  completeness, order, rounding, percentage and serving-size passes all go, leaving only the exemption's own pass
+  on the principal display panel. The dual-column rule no longer reports a missing second column on a panel that
+  was not drawn. Not checked: that the lid conforms to the eggs, that the information is clearly presented where it
+  is declared to be, and how it is laid out there.
+
 - **A unit container claiming 101.9(j)(15) bears the statement (iii) requires, at the size it sets.** (j)(15)
   exempts the unit containers of a multiunit retail package on three conditions, read from the eCFR on
   2026-09-17: that the package's labeling "contains all nutrition information in accordance with the
@@ -121,9 +138,9 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   offered: § 101.100(a)(2) and ten 101.9(j) paragraphs, among them (j)(8)'s medical foods and (j)(11)(ii)'s custom
   processed fish and game, which a first draft wrongly listed as not exemptions at all. The (a)(1) assortment and
   the (j)(13)(i) small package each put a statement on the label and arrive with the checks for them; (j)(15)'s
-  unit container followed on `feat/egg-carton-and-unit-container`, above; (j)(14)'s egg carton, whose nutrition
-  information moves beneath the lid rather than going away, is recorded in `docs/BACKLOG.md`. A draft offered
-  (j)(14), and its review caught it. A label saved with a bare flag still opens and exports, keeps its missing
+  unit container and (j)(14)'s egg carton, whose nutrition
+  information moves beneath the lid rather than going away, followed on `feat/egg-carton-and-unit-container`,
+  above. A draft had offered (j)(14) as though it excused the panel, and its review caught it. A label saved with a bare flag still opens and exports, keeps its missing
   list or panel excused, and gets an advisory asking which paragraph it claims instead of a pass. Picking one in
   the editor clears the old flag. The API refuses a kind label-core does not name.
 

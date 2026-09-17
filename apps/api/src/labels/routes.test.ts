@@ -403,6 +403,34 @@ describe('POST /api/labels/us-food/export', () => {
     ).toBe(400)
   })
 
+  it('exports an egg carton whose panel is presented beneath the lid, and refuses one presented nowhere', async () => {
+    // The engine records the panel as not drawn on the outer carton. That is a detail,
+    // not a missing element, so the export gate lets the carton through.
+    const carton = {
+      ...FOOD_BODY,
+      nutritionFacts: { servingSize: '1 egg (50g)', amounts: { calories: 70 } },
+    }
+    expect(
+      (
+        await postFood({
+          ...carton,
+          nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+        })
+      ).status,
+    ).toBe(200)
+    expect(
+      (
+        await postFood({
+          ...carton,
+          nutritionExemption: { kind: 'egg-carton', presentedIn: 'on-the-shelf' },
+        })
+      ).status,
+    ).toBe(400)
+    expect((await postFood({ ...carton, nutritionExemption: { kind: 'egg-carton' } })).status).toBe(
+      400,
+    )
+  })
+
   it('takes an assortment with its statement, and prints it', async () => {
     const assortment = {
       kind: 'assortment',

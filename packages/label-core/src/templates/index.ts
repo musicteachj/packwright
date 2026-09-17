@@ -21,6 +21,8 @@ export type { DigitalLinkData, UpcALabelData } from './upcA'
 export {
   DEFAULT_US_FOOD_STOCK,
   INGREDIENT_THRESHOLD_PERCENTS,
+  US_FOOD_EGG_CARTON_PRESENTATIONS,
+  US_FOOD_EGG_CARTON_PRESENTED,
   US_FOOD_ELEMENTS,
   US_FOOD_INGREDIENTS_EXEMPTIONS,
   US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
@@ -35,6 +37,8 @@ export {
 export type {
   IngredientThresholdPercent,
   UsFoodAssortmentExemption,
+  UsFoodEggCartonExemption,
+  UsFoodEggCartonPresentation,
   UsFoodIngredient,
   UsFoodIngredientsExemption,
   UsFoodIngredientsExemptionKind,

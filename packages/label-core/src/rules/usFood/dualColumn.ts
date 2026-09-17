@@ -181,6 +181,14 @@ export const usFoodDualColumnRule: UsFoodRule = {
       ]
     }
 
+    // No panel drawn at all is nothing to measure a column on. Only (j)(14) reaches this —
+    // an egg carton's information is presented beneath the lid, and a panel run off the
+    // stock still records its elements — and saying "the panel as drawn carries one
+    // column" of a panel not on the label would be false. The omission says why it is not.
+    if (!layout.elements.some((element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel)) {
+      return []
+    }
+
     // **Asked of the layout, not of the document.** This read `columns.mode` and
     // reported the column present on a tabular panel that draws a single one —
     // certifying content the engine never printed, which is the failure

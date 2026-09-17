@@ -528,9 +528,9 @@ it and says what of it goes unchecked; a label saved with a bare flag is excused
 cleared. (j)(13)(i)(A)'s line and (a)(1)'s statement are both declared, printed by the engine, required by a
 rule, and named by the pass so that one which did not print withholds it. (a)(1) turned out reachable after
 all: its common ingredients are listed and judged as any list, and where none is common to all packages only
-the statement is owed. What either line says beyond the names it must carry is not judged. (j)(15) followed
-on `feat/egg-carton-and-unit-container`. Still open, each below: (j)(14), and the nutrition-claims condition
-most (j) paragraphs share. What follows is the entry as it stood. `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
+the statement is owed. What either line says beyond the names it must carry is not judged. (j)(15) and (j)(14)
+followed on `feat/egg-carton-and-unit-container`. Still open, below: the nutrition-claims condition most (j)
+paragraphs share. What follows is the entry as it stood. `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
 §101.100(a)(1) excuses an assortment "on the condition that the label shall bear, in conjunction with the
 names of such ingredients as are common to all packages, a statement … indicating by name other ingredients
 which may be present". And 101.9(j)(13)(i)(A) says the manufacturer "shall provide on the label of packages
@@ -556,6 +556,13 @@ before "Retail", and no statement needed where the units bear no labeling at all
 before the engine draws that exact text, and a rule measures it, would issue a pass on a label condition no
 one reads. It needs the statement taken verbatim from the regulation, its two permitted variants, and a
 height check at the 101.2(c) floor it shares. Left out of the exemption work on the scope agreed for it.
+
+**~~(j)(14)'s egg carton is not offered, because its information moves beneath the lid.~~ Fixed** on
+`feat/egg-carton-and-unit-container`. The carton declares where its information is presented and keeps its
+`nutritionFacts`, which are still required and judged. The engine draws no panel on the outer carton and records a
+detail omission, which withholds every pass about the panel's printed figures while the violations still report.
+The exemption's own pass names the principal display panel and says that where and how the information is
+presented is not checked. What follows is the entry as it stood.
 
 (j)(14)'s egg carton is left out for the same reason, found by the review of the commit that recorded the
 paragraphs — which had offered it. Shell eggs in a carton with a conforming top lid "are exempt from outer carton
