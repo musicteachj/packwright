@@ -18,13 +18,9 @@ to be finished. What the reading changed is the shape of the file rather than it
 entries was frightening and meaningless, because most of them are not work anybody intends to do.
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. One left — the other was the (e)(6) citation, fixed below
-under the phase 6 opening review:
-
-- **Two GS1 rules keep no reading of their source.** `gs1/gtin-check-digit` and `gs1/digital-link` cite the
-  General Specifications and the Digital Link syntax with no version, section or reading date, where
-  `geometry/symbol.ts` quotes GenSpec 25.0 by clause. Unverifiable rather than shown wrong, which this project
-  treats as the same thing. Below, under phase 7, stage 1.
+provision that does not say what the finding claims. **None outstanding.** There were two on 2026-09-17 and both
+are struck below: the (e)(6) citation, under the phase 6 opening review, and the two GS1 rules that kept no
+reading of their source, under phase 7 stage 1.
 
 **Requirements nothing checks, and the findings say so.** Real regulatory ground the engine does not cover,
 where every pass it issues admits the gap in its own message. Schedulable, and safe to leave: the reference
@@ -980,15 +976,37 @@ omission, so the guard has nothing to look up. A live false clearance, reproduce
 containment gate in the two rules or an omission from the engine, and choosing between them decides whether
 magnification — still measurable on the part that did print — is withheld with them.
 
-**Two GS1 rules keep no reading of their source.** `gs1/gtin-check-digit` cites "GS1 General Specifications
-— check digit calculation", with no version and no section, and `gs1/checkDigit.ts` says only "Reference: GS1
-General Specifications, 'Check digit calculation'". `gs1/digital-link`'s primary citation is "GS1 Digital
-Link URI Syntax" with no version, beside an alphas citation that names 1.3.0. The other four GS1 rules rest
-on `geometry/symbol.ts`, which quotes GenSpec 25.0 by section and figure. Neither gap changed the GS1 reading
-— one answer turned on what a check digit is, the other on this engine drawing nothing — so neither document
-was fetched for it. But a later reader cannot re-check either citation against a paragraph. Fetch the
-check-digit section of the current General Specifications and the URI Syntax version `buildDigitalLinkUri`
-implements, and record what was read and when.
+**~~Two GS1 rules keep no reading of their source.~~ Fixed.** Both primary sources were fetched on 2026-09-17
+and both rules now cite by release and section, with the reading recorded in the module note.
+`gs1/gtin-check-digit` and `gs1/checkDigit.ts` cite **GS1 General Specifications Standard, Release 26.0
+(Ratified Jan 26), §7.9.1 and table 7-8**, from https://ref.gs1.org/standards/genspecs/ — page 544 read as a
+rendered image rather than a text extract. `gs1/digital-link` cites **GS1 Digital Link Standard: URI Syntax,
+Release 1.7.0 (Ratified Aug 2026) §4**, from https://ref.gs1.org/standards/digital-link/uri-syntax/, with the
+alphas finding moved from a bare "1.3.0" to **§4.1 of the release in force**, which names the removal and dates
+it. §2 settles that §4 is the right primary clause: "The core of this standard is expressed using ABNF grammar
+[RFC 5234] in section 4 such that conformance can be determined with certainty."
+
+`geometry/symbol.ts` was re-read in the same commit rather than left citing 25.0, so the repository does not
+quote two releases of one standard. **Every figure in it was unchanged** — 0.330 mm nominal, the 0.264/0.660
+bounds behind `MIN_MAGNIFICATION` and `MAX_MAGNIFICATION`, UPC-A's 113 modules including quiet zones, the
+9X/9X and 11X/7X quiet zones, the 22.85 and 18.23 mm heights — and every quotation still matches word for
+word. **Three table identifiers were wrong**, recorded as "figure 5.2.3.4-1", "figure 5.2.3.5-1" and "figure
+5.12.3.1-1" where the standard numbers them **tables 5-11, 5-12 and 5-44**.
+
+Three things worth keeping from the reading:
+
+- **The standard contradicts itself about the alphas' deprecation release.** §4.1 says "marked as deprecated in
+  version 1.2 of the standard"; the change log at §8.2 says "deprecated in version 1.2.0". The message follows
+  §4.1 because §4.1 is what it cites, and `gs1/digitalLink.ts` records both. Nothing turns on it: the removal
+  release is 1.3.0 in each.
+- **Checked and not a defect.** URI Syntax 1.4.0 requires a GTIN expressed as 14 digits — "the value of a
+  GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes ... to reach a total of 14 digits".
+  `buildDigitalLinkUri` already routes AI `01` through `normaliseToGtin14`, so it conforms. Its docblock example
+  did not, showing the removed `/gtin/` alpha, and was corrected.
+- **Still open, deliberately.** The resolver-domain check rests on §4.11's `scheme = "http" / "https" / "HTTP" /
+  "HTTPS"` production specifically, not on §4 generally, but it shares `GS1_DIGITAL_LINK_INVALID` and its
+  citation with every rejection `buildDigitalLinkUri` makes. Splitting it into its own citation wants a fixture
+  for a bad domain separate from the one for a bad AI value, and is worth doing when one is written.
 
 **~~`ExtractionResult` admits a field that is present with no value.~~ Fixed in stage 2**, the stage this
 entry said should carry it. `fields` is now `{ [K in keyof T]?: ExtractedField<NonNullable<T[K]>> }`, so

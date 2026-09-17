@@ -37,6 +37,25 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **Both GS1 rules cite a release and a section, and `symbol.ts` is re-read against the current one.**
+  `gs1/gtin-check-digit` cited "GS1 General Specifications — check digit calculation" with no release and no
+  section, and `gs1/digital-link` cited "GS1 Digital Link URI Syntax" with no release at all — unverifiable
+  rather than shown wrong, which this project treats as the same thing, because a later reader cannot re-check
+  either against a paragraph. Both sources were fetched on 2026-09-17. The check digit is **General
+  Specifications 26.0 §7.9.1** with its table 7-8, whose multiplier row is anchored at the right so the digit
+  beside the check digit is always weighted 3; page 544 was read as a rendered image rather than a text
+  extract, which is what this project requires of anything transcribed from a PDF. The Digital Link is **URI
+  Syntax 1.7.0 §4**, which §2 names as the conformance section — "the core of this standard is expressed using
+  ABNF grammar in section 4 such that conformance can be determined with certainty" — and the convenience-alphas
+  finding moves from a bare "1.3.0" to **§4.1 of the release in force**, which both names the removal and dates
+  it. `geometry/symbol.ts` was re-read in the same commit so the repository does not quote two releases of one
+  standard: every figure in it was unchanged and every quotation still matches word for word, but three tables
+  had been recorded as "figure 5.x-1" where the standard numbers them 5-11, 5-12 and 5-44. Two things the
+  reading turned up and neither is a defect: the standard gives two different deprecation releases for the
+  alphas, §4.1 saying 1.2 and the change log saying 1.2.0, which is now written down rather than chosen
+  between; and URI Syntax 1.4.0's 14-digit GTIN requirement was already met by `normaliseToGtin14`, though the
+  docblock example showing it used the removed `/gtin/` alpha.
+
 - **(e)(6) is cited only for the columns it reaches.** 21 CFR 101.9(e)(6), read from the eCFR on 2026-09-17,
   opens "When dual labeling is presented for a food on a per serving basis and per container basis **as required
   in paragraph (b)(12)(i)** of this section or on a per serving basis and per unit basis **as required in

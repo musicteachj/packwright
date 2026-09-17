@@ -8,6 +8,12 @@
  * UPC-A with a wrong check digit, because the twelfth digit *is* the check digit.
  * The engine records the omission; this says why it happened, and cites the
  * algorithm.
+ *
+ * Source: GS1 General Specifications Standard, Release 26.0 (Ratified Jan 26),
+ * §7.9.1 and table 7-8, read from https://ref.gs1.org/standards/genspecs/ on
+ * 2026-09-17. The citation carried no release, section or reading date until
+ * then, which made it unverifiable rather than wrong — a distinction this
+ * project does not draw. `gs1/checkDigit.ts` records what table 7-8 says.
  */
 
 import { calculateCheckDigit, isValidCheckDigit } from '../../gs1/checkDigit'
@@ -20,8 +26,8 @@ export const GS1_GTIN_CHECK_DIGIT_VALID = 'GS1_GTIN_CHECK_DIGIT_VALID'
 
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 General Specifications — check digit calculation',
-  title: 'Standard check digit calculation for GS1 identification keys',
+  reference: 'GS1 General Specifications 26.0 §7.9.1',
+  title: 'Standard check digit calculations for GS1 data structures',
 }
 
 const GTIN_12 = /^[0-9]{12}$/

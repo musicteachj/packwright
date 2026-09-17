@@ -6,10 +6,37 @@
  * implementation of the same rules would drift from the first, and the drift
  * would show up as a label that validates here and fails at a resolver.
  *
- * Two clauses, so two codes. The convenience alphas are cited to their own
- * version of the standard because that is where they were removed, and a
- * finding that said "Digital Link URI Syntax" without the version would be
- * citing a document that no longer says what the finding claims.
+ * Source: GS1 Digital Link Standard: URI Syntax, Release 1.7.0 (Ratified Aug
+ * 2026), read from https://ref.gs1.org/standards/digital-link/uri-syntax/ on
+ * 2026-09-17.
+ *
+ * Two clauses, so two codes, and both now name the release and the section.
+ * They cited neither until 2026-09-17, which left a finding pointing at a
+ * standard that has had seven releases and says different things in several of
+ * them.
+ *
+ * **§4 is the conformance section**, which §2 states outright: "The core of this
+ * standard is expressed using ABNF grammar [RFC 5234] in section 4 such that
+ * conformance can be determined with certainty." Every `GS1_DIGITAL_LINK_INVALID`
+ * this rule reports is a structural non-conformance, so §4 is the reference they
+ * share. The resolver-domain check rests on one production inside it — §4.11
+ * gives `scheme = "http" / "https" / "HTTP" / "HTTPS"` — and splitting that into
+ * a citation of its own is a judgement left for when a bad domain gets a fixture
+ * separate from the builder's rejections.
+ *
+ * **The convenience alphas move to §4.1 of the current release**, rather than
+ * citing 1.3.0 because that is where they were removed. §4.1 of 1.7.0 both names
+ * the removal and dates it: "Convenience alphas were marked as deprecated in
+ * version 1.2 of the standard and have been removed completely as of version
+ * 1.3.0." A clause in the standard in force, stating the history, beats a
+ * citation to a superseded release. Its title is written for the half of §4.1
+ * this rule checks; the other half, the 14-digit GTIN form, is `buildDigitalLinkUri`'s
+ * business and `normaliseToGtin14` already satisfies it.
+ *
+ * The message follows §4.1's "version 1.2" rather than the "version 1.2.0" the
+ * change log at §8.2 gives, because §4.1 is what is cited. The standard says
+ * both; `gs1/digitalLink.ts` records the discrepancy. The removal release is
+ * 1.3.0 either way, and that is the one that makes a URI non-conformant.
  */
 
 import { isValidCheckDigit } from '../../gs1/checkDigit'
@@ -25,14 +52,19 @@ export const GS1_DIGITAL_LINK_VALID = 'GS1_DIGITAL_LINK_VALID'
 
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 Digital Link URI Syntax',
-  title: 'Structure of a GS1 Digital Link URI',
+  reference: 'GS1 Digital Link URI Syntax 1.7.0 §4',
+  title: 'The ABNF grammar a conformant GS1 Digital Link URI is built from',
 }
 
 const ALPHAS_CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 Digital Link URI Syntax 1.3.0',
-  title: 'Removal of the convenience alphas from the URI path',
+  reference: 'GS1 Digital Link URI Syntax 1.7.0 §4.1',
+  // Not §4.1's own heading, which is "Removal of convenience alphas **and GTIN values
+  // expressed using fewer than 14 digits**". This rule checks the first half and not the
+  // second, and a title is what the `/rules` catalogue and the findings rail show — so
+  // taking the heading whole would advertise a check nothing performs. The review of
+  // PR #40 recorded that shape in `dualColumnParagraphs.ts`; this is the same one.
+  title: 'Convenience alphas removed from the URI path',
 }
 
 export const digitalLinkRule: Gs1RetailRule = {
@@ -123,7 +155,7 @@ export const digitalLinkRule: Gs1RetailRule = {
           severity: 'advisory',
           message:
             'The Digital Link uses the convenience alphas — `/gtin/` in place of `/01/`. They were ' +
-            'deprecated in Digital Link URI Syntax 1.2.0 and removed in 1.3.0, so the URI is ' +
+            'deprecated in Digital Link URI Syntax 1.2 and removed in 1.3.0, so the URI is ' +
             'non-conformant to the current standard.',
           measurement: { actual: '/gtin/…', required: '/01/…' },
           citation: ALPHAS_CITATION,
