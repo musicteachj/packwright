@@ -45,7 +45,9 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   HTML and checked against its versioner XML, whose markup keeps the footnote markers apart from the figures: fat 39
   g, saturated fat 10 g, cholesterol 300 mg, sodium 1,500 mg, total carbohydrate 150 g, dietary fiber 14 g, added
   sugars 25 g, protein 13 g, vitamin D 15 mcg, calcium 700 mg, iron 7 mg and potassium 3,000 mg. The engine derives
-  percentages against the declared population, and the percentage rule judges against the same one. The population
+  percentages against the declared population, the percentage rule judges against the same one, and the API
+  carries the field to the export. The review of the change found the API stripping it, which would have printed
+  adult percentages in the PDF beside toddler ones in the preview. The population
   is a required argument everywhere a percentage is computed, so a new caller cannot fall back to the adult values
   unnoticed. On the conformant panel declared for toddlers, eight of its eleven stated percentages are now reported
   wrong, and 3 g of fat prints as 8 percent rather than 4. The 1,000-calorie footnote (d)(9) requires of such a food
