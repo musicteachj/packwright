@@ -50,8 +50,8 @@ import {
   separatedColumnsReference,
 } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
-import type { DualColumnBasis, MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
-import { dualColumnDutyFor } from './mandatoryColumns'
+import type { DualColumnBasis, DualColumnDuty } from '../../fda/nutritionFormats'
+import { dualColumnDutyFor, whyNotReached } from './mandatoryColumns'
 import { MM_PER_POINT } from '../../geometry/units'
 
 export const FDA_DUAL_COLUMN_HEADINGS_MISSING = 'FDA_DUAL_COLUMN_HEADINGS_MISSING'
@@ -131,24 +131,23 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     const paragraph = (citation: Citation) => paragraphOf(citation.reference)
     const basis = data.nutritionFacts?.columns?.basis
     const duty = dualColumnDutyFor(data, stock)
-    const { required } = duty
     const reference = (
       lookup: (
         basis: DualColumnBasis,
-        required: readonly MandatoryDualColumnBasis[],
+        standing: DualColumnDuty['standing'],
       ) => DualColumnReference | undefined,
     ): Citation => {
       if (basis === undefined) return CITATION
-      const found = lookup(basis, required)
+      const found = lookup(basis, duty.standing)
       return found === undefined ? CITATION : COLUMN_PARAGRAPHS[found]
     }
     const bothColumns = reference(eachColumnReference)
     const separated = reference(separatedColumnsReference)
 
-    // Why the finding cites (e) rather than one of its subparagraphs. Four reasons, which
-    // read alike in a citation and are nothing alike to act on — and the one this rule
-    // must not assert carelessly is "voluntary", since a label that never stated its
-    // reference amount has not been asked the question, let alone answered it.
+    // Why the finding cites (e) rather than one of its subparagraphs. The reasons read
+    // alike in a citation and are nothing alike to act on, and the one to assert most
+    // carefully is "voluntary": it claims the user chose to add the column, which is only
+    // true where the label stated every fact the question turns on and they came back no.
     const unnamed = (requirement: string): string => {
       if (basis === undefined) {
         return (
@@ -156,16 +155,10 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
           `that applies cannot be named; each of them requires ${requirement}.`
         )
       }
-      const because = !duty.referenceAmountStated
-        ? 'the label states no reference amount, so whether (b)(12)(i) or (b)(2)(i)(D) requires ' +
-          'this column cannot be told'
-        : duty.exemption !== undefined
-          ? `${paragraphOf(duty.exemption)} excuses this package from the column they would ` +
-            'otherwise require'
-          : 'neither (b)(12)(i) nor (b)(2)(i)(D) requires this column, so it is carried voluntarily'
       return (
-        `101.9(e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require, and ${because}. ` +
-        `No subparagraph of 101.9(e) names this column; each of them requires ${requirement}.`
+        `101.9(e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require, and ` +
+        `${whyNotReached(basis, duty)}. No subparagraph of 101.9(e) names this column; each ` +
+        `of them requires ${requirement}.`
       )
     }
 

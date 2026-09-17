@@ -307,29 +307,36 @@ export const DUAL_COLUMN_MAX_PERCENT = 300
  */
 export type MandatoryDualColumnBasis = Extract<DualColumnBasis, 'per-container' | 'per-unit'>
 
+/**
+ * Where a label stands against **one** of the two mandatory provisions.
+ *
+ * Four answers, not two, and the distinction is the whole point. A caller with
+ * only "required or not" tells a user their column is a choice they made on the
+ * strength of a field they never filled in — §101.12(b)'s reference amounts are
+ * not carried here, and neither is a package content, so an unstated figure
+ * leaves the question **unasked** rather than answered no.
+ */
+export type DualColumnStanding =
+  /** The provision compels the column on the facts stated. */
+  | 'required'
+  /** It would, but (b)(12)(i)(A), (B) or (C) excuses this package. */
+  | 'excused'
+  /** Every fact the question turns on is stated, and the provision does not reach. */
+  | 'not-required'
+  /** The label has not stated something the question turns on. Nothing is known. */
+  | 'undetermined'
+
 export interface DualColumnDuty {
   /** The basis the label owes a second column on, or undefined where it owes none. */
   basis?: MandatoryDualColumnBasis
   /**
-   * Every basis actually obliged here, after exemptions — empty where none is.
+   * Where the label stands against each provision separately.
    *
    * `basis` picks one to report and the package provision wins; this keeps both,
-   * because (e)(6)'s predicate is per-provision rather than per-label.
-   *
-   * Read it with `referenceAmountStated`. Empty means "not required" only when
-   * the question was answerable at all.
+   * because (e)(6)'s predicate is per-provision rather than per-label — a per-unit
+   * column is its business only where (b)(2)(i)(D) required a per-unit column.
    */
-  required: readonly MandatoryDualColumnBasis[]
-  /**
-   * Whether the label declared the reference amount this turns on.
-   *
-   * §101.12(b)'s table is not carried here, so without a declared figure there is
-   * no duty to compute and `required` is empty for a reason that is nothing like
-   * the others: the question was **not asked**, rather than answered no. A caller
-   * that conflates the two tells a user their column is voluntary on the strength
-   * of a field they never filled in.
-   */
-  referenceAmountStated: boolean
+  standing: Readonly<Record<MandatoryDualColumnBasis, DualColumnStanding>>
   /** The percentage of the reference amount that triggered it. */
   percentOfReferenceAmount?: number
   /** Which paragraph excused it, where one did. */
@@ -382,51 +389,75 @@ function inBand(content: number, referenceAmount: number): number | undefined {
  * question is unanswerable, and guessing would mean reporting a label for
  * omitting something on facts it never stated.
  */
+/**
+ * Where a label stands against one provision, given whether it hit the band and
+ * whether the label stated everything that question turns on.
+ */
+function standingOf(
+  percentInBand: number | undefined,
+  factsStated: boolean,
+  exemption: string | undefined,
+): DualColumnStanding {
+  if (percentInBand !== undefined) return exemption === undefined ? 'required' : 'excused'
+  return factsStated ? 'not-required' : 'undetermined'
+}
+
 export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
   const referenceAmount = input.referenceAmount?.amount
-  if (referenceAmount === undefined) return { required: [], referenceAmountStated: false }
 
   // (b)(12)(i) reaches the package; (b)(2)(i)(D) reaches the unit. Both can be
   // true, and the package provision is the one named first.
   const perContainer =
-    input.packagedAndSoldIndividually === true && input.packageContent !== undefined
+    referenceAmount !== undefined &&
+    input.packagedAndSoldIndividually === true &&
+    input.packageContent !== undefined
       ? inBand(input.packageContent, referenceAmount)
       : undefined
   const perUnit =
-    input.unitContent === undefined ? undefined : inBand(input.unitContent, referenceAmount)
+    referenceAmount === undefined || input.unitContent === undefined
+      ? undefined
+      : inBand(input.unitContent, referenceAmount)
+
+  // What each provision needs before it can be answered at all. (b)(12)(i) turns
+  // on three facts, not one: a package that does not say whether it is sold
+  // individually has not answered it, and `packagedAndSoldIndividually: false`
+  // has — that is a stated fact putting the package outside the provision.
+  const perContainerAsked =
+    referenceAmount !== undefined &&
+    input.packageContent !== undefined &&
+    input.packagedAndSoldIndividually !== undefined
+  const perUnitAsked = referenceAmount !== undefined && input.unitContent !== undefined
 
   const basis: MandatoryDualColumnBasis | undefined =
     perContainer !== undefined ? 'per-container' : perUnit !== undefined ? 'per-unit' : undefined
-  if (basis === undefined) return { required: [], referenceAmountStated: true }
 
-  const percentOfReferenceAmount = perContainer ?? perUnit!
-
+  // The exemptions are shared — (b)(2)(i)(D) closes by adopting (b)(12)(i)(A) to
+  // (C) — so one chain serves both, and it is only asked once a band was hit.
   const exemption =
-    input.meetsSmallPackageRequirements === true
-      ? '21 CFR 101.9(b)(12)(i)(A)'
-      : input.rawCommodityVoluntary === true
-        ? '21 CFR 101.9(b)(12)(i)(B)'
-        : input.variedWeight === true ||
-            (input.columns?.mode === 'dual' &&
-              input.columns.basis !== undefined &&
-              EXEMPT_BASES.includes(input.columns.basis))
-          ? '21 CFR 101.9(b)(12)(i)(C)'
-          : undefined
+    basis === undefined
+      ? undefined
+      : input.meetsSmallPackageRequirements === true
+        ? '21 CFR 101.9(b)(12)(i)(A)'
+        : input.rawCommodityVoluntary === true
+          ? '21 CFR 101.9(b)(12)(i)(B)'
+          : input.variedWeight === true ||
+              (input.columns?.mode === 'dual' &&
+                input.columns.basis !== undefined &&
+                EXEMPT_BASES.includes(input.columns.basis))
+            ? '21 CFR 101.9(b)(12)(i)(C)'
+            : undefined
 
-  // An excused column is not one "required in paragraph (b)(12)(i)", so nothing
-  // is required here even though a band was hit. `basis` still names what was
-  // excused, which is what the exemption pass reports.
-  const required: MandatoryDualColumnBasis[] = []
-  if (exemption === undefined) {
-    if (perContainer !== undefined) required.push('per-container')
-    if (perUnit !== undefined) required.push('per-unit')
-  }
+  const standing = {
+    'per-container': standingOf(perContainer, perContainerAsked, exemption),
+    'per-unit': standingOf(perUnit, perUnitAsked, exemption),
+  } as const
+
+  if (basis === undefined) return { standing }
 
   return {
     basis,
-    required,
-    referenceAmountStated: true,
-    percentOfReferenceAmount,
+    standing,
+    percentOfReferenceAmount: perContainer ?? perUnit!,
     ...(exemption === undefined ? {} : { exemption }),
   }
 }

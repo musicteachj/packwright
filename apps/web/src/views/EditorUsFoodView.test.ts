@@ -630,7 +630,7 @@ describe('the Nutrition Facts displays, from the editor', () => {
     // the dual labeling paragraph itself — and says the figure is missing rather than
     // calling the column a choice the user made.
     expect(incomplete!.citation.reference).toBe('21 CFR 101.9(e)')
-    expect(incomplete!.message).toContain('states no reference amount')
+    expect(incomplete!.message).toContain('has not stated everything')
     expect(incomplete!.message).not.toContain('voluntarily')
   })
 

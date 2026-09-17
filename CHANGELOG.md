@@ -66,12 +66,15 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   column is (e)(6)'s business only where (b)(2)(i)(D) required a per-unit column, and a label can owe both. The
   paragraph tables consult it, and where (e)(6) does not reach, `us-food/dual-column-form` and
   `us-food/protein-percent` fall back to the citation each declares — (e) and (c)(7)(i) — which is the path a
-  label stating no basis already took. **The message distinguishes four labels**, because they read alike in a
-  citation and are nothing alike to act on: one that stated no basis, one that stated no reference amount and so
-  has not been asked the question at all, one outside the band and genuinely carrying the column by choice, and
-  one an exemption excuses, which is named. The first pass of this change called all three of the last
-  "voluntary" — which asserts a choice on the strength of a field the user never filled in, and the editor
-  builds every label that way. **No substitute citation was
+  label stating no basis already took. **The message says where the label stands against each provision
+  separately**, because the reasons read alike in a citation and are nothing alike to act on: no basis stated;
+  the facts the provision turns on not all stated, so the question has not been asked; an exemption, which is
+  named; a column owed on the *other* basis, which is named too; and only then a column genuinely carried by
+  choice. "Voluntary" claims the user chose to add the column, and it took two review passes to stop asserting
+  it where nothing of the sort was known — first on a label with no reference amount, then on one that stated
+  the amount but not the package content or whether it is sold individually, which is every label the editor
+  builds. (b)(12)(i) turns on three facts, not one, so the standing is computed per provision rather than from
+  a single flag. **No substitute citation was
   invented for the voluntary case**: nothing in (e) covers it, its opening reaching only forms, combinations,
   "different units" and RDI groups; the one paragraph that contemplates a voluntary second column is (b)(6),
   and the column (b)(6) permits sits on the other side of the panel and counts a household measure, so it is

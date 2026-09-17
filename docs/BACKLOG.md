@@ -400,6 +400,17 @@ Deciding it needs the modal verbs read across (b) and (e) together, and the answ
 than either reporting or dropping it. Out of scope for the citation fix, which was about which paragraph is
 named rather than whether to speak at all. The same question reaches `us-food/protein-percent`.
 
+**`us-food/dual-column-required` clears a label that drew a column of the wrong basis.** Found by the review
+of the (e)(6) citation fix. The rule asks whether a second column is *present*, never what it counts, so a
+package whose unit sits at 250 percent of the reference amount — owing a per-unit column under (b)(2)(i)(D) —
+gets `FDA_DUAL_COLUMN_MET` for drawing a column its own document labels per container. The pass is not wrong
+about what it says, which is that a column was drawn; it is wrong about what a reader takes from it, which is
+that the obligation was discharged. The citation fix works around the reader-facing half by naming the column
+actually owed in the *other* rule's message rather than calling the declared one voluntary, so the two findings
+no longer contradict each other on the same label. The mandate rule itself is untouched, and closing it means
+deciding what a mismatch is: a distinct finding code, or a withheld pass. Note (b)(12)(i) and (b)(2)(i)(D) can
+both bite at once, so "the wrong basis" is not always a single right answer.
+
 **(b)(11)'s promoted-use second column is unmodelled.** 21 CFR 101.9(b)(11), read from the eCFR on 2026-09-17:
 a product "promoted on the label, labeling, or advertising for a use that differs in quantity by twofold or
 greater from the use upon which the reference amount in § 101.12(b) was based" — the example is liquid cream

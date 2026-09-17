@@ -32,7 +32,7 @@ import type { UsFoodContext, UsFoodRule } from '../types'
 import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
 import type { DualColumnBasis } from '../../fda/nutritionFormats'
-import { dualColumnDutyFor } from './mandatoryColumns'
+import { dualColumnDutyFor, whyNotReached } from './mandatoryColumns'
 import { smallestOf } from './printedText'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
@@ -88,10 +88,9 @@ export const usFoodProteinPercentRule: UsFoodRule = {
     // (e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require, so which
     // paragraph governs a second column depends on more than what it counts.
     const duty = dualColumnDutyFor(data, stock)
-    const { required } = duty
     const columnCitation = (basis: DualColumnBasis | undefined): Citation => {
       if (basis === undefined) return CITATION
-      const reference = eachColumnReference(basis, required)
+      const reference = eachColumnReference(basis, duty.standing)
       return reference === undefined ? CITATION : EACH_COLUMN_PARAGRAPHS[reference]
     }
 
@@ -191,16 +190,8 @@ export const usFoodProteinPercentRule: UsFoodRule = {
               'Value in each column, '
             : basis === undefined
               ? 'The panel draws a second column, and states no basis for it, '
-              : !duty.referenceAmountStated
-                ? 'The panel draws a second column, and the label states no reference amount, ' +
-                  'so whether 101.9(b)(12)(i) or (b)(2)(i)(D) requires it cannot be told — and ' +
-                  '101.9(e)(6) reaches only the columns they require, '
-                : duty.exemption !== undefined
-                  ? `The panel draws a second column that ${duty.exemption.replace('21 CFR ', '')} ` +
-                    'excuses, so 101.9(e)(6) does not reach it, '
-                  : 'The panel draws a second column that neither 101.9(b)(12)(i) nor ' +
-                    '(b)(2)(i)(D) requires, so it is carried voluntarily and no paragraph of ' +
-                    '101.9(e) governs it, '
+              : 'The panel draws a second column 101.9(e)(6) does not reach — it governs only ' +
+                `the columns (b)(12)(i) and (b)(2)(i)(D) require, and ${whyNotReached(basis, duty)} — `
         return [
           missing(
             PROTEIN_ROW,

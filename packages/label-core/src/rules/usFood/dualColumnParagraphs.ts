@@ -50,7 +50,7 @@
  * `docs/BACKLOG.md`.
  */
 
-import type { DualColumnBasis, MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
+import type { DualColumnBasis, DualColumnDuty } from '../../fda/nutritionFormats'
 
 /** The three subparagraphs, by the dual labeling each reaches. */
 export const DUAL_COLUMN_REFERENCES = {
@@ -101,25 +101,28 @@ const SEPARATED: Record<DualColumnBasis, DualColumnReference> = {
 function reaches(
   reference: DualColumnReference,
   basis: DualColumnBasis,
-  required: readonly MandatoryDualColumnBasis[],
+  standing: DualColumnDuty['standing'],
 ): boolean {
   if (reference !== DUAL_COLUMN_REFERENCES.servingAndContainer) return true
-  return (basis === 'per-container' || basis === 'per-unit') && required.includes(basis)
+  if (basis !== 'per-container' && basis !== 'per-unit') return false
+  // Only `required`. An excused column is not one "required in paragraph
+  // (b)(12)(i)"; an undetermined one has not been shown to be.
+  return standing[basis] === 'required'
 }
 
 /**
  * The paragraph that requires both columns to carry the information, or
  * `undefined` where no subparagraph of (e) reaches this column.
  *
- * @param required The bases this label is actually obliged to carry, from
- *   `dualColumnDutyFor`. Only (e)(6) consults it.
+ * @param standing Where this label stands against each mandatory provision,
+ *   from `dualColumnDutyFor`. Only (e)(6) consults it.
  */
 export function eachColumnReference(
   basis: DualColumnBasis,
-  required: readonly MandatoryDualColumnBasis[],
+  standing: DualColumnDuty['standing'],
 ): DualColumnReference | undefined {
   const reference = EACH_COLUMN[basis]
-  return reaches(reference, basis, required) ? reference : undefined
+  return reaches(reference, basis, standing) ? reference : undefined
 }
 
 /**
@@ -128,8 +131,8 @@ export function eachColumnReference(
  */
 export function separatedColumnsReference(
   basis: DualColumnBasis,
-  required: readonly MandatoryDualColumnBasis[],
+  standing: DualColumnDuty['standing'],
 ): DualColumnReference | undefined {
   const reference = SEPARATED[basis]
-  return reaches(reference, basis, required) ? reference : undefined
+  return reaches(reference, basis, standing) ? reference : undefined
 }

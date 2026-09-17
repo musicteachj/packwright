@@ -2311,7 +2311,7 @@ describe('a dual-column panel is judged under the paragraph for what its second 
       expect(found.message).toContain('101.9(e)(6) requires')
     })
 
-    it('cites (e) and says so where the label states no reference amount', () => {
+    it('cites (e) and says so where the label states none of the facts', () => {
       // Not "voluntary" — unanswerable. §101.12(b)'s table is not carried here, so without
       // a declared figure the engine has not asked the question, and the editor builds
       // every label this way today.
@@ -2324,10 +2324,47 @@ describe('a dual-column panel is judged under the paragraph for what its second 
       } = base.nutritionFacts!
       const found = incompleteIn({ ...base, nutritionFacts: unasked })
       expect(found.citation.reference).toBe('21 CFR 101.9(e)')
-      expect(found.message).toContain('states no reference amount')
+      expect(found.message).toContain('has not stated everything')
+      expect(found.message, 'and names the fields to fill in').toContain('its package content')
       expect(found.message, 'and claims nothing about a choice').not.toContain('voluntarily')
       // The defect is unchanged — one figure is still not a second declaration.
       expect(found.severity).toBe('violation')
+    })
+
+    // (b)(12)(i) turns on three facts, not one. A label can declare its reference amount
+    // and still not have answered the question, and the second review of this change found
+    // every one of these reported as a choice the user made.
+    it.each(['packageContent', 'packagedAndSoldIndividually'] as const)(
+      'does not call the column voluntary where only %s is missing',
+      (field) => {
+        const base = owed()
+        const { [field]: _dropped, ...partial } = base.nutritionFacts!
+        const found = incompleteIn({ ...base, nutritionFacts: partial })
+        expect(found.citation.reference).toBe('21 CFR 101.9(e)')
+        expect(found.message).toContain('has not stated everything')
+        expect(found.message).not.toContain('voluntarily')
+      },
+    )
+
+    it('names the column actually owed where the label declares the other one', () => {
+      // (b)(2)(i)(D) requires a per-unit column here, and the panel declares a
+      // per-container one. Calling that voluntary contradicts the mandate rule's own
+      // FDA_DUAL_COLUMN_MET on the same label.
+      const base = owed()
+      const {
+        packageContent: _package,
+        packagedAndSoldIndividually: _individually,
+        ...facts
+      } = base.nutritionFacts!
+      const data = { ...base, nutritionFacts: { ...facts, unitContent: 55 } }
+      expect(
+        findingsFor(data, US_FOOD_CONFORMANT.stock).map((f) => f.code),
+        'premise: the label owes a column',
+      ).toContain('FDA_DUAL_COLUMN_MET')
+      const found = incompleteIn(data)
+      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
+      expect(found.message).toContain('owes a per-unit column under 101.9(b)(2)(i)(D)')
+      expect(found.message, 'and does not call it a choice').not.toContain('voluntarily')
     })
 
     it('cites (e) and calls the column voluntary where the package is outside the band', () => {
