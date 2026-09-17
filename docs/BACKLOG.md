@@ -232,7 +232,10 @@ proviso's condition is about the printed declaration, so stamping it `document` 
 the omission of the very declaration it is conditional on — this defect, deepened. `certification.test.ts`
 now fails if it survives one.
 
-**A "Contains" statement can vanish unannounced.** `usFoodEngine.ts` records an omission for an allergen no
+**~~A "Contains" statement can vanish unannounced.~~ Fixed** on `fix/egg-carton-column-wording`. The engine
+records a detail omission for each ingredient whose allergen needs a specific type and states none, naming the
+ingredient, whether or not the statement prints for others. Reproduced again before the fix on 2026-09-17. What
+follows is the entry as it stood. `usFoodEngine.ts` records an omission for an allergen no
 ingredient carries, but not for the case where every bearing ingredient yields no food-source name — which is
 what `tree nuts`, `fish` and `crustacean shellfish` do without an `allergenSpecificType`. Reproduced:
 `containsStatement: ['tree-nuts']` with `{ name: 'praline', allergen: 'tree-nuts' }` draws no Contains

@@ -1087,6 +1087,56 @@ describe('findings from the stage 3 review', () => {
       expect(textOf(layout, US_FOOD_ELEMENTS.containsStatement)).toBe('')
       expect(layout.omissions.map((o) => o.reason).join(' ')).toContain('no ingredient carries')
     })
+
+    it('says so when an allergen it names has no source name to print', () => {
+      // Tree nuts, fish and crustacean shellfish are declared by their specific type,
+      // and an ingredient that states none gives the statement nothing to name. It used
+      // to draw nothing for it and record nothing, so a declared statement could leave
+      // the label with no trace. §403(w)(2)'s finding reports the ingredient; the
+      // omission reports what the artwork lost.
+      const containsOmissions = (layout: ReturnType<typeof layOutUsFoodLabel>) =>
+        layout.omissions.filter((o) => o.elementId === US_FOOD_ELEMENTS.containsStatement)
+      const praline = { name: 'praline', percentByWeight: 10, allergen: 'tree-nuts' as const }
+      const alone: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        ingredients: [{ name: 'sugar', percentByWeight: 90 }, praline],
+        ingredientThreshold: { percent: 2, count: 0 },
+        containsStatement: ['tree-nuts'],
+      }
+      const nothingNamed = layOutUsFoodLabel({ data: alone, stock })
+      expect(textOf(nothingNamed, US_FOOD_ELEMENTS.containsStatement)).toBe('')
+      const [lost] = containsOmissions(nothingNamed)
+      expect(lost!.scope).toBe('detail')
+      expect(lost!.reason).toContain('"praline"')
+      expect(lost!.reason).toContain('tree nuts')
+      expect(findingsFor(alone, stock).map((f) => f.code)).toContain(
+        FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
+      )
+
+      // Beside an ingredient that does name its nut, the statement prints for that one and
+      // still says what it could not name for the other.
+      const beside: UsFoodLabelData = {
+        ...alone,
+        ingredients: [
+          { name: 'sugar', percentByWeight: 80 },
+          praline,
+          {
+            name: 'almonds',
+            percentByWeight: 10,
+            allergen: 'tree-nuts',
+            allergenSpecificType: 'almonds',
+          },
+        ],
+      }
+      const partlyNamed = layOutUsFoodLabel({ data: beside, stock })
+      expect(textOf(partlyNamed, US_FOOD_ELEMENTS.containsStatement)).toBe('Contains: almonds.')
+      expect(containsOmissions(partlyNamed).map((o) => o.reason)).toEqual([
+        expect.stringContaining('"praline"'),
+      ])
+
+      // And nothing is recorded where every ingredient names its source.
+      expect(containsOmissions(layOutUsFoodLabel(US_FOOD_CONFORMANT))).toEqual([])
+    })
   })
 
   it('does not walk a prototype chain to find an allergen', () => {
