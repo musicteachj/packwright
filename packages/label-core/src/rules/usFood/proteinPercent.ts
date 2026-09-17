@@ -25,6 +25,7 @@ import {
   nutritionRowElementId,
 } from '../../templates/usFood'
 import { wasFullyDrawn } from '../../layout/omissions'
+import type { TextPrimitive } from '../../layout/types'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
@@ -39,6 +40,18 @@ const CITATION: Citation = {
   title: 'A protein percentage, given where the food is for young children or claims protein',
 }
 
+/**
+ * 101.9(e)(2), read from the eCFR on 2026-09-17: on dual labeling, "the information required
+ * in paragraph (d)(7)(ii) of this section shall be presented for the form of the product as
+ * packaged and for any other form". The percentages are part of it, so a percentage owed is
+ * owed in every column.
+ */
+const EACH_COLUMN: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(e)(2)',
+  title: 'Dual labeling presents the percent Daily Values for every form declared',
+}
+
 const PROTEIN_ROW = nutritionRowElementId('protein')
 
 /** A printed percentage in a row's text: the figure, where one is there. */
@@ -48,6 +61,7 @@ export const usFoodProteinPercentRule: UsFoodRule = {
   id: 'us-food/protein-percent',
   title: 'A food for children 1 through 3 gives its protein as a percentage of the Daily Value.',
   citation: CITATION,
+  citations: [CITATION, EACH_COLUMN],
   codes: [FDA_PROTEIN_PERCENT_MISSING, FDA_PROTEIN_PERCENT_MET],
   appliesTo: 'us-food',
 
@@ -55,15 +69,21 @@ export const usFoodProteinPercentRule: UsFoodRule = {
     const panel = data.nutritionFacts
     if (panel === undefined || dailyValuePopulationOf(panel) !== 'children-1-through-3') return []
 
-    const missing = (elementId: string, where: string): Finding =>
+    const missing = (
+      elementId: string,
+      where: string,
+      actual = 'no protein percentage',
+      citation = CITATION,
+    ): Finding =>
       finding(usFoodProteinPercentRule, {
         code: FDA_PROTEIN_PERCENT_MISSING,
         severity: 'violation',
         message:
           'The food is declared for children 1 through 3, and 101.9(c)(7)(i) says the protein ' +
           `percentage "shall be given" for such a food. ${where}`,
-        measurement: { actual: 'no protein percentage', required: 'a protein percentage' },
+        measurement: { actual, required: 'a protein percentage' },
         elementId,
+        citation,
       })
 
     // **No panel drawn, and the figure still owed.** Only (j)(14) reaches this: an egg
@@ -93,6 +113,39 @@ export const usFoodProteinPercentRule: UsFoodRule = {
     const printed = PERCENT.exec(row.text)
     if (printed === null) {
       return [missing(PROTEIN_ROW, 'The panel prints the protein row with no percentage.')]
+    }
+
+    // **Every column drawn, not the first found.** On a dual-column panel each column's
+    // figures are drawn as their own right-aligned run, and (e)(2) presents the percentages
+    // for every form declared. Reading the row as one string passed a panel whose second
+    // column printed "5g" beside a first column's "5g 38%". The second column has no stated
+    // percentage to draw, and the engine derives none for protein, so such a panel is
+    // reported rather than cleared — true of the label, if not yet fixable in the editor.
+    const secondColumnDrawn = layout.elements.some(
+      (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+    )
+    if (secondColumnDrawn) {
+      const columns = layout.primitives.filter(
+        (primitive): primitive is TextPrimitive =>
+          primitive.kind === 'text' &&
+          primitive.elementId === PROTEIN_ROW &&
+          primitive.anchor === 'end',
+      )
+      // A second column with no protein figure at all is an incomplete column, which the
+      // dual-column form rule reports; its percentage is not a second absence to report.
+      // Nor is it cleared.
+      if (columns.length < 2) return []
+      if (columns.some((column) => !PERCENT.test(column.text))) {
+        return [
+          missing(
+            PROTEIN_ROW,
+            'On a dual-column panel, 101.9(e)(2) presents the percentages for every form ' +
+              'declared, and the second column prints the protein row with no percentage.',
+            'no protein percentage in the second column',
+            EACH_COLUMN,
+          ),
+        ]
+      }
     }
 
     // Printed means printed in full: a row the engine recorded anything against, or a

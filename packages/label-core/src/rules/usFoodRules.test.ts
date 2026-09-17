@@ -2136,6 +2136,56 @@ describe('a food for children 1 through 3, labelled against their Daily Values',
       expect(pass!.message).toContain('Not checked here:')
     })
 
+    it('asks it of every column a dual-column panel draws', () => {
+      // 101.9(e)(2), read from the eCFR on 2026-09-17: on dual labeling, "the information
+      // required in paragraph (d)(7)(ii) ... shall be presented for the form of the product
+      // as packaged and for any other form". A toddler food's protein percentage is part of
+      // that, so a second column without one is missing it. The review of the change adding
+      // this rule found it passing on the first column's percentage alone.
+      const band = fixture('a 250 percent package carrying one column')
+      const facts = band.data.nutritionFacts!
+      const data: UsFoodLabelData = {
+        ...band.data,
+        nutritionFacts: {
+          ...facts,
+          representedFor: 'children-1-through-3',
+          declaredPercentDv: { ...facts.declaredPercentDv, protein: 38 },
+          columns: {
+            mode: 'dual',
+            basis: 'per-container',
+            headings: ['Per serving', 'Per container'],
+            secondAmounts: { ...facts.amounts },
+          },
+        },
+      }
+      const layout = layOutUsFoodLabel({ data, stock: band.stock })
+      expect(
+        layout.elements.map((e) => e.elementId),
+        'premise: the second column is drawn',
+      ).toContain(US_FOOD_ELEMENTS.nutritionSecondColumn)
+      const findings = findingsFor(data, band.stock)
+      const missing = findings.find((f) => f.code === 'FDA_PROTEIN_PERCENT_MISSING')
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(e)(2)')
+      expect(missing!.elementId).toBe(nutritionRowElementId('protein'))
+      expect(missing!.measurement?.actual).toBe('no protein percentage in the second column')
+      expect(codesOf(findings)).not.toContain('FDA_PROTEIN_PERCENT_MET')
+
+      // A second column with no protein figure at all is the form rule's incomplete column,
+      // reported once there, and neither reported nor cleared here.
+      const { protein: _dropped, ...secondWithoutProtein } = facts.amounts
+      const incomplete: UsFoodLabelData = {
+        ...data,
+        nutritionFacts: {
+          ...data.nutritionFacts!,
+          columns: { ...data.nutritionFacts!.columns!, secondAmounts: secondWithoutProtein },
+        },
+      }
+      const codes = codesOf(findingsFor(incomplete, band.stock))
+      expect(codes, 'premise: the form rule reports it').toContain('FDA_DUAL_COLUMN_INCOMPLETE')
+      expect(codes).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+      expect(codes).not.toContain('FDA_PROTEIN_PERCENT_MET')
+    })
+
     it('does not clear one that did not print in full', () => {
       const short: LabelStock = { ...stock, heightMm: 120 }
       const data = withProtein(38)

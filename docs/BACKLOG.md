@@ -273,6 +273,15 @@ protein. The engine cannot derive the figure, because (c)(7)(ii) corrects the am
 label carries, and the percentage rule excludes protein for the same reason. What is missing is a rule requiring a
 declared protein percentage on a toddler food, and whether a declared one can be judged at all without that score.
 
+**A dual-column panel cannot state a protein percentage in its second column, so a toddler food on one cannot
+comply.** Found by the review of `us-food/protein-percent` on `feat/toddler-protein-percent`, and reproduced. 101.9(e)(2),
+read from the eCFR on 2026-09-17, presents the (d)(7)(ii) information "for the form of the product as packaged and
+for any other form", and for a food for children 1 through 3 that includes the protein percentage (c)(7)(i)
+requires. The first column prints a stated percentage, but `UsFoodNutritionFacts` has no field to state one for the
+second column, and the engine derives none for protein, so the second column prints "5g" with nothing beside it.
+The rule reports that under (e)(2), which is true of the printed label, and nothing in the editor can fix it. The
+fix is a declared second-column percentage, at least for protein, with the rail offering it.
+
 ### Reported, not yet verified
 
 Recorded as reviewer claims rather than as facts. Each is checked before it is picked up.
