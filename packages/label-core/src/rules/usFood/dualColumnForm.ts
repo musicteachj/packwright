@@ -45,10 +45,11 @@ import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 import {
-  DUAL_COLUMN_PARAGRAPHS,
-  eachColumnParagraph,
-  separatedColumnsParagraph,
+  DUAL_COLUMN_REFERENCES,
+  eachColumnReference,
+  separatedColumnsReference,
 } from './dualColumnParagraphs'
+import type { DualColumnReference } from './dualColumnParagraphs'
 import { MM_PER_POINT } from '../../geometry/units'
 
 export const FDA_DUAL_COLUMN_HEADINGS_MISSING = 'FDA_DUAL_COLUMN_HEADINGS_MISSING'
@@ -69,12 +70,37 @@ const HEADINGS: Citation = {
   title: 'Column headings describing what each column declares',
 }
 
+/**
+ * What each of 101.9(e)'s column paragraphs requires of the *form* of the panel, which is
+ * what this rule measures: both columns filled, and a line between them.
+ */
+const COLUMN_PARAGRAPHS: Record<DualColumnReference, Citation> = {
+  [DUAL_COLUMN_REFERENCES.forms]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.forms,
+    title:
+      'The quantitative information is presented for the form as packaged and for every other form',
+  },
+  [DUAL_COLUMN_REFERENCES.unitsAndGroups]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.unitsAndGroups,
+    title:
+      'Dual labeling for forms, combinations, units or RDI groups fills two columns and separates them by vertical lines',
+  },
+  [DUAL_COLUMN_REFERENCES.servingAndContainer]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.servingAndContainer,
+    title:
+      'Per-serving and per-container or per-unit information fills two columns and separates them by vertical lines',
+  },
+}
+
 export const usFoodDualColumnFormRule: UsFoodRule = {
   id: 'us-food/dual-column-form',
   title:
     'A dual-column panel declares both forms, heads its columns, separates them and gives both equal prominence.',
   citation: CITATION,
-  citations: [CITATION, HEADINGS, ...DUAL_COLUMN_PARAGRAPHS],
+  citations: [CITATION, HEADINGS, ...Object.values(COLUMN_PARAGRAPHS)],
   codes: [
     FDA_DUAL_COLUMN_HEADINGS_MISSING,
     FDA_DUAL_COLUMN_NOT_SEPARATED,
@@ -99,8 +125,10 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     // citation field already carries the full reference.
     const paragraph = (citation: Citation) => citation.reference.replace('21 CFR ', '')
     const basis = data.nutritionFacts?.columns?.basis
-    const bothColumns = basis === undefined ? CITATION : eachColumnParagraph(basis)
-    const separated = basis === undefined ? CITATION : separatedColumnsParagraph(basis)
+    const bothColumns =
+      basis === undefined ? CITATION : COLUMN_PARAGRAPHS[eachColumnReference(basis)]
+    const separated =
+      basis === undefined ? CITATION : COLUMN_PARAGRAPHS[separatedColumnsReference(basis)]
 
     const textOf = (elementId: string): TextPrimitive[] =>
       layout.primitives.filter(

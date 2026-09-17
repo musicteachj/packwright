@@ -48,7 +48,12 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   from one table shared with `us-food/protein-percent`, which had the same table of its own. A label that states
   no basis names no subparagraph, so its findings cite (e) itself and say why. The two fixtures and the editor
   test that pinned the old references declare per-container columns and now expect (e)(6). The findings and their
-  reasoning are unchanged; only the paragraph each cites is.
+  reasoning are unchanged; only the paragraph each cites is. The table carries references rather than citations, so
+  each rule titles them for what it measures — the quantities and lines on one, the percentages on the other — which
+  is what the `/rules` catalogue shows; and the messages are asserted beside the citations, the review of the PR
+  having found the prose free to name a paragraph its own citation contradicted. The references are a union type, so a rule
+  whose table of titles misses one fails the build rather than the label. That (e)(6)'s words reach only the columns
+  (b)(12)(i) and (b)(2)(i)(D) require, not a voluntary one, is recorded in `docs/BACKLOG.md`.
 
 - **A food for children 1 through 3 must print its protein percentage.** 21 CFR 101.9(c)(7)(i), read from the eCFR on
   2026-09-17: a protein percentage "may be placed on the label, except that such a statement shall be given if a

@@ -31,61 +31,52 @@
  */
 
 import type { DualColumnBasis } from '../../fda/nutritionFormats'
-import type { Citation } from '../../types/index'
 
-const FORMS: Citation = {
-  authority: 'FDA',
-  reference: '21 CFR 101.9(e)(2)',
-  title: 'Dual labeling presents the information for the form as packaged and for any other form',
+/** The three subparagraphs, by the dual labeling each reaches. */
+export const DUAL_COLUMN_REFERENCES = {
+  forms: '21 CFR 101.9(e)(2)',
+  unitsAndGroups: '21 CFR 101.9(e)(3)',
+  servingAndContainer: '21 CFR 101.9(e)(6)',
+} as const
+
+/** One of the three, so a rule's table of titles has to cover all of them. */
+export type DualColumnReference =
+  (typeof DUAL_COLUMN_REFERENCES)[keyof typeof DUAL_COLUMN_REFERENCES]
+
+/**
+ * References rather than citations, because the title belongs to the rule.
+ *
+ * Merging two rules' tables into one set of `Citation` objects gave
+ * `us-food/protein-percent` titles about columns "separated by vertical lines", which it
+ * does not check — and a title is what the `/rules` catalogue and the findings rail show.
+ * The review of PR #40 found it. Each rule writes its own titles over these references.
+ */
+const EACH_COLUMN: Record<DualColumnBasis, DualColumnReference> = {
+  'as-prepared': DUAL_COLUMN_REFERENCES.forms,
+  combination: DUAL_COLUMN_REFERENCES.forms,
+  'per-unit-measure': DUAL_COLUMN_REFERENCES.unitsAndGroups,
+  'rdi-groups': DUAL_COLUMN_REFERENCES.unitsAndGroups,
+  'per-cup-popped': DUAL_COLUMN_REFERENCES.unitsAndGroups,
+  'per-container': DUAL_COLUMN_REFERENCES.servingAndContainer,
+  'per-unit': DUAL_COLUMN_REFERENCES.servingAndContainer,
 }
 
-const UNITS_AND_GROUPS: Citation = {
-  authority: 'FDA',
-  reference: '21 CFR 101.9(e)(3)',
-  title:
-    'Dual labeling for forms, combinations, units or RDI groups is set in two columns separated by vertical lines',
-}
-
-const SERVING_AND_CONTAINER: Citation = {
-  authority: 'FDA',
-  reference: '21 CFR 101.9(e)(6)',
-  title:
-    'Per-serving and per-container or per-unit information is set in two columns separated by vertical lines',
-}
-
-/** Every citation either table can give, for a rule's `citations`. */
-export const DUAL_COLUMN_PARAGRAPHS: readonly Citation[] = [
-  FORMS,
-  UNITS_AND_GROUPS,
-  SERVING_AND_CONTAINER,
-]
-
-const EACH_COLUMN: Record<DualColumnBasis, Citation> = {
-  'as-prepared': FORMS,
-  combination: FORMS,
-  'per-unit-measure': UNITS_AND_GROUPS,
-  'rdi-groups': UNITS_AND_GROUPS,
-  'per-cup-popped': UNITS_AND_GROUPS,
-  'per-container': SERVING_AND_CONTAINER,
-  'per-unit': SERVING_AND_CONTAINER,
-}
-
-const SEPARATED: Record<DualColumnBasis, Citation> = {
-  'as-prepared': UNITS_AND_GROUPS,
-  combination: UNITS_AND_GROUPS,
-  'per-unit-measure': UNITS_AND_GROUPS,
-  'rdi-groups': UNITS_AND_GROUPS,
-  'per-cup-popped': UNITS_AND_GROUPS,
-  'per-container': SERVING_AND_CONTAINER,
-  'per-unit': SERVING_AND_CONTAINER,
+const SEPARATED: Record<DualColumnBasis, DualColumnReference> = {
+  'as-prepared': DUAL_COLUMN_REFERENCES.unitsAndGroups,
+  combination: DUAL_COLUMN_REFERENCES.unitsAndGroups,
+  'per-unit-measure': DUAL_COLUMN_REFERENCES.unitsAndGroups,
+  'rdi-groups': DUAL_COLUMN_REFERENCES.unitsAndGroups,
+  'per-cup-popped': DUAL_COLUMN_REFERENCES.unitsAndGroups,
+  'per-container': DUAL_COLUMN_REFERENCES.servingAndContainer,
+  'per-unit': DUAL_COLUMN_REFERENCES.servingAndContainer,
 }
 
 /** The paragraph that requires both columns to carry the information. */
-export function eachColumnParagraph(basis: DualColumnBasis): Citation {
+export function eachColumnReference(basis: DualColumnBasis): DualColumnReference {
   return EACH_COLUMN[basis]
 }
 
 /** The paragraph that requires the two columns to be separated by vertical lines. */
-export function separatedColumnsParagraph(basis: DualColumnBasis): Citation {
+export function separatedColumnsReference(basis: DualColumnBasis): DualColumnReference {
   return SEPARATED[basis]
 }

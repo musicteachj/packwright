@@ -282,6 +282,17 @@ second column, and the engine derives none for protein, so the second column pri
 The rule reports that under the paragraph for the column's basis, which is true of the printed label, and nothing in the editor can fix it. The
 fix is a declared second-column percentage, at least for protein, with the rail offering it.
 
+**(e)(6) is cited for every per-container column, though its own words reach only the mandatory ones.** Found by
+`/code-review high` on PR #40. 101.9(e)(6), read from the eCFR on 2026-09-17, opens "When dual labeling is presented
+for a food on a per serving basis and per container basis **as required in paragraph (b)(12)(i)** of this section or
+on a per serving basis and per unit basis **as required in paragraph (b)(2)(i)(D)**". A package at 150 percent of its
+reference amount, or one (b)(12)(i)(A) to (C) excuses, may carry a per-container column voluntarily, and its findings
+now cite a paragraph whose own predicate is unmet. `dualColumnDuty` already computes that predicate for
+`us-food/dual-column-required`, so the tables could consult it — but which paragraph then covers a voluntary
+per-container column is a reading of its own: (e)'s opening lists forms, combinations, "different units" and RDI
+groups, and a per-container column is none of those on its face. Both findings are right about the label either way;
+only the reference is over-specific.
+
 **~~`us-food/dual-column-form` cites (e)(2) for an incomplete second column whatever the column counts.~~ Fixed**
 on `fix/dual-column-citations`, and the unseparated-columns finding with it, which cited (e)(3) the same way. Both
 choose by `columns.basis` from a table shared with `us-food/protein-percent`; a label stating no basis cites (e)

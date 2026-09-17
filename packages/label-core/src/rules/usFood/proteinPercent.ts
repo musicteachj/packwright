@@ -29,7 +29,8 @@ import type { TextPrimitive } from '../../layout/types'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
-import { DUAL_COLUMN_PARAGRAPHS, eachColumnParagraph } from './dualColumnParagraphs'
+import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
+import type { DualColumnReference } from './dualColumnParagraphs'
 import { smallestOf } from './printedText'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
@@ -41,6 +42,30 @@ const CITATION: Citation = {
   title: 'A protein percentage, given where the food is for young children or claims protein',
 }
 
+/**
+ * What each of 101.9(e)'s column paragraphs requires of the *percentages*, which is what
+ * this rule reads. Titled for that: the form rule titles the same references for the
+ * quantities and the vertical lines it measures instead.
+ */
+const EACH_COLUMN_PARAGRAPHS: Record<DualColumnReference, Citation> = {
+  [DUAL_COLUMN_REFERENCES.forms]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.forms,
+    title: 'Dual labeling presents the percent Daily Value for every form declared',
+  },
+  [DUAL_COLUMN_REFERENCES.unitsAndGroups]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.unitsAndGroups,
+    title:
+      'Dual labeling for forms, combinations, units or RDI groups presents the percent Daily Value in two columns',
+  },
+  [DUAL_COLUMN_REFERENCES.servingAndContainer]: {
+    authority: 'FDA',
+    reference: DUAL_COLUMN_REFERENCES.servingAndContainer,
+    title: 'Per-serving and per-container or per-unit columns each present the percent Daily Value',
+  },
+}
+
 const PROTEIN_ROW = nutritionRowElementId('protein')
 
 /** A printed percentage in a row's text: the figure, where one is there. */
@@ -50,7 +75,7 @@ export const usFoodProteinPercentRule: UsFoodRule = {
   id: 'us-food/protein-percent',
   title: 'A food for children 1 through 3 gives its protein as a percentage of the Daily Value.',
   citation: CITATION,
-  citations: [CITATION, ...DUAL_COLUMN_PARAGRAPHS],
+  citations: [CITATION, ...Object.values(EACH_COLUMN_PARAGRAPHS)],
   codes: [FDA_PROTEIN_PERCENT_MISSING, FDA_PROTEIN_PERCENT_MET],
   appliesTo: 'us-food',
 
@@ -127,7 +152,8 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       if (columns.some((column) => !PERCENT.test(column.text))) {
         // No basis stated names no (e) paragraph, so the requirement itself is cited.
         const basis = panel.columns?.basis
-        const citation = basis === undefined ? CITATION : eachColumnParagraph(basis)
+        const citation =
+          basis === undefined ? CITATION : EACH_COLUMN_PARAGRAPHS[eachColumnReference(basis)]
         return [
           missing(
             PROTEIN_ROW,
