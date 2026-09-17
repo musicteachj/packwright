@@ -122,7 +122,9 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       const basis = panel.columns?.basis
       // Keyed on the second column's *protein* amount, as the drawn branch is: a column
       // declaring no protein figure is an incomplete column, which the form rule reports.
-      return panel.columns?.secondAmounts?.protein !== undefined &&
+      // A panel declaring one column owes one percentage, whatever second amounts it kept.
+      return panel.columns?.mode === 'dual' &&
+        panel.columns?.secondAmounts?.protein !== undefined &&
         panel.columns?.secondPercentDv?.protein === undefined
         ? [
             missing(

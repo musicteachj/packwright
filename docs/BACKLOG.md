@@ -284,6 +284,16 @@ second column, and the engine derives none for protein, so the second column pri
 The rule reports that under the paragraph for the column's basis, which is true of the printed label, and nothing in the editor can fix it. The
 fix is a declared second-column percentage, at least for protein, with the rail offering it.
 
+**A primitive does not say which column it belongs to, so rules infer it from the cells drawn.** Four review
+rounds on `feat/second-column-percentages` went to that inference, each on a case the last had not covered: a
+panel whose mode went back to single, a nutrient left out of `order`, a row whose first column states no amount,
+and a nutrient `order` lists twice. `us-food/nutrition-percent-dv` now asks for the second column's band, then
+counts a row's right-aligned cells against what each column declares, which is correct but is arithmetic about
+geometry rather than a fact the layout states. `TextPrimitive` carries `elementId` and `anchor` and nothing about
+the column, and `us-food/protein-percent` does the same counting for its own reason. A `column` on the primitive,
+or a second-column row element as `nutritionSecondColumn` is a band element, would let both rules read what was
+drawn instead of deducing it. It is a change to the layout's contract, so it wants its own branch.
+
 **A percentage stated for a nutrient with no Daily Value is printed and cannot be judged.** Found by the review of
 `feat/second-column-percentages`, and true of both columns. `declaredPercentDv` and now `columns.secondPercentDv`
 accept a figure for trans fat or total sugars, which 101.9(c)(9) and (c)(8)(iv) give no Daily Value, so the panel

@@ -815,13 +815,27 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     // drew — clearing a correct one into the pass. Per row, because a nutrient left out of
     // `order` draws neither column while the panel around it draws two. The dual-column
     // rules learned this with `columns.mode`; the percentages are the same question.
-    const secondColumnDrawn = (id: NutrientId): boolean =>
-      layout.primitives.filter(
+    // **Asked of the layout: the band first, then the row's own cells.** Reading these
+    // figures from the document judged a column nothing drew, and counting the cells alone
+    // then read a single-column panel's lone cell as a second column's. A panel draws the
+    // band only where a second column was actually drawn, and each column that declares an
+    // amount adds a cell to the row — so a row carries a second cell where the band is on
+    // the label, the second column declares an amount for it, and the row drew more cells
+    // than the first column alone would give it. More, not exactly two: `order` may list a
+    // nutrient twice, which draws its row twice over.
+    const bandDrawn = layout.elements.some(
+      (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+    )
+    const secondColumnDrawn = (id: NutrientId): boolean => {
+      if (!bandDrawn || panel.columns?.secondAmounts?.[id] === undefined) return false
+      const cells = layout.primitives.filter(
         (primitive): primitive is TextPrimitive =>
           primitive.kind === 'text' &&
           primitive.elementId === nutritionRowElementId(id) &&
           primitive.anchor === 'end',
-      ).length >= 2
+      ).length
+      return cells >= (declaredAmount(panel, id) === undefined ? 1 : 2)
+    }
 
     // **Both columns, each against its own figures.** (e)(2), (e)(3) and (e)(6) present the
     // (d)(7)(ii) percentages in every column a panel declares, and a second column may state

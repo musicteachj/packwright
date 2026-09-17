@@ -39,6 +39,7 @@ import { nutrient } from '../fda/nutrients'
 import { layOutNutritionPanel, willDrawSecondColumn } from './nutritionPanel'
 import type { UsFoodLabelData } from '../templates/usFood'
 import {
+  NUTRITION_ROW_PREFIX,
   US_FOOD_EGG_CARTON_PRESENTED,
   US_FOOD_ELEMENTS,
   US_FOOD_TYPE_DEFAULT,
@@ -535,11 +536,21 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
      */
     const secondColumn = data.nutritionFacts.columns
     const secondColumnDrawn = willDrawSecondColumn(data.nutritionFacts)
+    // **Read off the cells drawn, not predicted.** `willDrawSecondColumn` answers for the
+    // panel, and a nutrient the panel's `order` leaves out draws no cell in either column —
+    // so a figure stated for it disappeared in silence, which is what this block exists to
+    // stop. The rows the panel drew are the ones that could carry a percentage.
+    const rowsDrawn = new Set(
+      drawn.elements
+        .map((element) => element.elementId)
+        .filter((elementId) => elementId.startsWith(NUTRITION_ROW_PREFIX)),
+    )
     for (const [id, percent] of Object.entries(secondColumn?.secondPercentDv ?? {})) {
       const entry = nutrient(id)
       if (percent === undefined || entry === undefined) continue
+      const rowDrawn = rowsDrawn.has(nutritionRowElementId(entry.id))
       const hasAmount = id !== 'calories' && secondColumn?.secondAmounts?.[entry.id] !== undefined
-      if (secondColumnDrawn && hasAmount) continue
+      if (secondColumnDrawn && hasAmount && rowDrawn) continue
       omissions.push({
         elementId:
           id === 'calories' ? US_FOOD_ELEMENTS.nutritionCalories : nutritionRowElementId(entry.id),
@@ -550,8 +561,10 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
             : id === 'calories'
               ? 'the second column carries no Calories cell to print it in — Calories is drawn in ' +
                 'its own block above the nutrient rows. It is not printed.'
-              : 'the second column declares no amount for it to be printed beside. It is not ' +
-                'printed.'),
+              : !rowDrawn
+                ? 'the panel draws no row for it. It is not printed.'
+                : 'the second column declares no amount for it to be printed beside. It is not ' +
+                  'printed.'),
         scope: 'detail',
       })
     }

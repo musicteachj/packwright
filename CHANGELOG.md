@@ -47,8 +47,7 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   own two bases. A stated second-column figure that does not match is reported as the first is, saying which column
   it is in; and the pass no longer counts one column's percentages while the other's go unread. An egg carton, which draws no panel, is asked for the second column
   its information declares, where that column declares a protein amount — a column declaring none is an incomplete
-  column, which the form rule reports, as it does on a panel the engine draws. The rule asks the layout, row by row, whether a second
-  cell was drawn before reading any of those figures: two reviews of the change found it reading them from the
+  column, which the form rule reports, as it does on a panel the engine draws. The rule asks the layout, row by row, which cells were drawn before reading any of those figures: two reviews of the change found it reading them from the
   document, so a panel whose mode went back to single was judged on the figures it kept, and a nutrient left out of
   `order`, which draws no cell in either column, had its stated figure counted in the pass — each certifying a
   percentage nothing printed. A percentage stated for a nutrient the second column gives no amount
