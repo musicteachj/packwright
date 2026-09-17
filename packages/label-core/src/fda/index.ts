@@ -31,6 +31,7 @@ export {
   NUTRITION_PANEL_TYPE,
   NUTRITION_TYPE_BY_DISPLAY,
   nutritionDisplayFor,
+  nutritionFootnoteFor,
   nutritionTypeForDisplay,
 } from './nutritionPanel'
 export type { NutritionDisplay, NutritionTypeSizes } from './nutritionPanel'

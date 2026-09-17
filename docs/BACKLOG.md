@@ -16,7 +16,11 @@ forward. A finding worth keeping is not automatically a finding worth doing next
 `NUTRITION_FOOTNOTE` carries all three permitted variants, but no rule compares what a panel prints against
 them. Found while fixing the tabular display, which had been printing (j)(13)(i)'s abbreviated statement on
 every tabular display including the ones not entitled to it — a defect that lasted precisely because no rule
-looks here.
+looks here. Still no rule, by decision on `feat/childrens-footnote`: both drawing paths look the wording up by
+display and by population, so no label document can make the footnote wrong, and a rule no document can fail has
+no known-bad fixture — the reason 101.3(d)'s bold goes unchecked below. Tests pin the wording on both paths for
+both populations instead. A rule becomes worth writing when the engine draws a footnote a label chooses, such as
+the calorie-free permissions (d)(9) gives, which need claims modelled first.
 
 **101.3(b) and (d) are unchecked, and two of the three clauses should stay that way.** (b)'s "common or usual
 name" is a question about 21 CFR part 102 and about usage rather than about a label. (d)'s "size reasonably
@@ -243,7 +247,11 @@ element and records `omissions: []`. Not a false clearance — `FDA_ALLERGEN_SOU
 but a declared element leaves the artefact with nothing saying so, which is the one thing `LayoutOmission`
 exists to prevent.
 
-**Two of the three footnote variants are unreachable.** `NUTRITION_FOOTNOTE.childrenOneToThree` and
+**~~Two of the three footnote variants are unreachable.~~ Half fixed** on `feat/childrens-footnote`. A panel
+declared `representedFor: 'children-1-through-3'` is drawn with the 1,000-calorie footnote on both drawing paths,
+against Daily Values for that group. The first-sentence-only variant is still unreachable: (d)(9) permits it only
+for foods that can use § 101.60(b)'s calorie-free terms, and this project models no claims. What follows is the
+entry as it stood. `NUTRITION_FOOTNOTE.childrenOneToThree` and
 `.firstSentenceOnly` have no consumer; `layout/nutritionPanel.ts` hardcodes `.standard` at both sites. The
 eCFR text fetched this session confirms both variants are real requirements — a food "represented or
 purported to be for children 1 through 3 years of age" **shall** substitute "1,000 calories" — so a

@@ -50,9 +50,12 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   adult percentages in the PDF beside toddler ones in the preview. The population
   is a required argument everywhere a percentage is computed, so a new caller cannot fall back to the adult values
   unnoticed. On the conformant panel declared for toddlers, eight of its eleven stated percentages are now reported
-  wrong, and 3 g of fat prints as 8 percent rather than 4. The 1,000-calorie footnote (d)(9) requires of such a food
-  is not drawn yet, and a toddler food's protein percentage, which (c)(7)(i) says "shall be given", is not required
-  by any rule; both are recorded in `docs/BACKLOG.md`. Infants through 12 months are not carried.
+  wrong, and 3 g of fat prints as 8 percent rather than 4. The footnote follows the population too: (d)(9) says a
+  toddler food's "second sentence of the footnote shall substitute '1,000 calories' for '2,000 calories'", and both
+  places the panel draws a footnote now look it up by population, pinned by a test against the footnote (j)(5)(iii)
+  states whole. No rule judges the footnote, because the engine always draws it from the table and no label document
+  can make it wrong, which is the reason `docs/BACKLOG.md` records. A toddler food's protein percentage, which
+  (c)(7)(i) says "shall be given", is not required by any rule, and is recorded there too. Infants through 12 months are not carried.
 
 - **A "Contains" statement no longer drops an allergen it cannot name without saying so.** Tree nuts, fish and
   crustacean shellfish are declared by their specific type under §403(w)(2), and an ingredient stating none gives

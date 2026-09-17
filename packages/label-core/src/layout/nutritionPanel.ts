@@ -20,9 +20,9 @@
 
 import type { LabelingSurfaceFloor } from '../geometry/pdp'
 import {
-  NUTRITION_FOOTNOTE,
   NUTRITION_PANEL_RULES,
   nutritionDisplayFor,
+  nutritionFootnoteFor,
   nutritionTypeForDisplay,
 } from '../fda/nutritionPanel'
 import {
@@ -676,7 +676,12 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     const footnoteTopMm = bodyBottomMm + NUTRITION_PANEL_RULES.hairlineLeadingMm
     const footnoteLines = abbreviatedFootnote
       ? ['*% DV = % Daily Value']
-      : wrapTextMm(NUTRITION_FOOTNOTE.standard, rightMm - leftMm, footnoteMm, fontFamily)
+      : wrapTextMm(
+          nutritionFootnoteFor(dailyValuePopulationOf(facts)),
+          rightMm - leftMm,
+          footnoteMm,
+          fontFamily,
+        )
     footnoteLines.forEach((footnoteLine, index) => {
       primitives.push({
         kind: 'text',
@@ -1039,7 +1044,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   bar(NUTRITION_PANEL_RULES.thickMm)
   const footnoteStart = yMm
   const footnoteSizeMm = mm(NUTRITION_PANEL_TYPE.footnotePt)
-  const words = NUTRITION_FOOTNOTE.standard.split(' ')
+  const words = nutritionFootnoteFor(dailyValuePopulationOf(facts)).split(' ')
   const lines: string[] = []
   let line = ''
   for (const word of words) {

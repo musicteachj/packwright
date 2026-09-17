@@ -2030,6 +2030,42 @@ describe('a food for children 1 through 3, labelled against their Daily Values',
     expect(codesOf(findings)).toContain('FDA_NUTRITION_PERCENT_DV_MET')
   })
 
+  it('prints the 1,000-calorie footnote on the vertical and tabular displays', () => {
+    // 101.9(d)(9), read from the eCFR on 2026-09-17: "If the food product is represented or
+    // purported to be for children 1 through 3 years of age, the second sentence of the
+    // footnote shall substitute '1,000 calories' for '2,000 calories'." (j)(5)(iii) states
+    // the whole footnote for such a food, and it is copied from there, not from the table
+    // the engine draws with, so the two are checked against each other.
+    const toddlerFootnote =
+      '*The % Daily Value tells you how much a nutrient in a serving of food contributes to ' +
+      'a daily diet. 1,000 calories a day is used for general nutrition advice.'
+    const footnoteOf = (data: UsFoodLabelData, onStock: LabelStock = stock) =>
+      layOutUsFoodLabel({ data, stock: onStock })
+        .primitives.filter(
+          (p): p is TextPrimitive =>
+            p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionFootnote,
+        )
+        .map((p) => p.text)
+        .join(' ')
+    expect(footnoteOf(US_FOOD_CONFORMANT.data), 'premise: an adult food').toContain(
+      '2,000 calories a day',
+    )
+    expect(footnoteOf(forToddlers())).toBe(toddlerFootnote)
+    // (d)(11)'s tabular display draws its footnote on a separate path.
+    const wide = { widthMm: 200, heightMm: 240, marginMm: 6 }
+    const tabular = forToddlers({
+      format: 'tabular',
+      availableSurfaceSqInches: 80,
+      continuousVerticalSpaceInches: 2,
+    })
+    expect(
+      footnoteOf(
+        { ...tabular, container: { shape: 'rectangular', widthMm: 200, heightMm: 240 } },
+        wide,
+      ),
+    ).toBe(toddlerFootnote)
+  })
+
   it('prints the percentages it derives against that column', () => {
     const { declaredPercentDv: _stated, ...derived } = panel
     const adult: UsFoodLabelData = { ...US_FOOD_CONFORMANT.data, nutritionFacts: derived }
