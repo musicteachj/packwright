@@ -280,6 +280,20 @@ export function formatIsPermitted(
  *
  * **The band is inclusive at both ends.** "At least 200 ... up to and including
  * 300" — so 200.0 and 300.0 are inside it and 199.9 and 300.1 are not.
+ *
+ * **Which of the two bit matters beyond this module.** 101.9(e)(6), read from the
+ * eCFR on 2026-09-17, governs the *format* of these columns and names its own
+ * predicate: "When dual labeling is presented for a food on a per serving basis
+ * and per container basis **as required in paragraph (b)(12)(i)** ... or on a per
+ * serving basis and per unit basis **as required in paragraph (b)(2)(i)(D)**".
+ * So a rule citing (e)(6) has to know not merely that *a* column was owed but
+ * *which* provision owed it — a per-unit column is (e)(6)'s business only where
+ * (b)(2)(i)(D) required a per-unit column. Both provisions can bite on one label,
+ * and `basis` reports only the first, which is why `required` reports every one.
+ *
+ * A column excused by (b)(12)(i)(A), (B) or (C) is not "required in paragraph
+ * (b)(12)(i)" either, so an exemption empties `required` while leaving `basis`
+ * and `exemption` to say what was excused.
  */
 export const DUAL_COLUMN_MIN_PERCENT = 200
 export const DUAL_COLUMN_MAX_PERCENT = 300
@@ -296,6 +310,26 @@ export type MandatoryDualColumnBasis = Extract<DualColumnBasis, 'per-container' 
 export interface DualColumnDuty {
   /** The basis the label owes a second column on, or undefined where it owes none. */
   basis?: MandatoryDualColumnBasis
+  /**
+   * Every basis actually obliged here, after exemptions — empty where none is.
+   *
+   * `basis` picks one to report and the package provision wins; this keeps both,
+   * because (e)(6)'s predicate is per-provision rather than per-label.
+   *
+   * Read it with `referenceAmountStated`. Empty means "not required" only when
+   * the question was answerable at all.
+   */
+  required: readonly MandatoryDualColumnBasis[]
+  /**
+   * Whether the label declared the reference amount this turns on.
+   *
+   * §101.12(b)'s table is not carried here, so without a declared figure there is
+   * no duty to compute and `required` is empty for a reason that is nothing like
+   * the others: the question was **not asked**, rather than answered no. A caller
+   * that conflates the two tells a user their column is voluntary on the strength
+   * of a field they never filled in.
+   */
+  referenceAmountStated: boolean
   /** The percentage of the reference amount that triggered it. */
   percentOfReferenceAmount?: number
   /** Which paragraph excused it, where one did. */
@@ -350,7 +384,7 @@ function inBand(content: number, referenceAmount: number): number | undefined {
  */
 export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
   const referenceAmount = input.referenceAmount?.amount
-  if (referenceAmount === undefined) return {}
+  if (referenceAmount === undefined) return { required: [], referenceAmountStated: false }
 
   // (b)(12)(i) reaches the package; (b)(2)(i)(D) reaches the unit. Both can be
   // true, and the package provision is the one named first.
@@ -363,7 +397,7 @@ export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
 
   const basis: MandatoryDualColumnBasis | undefined =
     perContainer !== undefined ? 'per-container' : perUnit !== undefined ? 'per-unit' : undefined
-  if (basis === undefined) return {}
+  if (basis === undefined) return { required: [], referenceAmountStated: true }
 
   const percentOfReferenceAmount = perContainer ?? perUnit!
 
@@ -379,8 +413,19 @@ export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
           ? '21 CFR 101.9(b)(12)(i)(C)'
           : undefined
 
+  // An excused column is not one "required in paragraph (b)(12)(i)", so nothing
+  // is required here even though a band was hit. `basis` still names what was
+  // excused, which is what the exemption pass reports.
+  const required: MandatoryDualColumnBasis[] = []
+  if (exemption === undefined) {
+    if (perContainer !== undefined) required.push('per-container')
+    if (perUnit !== undefined) required.push('per-unit')
+  }
+
   return {
     basis,
+    required,
+    referenceAmountStated: true,
     percentOfReferenceAmount,
     ...(exemption === undefined ? {} : { exemption }),
   }

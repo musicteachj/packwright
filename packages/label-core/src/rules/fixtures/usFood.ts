@@ -206,6 +206,24 @@ const SECOND_COLUMN_AMOUNTS = {
   potassium: 587.5,
 } as const
 
+/**
+ * What makes a second column *owed* under (b)(12)(i): a 55 g package against a 22 g
+ * reference amount is 250 percent of it, packaged and sold individually.
+ *
+ * 101.9(e)(6) governs the form of only the columns (b)(12)(i) and (b)(2)(i)(D)
+ * **require** — "as required in paragraph (b)(12)(i)", read from the eCFR on
+ * 2026-09-17 — so a fixture expecting an (e)(6) citation has to say why the column
+ * was owed. Without these facts the same panel is a voluntary column, and its
+ * findings cite (e) instead. The 60 square inches keeps it clear of exemption (A),
+ * which excuses anything small enough for the reduced displays.
+ */
+const OWES_A_PER_CONTAINER_COLUMN = {
+  availableSurfaceSqInches: 60,
+  referenceAmount: { amount: 22, unit: 'g', category: 'Snacks — chips, pretzels' },
+  packageContent: 55,
+  packagedAndSoldIndividually: true,
+} as const
+
 const BASE = {
   statementOfIdentity: 'Oat and almond granola',
   container: { shape: 'rectangular', widthMm: 120, heightMm: 240 },
@@ -337,6 +355,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       ...BASE,
       nutritionFacts: {
         ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
         columns: {
           mode: 'dual',
           basis: 'per-container',
@@ -364,6 +383,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       ...BASE,
       nutritionFacts: {
         ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
         columns: {
           mode: 'dual',
           basis: 'per-container',
@@ -1032,6 +1052,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       ...BASE,
       nutritionFacts: {
         ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
         representedFor: 'children-1-through-3',
         // Every percentage worked against the children 1 through 3 column, as the
         // single-column fixture above does, so the second column's protein is its only

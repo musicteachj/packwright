@@ -2242,6 +2242,11 @@ describe('a dual-column panel is judged under the paragraph for what its second 
       ...source,
       nutritionFacts: {
         ...source.nutritionFacts!,
+        // The fixture states a package content, which is what (b)(12)(i) reads.
+        // (b)(2)(i)(D) reads a *unit* content, so a per-unit column is one (e)(6)
+        // reaches only where the label states one — without it the column is
+        // voluntary and (e)(6)'s predicate is unmet.
+        ...(basis === 'per-unit' ? { unitContent: 55 } : {}),
         columns: { ...columns, ...(basis === undefined ? {} : { basis }) },
       },
     }
@@ -2289,6 +2294,70 @@ describe('a dual-column panel is judged under the paragraph for what its second 
     },
   )
 
+  // (e)(6) opens "as required in paragraph (b)(12)(i) ... or ... as required in paragraph
+  // (b)(2)(i)(D)", read from the eCFR on 2026-09-17 — a predicate, not a description. Four
+  // labels answer it differently and they are not the same thing to be told: one owes the
+  // column, one never stated the figure the question turns on, one is outside the band, and
+  // one is excused. The first review of this change found all three failures collapsed into
+  // "carried voluntarily", which asserts of a label that never filled the field in.
+  describe('a per-container column (e)(6) may or may not reach', () => {
+    const owed = () =>
+      withBasis('a second column carrying one figure out of fourteen', 'per-container')
+    const incompleteIn = (data: UsFoodLabelData) => findingOf(data, 'FDA_DUAL_COLUMN_INCOMPLETE')!
+
+    it('cites (e)(6) where (b)(12)(i) requires the column', () => {
+      const found = incompleteIn(owed())
+      expect(found.citation.reference).toBe('21 CFR 101.9(e)(6)')
+      expect(found.message).toContain('101.9(e)(6) requires')
+    })
+
+    it('cites (e) and says so where the label states no reference amount', () => {
+      // Not "voluntary" — unanswerable. §101.12(b)'s table is not carried here, so without
+      // a declared figure the engine has not asked the question, and the editor builds
+      // every label this way today.
+      const base = owed()
+      const {
+        referenceAmount: _amount,
+        packageContent: _package,
+        packagedAndSoldIndividually: _individually,
+        ...unasked
+      } = base.nutritionFacts!
+      const found = incompleteIn({ ...base, nutritionFacts: unasked })
+      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
+      expect(found.message).toContain('states no reference amount')
+      expect(found.message, 'and claims nothing about a choice').not.toContain('voluntarily')
+      // The defect is unchanged — one figure is still not a second declaration.
+      expect(found.severity).toBe('violation')
+    })
+
+    it('cites (e) and calls the column voluntary where the package is outside the band', () => {
+      const base = owed()
+      const found = incompleteIn({
+        // 25 g against a 22 g reference amount is 114 percent, below (b)(12)(i)'s 200.
+        ...base,
+        nutritionFacts: { ...base.nutritionFacts!, packageContent: 25 },
+      })
+      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
+      expect(found.message).toContain('voluntarily')
+    })
+
+    it('cites (e) and names the exemption where one excuses the column', () => {
+      const base = owed()
+      const found = incompleteIn({
+        ...base,
+        nutritionFacts: {
+          ...base.nutritionFacts!,
+          dualColumnExemption: { rawCommodityVoluntary: true },
+        },
+      })
+      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
+      expect(found.message).toContain('101.9(b)(12)(i)(B)')
+      expect(found.message, 'and does not call an excused column a choice').not.toContain(
+        'voluntarily',
+      )
+    })
+  })
+
   it('titles a shared reference for the requirement each rule measures', () => {
     // The titles are what `/rules` and the findings rail show, so a reference two rules
     // cite is titled twice — for the quantities and lines this rule measures, and for the
@@ -2298,10 +2367,13 @@ describe('a dual-column panel is judged under the paragraph for what its second 
       withBasis('a second column carrying one figure out of fourteen', 'per-container'),
       'FDA_DUAL_COLUMN_INCOMPLETE',
     )!.citation
-    const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+    // Both halves stand on a package that *owes* the column, because (e)(6) reaches no
+    // other kind and the two rules would otherwise share no reference to title twice.
+    const band = fixture('a 250 percent package carrying one column')
+    const panel = band.data.nutritionFacts!
     const percentages = findingsFor(
       {
-        ...US_FOOD_CONFORMANT.data,
+        ...band.data,
         nutritionFacts: {
           ...panel,
           representedFor: 'children-1-through-3',
@@ -2314,7 +2386,7 @@ describe('a dual-column panel is judged under the paragraph for what its second 
           },
         },
       },
-      US_FOOD_CONFORMANT.stock,
+      band.stock,
     ).find((f) => f.code === 'FDA_PROTEIN_PERCENT_MISSING')!.citation
 
     expect(percentages.reference, 'the same paragraph').toBe(columns.reference)
@@ -2578,6 +2650,9 @@ describe('a food for children 1 through 3, labelled against their Daily Values',
           ...facts,
           representedFor: 'children-1-through-3',
           declaredPercentDv: { ...facts.declaredPercentDv, protein: 38 },
+          // The package content is what (b)(12)(i) reads; (b)(2)(i)(D) reads the unit,
+          // so a per-unit column is (e)(6)'s only where the label states one.
+          ...(basis === 'per-unit' ? { unitContent: 55 } : {}),
           columns: {
             mode: 'dual',
             ...(basis === undefined ? {} : { basis }),

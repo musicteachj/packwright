@@ -37,6 +37,29 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **(e)(6) is cited only for the columns it reaches.** 21 CFR 101.9(e)(6), read from the eCFR on 2026-09-17,
+  opens "When dual labeling is presented for a food on a per serving basis and per container basis **as required
+  in paragraph (b)(12)(i)** of this section or on a per serving basis and per unit basis **as required in
+  paragraph (b)(2)(i)(D)**". That is a predicate, not a description, and every per-container and per-unit
+  finding was citing it whether or not the label was obliged to carry the column — so a package that chose to
+  declare a second column was sent to a paragraph whose condition it does not meet. `dualColumnDuty` now reports
+  every basis actually required rather than only the first, because the question is per-provision: a per-unit
+  column is (e)(6)'s business only where (b)(2)(i)(D) required a per-unit column, and a label can owe both. The
+  paragraph tables consult it, and where (e)(6) does not reach, `us-food/dual-column-form` and
+  `us-food/protein-percent` fall back to the citation each declares — (e) and (c)(7)(i) — which is the path a
+  label stating no basis already took. **The message distinguishes four labels**, because they read alike in a
+  citation and are nothing alike to act on: one that stated no basis, one that stated no reference amount and so
+  has not been asked the question at all, one outside the band and genuinely carrying the column by choice, and
+  one an exemption excuses, which is named. The first pass of this change called all three of the last
+  "voluntary" — which asserts a choice on the strength of a field the user never filled in, and the editor
+  builds every label that way. **No substitute citation was
+  invented for the voluntary case**: nothing in (e) covers it, its opening reaching only forms, combinations,
+  "different units" and RDI groups; the one paragraph that contemplates a voluntary second column is (b)(6),
+  and the column (b)(6) permits sits on the other side of the panel and counts a household measure, so it is
+  not the column a label declaring per-container is describing. The three dual-column fixtures now state the
+  facts that make their column mandatory, which is what an (e)(6) expectation has to rest on, and closes one of
+  the pass codes no fixture reached.
+
 - **A second column may state its own percent Daily Values.** 101.9(e)(2), (e)(3) and (e)(6) each present the
   (d)(7)(ii) percentages in every column a panel declares, and only the first column could state one: the second
   derived every figure, and `printedPercentDailyValue` derives none for protein. So a food for children 1 through 3,

@@ -31,6 +31,8 @@ import { finding, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
+import type { DualColumnBasis } from '../../fda/nutritionFormats'
+import { dualColumnDutyFor } from './mandatoryColumns'
 import { smallestOf } from './printedText'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
@@ -79,9 +81,19 @@ export const usFoodProteinPercentRule: UsFoodRule = {
   codes: [FDA_PROTEIN_PERCENT_MISSING, FDA_PROTEIN_PERCENT_MET],
   appliesTo: 'us-food',
 
-  check({ data, layout }: UsFoodContext): Finding[] {
+  check({ data, layout, stock }: UsFoodContext): Finding[] {
     const panel = data.nutritionFacts
     if (panel === undefined || dailyValuePopulationOf(panel) !== 'children-1-through-3') return []
+
+    // (e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require, so which
+    // paragraph governs a second column depends on more than what it counts.
+    const duty = dualColumnDutyFor(data, stock)
+    const { required } = duty
+    const columnCitation = (basis: DualColumnBasis | undefined): Citation => {
+      if (basis === undefined) return CITATION
+      const reference = eachColumnReference(basis, required)
+      return reference === undefined ? CITATION : EACH_COLUMN_PARAGRAPHS[reference]
+    }
 
     const missing = (
       elementId: string,
@@ -131,7 +143,7 @@ export const usFoodProteinPercentRule: UsFoodRule = {
               US_FOOD_ELEMENTS.principalDisplayPanel,
               'Its second column states none.',
               'no protein percentage in the second column',
-              basis === undefined ? CITATION : EACH_COLUMN_PARAGRAPHS[eachColumnReference(basis)],
+              columnCitation(basis),
             ),
           ]
         : []
@@ -168,18 +180,31 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       // Nor is it cleared.
       if (columns.length < 2) return []
       if (columns.some((column) => !PERCENT.test(column.text))) {
-        // No basis stated names no (e) paragraph, so the requirement itself is cited.
+        // Columns no (e) paragraph names, for reasons a user would act on differently.
+        // "Voluntary" is the one to be careful with: a label that stated no reference
+        // amount has not been asked whether its column is required.
         const basis = panel.columns?.basis
-        const citation =
-          basis === undefined ? CITATION : EACH_COLUMN_PARAGRAPHS[eachColumnReference(basis)]
+        const citation = columnCitation(basis)
+        const lead =
+          citation !== CITATION
+            ? `On a dual-column panel, ${citation.reference} presents the percent Daily ` +
+              'Value in each column, '
+            : basis === undefined
+              ? 'The panel draws a second column, and states no basis for it, '
+              : !duty.referenceAmountStated
+                ? 'The panel draws a second column, and the label states no reference amount, ' +
+                  'so whether 101.9(b)(12)(i) or (b)(2)(i)(D) requires it cannot be told — and ' +
+                  '101.9(e)(6) reaches only the columns they require, '
+                : duty.exemption !== undefined
+                  ? `The panel draws a second column that ${duty.exemption.replace('21 CFR ', '')} ` +
+                    'excuses, so 101.9(e)(6) does not reach it, '
+                  : 'The panel draws a second column that neither 101.9(b)(12)(i) nor ' +
+                    '(b)(2)(i)(D) requires, so it is carried voluntarily and no paragraph of ' +
+                    '101.9(e) governs it, '
         return [
           missing(
             PROTEIN_ROW,
-            (basis === undefined
-              ? 'The panel draws a second column, and states no basis for it, '
-              : `On a dual-column panel, ${citation.reference} presents the percent Daily ` +
-                'Value in each column, ') +
-              'and the second column prints the protein row with no percentage.',
+            `${lead}and the second column prints the protein row with no percentage.`,
             'no protein percentage in the second column',
             citation,
           ),
