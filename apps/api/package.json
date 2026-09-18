@@ -17,6 +17,7 @@
     "@anthropic-ai/sdk": "^0.116.0",
     "@packwright/label-core": "^0.0.0",
     "bwip-js": "^4.11.2",
+    "compression": "^1.8.2",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
@@ -27,6 +28,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
     "@types/node": "^26.2.0",

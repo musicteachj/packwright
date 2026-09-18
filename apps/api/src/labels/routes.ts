@@ -29,7 +29,9 @@ import {
   type UsFoodLabelData,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
-import { Router, type Request, type Response } from 'express'
+import { Router, type Request, type RequestHandler, type Response } from 'express'
+import rateLimit from 'express-rate-limit'
+
 import { renderLayoutToPdf } from './renderPdf'
 import {
   GhsRequest,
@@ -45,10 +47,54 @@ import {
   toSupplier,
 } from './schemas'
 
-export function createLabelRouter(): Router {
-  const router = Router()
+/**
+ * What one client may render in an hour.
+ *
+ * Every call here lays out a label and renders a PDF, which is CPU this process
+ * has only one of — a handful of concurrent callers is enough to make the server
+ * unresponsive to everyone else, and unlike the audit route there is no bill to
+ * notice it on. The figure is generous for the work: a person exporting labels
+ * does it a few times an hour, and a proof cycle that needed sixty would be an
+ * unusual afternoon.
+ *
+ * Deliberately per client and not per process. An export costs this server time
+ * and nothing else, so one caller going too fast is the whole problem — where
+ * the audit route also needed a process-wide cap, because there the cost is
+ * money and it is shared.
+ */
+export const DEFAULT_EXPORT_LIMIT = { perHour: 60 } as const
 
-  router.post('/upc-a/export', async (request: Request, response: Response) => {
+export interface ExportLimit {
+  /** PDF renders per client per hour. */
+  perHour: number
+}
+
+export function createLabelRouter(
+  options: { limit?: ExportLimit | false | undefined } = {},
+): Router {
+  const router = Router()
+  const { limit } = options
+
+  // Stated rather than defaulted, as the audit route's quotas are and for the
+  // same reason: `createApp` builds the same application every time it is called.
+  //
+  // Held as a handler and attached to each route rather than `router.use`d, for
+  // the reason the audit route's quotas are: mounted on the router it counted
+  // every path beneath it, so a 404 spent an allowance denominated in renders.
+  const guards: RequestHandler[] =
+    limit === false || limit === undefined
+      ? []
+      : [
+          rateLimit({
+            windowMs: 60 * 60 * 1000,
+            limit: limit.perHour,
+            standardHeaders: 'draft-7',
+            legacyHeaders: false,
+            message: { error: 'Too many exports — try again later' },
+          }),
+        ]
+
+  router.post('/upc-a/export', ...guards, async (request: Request, response: Response) => {
     const parsed = UpcARequest.safeParse(request.body)
     if (!parsed.success) {
       response.status(400).json({
@@ -113,7 +159,7 @@ export function createLabelRouter(): Router {
     }
   })
 
-  router.post('/ghs/export', async (request: Request, response: Response) => {
+  router.post('/ghs/export', ...guards, async (request: Request, response: Response) => {
     const parsed = GhsRequest.safeParse(request.body)
     if (!parsed.success) {
       response.status(400).json({
@@ -183,7 +229,7 @@ export function createLabelRouter(): Router {
     }
   })
 
-  router.post('/us-food/export', async (request: Request, response: Response) => {
+  router.post('/us-food/export', ...guards, async (request: Request, response: Response) => {
     const parsed = UsFoodRequest.safeParse(request.body)
     if (!parsed.success) {
       response.status(400).json({

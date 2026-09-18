@@ -10,6 +10,18 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The API costs less to abuse and less to use.** Four changes, all of them things a deployment would have
+  found the hard way. `express.json`'s ten-megabyte limit was **global**, so every route buffered and parsed
+  ten megabytes before anything looked at it — including the audit route's own guards, so a request they were
+  about to refuse had already been read in full. It is mounted on `/api/audit` alone now, the one route that
+  posts a photograph, and everything else is held to 256 KB, which is far more than a label document has ever
+  needed. **The export routes carry an hourly per-client limit**, sixty renders: a PDF render is CPU this
+  process has only one of, and unlike the audit route there is no bill to notice the abuse on — the symptom is
+  a server that has stopped answering. It is per client and not per process, because an export costs time and
+  not money, so one caller going too fast is the whole problem. **Responses are compressed**, with PDFs
+  excluded by an explicit filter: PDFKit deflates its content streams already, so gzipping an export spends CPU
+  to grow it by a percent.
+
 - **A check that could not run says so, instead of saying nothing.** An empty `check` meant four different
   things and only one of them was worth telling somebody, so all four were silent — and silence beside a clean
   report reads as approval. `Rule.declines` is an opt-in second answer: where a rule stands down because the
