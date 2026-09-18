@@ -3088,6 +3088,68 @@ describe('the dual-column display, drawn', () => {
   })
 })
 
+describe('which column a package is told it is missing', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const owing = (patch: Record<string, unknown>): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    nutritionFacts: {
+      ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      availableSurfaceSqInches: 60,
+      referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+      ...patch,
+    },
+  })
+  const missingIn = (data: UsFoodLabelData) =>
+    findingsFor(data, stock).find((f) => f.code === 'FDA_DUAL_COLUMN_MISSING')
+
+  it('cites the paragraph that asks for the column that is absent', () => {
+    // `reference` is taken from the duty, where the package provision always
+    // wins — so a finding about an absent per-unit column carried (b)(12)(i),
+    // which is the other paragraph. A citation that does not govern the sentence
+    // beside it is the defect this project treats most seriously. Found by review.
+    // Both provisions required, so the duty reports the package one — which is
+    // the divergence: without `packageContent` the duty *is* the per-unit one and
+    // the two references agree by accident, which is how the first version of
+    // this test passed against the unfixed citation.
+    const found = missingIn(
+      owing({
+        packageContent: 100,
+        packagedAndSoldIndividually: true,
+        unitContent: 90,
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!.amounts },
+        },
+      }),
+    )
+    expect(found, 'the per-unit column is owed and not drawn').toBeDefined()
+    expect(found!.message).toContain('the individual unit')
+    expect(found!.citation.reference).toBe('21 CFR 101.9(b)(2)(i)(D)')
+  })
+
+  it('reports rather than defers where two are owed and the basis is unstated', () => {
+    // One second column cannot be two, so a column is provably absent whatever
+    // the unstated one counts. Without this, omitting the field bought a
+    // downgrade from violation to advisory on a label that is certainly short.
+    const data = owing({
+      packageContent: 100,
+      packagedAndSoldIndividually: true,
+      unitContent: 90,
+      columns: {
+        mode: 'dual',
+        headings: ['Per serving', 'Per container'],
+        secondAmounts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!.amounts },
+      },
+    })
+    expect(missingIn(data), 'a column is absent either way').toBeDefined()
+    expect(findingsFor(data, stock).map((f) => f.code)).not.toContain(
+      'FDA_DUAL_COLUMN_BASIS_UNCONFIRMED',
+    )
+  })
+})
+
 describe('the second column (b)(12)(i) and (b)(2)(i)(D) make mandatory', () => {
   const stock = US_FOOD_CONFORMANT.stock
   const panel = (patch: Record<string, unknown>): UsFoodLabelData => ({

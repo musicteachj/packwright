@@ -482,7 +482,9 @@ actually owed in the *other* rule's message rather than calling the declared one
 no longer contradict each other on the same label. The mandate rule itself is untouched, and closing it means
 deciding what a mismatch is: a distinct finding code, or a withheld pass. Note (b)(12)(i) and (b)(2)(i)(D) can
 both bite at once, so "the wrong basis" is not always a single right answer — which is why the check asks
-whether the declared basis is *among* those required rather than whether it equals the one reported.
+which owed columns are **not** on the label rather than whether the one drawn is among those owed. Asking the
+second was the first version of the fix, and it certified every package owing two columns, since a label can
+only draw one and whichever it drew was always "among" them.
 
 The reading that settled it, from the eCFR on 2026-09-18: both provisions name what their column must carry,
 not merely that one exists. A label owing a per-unit column and drawing a per-container one has not provided

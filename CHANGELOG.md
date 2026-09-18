@@ -177,7 +177,11 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   holds a single basis and a single set of second amounts, so no label it can express satisfies both. The check
   asks which owed columns are *not* on the label rather than whether the one drawn is among those owed, which
   is the difference between reporting every such package and certifying every one of them. The first version of
-  this fix did the latter, and review caught it.
+  this fix did the latter, and review caught it. A second review pass found three more: the finding named and
+  cited the column the *duty* reported rather than the one actually absent, so a label short a per-unit column
+  was told about it under (b)(12)(i); a package owing two columns with no basis stated was deferred to the
+  advisory when one is provably missing whatever the unstated column counts; and the off-label (j)(14) branch
+  reported "carries one column" on information that declares two, only one of them wrong.
 
 - **Both GS1 rules cite a release and a section, and `symbol.ts` is re-read against the current one.**
   `gs1/gtin-check-digit` cited "GS1 General Specifications — check digit calculation" with no release and no
