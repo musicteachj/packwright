@@ -48,6 +48,7 @@ import {
   FDA_DUAL_COLUMN_INCOMPLETE,
   FDA_DUAL_COLUMN_NOT_SEPARATED,
   FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE,
+  FDA_DUAL_COLUMN_BASIS_UNCONFIRMED,
   FDA_DUAL_COLUMN_MISSING,
   FDA_NUTRITION_MISSING,
   FDA_SERVING_SIZE_MISSING,
@@ -470,6 +471,96 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       code: FDA_DUAL_COLUMN_HEADINGS_MISSING,
       severity: 'violation',
       citation: '21 CFR 101.9(e)(1)',
+    },
+  },
+  {
+    name: 'a 250 percent package whose second column counts the wrong thing',
+    defect:
+      'A 100 g package against a 40 g reference amount owes a column for the entire package ' +
+      'under (b)(12)(i), which says it "must provide an additional column ... that lists the ' +
+      'quantitative amounts and percent Daily Values **for the entire package**". This panel ' +
+      'draws a second column and says it counts the individual unit, so the column the ' +
+      'paragraph asks for is not on the label — and the rule used to clear it, because a second ' +
+      'column was present and it never asked what that column counted. Not one of the bases ' +
+      '(b)(12)(i)(C) excuses: a food requiring preparation, a combination, an RDI group or ' +
+      'popcorn would each be genuinely exempt rather than wrong.',
+    data: {
+      ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
+        columns: {
+          mode: 'dual',
+          basis: 'per-unit',
+          headings: ['Per serving', 'Per unit'],
+          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_DUAL_COLUMN_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(b)(12)(i)',
+    },
+  },
+  {
+    name: 'a package owing two additional columns and able to carry only one',
+    defect:
+      'A 100 g package against a 40 g reference amount is 250 percent of it, and its individual ' +
+      'unit at 90 g is 225 percent — so (b)(12)(i) asks for a column for the entire package and ' +
+      '(b)(2)(i)(D) asks for one per individual unit, both at once. This document model holds ' +
+      'one basis and one set of second amounts, so no label it can express satisfies both; the ' +
+      'one drawn counts the unit and the package column is absent. The rule certified every one ' +
+      'of these, because it asked only whether the declared basis was among those required.',
+    data: {
+      ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
+        unitContent: 90,
+        columns: {
+          mode: 'dual',
+          basis: 'per-unit',
+          headings: ['Per serving', 'Per unit'],
+          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_DUAL_COLUMN_MISSING,
+      severity: 'violation',
+      citation: '21 CFR 101.9(b)(12)(i)',
+    },
+  },
+  {
+    name: 'a 250 percent package whose second column says nothing about what it counts',
+    defect:
+      'The same package, drawing a second column with no basis stated. The column may well be ' +
+      'the one (b)(12)(i) requires, and it may not; nothing on the label says. Reporting it ' +
+      'absent would be a false positive and clearing it would certify a column this engine ' +
+      'cannot identify, so the finding says what it could not confirm and what to state.',
+    data: {
+      ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
+        columns: {
+          mode: 'dual',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
+        },
+      },
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_DUAL_COLUMN_BASIS_UNCONFIRMED,
+      severity: 'advisory',
+      citation: '21 CFR 101.9(b)(12)(i)',
     },
   },
   {

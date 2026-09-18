@@ -144,6 +144,7 @@ export {
   usFoodIngredientThresholdRule,
 } from './usFood/ingredientList'
 export {
+  FDA_DUAL_COLUMN_BASIS_UNCONFIRMED,
   FDA_DUAL_COLUMN_EXEMPT,
   FDA_DUAL_COLUMN_MET,
   FDA_DUAL_COLUMN_MISSING,

@@ -38,7 +38,7 @@
 
 import { willDrawSecondColumn } from '../../layout/nutritionPanel'
 import { DUAL_COLUMN_BASIS_REFERENCE } from '../../fda/nutritionFormats'
-import type { MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
+import type { DualColumnBasis, MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
 import { dualColumnDutyFor } from './mandatoryColumns'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
@@ -49,6 +49,7 @@ import type { UsFoodContext, UsFoodRule } from '../types'
 export const FDA_DUAL_COLUMN_MISSING = 'FDA_DUAL_COLUMN_MISSING'
 export const FDA_DUAL_COLUMN_MET = 'FDA_DUAL_COLUMN_MET'
 export const FDA_DUAL_COLUMN_EXEMPT = 'FDA_DUAL_COLUMN_EXEMPT'
+export const FDA_DUAL_COLUMN_BASIS_UNCONFIRMED = 'FDA_DUAL_COLUMN_BASIS_UNCONFIRMED'
 
 const CITATION: Citation = {
   authority: 'FDA',
@@ -71,10 +72,25 @@ const MANDATORY_DUAL_COLUMN_BASES: Record<MandatoryDualColumnBasis, true> = {
   'per-unit': true,
 }
 
+/** The same two as a list, taken from the record so the two cannot diverge. */
+const mandatoryBases = (): readonly MandatoryDualColumnBasis[] =>
+  Object.keys(MANDATORY_DUAL_COLUMN_BASES) as MandatoryDualColumnBasis[]
+
 const BASIS_NAME = {
   'per-container': 'the entire package',
   'per-unit': 'the individual unit',
 } as const
+
+/** Every basis a label can declare, for saying what it drew instead. */
+const DECLARED_NAME: Record<DualColumnBasis, string> = {
+  'as-prepared': 'the food as prepared',
+  combination: 'the food in combination',
+  'per-unit-measure': 'a different unit of measure',
+  'rdi-groups': 'another RDI group',
+  'per-cup-popped': 'a cup of popped popcorn',
+  'per-container': 'the entire package',
+  'per-unit': 'the individual unit',
+}
 
 export const usFoodDualColumnRule: UsFoodRule = {
   id: 'us-food/dual-column-required',
@@ -114,7 +130,12 @@ export const usFoodDualColumnRule: UsFoodRule = {
       .sort()
       .map((reference) => untitled(CITATION, reference)),
   ],
-  codes: [FDA_DUAL_COLUMN_MISSING, FDA_DUAL_COLUMN_MET, FDA_DUAL_COLUMN_EXEMPT],
+  codes: [
+    FDA_DUAL_COLUMN_MISSING,
+    FDA_DUAL_COLUMN_MET,
+    FDA_DUAL_COLUMN_EXEMPT,
+    FDA_DUAL_COLUMN_BASIS_UNCONFIRMED,
+  ],
   appliesTo: 'us-food',
 
   /**
@@ -197,23 +218,79 @@ export const usFoodDualColumnRule: UsFoodRule = {
     // rule by that. A column declared is not certified, because nothing here printed it; the
     // pass that would say so is simply not issued. The first cut of this returned nothing
     // either way, and its review found it excusing a column the regulation still demands.
+    // **Which owed column is not on this label.** Both provisions name what their
+    // column must carry — (b)(12)(i) one "for the entire package", (b)(2)(i)(D)
+    // one "per individual unit" — so a label owing the second and drawing the
+    // first has not provided what was asked for.
+    //
+    // Computed as a set difference rather than an equality, because both can be
+    // owed at once: a package in the band whose individual unit is also in it
+    // owes two additional columns, and this document model holds one `basis` and
+    // one set of `secondAmounts`. No representable label can satisfy both, which
+    // means every one of them must be reported rather than cleared — the first
+    // version of this checked only that the declared basis was *among* those
+    // required and certified the lot. Found by review.
+    const declared = panel.columns?.basis
+    // Derived from the record rather than written out again beside it: the note on
+    // `MANDATORY_DUAL_COLUMN_BASES` sets out why the array form gives no
+    // exhaustiveness guarantee, and a second tuple would keep compiling on the
+    // day the union widened and the record did not.
+    const owedButNotDrawn = mandatoryBases().filter(
+      (basis) => duty.standing[basis] === 'required' && basis !== declared,
+    )
+
+    // Named and cited for the column that is **missing**, not for the one the duty
+    // happened to report first. `reference` comes from `duty.basis`, where the
+    // package provision always wins — so a finding about an absent per-unit column
+    // was carrying (b)(12)(i), which is the other paragraph. A citation that does
+    // not govern the sentence beside it is the defect this project treats most
+    // seriously, and review caught it here.
+    const missingNames =
+      owedButNotDrawn.length === 0
+        ? BASIS_NAME[duty.basis]
+        : owedButNotDrawn.map((basis) => BASIS_NAME[basis]).join(' and ')
+    const missingReference =
+      owedButNotDrawn.length === 1
+        ? DUAL_COLUMN_BASIS_REFERENCE[owedButNotDrawn[0]!]
+        : owedButNotDrawn.length === 0
+          ? reference
+          : CITATION.reference
+
     if (!layout.elements.some((element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel)) {
-      if (willDrawSecondColumn(panel)) return []
+      if (willDrawSecondColumn(panel) && declared !== undefined && owedButNotDrawn.length === 0) {
+        return []
+      }
+      if (willDrawSecondColumn(panel) && declared === undefined) return []
+
+      // Two shapes of shortfall and they are not the same fact. A carton
+      // declaring one column is short a column; one declaring two where the
+      // second counts the wrong thing has both, and saying it "carries one
+      // column" would be untrue on the page. The on-label branch got a message
+      // of its own for this and this one did not, which review caught.
+      const declaresTwo = willDrawSecondColumn(panel)
       return [
         finding(usFoodDualColumnRule, {
           code: FDA_DUAL_COLUMN_MISSING,
           severity: 'violation',
           message:
             `This package holds ${percent} percent of its reference amount, so its nutrition ` +
-            `information must carry a second column for ${BASIS_NAME[duty.basis]} beside the one ` +
-            'per serving. The information declared for presentation off this label carries one ' +
-            `column${panel.columns?.mode === 'dual' ? ', though the label asks for two' : ''}.`,
+            `information must carry a second column for ${missingNames} beside the one per ` +
+            'serving. ' +
+            (declaresTwo && declared !== undefined
+              ? `The information declared for presentation off this label carries a second ` +
+                `column, but says it counts ${DECLARED_NAME[declared]} — which is not the ` +
+                `column ${missingReference} asks for.`
+              : 'The information declared for presentation off this label carries one ' +
+                `column${panel.columns?.mode === 'dual' ? ', though the label asks for two' : ''}.`),
           measurement: {
-            actual: 'one column declared',
-            required: `a second column for ${BASIS_NAME[duty.basis]}`,
+            actual:
+              declaresTwo && declared !== undefined
+                ? `a second column for ${DECLARED_NAME[declared]}`
+                : 'one column declared',
+            required: `a second column for ${missingNames}`,
           },
           elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
-          citation: { ...CITATION, reference },
+          citation: { ...CITATION, reference: missingReference },
         }),
       ]
     }
@@ -244,6 +321,55 @@ export const usFoodDualColumnRule: UsFoodRule = {
           },
           elementId: US_FOOD_ELEMENTS.nutritionPanel,
           citation: { ...CITATION, reference },
+        }),
+      ]
+    }
+
+    // One second column cannot be two, so where more are owed than can be drawn
+    // a column is provably absent whatever the label says its one counts —
+    // including where it says nothing. Without this, omitting the basis bought a
+    // downgrade from violation to advisory on a label that is certainly short.
+    if (declared === undefined && owedButNotDrawn.length <= 1) {
+      return [
+        finding(usFoodDualColumnRule, {
+          code: FDA_DUAL_COLUMN_BASIS_UNCONFIRMED,
+          severity: 'advisory',
+          message:
+            `This package holds ${percent} percent of its reference amount, so ${reference} ` +
+            `requires a second column for ${BASIS_NAME[duty.basis]}. The panel draws a second ` +
+            'column and the label does not say what it counts, so this check cannot confirm it ' +
+            'is that one. State what the second column counts.',
+          measurement: {
+            actual: 'a second column of unstated basis',
+            required: `a second column for ${BASIS_NAME[duty.basis]}`,
+          },
+          elementId: US_FOOD_ELEMENTS.nutritionPanel,
+          citation: { ...CITATION, reference },
+        }),
+      ]
+    }
+
+    if (owedButNotDrawn.length > 0) {
+      return [
+        finding(usFoodDualColumnRule, {
+          code: FDA_DUAL_COLUMN_MISSING,
+          severity: 'violation',
+          message:
+            `This package holds ${percent} percent of its reference amount, so it requires a ` +
+            `second column for ${missingNames}. The panel draws a second column, but ` +
+            (declared === undefined
+              ? 'one column cannot be both.'
+              : `the label says it counts ${DECLARED_NAME[declared]} — which is not the column ` +
+                `${missingReference} asks for.`),
+          measurement: {
+            actual:
+              declared === undefined
+                ? 'one second column of unstated basis'
+                : `a second column for ${DECLARED_NAME[declared]}`,
+            required: `a second column for ${missingNames}`,
+          },
+          elementId: US_FOOD_ELEMENTS.nutritionPanel,
+          citation: { ...CITATION, reference: missingReference },
         }),
       ]
     }

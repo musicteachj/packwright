@@ -472,7 +472,7 @@ checkbox: a checkbox can say "yes" or say nothing, and saying nothing is exactly
 unanswerable, while "no" is a real answer that takes the duty away — a multi-serving box is not sold
 individually and (b)(12)(i) does not reach it.
 
-**`us-food/dual-column-required` clears a label that drew a column of the wrong basis.** Found by the review
+**~~`us-food/dual-column-required` clears a label that drew a column of the wrong basis.~~ Fixed.** Found by the review
 of the (e)(6) citation fix. The rule asks whether a second column is *present*, never what it counts, so a
 package whose unit sits at 250 percent of the reference amount — owing a per-unit column under (b)(2)(i)(D) —
 gets `FDA_DUAL_COLUMN_MET` for drawing a column its own document labels per container. The pass is not wrong
@@ -481,7 +481,25 @@ that the obligation was discharged. The citation fix works around the reader-fac
 actually owed in the *other* rule's message rather than calling the declared one voluntary, so the two findings
 no longer contradict each other on the same label. The mandate rule itself is untouched, and closing it means
 deciding what a mismatch is: a distinct finding code, or a withheld pass. Note (b)(12)(i) and (b)(2)(i)(D) can
-both bite at once, so "the wrong basis" is not always a single right answer.
+both bite at once, so "the wrong basis" is not always a single right answer — which is why the check asks
+which owed columns are **not** on the label rather than whether the one drawn is among those owed. Asking the
+second was the first version of the fix, and it certified every package owing two columns, since a label can
+only draw one and whichever it drew was always "among" them.
+
+The reading that settled it, from the eCFR on 2026-09-18: both provisions name what their column must carry,
+not merely that one exists. A label owing a per-unit column and drawing a per-container one has not provided
+what (b)(2)(i)(D) asks for. Where the label declares no basis at all the answer is neither — reporting the
+column absent would be a false positive, clearing it would certify a column the engine cannot identify — so
+that case is a new advisory rather than either.
+
+**A package owing both additional columns cannot be made compliant in this tool.** Where a package sits in the
+200–300 percent band *and* its individual unit does, (b)(12)(i) and (b)(2)(i)(D) each ask for a column, and
+`UsFoodNutritionFacts.columns` holds one `basis` and one `secondAmounts` — so every such label is reported for
+the column it cannot express. That is the right answer to give and a poor place to leave a user: the finding
+is accurate and there is nothing they can do about it in the editor. Fixing it means a third column in the
+model, the engine and the panel, which is a larger change than the reading that surfaced it. Noticed while
+correcting the basis check, and reported rather than cleared because certifying the label would be the false
+clearance this whole line of work has been removing.
 
 **(b)(11)'s promoted-use second column is unmodelled.** 21 CFR 101.9(b)(11), read from the eCFR on 2026-09-17:
 a product "promoted on the label, labeling, or advertising for a use that differs in quantity by twofold or
