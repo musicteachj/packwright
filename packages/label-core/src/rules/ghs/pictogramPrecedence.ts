@@ -73,7 +73,7 @@ export const ghsPictogramPrecedenceRule: GhsChemicalRule = {
       citation: data.regime === 'us-osha' ? US : EU,
       reason:
         'This label declares no hazard classification, so nothing here can tell you ' +
-        'whether CLP Article 26’s precedence rules have been applied. A classification cannot be worked out from the H-codes a label ' +
+        'whether the precedence rules for pictograms have been applied. A classification cannot be worked out from the H-codes a label ' +
         'prints — classify the substance and this check will run.',
     }
   },

@@ -119,6 +119,10 @@ describe('what the report says it did not judge', () => {
     expect(rules).toContain('ghs/pictogram-precedence')
     for (const declined of result.declined) {
       expect(declined.reason).toContain('hazard classification')
+      // Regime-neutral: the citation says which regulation, and on a us-osha label
+      // it is not the EU one. Prose naming CLP under an OSHA citation was the
+      // half-fix the high review caught.
+      expect(declined.reason).not.toContain('CLP')
       expect(declined.citation.reference).toBeTruthy()
       // Written for somebody in a browser, so it names what to do and not where
       // a file lives in this repository. Found by review.

@@ -200,14 +200,9 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   const layoutError = computed(() => resolved.value.error)
 
   /**
-   * Narrowed on `labelType` rather than cast, matching how `runRules` dispatches.
-   *
-   * All three label types have rules now. The rail still distinguishes "no check
-   * ran" from "everything passed", because a rule that declines returns nothing
-   * and an empty list must not read as a clean bill of health.
-   */
-  /**
    * The one context both `findings` and `declined` are answered from.
+   *
+   * Narrowed on `labelType` rather than cast, matching how `runRules` dispatches.
    *
    * Built once rather than twice, so the two cannot come to disagree about which
    * label they are describing — a check reported as not-run against a document

@@ -222,8 +222,36 @@ export function runRules(context: RuleContext): Finding[] {
  * set: see the note on `Rule.declines` for why most should not.
  */
 export function declinedChecks(context: RuleContext): DeclinedCheck[] {
-  return rulesFor(context).flatMap((rule) => {
-    const declined = rule.declines?.(context as never)
+  switch (context.labelType) {
+    case 'gs1-retail':
+      return declinesOf(GS1_RETAIL_RULES, context)
+    case 'ghs-chemical':
+      return declinesOf(GHS_RULES, context)
+    case 'us-food':
+      return declinesOf(US_FOOD_RULES, context)
+    default: {
+      const unreachable: never = context
+      return unreachable
+    }
+  }
+}
+
+/**
+ * Generic over the context, so a rule set can only be asked about the label type
+ * it was written for.
+ *
+ * The first version of this shared one `Rule<never>[]` list with `check` and cast
+ * the context at both call sites, which compiled a misfiled rule set into a label
+ * judged by the wrong rules — reinstating exactly the dispatch cast the note on
+ * `Rule.appliesTo` records as a past defect. Two switches that cannot lie beat one
+ * list that can.
+ */
+function declinesOf<TContext extends RuleContext>(
+  rules: readonly Rule<TContext>[],
+  context: TContext,
+): DeclinedCheck[] {
+  return rules.flatMap((rule) => {
+    const declined = rule.declines?.(context)
     if (declined === undefined) return []
     return [
       {
@@ -236,28 +264,21 @@ export function declinedChecks(context: RuleContext): DeclinedCheck[] {
   })
 }
 
-/**
- * The rule set for a label type, as a list rather than a dispatch.
- *
- * Shared by `check` and `declinedChecks` so the two cannot come to disagree
- * about which rules a label is subject to — a decline reported by a rule that
- * never ran would be worse than no decline at all.
- */
-function rulesFor(context: RuleContext): readonly Rule<never>[] {
+function check(context: RuleContext): Finding[] {
   switch (context.labelType) {
     case 'gs1-retail':
-      return GS1_RETAIL_RULES as readonly Rule<never>[]
+      return GS1_RETAIL_RULES.flatMap((rule) => rule.check(context))
     case 'ghs-chemical':
-      return GHS_RULES as readonly Rule<never>[]
+      return GHS_RULES.flatMap((rule) => rule.check(context))
     case 'us-food':
-      return US_FOOD_RULES as readonly Rule<never>[]
+      return US_FOOD_RULES.flatMap((rule) => rule.check(context))
     default: {
+      // Every member of `LABEL_TYPES` now has a context and a case. This is what
+      // keeps that true: add a fourth label type and the assignment stops
+      // compiling, rather than the switch falling off the end and returning
+      // `undefined` to callers that all treat the result as an array.
       const unreachable: never = context
       return unreachable
     }
   }
-}
-
-function check(context: RuleContext): Finding[] {
-  return rulesFor(context).flatMap((rule) => rule.check(context as never))
 }
