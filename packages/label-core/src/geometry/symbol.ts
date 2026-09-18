@@ -10,6 +10,14 @@
  * specification. It is blank space, so designers reclaim it for artwork without
  * realising it is load-bearing, and the symbol then fails at the till rather
  * than in proof.
+ *
+ * Source: GS1 General Specifications Standard, Release 26.0 (Ratified Jan 26),
+ * read from https://ref.gs1.org/standards/genspecs/ on 2026-09-17. Every figure
+ * and quotation below was checked against that release by reading the rendered
+ * page rather than a text extract, per `CLAUDE.md`. The figures were unchanged
+ * from the 25.0 reading these notes were first written against; three table
+ * identifiers were not, and had been recorded as "figure 5.x-1" where the
+ * standard numbers them 5-11, 5-12 and 5-44.
  */
 
 import type { SymbologyId } from '../types/index'
@@ -17,7 +25,7 @@ import type { SymbologyId } from '../types/index'
 /**
  * Nominal X-dimension at 100% magnification for the EAN/UPC family, in mm.
  *
- * GS1 General Specifications 25.0 §5.2.3.1: "The X-dimension at nominal size is
+ * GenSpec 26.0 §5.2.3.1: "The X-dimension at nominal size is
  * 0.330 millimetre (0.0130 inch)."
  */
 export const EAN_UPC_NOMINAL_X_DIMENSION_MM = 0.33
@@ -25,7 +33,7 @@ export const EAN_UPC_NOMINAL_X_DIMENSION_MM = 0.33
 /**
  * GS1 permits scaling the EAN/UPC family between these bounds.
  *
- * Derived from the symbol specification table (GenSpec 25.0 figure 5.12.3.1-1),
+ * Derived from the symbol specification table (GenSpec 26.0 §5.12.3.1, table 5-44),
  * which gives the EAN/UPC X-dimension as 0.264 mm minimum and 0.660 mm maximum
  * against the 0.330 mm target — 0.8x and 2.0x respectively.
  */
@@ -54,7 +62,7 @@ export interface SymbolMetrics {
  * Per-symbology module counts and nominal heights, from the General
  * Specifications.
  *
- * Module counts are GenSpec 25.0 figure 5.2.3.5-1, whose preamble is the part
+ * Module counts are GenSpec 26.0 §5.2.3.5 table 5-12, whose preamble is the part
  * that catches people out: "The symbol length in modules, **including the
  * minimum Quiet Zones**, SHALL be as indicated." So UPC-A's 113 is the whole
  * footprint, not the bars — the bar pattern is 113 − 9 − 9 = 95 modules. Read
@@ -83,8 +91,8 @@ export function symbolMetricsFor(symbology: SymbologyId): SymbolMetrics | undefi
 /**
  * Bar height for a given X-dimension.
  *
- * The height scales with the symbol; it is not a fixed figure. GenSpec figure
- * 5.12.3.1-1 tabulates a minimum symbol height against each X-dimension, and for
+ * The height scales with the symbol; it is not a fixed figure. GenSpec 26.0
+ * table 5-44 tabulates a minimum symbol height against each X-dimension, and for
  * UPC-A those are 18.28 mm at X = 0.264, 22.85 mm at X = 0.330, and 45.70 mm at
  * X = 0.660 — exactly 22.85 multiplied by the magnification.
  *
@@ -176,7 +184,7 @@ export interface SymbolStructure {
  * rendering. A UPC-A is start guard `101` (3 modules) + six characters of 7
  * modules + centre guard `01010` (5) + six more characters + end guard `101`
  * (3). That totals 3 + 42 + 5 + 42 + 3 = 95, which is exactly the bar pattern
- * width implied by GenSpec figure 5.2.3.5-1's 113-module total less the two 9X
+ * width implied by GenSpec 26.0 table 5-12's 113-module total less the two 9X
  * quiet zones — so the arithmetic closes against the specification rather than
  * against an implementation.
  *
@@ -214,7 +222,7 @@ export function symbolStructureFor(symbology: SymbologyId): SymbolStructure | un
 }
 
 /**
- * The floor stated in GenSpec 25.0 §5.2.3.4: "The minimum Quiet Zone width
+ * The floor stated in GenSpec 26.0 §5.2.3.4: "The minimum Quiet Zone width
  * required by the main symbol is 7x."
  *
  * It is a floor, not a safe default. Most symbologies require *more* than 7X,
@@ -227,8 +235,8 @@ export const GENERAL_QUIET_ZONE: QuietZoneSpec = { leftX: 7, rightX: 7 }
 /**
  * Symbology-specific quiet zones, verified against the General Specifications.
  *
- * EAN/UPC figures are GenSpec 25.0 figure 5.2.3.4-1, corroborated by symbol
- * specification table 1 (figure 5.12.3.1-1). ITF-14 is §5.3.2.2 ("The minimum
+ * EAN/UPC figures are GenSpec 26.0 §5.2.3.4 table 5-11, corroborated by symbol
+ * specification table 1 (§5.12.3.1, table 5-44). ITF-14 is §5.3.2.2 ("The minimum
  * width of each Quiet Zone is 10X"); GS1-128 is §5.4.6.3 ("Both Quiet Zones
  * have a minimum width of 10x").
  *

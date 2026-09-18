@@ -28,9 +28,29 @@
  * those two, and (e)(6) for them. Every finding here once cited (e)(2) or (e)(3) whatever the
  * column counted, which was wrong for the one column the engine most often draws: per
  * container, mandatory under (b)(12)(i). The review of PR #39 found it.
+ *
+ * **(e)(6) carries a predicate and the table has to honour it**, which the review of PR #40
+ * found. Read its opening again: "as required in paragraph (b)(12)(i) ... or ... as required
+ * in paragraph (b)(2)(i)(D)". A per-container column on a package *outside* the 200–300%
+ * band, or one those provisions excuse, is not a column (e)(6) reaches, and citing it there
+ * pointed a user at a paragraph whose condition their label does not meet. So the lookups
+ * take the bases actually required and return `undefined` where (e)(6) does not reach —
+ * leaving each rule to fall back to the citation it declares.
+ *
+ * **Nothing here names the paragraph a voluntary column answers to, because (e) has none.**
+ * (e)'s opening permits dual labeling for four things — forms, combinations under (h)(4),
+ * "different units ... as provided for in paragraph (b)", and RDI groups — and a per-container
+ * column is none of them. The one paragraph in 101.9 that contemplates a voluntary second
+ * column is **(b)(6)**, read from the eCFR on 2026-09-17: a package "more than 150 percent
+ * and less than 200 percent of the applicable reference amount" *may* provide, "to the left
+ * of" the per-container column, a column per common household measure approximating the
+ * reference amount. That is a different column from the one a label declaring `per-container`
+ * is describing — it sits on the other side and counts something else — so (b)(6) is not a
+ * substitute citation here, and inventing one would be worse than a general reference. See
+ * `docs/BACKLOG.md`.
  */
 
-import type { DualColumnBasis } from '../../fda/nutritionFormats'
+import type { DualColumnBasis, DualColumnDuty } from '../../fda/nutritionFormats'
 
 /** The three subparagraphs, by the dual labeling each reaches. */
 export const DUAL_COLUMN_REFERENCES = {
@@ -71,12 +91,48 @@ const SEPARATED: Record<DualColumnBasis, DualColumnReference> = {
   'per-unit': DUAL_COLUMN_REFERENCES.servingAndContainer,
 }
 
-/** The paragraph that requires both columns to carry the information. */
-export function eachColumnReference(basis: DualColumnBasis): DualColumnReference {
-  return EACH_COLUMN[basis]
+/**
+ * (e)(6)'s own predicate, applied to a reference the tables produced.
+ *
+ * The other two subparagraphs describe the dual labeling they govern and stop.
+ * (e)(6) instead points at the provisions that *compel* the column, so a label
+ * carrying one voluntarily falls outside it however the column is drawn.
+ */
+function reaches(
+  reference: DualColumnReference,
+  basis: DualColumnBasis,
+  standing: DualColumnDuty['standing'],
+): boolean {
+  if (reference !== DUAL_COLUMN_REFERENCES.servingAndContainer) return true
+  if (basis !== 'per-container' && basis !== 'per-unit') return false
+  // Only `required`. An excused column is not one "required in paragraph
+  // (b)(12)(i)"; an undetermined one has not been shown to be.
+  return standing[basis] === 'required'
 }
 
-/** The paragraph that requires the two columns to be separated by vertical lines. */
-export function separatedColumnsReference(basis: DualColumnBasis): DualColumnReference {
-  return SEPARATED[basis]
+/**
+ * The paragraph that requires both columns to carry the information, or
+ * `undefined` where no subparagraph of (e) reaches this column.
+ *
+ * @param standing Where this label stands against each mandatory provision,
+ *   from `dualColumnDutyFor`. Only (e)(6) consults it.
+ */
+export function eachColumnReference(
+  basis: DualColumnBasis,
+  standing: DualColumnDuty['standing'],
+): DualColumnReference | undefined {
+  const reference = EACH_COLUMN[basis]
+  return reaches(reference, basis, standing) ? reference : undefined
+}
+
+/**
+ * The paragraph that requires the two columns to be separated by vertical lines,
+ * or `undefined` where no subparagraph of (e) reaches this column.
+ */
+export function separatedColumnsReference(
+  basis: DualColumnBasis,
+  standing: DualColumnDuty['standing'],
+): DualColumnReference | undefined {
+  const reference = SEPARATED[basis]
+  return reaches(reference, basis, standing) ? reference : undefined
 }

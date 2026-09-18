@@ -624,8 +624,14 @@ describe('the Nutrition Facts displays, from the editor', () => {
     // how a column of fourteen rows carrying one figure passed for compliant.
     const incomplete = store.failures.find((f) => f.code === 'FDA_DUAL_COLUMN_INCOMPLETE')
     expect(incomplete, 'one figure is not a second declaration').toBeDefined()
-    // The rail seeds a per-serving and per-container column, which (e)(6) governs.
-    expect(incomplete!.citation.reference).toBe('21 CFR 101.9(e)(6)')
+    // The rail seeds a per-serving and per-container column and no reference amount, and
+    // (e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require. With no declared
+    // reference amount the engine cannot tell whether they do, so the finding cites (e) —
+    // the dual labeling paragraph itself — and says the figure is missing rather than
+    // calling the column a choice the user made.
+    expect(incomplete!.citation.reference).toBe('21 CFR 101.9(e)')
+    expect(incomplete!.message).toContain('has not stated everything')
+    expect(incomplete!.message).not.toContain('voluntarily')
   })
 
   it('clears a second column once every nutrient carries one', async () => {

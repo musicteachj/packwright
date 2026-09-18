@@ -206,6 +206,42 @@ const SECOND_COLUMN_AMOUNTS = {
   potassium: 587.5,
 } as const
 
+/**
+ * What makes a second column *owed* under (b)(12)(i), on a package whose own
+ * figures say the same thing.
+ *
+ * 101.9(e)(6) governs the form of only the columns (b)(12)(i) and (b)(2)(i)(D)
+ * **require** — "as required in paragraph (b)(12)(i)", read from the eCFR on
+ * 2026-09-17 — so a fixture expecting an (e)(6) citation has to say why the column
+ * was owed. Without these facts the same panel is a voluntary column and its
+ * findings cite (e) instead.
+ *
+ * **The arithmetic closes against the rest of the panel**, which an earlier version
+ * of this did not: 2.5 servings of 40 g is the 100 g package, 100 g against a 40 g
+ * reference amount is 250 percent, and `SECOND_COLUMN_AMOUNTS` is already every
+ * first-column figure multiplied by 2.5. A fixture whose package contradicts its own
+ * servings is a document no manufacturer could print, and no rule cross-checks the
+ * two — so nothing would have caught it. `netQuantity` is overridden with it, since
+ * the base label declares 340 g.
+ *
+ * The reference amount is the label's own declaration. §101.12(b)'s table is not
+ * carried here and no rule checks a declared amount against it, which the backlog
+ * records; the serving size approximating it is (b)(12)(i)'s own arrangement.
+ *
+ * The 60 square inches keeps the package clear of exemption (A), which excuses
+ * anything small enough for the reduced displays.
+ */
+const OWES_A_PER_CONTAINER_COLUMN = {
+  availableSurfaceSqInches: 60,
+  referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals, ready-to-eat' },
+  packageContent: 100,
+  packagedAndSoldIndividually: true,
+  servingsPerContainer: 2.5,
+} as const
+
+/** The label-level half of the same package: 100 g, not the base label's 340 g. */
+const OWED_COLUMN_NET_QUANTITY = { inchPound: 'NET WT 3.5 OZ', metric: '(100 g)' } as const
+
 const BASE = {
   statementOfIdentity: 'Oat and almond granola',
   container: { shape: 'rectangular', widthMm: 120, heightMm: 240 },
@@ -335,8 +371,10 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       'headed, separated and equally prominent.',
     data: {
       ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
       nutritionFacts: {
         ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
         columns: {
           mode: 'dual',
           basis: 'per-container',
@@ -362,8 +400,10 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       'to tell which column a number belongs to.',
     data: {
       ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
       nutritionFacts: {
         ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
         columns: {
           mode: 'dual',
           basis: 'per-container',
@@ -435,7 +475,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
   {
     name: 'a 250 percent package carrying one column',
     defect:
-      'A 55 g bag against a 22 g reference amount is 250 percent of it, packaged and sold ' +
+      'A 100 g package against a 40 g reference amount is 250 percent of it, packaged and sold ' +
       'individually — squarely inside (b)(12)(i)’s "at least 200 percent and up to and including ' +
       '300 percent", which says such a product **must** provide a second column for the entire ' +
       'package. None of the three shared exemptions reaches it: the package is far above the ' +
@@ -444,12 +484,10 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       'it fires only where the label has stated the reference amount itself.',
     data: {
       ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
       nutritionFacts: {
         ...BASE_NUTRITION,
-        availableSurfaceSqInches: 60,
-        referenceAmount: { amount: 22, unit: 'g', category: 'Snacks — chips, pretzels' },
-        packageContent: 55,
-        packagedAndSoldIndividually: true,
+        ...OWES_A_PER_CONTAINER_COLUMN,
       },
     },
     stock: CONFORMING_STOCK,
@@ -1030,8 +1068,10 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       'engine has no field to state one for it.',
     data: {
       ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
       nutritionFacts: {
         ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
         representedFor: 'children-1-through-3',
         // Every percentage worked against the children 1 through 3 column, as the
         // single-column fixture above does, so the second column's protein is its only

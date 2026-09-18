@@ -58,7 +58,7 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     expected: {
       code: GS1_GTIN_CHECK_DIGIT_INVALID,
       severity: 'blocking',
-      citation: 'GS1 General Specifications — check digit calculation',
+      citation: 'GS1 General Specifications 26.0 §7.9.1',
     },
   },
   {
@@ -132,12 +132,12 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     expected: {
       code: GS1_DIGITAL_LINK_INVALID,
       severity: 'violation',
-      citation: 'GS1 Digital Link URI Syntax',
+      citation: 'GS1 Digital Link URI Syntax 1.7.0 §4',
     },
   },
   {
     name: 'Digital Link using the removed convenience alphas',
-    defect: '`/gtin/` was deprecated in URI Syntax 1.2.0 and removed in 1.3.0.',
+    defect: '`/gtin/` was deprecated in URI Syntax 1.2 and removed in 1.3.0.',
     data: {
       gtin: VALID_GTIN,
       digitalLink: { domain: 'https://id.example.com', useConvenienceAlphas: true },
@@ -146,7 +146,7 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     expected: {
       code: GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS,
       severity: 'advisory',
-      citation: 'GS1 Digital Link URI Syntax 1.3.0',
+      citation: 'GS1 Digital Link URI Syntax 1.7.0 §4.1',
     },
   },
 ]

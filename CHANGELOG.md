@@ -37,6 +37,58 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **Both GS1 rules cite a release and a section, and `symbol.ts` is re-read against the current one.**
+  `gs1/gtin-check-digit` cited "GS1 General Specifications — check digit calculation" with no release and no
+  section, and `gs1/digital-link` cited "GS1 Digital Link URI Syntax" with no release at all — unverifiable
+  rather than shown wrong, which this project treats as the same thing, because a later reader cannot re-check
+  either against a paragraph. Both sources were fetched on 2026-09-17. The check digit is **General
+  Specifications 26.0 §7.9.1** with its table 7-8, whose multiplier row is anchored at the right so the digit
+  beside the check digit is always weighted 3; page 544 was read as a rendered image rather than a text
+  extract, which is what this project requires of anything transcribed from a PDF. The Digital Link is **URI
+  Syntax 1.7.0 §4**, which §2 names as the conformance section — "the core of this standard is expressed using
+  ABNF grammar in section 4 such that conformance can be determined with certainty" — and the convenience-alphas
+  finding moves from a bare "1.3.0" to **§4.1 of the release in force**, which both names the removal and dates
+  it. `geometry/symbol.ts` was re-read in the same commit so the repository does not quote two releases of one
+  standard: every figure in it was unchanged and every quotation still matches word for word, but three tables
+  had been recorded as "figure 5.x-1" where the standard numbers them 5-11, 5-12 and 5-44. Two things the
+  reading turned up and neither is a defect: the standard gives two different deprecation releases for the
+  alphas, §4.1 saying 1.2 and the change log saying 1.2.0, which is now written down rather than chosen
+  between; and URI Syntax 1.4.0's 14-digit GTIN requirement was already met by `normaliseToGtin14`, though the
+  docblock example showing it used the removed `/gtin/` alpha.
+
+- **(e)(6) is cited only for the columns it reaches.** 21 CFR 101.9(e)(6), read from the eCFR on 2026-09-17,
+  opens "When dual labeling is presented for a food on a per serving basis and per container basis **as required
+  in paragraph (b)(12)(i)** of this section or on a per serving basis and per unit basis **as required in
+  paragraph (b)(2)(i)(D)**". That is a predicate, not a description, and every per-container and per-unit
+  finding was citing it whether or not the label was obliged to carry the column — so a package that chose to
+  declare a second column was sent to a paragraph whose condition it does not meet. `dualColumnDuty` now reports
+  every basis actually required rather than only the first, because the question is per-provision: a per-unit
+  column is (e)(6)'s business only where (b)(2)(i)(D) required a per-unit column, and a label can owe both. The
+  paragraph tables consult it, and where (e)(6) does not reach, `us-food/dual-column-form` and
+  `us-food/protein-percent` fall back to the citation each declares — (e) and (c)(7)(i) — which is the path a
+  label stating no basis already took. **The message says where the label stands against each provision
+  separately**, because the reasons read alike in a citation and are nothing alike to act on: no basis stated;
+  the facts the provision turns on not all stated, so the question has not been asked; an exemption, which is
+  named; a column owed on the *other* basis, which is named too; and only then a column genuinely carried by
+  choice. "Voluntary" claims the user chose to add the column, and it took two review passes to stop asserting
+  it where nothing of the sort was known — first on a label with no reference amount, then on one that stated
+  the amount but not the package content or whether it is sold individually, which is every label the editor
+  builds. (b)(12)(i) turns on three facts, not one, so the standing is computed per provision rather than from
+  a single flag. **`FDA_DUAL_COLUMN_MET` now claims only what its own rule measured**, which is that a second
+  column is printed — it said the panel "carries the second column (b)(12)(i) requires", a claim about content,
+  and the (e)(6) fix made it reachable on documents whose second column declares one nutrient of fourteen. The
+  mandate rule asks whether a column is present; what it must carry is (e)'s question and the form rule's. The
+  fixtures behind those citations were made to add up while this was being written: a 100 g package is 2.5
+  servings of 40 g and 250 percent of a 40 g reference amount, where the figures had said a 55 g package on a
+  panel declaring eight servings of 40 g. Nothing cross-checked the two, so a test now does. **No substitute
+  citation was
+  invented for the voluntary case**: nothing in (e) covers it, its opening reaching only forms, combinations,
+  "different units" and RDI groups; the one paragraph that contemplates a voluntary second column is (b)(6),
+  and the column (b)(6) permits sits on the other side of the panel and counts a household measure, so it is
+  not the column a label declaring per-container is describing. The three dual-column fixtures now state the
+  facts that make their column mandatory, which is what an (e)(6) expectation has to rest on, and closes one of
+  the pass codes no fixture reached.
+
 - **A second column may state its own percent Daily Values.** 101.9(e)(2), (e)(3) and (e)(6) each present the
   (d)(7)(ii) percentages in every column a panel declares, and only the first column could state one: the second
   derived every figure, and `printedPercentDailyValue` derives none for protein. So a food for children 1 through 3,

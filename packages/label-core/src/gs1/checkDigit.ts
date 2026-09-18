@@ -5,7 +5,19 @@
  * (ITF-14) and SSCC-18: weight the data digits alternately 3 and 1 starting
  * from the rightmost, sum, and take the difference to the next multiple of ten.
  *
- * Reference: GS1 General Specifications, "Check digit calculation".
+ * Source: GS1 General Specifications Standard, Release 26.0 (Ratified Jan 26),
+ * §7.9.1 "Standard check digit calculations for GS1 data structures" and its
+ * table 7-8 "Check digit algorithm", read from
+ * https://ref.gs1.org/standards/genspecs/ on 2026-09-17 — page 544 read as a
+ * rendered image rather than a text extract, per `CLAUDE.md`.
+ *
+ * §7.9.1 is one sentence: "This algorithm is identical for all fixed length
+ * numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a
+ * check digit." Table 7-8 carries the rest — the multiplier row runs x3, x1
+ * alternating and is anchored at the *right*, so the digit immediately left of
+ * the check digit is always weighted 3 whatever the key's length; then
+ * "Accumulated results = sum" and "Subtract sum from nearest equal or higher
+ * multiple of ten = check digit".
  */
 
 /** Structures that use the GS1 mod-10 check digit, with their total length. */

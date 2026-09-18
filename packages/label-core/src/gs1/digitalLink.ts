@@ -5,7 +5,7 @@
  * symbol serves both a point-of-sale scanner and a shopper's phone. This is the
  * mechanism behind GS1's Sunrise 2027 push toward 2D barcodes at retail.
  *
- *   https://example.com/gtin/09506000134352/lot/ABC123?17=261231
+ *   https://example.com/01/09506000134352/10/ABC123?17=261231
  *
  * Structure is hierarchical and the order is not free: a primary key opens the
  * path, key qualifiers follow it in a defined sequence, and everything else is
@@ -58,11 +58,20 @@ export interface DigitalLinkInput {
    * Emits GS1's convenience alphas (`/gtin/`, `/lot/`, `/ser/`) in place of the
    * numeric AIs.
    *
-   * **Produces a non-conformant URI.** The alphas were deprecated in Digital
-   * Link URI Syntax 1.2.0 and removed outright in 1.3.0: "Convenience alphas
-   * [...] have now been removed so that, for example, 'gtin' cannot be used
-   * instead of '01' in the path." Retained only for round-tripping URIs
-   * generated before the removal, and off by default.
+   * **Produces a non-conformant URI.** Removed outright in Digital Link URI
+   * Syntax 1.3.0. From §8.2, "Changes since version 1.2.1", read from the
+   * standard at release 1.7.0 on 2026-09-17: "Convenience alphas, deprecated in
+   * version 1.2.0, and explained in section 4.1, have now been removed so that,
+   * for example, 'gtin' cannot be used instead of '01' in the path." Retained
+   * only for round-tripping URIs generated before the removal, and off by
+   * default.
+   *
+   * **The standard gives two answers for when they were deprecated** and this
+   * note keeps both rather than choosing: §8.2 above says "version 1.2.0",
+   * while §4.1 says "marked as deprecated in version 1.2 of the standard". The
+   * rule in `rules/gs1/digitalLink.ts` cites §4.1, so its message follows §4.1.
+   * Nothing turns on it — the removal release, which is what makes a URI
+   * non-conformant, is 1.3.0 in both.
    *
    * @deprecated Removed from the standard in Digital Link URI Syntax 1.3.0.
    */

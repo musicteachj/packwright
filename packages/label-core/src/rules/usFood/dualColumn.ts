@@ -36,11 +36,10 @@
  * that is broken.
  */
 
-import { labelingSurfaceFloor } from '../../geometry/pdp'
-import { dualColumnDuty, smallPackageRouteApplies } from '../../fda/nutritionFormats'
 import { willDrawSecondColumn } from '../../layout/nutritionPanel'
 import { DUAL_COLUMN_BASIS_REFERENCE } from '../../fda/nutritionFormats'
 import type { MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
+import { dualColumnDutyFor } from './mandatoryColumns'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork, passedOnDocument, untitled } from '../finding'
@@ -121,38 +120,9 @@ export const usFoodDualColumnRule: UsFoodRule = {
     const panel = data.nutritionFacts
     if (panel === undefined) return []
 
-    // (A) turns on entitlement — "products that **meet the requirements to use**
-    // the tabular format", not products that use it — so it is computed from the
-    // package rather than from the display the label happens to carry.
-    const meetsSmallPackageRequirements =
-      panel.availableSurfaceSqInches !== undefined &&
-      smallPackageRouteApplies({
-        availableSqInches: panel.availableSurfaceSqInches,
-        // A package whose label or panel is too big for the route cannot meet its
-        // requirements, whatever area is declared — and the exemption this grants is
-        // stamped on the document, so no omission would ever withhold it.
-        floor: labelingSurfaceFloor(stock, data.container),
-        ...(panel.cannotAccommodateVertical === undefined
-          ? {}
-          : { cannotAccommodateVertical: panel.cannotAccommodateVertical }),
-      })
-
-    const duty = dualColumnDuty({
-      ...(panel.referenceAmount === undefined ? {} : { referenceAmount: panel.referenceAmount }),
-      ...(panel.packageContent === undefined ? {} : { packageContent: panel.packageContent }),
-      ...(panel.unitContent === undefined ? {} : { unitContent: panel.unitContent }),
-      ...(panel.packagedAndSoldIndividually === undefined
-        ? {}
-        : { packagedAndSoldIndividually: panel.packagedAndSoldIndividually }),
-      ...(panel.columns === undefined ? {} : { columns: panel.columns }),
-      ...(panel.dualColumnExemption?.rawCommodityVoluntary === undefined
-        ? {}
-        : { rawCommodityVoluntary: panel.dualColumnExemption.rawCommodityVoluntary }),
-      ...(panel.dualColumnExemption?.variedWeight === undefined
-        ? {}
-        : { variedWeight: panel.dualColumnExemption.variedWeight }),
-      meetsSmallPackageRequirements,
-    })
+    // Assembled in `mandatoryColumns.ts`, because two other rules need the same
+    // answer to decide whether (e)(6) reaches the column they are judging.
+    const duty = dualColumnDutyFor(data, stock)
 
     // No duty is nothing to report. A label outside the band, or one that never
     // stated its reference amount, has not been cleared of anything — it has not
@@ -247,11 +217,19 @@ export const usFoodDualColumnRule: UsFoodRule = {
 
     return [
       // (b)(12)(i): the package "must provide an additional column" — printed, so the artwork.
+      //
+      // **It claims presence and nothing else.** This rule asks whether a second column was
+      // drawn; what that column has to carry is (e)'s question and `us-food/dual-column-form`
+      // answers it. The message used to say the panel "carries the second column (b)(12)(i)
+      // requires", which is a claim about content — and it now reaches documents whose second
+      // column declares one nutrient of fourteen, where the form rule reports it incomplete on
+      // the same label. A pass has to say only what its own rule measured.
       passedOnArtwork(
         usFoodDualColumnRule,
         FDA_DUAL_COLUMN_MET,
-        `This package holds ${percent} percent of its reference amount and carries the second ` +
-          `column ${reference} requires.`,
+        `This package holds ${percent} percent of its reference amount, which ${reference} ` +
+          'requires a second column for, and the panel prints one. Whether that column carries ' +
+          'everything the paragraph asks of it is checked separately.',
         US_FOOD_ELEMENTS.nutritionPanel,
         { ...CITATION, reference },
       ),

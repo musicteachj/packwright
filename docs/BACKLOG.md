@@ -18,14 +18,9 @@ to be finished. What the reading changed is the shape of the file rather than it
 entries was frightening and meaningless, because most of them are not work anybody intends to do.
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. Two:
-
-- **A voluntary per-container column is cited to (e)(6)**, whose own words reach "as required in paragraph
-  (b)(12)(i)" or (b)(2)(i)(D). Below, under the phase 6 opening review.
-- **Two GS1 rules keep no reading of their source.** `gs1/gtin-check-digit` and `gs1/digital-link` cite the
-  General Specifications and the Digital Link syntax with no version, section or reading date, where
-  `geometry/symbol.ts` quotes GenSpec 25.0 by clause. Unverifiable rather than shown wrong, which this project
-  treats as the same thing. Below, under phase 7, stage 1.
+provision that does not say what the finding claims. **None outstanding.** There were two on 2026-09-17 and both
+are struck below: the (e)(6) citation, under the phase 6 opening review, and the two GS1 rules that kept no
+reading of their source, under phase 7 stage 1.
 
 **Requirements nothing checks, and the findings say so.** Real regulatory ground the engine does not cover,
 where every pass it issues admits the gap in its own message. Schedulable, and safe to leave: the reference
@@ -355,16 +350,89 @@ requires the percentage "for each nutrient" with a DRV or RDI and the (d)(12) di
 so a figure there is a defect a rule could report from the document alone. The field pre-dates this branch on the
 first column; the second column widened it. A rule would need its own code, citation and fixture.
 
-**(e)(6) is cited for every per-container column, though its own words reach only the mandatory ones.** Found by
-`/code-review high` on PR #40. 101.9(e)(6), read from the eCFR on 2026-09-17, opens "When dual labeling is presented
-for a food on a per serving basis and per container basis **as required in paragraph (b)(12)(i)** of this section or
-on a per serving basis and per unit basis **as required in paragraph (b)(2)(i)(D)**". A package at 150 percent of its
-reference amount, or one (b)(12)(i)(A) to (C) excuses, may carry a per-container column voluntarily, and its findings
-now cite a paragraph whose own predicate is unmet. `dualColumnDuty` already computes that predicate for
-`us-food/dual-column-required`, so the tables could consult it — but which paragraph then covers a voluntary
-per-container column is a reading of its own: (e)'s opening lists forms, combinations, "different units" and RDI
-groups, and a per-container column is none of those on its face. Both findings are right about the label either way;
-only the reference is over-specific.
+**~~(e)(6) is cited for every per-container column, though its own words reach only the mandatory ones.~~
+Fixed.** Found by `/code-review high` on PR #40. 101.9(e)(6) opens "When dual labeling is presented for a food on
+a per serving basis and per container basis **as required in paragraph (b)(12)(i)** of this section or on a per
+serving basis and per unit basis **as required in paragraph (b)(2)(i)(D)**", so a column carried voluntarily was
+being cited to a paragraph whose own predicate its label does not meet.
+
+`dualColumnDuty` now reports every basis actually required rather than only the first, because the predicate is
+per-provision: a per-unit column is (e)(6)'s business only where (b)(2)(i)(D) required a per-unit column, and
+both provisions can bite on one label. `eachColumnReference` and `separatedColumnsReference` consult it and
+return `undefined` where (e)(6) does not reach, leaving each rule to fall back to the citation it declares —
+(e) for `us-food/dual-column-form`, (c)(7)(i) for `us-food/protein-percent`, which is the path a label stating
+no basis already took. The messages distinguish the two, because "no basis stated" is a field the user can fill
+in and "carried voluntarily" is not.
+
+**The reading that settled it**, from the eCFR on 2026-09-17: nothing in (e) covers a voluntary column. (e)'s
+opening permits dual labeling for forms, combinations under (h)(4), "different units ... as provided for in
+paragraph (b)" and RDI groups, and a per-container column is none of them. The one paragraph in 101.9 that
+contemplates a voluntary second column is **(b)(6)** — a package "more than 150 percent and less than 200
+percent of the applicable reference amount" *may* provide, "to the left of" the per-container column, a column
+"per common household measure that most closely approximates the reference amount". That is a different column
+from the one a label declaring `per-container` describes: it sits on the other side and counts something else.
+So (b)(6) was not adopted as a substitute citation, and the general reference stands instead of an invented
+specific one.
+
+Two things that reading turned up, neither in scope and both below: what authorises a per-container column
+*outside* (b)(6)'s window, and (b)(11)'s promoted-use column.
+
+**Nothing authorises a per-container column outside (b)(6)'s window, and no rule says so.** (b)(6), read from
+the eCFR on 2026-09-17, permits a voluntary second column only for a package holding "more than 150 percent and
+less than 200 percent of the applicable reference amount", sold individually — and even there the column it
+permits is a *household measure* one, placed to the left. Above 200 percent the column is mandatory under
+(b)(12)(i) instead. So a label declaring a per-container second column on a 120 percent package, or on a
+multi-serving package, is carrying a column 101.9 does not provide for at all, and this engine draws it without
+comment. Whether that is a finding is a real question rather than an obvious yes: (c) restricts which
+*nutrients* may appear, not which columns, and reporting a label for a column the regulation is merely silent
+about is the kind of false positive a user cannot argue with. It needs the modal verbs read across (b) and (e)
+together before anything is written, and it would want its own code, citation and fixture.
+
+**An incomplete voluntary second column is still reported as a violation, under a paragraph that does not
+reach it.** Raised by the review of the (e)(6) fix and left deliberately. Where a label carries a second column
+nothing requires, `us-food/dual-column-form` now cites 101.9(e) and says in the same breath that no subparagraph
+of (e) names the column — so the finding asserts a violation and then explains that the provision behind it does
+not apply. The argument for reporting anyway is that every subparagraph of (e) requires the quantitative
+information in both columns, so whichever one you thought applied, one figure out of fourteen is not a second
+declaration; the argument against is that a requirement no provision imposes cannot be violated, and a
+`violation` a user cannot trace to a sentence in the CFR is the shape this project treats as worse than silence.
+Deciding it needs the modal verbs read across (b) and (e) together, and the answer may well be `advisory` rather
+than either reporting or dropping it. Out of scope for the citation fix, which was about which paragraph is
+named rather than whether to speak at all. The same question reaches `us-food/protein-percent`.
+
+**The editor has no inputs for the three facts a dual-column duty turns on.** Found by `/code-review high` on
+PR #43. `UsFoodFormRail.vue` collects no reference amount, no package content, no unit content and no
+"packaged and sold individually", though the schema and the API carry all four — so every label built in the
+browser leaves 101.9(b)(12)(i) and (b)(2)(i)(D) unanswerable. That is now visible rather than silent: a
+dual-column finding on such a label cites 101.9(e) and says the label has not stated what the provision turns
+on, naming the three fields. Naming fields a user cannot reach is unhelpful, but the alternatives are worse —
+asserting the column is voluntary is a claim about a choice they may not have made, and saying nothing hides a
+check that did not run. The fix is inputs in the rail, not different wording, and it brings `us-food/dual-column-required`
+to life in the editor for the first time: today no browser-built label can ever be reported for omitting a
+column the regulation requires. Sits with the editor's other missing fields rather than with the rules.
+
+**`us-food/dual-column-required` clears a label that drew a column of the wrong basis.** Found by the review
+of the (e)(6) citation fix. The rule asks whether a second column is *present*, never what it counts, so a
+package whose unit sits at 250 percent of the reference amount — owing a per-unit column under (b)(2)(i)(D) —
+gets `FDA_DUAL_COLUMN_MET` for drawing a column its own document labels per container. The pass is not wrong
+about what it says, which is that a column was drawn; it is wrong about what a reader takes from it, which is
+that the obligation was discharged. The citation fix works around the reader-facing half by naming the column
+actually owed in the *other* rule's message rather than calling the declared one voluntary, so the two findings
+no longer contradict each other on the same label. The mandate rule itself is untouched, and closing it means
+deciding what a mismatch is: a distinct finding code, or a withheld pass. Note (b)(12)(i) and (b)(2)(i)(D) can
+both bite at once, so "the wrong basis" is not always a single right answer.
+
+**(b)(11)'s promoted-use second column is unmodelled.** 21 CFR 101.9(b)(11), read from the eCFR on 2026-09-17:
+a product "promoted on the label, labeling, or advertising for a use that differs in quantity by twofold or
+greater from the use upon which the reference amount in § 101.12(b) was based" — the example is liquid cream
+substitutes promoted for use with breakfast cereals — means the manufacturer "**shall** provide a second column
+of nutrition information based on the amount customarily consumed in the promoted use". That is a third
+mandatory route to a second column, beside (b)(12)(i) and (b)(2)(i)(D), and `dualColumnDuty` knows nothing of
+it. Two reasons it is not simply an addition. Its trigger is a *promotion*, which reaches "labeling or
+advertising" beyond the label, so it shares the unmodelled-claims problem that already blocks most of (j)'s
+exemptions. And its exemption list is its own — "nondiscrete bulk products ... used primarily as ingredients
+... or traditionally used for multipurposes ... and multipurpose baking mixes" — which is a different set from
+(b)(12)(i)(A) to (C), so it cannot borrow the shared one. There is also no `DualColumnBasis` value for it.
 
 **~~`us-food/dual-column-form` cites (e)(2) for an incomplete second column whatever the column counts.~~ Fixed**
 on `fix/dual-column-citations`, and the unseparated-columns finding with it, which cited (e)(3) the same way. Both
@@ -627,7 +695,7 @@ the pictograms it vouches for, and the guard never gets the chance. The fix is i
 stamp: withhold the pass unless every member pictogram `wasFullyDrawn`. On today's engine that withholds it
 on every label carrying a pictogram, which is the correct answer while no glyph is drawn.
 
-**Five pass codes are reached by no fixture.** The sweep in `fixtures/sweep.ts` reaches 35 of 40, re-counted on
+**Four pass codes are reached by no fixture.** The sweep in `fixtures/sweep.ts` reaches 35 of 40, re-counted on
 2026-09-17; the figures below were 34 of 39 when this was written, and the rule set has grown since. Both
 figures are counted by hand, and that is itself a small gap: nothing asserts either one. The nearest check,
 `certification.test.ts`, counts *rules* that cleared at least once, not pass codes, so the sweep could lose a
@@ -644,9 +712,14 @@ matters for every reading that flips one of them, since a flip ships with a fixt
 `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` has since been flipped, and `FDA_DUAL_COLUMN_MET` and
 `FDA_DUAL_COLUMN_FORM_MET` pinned to the artwork. All three are reached by `certification.test.ts`, not by the
 sweep. Re-read on 2026-09-17: `FDA_DUAL_COLUMN_FORM_MET` is now reached by the known-bad fixtures and
-`FDA_PROTEIN_PERCENT_MET` by the sweep's toddler document, so the five unreached are
+`FDA_PROTEIN_PERCENT_MET` by the sweep's toddler document, so the five unreached were
 `GHS_PICTOGRAM_COMPLETE`, `GHS_PICTOGRAM_SET_MATCHES`, `GHS_SMALL_CONTAINER_COMPLETE`, `FDA_DUAL_COLUMN_MET`
-and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`.
+and `FDA_NET_QUANTITY_METRIC_NOT_REQUIRED`. **`FDA_DUAL_COLUMN_MET` is now reached**, as a side effect of the
+(e)(6) fix rather than as work: the three dual-column fixtures had to state the facts that make their column
+mandatory before they could expect an (e)(6) citation, and a stated duty with a drawn column is what that pass
+certifies. It is worth noticing that it is a pass now issued on three known-bad documents, and correctly — the
+mandate rule asks whether a column is present, the form rules report that it is incomplete, and the two answers
+do not contradict. Four remain.
 
 **~~`us-food/nutrition-format`'s docblock and its behaviour disagree about (d)(11)(iii).~~ They do not, and
 this entry was wrong.** It recorded a disagreement while declining to read the paragraph, which `CLAUDE.md`
@@ -925,15 +998,37 @@ omission, so the guard has nothing to look up. A live false clearance, reproduce
 containment gate in the two rules or an omission from the engine, and choosing between them decides whether
 magnification — still measurable on the part that did print — is withheld with them.
 
-**Two GS1 rules keep no reading of their source.** `gs1/gtin-check-digit` cites "GS1 General Specifications
-— check digit calculation", with no version and no section, and `gs1/checkDigit.ts` says only "Reference: GS1
-General Specifications, 'Check digit calculation'". `gs1/digital-link`'s primary citation is "GS1 Digital
-Link URI Syntax" with no version, beside an alphas citation that names 1.3.0. The other four GS1 rules rest
-on `geometry/symbol.ts`, which quotes GenSpec 25.0 by section and figure. Neither gap changed the GS1 reading
-— one answer turned on what a check digit is, the other on this engine drawing nothing — so neither document
-was fetched for it. But a later reader cannot re-check either citation against a paragraph. Fetch the
-check-digit section of the current General Specifications and the URI Syntax version `buildDigitalLinkUri`
-implements, and record what was read and when.
+**~~Two GS1 rules keep no reading of their source.~~ Fixed.** Both primary sources were fetched on 2026-09-17
+and both rules now cite by release and section, with the reading recorded in the module note.
+`gs1/gtin-check-digit` and `gs1/checkDigit.ts` cite **GS1 General Specifications Standard, Release 26.0
+(Ratified Jan 26), §7.9.1 and table 7-8**, from https://ref.gs1.org/standards/genspecs/ — page 544 read as a
+rendered image rather than a text extract. `gs1/digital-link` cites **GS1 Digital Link Standard: URI Syntax,
+Release 1.7.0 (Ratified Aug 2026) §4**, from https://ref.gs1.org/standards/digital-link/uri-syntax/, with the
+alphas finding moved from a bare "1.3.0" to **§4.1 of the release in force**, which names the removal and dates
+it. §2 settles that §4 is the right primary clause: "The core of this standard is expressed using ABNF grammar
+[RFC 5234] in section 4 such that conformance can be determined with certainty."
+
+`geometry/symbol.ts` was re-read in the same commit rather than left citing 25.0, so the repository does not
+quote two releases of one standard. **Every figure in it was unchanged** — 0.330 mm nominal, the 0.264/0.660
+bounds behind `MIN_MAGNIFICATION` and `MAX_MAGNIFICATION`, UPC-A's 113 modules including quiet zones, the
+9X/9X and 11X/7X quiet zones, the 22.85 and 18.23 mm heights — and every quotation still matches word for
+word. **Three table identifiers were wrong**, recorded as "figure 5.2.3.4-1", "figure 5.2.3.5-1" and "figure
+5.12.3.1-1" where the standard numbers them **tables 5-11, 5-12 and 5-44**.
+
+Three things worth keeping from the reading:
+
+- **The standard contradicts itself about the alphas' deprecation release.** §4.1 says "marked as deprecated in
+  version 1.2 of the standard"; the change log at §8.2 says "deprecated in version 1.2.0". The message follows
+  §4.1 because §4.1 is what it cites, and `gs1/digitalLink.ts` records both. Nothing turns on it: the removal
+  release is 1.3.0 in each.
+- **Checked and not a defect.** URI Syntax 1.4.0 requires a GTIN expressed as 14 digits — "the value of a
+  GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes ... to reach a total of 14 digits".
+  `buildDigitalLinkUri` already routes AI `01` through `normaliseToGtin14`, so it conforms. Its docblock example
+  did not, showing the removed `/gtin/` alpha, and was corrected.
+- **Still open, deliberately.** The resolver-domain check rests on §4.11's `scheme = "http" / "https" / "HTTP" /
+  "HTTPS"` production specifically, not on §4 generally, but it shares `GS1_DIGITAL_LINK_INVALID` and its
+  citation with every rejection `buildDigitalLinkUri` makes. Splitting it into its own citation wants a fixture
+  for a bad domain separate from the one for a bad AI value, and is worth doing when one is written.
 
 **~~`ExtractionResult` admits a field that is present with no value.~~ Fixed in stage 2**, the stage this
 entry said should carry it. `fields` is now `{ [K in keyof T]?: ExtractedField<NonNullable<T[K]>> }`, so

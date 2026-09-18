@@ -280,6 +280,20 @@ export function formatIsPermitted(
  *
  * **The band is inclusive at both ends.** "At least 200 ... up to and including
  * 300" — so 200.0 and 300.0 are inside it and 199.9 and 300.1 are not.
+ *
+ * **Which of the two bit matters beyond this module.** 101.9(e)(6), read from the
+ * eCFR on 2026-09-17, governs the *format* of these columns and names its own
+ * predicate: "When dual labeling is presented for a food on a per serving basis
+ * and per container basis **as required in paragraph (b)(12)(i)** ... or on a per
+ * serving basis and per unit basis **as required in paragraph (b)(2)(i)(D)**".
+ * So a rule citing (e)(6) has to know not merely that *a* column was owed but
+ * *which* provision owed it — a per-unit column is (e)(6)'s business only where
+ * (b)(2)(i)(D) required a per-unit column. Both provisions can bite on one label,
+ * and `basis` reports only the first, which is why `required` reports every one.
+ *
+ * A column excused by (b)(12)(i)(A), (B) or (C) is not "required in paragraph
+ * (b)(12)(i)" either, so an exemption empties `required` while leaving `basis`
+ * and `exemption` to say what was excused.
  */
 export const DUAL_COLUMN_MIN_PERCENT = 200
 export const DUAL_COLUMN_MAX_PERCENT = 300
@@ -293,9 +307,36 @@ export const DUAL_COLUMN_MAX_PERCENT = 300
  */
 export type MandatoryDualColumnBasis = Extract<DualColumnBasis, 'per-container' | 'per-unit'>
 
+/**
+ * Where a label stands against **one** of the two mandatory provisions.
+ *
+ * Four answers, not two, and the distinction is the whole point. A caller with
+ * only "required or not" tells a user their column is a choice they made on the
+ * strength of a field they never filled in — §101.12(b)'s reference amounts are
+ * not carried here, and neither is a package content, so an unstated figure
+ * leaves the question **unasked** rather than answered no.
+ */
+export type DualColumnStanding =
+  /** The provision compels the column on the facts stated. */
+  | 'required'
+  /** It would, but (b)(12)(i)(A), (B) or (C) excuses this package. */
+  | 'excused'
+  /** Every fact the question turns on is stated, and the provision does not reach. */
+  | 'not-required'
+  /** The label has not stated something the question turns on. Nothing is known. */
+  | 'undetermined'
+
 export interface DualColumnDuty {
   /** The basis the label owes a second column on, or undefined where it owes none. */
   basis?: MandatoryDualColumnBasis
+  /**
+   * Where the label stands against each provision separately.
+   *
+   * `basis` picks one to report and the package provision wins; this keeps both,
+   * because (e)(6)'s predicate is per-provision rather than per-label — a per-unit
+   * column is its business only where (b)(2)(i)(D) required a per-unit column.
+   */
+  standing: Readonly<Record<MandatoryDualColumnBasis, DualColumnStanding>>
   /** The percentage of the reference amount that triggered it. */
   percentOfReferenceAmount?: number
   /** Which paragraph excused it, where one did. */
@@ -342,46 +383,82 @@ function inBand(content: number, referenceAmount: number): number | undefined {
 }
 
 /**
+ * Where a label stands against one provision, given whether it hit the band and
+ * whether the label stated everything that question turns on.
+ */
+function standingOf(
+  percentInBand: number | undefined,
+  factsStated: boolean,
+  exemption: string | undefined,
+): DualColumnStanding {
+  if (percentInBand !== undefined) return exemption === undefined ? 'required' : 'excused'
+  return factsStated ? 'not-required' : 'undetermined'
+}
+
+/**
  * What second column, if any, this label is obliged to carry.
  *
- * Returns an empty duty where the reference amount is absent: without it the
- * question is unanswerable, and guessing would mean reporting a label for
- * omitting something on facts it never stated.
+ * Every answer is per provision. Where the label has not stated something the
+ * question turns on, the standing is `undetermined` rather than absent: guessing
+ * would mean either reporting a label for omitting something on facts it never
+ * stated, or telling its author they chose a column they may not have.
  */
 export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
   const referenceAmount = input.referenceAmount?.amount
-  if (referenceAmount === undefined) return {}
 
   // (b)(12)(i) reaches the package; (b)(2)(i)(D) reaches the unit. Both can be
   // true, and the package provision is the one named first.
   const perContainer =
-    input.packagedAndSoldIndividually === true && input.packageContent !== undefined
+    referenceAmount !== undefined &&
+    input.packagedAndSoldIndividually === true &&
+    input.packageContent !== undefined
       ? inBand(input.packageContent, referenceAmount)
       : undefined
   const perUnit =
-    input.unitContent === undefined ? undefined : inBand(input.unitContent, referenceAmount)
+    referenceAmount === undefined || input.unitContent === undefined
+      ? undefined
+      : inBand(input.unitContent, referenceAmount)
+
+  // What each provision needs before it can be answered at all. (b)(12)(i) turns
+  // on three facts, not one: a package that does not say whether it is sold
+  // individually has not answered it, and `packagedAndSoldIndividually: false`
+  // has — that is a stated fact putting the package outside the provision.
+  const perContainerAsked =
+    referenceAmount !== undefined &&
+    input.packageContent !== undefined &&
+    input.packagedAndSoldIndividually !== undefined
+  const perUnitAsked = referenceAmount !== undefined && input.unitContent !== undefined
 
   const basis: MandatoryDualColumnBasis | undefined =
     perContainer !== undefined ? 'per-container' : perUnit !== undefined ? 'per-unit' : undefined
-  if (basis === undefined) return {}
 
-  const percentOfReferenceAmount = perContainer ?? perUnit!
-
+  // The exemptions are shared — (b)(2)(i)(D) closes by adopting (b)(12)(i)(A) to
+  // (C) — so one chain serves both, and it is only asked once a band was hit.
   const exemption =
-    input.meetsSmallPackageRequirements === true
-      ? '21 CFR 101.9(b)(12)(i)(A)'
-      : input.rawCommodityVoluntary === true
-        ? '21 CFR 101.9(b)(12)(i)(B)'
-        : input.variedWeight === true ||
-            (input.columns?.mode === 'dual' &&
-              input.columns.basis !== undefined &&
-              EXEMPT_BASES.includes(input.columns.basis))
-          ? '21 CFR 101.9(b)(12)(i)(C)'
-          : undefined
+    basis === undefined
+      ? undefined
+      : input.meetsSmallPackageRequirements === true
+        ? '21 CFR 101.9(b)(12)(i)(A)'
+        : input.rawCommodityVoluntary === true
+          ? '21 CFR 101.9(b)(12)(i)(B)'
+          : input.variedWeight === true ||
+              (input.columns?.mode === 'dual' &&
+                input.columns.basis !== undefined &&
+                EXEMPT_BASES.includes(input.columns.basis))
+            ? '21 CFR 101.9(b)(12)(i)(C)'
+            : undefined
+
+  const standing = {
+    'per-container': standingOf(perContainer, perContainerAsked, exemption),
+    'per-unit': standingOf(perUnit, perUnitAsked, exemption),
+  } as const
+
+  if (basis === undefined) return { standing }
 
   return {
     basis,
-    percentOfReferenceAmount,
+    standing,
+    percentOfReferenceAmount: perContainer ?? perUnit!,
     ...(exemption === undefined ? {} : { exemption }),
   }
 }

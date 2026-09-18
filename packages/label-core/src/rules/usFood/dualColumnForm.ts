@@ -50,6 +50,8 @@ import {
   separatedColumnsReference,
 } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
+import type { DualColumnBasis, DualColumnDuty } from '../../fda/nutritionFormats'
+import { dualColumnDutyFor, whyNotReached } from './mandatoryColumns'
 import { MM_PER_POINT } from '../../geometry/units'
 
 export const FDA_DUAL_COLUMN_HEADINGS_MISSING = 'FDA_DUAL_COLUMN_HEADINGS_MISSING'
@@ -110,7 +112,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
   ],
   appliesTo: 'us-food',
 
-  check({ data, layout }: UsFoodContext): Finding[] {
+  check({ data, layout, stock }: UsFoodContext): Finding[] {
     // Asked of the layout throughout. A panel that declares two columns and draws
     // one has nothing here to judge — that absence is the mandate rule's finding,
     // and repeating it under (e) would report one defect twice.
@@ -119,16 +121,46 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     )
     if (!drawn) return []
 
-    // The paragraphs that apply turn on what the second column counts. A label that states
-    // no basis names no subparagraph, so its findings cite (e), the dual labeling paragraph.
+    // The paragraphs that apply turn on what the second column counts, and — for (e)(6)
+    // alone — on whether this label was obliged to carry the column at all. Two labels can
+    // fall back to (e), the dual labeling paragraph: one that states no basis, and one
+    // carrying a column voluntarily that no subparagraph of (e) reaches.
     // Written as the sibling messages write it — "101.9(e)(6)" — since the finding's
     // citation field already carries the full reference.
-    const paragraph = (citation: Citation) => citation.reference.replace('21 CFR ', '')
+    const paragraphOf = (reference: string) => reference.replace('21 CFR ', '')
+    const paragraph = (citation: Citation) => paragraphOf(citation.reference)
     const basis = data.nutritionFacts?.columns?.basis
-    const bothColumns =
-      basis === undefined ? CITATION : COLUMN_PARAGRAPHS[eachColumnReference(basis)]
-    const separated =
-      basis === undefined ? CITATION : COLUMN_PARAGRAPHS[separatedColumnsReference(basis)]
+    const duty = dualColumnDutyFor(data, stock)
+    const reference = (
+      lookup: (
+        basis: DualColumnBasis,
+        standing: DualColumnDuty['standing'],
+      ) => DualColumnReference | undefined,
+    ): Citation => {
+      if (basis === undefined) return CITATION
+      const found = lookup(basis, duty.standing)
+      return found === undefined ? CITATION : COLUMN_PARAGRAPHS[found]
+    }
+    const bothColumns = reference(eachColumnReference)
+    const separated = reference(separatedColumnsReference)
+
+    // Why the finding cites (e) rather than one of its subparagraphs. The reasons read
+    // alike in a citation and are nothing alike to act on, and the one to assert most
+    // carefully is "voluntary": it claims the user chose to add the column, which is only
+    // true where the label stated every fact the question turns on and they came back no.
+    const unnamed = (requirement: string): string => {
+      if (basis === undefined) {
+        return (
+          'The label states no basis for its second column, so the subparagraph of 101.9(e) ' +
+          `that applies cannot be named; each of them requires ${requirement}.`
+        )
+      }
+      return (
+        `101.9(e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require, and ` +
+        `${whyNotReached(basis, duty)}. No subparagraph of 101.9(e) names this column; each ` +
+        `of them requires ${requirement}.`
+      )
+    }
 
     const textOf = (elementId: string): TextPrimitive[] =>
       layout.primitives.filter(
@@ -228,9 +260,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
           message:
             `The panel carries two columns, but ${clauses.join('; and ')}. ` +
             (bothColumns === CITATION
-              ? 'The label states no basis for its second column, so the subparagraph of 101.9(e) ' +
-                'that applies cannot be named; each of them requires the quantitative information ' +
-                'in both columns.'
+              ? unnamed('the quantitative information in both columns')
               : `${paragraph(bothColumns)} requires the quantitative information in both columns.`),
           measurement: {
             actual: `${shortRows.length} of ${rows.length} rows carry one column`,
@@ -253,9 +283,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
           message:
             'The panel’s two columns run together with nothing between them. ' +
             (separated === CITATION
-              ? 'The label states no basis for its second column, so the subparagraph of 101.9(e) ' +
-                'that applies cannot be named; each of them requires vertical lines between the ' +
-                'columns.'
+              ? unnamed('vertical lines between the columns')
               : `${paragraph(separated)} requires them to be separated by vertical lines.`),
           measurement: { actual: 'no vertical line', required: 'a vertical line between columns' },
           elementId: US_FOOD_ELEMENTS.nutritionPanel,
