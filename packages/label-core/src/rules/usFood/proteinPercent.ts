@@ -95,19 +95,37 @@ export const usFoodProteinPercentRule: UsFoodRule = {
    * this engine never draws — the path where review found the question vanishing
    * with neither a finding nor a word about it.
    */
-  declines({ data }: UsFoodContext): Decline | undefined {
+  declines({ data, stock }: UsFoodContext): Decline | undefined {
     const panel = data.nutritionFacts
     if (panel === undefined || dailyValuePopulationOf(panel) !== 'children-1-through-3') {
       return undefined
     }
-    if (panel.columns?.mode !== 'dual' || panel.columns.basis !== undefined) return undefined
+    if (panel.columns?.mode !== 'dual') return undefined
     if (panel.columns.secondAmounts?.protein === undefined) return undefined
+
+    const basis = panel.columns.basis
+    if (basis === undefined) {
+      return {
+        reason:
+          'This food is declared for children 1 through 3 and its panel carries a second column ' +
+          'with a protein amount. Whether that column owes a protein percentage of its own ' +
+          'turns on which paragraph of 101.9(e) governs it, and the label does not say what the ' +
+          'column counts. State what the second column counts and this check will run.',
+      }
+    }
+
+    // The same distinction `us-food/dual-column-form` draws: a duty that cannot
+    // be determined is a question nobody answered, not a provision that does not
+    // apply, and only the second deserves silence.
+    if (basis !== 'per-container' && basis !== 'per-unit') return undefined
+    if (dualColumnDutyFor(data, stock).standing[basis] !== 'undetermined') return undefined
     return {
       reason:
         'This food is declared for children 1 through 3 and its panel carries a second column ' +
-        'with a protein amount. Whether that column owes a protein percentage of its own turns ' +
-        'on which paragraph of 101.9(e) governs it, and the label does not say what the column ' +
-        'counts. State what the second column counts and this check will run.',
+        'with a protein amount. Whether 101.9(e)(6) asks that column for a percentage of its own ' +
+        'turns on whether (b)(12)(i) or (b)(2)(i)(D) requires the column, which cannot be told ' +
+        'from what the label states. State the reference amount, what the package holds and ' +
+        'whether it is packaged and sold individually.',
     }
   },
 

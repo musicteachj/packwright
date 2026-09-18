@@ -178,7 +178,12 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   applies cannot be told — four of the seven bases are dual labeling (e) governs and three are not — so the
   rule declines and asks, rather than reporting under (e) on an assumption. The consequence worth knowing: the
   editor seeds a per-container column and collects no reference amount, so a browser-built dual column is
-  governed by nothing until those facts are stated, and the report says which to supply.
+  governed by nothing until those facts are stated, and the report says which to supply. Two silences are kept
+  apart: a label that has not said enough to decide gets a "check did not run" entry naming the fields, and one
+  that has said enough and owes nothing hears nothing, because there is no question outstanding. **The
+  judge-or-stand-down invariant is enforced in the registry now** rather than asked of each rule — it was
+  stated in `Rule.declines` and asserted across the fixtures, and `us-food/protein-percent` broke it anyway
+  because no fixture reached the shape, producing a report that said a check passed and did not run.
 
 - **A second column is not the second column.** `us-food/dual-column-required` cleared any label that drew a
   second column, whatever that column counted — so a package owing a per-unit column under 21 CFR

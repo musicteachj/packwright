@@ -3900,6 +3900,73 @@ describe('the tabular display', () => {
  * column was reported as declaring "a quantity in the first column only" — a
  * sentence pointing the reader at the one column that does carry it.
  */
+describe('a column whose governing paragraph cannot be told', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+  const build = (facts: Record<string, unknown>): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    nutritionFacts: { ...panel, ...facts } as typeof panel,
+  })
+  const contextFor = (data: UsFoodLabelData) => ({
+    labelType: 'us-food' as const,
+    data,
+    stock,
+    layout: layOutUsFoodLabel({ data, stock }),
+  })
+
+  it('asks rather than falling silent where the duty is undetermined', () => {
+    // "Cannot tell" is not "no provision". A per-unit column on a label that
+    // states a reference amount but no unit content might be one (b)(2)(i)(D)
+    // compels and might not, and the form checks turn on which. The first cut of
+    // this treated every absent paragraph alike: review found one row of
+    // fourteen, no vertical line, and not a word from any rule.
+    const data = build({
+      availableSurfaceSqInches: 60,
+      referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+      packagedAndSoldIndividually: false,
+      columns: {
+        mode: 'dual',
+        basis: 'per-unit',
+        headings: ['Per serving', 'Per unit'],
+        secondAmounts: { 'total-fat': 7.5 },
+        separated: false,
+      },
+    })
+    const context = contextFor(data)
+
+    expect(runRules(context).map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_INCOMPLETE')
+    const declined = declinedChecks(context).map((one) => one.ruleId)
+    expect(declined, 'the question is answerable and unanswered').toContain(
+      'us-food/dual-column-form',
+    )
+  })
+
+  it('never says a check passed and did not run', () => {
+    // The invariant `Rule.declines` states and `rules.test.ts` asserts — which
+    // both held while `us-food/protein-percent` broke it, because no fixture
+    // reached the shape. Review reproduced `FDA_PROTEIN_PERCENT_MET` beside a
+    // decline from the same rule.
+    const data = build({
+      representedFor: 'children-1-through-3',
+      declaredPercentDv: { ...panel.declaredPercentDv, protein: 38 },
+      columns: {
+        mode: 'dual',
+        headings: ['Per serving', 'Per container'],
+        secondAmounts: { ...panel.amounts },
+        secondPercentDv: { protein: 96 },
+      },
+    })
+    const context = contextFor(data)
+
+    const judged = new Set(runRules(context).map((f) => f.code))
+    expect(judged, 'premise: the rule had something to say').toContain('FDA_PROTEIN_PERCENT_MET')
+    expect(
+      declinedChecks(context).map((one) => one.ruleId),
+      'a rule that judged has not stood down',
+    ).not.toContain('us-food/protein-percent')
+  })
+})
+
 describe('an egg carton whose second column says nothing about what it counts', () => {
   // The (j)(14) path: the information is presented off the label, so this engine
   // draws no panel and the question is asked of the declared figures. Review found

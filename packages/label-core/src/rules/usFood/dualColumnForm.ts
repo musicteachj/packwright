@@ -121,16 +121,41 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
    * explain that it could not name the subparagraph, which is a violation resting
    * on an assumption. It is a question the user can answer, so it is asked.
    */
-  declines({ data, layout }: UsFoodContext): Decline | undefined {
+  declines({ data, layout, stock }: UsFoodContext): Decline | undefined {
     const drawn = layout.elements.some(
       (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
     )
-    if (!drawn || data.nutritionFacts?.columns?.basis !== undefined) return undefined
+    if (!drawn) return undefined
+
+    const basis = data.nutritionFacts?.columns?.basis
+    if (basis === undefined) {
+      return {
+        reason:
+          'The panel draws a second column and the label does not say what it counts, so which ' +
+          'paragraph of 101.9(e) governs its form — or whether any does — cannot be told. State ' +
+          'what the second column counts and this check will run.',
+      }
+    }
+
+    // **"Cannot tell" is not "no provision".** A per-container or per-unit column
+    // whose duty is undetermined — the label states a reference amount but not
+    // what the package holds, say — might be one (b)(12)(i) compels and might
+    // not, and the form checks turn on which. The gate below treats every
+    // absent paragraph alike and falls silent, which for this case promised
+    // nothing and delivered nothing: review found a column of one row in
+    // fourteen, with no vertical line, drawing no finding and no decline from
+    // any rule at all. Silence is right where no provision governs; here the
+    // question is answerable and unanswered.
+    if (basis !== 'per-container' && basis !== 'per-unit') return undefined
+    const { standing } = dualColumnDutyFor(data, stock)
+    if (standing[basis] !== 'undetermined') return undefined
     return {
       reason:
-        'The panel draws a second column and the label does not say what it counts, so which ' +
-        'paragraph of 101.9(e) governs its form — or whether any does — cannot be told. State ' +
-        'what the second column counts and this check will run.',
+        'The panel draws a second column counting the ' +
+        `${basis === 'per-container' ? 'whole package' : 'individual unit'}, and whether ` +
+        '101.9(b)(12)(i) or (b)(2)(i)(D) requires it cannot be told from what the label states ' +
+        '— so whether 101.9(e)(6) governs its form cannot be told either. State the reference ' +
+        'amount, what the package holds and whether it is packaged and sold individually.',
     }
   },
 
@@ -143,9 +168,10 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     )
     if (!drawn) return []
 
-    // The paragraphs that apply turn on what the second column counts, and — for (e)(6)
-    // alone — on whether this label was obliged to carry the column at all. Two labels can
     // **Which columns this rule governs at all.**
+    //
+    // The paragraph that applies turns on what the second column counts, and — for
+    // (e)(6) alone — on whether this label was obliged to carry the column.
     //
     // (e) opens "Nutrition information **may** be presented for" four things — two
     // or more forms, combinations under (h)(4), different units, RDI groups — and
@@ -185,15 +211,23 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
       return []
     }
 
+    // No fallback: the gate above has already returned for every basis neither
+    // lookup names, so a `CITATION` branch here would be unreachable — and would
+    // quietly come back to life the day that gate is narrowed, resuming a
+    // citation of (e) on a column (e) does not reach. `docs/BACKLOG.md` proposes
+    // exactly that narrowing as the next step, which is why this is a throw
+    // rather than a default. Review found the PR claiming it deleted.
     const reference = (
       lookup: (
         basis: DualColumnBasis,
         standing: DualColumnDuty['standing'],
       ) => DualColumnReference | undefined,
     ): Citation => {
-      if (basis === undefined) return CITATION
       const found = lookup(basis, duty.standing)
-      return found === undefined ? CITATION : COLUMN_PARAGRAPHS[found]
+      if (found === undefined) {
+        throw new Error(`no paragraph of 101.9(e) governs a ${basis} column, and the gate passed`)
+      }
+      return COLUMN_PARAGRAPHS[found]
     }
     const bothColumns = reference(eachColumnReference)
     const separated = reference(separatedColumnsReference)

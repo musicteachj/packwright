@@ -253,6 +253,16 @@ function declinesOf<TContext extends RuleContext>(
   return rules.flatMap((rule) => {
     const declined = rule.declines?.(context)
     if (declined === undefined) return []
+
+    // **A rule that judged has not stood down**, enforced here rather than asked
+    // of each rule. `Rule.declines` states the invariant and `rules.test.ts`
+    // asserts it, and both were satisfied while `us-food/protein-percent` broke
+    // it — the fixtures simply never reached the shape. A report saying a check
+    // passed *and* did not run is worse than either on its own, and the review
+    // that found it reproduced exactly that: `FDA_PROTEIN_PERCENT_MET` beside
+    // "this check did not run". Structural beats conventional, and the extra
+    // `check` runs only for the three rules that declare a `declines` at all.
+    if (rule.check(context).length > 0) return []
     return [
       {
         ruleId: rule.id,

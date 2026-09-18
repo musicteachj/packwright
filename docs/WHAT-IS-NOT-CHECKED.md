@@ -124,6 +124,11 @@ package holds, and whether it is packaged and sold individually. The report asks
 did not run"**. With them supplied, either the column is required and its form is judged, or it is not and this
 paragraph is why you hear nothing.
 
+**Two silences, and the report tells them apart.** Where your label has not said enough to decide whether the
+column is required, the checks appear under "checks that did not run" with the fields to fill in. Where it has
+said enough and the answer is no, you hear nothing at all — there is no question outstanding and nothing to
+supply. Only the first is something you can act on.
+
 ### Where the "% Daily Value*" heading sits on a two-column panel
 
 On a panel with two columns, this tool prints that heading right-aligned over the second column. Whether that
