@@ -56,7 +56,7 @@ import {
   FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
   usFoodIngredientListRule,
 } from './index'
-import { US_FOOD_RULES, runRules } from './registry'
+import { US_FOOD_RULES, declinedChecks, runRules } from './registry'
 
 /**
  * Fixtures by name, never by index.
@@ -1967,6 +1967,18 @@ describe('a second column may state its own percentages', () => {
   // and derived none for protein. So a toddler food on a dual-column panel could not comply.
   const stock = US_FOOD_CONFORMANT.stock
   const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+  // Carrying the facts that make the column *required*, because (e) reaches only
+  // the dual labeling its opening lists plus the columns (b)(12)(i) and
+  // (b)(2)(i)(D) compel — a per-container column nothing compels is governed by
+  // no provision, and these cases are about how a governed one is judged.
+  const OWED = {
+    availableSurfaceSqInches: 60,
+    referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+    packageContent: 100,
+    packagedAndSoldIndividually: true,
+    servingsPerContainer: 2.5,
+  } as const
+
   const dual = (
     columns: Partial<NonNullable<typeof panel.columns>> = {},
     facts: Partial<typeof panel> = {},
@@ -1974,6 +1986,7 @@ describe('a second column may state its own percentages', () => {
     ...US_FOOD_CONFORMANT.data,
     nutritionFacts: {
       ...panel,
+      ...OWED,
       ...facts,
       columns: {
         mode: 'dual',
@@ -2286,8 +2299,10 @@ describe('a dual-column panel is judged under the paragraph for what its second 
     ['per-cup-popped', '21 CFR 101.9(e)(3)', '21 CFR 101.9(e)(3)'],
     ['per-container', '21 CFR 101.9(e)(6)', '21 CFR 101.9(e)(6)'],
     ['per-unit', '21 CFR 101.9(e)(6)', '21 CFR 101.9(e)(6)'],
-    // No basis names no subparagraph, so both cite (e), the dual labeling paragraph itself.
-    [undefined, '21 CFR 101.9(e)', '21 CFR 101.9(e)'],
+    // A label stating no basis is no longer reported under (e) generally — which
+    // subparagraph applies turns on a fact it has not supplied, so the rule asks
+    // for it instead. See "asks what the column counts where the label has not
+    // said", above.
   ] as const)(
     '%s: an incomplete column under %s, unseparated columns under %s',
     (basis, incomplete, separated) => {
@@ -2324,140 +2339,134 @@ describe('a dual-column panel is judged under the paragraph for what its second 
   // column, one never stated the figure the question turns on, one is outside the band, and
   // one is excused. The first review of this change found all three failures collapsed into
   // "carried voluntarily", which asserts of a label that never filled the field in.
+  // **What (e) governs, and what it does not.**
+  //
+  // (e) opens "Nutrition information **may** be presented for" four things, then
+  // says "When **such** dual labeling is provided, equal prominence shall be
+  // given ... Information shall be presented in a format consistent with
+  // paragraph (d) ... except that". Every `shall` in (e) hangs off that "such".
+  // A per-container column is none of the four, so (e) reaches it only where
+  // (b)(12)(i) or (b)(2)(i)(D) requires it and (e)(6) supplies the format.
+  //
+  // Where neither does, the column is carried voluntarily and **no provision of
+  // 101.9 governs its form**. This rule reported it anyway, as a violation citing
+  // (e), while explaining in the same message that no subparagraph of (e) reached
+  // it. An advisory would have kept that contradiction and only made it quieter —
+  // `Finding.citation` is required, so a finding always names a provision, and
+  // naming one that does not apply is the defect this project treats most
+  // seriously. There being no provision, there is no finding.
   describe('a per-container column (e)(6) may or may not reach', () => {
     const owed = () =>
       withBasis('a second column carrying one figure out of fourteen', 'per-container')
-    const incompleteIn = (data: UsFoodLabelData) => findingOf(data, 'FDA_DUAL_COLUMN_INCOMPLETE')!
+    const incompleteIn = (data: UsFoodLabelData) => findingOf(data, 'FDA_DUAL_COLUMN_INCOMPLETE')
+    const without = (...keys: readonly string[]) => {
+      const base = owed()
+      const facts: Record<string, unknown> = { ...base.nutritionFacts! }
+      for (const key of keys) delete facts[key]
+      return { ...base, nutritionFacts: facts as unknown as UsFoodLabelData['nutritionFacts'] }
+    }
 
-    it('cites (e)(6) where (b)(12)(i) requires the column', () => {
+    it('judges the form of a column the regulation requires', () => {
       const found = incompleteIn(owed())
-      expect(found.citation.reference).toBe('21 CFR 101.9(e)(6)')
-      expect(found.message).toContain('101.9(e)(6) requires')
+      expect(found, "a column (b)(12)(i) compels is (e)(6)'s business").toBeDefined()
+      expect(found!.citation.reference).toBe('21 CFR 101.9(e)(6)')
     })
 
-    it('cites (e) and says so where the label states none of the facts', () => {
-      // Not "voluntary" — unanswerable. §101.12(b)'s table is not carried here, so without
-      // a declared figure the engine has not asked the question, and the editor builds
-      // every label this way today.
-      const base = owed()
-      const {
-        referenceAmount: _amount,
-        packageContent: _package,
-        packagedAndSoldIndividually: _individually,
-        ...unasked
-      } = base.nutritionFacts!
-      const found = incompleteIn({ ...base, nutritionFacts: unasked })
-      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
-      expect(found.message).toContain('has not stated everything')
-      expect(found.message, 'and names the fields to fill in').toContain('its package content')
-      expect(found.message, 'and claims nothing about a choice').not.toContain('voluntarily')
-      // The defect is unchanged — one figure is still not a second declaration.
-      expect(found.severity).toBe('violation')
-    })
-
-    // (b)(12)(i) turns on three facts, not one. A label can declare its reference amount
-    // and still not have answered the question, and the second review of this change found
-    // every one of these reported as a choice the user made.
-    it.each(['packageContent', 'packagedAndSoldIndividually'] as const)(
-      'does not call the column voluntary where only %s is missing',
-      (field) => {
-        const base = owed()
-        const { [field]: _dropped, ...partial } = base.nutritionFacts!
-        const found = incompleteIn({ ...base, nutritionFacts: partial })
-        expect(found.citation.reference).toBe('21 CFR 101.9(e)')
-        expect(found.message).toContain('has not stated everything')
-        expect(found.message).not.toContain('voluntarily')
-      },
-    )
-
-    it('names the column actually owed where the label declares the other one', () => {
-      // (b)(2)(i)(D) requires a per-unit column here, and the panel declares a
-      // per-container one. Calling that voluntary contradicts the mandate rule's own
-      // FDA_DUAL_COLUMN_MET on the same label.
-      const base = owed()
-      const {
-        packageContent: _package,
-        packagedAndSoldIndividually: _individually,
-        ...facts
-      } = base.nutritionFacts!
-      const data = { ...base, nutritionFacts: { ...facts, unitContent: 100 } }
-      // The mandate rule reports the owed column absent rather than clearing the
-      // label — (b)(2)(i)(D) asks for a column "per individual unit" and the one
-      // drawn says it counts the package, which is not that column.
-      expect(
-        findingsFor(data, US_FOOD_CONFORMANT.stock).map((f) => f.code),
-        'premise: the label owes a column it has not drawn',
-      ).toContain('FDA_DUAL_COLUMN_MISSING')
-      const found = incompleteIn(data)
-      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
-      expect(found.message).toContain('owes a per-unit column under 101.9(b)(2)(i)(D)')
-      expect(found.message, 'and does not call it a choice').not.toContain('voluntarily')
+    it.each([
+      [
+        'no facts at all',
+        () => without('referenceAmount', 'packageContent', 'packagedAndSoldIndividually'),
+      ],
+      ['no package content', () => without('packageContent')],
+      ['no statement that it is sold individually', () => without('packagedAndSoldIndividually')],
+      [
+        'a package outside the band',
+        () => {
+          const base = owed()
+          return { ...base, nutritionFacts: { ...base.nutritionFacts!, packageContent: 25 } }
+        },
+      ],
+      [
+        'a package the regulation excuses',
+        () => {
+          const base = owed()
+          return {
+            ...base,
+            nutritionFacts: {
+              ...base.nutritionFacts!,
+              dualColumnExemption: { rawCommodityVoluntary: true },
+            },
+          }
+        },
+      ],
+      [
+        'a package that says it is not sold individually',
+        () => {
+          const base = owed()
+          return {
+            ...base,
+            nutritionFacts: { ...base.nutritionFacts!, packagedAndSoldIndividually: false },
+          }
+        },
+      ],
+    ])('says nothing about the form of a column it need not carry: %s', (_case, build) => {
+      const data = build() as UsFoodLabelData
+      const codes = findingsFor(data, US_FOOD_CONFORMANT.stock).map((f) => f.code)
+      for (const code of [
+        'FDA_DUAL_COLUMN_INCOMPLETE',
+        'FDA_DUAL_COLUMN_NOT_SEPARATED',
+        'FDA_DUAL_COLUMN_HEADINGS_MISSING',
+        'FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE',
+        'FDA_DUAL_COLUMN_FORM_MET',
+      ]) {
+        expect(codes, `${code} on a column no provision governs`).not.toContain(code)
+      }
     })
 
     it.each([0, -40, Number.NaN])(
-      'treats a reference amount of %s as unstated rather than as answered',
+      'treats a reference amount of %s as no reference amount',
       (amount) => {
-        // `inBand` cannot divide by a non-figure and refuses, which used to leave the
-        // question looking asked and answered no — so a label declaring a reference
-        // amount of zero read as having satisfied (b)(12)(i). Found by review when the
-        // editor first gained an input for this field.
+        // `inBand` cannot divide by a non-figure and refuses, which used to leave
+        // the question looking asked and answered no.
         const base = owed()
-        const found = incompleteIn({
+        const data = {
           ...base,
           nutritionFacts: {
             ...base.nutritionFacts!,
             referenceAmount: { ...base.nutritionFacts!.referenceAmount!, amount },
           },
-        })
-        expect(found.citation.reference).toBe('21 CFR 101.9(e)')
-        expect(found.message).toContain('has not stated everything')
-        expect(found.message, 'and claims nothing about a choice').not.toContain('voluntarily')
+        }
+        expect(incompleteIn(data as UsFoodLabelData)).toBeUndefined()
       },
     )
 
-    it('treats a stated "not sold individually" as an answer on its own', () => {
-      // (b)(12)(i) reaches only products "packaged and sold individually", so a label
-      // saying no has answered it whatever else it left blank. Demanding a package
-      // content on top told such a user they had not stated something they plainly
-      // had. Found by review.
+    it('asks what the column counts where the label has not said', () => {
+      // The one case a user can act on, and the only reason left to mention (e)
+      // without naming a subparagraph: four of the seven bases are dual labeling
+      // (e) governs and three are not, so which applies turns on a fact the label
+      // has not supplied.
       const base = owed()
-      const { packageContent: _dropped, ...facts } = base.nutritionFacts!
-      const found = incompleteIn({
+      const { basis: _dropped, ...columns } = base.nutritionFacts!.columns!
+      const data = {
         ...base,
-        nutritionFacts: { ...facts, packagedAndSoldIndividually: false },
-      })
-      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
-      expect(found.message, 'the question was answered, not skipped').not.toContain(
-        'has not stated everything',
-      )
-      expect(found.message).toContain('voluntarily')
-    })
+        nutritionFacts: { ...base.nutritionFacts!, columns },
+      } as UsFoodLabelData
+      const stock = US_FOOD_CONFORMANT.stock
+      const context = {
+        labelType: 'us-food' as const,
+        data,
+        stock,
+        layout: layOutUsFoodLabel({ data, stock }),
+      }
 
-    it('cites (e) and calls the column voluntary where the package is outside the band', () => {
-      const base = owed()
-      const found = incompleteIn({
-        // 25 g against a 22 g reference amount is 114 percent, below (b)(12)(i)'s 200.
-        ...base,
-        nutritionFacts: { ...base.nutritionFacts!, packageContent: 25 },
-      })
-      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
-      expect(found.message).toContain('voluntarily')
-    })
-
-    it('cites (e) and names the exemption where one excuses the column', () => {
-      const base = owed()
-      const found = incompleteIn({
-        ...base,
-        nutritionFacts: {
-          ...base.nutritionFacts!,
-          dualColumnExemption: { rawCommodityVoluntary: true },
-        },
-      })
-      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
-      expect(found.message).toContain('101.9(b)(12)(i)(B)')
-      expect(found.message, 'and does not call an excused column a choice').not.toContain(
-        'voluntarily',
+      expect(findingsFor(data, stock).map((f) => f.code)).not.toContain(
+        'FDA_DUAL_COLUMN_INCOMPLETE',
       )
+      const declined = declinedChecks(context).find(
+        (one) => one.ruleId === 'us-food/dual-column-form',
+      )
+      expect(declined, 'a question the user can answer').toBeDefined()
+      expect(declined!.reason).toContain('what it counts')
     })
   })
 
@@ -2741,8 +2750,10 @@ describe('a food for children 1 through 3, labelled against their Daily Values',
       // (e)(6): per serving and per container under (b)(12)(i), or per unit under (b)(2)(i)(D).
       ['per-container', '21 CFR 101.9(e)(6)'],
       ['per-unit', '21 CFR 101.9(e)(6)'],
-      // No basis stated names no (e) paragraph, so the finding cites the requirement itself.
-      [undefined, '21 CFR 101.9(c)(7)(i)'],
+      // A voluntary column is asked for nothing: (c)(7)(i) requires the food's
+      // protein percentage and the first column carries it, while that each
+      // column carry one is (e)'s requirement and (e) does not reach a column
+      // nothing compels.
     ] as const)('cites the paragraph a %s second column answers to: %s', (basis, reference) => {
       // The review of PR #39 found every basis cited to (e)(2), which is about forms.
       const band = fixture('a 250 percent package carrying one column')
@@ -2977,6 +2988,14 @@ describe('the dual-column display, drawn', () => {
     ...US_FOOD_CONFORMANT.data,
     nutritionFacts: {
       ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      // Owed under (b)(12)(i), so (e)(6) governs the column's form. A
+      // per-container column nothing compels is governed by no provision, and
+      // these cases are about which column a figure is reported against.
+      availableSurfaceSqInches: 60,
+      referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+      packageContent: 100,
+      packagedAndSoldIndividually: true,
+      servingsPerContainer: 2.5,
       columns: {
         mode: 'dual',
         basis: 'per-container',
@@ -3881,6 +3900,112 @@ describe('the tabular display', () => {
  * column was reported as declaring "a quantity in the first column only" — a
  * sentence pointing the reader at the one column that does carry it.
  */
+describe('a column whose governing paragraph cannot be told', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+  const build = (facts: Record<string, unknown>): UsFoodLabelData => ({
+    ...US_FOOD_CONFORMANT.data,
+    nutritionFacts: { ...panel, ...facts } as typeof panel,
+  })
+  const contextFor = (data: UsFoodLabelData) => ({
+    labelType: 'us-food' as const,
+    data,
+    stock,
+    layout: layOutUsFoodLabel({ data, stock }),
+  })
+
+  it('asks rather than falling silent where the duty is undetermined', () => {
+    // "Cannot tell" is not "no provision". A per-unit column on a label that
+    // states a reference amount but no unit content might be one (b)(2)(i)(D)
+    // compels and might not, and the form checks turn on which. The first cut of
+    // this treated every absent paragraph alike: review found one row of
+    // fourteen, no vertical line, and not a word from any rule.
+    const data = build({
+      availableSurfaceSqInches: 60,
+      referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+      packagedAndSoldIndividually: false,
+      columns: {
+        mode: 'dual',
+        basis: 'per-unit',
+        headings: ['Per serving', 'Per unit'],
+        secondAmounts: { 'total-fat': 7.5 },
+        separated: false,
+      },
+    })
+    const context = contextFor(data)
+
+    expect(runRules(context).map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_INCOMPLETE')
+    const declined = declinedChecks(context).map((one) => one.ruleId)
+    expect(declined, 'the question is answerable and unanswered').toContain(
+      'us-food/dual-column-form',
+    )
+  })
+
+  it('never says a check passed and did not run', () => {
+    // The invariant `Rule.declines` states and `rules.test.ts` asserts — which
+    // both held while `us-food/protein-percent` broke it, because no fixture
+    // reached the shape. Review reproduced `FDA_PROTEIN_PERCENT_MET` beside a
+    // decline from the same rule.
+    const data = build({
+      representedFor: 'children-1-through-3',
+      declaredPercentDv: { ...panel.declaredPercentDv, protein: 38 },
+      columns: {
+        mode: 'dual',
+        headings: ['Per serving', 'Per container'],
+        secondAmounts: { ...panel.amounts },
+        secondPercentDv: { protein: 96 },
+      },
+    })
+    const context = contextFor(data)
+
+    const judged = new Set(runRules(context).map((f) => f.code))
+    expect(judged, 'premise: the rule had something to say').toContain('FDA_PROTEIN_PERCENT_MET')
+    expect(
+      declinedChecks(context).map((one) => one.ruleId),
+      'a rule that judged has not stood down',
+    ).not.toContain('us-food/protein-percent')
+  })
+})
+
+describe('an egg carton whose second column says nothing about what it counts', () => {
+  // The (j)(14) path: the information is presented off the label, so this engine
+  // draws no panel and the question is asked of the declared figures. Review found
+  // the question vanishing here with neither a finding nor a word about it — the
+  // form rule's decline is keyed on drawn ink and there is none.
+  it('asks what the column counts instead of falling silent', () => {
+    const base = US_FOOD_CONFORMANT.data.nutritionFacts!
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+      nutritionFacts: {
+        ...base,
+        representedFor: 'children-1-through-3',
+        declaredPercentDv: { ...base.declaredPercentDv, protein: 38 },
+        columns: {
+          mode: 'dual',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { ...base.amounts },
+        },
+      },
+    }
+    const stock = US_FOOD_CONFORMANT.stock
+    const context = {
+      labelType: 'us-food' as const,
+      data,
+      stock,
+      layout: layOutUsFoodLabel({ data, stock }),
+    }
+
+    expect(
+      runRules(context).map((f) => f.code),
+      'the question cannot be put without knowing what the column counts',
+    ).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+    const declined = declinedChecks(context).find((one) => one.ruleId === 'us-food/protein-percent')
+    expect(declined, 'so it is asked rather than dropped').toBeDefined()
+    expect(declined!.reason).toContain('what the column counts')
+  })
+})
+
 describe('the second column, reported in the right direction', () => {
   const HEADINGS = ['Per serving', 'Per container'] as [string, string]
   const FULL_SECOND = {
@@ -3900,6 +4025,17 @@ describe('the second column, reported in the right direction', () => {
     potassium: 587.5,
   }
 
+  // Owed under (b)(12)(i), so (e)(6) governs the column's form. A per-container
+  // column nothing compels is governed by no provision, and these cases are about
+  // which column an absent figure is reported against.
+  const OWED = {
+    availableSurfaceSqInches: 60,
+    referenceAmount: { amount: 40, unit: 'g' as const, category: 'Breakfast cereals' },
+    packageContent: 100,
+    packagedAndSoldIndividually: true,
+    servingsPerContainer: 2.5,
+  }
+
   const incompleteFinding = (data: UsFoodLabelData) =>
     findingsFor(data, US_FOOD_CONFORMANT.stock).find((f) => f.code === 'FDA_DUAL_COLUMN_INCOMPLETE')
 
@@ -3912,6 +4048,7 @@ describe('the second column, reported in the right direction', () => {
       ...US_FOOD_CONFORMANT.data,
       nutritionFacts: {
         ...facts,
+        ...OWED,
         amounts: without(facts.amounts, 'iron') as typeof facts.amounts,
         ...(facts.declaredAmounts === undefined
           ? {}
@@ -3939,6 +4076,7 @@ describe('the second column, reported in the right direction', () => {
       ...US_FOOD_CONFORMANT.data,
       nutritionFacts: {
         ...facts,
+        ...OWED,
         columns: {
           mode: 'dual',
           basis: 'per-container',

@@ -43,7 +43,7 @@ import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { TextPrimitive } from '../../layout/types'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, passedOnArtwork } from '../finding'
-import type { UsFoodContext, UsFoodRule } from '../types'
+import type { Decline, UsFoodContext, UsFoodRule } from '../types'
 import {
   DUAL_COLUMN_REFERENCES,
   eachColumnReference,
@@ -51,7 +51,7 @@ import {
 } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
 import type { DualColumnBasis, DualColumnDuty } from '../../fda/nutritionFormats'
-import { dualColumnDutyFor, whyNotReached } from './mandatoryColumns'
+import { dualColumnDutyFor } from './mandatoryColumns'
 import { MM_PER_POINT } from '../../geometry/units'
 
 export const FDA_DUAL_COLUMN_HEADINGS_MISSING = 'FDA_DUAL_COLUMN_HEADINGS_MISSING'
@@ -112,6 +112,53 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
   ],
   appliesTo: 'us-food',
 
+  /**
+   * A drawn second column whose basis the label never states.
+   *
+   * Four of the seven bases are dual labeling (e) governs and three are not, so
+   * which of its subparagraphs applies — or whether any does — turns on a fact
+   * the label has not supplied. The rule used to report under (e) generally and
+   * explain that it could not name the subparagraph, which is a violation resting
+   * on an assumption. It is a question the user can answer, so it is asked.
+   */
+  declines({ data, layout, stock }: UsFoodContext): Decline | undefined {
+    const drawn = layout.elements.some(
+      (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+    )
+    if (!drawn) return undefined
+
+    const basis = data.nutritionFacts?.columns?.basis
+    if (basis === undefined) {
+      return {
+        reason:
+          'The panel draws a second column and the label does not say what it counts, so which ' +
+          'paragraph of 101.9(e) governs its form — or whether any does — cannot be told. State ' +
+          'what the second column counts and this check will run.',
+      }
+    }
+
+    // **"Cannot tell" is not "no provision".** A per-container or per-unit column
+    // whose duty is undetermined — the label states a reference amount but not
+    // what the package holds, say — might be one (b)(12)(i) compels and might
+    // not, and the form checks turn on which. The gate below treats every
+    // absent paragraph alike and falls silent, which for this case promised
+    // nothing and delivered nothing: review found a column of one row in
+    // fourteen, with no vertical line, drawing no finding and no decline from
+    // any rule at all. Silence is right where no provision governs; here the
+    // question is answerable and unanswered.
+    if (basis !== 'per-container' && basis !== 'per-unit') return undefined
+    const { standing } = dualColumnDutyFor(data, stock)
+    if (standing[basis] !== 'undetermined') return undefined
+    return {
+      reason:
+        'The panel draws a second column counting the ' +
+        `${basis === 'per-container' ? 'whole package' : 'individual unit'}, and whether ` +
+        '101.9(b)(12)(i) or (b)(2)(i)(D) requires it cannot be told from what the label states ' +
+        '— so whether 101.9(e)(6) governs its form cannot be told either. State the reference ' +
+        'amount, what the package holds and whether it is packaged and sold individually.',
+    }
+  },
+
   check({ data, layout, stock }: UsFoodContext): Finding[] {
     // Asked of the layout throughout. A panel that declares two columns and draws
     // one has nothing here to judge — that absence is the mandate rule's finding,
@@ -121,46 +168,69 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     )
     if (!drawn) return []
 
-    // The paragraphs that apply turn on what the second column counts, and — for (e)(6)
-    // alone — on whether this label was obliged to carry the column at all. Two labels can
-    // fall back to (e), the dual labeling paragraph: one that states no basis, and one
-    // carrying a column voluntarily that no subparagraph of (e) reaches.
-    // Written as the sibling messages write it — "101.9(e)(6)" — since the finding's
-    // citation field already carries the full reference.
+    // **Which columns this rule governs at all.**
+    //
+    // The paragraph that applies turns on what the second column counts, and — for
+    // (e)(6) alone — on whether this label was obliged to carry the column.
+    //
+    // (e) opens "Nutrition information **may** be presented for" four things — two
+    // or more forms, combinations under (h)(4), different units, RDI groups — and
+    // then says "When **such** dual labeling is provided, equal prominence shall be
+    // given ... Information shall be presented in a format consistent with
+    // paragraph (d) ... except that". Every `shall` in (e) hangs off that "such":
+    // they are the terms on which those four permissions are exercised. Read from
+    // the eCFR on 2026-09-18.
+    //
+    // A per-container or per-unit column is none of the four. Where (b)(12)(i) or
+    // (b)(2)(i)(D) requires one, (e)(6) supplies its format and this rule applies.
+    // Where neither does — a package outside the band, or one they excuse — the
+    // column is carried voluntarily and **no provision of 101.9 governs its form**.
+    // This rule used to report it anyway, as a violation citing (e), while saying
+    // in the same breath that no subparagraph of (e) reached it. Lowering that to
+    // an advisory would have kept the contradiction and only made it quieter:
+    // `Finding.citation` is required, so every finding names a provision, and
+    // naming one that does not apply is the defect this project treats most
+    // seriously. There being no provision, there is no finding. `docs/WHAT-IS-NOT-CHECKED.md`
+    // says so where a reader can act on knowing it.
     const paragraphOf = (reference: string) => reference.replace('21 CFR ', '')
     const paragraph = (citation: Citation) => paragraphOf(citation.reference)
     const basis = data.nutritionFacts?.columns?.basis
     const duty = dualColumnDutyFor(data, stock)
+
+    // Nothing to say where no provision governs the column, and nothing to say
+    // where the label has not said which one might — `declines` asks for that.
+    if (basis === undefined) return []
+    // Both lookups, not one. They agree today on which bases (e)(6) covers, and
+    // gating on `eachColumnReference` alone would leave the separation message
+    // reachable with a `CITATION` fallback the moment they stopped agreeing —
+    // claiming the label stated no basis about a label that stated one.
+    if (
+      eachColumnReference(basis, duty.standing) === undefined ||
+      separatedColumnsReference(basis, duty.standing) === undefined
+    ) {
+      return []
+    }
+
+    // No fallback: the gate above has already returned for every basis neither
+    // lookup names, so a `CITATION` branch here would be unreachable — and would
+    // quietly come back to life the day that gate is narrowed, resuming a
+    // citation of (e) on a column (e) does not reach. `docs/BACKLOG.md` proposes
+    // exactly that narrowing as the next step, which is why this is a throw
+    // rather than a default. Review found the PR claiming it deleted.
     const reference = (
       lookup: (
         basis: DualColumnBasis,
         standing: DualColumnDuty['standing'],
       ) => DualColumnReference | undefined,
     ): Citation => {
-      if (basis === undefined) return CITATION
       const found = lookup(basis, duty.standing)
-      return found === undefined ? CITATION : COLUMN_PARAGRAPHS[found]
+      if (found === undefined) {
+        throw new Error(`no paragraph of 101.9(e) governs a ${basis} column, and the gate passed`)
+      }
+      return COLUMN_PARAGRAPHS[found]
     }
     const bothColumns = reference(eachColumnReference)
     const separated = reference(separatedColumnsReference)
-
-    // Why the finding cites (e) rather than one of its subparagraphs. The reasons read
-    // alike in a citation and are nothing alike to act on, and the one to assert most
-    // carefully is "voluntary": it claims the user chose to add the column, which is only
-    // true where the label stated every fact the question turns on and they came back no.
-    const unnamed = (requirement: string): string => {
-      if (basis === undefined) {
-        return (
-          'The label states no basis for its second column, so the subparagraph of 101.9(e) ' +
-          `that applies cannot be named; each of them requires ${requirement}.`
-        )
-      }
-      return (
-        `101.9(e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require, and ` +
-        `${whyNotReached(basis, duty)}. No subparagraph of 101.9(e) names this column; each ` +
-        `of them requires ${requirement}.`
-      )
-    }
 
     const textOf = (elementId: string): TextPrimitive[] =>
       layout.primitives.filter(
@@ -259,9 +329,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
           severity: 'violation',
           message:
             `The panel carries two columns, but ${clauses.join('; and ')}. ` +
-            (bothColumns === CITATION
-              ? unnamed('the quantitative information in both columns')
-              : `${paragraph(bothColumns)} requires the quantitative information in both columns.`),
+            `${paragraph(bothColumns)} requires the quantitative information in both columns.`,
           measurement: {
             actual: `${shortRows.length} of ${rows.length} rows carry one column`,
             required: 'both columns on every row that declares a quantity',
@@ -282,9 +350,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
           severity: 'violation',
           message:
             'The panel’s two columns run together with nothing between them. ' +
-            (separated === CITATION
-              ? unnamed('vertical lines between the columns')
-              : `${paragraph(separated)} requires them to be separated by vertical lines.`),
+            `${paragraph(separated)} requires them to be separated by vertical lines.`,
           measurement: { actual: 'no vertical line', required: 'a vertical line between columns' },
           elementId: US_FOOD_ELEMENTS.nutritionPanel,
           citation: separated,

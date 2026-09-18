@@ -103,6 +103,32 @@ left alone on purpose:
 - **(d), "lines generally parallel to the base".** This engine draws no rotated text, so there is nothing to
   catch.
 
+### A second column you are not required to carry
+
+If your package is obliged to show a second column — 200 to 300 percent of its reference amount, or an
+individual unit in that band — this tool checks its form: that both columns are filled, separated, headed and
+equally prominent.
+
+**If you add a second column nobody requires, none of that is checked**, and the reason is that no provision
+governs it. 21 CFR 101.9(e) permits dual labeling for four things — two or more forms of the food, common
+combinations, different units, and RDI groups — and its requirements are the terms on which *those*
+permissions are exercised. A per-container or per-unit column your package does not owe is none of them, and
+101.9 says nothing about how it must look.
+
+So the checks stay silent rather than reporting your label against a paragraph that does not reach it. A column
+of fourteen rows carrying one figure will draw no finding. It is still worth a second look before you print:
+a reader will compare the two columns whether or not a regulation requires them to agree.
+
+The way to bring the checks back is to state what the tool needs to know — the reference amount, what the whole
+package holds, and whether it is packaged and sold individually. The report asks for those under **"checks that
+did not run"**. With them supplied, either the column is required and its form is judged, or it is not and this
+paragraph is why you hear nothing.
+
+**Two silences, and the report tells them apart.** Where your label has not said enough to decide whether the
+column is required, the checks appear under "checks that did not run" with the fields to fill in. Where it has
+said enough and the answer is no, you hear nothing at all — there is no question outstanding and nothing to
+supply. Only the first is something you can act on.
+
 ### Where the "% Daily Value*" heading sits on a two-column panel
 
 On a panel with two columns, this tool prints that heading right-aligned over the second column. Whether that

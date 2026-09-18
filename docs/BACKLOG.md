@@ -413,17 +413,42 @@ comment. Whether that is a finding is a real question rather than an obvious yes
 about is the kind of false positive a user cannot argue with. It needs the modal verbs read across (b) and (e)
 together before anything is written, and it would want its own code, citation and fixture.
 
-**An incomplete voluntary second column is still reported as a violation, under a paragraph that does not
-reach it.** Raised by the review of the (e)(6) fix and left deliberately. Where a label carries a second column
-nothing requires, `us-food/dual-column-form` now cites 101.9(e) and says in the same breath that no subparagraph
-of (e) names the column — so the finding asserts a violation and then explains that the provision behind it does
-not apply. The argument for reporting anyway is that every subparagraph of (e) requires the quantitative
-information in both columns, so whichever one you thought applied, one figure out of fourteen is not a second
-declaration; the argument against is that a requirement no provision imposes cannot be violated, and a
-`violation` a user cannot trace to a sentence in the CFR is the shape this project treats as worse than silence.
-Deciding it needs the modal verbs read across (b) and (e) together, and the answer may well be `advisory` rather
-than either reporting or dropping it. Out of scope for the citation fix, which was about which paragraph is
-named rather than whether to speak at all. The same question reaches `us-food/protein-percent`.
+**(e)(1)'s headings and (e)'s equal prominence may not reach a per-container column either.** Raised by the
+review of the change that stopped reporting *ungoverned* columns, and left because it is a further reading
+rather than a loose end of that one. The same logic points at it: (e)(1) says "there shall be two or more
+column headings accurately describing the amount per serving size of **the form of the same food** ..., **the
+combinations of food, the units, or the RDI groups** that are being declared" — the four kinds (e)'s opening
+permits, and a per-container column is none of them. (e)'s "equal prominence shall be given to both sets of
+values" sits in the same sentence as "such dual labeling", which refers to the same four.
+
+So a column (b)(12)(i) compels is governed by (e)(6), which asks for two columns separated by vertical lines
+and says nothing about headings or prominence. `FDA_DUAL_COLUMN_HEADINGS_MISSING` cites (e)(1) and
+`FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE` cites (e), and both fire on such a column today.
+
+Two reasons not to act on it in passing. It would narrow the rule set again, on the commonest mandatory panel
+this tool draws, and that is a decision worth taking deliberately rather than as a third consequence of one
+reading. And the counter-argument is real: (e)(6) says the columns are presented "as shown in the displays in
+paragraph (e)(6)(i)", whose sample labels are headed — so the question is whether that phrase incorporates the
+illustration's headings as a requirement, which is exactly the "guidance figure made a requirement" trap
+`CLAUDE.md` records. Wants the displays read and the phrase weighed before anything changes.
+
+**~~An incomplete voluntary second column is still reported as a violation, under a paragraph that does not
+reach it.~~ Fixed by removing the finding.** Raised by the review of the (e)(6) citation fix and settled on
+2026-09-18 by reading (e) again. Its opening permits dual labeling for four things and its requirements are
+the terms on which *those* permissions are exercised — "When **such** dual labeling is provided". A
+per-container column nothing compels is none of the four, so no provision of 101.9 governs its form.
+
+**Advisory was considered and rejected.** `Finding.citation` is required, so an advisory would still have named
+101.9(e) while saying (e) does not reach the column — the same false statement at lower volume, and the defect
+this project treats most seriously. There being no provision, there is no finding; the limit is in
+`docs/WHAT-IS-NOT-CHECKED.md` instead, which is what that document is for and keeps this consistent with
+`gs1/quiet-zone`, silent for the same reason.
+
+**What it cost, which is worth knowing.** The editor seeds a per-container column and collects no reference
+amount, so a browser-built dual column is governed by nothing until the user states the three facts — and four
+checks that used to fire on it (completeness, separation, headings, equal prominence) now do not. They were
+firing under a citation that did not apply, so this is a correction rather than a loss, but it is the commonest
+label this tool draws. The mandate rule's decline asks for exactly those facts, which is the path back.
 
 **`ghs/pictogram-set` cites CLP Annex V whatever the regime.** Its sibling `ghs/pictogram-precedence` selects
 29 CFR 1910.1200 Appendix C for a `us-osha` label and CLP Article 26 for an EU one; this rule has a single

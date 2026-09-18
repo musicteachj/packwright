@@ -15,16 +15,8 @@
  * drift, and the one that drifted would decide a citation.
  */
 
-import {
-  DUAL_COLUMN_BASIS_REFERENCE,
-  dualColumnDuty,
-  smallPackageRouteApplies,
-} from '../../fda/nutritionFormats'
-import type {
-  DualColumnBasis,
-  DualColumnDuty,
-  MandatoryDualColumnBasis,
-} from '../../fda/nutritionFormats'
+import { dualColumnDuty, smallPackageRouteApplies } from '../../fda/nutritionFormats'
+import type { DualColumnDuty } from '../../fda/nutritionFormats'
 import { labelingSurfaceFloor } from '../../geometry/pdp'
 import type { LabelStock } from '../../templates/stock'
 import type { UsFoodLabelData } from '../../templates/usFood'
@@ -73,65 +65,4 @@ export function dualColumnDutyFor(data: UsFoodLabelData, stock: LabelStock): Dua
       : { variedWeight: panel.dualColumnExemption.variedWeight }),
     meetsSmallPackageRequirements,
   })
-}
-
-/** The facts each provision turns on, named so a user knows what to fill in. */
-const FACTS_ASKED: Record<MandatoryDualColumnBasis, string> = {
-  'per-container':
-    'its reference amount, its package content, and whether it is packaged and sold individually',
-  'per-unit': 'its reference amount and its unit content',
-}
-
-const paragraphOf = (reference: string) => reference.replace('21 CFR ', '')
-
-/**
- * Why 101.9(e)(6) does not reach the second column a label declared.
- *
- * Reads as a clause following "…(b)(12)(i) and (b)(2)(i)(D) require, and ", and
- * both rules that fall back to a general citation use it, so the two cannot come
- * to describe the same label differently.
- *
- * **"Voluntarily" is the claim to be careful with.** It says the user chose to
- * add this column, which is only true where the label stated every fact the
- * question turns on and they came back no. Two reviews of this change found it
- * asserted where nothing of the sort was known — first on a label with no
- * reference amount, then on one that stated the amount but not the package
- * content, which is every label the editor builds.
- */
-export function whyNotReached(basis: DualColumnBasis, duty: DualColumnDuty): string {
-  if (basis !== 'per-container' && basis !== 'per-unit') {
-    return 'this column counts neither a container nor a unit'
-  }
-  const other = basis === 'per-container' ? 'per-unit' : 'per-container'
-
-  // A label can owe one column and declare the other. Calling that voluntary is
-  // plainly wrong — something is required here, just not the column it declares —
-  // and it contradicts the mandate rule's own pass on the same label.
-  if (duty.standing[other] === 'required') {
-    return (
-      `this label owes a ${other} column under ${paragraphOf(DUAL_COLUMN_BASIS_REFERENCE[other])}, ` +
-      'which is not the column it declares'
-    )
-  }
-
-  switch (duty.standing[basis]) {
-    case 'undetermined':
-      return (
-        `the label has not stated everything ${paragraphOf(DUAL_COLUMN_BASIS_REFERENCE[basis])} ` +
-        `turns on — ${FACTS_ASKED[basis]} — so whether it requires this column cannot be told`
-      )
-    case 'excused':
-      return duty.exemption === undefined
-        ? `${paragraphOf(DUAL_COLUMN_BASIS_REFERENCE[basis])} does not require this column`
-        : `${paragraphOf(duty.exemption)} excuses this package from the column it would ` +
-            'otherwise require'
-    case 'required':
-      // Unreachable: a required column is one (e)(6) reaches, so this is never asked.
-      return `${paragraphOf(DUAL_COLUMN_BASIS_REFERENCE[basis])} requires this column`
-    default:
-      return (
-        `${paragraphOf(DUAL_COLUMN_BASIS_REFERENCE[basis])} does not require this column, so it ` +
-        'is carried voluntarily'
-      )
-  }
 }
