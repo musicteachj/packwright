@@ -130,6 +130,53 @@ export interface Rule<TContext extends RuleContext = RuleContext> {
    * false reassurance this project exists to avoid.
    */
   check(context: TContext): Finding[]
+  /**
+   * Why this rule could not reach an answer on this label, where that is worth
+   * telling somebody.
+   *
+   * **An empty `check` is silence, and silence reads as approval.** That is the
+   * gap this closes. A rule short of a fact returns `[]`, which is
+   * indistinguishable downstream from a rule that had nothing to say — so a user
+   * whose label never stated its reference amount saw a clean report and had no
+   * way to learn that the mandatory-second-column question was never put.
+   *
+   * **Optional, and deliberately not implemented by most rules.** `[]` has four
+   * meanings and only one of them is worth surfacing: you did not configure a
+   * Digital Link (not a gap, a feature you did not use); the engine drew no
+   * element (already reported, as a layout omission); this project has no
+   * verified figure (a permanent limit, and it lives in
+   * `docs/WHAT-IS-NOT-CHECKED.md` rather than in a rail a user cannot act on);
+   * and **the label has not stated something you could state**, which is the one
+   * this is for. A rule that implements this for any other reason adds noise to
+   * the one list that exists to say a check did not happen.
+   *
+   * Must return `undefined` whenever `check` returned anything at all. A rule
+   * cannot both judge and stand down, and `rules.test.ts` asserts it across every
+   * fixture.
+   */
+  declines?(context: TContext): Decline | undefined
+}
+
+/** What a rule says when it could not reach an answer. */
+export interface Decline {
+  /**
+   * One sentence, in the user's terms, naming what the label has not stated —
+   * and phrased so that doing what it says makes the check run.
+   */
+  reason: string
+  /** The provision left unjudged, where it is not the rule's own primary one. */
+  citation?: Citation
+}
+
+/** A check that did not run, as a reader sees it. */
+export interface DeclinedCheck {
+  /** The rule that stood down, so the catalogue can be cross-referenced. */
+  ruleId: string
+  /** What that rule would have required, for somebody deciding whether to care. */
+  title: string
+  /** The provision that went unjudged. */
+  citation: Citation
+  reason: string
 }
 
 export type Gs1RetailRule = Rule<Gs1RetailContext>

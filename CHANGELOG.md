@@ -10,6 +10,24 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **A check that could not run says so, instead of saying nothing.** An empty `check` meant four different
+  things and only one of them was worth telling somebody, so all four were silent — and silence beside a clean
+  report reads as approval. `Rule.declines` is an opt-in second answer: where a rule stands down because the
+  label has not stated a fact somebody could state, it now says which fact, under which provision, and what to
+  do about it. `declinedChecks` is a sibling of `runRules` rather than a widening of it, so no existing caller
+  changed. **Three rules opt in and most should not**: a Digital Link nobody configured is a feature not used,
+  an element the engine could not draw is already reported as a layout omission, and a symbology with no
+  verified quiet-zone figure is a permanent limit of this tool that belongs in `docs/WHAT-IS-NOT-CHECKED.md`
+  rather than in a rail where it would send a user hunting for a field that does not exist. The rail shows them
+  in **their own block**, apart from "cannot be checked" — that one names ink the engine could not lay down,
+  this names questions nobody answered, and the limits document tells readers they are different things.
+  `us-food/dual-column-required` was the rule that made this worth building: it is the only one that reports a
+  label for omitting a required display, and until this release it was silent on any label that had not stated
+  a reference amount, which was all of them. **The audit path is where it bites hardest** — a photograph yields
+  H-codes and pictograms and never a hazard classification, so both rules that read one stand down on almost
+  every reading. Two invariants are asserted across every fixture: a rule cannot both judge and stand down, and
+  every decline carries a reason, a title and a citation.
+
 - **The rule that reports a missing second column can finally fire in the browser.** `us-food/dual-column-required`
   is the one rule in the set that reports a label for *omitting* a required display, and it was silent on every
   label built in the editor — not because those labels were compliant, but because the four facts it reads had

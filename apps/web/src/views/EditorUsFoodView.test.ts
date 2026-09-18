@@ -630,6 +630,35 @@ describe('the Nutrition Facts displays, from the editor', () => {
       expect(store.findings.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_MET')
     })
 
+    it('says in the rail that the check did not run, rather than nothing at all', async () => {
+      // Silence beside a clean report reads as approval. The rail now names the
+      // question nobody answered, and names it separately from the elements the
+      // engine could not draw — those are the engine's problem and this is the
+      // label's.
+      const { store, wrapper } = await mountFood()
+      const declined = store.declined.find((one) => one.ruleId === 'us-food/dual-column-required')
+      expect(declined, 'the seeded label states no reference amount').toBeDefined()
+      expect(declined!.reason).toContain('reference amount')
+
+      const rail = wrapper.text()
+      expect(rail).toContain('Checks that did not run')
+      expect(rail).toContain('21 CFR 101.9(b)(12)(i)')
+      // And the green banner does not sit above it saying the opposite. The aria
+      // summary had been updated for this case and the visible text had not,
+      // which is the worse half to miss. Found by review.
+      expect(rail, 'nothing announces a clean label over an unrun check').not.toContain(
+        'Every check passed',
+      )
+    })
+
+    it('stops saying so once the label answers the question', async () => {
+      const { store, wrapper } = await mountFood()
+      await stateDutyFacts(wrapper, { racc: '40', packageContent: '100' })
+      expect(store.declined.map((one) => one.ruleId)).not.toContain('us-food/dual-column-required')
+      // And the rule that was standing down now has something to say.
+      expect(store.failures.map((f) => f.code)).toContain('FDA_DUAL_COLUMN_MISSING')
+    })
+
     it('reports the column a 250 percent package owes once they are stated', async () => {
       const { store, wrapper } = await mountFood()
       // 100 g against a 40 g reference amount, sold individually — squarely inside

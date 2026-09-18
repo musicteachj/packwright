@@ -713,6 +713,7 @@ const canRead = computed(() => camera.photo.value !== null && regime.value !== '
               :failures="report.failures"
               :passes="report.passes"
               :uncertifiable="report.uncertifiable"
+              :declined="report.declined"
               :selected-element-id="null"
               heading-id="audit-findings-heading"
               title="What the rules say about it"

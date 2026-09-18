@@ -50,6 +50,7 @@ import { usFoodNetQuantityTypeSizeRule } from './usFood/netQuantityTypeSize'
 import { usFoodResponsibleFirmRule } from './usFood/responsibleFirm'
 import { usFoodStatementOfIdentityRule } from './usFood/statementOfIdentity'
 import type {
+  DeclinedCheck,
   GhsChemicalRule,
   Gs1RetailRule,
   LabelType,
@@ -209,21 +210,54 @@ export function runRules(context: RuleContext): Finding[] {
   return withholdUncertifiablePasses(check(context), context.layout)
 }
 
-function check(context: RuleContext): Finding[] {
+/**
+ * The checks that did not run, and what each would have needed.
+ *
+ * A sibling of `runRules` rather than a widening of it, because every caller of
+ * that function wants findings and only two want this — and a return type that
+ * grew a second field would have every test in the repository unpacking a tuple
+ * to ask the same question it asks today.
+ *
+ * Only rules that implement `declines` appear, which is a small and deliberate
+ * set: see the note on `Rule.declines` for why most should not.
+ */
+export function declinedChecks(context: RuleContext): DeclinedCheck[] {
+  return rulesFor(context).flatMap((rule) => {
+    const declined = rule.declines?.(context as never)
+    if (declined === undefined) return []
+    return [
+      {
+        ruleId: rule.id,
+        title: rule.title,
+        citation: declined.citation ?? rule.citation,
+        reason: declined.reason,
+      },
+    ]
+  })
+}
+
+/**
+ * The rule set for a label type, as a list rather than a dispatch.
+ *
+ * Shared by `check` and `declinedChecks` so the two cannot come to disagree
+ * about which rules a label is subject to — a decline reported by a rule that
+ * never ran would be worse than no decline at all.
+ */
+function rulesFor(context: RuleContext): readonly Rule<never>[] {
   switch (context.labelType) {
     case 'gs1-retail':
-      return GS1_RETAIL_RULES.flatMap((rule) => rule.check(context))
+      return GS1_RETAIL_RULES as readonly Rule<never>[]
     case 'ghs-chemical':
-      return GHS_RULES.flatMap((rule) => rule.check(context))
+      return GHS_RULES as readonly Rule<never>[]
     case 'us-food':
-      return US_FOOD_RULES.flatMap((rule) => rule.check(context))
+      return US_FOOD_RULES as readonly Rule<never>[]
     default: {
-      // Every member of `LABEL_TYPES` now has a context and a case. This is what
-      // keeps that true: add a fourth label type and the assignment stops
-      // compiling, rather than the switch falling off the end and returning
-      // `undefined` to callers that all treat the result as an array.
       const unreachable: never = context
       return unreachable
     }
   }
+}
+
+function check(context: RuleContext): Finding[] {
+  return rulesFor(context).flatMap((rule) => rule.check(context as never))
 }

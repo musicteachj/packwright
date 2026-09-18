@@ -6,7 +6,17 @@ import type { UpcALabelData } from '../templates/upcA'
 import type { Finding } from '../types/index'
 import { CONFORMANT_FIXTURE, GS1_RETAIL_FIXTURES } from './fixtures/gs1Retail'
 import { layOutGhsLabel } from '../layout/ghsEngine'
-import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES, listRules, runRules } from './registry'
+import { layOutUsFoodLabel } from '../layout/usFoodEngine'
+import { GHS_FIXTURES } from './fixtures/ghs'
+import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES } from './fixtures/usFood'
+import {
+  GHS_RULES,
+  GS1_RETAIL_RULES,
+  US_FOOD_RULES,
+  declinedChecks,
+  listRules,
+  runRules,
+} from './registry'
 import { compareSeverity } from './types'
 
 function findingsFor(data: UpcALabelData, stock: LabelStock): Finding[] {
@@ -464,5 +474,103 @@ describe('the registry runs the rules for the document’s own label type', () =
     expect(listRules()).toHaveLength(
       GS1_RETAIL_RULES.length + GHS_RULES.length + US_FOOD_RULES.length,
     )
+  })
+})
+
+describe('a rule that stands down says so, and only then', () => {
+  // `declines` exists because an empty `check` is silence, and silence beside a
+  // clean report reads as approval. Two invariants keep it honest: a rule cannot
+  // both judge and stand down, and a decline must name something worth telling
+  // somebody. Asserted over every fixture and every rule rather than per rule, so
+  // a rule that gains a `declines` later is covered the day it does.
+  const usFood = US_FOOD_FIXTURES.map((fixture) => ({
+    name: fixture.name,
+    rules: US_FOOD_RULES,
+    context: {
+      labelType: 'us-food' as const,
+      data: fixture.data,
+      stock: fixture.stock,
+      layout: layOutUsFoodLabel({ data: fixture.data, stock: fixture.stock }),
+    },
+  }))
+  const ghs = GHS_FIXTURES.map((fixture) => ({
+    name: fixture.name,
+    rules: GHS_RULES,
+    context: {
+      labelType: 'ghs-chemical' as const,
+      data: fixture.data,
+      stock: fixture.stock,
+      layout: layOutGhsLabel({ data: fixture.data, stock: fixture.stock }),
+    },
+  }))
+  const everyCase = [...usFood, ...ghs]
+
+  it.each(everyCase.map((one) => [one.name, one] as const))(
+    'never both judges and stands down: %s',
+    (_name, { rules, context }) => {
+      for (const rule of rules) {
+        const judged = rule.check(context as never).length > 0
+        const stoodDown = rule.declines?.(context as never) !== undefined
+        expect(judged && stoodDown, `${rule.id} did both`).toBe(false)
+      }
+    },
+  )
+
+  it('gives every stood-down check a reason, a title and a citation', () => {
+    for (const { name, context } of everyCase) {
+      for (const declined of declinedChecks(context)) {
+        expect(declined.reason.length, `${declined.ruleId} on ${name}`).toBeGreaterThan(20)
+        expect(declined.citation.reference, declined.ruleId).toBeTruthy()
+        expect(declined.title, declined.ruleId).toBeTruthy()
+      }
+    }
+  })
+
+  it('says nothing where it judged the unit and could not judge the package', () => {
+    // The edge the invariant above exists for, and no fixture reaches it: a unit
+    // content in the band gives (b)(2)(i)(D) its answer and `check` reports a
+    // missing column, while (b)(12)(i) stays undetermined for want of a package
+    // content. The rule judged, so it must not also stand down — a report saying
+    // both "you owe a column" and "this was not checked" is worse than either.
+    const base = US_FOOD_CONFORMANT
+    const data = {
+      ...base.data,
+      nutritionFacts: {
+        ...base.data.nutritionFacts!,
+        availableSurfaceSqInches: 60,
+        referenceAmount: { amount: 40, unit: 'g' as const, category: 'Breakfast cereals' },
+        unitContent: 100,
+      },
+    }
+    const context = {
+      labelType: 'us-food' as const,
+      data,
+      stock: base.stock,
+      layout: layOutUsFoodLabel({ data, stock: base.stock }),
+    }
+
+    expect(
+      runRules(context).map((finding) => finding.code),
+      'premise: (b)(2)(i)(D) was answered and reported',
+    ).toContain('FDA_DUAL_COLUMN_MISSING')
+    expect(declinedChecks(context).map((one) => one.ruleId)).not.toContain(
+      'us-food/dual-column-required',
+    )
+  })
+
+  it('stands the dual-column check down until the label states what it turns on', () => {
+    const conformant = US_FOOD_CONFORMANT
+    const context = {
+      labelType: 'us-food' as const,
+      data: conformant.data,
+      stock: conformant.stock,
+      layout: layOutUsFoodLabel({ data: conformant.data, stock: conformant.stock }),
+    }
+    const declined = declinedChecks(context).find(
+      (one) => one.ruleId === 'us-food/dual-column-required',
+    )
+    expect(declined, 'the conformant label states no reference amount').toBeDefined()
+    expect(declined!.reason).toContain('reference amount')
+    expect(declined!.citation.reference).toBe('21 CFR 101.9(b)(12)(i)')
   })
 })
