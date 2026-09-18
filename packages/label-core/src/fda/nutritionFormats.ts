@@ -431,10 +431,16 @@ export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
   // (b)(12)(i). Found by review when the editor first gained these inputs.
   const stated = (value: number | undefined) =>
     value !== undefined && Number.isFinite(value) && value > 0
+  // "Not sold individually" answers (b)(12)(i) on its own: the provision reaches
+  // only products "packaged and sold individually", so a label that says no has
+  // said everything the question needs, whatever else it left blank. Demanding a
+  // package content on top told such a user they had not stated something they
+  // plainly had. Found by review.
   const perContainerAsked =
-    stated(referenceAmount) &&
-    stated(input.packageContent) &&
-    input.packagedAndSoldIndividually !== undefined
+    input.packagedAndSoldIndividually === false ||
+    (stated(referenceAmount) &&
+      stated(input.packageContent) &&
+      input.packagedAndSoldIndividually !== undefined)
   const perUnitAsked = stated(referenceAmount) && stated(input.unitContent)
 
   const basis: MandatoryDualColumnBasis | undefined =

@@ -881,6 +881,7 @@ const asMeasurement = (next: unknown): number | undefined =>
  * default when the record was created. Found by review.
  */
 const pendingReferenceUnit = ref<'g' | 'mL'>('g')
+const pendingReferenceCategory = ref('')
 
 const referenceAmount = computed({
   get: () => data.nutritionFacts?.referenceAmount?.amount,
@@ -889,6 +890,15 @@ const referenceAmount = computed({
     if (facts === undefined) return
     const amount = asMeasurement(next)
     if (amount === undefined) {
+      // Hold what the record carried before letting it go. The three parts travel
+      // together, so clearing the figure has to remove the record — but a user
+      // correcting a typo in a saved label was having their unit and category
+      // quietly reset to the defaults on the way back in. Found by review.
+      const going = facts.referenceAmount
+      if (going !== undefined) {
+        pendingReferenceUnit.value = going.unit
+        pendingReferenceCategory.value = going.category
+      }
       delete facts.referenceAmount
       return
     }
@@ -896,7 +906,7 @@ const referenceAmount = computed({
     // rather than leaving a half-built one the type says is complete.
     facts.referenceAmount = {
       unit: pendingReferenceUnit.value,
-      category: '',
+      category: pendingReferenceCategory.value,
       ...facts.referenceAmount,
       amount,
     }
@@ -913,8 +923,9 @@ const referenceAmountUnit = computed({
 })
 
 const referenceAmountCategory = computed({
-  get: () => data.nutritionFacts?.referenceAmount?.category ?? '',
+  get: () => data.nutritionFacts?.referenceAmount?.category ?? pendingReferenceCategory.value,
   set: (next: string) => {
+    pendingReferenceCategory.value = next
     const record = data.nutritionFacts?.referenceAmount
     if (record !== undefined) record.category = next
   },
@@ -964,6 +975,34 @@ const packagedAndSoldIndividually = computed({
     else facts.packagedAndSoldIndividually = next === 'yes'
   },
 })
+
+/**
+ * The two (b)(12)(i) exemptions that are facts about a product.
+ *
+ * Without these the rule is a false positive nobody can argue with: a raw
+ * commodity or a varied-weight package sitting in the 200–300 percent band gets
+ * reported for omitting a column the regulation excuses it from, and the label
+ * has no way to say so. (A) and most of (C) are computed rather than declared —
+ * see the type — so these two are the whole of what a user must be able to state.
+ */
+const dualColumnExemption = (key: 'rawCommodityVoluntary' | 'variedWeight') =>
+  computed({
+    get: () => data.nutritionFacts?.dualColumnExemption?.[key] === true,
+    set: (on: boolean) => {
+      const facts = data.nutritionFacts
+      if (facts === undefined) return
+      if (on) facts.dualColumnExemption = { ...facts.dualColumnExemption, [key]: true }
+      else if (facts.dualColumnExemption !== undefined) {
+        delete facts.dualColumnExemption[key]
+        // An empty record claims nothing; leaving one behind would read as a
+        // declaration that both exemptions were considered and refused.
+        if (Object.keys(facts.dualColumnExemption).length === 0) delete facts.dualColumnExemption
+      }
+    },
+  })
+
+const rawCommodityVoluntary = dualColumnExemption('rawCommodityVoluntary')
+const variedWeight = dualColumnExemption('variedWeight')
 
 const hasSecondColumn = computed({
   get: () => data.nutritionFacts?.columns?.mode === 'dual',
@@ -1842,7 +1881,7 @@ const packaging = computed({
 
       <div class="flex gap-2">
         <label :class="LABEL" class="flex-1" for="field-food-nf-package-content">
-          The whole package holds
+          The whole package holds ({{ referenceAmountUnit }})
           <input
             id="field-food-nf-package-content"
             v-model.number="packageContent"
@@ -1853,7 +1892,7 @@ const packaging = computed({
           />
         </label>
         <label :class="LABEL" class="flex-1" for="field-food-nf-unit-content">
-          One individual unit holds
+          One individual unit holds ({{ referenceAmountUnit }})
           <input
             id="field-food-nf-unit-content"
             v-model.number="unitContent"
@@ -1876,6 +1915,22 @@ const packaging = computed({
             {{ SOLD_INDIVIDUALLY_NAMES[value] }}
           </option>
         </select>
+      </label>
+
+      <label
+        class="text-chrome-300 flex items-center gap-2 text-xs"
+        for="field-food-nf-raw-commodity"
+      >
+        <input id="field-food-nf-raw-commodity" v-model="rawCommodityVoluntary" type="checkbox" />
+        A raw fruit, vegetable or seafood labelled voluntarily — (b)(12)(i)(B)
+      </label>
+
+      <label
+        class="text-chrome-300 flex items-center gap-2 text-xs"
+        for="field-food-nf-varied-weight"
+      >
+        <input id="field-food-nf-varied-weight" v-model="variedWeight" type="checkbox" />
+        A varied-weight product under (b)(8)(iii) — (b)(12)(i)(C)
       </label>
 
       <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-dual">

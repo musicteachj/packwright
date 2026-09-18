@@ -412,6 +412,14 @@ cannot be persisted, and the geometry fields are guarded by `requiredNumber` wri
 that a user can type one, see the preview change, and learn only on save. Worth one pass over the rail's
 numeric inputs with a shared guard rather than four more copies of the same three lines.
 
+**The rejected figure also stays on screen**, which is the sharper half and was raised by the review of PR #46.
+Where the four dual-column inputs refuse a zero, the box goes on showing the `0` the user typed while the
+document holds nothing at all — so the rail and the document disagree, and the rail is the one the user
+believes. The dual-column message will say the figure was never stated, which reads as a contradiction rather
+than as an explanation. Fixing it means deciding what a numeric input does with a value it will not store:
+clamp it, refuse the keystroke, or show it as rejected. That is a question about every numeric field in the
+rail, which is why it sits with the entry above rather than being patched into four of them.
+
 **~~The editor has no inputs for the three facts a dual-column duty turns on.~~ Fixed.** Found by
 `/code-review high` on PR #43. `UsFoodFormRail.vue` collected no reference amount, package content, unit
 content or "packaged and sold individually", though the type and the API schema carried all four — so every

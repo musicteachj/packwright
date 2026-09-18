@@ -686,6 +686,59 @@ describe('the Nutrition Facts displays, from the editor', () => {
       expect(store.failures.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_MISSING')
     })
 
+    it('keeps the unit and category through a retyped figure', async () => {
+      // The three parts travel together, so correcting a typo has to remove and
+      // rebuild the record — and was rebuilding it from the defaults, silently
+      // resetting a saved label's millilitres to grams and losing its category.
+      // Found by review.
+      const { store, wrapper } = await mountFood()
+      // Seeded on the document rather than typed, which is the case that broke:
+      // a saved label arrives with a record the unit and category controls have
+      // never been touched on, so there is nothing held to rebuild it from.
+      store.foodData.nutritionFacts!.referenceAmount = {
+        amount: 240,
+        unit: 'mL',
+        category: 'Beverages',
+      }
+      await nextTick()
+
+      await wrapper.find('#field-food-nf-racc').setValue('')
+      await nextTick()
+      await wrapper.find('#field-food-nf-racc').setValue('360')
+      await nextTick()
+
+      expect(store.foodData.nutritionFacts!.referenceAmount).toEqual({
+        amount: 360,
+        unit: 'mL',
+        category: 'Beverages',
+      })
+    })
+
+    it('lets a label claim the exemptions (b)(12)(i) grants it', async () => {
+      // Without these the rule is a false positive nobody can argue with: a raw
+      // commodity in the band is reported for omitting a column the regulation
+      // excuses it from, and the label has no way to say so. Found by review.
+      const { store, wrapper } = await mountFood()
+      await stateDutyFacts(wrapper, { racc: '40', packageContent: '100' })
+      expect(store.failures.map((f) => f.code)).toContain('FDA_DUAL_COLUMN_MISSING')
+
+      await wrapper.find('#field-food-nf-raw-commodity').setValue(true)
+      await nextTick()
+      expect(store.foodData.nutritionFacts!.dualColumnExemption).toEqual({
+        rawCommodityVoluntary: true,
+      })
+      const codes = store.findings.map((f) => f.code)
+      expect(codes).not.toContain('FDA_DUAL_COLUMN_MISSING')
+      expect(codes, 'excused, and said so').toContain('FDA_DUAL_COLUMN_EXEMPT')
+
+      // Unticking claims nothing rather than leaving an empty record behind, which
+      // would read as both exemptions considered and refused.
+      await wrapper.find('#field-food-nf-raw-commodity').setValue(false)
+      await nextTick()
+      expect(store.foodData.nutritionFacts!.dualColumnExemption).toBeUndefined()
+      expect(store.failures.map((f) => f.code)).toContain('FDA_DUAL_COLUMN_MISSING')
+    })
+
     it('forgets the whole reference amount when its figure is cleared', async () => {
       // A blank is not a zero. The three sub-fields travel together, so clearing the
       // amount removes the record rather than leaving a category claiming a row of

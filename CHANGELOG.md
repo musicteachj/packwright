@@ -26,7 +26,14 @@ into a version only when there is a reason to.
   refused rather than stored**, in the rail and again in the engine: `inBand` cannot divide by it and already
   declined, but the question still counted as asked, so a label declaring a reference amount of 0 read as
   having satisfied (b)(12)(i) — an answer nobody gave. Found by review, along with a unit chosen before the
-  figure was typed being silently replaced by the default.
+  figure was typed being silently replaced by the default. A second review round found three more, two of
+  them material: a saved label's unit and category were reset to the defaults when its figure was retyped,
+  because the record has to be removed and rebuilt and nothing held what it carried; and **the two (b)(12)(i)
+  exemptions had no inputs either**, so a raw commodity or a varied-weight package sitting in the band was
+  reported for omitting a column the regulation excuses it from, with no way for the label to say so — a false
+  positive nobody could argue with, which is the other side of the gap this change set out to close. The rail
+  takes both now, and a stated "not sold individually" is treated as the answer it is rather than as a question
+  still unasked.
 
 - **A user reading a clean report can now find out what it did not cover.** `docs/WHAT-IS-NOT-CHECKED.md` is
   the first reader-facing document in this repository, and it exists because the alternative is worse: a report
