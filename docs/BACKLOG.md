@@ -34,7 +34,10 @@ scope. These belong in front of a user rather than in a backlog: the Nutrition F
 document can make wrong; 101.3(b) and (d); the single-typeface assumption behind every type-size measurement;
 nutrition claims, whose condition reaches "labeling or advertising" beyond any label; the allergen advisory's
 deliberate over-strictness; a hazard classification derived from statement codes; the calorie-free footnote
-variant; and where the "% Daily Value*" heading sits on a dual-column panel.
+variant; and where the "% Daily Value*" heading sits on a dual-column panel. **All eight are now in front of a
+user**, in `docs/WHAT-IS-NOT-CHECKED.md`, with the quiet-zone fallback the README already asserted — nine in
+all. They stay listed here because this is where the reasoning lives; the document says what it means for
+somebody holding a report.
 
 **Notes, history and chores.** The rest: decision records, reviewer claims since disproved, entries struck as
 they were fixed, and editor, API, scanner, security and test-hygiene work with no compliance meaning. One

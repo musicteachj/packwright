@@ -36,7 +36,9 @@ mechanically by an ESLint rule and an empty `types: []` in its tsconfig, not by 
 **Nothing unverifiable ships.** Quiet zones for several symbologies are deliberately *not* encoded — they fall
 back to the documented general 7X minimum rather than carrying figures that couldn't be confirmed against the
 specification. A confident pass on a label that won't scan is worse than no rule at all. Golden test vectors
-are worked by hand from published algorithms, never produced by running the implementation.
+are worked by hand from published algorithms, never produced by running the implementation. Every such decision
+is written down in [what is not checked](docs/WHAT-IS-NOT-CHECKED.md), because a clean report is only worth
+something if you know what it covered.
 
 ## The AI boundary
 
@@ -109,6 +111,7 @@ database at all — so a clean checkout with no Docker runs the whole suite.
 
 | File | Purpose |
 |---|---|
+| [`docs/WHAT-IS-NOT-CHECKED.md`](docs/WHAT-IS-NOT-CHECKED.md) | For anyone relying on a report: the requirements this tool does not check, and why |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Full design — architecture, rule sets, design system, all 8 phases |
 | [`CLAUDE.md`](CLAUDE.md) | Project rules and correctness invariants |
 | [`CHANGELOG.md`](CHANGELOG.md) | Development log |

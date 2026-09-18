@@ -10,6 +10,34 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **A user reading a clean report can now find out what it did not cover.** `docs/WHAT-IS-NOT-CHECKED.md` is
+  the first reader-facing document in this repository, and it exists because the alternative is worse: a report
+  with nothing in it and no way to tell whether the label is sound or whether nobody looked. Ten limits,
+  each checked against the code as it was written and then checked again by an agent reading the document
+  against the source — which found seven claims that did not hold, three of them material. The document had
+  promised that a check which cannot answer says so in the report; it does not, because a rule short of data
+  produces nothing at all, and the "cannot be checked" block lists elements the engine could not *draw*, which
+  is a different thing. It had warned about weak passes on four unverified barcode symbologies, where no pass is
+  issued for them and none can be drawn anyway — while omitting the barcode limit that does bite, that
+  overprinting is reported and not judged. And it had said rules only judge ink this tool laid down, which is
+  untrue of the five passes that are questions about the document. §101.12(b)'s reference amounts were missing
+  altogether, and they matter: a wrong one silently invalidates the serving size and the mandatory-second-column
+  conclusions resting on it. The largest is that nutrition claims are not modelled — 21 CFR 101.13 and 101.14 have no representation
+  here, so every 101.9(j) exemption this tool clears leaves its "bears no nutrition claims ... on the label or
+  in labeling or advertising" condition unevaluated, and the (c)(2)(i), (c)(3), (c)(6)(ii) and (c)(6)(iii) relaxations
+  go unapplied. That condition reaches past the label to material this tool will never see, which is why it is
+  scope rather than backlog. The rest: the Nutrition Facts footnote, which is looked up rather than supplied and
+  so cannot be got wrong, along with the calorie-free variant that claims-modelling would be needed to reach;
+  101.3(b) and (d), three clauses of which state nothing measurable or are satisfied by construction; the
+  allergen advisory's deliberate over-strictness, which is a false *warning* by design and never a false
+  clearance; hazard classification, which the GHS pictogram checks need and no label carries; quiet zones, which
+  are verified for six symbologies and fall back to the general 7X minimum for four; and the single-typeface
+  assumption behind type-size measurement, exact today and recorded because it will not always be. The
+  "% Daily Value*" heading on a two-column panel is listed as an open question rather than a limitation — FDA's
+  sample displays are illustrations, and this project does not let an illustration create a requirement, so the
+  honest statement is that nobody has read the source yet. Linked from the README's documentation table and
+  from the "Nothing unverifiable ships" paragraph that makes the same argument.
+
 - **The audit route costs something to call, and now says so.** `POST /api/audit/ghs` reaches a paid vision API
   on a key the server holds, and nothing in its request path asked anything of the caller — no authentication,
   no quota, no ceiling of any kind beyond the 8 MB one on the photograph itself. The cost of that is not a slow
