@@ -400,6 +400,17 @@ Deciding it needs the modal verbs read across (b) and (e) together, and the answ
 than either reporting or dropping it. Out of scope for the citation fix, which was about which paragraph is
 named rather than whether to speak at all. The same question reaches `us-food/protein-percent`.
 
+**The editor has no inputs for the three facts a dual-column duty turns on.** Found by `/code-review high` on
+PR #43. `UsFoodFormRail.vue` collects no reference amount, no package content, no unit content and no
+"packaged and sold individually", though the schema and the API carry all four — so every label built in the
+browser leaves 101.9(b)(12)(i) and (b)(2)(i)(D) unanswerable. That is now visible rather than silent: a
+dual-column finding on such a label cites 101.9(e) and says the label has not stated what the provision turns
+on, naming the three fields. Naming fields a user cannot reach is unhelpful, but the alternatives are worse —
+asserting the column is voluntary is a claim about a choice they may not have made, and saying nothing hides a
+check that did not run. The fix is inputs in the rail, not different wording, and it brings `us-food/dual-column-required`
+to life in the editor for the first time: today no browser-built label can ever be reported for omitting a
+column the regulation requires. Sits with the editor's other missing fields rather than with the rules.
+
 **`us-food/dual-column-required` clears a label that drew a column of the wrong basis.** Found by the review
 of the (e)(6) citation fix. The rule asks whether a second column is *present*, never what it counts, so a
 package whose unit sits at 250 percent of the reference amount — owing a per-unit column under (b)(2)(i)(D) —

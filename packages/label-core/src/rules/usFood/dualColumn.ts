@@ -217,11 +217,19 @@ export const usFoodDualColumnRule: UsFoodRule = {
 
     return [
       // (b)(12)(i): the package "must provide an additional column" — printed, so the artwork.
+      //
+      // **It claims presence and nothing else.** This rule asks whether a second column was
+      // drawn; what that column has to carry is (e)'s question and `us-food/dual-column-form`
+      // answers it. The message used to say the panel "carries the second column (b)(12)(i)
+      // requires", which is a claim about content — and it now reaches documents whose second
+      // column declares one nutrient of fourteen, where the form rule reports it incomplete on
+      // the same label. A pass has to say only what its own rule measured.
       passedOnArtwork(
         usFoodDualColumnRule,
         FDA_DUAL_COLUMN_MET,
-        `This package holds ${percent} percent of its reference amount and carries the second ` +
-          `column ${reference} requires.`,
+        `This package holds ${percent} percent of its reference amount, which ${reference} ` +
+          'requires a second column for, and the panel prints one. Whether that column carries ' +
+          'everything the paragraph asks of it is checked separately.',
         US_FOOD_ELEMENTS.nutritionPanel,
         { ...CITATION, reference },
       ),

@@ -383,13 +383,6 @@ function inBand(content: number, referenceAmount: number): number | undefined {
 }
 
 /**
- * What second column, if any, this label is obliged to carry.
- *
- * Returns an empty duty where the reference amount is absent: without it the
- * question is unanswerable, and guessing would mean reporting a label for
- * omitting something on facts it never stated.
- */
-/**
  * Where a label stands against one provision, given whether it hit the band and
  * whether the label stated everything that question turns on.
  */
@@ -402,6 +395,14 @@ function standingOf(
   return factsStated ? 'not-required' : 'undetermined'
 }
 
+/**
+ * What second column, if any, this label is obliged to carry.
+ *
+ * Every answer is per provision. Where the label has not stated something the
+ * question turns on, the standing is `undetermined` rather than absent: guessing
+ * would mean either reporting a label for omitting something on facts it never
+ * stated, or telling its author they chose a column they may not have.
+ */
 export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
   const referenceAmount = input.referenceAmount?.amount
 

@@ -2227,6 +2227,30 @@ describe('a second column may state its own percentages', () => {
   })
 })
 
+// No rule cross-checks a declared package content against the servings the same panel
+// declares, so a fixture can rest on facts its own label denies and nothing notices. One
+// did: a 55 g package on a panel declaring eight servings of 40 g, which is 320 g. A
+// document no manufacturer could print is a poor thing to assert a citation against.
+describe('the fixtures declare packages their own panels add up to', () => {
+  const gramsIn = (servingSize: string) => Number(/\((\d+(?:\.\d+)?)\s*g\)/.exec(servingSize)?.[1])
+
+  it.each(
+    US_FOOD_FIXTURES.filter((f) => f.data.nutritionFacts?.packageContent !== undefined).map(
+      (f) => [f.name, f] as const,
+    ),
+  )('%s', (_name, fixture) => {
+    const panel = fixture.data.nutritionFacts!
+    const serving = gramsIn(panel.servingSize ?? '')
+    expect(Number.isFinite(serving), `premise: a gram figure in "${panel.servingSize}"`).toBe(true)
+    expect(panel.servingsPerContainer, 'premise: servings are declared').toBeDefined()
+    expect(
+      serving * panel.servingsPerContainer!,
+      `${panel.servingsPerContainer} servings of ${serving} g against a ` +
+        `${panel.packageContent} g package`,
+    ).toBeCloseTo(panel.packageContent!, 1)
+  })
+})
+
 describe('a dual-column panel is judged under the paragraph for what its second column counts', () => {
   // Read from the eCFR on 2026-09-17. (e)(2) presents the information "for the form of the
   // product as packaged and for any other form"; (e)(3), for forms, combinations, "different
@@ -2246,7 +2270,7 @@ describe('a dual-column panel is judged under the paragraph for what its second 
         // (b)(2)(i)(D) reads a *unit* content, so a per-unit column is one (e)(6)
         // reaches only where the label states one — without it the column is
         // voluntary and (e)(6)'s predicate is unmet.
-        ...(basis === 'per-unit' ? { unitContent: 55 } : {}),
+        ...(basis === 'per-unit' ? { unitContent: 100 } : {}),
         columns: { ...columns, ...(basis === undefined ? {} : { basis }) },
       },
     }
@@ -2356,7 +2380,7 @@ describe('a dual-column panel is judged under the paragraph for what its second 
         packagedAndSoldIndividually: _individually,
         ...facts
       } = base.nutritionFacts!
-      const data = { ...base, nutritionFacts: { ...facts, unitContent: 55 } }
+      const data = { ...base, nutritionFacts: { ...facts, unitContent: 100 } }
       expect(
         findingsFor(data, US_FOOD_CONFORMANT.stock).map((f) => f.code),
         'premise: the label owes a column',
@@ -2689,7 +2713,7 @@ describe('a food for children 1 through 3, labelled against their Daily Values',
           declaredPercentDv: { ...facts.declaredPercentDv, protein: 38 },
           // The package content is what (b)(12)(i) reads; (b)(2)(i)(D) reads the unit,
           // so a per-unit column is (e)(6)'s only where the label states one.
-          ...(basis === 'per-unit' ? { unitContent: 55 } : {}),
+          ...(basis === 'per-unit' ? { unitContent: 100 } : {}),
           columns: {
             mode: 'dual',
             ...(basis === undefined ? {} : { basis }),
@@ -3072,6 +3096,27 @@ describe('the second column (b)(12)(i) and (b)(2)(i)(D) make mandatory', () => {
 
   it('reaches a package only where it is packaged and sold individually', () => {
     expect(codesFor({ packageContent: 55 })).not.toContain('FDA_DUAL_COLUMN_MISSING')
+  })
+
+  it('claims a second column is printed, not that it carries what the paragraph asks', () => {
+    // One document draws both findings: this rule's pass, because a column is present, and
+    // the form rule's fault, because that column declares one nutrient of fourteen. They are
+    // not in conflict — presence and content are different questions — but the pass has to be
+    // readable beside the fault, and it used to say the panel "carries the second column
+    // (b)(12)(i) requires", which vouches for exactly what the other finding denies.
+    const data = fixture('a second column carrying one figure out of fourteen').data
+    const findings = findingsFor(data, US_FOOD_CONFORMANT.stock)
+    const met = findings.find((f) => f.code === 'FDA_DUAL_COLUMN_MET')
+    expect(met, 'premise: a stated duty and a drawn column').toBeDefined()
+    expect(
+      findings.map((f) => f.code),
+      'premise: and the form rule faults that column',
+    ).toContain('FDA_DUAL_COLUMN_INCOMPLETE')
+
+    expect(met!.message).toContain('the panel prints one')
+    expect(met!.message, 'and vouches for nothing about its content').not.toContain(
+      'carries the second column',
+    )
   })
 
   it('reports the per-unit duty (b)(2)(i)(D) sets on a heavy unit', () => {

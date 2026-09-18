@@ -74,7 +74,14 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
   it where nothing of the sort was known — first on a label with no reference amount, then on one that stated
   the amount but not the package content or whether it is sold individually, which is every label the editor
   builds. (b)(12)(i) turns on three facts, not one, so the standing is computed per provision rather than from
-  a single flag. **No substitute citation was
+  a single flag. **`FDA_DUAL_COLUMN_MET` now claims only what its own rule measured**, which is that a second
+  column is printed — it said the panel "carries the second column (b)(12)(i) requires", a claim about content,
+  and the (e)(6) fix made it reachable on documents whose second column declares one nutrient of fourteen. The
+  mandate rule asks whether a column is present; what it must carry is (e)'s question and the form rule's. The
+  fixtures behind those citations were made to add up while this was being written: a 100 g package is 2.5
+  servings of 40 g and 250 percent of a 40 g reference amount, where the figures had said a 55 g package on a
+  panel declaring eight servings of 40 g. Nothing cross-checked the two, so a test now does. **No substitute
+  citation was
   invented for the voluntary case**: nothing in (e) covers it, its opening reaching only forms, combinations,
   "different units" and RDI groups; the one paragraph that contemplates a voluntary second column is (b)(6),
   and the column (b)(6) permits sits on the other side of the panel and counts a household measure, so it is
