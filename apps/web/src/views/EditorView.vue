@@ -492,6 +492,7 @@ async function exportPdf() {
           :failures="store.failures"
           :passes="store.passes"
           :uncertifiable="store.uncertifiable"
+          :declined="store.declined"
           :selected-element-id="store.selectedElementId"
           @select="selectFromFindings($event)"
         />

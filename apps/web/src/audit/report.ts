@@ -24,7 +24,9 @@ import {
   compareSeverity,
   layOutGhsLabel,
   LayoutError,
+  declinedChecks,
   runRules,
+  type DeclinedCheck,
   type Finding,
   type GhsLabelData,
   type LabelStock,
@@ -49,6 +51,8 @@ export interface AuditReport {
    * run — which is the thing this codebase keeps finding in its own validators.
    */
   readonly uncertifiable: ReadonlyArray<{ elementId: string; reasons: string[] }>
+  /** Checks that stood down for want of a fact the reading never produced. */
+  readonly declined: readonly DeclinedCheck[]
   /** Fields read off the photograph that nobody confirmed. */
   readonly unconfirmed: readonly string[]
 }
@@ -75,7 +79,10 @@ export function auditReport(
     throw error
   }
 
-  const findings = runRules({ labelType: 'ghs-chemical', data, stock, layout })
+  // Built once and used twice, so the findings and the declines cannot come to
+  // describe different labels.
+  const context = { labelType: 'ghs-chemical' as const, data, stock, layout }
+  const findings = runRules(context)
 
   const groups = new Map<Severity, Finding[]>()
   for (const finding of findings) {
@@ -101,6 +108,11 @@ export function auditReport(
     failures: findings.filter((finding) => finding.severity !== 'pass'),
     passes: findings.filter((finding) => finding.severity === 'pass'),
     uncertifiable: [...byElement.entries()].map(([elementId, reasons]) => ({ elementId, reasons })),
+    // The audit path is where this matters most. A photograph yields H-codes and
+    // pictograms, never a hazard classification, so the two rules that read one
+    // stand down on almost every reading — and until now they did it in silence,
+    // beside a report that looked complete.
+    declined: declinedChecks(context),
     unconfirmed: [...read]
       .filter((key) => !confirmed.has(key))
       .map((key) => FIELD_SHAPES[key].label),

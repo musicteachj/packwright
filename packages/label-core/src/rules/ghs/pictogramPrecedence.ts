@@ -29,7 +29,7 @@ import { precedenceSuppressions } from '../../ghs/precedence'
 import type { GhsPictogramCode } from '../../ghs/pictograms'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
-import type { GhsChemicalContext, GhsChemicalRule } from '../types'
+import type { Decline, GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_PICTOGRAM_PRECEDENCE_VIOLATED = 'GHS_PICTOGRAM_PRECEDENCE_VIOLATED'
 export const GHS_PICTOGRAM_PRECEDENCE_OPTIONAL = 'GHS_PICTOGRAM_PRECEDENCE_OPTIONAL'
@@ -58,6 +58,25 @@ export const ghsPictogramPrecedenceRule: GhsChemicalRule = {
     GHS_PICTOGRAM_PRECEDENCE_MET,
   ],
   appliesTo: 'ghs-chemical',
+
+  /**
+   * A label carries H-statements and pictograms, not hazard classes.
+   *
+   * So this rule reads something no label prints and nothing derives: with no
+   * classification it has nothing to compare against and stands down. That was
+   * silence, and on a reading taken from a photograph — which yields H-codes —
+   * it is the normal case rather than the exception.
+   */
+  declines({ data }: GhsChemicalContext): Decline | undefined {
+    if ((data.hazards ?? []).length > 0) return undefined
+    return {
+      citation: data.regime === 'us-osha' ? US : EU,
+      reason:
+        'This label declares no hazard classification, so nothing here can tell you ' +
+        'whether the precedence rules for pictograms have been applied. A classification cannot be worked out from the H-codes a label ' +
+        'prints — classify the substance and this check will run.',
+    }
+  },
 
   check({ data, layout }: GhsChemicalContext): Finding[] {
     const hazards = data.hazards ?? []

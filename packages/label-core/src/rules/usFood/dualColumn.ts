@@ -42,6 +42,7 @@ import type { MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
 import { dualColumnDutyFor } from './mandatoryColumns'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
+import type { Decline } from '../types'
 import { finding, passedOnArtwork, passedOnDocument, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 
@@ -115,6 +116,38 @@ export const usFoodDualColumnRule: UsFoodRule = {
   ],
   codes: [FDA_DUAL_COLUMN_MISSING, FDA_DUAL_COLUMN_MET, FDA_DUAL_COLUMN_EXEMPT],
   appliesTo: 'us-food',
+
+  /**
+   * The facts this rule cannot proceed without, named so a user can supply them.
+   *
+   * §101.12(b)'s reference amounts are not carried here, so a label that states
+   * none has not been cleared of anything — it has not been asked. That was
+   * silence until now, and silence beside a clean report reads as approval.
+   */
+  declines({ data, stock }: UsFoodContext): Decline | undefined {
+    if (data.nutritionFacts === undefined) return undefined
+    const duty = dualColumnDutyFor(data, stock)
+
+    // A duty of any kind means `check` had something to say — the column is
+    // owed, met or excused — so the rule ran and there is nothing to declare.
+    if (duty.basis !== undefined) return undefined
+
+    // Keyed on the **package** provision alone. (b)(2)(i)(D) reads a unit
+    // content, and a product with no discrete units has none to state, so a
+    // label that answered (b)(12)(i) in full is not left hanging by the
+    // per-unit question — treating it as a decline would nag every bag of
+    // granola about a figure it cannot have.
+    if (duty.standing['per-container'] !== 'undetermined') return undefined
+
+    return {
+      reason:
+        'This label has not stated everything 101.9(b)(12)(i) turns on — a reference amount, ' +
+        'what the whole package holds, and whether it is packaged and sold individually — so ' +
+        'whether a second column of nutrition information is required cannot be told. State ' +
+        'those three and this check will run. (b)(2)(i)(D) asks the same of an individual ' +
+        'unit, where the product has them.',
+    }
+  },
 
   check({ data, layout, stock }: UsFoodContext): Finding[] {
     const panel = data.nutritionFacts

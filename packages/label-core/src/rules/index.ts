@@ -1,7 +1,16 @@
-export { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES, listRules, runRules } from './registry'
+export {
+  GHS_RULES,
+  GS1_RETAIL_RULES,
+  US_FOOD_RULES,
+  declinedChecks,
+  listRules,
+  runRules,
+} from './registry'
 
 export { LABEL_TYPES, SEVERITY_ORDER, citationsOf, compareSeverity } from './types'
 export type {
+  Decline,
+  DeclinedCheck,
   GhsChemicalContext,
   GhsChemicalRule,
   Gs1RetailContext,

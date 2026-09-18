@@ -17,12 +17,15 @@ is correct, whether a Digital Link is a conformant URI, whether a nutrition form
 one you qualify for — and those are answered without reference to what printed. The report marks which is
 which.
 
-**A rule that cannot answer stays silent, and silence is not approval.** Where a requirement turns on a fact
-your label does not carry, the check produces nothing at all: no pass, no finding, no note. **The report will
-not tell you this happened.** The "cannot be checked" block lists elements the engine could not *draw*, which
-is a different thing — it does not cover a check that declined for want of data. The clearest case is GHS
-hazard classification, below: supply no classification and two of the most useful checks in the tool disappear
-from the report without comment.
+**A rule that cannot answer does not pass — and where you could have answered it, the report says so.** Where a
+requirement turns on a fact your label does not carry, the check produces no pass and no finding. The report
+lists it under **"checks that did not run"**, separately from "cannot be checked", which is about elements the
+engine could not *draw* — a different problem, and not one you can fix by filling in a field.
+
+**That list is not exhaustive, by design.** A rule only announces standing down where you could do something
+about it. Where the limit is this tool's own — a barcode symbology whose quiet-zone figures have never been
+confirmed against a specification, below — the check is silent, because naming it would send you looking for a
+control that does not exist. Those limits are in this document instead, which is the reason to read it.
 
 ---
 
@@ -138,9 +141,10 @@ Two of the most useful GHS checks — that the pictograms on the label match the
 precedence has been applied — work from **hazard class identifiers**, not from the H-codes printed on the
 label. A label carries H-statements and pictograms; it does not carry class identifiers.
 
-So where your label data has no classification, both of those checks decline and report nothing. This matters
-most when reading a label from a photograph, which yields H-codes: those two checks will stay silent until
-somebody classifies the substance by hand.
+So where your label data has no classification, both of those checks stand down and say so — they appear under
+"checks that did not run", naming what to supply. This is the normal case when reading a label from a
+photograph, which yields H-codes and pictograms and never a classification, so expect to see them there on
+almost every audit until somebody classifies the substance by hand.
 
 Deriving a classification from H-codes automatically would need Annex VI transcribed and verified, and it is
 emphatically not something to have a language model guess at — a guessed classification would make the

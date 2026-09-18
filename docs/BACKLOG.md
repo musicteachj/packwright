@@ -403,6 +403,22 @@ Deciding it needs the modal verbs read across (b) and (e) together, and the answ
 than either reporting or dropping it. Out of scope for the citation fix, which was about which paragraph is
 named rather than whether to speak at all. The same question reaches `us-food/protein-percent`.
 
+**`ghs/pictogram-set` cites CLP Annex V whatever the regime.** Its sibling `ghs/pictogram-precedence` selects
+29 CFR 1910.1200 Appendix C for a `us-osha` label and CLP Article 26 for an EU one; this rule has a single
+citation and no branch, so a US label is told its pictograms are wrong under an EU regulation. Noticed while
+adding declines — the decline inherits the rule's citation, so it inherits this too — and left alone because
+it predates that change and needs the OSHA pictogram set read and verified before a second citation can ship,
+which is a reading rather than a refactor. `docs/WHAT-IS-NOT-CHECKED.md` does not mention it; it should, if
+this is not fixed first.
+
+**`gs1/quiet-zone` stands down on four symbologies and says nothing, deliberately.** It declines where no
+figure has been confirmed against a source document — CODE128, CODE39, MSI and PHARMACODE — and unlike the
+three rules that now declare a decline, it does not, because a user cannot act on it: there is no field to
+fill in, and the honest answer is that this project has not read those specifications. It is recorded in
+`docs/WHAT-IS-NOT-CHECKED.md` instead. Worth revisiting only if the engine ever draws a symbology outside
+UPC-A, since today no label can carry one — at which point a decline that says "this tool cannot check your
+symbology" becomes something a user needs on the label rather than in a document.
+
 **The rail's number inputs mark themselves `min="0"` and mean `positive()`.** `min` is advisory on a typed
 value, so a browser accepts a zero or a negative in any of them and the document takes it. The four
 dual-column fields now refuse one outright, because a non-figure there made a duty read as *answered* rather

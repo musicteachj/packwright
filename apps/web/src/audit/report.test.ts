@@ -104,6 +104,47 @@ describe('what the report says it did not judge', () => {
     expect(result.uncertifiable.length).toBeGreaterThan(0)
     expect(result.uncertifiable[0]!.reasons[0]).toBeTruthy()
   })
+
+  it('names the checks a reading could never answer', () => {
+    // The case this exists for. A photograph yields H-codes and pictograms and
+    // never a hazard classification, so the two rules that read one stand down on
+    // almost every audit — and did it in silence, beside a report that looked
+    // complete. Separate from the block above: that one is about ink the engine
+    // could not lay down, this is about a question the reading cannot answer.
+    const result = report({ ...A_LABEL, pictograms: ['GHS02'] })
+    if (result.outcome !== 'reported') throw new Error('expected a report')
+
+    const rules = result.declined.map((one) => one.ruleId)
+    expect(rules).toContain('ghs/pictogram-set')
+    expect(rules).toContain('ghs/pictogram-precedence')
+    for (const declined of result.declined) {
+      expect(declined.reason).toContain('hazard classification')
+      // Regime-neutral: the citation says which regulation, and on a us-osha label
+      // it is not the EU one. Prose naming CLP under an OSHA citation was the
+      // half-fix the high review caught.
+      expect(declined.reason).not.toContain('CLP')
+      expect(declined.citation.reference).toBeTruthy()
+      // Written for somebody in a browser, so it names what to do and not where
+      // a file lives in this repository. Found by review.
+      expect(declined.reason).toContain('classify the substance')
+      expect(declined.reason).not.toContain('docs/')
+    }
+  })
+
+  it('cites the regulation the label is judged under, not the other one', () => {
+    // `check` picks OSHA's Appendix C for a us-osha label and CLP Article 26 for
+    // an EU one; the decline hard-coded the EU citation, so a US audit came back
+    // annotated with an EU regulation. Found by review.
+    const osha = report({ ...A_LABEL, regime: 'us-osha', pictograms: ['GHS02'] })
+    if (osha.outcome !== 'reported') throw new Error('expected a report')
+    const precedence = osha.declined.find((one) => one.ruleId === 'ghs/pictogram-precedence')
+    expect(precedence!.citation.reference).toContain('1910.1200')
+
+    const eu = report({ ...A_LABEL, regime: 'eu-clp', pictograms: ['GHS02'] })
+    if (eu.outcome !== 'reported') throw new Error('expected a report')
+    const euPrecedence = eu.declined.find((one) => one.ruleId === 'ghs/pictogram-precedence')
+    expect(euPrecedence!.citation.reference).toContain('1272/2008')
+  })
 })
 
 describe('a document the engine will not draw', () => {

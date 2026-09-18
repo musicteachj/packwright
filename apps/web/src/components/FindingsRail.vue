@@ -24,6 +24,14 @@ const props = withDefaults(
     passes: Finding[]
     /** Symbols that could not be certified — reported, but deliberately not judged. */
     uncertifiable: ReadonlyArray<{ elementId: string; reasons: string[] }>
+    /**
+     * Checks that stood down for want of a fact the label never stated.
+     *
+     * Not the same as `uncertifiable`, which is about elements the engine could
+     * not draw. These are questions nobody answered, and each reason ends by
+     * naming what to state.
+     */
+    declined?: ReadonlyArray<{ ruleId: string; reason: string; citation: { reference: string } }>
     selectedElementId: string | null
     /**
      * The id this rail's heading takes, so two of them can share a page.
@@ -73,6 +81,10 @@ const declinedHeadingId = computed(() =>
     : `${props.headingId}-cannot-check`,
 )
 
+const notRunHeadingId = computed(() =>
+  props.headingId === 'findings-heading' ? 'not-run-heading' : `${props.headingId}-not-run`,
+)
+
 defineEmits<{ select: [elementId: string | undefined] }>()
 
 const failureGroups = computed(() => props.groups.filter(([severity]) => severity !== 'pass'))
@@ -88,8 +100,13 @@ const summary = computed(() => {
   // could not draw as well as the symbols no rule judges, and calling a net
   // quantity declaration a symbol would be wrong on the one line a screen reader
   // announces.
-  const declined = props.uncertifiable.length
+  const undrawn = props.uncertifiable.length
     ? ` ${props.uncertifiable.length} element${props.uncertifiable.length === 1 ? '' : 's'} could not be checked.`
+    : ''
+  // Announced separately from the undrawn elements above, for the reason the two
+  // have separate blocks: one is the engine's problem and one is the label's.
+  const notRun = (props.declined ?? []).length
+    ? ` ${props.declined!.length} check${props.declined!.length === 1 ? '' : 's'} did not run.`
     : ''
 
   // `checks` is pluralised for the same reason `findings` and `symbols` are: a
@@ -98,9 +115,10 @@ const summary = computed(() => {
   const checks = `${passed} ${passed === 1 ? 'check' : 'checks'} passed`
 
   if (failed === 0 && passed === 0) return 'No checks have run.'
-  if (failed === 0 && !declined) return `All ${checks}.`
-  if (failed === 0) return `${checks}.${declined}`
-  return `${failed} ${failed === 1 ? 'finding' : 'findings'}, ${checks}.${declined}`
+  const unjudged = `${undrawn}${notRun}`
+  if (failed === 0 && !unjudged) return `All ${checks}.`
+  if (failed === 0) return `${checks}.${unjudged}`
+  return `${failed} ${failed === 1 ? 'finding' : 'findings'}, ${checks}.${unjudged}`
 })
 </script>
 
@@ -168,14 +186,57 @@ const summary = computed(() => {
     </section>
 
     <!--
+      A different thing from the block above, and the difference is the whole
+      reason this one exists. That one names elements the engine could not
+      **draw**; this names questions the label never answered, where a rule
+      stood down for want of a fact somebody could supply. Folding the two
+      together would make `docs/WHAT-IS-NOT-CHECKED.md` wrong the week it
+      shipped — it tells a reader they are distinct, because only one of them
+      is theirs to fix.
+
+      Every reason ends by naming what to state, so this is a list of things to
+      do rather than a list of apologies.
+    -->
+    <section
+      v-if="(declined ?? []).length"
+      class="border-chrome-600 bg-chrome-950 m-4 border-l-2 px-3 py-3"
+      :aria-labelledby="notRunHeadingId"
+    >
+      <h3
+        :id="notRunHeadingId"
+        class="text-chrome-200 flex items-center gap-2 text-xs font-semibold"
+      >
+        <span aria-hidden="true">?</span>
+        Checks that did not run
+      </h3>
+      <div v-for="item in declined ?? []" :key="item.ruleId" class="mt-2">
+        <p class="text-chrome-200 text-sm leading-snug">{{ item.reason }}</p>
+        <p class="text-chrome-400 mt-1 font-mono text-xs tabular-nums">
+          {{ item.citation.reference }}
+        </p>
+      </div>
+    </section>
+
+    <!--
       Guarded on a check having actually run, not merely on nothing having
       failed. With no resolvable layout there are no findings at all, and the
       earlier condition rendered a green tick and "Every check passed" for a
       label that could not be drawn — while the live region alongside it
       correctly said no checks had run.
+
+      It is guarded on the declined list for the same reason, which the review of
+      that change caught: the banner sat directly above "Checks that did not run"
+      on the conformant label, announcing in green exactly the false reassurance
+      the declined block exists to remove. The aria summary had been updated for
+      this case and the visible text had not, which is the worse half to miss.
     -->
     <p
-      v-if="failures.length === 0 && passes.length > 0 && uncertifiable.length === 0"
+      v-if="
+        failures.length === 0 &&
+        passes.length > 0 &&
+        uncertifiable.length === 0 &&
+        (declined ?? []).length === 0
+      "
       class="text-pass flex items-center gap-2 px-4 py-6 text-sm"
     >
       <span aria-hidden="true">{{ SEVERITY_STYLES.pass.icon }}</span>

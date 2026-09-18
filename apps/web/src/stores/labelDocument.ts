@@ -21,14 +21,17 @@ import {
   layOutGhsLabel,
   layOutUpcALabel,
   layOutUsFoodLabel,
+  declinedChecks,
   normaliseScannedGtin,
   runRules,
+  type DeclinedCheck,
   type ElementId,
   type Finding,
   type GhsLabelData,
   type LabelStock,
   type LabelType,
   type ResolvedLayout,
+  type RuleContext,
   type ScannedGtin,
   type Severity,
   type UpcALabelData,
@@ -197,32 +200,34 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   const layoutError = computed(() => resolved.value.error)
 
   /**
+   * The one context both `findings` and `declined` are answered from.
+   *
    * Narrowed on `labelType` rather than cast, matching how `runRules` dispatches.
    *
-   * All three label types have rules now. The rail still distinguishes "no check
-   * ran" from "everything passed", because a rule that declines returns nothing
-   * and an empty list must not read as a clean bill of health.
+   * Built once rather than twice, so the two cannot come to disagree about which
+   * label they are describing — a check reported as not-run against a document
+   * the findings were taken from a moment earlier would be worse than silence.
    */
-  const findings = computed<Finding[]>(() => {
+  const ruleContext = computed<RuleContext | undefined>(() => {
     const resolvedLayout = layout.value
-    if (!resolvedLayout) return []
+    if (!resolvedLayout) return undefined
     switch (labelType.value) {
       case 'gs1-retail':
-        return runRules({ labelType: 'gs1-retail', data, stock, layout: resolvedLayout })
+        return { labelType: 'gs1-retail', data, stock, layout: resolvedLayout }
       case 'ghs-chemical':
-        return runRules({
+        return {
           labelType: 'ghs-chemical',
           data: ghsData,
           stock: ghsStock,
           layout: resolvedLayout,
-        })
+        }
       case 'us-food':
-        return runRules({
+        return {
           labelType: 'us-food',
           data: foodData,
           stock: foodStock,
           layout: resolvedLayout,
-        })
+        }
       default: {
         // The same exhaustiveness guard `runRules` uses. The lint rule cannot
         // see that the switch covers the union, and a fourth label type should
@@ -232,6 +237,24 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
         return unreachable
       }
     }
+  })
+
+  const findings = computed<Finding[]>(() => {
+    const context = ruleContext.value
+    return context === undefined ? [] : runRules(context)
+  })
+
+  /**
+   * Checks that did not run, and what each would need in order to.
+   *
+   * Separate from `uncertifiable` below on purpose, and the distinction is the
+   * point of both: that one names elements the engine could not **draw**, this
+   * one names questions the label never answered. `docs/WHAT-IS-NOT-CHECKED.md`
+   * tells a reader they are different things, so the rail has to keep them apart.
+   */
+  const declined = computed<DeclinedCheck[]>(() => {
+    const context = ruleContext.value
+    return context === undefined ? [] : declinedChecks(context)
   })
 
   /** Most severe first; passes last, where the rail collapses them. */
@@ -608,6 +631,7 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     passes,
     hasBlocking,
     uncertifiable,
+    declined,
     elementLabels,
     select,
     lastScan,

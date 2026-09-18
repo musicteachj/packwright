@@ -50,6 +50,7 @@ import { usFoodNetQuantityTypeSizeRule } from './usFood/netQuantityTypeSize'
 import { usFoodResponsibleFirmRule } from './usFood/responsibleFirm'
 import { usFoodStatementOfIdentityRule } from './usFood/statementOfIdentity'
 import type {
+  DeclinedCheck,
   GhsChemicalRule,
   Gs1RetailRule,
   LabelType,
@@ -207,6 +208,60 @@ function withholdUncertifiablePasses(findings: Finding[], layout: ResolvedLayout
  */
 export function runRules(context: RuleContext): Finding[] {
   return withholdUncertifiablePasses(check(context), context.layout)
+}
+
+/**
+ * The checks that did not run, and what each would have needed.
+ *
+ * A sibling of `runRules` rather than a widening of it, because every caller of
+ * that function wants findings and only two want this — and a return type that
+ * grew a second field would have every test in the repository unpacking a tuple
+ * to ask the same question it asks today.
+ *
+ * Only rules that implement `declines` appear, which is a small and deliberate
+ * set: see the note on `Rule.declines` for why most should not.
+ */
+export function declinedChecks(context: RuleContext): DeclinedCheck[] {
+  switch (context.labelType) {
+    case 'gs1-retail':
+      return declinesOf(GS1_RETAIL_RULES, context)
+    case 'ghs-chemical':
+      return declinesOf(GHS_RULES, context)
+    case 'us-food':
+      return declinesOf(US_FOOD_RULES, context)
+    default: {
+      const unreachable: never = context
+      return unreachable
+    }
+  }
+}
+
+/**
+ * Generic over the context, so a rule set can only be asked about the label type
+ * it was written for.
+ *
+ * The first version of this shared one `Rule<never>[]` list with `check` and cast
+ * the context at both call sites, which compiled a misfiled rule set into a label
+ * judged by the wrong rules — reinstating exactly the dispatch cast the note on
+ * `Rule.appliesTo` records as a past defect. Two switches that cannot lie beat one
+ * list that can.
+ */
+function declinesOf<TContext extends RuleContext>(
+  rules: readonly Rule<TContext>[],
+  context: TContext,
+): DeclinedCheck[] {
+  return rules.flatMap((rule) => {
+    const declined = rule.declines?.(context)
+    if (declined === undefined) return []
+    return [
+      {
+        ruleId: rule.id,
+        title: rule.title,
+        citation: declined.citation ?? rule.citation,
+        reason: declined.reason,
+      },
+    ]
+  })
 }
 
 function check(context: RuleContext): Finding[] {
