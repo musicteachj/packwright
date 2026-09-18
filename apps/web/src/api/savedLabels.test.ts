@@ -47,15 +47,20 @@ describe('the saved-labels client', () => {
       { labels: [second] },
     ]
     const fetchMock = vi.fn(
-      async () =>
-        ({ ok: true, status: 200, json: async () => pages.shift() }) as unknown as Response,
+      async (input: RequestInfo | URL) =>
+        ({
+          ok: true,
+          status: 200,
+          url: String(input),
+          json: async () => pages.shift(),
+        }) as unknown as Response,
     )
     vi.stubGlobal('fetch', fetchMock)
 
     expect(await listLabels()).toEqual([A_LABEL, second])
     expect(fetchMock.mock.calls).toHaveLength(2)
     // The cursor goes back as `before`, encoded, on the second call only.
-    expect(String(fetchMock.mock.calls[1]![0])).toContain('before=')
+    expect(String(fetchMock.mock.calls.at(1)?.[0])).toContain('before=')
   })
 
   it('treats a page with no labels as an empty list rather than as a failure', async () => {

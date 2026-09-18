@@ -26,8 +26,10 @@ into a version only when there is a reason to.
   collection scan whose response grew with the number of labels saved. It answers `{ labels, nextBefore? }`
   now, fifty by default and two hundred at most, over a **cursor** rather than a skip: `skip` re-reads and
   discards everything before the offset, which makes the last page of a long list the most expensive one to
-  fetch, where a cursor reads from where the previous page stopped. The index that sort already needed serves
-  it. The cursor is compound, `(updatedAt, _id)`, and the first version was not — Mongo stores milliseconds,
+  fetch, where a cursor reads from where the previous page stopped. The index moved with the sort — it covered
+  `updatedAt` alone, and leaving it there while the sort gained `_id` quietly cost the thing it exists for,
+  putting the planner back on a collection scan and an in-memory sort on the very list that had just been made
+  cheaper to fetch. The cursor is compound, `(updatedAt, _id)`, and the first version was not — Mongo stores milliseconds,
   labels saved inside one of them tie, and a cursor of `updatedAt < boundary` steps over every neighbour of the
   boundary. Four labels sharing a timestamp came back as two, with the list reporting itself finished. A cursor
   that cannot be read is answered with a 400 rather than ignored, because treating a corrupt one as "start

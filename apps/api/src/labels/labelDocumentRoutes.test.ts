@@ -73,6 +73,24 @@ describe('/api/labels', () => {
     expect(second.body.nextBefore, 'and now there is not').toBeUndefined()
   })
 
+  it('serves the paged sort from an index rather than a collection scan', async () => {
+    // The only thing that would have caught this: the sort gained `_id` for the
+    // cursor's tie-break and the index was left covering `updatedAt` alone, so
+    // the planner quietly stopped matching it and went back to a collection scan
+    // and an in-memory sort — on the very list that had just been made cheaper to
+    // fetch, with the prose describing the change claiming the opposite. No
+    // behavioural test can see this; the plan is the only evidence.
+    await LabelDocument.syncIndexes()
+    const plan = (await LabelDocument.find({}, 'name labelType createdAt updatedAt')
+      .sort({ updatedAt: -1, _id: -1 })
+      .limit(51)
+      .explain('queryPlanner')) as never as { queryPlanner: { winningPlan: unknown } }
+
+    const winning = JSON.stringify(plan.queryPlanner.winningPlan)
+    expect(winning, 'an in-memory sort against a 32 MB ceiling').not.toContain('COLLSCAN')
+    expect(winning).toContain('updatedAt_-1__id_-1')
+  })
+
   it('pages through labels that share a timestamp', async () => {
     // The bug the first version of this shipped with, and the reason the test
     // above sleeps between creates: Mongo stores milliseconds, four labels saved
@@ -102,6 +120,14 @@ describe('/api/labels', () => {
     }
 
     expect(seen.sort()).toEqual(['A', 'B', 'C', 'D'])
+  })
+
+  it('refuses a repeated cursor parameter, which Express hands over as an array', async () => {
+    // Reading a non-string as "no cursor" answers page one carrying the same
+    // `nextBefore` the caller just sent, which is the loop the 400 exists to
+    // stop — reached by a different door. Found by review.
+    const response = await supertest(app()).get('/api/labels?before=a_b&before=a_b')
+    expect(response.status).toBe(400)
   })
 
   it('refuses a cursor it cannot read rather than starting over', async () => {

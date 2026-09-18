@@ -133,12 +133,24 @@ one would have a single caller and would be a guess at what a second one wants.
 **~~The label list is unbounded.~~ Fixed.** `GET /api/labels` returned every document on every call. It pages
 now — `{ labels, nextBefore? }`, fifty by default and two hundred at most — over a **cursor** rather than a
 skip, because `skip` re-reads and discards everything before the offset, which makes the last page of a long
-list the most expensive one to fetch. The index the sort already needed serves it.
+list the most expensive one to fetch. `labelDocument.ts` indexes both keys; it indexed only `updatedAt` for
+one commit after the sort gained `_id`, which put the planner back on a collection scan — confirmed either way
+with `explain`, and caught by review rather than by a test.
 
 The cursor is compound, `(updatedAt, _id)`, and the first version was not: Mongo stores milliseconds, labels
 saved inside one of them tie, and a cursor of `updatedAt < boundary` steps over every neighbour of the
 boundary. Four labels sharing a timestamp returned two and reported the list finished. Caught by review, and
 the test written for it now creates its labels with a shared timestamp rather than sleeping to avoid one.
+
+**A label saved while the client walks the pages is missed.** Raised by the review of the paging change and
+left. `listLabels` follows the cursor page by page, and a label created between two of those requests sorts
+above the cursor and appears on neither — so the list omits it until the next refresh. The single unbounded
+query it replaced could not miss a row, which makes this a real if small regression. It is inherent to
+cursoring on a mutable sort key rather than a fix anybody forgot: `updatedAt` is what "newest first" means
+here, and seeking on `_id` alone would order by creation instead. The honest remedies are to accept it — a
+list that is not live is the ordinary case, and the label appears on the next load — or to make the view
+explicitly incremental, which is the "load more" decision below. Worth deciding with that one rather than
+separately.
 
 **What is not done is the list view.** `listLabels` follows the cursor to the end, so the client behaves as it
 always did and every individual query is bounded — but a "load more" control, or any indication that a list

@@ -63,10 +63,18 @@ const labelDocumentSchema = new Schema(
   { timestamps: true, versionKey: false },
 )
 
-// The list sorts on this, and an unindexed sort is done in memory against a
+// The list sorts on both, and an unindexed sort is done in memory against a
 // 32 MB ceiling — which is a long way off for a label collection, and a 500 with
 // no obvious cause when it arrives.
-labelDocumentSchema.index({ updatedAt: -1 })
+//
+// **Compound because the sort is.** `_id` joined it when the list gained a cursor:
+// `updatedAt` alone is not unique, so paging on it silently skipped labels that
+// tied. This index was left at one key in that change, which quietly cost the
+// thing it exists for — the planner stopped matching it and went back to a
+// collection scan and an in-memory sort, on a list that had just been made
+// cheaper to fetch. Caught by review; the prose describing that change said the
+// existing index still served it, and it did not.
+labelDocumentSchema.index({ updatedAt: -1, _id: -1 })
 
 export const LabelDocument = model('LabelDocument', labelDocumentSchema)
 

@@ -40,7 +40,13 @@ const notFound = (response: Response) => response.status(404).json({ error: 'Not
 function readCursor(
   raw: unknown,
 ): { updatedAt: Date; id: Types.ObjectId } | undefined | 'malformed' {
-  if (typeof raw !== 'string' || raw === '') return undefined
+  if (raw === undefined) return undefined
+  // Anything present but not a string is malformed rather than absent. Express
+  // parses a repeated `?before=` into an array, and reading that as "no cursor"
+  // answers page one carrying the same `nextBefore` the caller just sent — which
+  // is the loop the 400 below exists to stop, reached by a different door.
+  if (typeof raw !== 'string') return 'malformed'
+  if (raw === '') return undefined
   const split = raw.lastIndexOf('_')
   if (split === -1) return 'malformed'
   const updatedAt = new Date(raw.slice(0, split))
@@ -77,7 +83,9 @@ export function createLabelDocumentRouter(): Router {
     // `updatedAt < boundary` then steps over every one of its neighbours, and the
     // list reports itself finished having silently skipped them. Four labels
     // sharing a timestamp returned two and stopped. Ordering and seeking on
-    // `(updatedAt, _id)` breaks the tie by something that cannot repeat.
+    // `(updatedAt, _id)` breaks the tie by something that cannot repeat — and
+    // `labelDocument.ts` indexes both, which it did not when this was first
+    // written, so for one commit the sort was planned as a collection scan.
     const cursor = readCursor(request.query.before)
     if (cursor === 'malformed') {
       response.status(400).json({

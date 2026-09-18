@@ -235,23 +235,6 @@ export function createApp(options: AppOptions = {}): Express {
    */
 
   /**
-   * Ten megabytes for the one route that posts a photograph, and a fortieth of
-   * that for everything else.
-   *
-   * The generous figure used to be global, which meant every route on this server
-   * would buffer and parse ten megabytes before anything looked at it — including
-   * the ones that take a label document, which is a few kilobytes of JSON, and
-   * including the audit route's own guards, so a request they were about to
-   * refuse had already been read in full.
-   *
-   * Mounted narrow-first: `body-parser` steps over a request another parser has
-   * already finished — `onFinished.isFinished`, since 2.x dropped the `_body`
-   * flag it used to set — so `/api/audit` gets the large limit and nothing else
-   * can reach it. A label document that genuinely needs more than
-   * 256 KB of JSON does not exist — the largest field is an ingredient list —
-   * and a request that claims to is one worth refusing before it is read.
-   */
-  /**
    * Compressed on the way out, except where it would be work for nothing.
    *
    * The client is served from this process, and its largest asset is about
@@ -274,6 +257,23 @@ export function createApp(options: AppOptions = {}): Express {
     }),
   )
 
+  /**
+   * Ten megabytes for the one route that posts a photograph, and a fortieth of
+   * that for everything else.
+   *
+   * The generous figure used to be global, which meant every route on this server
+   * would buffer and parse ten megabytes before anything looked at it — including
+   * the ones that take a label document, which is a few kilobytes of JSON, and
+   * including the audit route's own guards, so a request they were about to
+   * refuse had already been read in full.
+   *
+   * Mounted narrow-first: `body-parser` steps over a request another parser has
+   * already finished — `onFinished.isFinished`, since 2.x dropped the `_body`
+   * flag it used to set — so `/api/audit` gets the large limit and nothing else
+   * can reach it. A label document that genuinely needs more than
+   * 256 KB of JSON does not exist — the largest field is an ingredient list —
+   * and a request that claims to is one worth refusing before it is read.
+   */
   app.use('/api/audit', express.json({ limit: AUDIT_BODY_LIMIT }))
   app.use(express.json({ limit: BODY_LIMIT }))
 
