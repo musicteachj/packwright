@@ -1,10 +1,11 @@
+import compression from 'compression'
 import express, { type Express, type NextFunction, type Request, type Response } from 'express'
 import helmet from 'helmet'
 import morgan from 'morgan'
 import { join } from 'node:path'
 import { createAuditRouter, type AuditLimits } from './audit/routes'
 import { createLabelDocumentRouter } from './labels/labelDocumentRoutes'
-import { createLabelRouter } from './labels/routes'
+import { createLabelRouter, type ExportLimit } from './labels/routes'
 import type { ExtractLabel } from './audit/extract'
 import type { DatabaseStatus } from './db'
 
@@ -61,6 +62,14 @@ export interface AppOptions {
    * about the quotas passes `false`.
    */
   auditLimits?: AuditLimits | false | undefined
+  /**
+   * What one client may export in an hour, or `false` for no limit.
+   *
+   * Stated rather than defaulted for the reason `auditLimits` is: this factory
+   * builds the same application every time it is called, and a test that renders
+   * a dozen PDFs is not making a statement about production quotas.
+   */
+  exportLimit?: ExportLimit | false | undefined
   /**
    * How many proxies sit in front of this server. See `TRUST_PROXY_HOPS`.
    *
@@ -119,6 +128,11 @@ const CLIENT_ERRORS: Readonly<Record<number, string>> = {
   415: 'The request encoding is not supported',
 }
 
+/** What a label document may weigh as JSON. See the note where these are mounted. */
+const BODY_LIMIT = '256kb'
+/** What the audit route may weigh, because it carries a photograph. */
+const AUDIT_BODY_LIMIT = '10mb'
+
 /**
  * A client-error status an upstream library has already worked out, or nothing.
  *
@@ -147,6 +161,7 @@ export function createApp(options: AppOptions = {}): Express {
     extract,
     auditApiKey,
     auditLimits,
+    exportLimit,
     trustProxyHops,
   } = options
   const app = express()
@@ -219,8 +234,49 @@ export function createApp(options: AppOptions = {}): Express {
    * explicit allowlist of that origin, never the default.
    */
 
-  // Generous, because a label audit posts a photograph.
-  app.use(express.json({ limit: '10mb' }))
+  /**
+   * Compressed on the way out, except where it would be work for nothing.
+   *
+   * The client is served from this process, and its largest asset is about
+   * 934 KB of barcode encoder that gzip takes to roughly a quarter of that. The
+   * default `filter` already skips anything already-compressed by content type,
+   * and a PDF is deflated internally by PDFKit before it ever reaches here — so
+   * the exports, which are the biggest responses this API produces, are excluded
+   * rather than spending CPU to grow by a percent.
+   *
+   * Mounted before every route, because a response passes back out through the
+   * middleware it came in past. After `helmet`, which only sets headers.
+   */
+  app.use(
+    compression({
+      filter: (request, response) => {
+        const type = response.getHeader('Content-Type')
+        if (typeof type === 'string' && type.includes('application/pdf')) return false
+        return compression.filter(request, response)
+      },
+    }),
+  )
+
+  /**
+   * Ten megabytes for the one route that posts a photograph, and a fortieth of
+   * that for everything else.
+   *
+   * The generous figure used to be global, which meant every route on this server
+   * would buffer and parse ten megabytes before anything looked at it — including
+   * the ones that take a label document, which is a few kilobytes of JSON, and
+   * including the audit route's own guards, so a request they were about to
+   * refuse had already been read in full.
+   *
+   * Mounted narrow-first: `body-parser` steps over a request another parser has
+   * already finished — `onFinished.isFinished`, since 2.x dropped the `_body`
+   * flag it used to set — so `/api/audit` gets the large limit and nothing else
+   * can reach it. A label document that genuinely needs more than
+   * 256 KB of JSON does not exist — the largest field is an ingredient list —
+   * and a request that claims to is one worth refusing before it is read.
+   */
+  app.use('/api/audit', express.json({ limit: AUDIT_BODY_LIMIT }))
+  app.use(express.json({ limit: BODY_LIMIT }))
+
   if (enableLogging) app.use(morgan('combined'))
 
   /**
@@ -246,7 +302,7 @@ export function createApp(options: AppOptions = {}): Express {
   // The saved-label routes first: their paths are the shorter ones, and nothing
   // about either mount shadows the other.
   app.use('/api/labels', createLabelDocumentRouter())
-  app.use('/api/labels', createLabelRouter())
+  app.use('/api/labels', createLabelRouter({ limit: exportLimit }))
   app.use('/api/audit', createAuditRouter({ extract, apiKey: auditApiKey, limits: auditLimits }))
 
   /**

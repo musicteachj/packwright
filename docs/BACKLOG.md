@@ -130,10 +130,32 @@ trip: save at 90 mm, open, export, assert the PDF's MediaBox. Reverting the fix 
 The helper it also asked for was not written. Nothing outside the editor builds an export request, so a shared
 one would have a single caller and would be a guess at what a second one wants.
 
-**The label list is unbounded.** `GET /api/labels` returns every document, newest first. The sort is indexed
-now, so the 32 MB in-memory sort ceiling is no longer the limit, but the response still grows without one.
-Pagination is an API shape decision — cursor or offset, and what the client does with it — and it belongs
-with the list view that will consume it rather than ahead of it.
+**~~The label list is unbounded.~~ Fixed.** `GET /api/labels` returned every document on every call. It pages
+now — `{ labels, nextBefore? }`, fifty by default and two hundred at most — over a **cursor** rather than a
+skip, because `skip` re-reads and discards everything before the offset, which makes the last page of a long
+list the most expensive one to fetch. `labelDocument.ts` indexes both keys; it indexed only `updatedAt` for
+one commit after the sort gained `_id`, which put the planner back on a collection scan — confirmed either way
+with `explain`, and caught by review rather than by a test.
+
+The cursor is compound, `(updatedAt, _id)`, and the first version was not: Mongo stores milliseconds, labels
+saved inside one of them tie, and a cursor of `updatedAt < boundary` steps over every neighbour of the
+boundary. Four labels sharing a timestamp returned two and reported the list finished. Caught by review, and
+the test written for it now creates its labels with a shared timestamp rather than sleeping to avoid one.
+
+**A label saved while the client walks the pages is missed.** Raised by the review of the paging change and
+left. `listLabels` follows the cursor page by page, and a label created between two of those requests sorts
+above the cursor and appears on neither — so the list omits it until the next refresh. The single unbounded
+query it replaced could not miss a row, which makes this a real if small regression. It is inherent to
+cursoring on a mutable sort key rather than a fix anybody forgot: `updatedAt` is what "newest first" means
+here, and seeking on `_id` alone would order by creation instead. The honest remedies are to accept it — a
+list that is not live is the ordinary case, and the label appears on the next load — or to make the view
+explicitly incremental, which is the "load more" decision below. Worth deciding with that one rather than
+separately.
+
+**What is not done is the list view.** `listLabels` follows the cursor to the end, so the client behaves as it
+always did and every individual query is bounded — but a "load more" control, or any indication that a list
+has been cut short, is a design decision for the view rather than the client. Until one exists, an account
+with more than two thousand labels would silently stop at that many.
 
 **The Nutrition Facts section reads "exempt" while the label also carries a panel.** The status line is
 `nutritionExemption !== '' ? 'exempt' : …`, and neither the exemption picker nor the panel checkbox clears the
@@ -573,11 +595,18 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
 out of the first load. Vite's dev server gzips; this one does not, and an ALB does not compress on a task's
 behalf either, so the deployed app would ship the full megabyte on every cold visit.
 
-Not fixed in phase 6 stage 1 because it needs a dependency (`compression`, or a reverse proxy doing it) and
-the stage's done-when is that the build collapses to one artifact, which it now does. It is a real
-user-facing cost rather than a tidiness point, and it belongs either with phase 8's deployment — where
-CloudFront in front of the ALB would settle it without a dependency at all — or with a decision to code-split
-bwip-js out of the initial chunk, which is the better fix and the larger one. Found by the stage 1 review.
+**~~Not fixed in phase 6 stage 1~~ — the compression half is done.** `compression` is mounted ahead of every
+route, with PDFs excluded by an explicit filter: PDFKit deflates its content streams already, so gzipping an
+export is CPU spent to grow the response by a percent. That takes the JavaScript to roughly a quarter of what
+it was on the wire.
+
+**The code-splitting half is deliberately not done, and it is a UI decision rather than a build one.** The
+chunk is large because the landing page draws a *real* barcode through bwip-js, synchronously, in a
+`computed` — so the only way to take it off the critical path is to load it after the page renders and show
+something else meanwhile. That changes what a first-time visitor sees: a barcode that appears a beat late,
+or a placeholder that has to be designed. Splitting it into its own chunk without that changes nothing a
+visitor would notice, since the landing page still waits for it. It belongs with the UI work, not here, and
+doing it as a `manualChunks` line would have looked like progress while moving nothing.
 
 ---
 
@@ -587,7 +616,7 @@ The pass itself came back clean on the thing it was run for: no secret has ever 
 bundle carries none, and stage 1's static handler cannot be walked out of. Two findings were fixed at the
 time — the wildcard CORS header and the two production advisories, both in `CHANGELOG.md`. These are the rest.
 
-**Nothing rate-limits the export endpoint.** `POST /api/labels/*/export` is unauthenticated, renders a PDF per
+**~~Nothing rate-limits the export endpoint.~~ Fixed.** `POST /api/labels/*/export` is unauthenticated, renders a PDF per
 call, and sits behind `express.json({ limit: '10mb' })`. That combination is a cheap way to spend a task's CPU
 from the outside. It mattered less while the wildcard CORS header made the API openly callable anyway and the
 app was not deployed; it matters more once it is. The right home is **phase 8**, where an ALB and a WAF rule
@@ -605,9 +634,10 @@ refused keys so the key cannot be guessed at for free.
 stands for the shape of the protection rather than against having any. An ALB and a WAF rule are better at
 refusing traffic cheaply and are still the right answer at the edge; what they cannot do is know that this
 particular route spends a key per call, so a per-process daily cap on *this* route is a thing only this process
-can enforce. The two are complements. What remains for phase 8 is the edge, and the export routes, which are
-still unauthenticated, still render a PDF per call, and still sit behind a 10 mb body limit — the original
-subject of this entry, and now the one left.
+can enforce. The two are complements. What remains for phase 8 is the edge. The export routes now carry an
+hourly per-client limit of their own — sixty renders, generous for a proof cycle and useless for a script —
+and the 10 mb body limit is no longer theirs: it is mounted on `/api/audit` alone, the one route that posts a
+photograph, with everything else held to 256 KB. They are still unauthenticated, which is the edge's job.
 
 **~~There is no `.env.example`.~~ Written in phase 6 stage 6**, the stage that made `MONGODB_URI`
 load-bearing, as this entry asked. It lives at `apps/api/.env.example` rather than the repository root:

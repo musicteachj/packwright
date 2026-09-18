@@ -308,10 +308,17 @@ async function exportPdf() {
     })
 
     if (!response.ok) {
-      const detail = await response.json().catch(() => null)
-      exportError.value = detail?.detail
-        ? `${detail.error}: ${JSON.stringify(detail.detail)}`
-        : `The export failed (${response.status}).`
+      // The server's own sentence wherever there is one, with its detail appended
+      // where there is that too. Keyed on `detail` alone, a 429 from the export
+      // quota — which carries an error and no detail — was reported to the user
+      // as "The export failed (429)", discarding the one line that said why and
+      // that waiting would fix it. Found by review.
+      const body = await response.json().catch(() => null)
+      const detail = Array.isArray(body?.detail) ? body.detail.join('; ') : ''
+      exportError.value =
+        typeof body?.error === 'string'
+          ? `${body.error}${detail === '' ? '' : `: ${detail}`}`
+          : `The export failed (${response.status}).`
       return
     }
 

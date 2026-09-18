@@ -1,6 +1,7 @@
 import { DEFAULT_UPC_A_STOCK } from '@packwright/label-core'
+import mongoose from 'mongoose'
 import supertest from 'supertest'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app'
 import { LabelDocument } from './labelDocument'
 import { withDatabase } from '../testing/withDatabase'
@@ -41,9 +42,131 @@ describe('/api/labels', () => {
     await LabelDocument.create({ ...A_LABEL, name: 'Newer' })
     const response = await supertest(app()).get('/api/labels')
     expect(response.status).toBe(200)
-    expect(response.body.map((entry: { name: string }) => entry.name)).toEqual(['Newer', 'Older'])
+    expect(response.body.labels.map((entry: { name: string }) => entry.name)).toEqual([
+      'Newer',
+      'Older',
+    ])
     // A list needs names and dates, not three nested label payloads.
-    expect(response.body[0]).not.toHaveProperty('data')
+    expect(response.body.labels[0]).not.toHaveProperty('data')
+    // Nothing further to fetch, so no cursor is offered.
+    expect(response.body.nextBefore).toBeUndefined()
+  })
+
+  it('pages over a cursor rather than returning everything there is', async () => {
+    // The list was an unbounded collection scan: every saved label, every call.
+    // `skip` would re-read and discard everything before the offset, so the last
+    // page of a long list would cost the most; the cursor reads from where the
+    // previous page stopped, against the index `updatedAt` already has.
+    for (const name of ['A', 'B', 'C']) {
+      await LabelDocument.create({ ...A_LABEL, name })
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    }
+
+    const first = await supertest(app()).get('/api/labels?limit=2')
+    expect(first.body.labels.map((entry: { name: string }) => entry.name)).toEqual(['C', 'B'])
+    expect(first.body.nextBefore, 'there is more to fetch').toBeTruthy()
+
+    const second = await supertest(app()).get(
+      `/api/labels?limit=2&before=${encodeURIComponent(String(first.body.nextBefore))}`,
+    )
+    expect(second.body.labels.map((entry: { name: string }) => entry.name)).toEqual(['A'])
+    expect(second.body.nextBefore, 'and now there is not').toBeUndefined()
+  })
+
+  it('serves the paged sort from an index rather than a collection scan', async () => {
+    // The only thing that would have caught this: the sort gained `_id` for the
+    // cursor's tie-break and the index was left covering `updatedAt` alone, so
+    // the planner quietly stopped matching it and went back to a collection scan
+    // and an in-memory sort — on the very list that had just been made cheaper to
+    // fetch, with the prose describing the change claiming the opposite. No
+    // behavioural test can see this; the plan is the only evidence.
+    await LabelDocument.syncIndexes()
+    const plan = (await LabelDocument.find({}, 'name labelType createdAt updatedAt')
+      .sort({ updatedAt: -1, _id: -1 })
+      .limit(51)
+      .explain('queryPlanner')) as never as { queryPlanner: { winningPlan: unknown } }
+
+    const winning = JSON.stringify(plan.queryPlanner.winningPlan)
+    expect(winning, 'an in-memory sort against a 32 MB ceiling').not.toContain('COLLSCAN')
+    expect(winning).toContain('updatedAt_-1__id_-1')
+  })
+
+  it('pages through labels that share a timestamp', async () => {
+    // The bug the first version of this shipped with, and the reason the test
+    // above sleeps between creates: Mongo stores milliseconds, four labels saved
+    // inside one of them tie on `updatedAt`, and a cursor of `updatedAt < x`
+    // steps over every neighbour of the boundary. Two of four came back and the
+    // list said it was finished. Nothing sleeps here — the ties are the point.
+    await LabelDocument.insertMany(
+      ['A', 'B', 'C', 'D'].map((name) => ({
+        ...A_LABEL,
+        name,
+        createdAt: new Date('2026-09-18'),
+        updatedAt: new Date('2026-09-18'),
+      })),
+      { timestamps: false },
+    )
+
+    const seen: string[] = []
+    let before: string | undefined
+    for (let page = 0; page < 5; page++) {
+      const query: string =
+        before === undefined ? '?limit=2' : `?limit=2&before=${encodeURIComponent(before)}`
+      const response = await supertest(app()).get(`/api/labels${query}`)
+      expect(response.status).toBe(200)
+      seen.push(...response.body.labels.map((entry: { name: string }) => entry.name))
+      before = response.body.nextBefore
+      if (before === undefined) break
+    }
+
+    expect(seen.sort()).toEqual(['A', 'B', 'C', 'D'])
+  })
+
+  it('refuses a repeated cursor parameter, which Express hands over as an array', async () => {
+    // Reading a non-string as "no cursor" answers page one carrying the same
+    // `nextBefore` the caller just sent, which is the loop the 400 exists to
+    // stop — reached by a different door. Found by review.
+    const response = await supertest(app()).get('/api/labels?before=a_b&before=a_b')
+    expect(response.status).toBe(400)
+  })
+
+  it('refuses a cursor it cannot read rather than starting over', async () => {
+    // Ignoring it answers page one, so a client with a corrupted cursor loops
+    // over the head of the list forever with nothing to tell it why.
+    const response = await supertest(app()).get('/api/labels?before=not-a-cursor')
+    expect(response.status).toBe(400)
+    expect(response.body.error).toBe('Invalid cursor')
+  })
+
+  // Asserted against the query rather than the response, which is the whole
+  // point and was nearly missed: with only a handful of documents stored, a
+  // response of every one of them is indistinguishable from a correctly paged
+  // one. Both of the first attempts at these passed with the bound removed.
+  it.each([
+    ['nothing asked', '', 51],
+    ['a modest page', '?limit=10', 11],
+    ['more than the cap', '?limit=100000', 201],
+    // `Number('')` is 0 and passes `isFinite`, so an empty parameter used to ask
+    // for a page of one while `?limit=abc` correctly fell back to the default.
+    ['a nonsense figure', '?limit=-5', 51],
+    ['an empty figure', '?limit=', 51],
+    ['an unreadable figure', '?limit=abc', 51],
+  ])('bounds the query itself: %s', async (_case, query, expected) => {
+    // Spied rather than stubbed, so the query still runs and the route still
+    // answers — this asserts what was asked of Mongo, not what came back.
+    const spy = vi.spyOn(mongoose.Query.prototype, 'limit')
+    try {
+      const response = await supertest(app()).get(`/api/labels${query}`)
+      expect(response.status).toBe(200)
+
+      // One more than the page, so "is there another page" is answered by the
+      // query rather than by a second count that could disagree with it.
+      expect(spy.mock.calls.map(([value]) => value)).toEqual([expected])
+    } finally {
+      // In a `finally`, or the failure this test exists to catch would poison
+      // every test after it with a live spy on Mongoose's prototype.
+      spy.mockRestore()
+    }
   })
 
   it('reads one label in full', async () => {

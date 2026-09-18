@@ -1,5 +1,6 @@
 import { createApp } from './app'
 import { DEFAULT_AUDIT_LIMITS } from './audit/routes'
+import { DEFAULT_EXPORT_LIMIT } from './labels/routes'
 import { extractGhsLabel, sendThrough, visionClient, type ExtractLabel } from './audit/extract'
 import { connectToDatabase, databaseStatus } from './db'
 import { loadDotenv } from './dotenv'
@@ -49,6 +50,7 @@ const app = createApp({
   // that knows it is a real server rather than a test harness, so it is the
   // place that decides what the route may spend.
   auditLimits: DEFAULT_AUDIT_LIMITS,
+  exportLimit: DEFAULT_EXPORT_LIMIT,
   ...(env.AUDIT_API_KEY === undefined ? {} : { auditApiKey: env.AUDIT_API_KEY }),
   ...(env.TRUST_PROXY_HOPS === undefined ? {} : { trustProxyHops: env.TRUST_PROXY_HOPS }),
 })

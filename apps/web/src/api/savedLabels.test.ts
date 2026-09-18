@@ -37,6 +37,37 @@ const rejection = (promise: Promise<unknown>): Promise<SavedLabelError> =>
 afterEach(() => vi.unstubAllGlobals())
 
 describe('the saved-labels client', () => {
+  it('follows the cursor to the end rather than stopping at the first page', async () => {
+    // The list view is the only way to open a saved label, so stopping at the
+    // first page would make the fifty-first unreachable with nothing on screen
+    // to say the list had been cut short.
+    const second = { ...A_LABEL, id: 'second' }
+    const pages = [
+      { labels: [A_LABEL], nextBefore: '2026-09-18T00:00:00.000Z_abc' },
+      { labels: [second] },
+    ]
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL) =>
+        ({
+          ok: true,
+          status: 200,
+          url: String(input),
+          json: async () => pages.shift(),
+        }) as unknown as Response,
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect(await listLabels()).toEqual([A_LABEL, second])
+    expect(fetchMock.mock.calls).toHaveLength(2)
+    // The cursor goes back as `before`, encoded, on the second call only.
+    expect(String(fetchMock.mock.calls.at(1)?.[0])).toContain('before=')
+  })
+
+  it('treats a page with no labels as an empty list rather than as a failure', async () => {
+    vi.stubGlobal('fetch', respond(200, {}))
+    expect(await listLabels()).toEqual([])
+  })
+
   it('lists, reads, creates, replaces and deletes against the right method and path', async () => {
     const fetchMock = respond(200, [A_LABEL])
     vi.stubGlobal('fetch', fetchMock)

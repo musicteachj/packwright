@@ -1,6 +1,7 @@
 import supertest from 'supertest'
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../app'
+import type { ExportLimit } from './routes'
 
 const app = () => createApp({ enableLogging: false })
 const post = (body: object) => supertest(app()).post('/api/labels/upc-a/export').send(body)
@@ -752,5 +753,56 @@ describe('the US food route on the nutrition label', () => {
       },
     })
     expect(response.status).toBe(200)
+  })
+})
+
+describe('what an export costs to call', () => {
+  // A PDF render is CPU this process has only one of, and unlike the audit route
+  // there is no bill to notice the abuse on — the symptom is a server that has
+  // stopped answering everyone else.
+  const app = (limit: ExportLimit | false) =>
+    createApp({ enableLogging: false, exportLimit: limit })
+
+  const exportUpcA = (built: ReturnType<typeof createApp>) =>
+    supertest(built).post('/api/labels/upc-a/export').send({ gtin: GTIN })
+
+  it('refuses a client that renders more than its hourly allowance', async () => {
+    const built = app({ perHour: 2 })
+    expect((await exportUpcA(built)).status).toBe(200)
+    expect((await exportUpcA(built)).status).toBe(200)
+
+    const refused = await exportUpcA(built)
+    expect(refused.status).toBe(429)
+    expect(refused.body.error).toBe('Too many exports — try again later')
+  })
+
+  it('enforces none when told to enforce none', async () => {
+    const built = app(false)
+    for (let i = 0; i < 5; i++) expect((await exportUpcA(built)).status).toBe(200)
+  })
+})
+
+describe('what a request may weigh', () => {
+  it('refuses a label document far larger than any label', async () => {
+    // The 10 MB ceiling was global, so every route buffered and parsed ten
+    // megabytes before anything looked at it. Only the audit route posts a
+    // photograph; a label document is a few kilobytes of JSON.
+    const huge = { gtin: GTIN, name: 'x'.repeat(300 * 1024) }
+    const response = await supertest(createApp({ enableLogging: false }))
+      .post('/api/labels/upc-a/export')
+      .send(huge)
+    expect(response.status).toBe(413)
+  })
+
+  it('still takes a photograph on the audit route', async () => {
+    // Narrow-first mounting: the audit path keeps the generous limit, and a body
+    // this size proves the global one is not answering first.
+    const image = { mediaType: 'image/png', data: 'A'.repeat(600 * 1024) }
+    const response = await supertest(createApp({ enableLogging: false }))
+      .post('/api/audit/ghs')
+      .send({ regime: 'eu-clp', image })
+    // 503 because no extractor is configured — which is the handler answering,
+    // not the body parser refusing.
+    expect(response.status).toBe(503)
   })
 })

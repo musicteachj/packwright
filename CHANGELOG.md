@@ -10,6 +10,33 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The API costs less to abuse and less to use.** Four changes, all of them things a deployment would have
+  found the hard way. `express.json`'s ten-megabyte limit was **global**, so every route buffered and parsed
+  ten megabytes before anything looked at it — including the audit route's own guards, so a request they were
+  about to refuse had already been read in full. It is mounted on `/api/audit` alone now, the one route that
+  posts a photograph, and everything else is held to 256 KB, which is far more than a label document has ever
+  needed. **The export routes carry an hourly per-client limit**, sixty renders: a PDF render is CPU this
+  process has only one of, and unlike the audit route there is no bill to notice the abuse on — the symptom is
+  a server that has stopped answering. It is per client and not per process, because an export costs time and
+  not money, so one caller going too fast is the whole problem. **Responses are compressed**, with PDFs
+  excluded by an explicit filter: PDFKit deflates its content streams already, so gzipping an export spends CPU
+  to grow it by a percent.
+
+- **The saved-labels list is paged.** `GET /api/labels` returned every document on every call — an unbounded
+  collection scan whose response grew with the number of labels saved. It answers `{ labels, nextBefore? }`
+  now, fifty by default and two hundred at most, over a **cursor** rather than a skip: `skip` re-reads and
+  discards everything before the offset, which makes the last page of a long list the most expensive one to
+  fetch, where a cursor reads from where the previous page stopped. The index moved with the sort — it covered
+  `updatedAt` alone, and leaving it there while the sort gained `_id` quietly cost the thing it exists for,
+  putting the planner back on a collection scan and an in-memory sort on the very list that had just been made
+  cheaper to fetch. The cursor is compound, `(updatedAt, _id)`, and the first version was not — Mongo stores milliseconds,
+  labels saved inside one of them tie, and a cursor of `updatedAt < boundary` steps over every neighbour of the
+  boundary. Four labels sharing a timestamp came back as two, with the list reporting itself finished. A cursor
+  that cannot be read is answered with a 400 rather than ignored, because treating a corrupt one as "start
+  again" loops a client over the head of the list with nothing to say why. `listLabels` follows the cursor to
+  the end, so the client behaves as it always did while every individual query is bounded; a "load more"
+  control is a decision for the view rather than the client, and is in `docs/BACKLOG.md`.
+
 - **A check that could not run says so, instead of saying nothing.** An empty `check` meant four different
   things and only one of them was worth telling somebody, so all four were silent — and silence beside a clean
   report reads as approval. `Rule.declines` is an opt-in second answer: where a rule stands down because the
