@@ -10,6 +10,31 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The rule that reports a missing second column can finally fire in the browser.** `us-food/dual-column-required`
+  is the one rule in the set that reports a label for *omitting* a required display, and it was silent on every
+  label built in the editor — not because those labels were compliant, but because the four facts it reads had
+  no way in. 21 CFR 101.9(b)(12)(i) makes a second column mandatory for a package holding 200 to 300 percent of
+  its reference amount and sold individually, and (b)(2)(i)(D) does the same where an individual unit is in that
+  band; the type and the API schema carried the reference amount, the package content, the unit content and
+  "packaged and sold individually" all along, and only the rail did not. It takes all four now. **A blank stays
+  a blank**: each clears its key rather than writing a zero, because §101.12(b)'s reference amounts are not
+  carried here and a figure nobody stated is a question this tool has not asked rather than one it answered.
+  The reference amount's three parts travel together, so clearing the figure removes the record instead of
+  leaving a category claiming a row of a table with no amount against it. And "packaged and sold individually"
+  is a three-state control rather than a checkbox — a checkbox can say yes or say nothing, and saying nothing is
+  the state that left the duty unanswerable, where "no" is a real answer that takes the duty away. **A zero is
+  refused rather than stored**, in the rail and again in the engine: `inBand` cannot divide by it and already
+  declined, but the question still counted as asked, so a label declaring a reference amount of 0 read as
+  having satisfied (b)(12)(i) — an answer nobody gave. Found by review, along with a unit chosen before the
+  figure was typed being silently replaced by the default. A second review round found three more, two of
+  them material: a saved label's unit and category were reset to the defaults when its figure was retyped,
+  because the record has to be removed and rebuilt and nothing held what it carried; and **the two (b)(12)(i)
+  exemptions had no inputs either**, so a raw commodity or a varied-weight package sitting in the band was
+  reported for omitting a column the regulation excuses it from, with no way for the label to say so — a false
+  positive nobody could argue with, which is the other side of the gap this change set out to close. The rail
+  takes both now, and a stated "not sold individually" is treated as the answer it is rather than as a question
+  still unasked.
+
 - **A user reading a clean report can now find out what it did not cover.** `docs/WHAT-IS-NOT-CHECKED.md` is
   the first reader-facing document in this repository, and it exists because the alternative is worse: a report
   with nothing in it and no way to tell whether the label is sound or whether nobody looked. Ten limits,

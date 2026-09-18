@@ -2391,6 +2391,45 @@ describe('a dual-column panel is judged under the paragraph for what its second 
       expect(found.message, 'and does not call it a choice').not.toContain('voluntarily')
     })
 
+    it.each([0, -40, Number.NaN])(
+      'treats a reference amount of %s as unstated rather than as answered',
+      (amount) => {
+        // `inBand` cannot divide by a non-figure and refuses, which used to leave the
+        // question looking asked and answered no — so a label declaring a reference
+        // amount of zero read as having satisfied (b)(12)(i). Found by review when the
+        // editor first gained an input for this field.
+        const base = owed()
+        const found = incompleteIn({
+          ...base,
+          nutritionFacts: {
+            ...base.nutritionFacts!,
+            referenceAmount: { ...base.nutritionFacts!.referenceAmount!, amount },
+          },
+        })
+        expect(found.citation.reference).toBe('21 CFR 101.9(e)')
+        expect(found.message).toContain('has not stated everything')
+        expect(found.message, 'and claims nothing about a choice').not.toContain('voluntarily')
+      },
+    )
+
+    it('treats a stated "not sold individually" as an answer on its own', () => {
+      // (b)(12)(i) reaches only products "packaged and sold individually", so a label
+      // saying no has answered it whatever else it left blank. Demanding a package
+      // content on top told such a user they had not stated something they plainly
+      // had. Found by review.
+      const base = owed()
+      const { packageContent: _dropped, ...facts } = base.nutritionFacts!
+      const found = incompleteIn({
+        ...base,
+        nutritionFacts: { ...facts, packagedAndSoldIndividually: false },
+      })
+      expect(found.citation.reference).toBe('21 CFR 101.9(e)')
+      expect(found.message, 'the question was answered, not skipped').not.toContain(
+        'has not stated everything',
+      )
+      expect(found.message).toContain('voluntarily')
+    })
+
     it('cites (e) and calls the column voluntary where the package is outside the band', () => {
       const base = owed()
       const found = incompleteIn({
