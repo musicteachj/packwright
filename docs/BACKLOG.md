@@ -555,17 +555,44 @@ app was not deployed; it matters more once it is. The right home is **phase 8**,
 are the natural places to put it rather than middleware in this process — and where the vision endpoint,
 which spends money per call, will need the same protection more urgently.
 
-**That endpoint now exists.** `POST /api/audit/ghs` is unauthenticated and costs roughly two US cents a call
-at the sample label's token count, which makes it the most expensive thing on this server to abuse and the
-reason this entry stops being theoretical. Nothing about the fix changes — it still belongs at the edge rather
-than in this process — but the order of the two endpoints does: the audit route is now the one to cover
-first.
+**~~That endpoint now exists.~~ The audit route is covered; the export routes are not.** `POST /api/audit/ghs`
+costs roughly two US cents a call at the sample label's token count, which made it the most expensive thing on
+this server to abuse and the reason this entry stopped being theoretical. It now carries two quotas — twenty
+per client per hour and two hundred per process per day — and an optional `AUDIT_API_KEY` that is required the
+moment it is set. Both run before the extractor, so a refused request spends nothing, and the quota counts
+refused keys so the key cannot be guessed at for free.
+
+**This is middleware in this process, which the entry above says is the wrong home**, and that judgement still
+stands for the shape of the protection rather than against having any. An ALB and a WAF rule are better at
+refusing traffic cheaply and are still the right answer at the edge; what they cannot do is know that this
+particular route spends a key per call, so a per-process daily cap on *this* route is a thing only this process
+can enforce. The two are complements. What remains for phase 8 is the edge, and the export routes, which are
+still unauthenticated, still render a PDF per call, and still sit behind a 10 mb body limit — the original
+subject of this entry, and now the one left.
 
 **~~There is no `.env.example`.~~ Written in phase 6 stage 6**, the stage that made `MONGODB_URI`
 load-bearing, as this entry asked. It lives at `apps/api/.env.example` rather than the repository root:
 `dotenv` resolves `.env` against the working directory and npm runs a workspace script from that workspace, so
 a root `.env` is read by nothing. That was latent for as long as every variable was optional, and became a
 failure to start the moment one was not.
+
+**The audit route's guards run after its body has been parsed.** `express.json({ limit: '10mb' })` is
+app-wide and registered before every router, so a request the quotas or the key refuse has already been
+buffered and parsed in full. The guards bound what the route can *spend*, which was their job; they bound
+nothing about what it costs to refuse, so ten megabytes of JSON still gets read before a 401. Raised by the
+review of the audit-route change and left deliberately, because the fix is the body limit rather than the
+guards: 10 mb is a figure chosen for a photograph, and every route on this server pays it. That sits with the
+deferred hardening — the export routes' rate limit, the body size, compression — rather than here. A limiter
+mounted at app level ahead of `express.json` would help the audit path alone, at the cost of splitting one
+route's protections across two files, which is worth doing only if the body limit stays where it is.
+
+**The audit route's quotas are per process, so two containers are two allowances.** `express-rate-limit`'s
+default store is in memory, which is the right call for one container and the wrong one for a service scaled
+horizontally: the daily cap is what stops a deployment spending its key, and four tasks would spend four times
+the figure that was set. Nothing is wrong today — this runs as a single container, which is what bundling
+`label-core` through tsup is for — and a shared store is a dependency and a Redis to run, which is not worth
+adding before there is a second task. Worth remembering as part of any move to more than one, alongside the
+edge-level limits the entry above still wants.
 
 **Three dev-only advisories remain.** `vitest` and `@vitest/mocker` (a path traversal in the mocker's redirect
 handling) and `esbuild` (arbitrary file read via the dev server, on Windows). None ships: `esbuild` is only

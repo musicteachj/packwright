@@ -9,7 +9,7 @@ import {
   EXTRACTION_MODEL,
   type ExtractLabel,
 } from './extract'
-import { MAX_PHOTO_BASE64 } from './routes'
+import { AUDIT_KEY_HEADER, MAX_PHOTO_BASE64 } from './routes'
 
 const A_PHOTO = { mediaType: 'image/png', data: 'AAAA' }
 const A_REQUEST = { regime: 'eu-clp', image: A_PHOTO }
@@ -23,8 +23,12 @@ const EXTRACTION = {
 const ANSWERED_BY = 'claude-opus-5-some-other-snapshot'
 const READING = { extraction: EXTRACTION, model: ANSWERED_BY }
 
+// `auditLimits: false` everywhere below, stated rather than inherited: these
+// cases are about what the route does with a body, and a quota counting down
+// across them would make the last one fail for a reason none of them is about.
+// The quotas have their own describe at the end of this file.
 const post = (body: unknown, extract?: ExtractLabel) =>
-  supertest(createApp({ enableLogging: false, extract }))
+  supertest(createApp({ enableLogging: false, extract, auditLimits: false }))
     .post('/api/audit/ghs')
     .send(body as object)
 
@@ -195,5 +199,185 @@ describe('POST /api/audit/ghs', () => {
     const response = await post(A_REQUEST, failing(new Error('something else entirely')))
     expect(response.status).toBe(500)
     expect(response.body).toEqual({ error: 'Internal server error' })
+  })
+})
+
+describe('what the audit route costs to call', () => {
+  // Every call here reaches a paid vision API on a key the server holds, and
+  // nothing in the request path asked anything of the caller before this.
+  const app = (options: Parameters<typeof createApp>[0] = {}) =>
+    createApp({ enableLogging: false, extract: reading(), ...options })
+
+  const send = (built: ReturnType<typeof createApp>, key?: string) => {
+    const request = supertest(built).post('/api/audit/ghs')
+    return key === undefined
+      ? request.send(A_REQUEST)
+      : request.set(AUDIT_KEY_HEADER, key).send(A_REQUEST)
+  }
+
+  describe('the shared secret', () => {
+    it('lets every caller through when none is configured', async () => {
+      const response = await send(app({ auditLimits: false }))
+      expect(response.status).toBe(200)
+    })
+
+    it('refuses a caller that presents none when one is configured', async () => {
+      const response = await send(app({ auditLimits: false, auditApiKey: 'the-secret' }))
+      expect(response.status).toBe(401)
+      expect(response.body.error).toBe('A valid audit key is required')
+    })
+
+    it('refuses a caller that presents the wrong one', async () => {
+      const response = await send(app({ auditLimits: false, auditApiKey: 'the-secret' }), 'not-it')
+      expect(response.status).toBe(401)
+    })
+
+    it('admits a caller that presents the right one', async () => {
+      const response = await send(
+        app({ auditLimits: false, auditApiKey: 'the-secret' }),
+        'the-secret',
+      )
+      expect(response.status).toBe(200)
+    })
+
+    it('spends nothing on a refused request', async () => {
+      // The 401 has to come before the extractor, or the key would protect the
+      // bill from nobody: a wrong key would still have paid for the reading.
+      const extract = reading()
+      const built = createApp({
+        enableLogging: false,
+        extract,
+        auditLimits: false,
+        auditApiKey: 'the-secret',
+      })
+      await send(built, 'not-it')
+      expect(extract).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('the quotas', () => {
+    it('refuses a client that exceeds the hourly allowance', async () => {
+      const built = app({ auditLimits: { perHour: 2, perDay: 100 } })
+      expect((await send(built)).status).toBe(200)
+      expect((await send(built)).status).toBe(200)
+
+      const refused = await send(built)
+      expect(refused.status).toBe(429)
+      expect(refused.body.error).toBe('Too many audit requests — try again later')
+    })
+
+    it('refuses once the process has spent its day, whatever the client', async () => {
+      // `trustProxyHops` so that the forwarded addresses are actually believed —
+      // without it Express reads the socket and all three requests are one
+      // caller, which the hourly limiter would refuse for its own reason and
+      // this case would pass without proving anything.
+      const built = app({ auditLimits: { perHour: 100, perDay: 2 }, trustProxyHops: 1 })
+      const from = (address: string) =>
+        supertest(built).post('/api/audit/ghs').set('X-Forwarded-For', address).send(A_REQUEST)
+
+      // The daily figure is about what this deployment can lose, which is not a
+      // question about any one caller, so arriving from somewhere new must not
+      // buy a fresh allowance.
+      expect((await from('203.0.113.1')).status).toBe(200)
+      expect((await from('203.0.113.2')).status).toBe(200)
+
+      const refused = await from('203.0.113.3')
+      expect(refused.status).toBe(429)
+      expect(refused.body.error).toBe('This server has reached its daily audit limit')
+    })
+
+    it('gives a different client its own hourly allowance', async () => {
+      // The other side of the same setting: with the hops stated, two callers
+      // are two callers. Paired with the case above so that neither limiter can
+      // quietly take on the other's behaviour.
+      const built = app({ auditLimits: { perHour: 1, perDay: 100 }, trustProxyHops: 1 })
+      const from = (address: string) =>
+        supertest(built).post('/api/audit/ghs').set('X-Forwarded-For', address).send(A_REQUEST)
+
+      expect((await from('203.0.113.1')).status).toBe(200)
+      expect((await from('203.0.113.1')).status).toBe(429)
+      expect((await from('203.0.113.2')).status).toBe(200)
+    })
+
+    it('spends nothing on a request the quota refused', async () => {
+      const extract = reading()
+      const built = createApp({
+        enableLogging: false,
+        extract,
+        auditLimits: { perHour: 1, perDay: 100 },
+      })
+      await send(built)
+      await send(built)
+      expect(extract).toHaveBeenCalledTimes(1)
+    })
+
+    it('charges a refused key to the guesser, so the key cannot be guessed for free', async () => {
+      const built = app({ auditLimits: { perHour: 2, perDay: 100 }, auditApiKey: 'the-secret' })
+      expect((await send(built, 'guess-one')).status).toBe(401)
+      expect((await send(built, 'guess-two')).status).toBe(401)
+      expect((await send(built, 'guess-three')).status).toBe(429)
+    })
+
+    it('does not charge a refused key to the day, which everyone shares', async () => {
+      // The ordering the first review of this change found back to front. With
+      // the daily bucket ahead of the key, a caller with no key could spend the
+      // whole deployment's day in a few minutes and lock out every holder of the
+      // key until the window turned — which makes the key worse than no key.
+      const built = app({
+        auditLimits: { perHour: 100, perDay: 2 },
+        auditApiKey: 'the-secret',
+        trustProxyHops: 1,
+      })
+      const guessFrom = (address: string) =>
+        supertest(built)
+          .post('/api/audit/ghs')
+          .set('X-Forwarded-For', address)
+          .set(AUDIT_KEY_HEADER, 'wrong')
+          .send(A_REQUEST)
+
+      for (const address of ['203.0.113.1', '203.0.113.2', '203.0.113.3']) {
+        expect((await guessFrom(address)).status).toBe(401)
+      }
+
+      // The day is untouched, so the key still works.
+      expect((await send(built, 'the-secret')).status).toBe(200)
+    })
+
+    it('spends no day on requests that never reach the paid call', async () => {
+      // The quotas sit on `POST /ghs` rather than on the router. Mounted on the
+      // router they counted a 404, a malformed body and a 503 alike, so a budget
+      // denominated in paid vision calls was exhaustible with free requests.
+      const built = app({ auditLimits: { perHour: 100, perDay: 2 } })
+      const server = supertest(built)
+      expect((await server.get('/api/audit/ghs')).status).toBe(404)
+      expect((await server.post('/api/audit/nowhere').send(A_REQUEST)).status).toBe(404)
+      expect((await server.post('/api/audit/ghs').send({ regime: 'nonsense' })).status).toBe(400)
+
+      // Two paid calls were the whole allowance and none of the above was one.
+      expect((await send(built)).status).toBe(200)
+      expect((await send(built)).status).toBe(200)
+      expect((await send(built)).status).toBe(429)
+    })
+
+    it('counts a reading the model declined, because that reading was paid for', async () => {
+      // The other half of counting calls rather than requests. A 422 is a
+      // failed request and a spent one: the model ran and answered. A budget
+      // that skipped it would under-report the bill it exists to cap.
+      const built = createApp({
+        enableLogging: false,
+        extract: failing(new ExtractionDeclined('no')),
+        auditLimits: { perHour: 100, perDay: 1 },
+      })
+      expect((await send(built)).status).toBe(422)
+
+      const refused = await send(built)
+      expect(refused.status).toBe(429)
+      expect(refused.body.error).toBe('This server has reached its daily audit limit')
+    })
+
+    it('enforces none when told to enforce none', async () => {
+      const built = app({ auditLimits: false })
+      for (let i = 0; i < 25; i++) expect((await send(built)).status).toBe(200)
+    })
   })
 })

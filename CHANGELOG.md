@@ -10,6 +10,32 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The audit route costs something to call, and now says so.** `POST /api/audit/ghs` reaches a paid vision API
+  on a key the server holds, and nothing in its request path asked anything of the caller — no authentication,
+  no quota, no ceiling of any kind beyond the 8 MB one on the photograph itself. The cost of that is not a slow
+  server; it is somebody else's bill, run up quietly, because nothing about a spent quota looks like an incident
+  until the invoice arrives. Two quotas now stand in front of it, and they answer different questions in
+  different units. Twenty **requests** per client per hour asks whether one caller is going too fast — a person
+  auditing labels by hand takes minutes over each photograph, so that is generous for the work and useless for
+  a script. Two hundred **calls** per process per day asks what this deployment can lose whatever the traffic
+  looks like, and it is counted at the moment the vision API is called rather than at the door, because it is a
+  budget denominated in money: a malformed body, an oversized image or a request to a server with no key
+  configured costs nothing and draws down nothing, while a reading the model declines costs the same as one it
+  completes and is counted. The daily figure is also the only one that still holds when client addresses cannot
+  be told apart, which is the usual case behind a proxy nobody configured for. **An optional `AUDIT_API_KEY` shuts the route outright**, required
+  the moment it is set, because a key checked only when the caller offers one is not a key. It is not
+  authentication and is not offered as any: the client is served from this same origin, so a key a browser could
+  send is a key everyone who loads the page can read. It shuts the route to everything *except* a browser, which
+  is what a private deployment wants and a public one cannot have. The key is checked before the day is drawn on, so a caller
+  without one cannot spend the deployment's budget and lock out the people who have it; a wrong key is charged
+  to the guesser's own hourly bucket instead, which is where a cost belongs. **"Spends nothing" means no vision
+  call**: `express.json` has already buffered and parsed the body by the time any of this runs, so these guards
+  bound the bill rather than the memory, and the request-size half of that is still the 10 mb body limit's job. `TRUST_PROXY_HOPS` decides who to believe about a client's address and is off unless stated: left
+  alone behind a load balancer the per-client quota becomes one bucket shared by the world, which is blunt but
+  errs towards refusing, where `trust proxy: true` would let a caller forge `X-Forwarded-For` and mint a fresh
+  quota per request. The quotas are stated by `server.ts` rather than defaulted inside `createApp`, which builds
+  the same application every time it is called; a test that is not about them passes `false`.
+
 Phase 7, stage 3 — the engine judges. Everything before this was reading and confirming; `/audit` now runs the
 rule set over the confirmed document and shows what `rules/` says about it, which completes the phase.
 

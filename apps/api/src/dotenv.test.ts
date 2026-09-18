@@ -34,7 +34,14 @@ describe('loading .env over an environment that already has blanks in it', () =>
     // is covered here the moment it is added. This asserts the derivation, which
     // is the thing that would silently stop being true.
     expect([...ENV_NAMES].sort()).toEqual(
-      ['ANTHROPIC_API_KEY', 'MONGODB_URI', 'NODE_ENV', 'PORT'].sort(),
+      [
+        'ANTHROPIC_API_KEY',
+        'AUDIT_API_KEY',
+        'MONGODB_URI',
+        'NODE_ENV',
+        'PORT',
+        'TRUST_PROXY_HOPS',
+      ].sort(),
     )
   })
 })

@@ -71,6 +71,33 @@ const EnvSchema = z.object({
    * which is why vision extraction lives in this app rather than in the client.
    */
   ANTHROPIC_API_KEY: optionalSecret,
+
+  /**
+   * A shared secret the audit route requires, or nothing to require none.
+   *
+   * Server-side only, like the key above and for a sharper reason: the audit
+   * route spends `ANTHROPIC_API_KEY` on every call, so this is what stands
+   * between an open origin and somebody else's bill. Set it and the route is
+   * shut to everything that cannot present it — including this project's own
+   * browser client, which is the point rather than an oversight. A public
+   * deployment leaves it unset and relies on the quotas instead.
+   */
+  AUDIT_API_KEY: optionalSecret,
+
+  /**
+   * How many proxies sit in front of this server, or nothing for none.
+   *
+   * Only the per-client audit quota reads it, and getting it wrong breaks that
+   * quota in one of two directions. Left unset behind a load balancer, every
+   * request appears to come from the balancer and the hourly limit becomes one
+   * bucket shared by the world — blunt, but it errs towards refusing. Set too
+   * high, a caller can forge `X-Forwarded-For` and mint themselves a fresh
+   * bucket per request, which errs towards allowing and is the worse of the
+   * two. So it is off unless stated, and stated as a hop count rather than a
+   * boolean, because `trust proxy: true` is the setting that makes forging
+   * work.
+   */
+  TRUST_PROXY_HOPS: blankAsAbsent(z.coerce.number().int().min(0).max(10).optional()),
 })
 
 export type Env = z.infer<typeof EnvSchema>
