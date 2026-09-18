@@ -2391,6 +2391,27 @@ describe('a dual-column panel is judged under the paragraph for what its second 
       expect(found.message, 'and does not call it a choice').not.toContain('voluntarily')
     })
 
+    it.each([0, -40, Number.NaN])(
+      'treats a reference amount of %s as unstated rather than as answered',
+      (amount) => {
+        // `inBand` cannot divide by a non-figure and refuses, which used to leave the
+        // question looking asked and answered no — so a label declaring a reference
+        // amount of zero read as having satisfied (b)(12)(i). Found by review when the
+        // editor first gained an input for this field.
+        const base = owed()
+        const found = incompleteIn({
+          ...base,
+          nutritionFacts: {
+            ...base.nutritionFacts!,
+            referenceAmount: { ...base.nutritionFacts!.referenceAmount!, amount },
+          },
+        })
+        expect(found.citation.reference).toBe('21 CFR 101.9(e)')
+        expect(found.message).toContain('has not stated everything')
+        expect(found.message, 'and claims nothing about a choice').not.toContain('voluntarily')
+      },
+    )
+
     it('cites (e) and calls the column voluntary where the package is outside the band', () => {
       const base = owed()
       const found = incompleteIn({

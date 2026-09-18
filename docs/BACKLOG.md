@@ -403,16 +403,28 @@ Deciding it needs the modal verbs read across (b) and (e) together, and the answ
 than either reporting or dropping it. Out of scope for the citation fix, which was about which paragraph is
 named rather than whether to speak at all. The same question reaches `us-food/protein-percent`.
 
-**The editor has no inputs for the three facts a dual-column duty turns on.** Found by `/code-review high` on
-PR #43. `UsFoodFormRail.vue` collects no reference amount, no package content, no unit content and no
-"packaged and sold individually", though the schema and the API carry all four — so every label built in the
-browser leaves 101.9(b)(12)(i) and (b)(2)(i)(D) unanswerable. That is now visible rather than silent: a
-dual-column finding on such a label cites 101.9(e) and says the label has not stated what the provision turns
-on, naming the three fields. Naming fields a user cannot reach is unhelpful, but the alternatives are worse —
-asserting the column is voluntary is a claim about a choice they may not have made, and saying nothing hides a
-check that did not run. The fix is inputs in the rail, not different wording, and it brings `us-food/dual-column-required`
-to life in the editor for the first time: today no browser-built label can ever be reported for omitting a
-column the regulation requires. Sits with the editor's other missing fields rather than with the rules.
+**The rail's number inputs mark themselves `min="0"` and mean `positive()`.** `min` is advisory on a typed
+value, so a browser accepts a zero or a negative in any of them and the document takes it. The four
+dual-column fields now refuse one outright, because a non-figure there made a duty read as *answered* rather
+than unasked; the rest do not, and `availableSurfaceSqInches` is the oldest of them. Nothing is known to be
+wrong today — `NutritionFactsSchema` refuses a non-positive figure on save or export, so such a document
+cannot be persisted, and the geometry fields are guarded by `requiredNumber` writing `NaN`. What remains is
+that a user can type one, see the preview change, and learn only on save. Worth one pass over the rail's
+numeric inputs with a shared guard rather than four more copies of the same three lines.
+
+**~~The editor has no inputs for the three facts a dual-column duty turns on.~~ Fixed.** Found by
+`/code-review high` on PR #43. `UsFoodFormRail.vue` collected no reference amount, package content, unit
+content or "packaged and sold individually", though the type and the API schema carried all four — so every
+label built in the browser left 101.9(b)(12)(i) and (b)(2)(i)(D) unanswerable, and
+`us-food/dual-column-required`, the one rule in the set that reports a label for *omitting* a required display,
+was silent on every one of them. The rail now takes all four.
+
+Two details worth keeping. The reference amount's three parts travel together, so entering an amount creates
+the whole record and clearing it removes the record rather than leaving a category claiming a row of §101.12(b)
+with no figure against it. And "packaged and sold individually" is a **three-state** control rather than a
+checkbox: a checkbox can say "yes" or say nothing, and saying nothing is exactly the state that left the duty
+unanswerable, while "no" is a real answer that takes the duty away — a multi-serving box is not sold
+individually and (b)(12)(i) does not reach it.
 
 **`us-food/dual-column-required` clears a label that drew a column of the wrong basis.** Found by the review
 of the (e)(6) citation fix. The rule asks whether a second column is *present*, never what it counts, so a

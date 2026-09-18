@@ -848,6 +848,123 @@ const declaredFact = (key: 'cannotAccommodateVertical' | 'cannotAccommodateTabul
 const cannotAccommodateVertical = declaredFact('cannotAccommodateVertical')
 const cannotAccommodateTabular = declaredFact('cannotAccommodateTabular')
 
+/**
+ * The four facts 101.9(b)(12)(i) and (b)(2)(i)(D) turn on.
+ *
+ * Until these had inputs, `us-food/dual-column-required` could not fire for
+ * anyone working in the browser — the one rule in the set that reports a label
+ * for *omitting* a required display, silent on every label built here, because
+ * the facts it reads had no way in. The type and the API schema carried them
+ * all along; only the rail did not.
+ *
+ * **A blank is not a zero and not a no.** Each of these deletes its key when
+ * cleared, so the duty reads as undetermined rather than as answered — §101.12(b)'s
+ * reference amounts are not carried here, so a figure nobody stated is a question
+ * this tool has not asked.
+ */
+/**
+ * A figure has to be one of these before it goes in the document.
+ *
+ * Zero and negatives are not measurements, and writing one is worse than
+ * leaving the field blank: the engine cannot divide by it, so the duty it
+ * governs reads as *answered* rather than as unasked. The API schema refuses
+ * them too, so a document carrying one also fails to save.
+ */
+const asMeasurement = (next: unknown): number | undefined =>
+  typeof next === 'number' && Number.isFinite(next) && next > 0 ? next : undefined
+
+/**
+ * The unit chosen before there is a record to put it in.
+ *
+ * The select is shown from the start, so somebody picking millilitres and then
+ * typing the figure would otherwise have their choice silently replaced by the
+ * default when the record was created. Found by review.
+ */
+const pendingReferenceUnit = ref<'g' | 'mL'>('g')
+
+const referenceAmount = computed({
+  get: () => data.nutritionFacts?.referenceAmount?.amount,
+  set: (next: number | undefined) => {
+    const facts = data.nutritionFacts
+    if (facts === undefined) return
+    const amount = asMeasurement(next)
+    if (amount === undefined) {
+      delete facts.referenceAmount
+      return
+    }
+    // The three travel together, so entering an amount creates the whole record
+    // rather than leaving a half-built one the type says is complete.
+    facts.referenceAmount = {
+      unit: pendingReferenceUnit.value,
+      category: '',
+      ...facts.referenceAmount,
+      amount,
+    }
+  },
+})
+
+const referenceAmountUnit = computed({
+  get: (): 'g' | 'mL' => data.nutritionFacts?.referenceAmount?.unit ?? pendingReferenceUnit.value,
+  set: (next: 'g' | 'mL') => {
+    pendingReferenceUnit.value = next
+    const record = data.nutritionFacts?.referenceAmount
+    if (record !== undefined) record.unit = next
+  },
+})
+
+const referenceAmountCategory = computed({
+  get: () => data.nutritionFacts?.referenceAmount?.category ?? '',
+  set: (next: string) => {
+    const record = data.nutritionFacts?.referenceAmount
+    if (record !== undefined) record.category = next
+  },
+})
+
+const contentFigure = (key: 'packageContent' | 'unitContent') =>
+  computed({
+    get: () => data.nutritionFacts?.[key],
+    set: (next: number | undefined) => {
+      const facts = data.nutritionFacts
+      if (facts === undefined) return
+      const measured = asMeasurement(next)
+      if (measured === undefined) delete facts[key]
+      else facts[key] = measured
+    },
+  })
+
+const packageContent = contentFigure('packageContent')
+const unitContent = contentFigure('unitContent')
+
+/**
+ * Three states, not two, and the third is the point.
+ *
+ * A checkbox can only say "yes" or say nothing, and saying nothing is what left
+ * every browser-built label with an unanswerable duty. "No" is a real answer —
+ * a multi-serving box is not packaged and sold individually, and (b)(12)(i)
+ * does not reach it — and it is a different answer from having not said.
+ */
+const SOLD_INDIVIDUALLY = ['unstated', 'yes', 'no'] as const
+type SoldIndividually = (typeof SOLD_INDIVIDUALLY)[number]
+
+const SOLD_INDIVIDUALLY_NAMES: Record<SoldIndividually, string> = {
+  unstated: 'Not stated',
+  yes: 'Yes — packaged and sold individually',
+  no: 'No',
+}
+
+const packagedAndSoldIndividually = computed({
+  get: (): SoldIndividually => {
+    const stated = data.nutritionFacts?.packagedAndSoldIndividually
+    return stated === undefined ? 'unstated' : stated ? 'yes' : 'no'
+  },
+  set: (next: SoldIndividually) => {
+    const facts = data.nutritionFacts
+    if (facts === undefined) return
+    if (next === 'unstated') delete facts.packagedAndSoldIndividually
+    else facts.packagedAndSoldIndividually = next === 'yes'
+  },
+})
+
 const hasSecondColumn = computed({
   get: () => data.nutritionFacts?.columns?.mode === 'dual',
   set: (on: boolean) => {
@@ -1682,6 +1799,83 @@ const packaging = computed({
       <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-no-tab">
         <input id="field-food-nf-no-tab" v-model="cannotAccommodateTabular" type="checkbox" />
         The label will not take a tabular display
+      </label>
+
+      <p class="text-chrome-400 text-xs">
+        A package holding 200 to 300 percent of its reference amount must carry a second column
+        under 21 CFR 101.9(b)(12)(i), and one whose individual unit does under (b)(2)(i)(D). Those
+        figures are not checked against §101.12(b)'s table, which this tool does not carry — state
+        them and the check runs; leave them blank and it cannot.
+      </p>
+
+      <div class="flex gap-2">
+        <label :class="LABEL" class="flex-1" for="field-food-nf-racc">
+          Reference amount
+          <input
+            id="field-food-nf-racc"
+            v-model.number="referenceAmount"
+            :class="INPUT"
+            min="0"
+            step="any"
+            type="number"
+          />
+        </label>
+        <label :class="LABEL" for="field-food-nf-racc-unit">
+          Unit
+          <select id="field-food-nf-racc-unit" v-model="referenceAmountUnit" :class="INPUT">
+            <option value="g">g</option>
+            <option value="mL">mL</option>
+          </select>
+        </label>
+      </div>
+
+      <label v-if="data.nutritionFacts.referenceAmount" :class="LABEL" for="field-food-nf-racc-cat">
+        Reference amount category
+        <input
+          id="field-food-nf-racc-cat"
+          v-model="referenceAmountCategory"
+          :class="INPUT"
+          placeholder="the §101.12(b) row this figure comes from"
+          type="text"
+        />
+      </label>
+
+      <div class="flex gap-2">
+        <label :class="LABEL" class="flex-1" for="field-food-nf-package-content">
+          The whole package holds
+          <input
+            id="field-food-nf-package-content"
+            v-model.number="packageContent"
+            :class="INPUT"
+            min="0"
+            step="any"
+            type="number"
+          />
+        </label>
+        <label :class="LABEL" class="flex-1" for="field-food-nf-unit-content">
+          One individual unit holds
+          <input
+            id="field-food-nf-unit-content"
+            v-model.number="unitContent"
+            :class="INPUT"
+            min="0"
+            step="any"
+            type="number"
+          />
+        </label>
+      </div>
+
+      <label :class="LABEL" for="field-food-nf-sold-individually">
+        Packaged and sold individually
+        <select
+          id="field-food-nf-sold-individually"
+          v-model="packagedAndSoldIndividually"
+          :class="INPUT"
+        >
+          <option v-for="value in SOLD_INDIVIDUALLY" :key="value" :value="value">
+            {{ SOLD_INDIVIDUALLY_NAMES[value] }}
+          </option>
+        </select>
       </label>
 
       <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-dual">

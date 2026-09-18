@@ -423,11 +423,19 @@ export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
   // on three facts, not one: a package that does not say whether it is sold
   // individually has not answered it, and `packagedAndSoldIndividually: false`
   // has — that is a stated fact putting the package outside the provision.
+  // A figure has to be a figure before it counts as stated. `inBand` already
+  // refuses a reference amount of zero or less — it cannot divide by one — but
+  // treating the *question* as asked anyway turned that refusal into "this
+  // package does not need a second column", which is an answer nobody gave. A
+  // label declaring a reference amount of 0 read as having satisfied
+  // (b)(12)(i). Found by review when the editor first gained these inputs.
+  const stated = (value: number | undefined) =>
+    value !== undefined && Number.isFinite(value) && value > 0
   const perContainerAsked =
-    referenceAmount !== undefined &&
-    input.packageContent !== undefined &&
+    stated(referenceAmount) &&
+    stated(input.packageContent) &&
     input.packagedAndSoldIndividually !== undefined
-  const perUnitAsked = referenceAmount !== undefined && input.unitContent !== undefined
+  const perUnitAsked = stated(referenceAmount) && stated(input.unitContent)
 
   const basis: MandatoryDualColumnBasis | undefined =
     perContainer !== undefined ? 'per-container' : perUnit !== undefined ? 'per-unit' : undefined

@@ -606,6 +606,105 @@ describe('the Nutrition Facts displays, from the editor', () => {
     await nextTick()
   }
 
+  // Until these four fields had inputs, `us-food/dual-column-required` could not
+  // fire for anyone working in the browser. It is the one rule in the set that
+  // reports a label for *omitting* a required display, and it was silent on every
+  // label built here — not because the labels were compliant, but because the
+  // facts it reads had no way in. The type and the API schema carried them all
+  // along.
+  describe('the facts a mandatory second column turns on', () => {
+    const stateDutyFacts = async (
+      wrapper: Awaited<ReturnType<typeof mountFood>>['wrapper'],
+      { racc, packageContent }: { racc: string; packageContent: string },
+    ) => {
+      await wrapper.find('#field-food-nf-racc').setValue(racc)
+      await wrapper.find('#field-food-nf-package-content').setValue(packageContent)
+      await wrapper.find('#field-food-nf-sold-individually').setValue('yes')
+      await nextTick()
+    }
+
+    it('says nothing while the label states none of them', async () => {
+      const { store } = await mountFood()
+      expect(store.foodData.nutritionFacts!.referenceAmount).toBeUndefined()
+      expect(store.findings.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_MISSING')
+      expect(store.findings.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_MET')
+    })
+
+    it('reports the column a 250 percent package owes once they are stated', async () => {
+      const { store, wrapper } = await mountFood()
+      // 100 g against a 40 g reference amount, sold individually — squarely inside
+      // (b)(12)(i)'s "at least 200 percent and up to and including 300 percent".
+      await stateDutyFacts(wrapper, { racc: '40', packageContent: '100' })
+
+      expect(store.foodData.nutritionFacts!.referenceAmount).toEqual({
+        amount: 40,
+        unit: 'g',
+        category: '',
+      })
+      const missing = store.failures.find((f) => f.code === 'FDA_DUAL_COLUMN_MISSING')
+      expect(missing, 'the rule can now fire from the editor').toBeDefined()
+      expect(missing!.citation.reference).toBe('21 CFR 101.9(b)(12)(i)')
+    })
+
+    it('clears the duty when the package is said not to be sold individually', async () => {
+      const { store, wrapper } = await mountFood()
+      await stateDutyFacts(wrapper, { racc: '40', packageContent: '100' })
+      expect(store.failures.map((f) => f.code)).toContain('FDA_DUAL_COLUMN_MISSING')
+
+      // "No" is a real answer and a different one from silence: (b)(12)(i) reaches
+      // only products "packaged and sold individually", so this takes the duty away
+      // rather than leaving it unanswerable.
+      await wrapper.find('#field-food-nf-sold-individually').setValue('no')
+      await nextTick()
+      expect(store.foodData.nutritionFacts!.packagedAndSoldIndividually).toBe(false)
+      expect(store.failures.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_MISSING')
+    })
+
+    it('keeps a unit chosen before the figure was typed', async () => {
+      // The select is shown from the start, so picking millilitres and then typing
+      // the amount used to have the choice replaced by the default when the record
+      // was created. Found by review.
+      const { store, wrapper } = await mountFood()
+      await wrapper.find('#field-food-nf-racc-unit').setValue('mL')
+      await nextTick()
+      await wrapper.find('#field-food-nf-racc').setValue('40')
+      await nextTick()
+      expect(store.foodData.nutritionFacts!.referenceAmount!.unit).toBe('mL')
+    })
+
+    it.each(['0', '-40'])('refuses %s as a figure rather than storing it', async (typed) => {
+      // Not a measurement. Storing one is worse than a blank: the engine cannot
+      // divide by it, so the duty reads as answered rather than as never asked —
+      // and the API schema would refuse to save the document anyway.
+      const { store, wrapper } = await mountFood()
+      await stateDutyFacts(wrapper, { racc: '40', packageContent: '100' })
+      expect(store.failures.map((f) => f.code)).toContain('FDA_DUAL_COLUMN_MISSING')
+
+      await wrapper.find('#field-food-nf-racc').setValue(typed)
+      await nextTick()
+      expect(store.foodData.nutritionFacts!.referenceAmount).toBeUndefined()
+      expect(store.failures.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_MISSING')
+    })
+
+    it('forgets the whole reference amount when its figure is cleared', async () => {
+      // A blank is not a zero. The three sub-fields travel together, so clearing the
+      // amount removes the record rather than leaving a category claiming a row of
+      // a table with no figure against it.
+      const { store, wrapper } = await mountFood()
+      await stateDutyFacts(wrapper, { racc: '40', packageContent: '100' })
+      await wrapper.find('#field-food-nf-racc-cat').setValue('Snacks — chips, pretzels')
+      await nextTick()
+      expect(store.foodData.nutritionFacts!.referenceAmount!.category).toBe(
+        'Snacks — chips, pretzels',
+      )
+
+      await wrapper.find('#field-food-nf-racc').setValue('')
+      await nextTick()
+      expect(store.foodData.nutritionFacts!.referenceAmount).toBeUndefined()
+      expect(store.failures.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_MISSING')
+    })
+  })
+
   it('reports a second column carrying one figure out of fourteen', async () => {
     const { store, wrapper } = await mountFood()
     await wrapper.find('#field-food-nf-dual').setValue(true)
