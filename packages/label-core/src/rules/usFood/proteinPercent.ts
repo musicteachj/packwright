@@ -28,11 +28,11 @@ import { wasFullyDrawn } from '../../layout/omissions'
 import type { TextPrimitive } from '../../layout/types'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
-import type { UsFoodContext, UsFoodRule } from '../types'
+import type { Decline, UsFoodContext, UsFoodRule } from '../types'
 import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
 import type { DualColumnBasis } from '../../fda/nutritionFormats'
-import { dualColumnDutyFor, whyNotReached } from './mandatoryColumns'
+import { dualColumnDutyFor } from './mandatoryColumns'
 import { smallestOf } from './printedText'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
@@ -81,6 +81,36 @@ export const usFoodProteinPercentRule: UsFoodRule = {
   codes: [FDA_PROTEIN_PERCENT_MISSING, FDA_PROTEIN_PERCENT_MET],
   appliesTo: 'us-food',
 
+  /**
+   * A second column whose basis the label never states.
+   *
+   * That each column carry a percentage is (e)'s requirement, and four of the
+   * seven bases are dual labeling (e) governs while three are not — so on a
+   * column of unstated basis the question cannot be put. It used to be answered
+   * under (c)(7)(i), which requires the *food's* protein percentage rather than
+   * one per column.
+   *
+   * Keyed on the declared column rather than on drawn ink, so it also covers the
+   * (j)(14) carton whose information is presented off the label and whose panel
+   * this engine never draws — the path where review found the question vanishing
+   * with neither a finding nor a word about it.
+   */
+  declines({ data }: UsFoodContext): Decline | undefined {
+    const panel = data.nutritionFacts
+    if (panel === undefined || dailyValuePopulationOf(panel) !== 'children-1-through-3') {
+      return undefined
+    }
+    if (panel.columns?.mode !== 'dual' || panel.columns.basis !== undefined) return undefined
+    if (panel.columns.secondAmounts?.protein === undefined) return undefined
+    return {
+      reason:
+        'This food is declared for children 1 through 3 and its panel carries a second column ' +
+        'with a protein amount. Whether that column owes a protein percentage of its own turns ' +
+        'on which paragraph of 101.9(e) governs it, and the label does not say what the column ' +
+        'counts. State what the second column counts and this check will run.',
+    }
+  },
+
   check({ data, layout, stock }: UsFoodContext): Finding[] {
     const panel = data.nutritionFacts
     if (panel === undefined || dailyValuePopulationOf(panel) !== 'children-1-through-3') return []
@@ -88,10 +118,20 @@ export const usFoodProteinPercentRule: UsFoodRule = {
     // (e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require, so which
     // paragraph governs a second column depends on more than what it counts.
     const duty = dualColumnDutyFor(data, stock)
-    const columnCitation = (basis: DualColumnBasis | undefined): Citation => {
-      if (basis === undefined) return CITATION
+    /**
+     * The paragraph putting a percentage in the *second* column, or nothing.
+     *
+     * (c)(7)(i) requires the protein percentage of the food, and the first column
+     * carries it. That each column must carry one is (e)'s requirement, and (e)
+     * reaches only the dual labeling its opening lists — so on a column no
+     * provision governs there is nothing to ask of the second column at all.
+     * Falling back to (c)(7)(i) here made that paragraph say something it does
+     * not: that a voluntary column owes a percentage of its own.
+     */
+    const columnCitation = (basis: DualColumnBasis | undefined): Citation | undefined => {
+      if (basis === undefined) return undefined
       const reference = eachColumnReference(basis, duty.standing)
-      return reference === undefined ? CITATION : EACH_COLUMN_PARAGRAPHS[reference]
+      return reference === undefined ? undefined : EACH_COLUMN_PARAGRAPHS[reference]
     }
 
     const missing = (
@@ -137,14 +177,19 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       return panel.columns?.mode === 'dual' &&
         panel.columns?.secondAmounts?.protein !== undefined &&
         panel.columns?.secondPercentDv?.protein === undefined
-        ? [
-            missing(
-              US_FOOD_ELEMENTS.principalDisplayPanel,
-              'Its second column states none.',
-              'no protein percentage in the second column',
-              columnCitation(basis),
-            ),
-          ]
+        ? (() => {
+            const citation = columnCitation(basis)
+            return citation === undefined
+              ? []
+              : [
+                  missing(
+                    US_FOOD_ELEMENTS.principalDisplayPanel,
+                    'Its second column states none.',
+                    'no protein percentage in the second column',
+                    citation,
+                  ),
+                ]
+          })()
         : []
     }
 
@@ -179,23 +224,14 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       // Nor is it cleared.
       if (columns.length < 2) return []
       if (columns.some((column) => !PERCENT.test(column.text))) {
-        // Columns no (e) paragraph names, for reasons a user would act on differently.
-        // "Voluntary" is the one to be careful with: a label that stated no reference
-        // amount has not been asked whether its column is required.
-        const basis = panel.columns?.basis
-        const citation = columnCitation(basis)
-        const lead =
-          citation !== CITATION
-            ? `On a dual-column panel, ${citation.reference} presents the percent Daily ` +
-              'Value in each column, '
-            : basis === undefined
-              ? 'The panel draws a second column, and states no basis for it, '
-              : 'The panel draws a second column 101.9(e)(6) does not reach — it governs only ' +
-                `the columns (b)(12)(i) and (b)(2)(i)(D) require, and ${whyNotReached(basis, duty)} — `
+        // Nothing to ask of a column no provision governs. See `columnCitation`.
+        const citation = columnCitation(panel.columns?.basis)
+        if (citation === undefined) return []
         return [
           missing(
             PROTEIN_ROW,
-            `${lead}and the second column prints the protein row with no percentage.`,
+            `On a dual-column panel, ${citation.reference} presents the percent Daily Value in ` +
+              'each column, and the second column prints the protein row with no percentage.',
             'no protein percentage in the second column',
             citation,
           ),

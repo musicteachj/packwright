@@ -35,6 +35,19 @@ const mountFood = async () => {
   return { store, wrapper }
 }
 
+// **The form checks only run on a column the regulation requires.** (e) reaches
+// the dual labeling its opening lists, plus the columns (b)(12)(i) and
+// (b)(2)(i)(D) compel; a per-container column nothing compels is governed by no
+// provision of 101.9, so there is nothing to judge its form against. Stating
+// the three facts that make it required is therefore part of these cases now,
+// through the rail's own inputs — which is the flow a user takes.
+const makeColumnRequired = async (wrapper: Awaited<ReturnType<typeof mountFood>>['wrapper']) => {
+  await wrapper.find('#field-food-nf-racc').setValue('40')
+  await wrapper.find('#field-food-nf-package-content').setValue('100')
+  await wrapper.find('#field-food-nf-sold-individually').setValue('yes')
+  await nextTick()
+}
+
 describe('the editor on a US food label', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
@@ -789,6 +802,7 @@ describe('the Nutrition Facts displays, from the editor', () => {
 
   it('reports a second column carrying one figure out of fourteen', async () => {
     const { store, wrapper } = await mountFood()
+    await makeColumnRequired(wrapper)
     await wrapper.find('#field-food-nf-dual').setValue(true)
     await nextTick()
     // The figures have to be typed — there is no "x2" button, because deriving
@@ -805,18 +819,33 @@ describe('the Nutrition Facts displays, from the editor', () => {
     // how a column of fourteen rows carrying one figure passed for compliant.
     const incomplete = store.failures.find((f) => f.code === 'FDA_DUAL_COLUMN_INCOMPLETE')
     expect(incomplete, 'one figure is not a second declaration').toBeDefined()
-    // The rail seeds a per-serving and per-container column and no reference amount, and
-    // (e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require. With no declared
-    // reference amount the engine cannot tell whether they do, so the finding cites (e) —
-    // the dual labeling paragraph itself — and says the figure is missing rather than
-    // calling the column a choice the user made.
-    expect(incomplete!.citation.reference).toBe('21 CFR 101.9(e)')
-    expect(incomplete!.message).toContain('has not stated everything')
-    expect(incomplete!.message).not.toContain('voluntarily')
+    // The facts stated above make the column one (b)(12)(i) requires, which is what
+    // brings (e)(6) to bear on its form. Without them no provision governs it and
+    // there is nothing to report — the case below.
+    expect(incomplete!.citation.reference).toBe('21 CFR 101.9(e)(6)')
+  })
+
+  it('says nothing about the form of a column the label need not carry', async () => {
+    // The rail seeds a per-container column and collects no reference amount, so
+    // by default a browser-built dual column is one no provision of 101.9
+    // governs — and a rule that reported it would be citing a paragraph that does
+    // not reach it. What the user gets instead is the mandate rule asking for the
+    // facts, which is the thing they can act on.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-dual').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-nf2-total-fat').setValue('7.5')
+    await nextTick()
+
+    expect(store.layout!.elements.map((e) => e.elementId)).toContain('food-nutrition-second-column')
+    expect(store.failures.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_INCOMPLETE')
+    expect(store.findings.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_FORM_MET')
+    expect(store.declined.map((one) => one.ruleId)).toContain('us-food/dual-column-required')
   })
 
   it('clears a second column once every nutrient carries one', async () => {
     const { store, wrapper } = await mountFood()
+    await makeColumnRequired(wrapper)
     await wrapper.find('#field-food-nf-dual').setValue(true)
     await nextTick()
     await fillSecondColumn(wrapper)
@@ -828,6 +857,7 @@ describe('the Nutrition Facts displays, from the editor', () => {
 
   it('reports two columns headed the same, from the form', async () => {
     const { store, wrapper } = await mountFood()
+    await makeColumnRequired(wrapper)
     await wrapper.find('#field-food-nf-dual').setValue(true)
     await nextTick()
     await wrapper.find('#field-food-nf2-total-fat').setValue('7.5')
@@ -1198,6 +1228,7 @@ describe('the Nutrition Facts panel in the editor', () => {
     // both columns of a per-serving and per-container panel. The engine derives none for
     // protein, so until the column could state one the label could not be made compliant.
     const { store, wrapper } = await mountFood()
+    await makeColumnRequired(wrapper)
     await wrapper.find('#field-food-nf-represented-for').setValue('children-1-through-3')
     await wrapper.find('#field-food-nf-dual').setValue(true)
     await nextTick()

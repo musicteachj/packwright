@@ -161,6 +161,25 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A column no provision governs draws no finding.** `us-food/dual-column-form` reported an incomplete or
+  unseparated second column as a **violation citing 21 CFR 101.9(e)**, while explaining in the same message
+  that no subparagraph of (e) reached it. Read again on 2026-09-18, (e) opens "Nutrition information **may** be
+  presented for" four things and then says "When **such** dual labeling is provided, equal prominence shall be
+  given … Information shall be presented in a format consistent with paragraph (d) … except that" — every
+  `shall` in (e) hangs off that "such". A per-container column is none of the four, so (e) reaches it only
+  where (b)(12)(i) or (b)(2)(i)(D) compels it and (e)(6) supplies the format. Where neither does, **nothing in
+  101.9 governs the column's form.** Lowering the finding to an advisory would have kept the contradiction and
+  only made it quieter: `Finding.citation` is required, so every finding names a provision, and naming one that
+  does not apply is the defect this project treats most seriously. There being no provision, there is no
+  finding — and `docs/WHAT-IS-NOT-CHECKED.md` says so where a reader can act on knowing it.
+  `us-food/protein-percent` stops asking the same column for a percentage, for the same reason: (c)(7)(i)
+  requires the food's protein percentage and the first column carries it, while that *each* column carry one is
+  (e)'s requirement. **Where the label says nothing about what its second column counts**, which subparagraph
+  applies cannot be told — four of the seven bases are dual labeling (e) governs and three are not — so the
+  rule declines and asks, rather than reporting under (e) on an assumption. The consequence worth knowing: the
+  editor seeds a per-container column and collects no reference amount, so a browser-built dual column is
+  governed by nothing until those facts are stated, and the report says which to supply.
+
 - **A second column is not the second column.** `us-food/dual-column-required` cleared any label that drew a
   second column, whatever that column counted — so a package owing a per-unit column under 21 CFR
   101.9(b)(2)(i)(D) and drawing a per-container one was certified compliant with a requirement it had not met.

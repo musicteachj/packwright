@@ -343,8 +343,10 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       'that composed them would be authoring part of a regulated statement.',
     data: {
       ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
       nutritionFacts: {
         ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
         columns: {
           mode: 'dual',
           basis: 'per-container',
@@ -430,8 +432,10 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       'the requirement is stated at all.',
     data: {
       ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
       nutritionFacts: {
         ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
         columns: {
           mode: 'dual',
           basis: 'per-container',
@@ -456,8 +460,10 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       'distinguishing is the failure the presence check alone would miss.',
     data: {
       ...BASE,
+      netQuantity: OWED_COLUMN_NET_QUANTITY,
       nutritionFacts: {
         ...BASE_NUTRITION,
+        ...OWES_A_PER_CONTAINER_COLUMN,
         columns: {
           mode: 'dual',
           basis: 'per-container',
