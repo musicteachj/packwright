@@ -81,7 +81,38 @@ async function request(path: string, init?: RequestInit): Promise<unknown> {
   throw new SavedLabelError(message, response.status, detail)
 }
 
-export const listLabels = () => request(BASE) as Promise<SavedLabelSummary[]>
+/** More pages than any real account has, so a broken cursor cannot spin forever. */
+const MAX_PAGES = 40
+
+/**
+ * Every saved label, newest first, fetched a page at a time.
+ *
+ * The endpoint pages over a cursor now, because it used to return every label on
+ * every call — a collection scan that grows without bound. **Following the cursor
+ * rather than taking the first page is the point**: the list view is the only way
+ * to open a saved label, so stopping at fifty would make the fifty-first
+ * unreachable with nothing on screen to say the list had been cut short. Each
+ * query is bounded and indexed; the total is not, which is the same total as
+ * before and now costs the database far less to produce.
+ *
+ * A "load more" control would be better than fetching them all, and it is a
+ * design decision rather than a client one — see `docs/BACKLOG.md`.
+ */
+export const listLabels = async (): Promise<SavedLabelSummary[]> => {
+  const all: SavedLabelSummary[] = []
+  let before: string | undefined
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const query = before === undefined ? BASE : `${BASE}?before=${encodeURIComponent(before)}`
+    const answer = (await request(query)) as {
+      labels?: SavedLabelSummary[]
+      nextBefore?: string
+    }
+    all.push(...(answer.labels ?? []))
+    if (answer.nextBefore === undefined) break
+    before = answer.nextBefore
+  }
+  return all
+}
 
 export const readLabel = (id: string) => request(`${BASE}/${id}`) as Promise<SavedLabel>
 

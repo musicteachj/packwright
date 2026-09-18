@@ -13,7 +13,7 @@
  * with it: `/:id` is one path segment, `/upc-a/export` is two and POST-only.
  */
 import { Router, type Request, type Response } from 'express'
-import { isValidObjectId } from 'mongoose'
+import { Types, isValidObjectId } from 'mongoose'
 import { LabelDocument, serializeLabelDocument } from './labelDocument'
 import { LabelDocumentInput } from './schemas'
 
@@ -29,26 +29,94 @@ const badRequest = (
 
 const notFound = (response: Response) => response.status(404).json({ error: 'Not found' })
 
+/**
+ * A cursor as the client hands it back, or a refusal.
+ *
+ * `undefined` for the first page, `'malformed'` for something that cannot be
+ * read — which is answered with a 400 rather than ignored, because silently
+ * treating a corrupt cursor as "start again" makes a client loop over the head
+ * of the list forever with nothing to tell it why.
+ */
+function readCursor(
+  raw: unknown,
+): { updatedAt: Date; id: Types.ObjectId } | undefined | 'malformed' {
+  if (typeof raw !== 'string' || raw === '') return undefined
+  const split = raw.lastIndexOf('_')
+  if (split === -1) return 'malformed'
+  const updatedAt = new Date(raw.slice(0, split))
+  const id = raw.slice(split + 1)
+  if (Number.isNaN(updatedAt.getTime()) || !isValidObjectId(id)) return 'malformed'
+  return { updatedAt, id: new Types.ObjectId(id) }
+}
+
+/** How many saved labels a page carries when the caller does not say. */
+const DEFAULT_PAGE = 50
+/** The most it will carry however large a number is asked for. */
+const MAX_PAGE = 200
+
 export function createLabelDocumentRouter(): Router {
   const router = Router()
 
-  router.get('/', async (_request: Request, response: Response) => {
+  router.get('/', async (request: Request, response: Response) => {
     // Newest first: the thing most recently worked on is the thing most likely
     // to be wanted next. `data` is excluded in the query rather than stripped
     // afterwards, so the cost of listing does not grow with the size of the
-    // labels in it.
-    const documents = await LabelDocument.find({}, 'name labelType createdAt updatedAt')
-      .sort({ updatedAt: -1 })
+    // labels in it — but it did grow with the *number* of them, without bound,
+    // which is the half that is fixed here.
+    //
+    // A page over a cursor rather than a skip. `skip` re-reads and discards
+    // everything before the offset, so the last page of a long list is the most
+    // expensive one to fetch; a cursor on `updatedAt` reads from where the last
+    // page stopped, and `labelDocumentSchema` already indexes it descending.
+    const asked = Number(request.query.limit)
+    const limit =
+      Number.isFinite(asked) && asked >= 1 ? Math.min(Math.trunc(asked), MAX_PAGE) : DEFAULT_PAGE
+
+    // **Compound, because `updatedAt` alone is not unique.** Mongo stores
+    // milliseconds and two labels saved inside one of them tie; a cursor of
+    // `updatedAt < boundary` then steps over every one of its neighbours, and the
+    // list reports itself finished having silently skipped them. Four labels
+    // sharing a timestamp returned two and stopped. Ordering and seeking on
+    // `(updatedAt, _id)` breaks the tie by something that cannot repeat.
+    const cursor = readCursor(request.query.before)
+    if (cursor === 'malformed') {
+      response.status(400).json({
+        error: 'Invalid cursor',
+        detail: ['`before` must be the `nextBefore` value from a previous page.'],
+      })
+      return
+    }
+
+    const found = await LabelDocument.find(
+      cursor === undefined
+        ? {}
+        : {
+            $or: [
+              { updatedAt: { $lt: cursor.updatedAt } },
+              { updatedAt: cursor.updatedAt, _id: { $lt: cursor.id } },
+            ],
+          },
+      'name labelType createdAt updatedAt',
+    )
+      .sort({ updatedAt: -1, _id: -1 })
+      .limit(limit + 1)
       .lean()
-    response.json(
-      documents.map((document) => ({
+    const page = found.slice(0, limit)
+    const last = page[page.length - 1]
+
+    response.json({
+      labels: page.map((document) => ({
         id: String(document._id),
         name: document.name,
         labelType: document.labelType,
         createdAt: document.createdAt.toISOString(),
         updatedAt: document.updatedAt.toISOString(),
       })),
-    )
+      // The value to pass back as `before`, or nothing where this is the end.
+      ...(found.length > limit && last !== undefined
+        ? { nextBefore: `${last.updatedAt.toISOString()}_${String(last._id)}` }
+        : {}),
+    })
   })
 
   router.post('/', async (request: Request, response: Response) => {

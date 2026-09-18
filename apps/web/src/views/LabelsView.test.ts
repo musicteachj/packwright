@@ -25,6 +25,9 @@ const respond = (body: unknown, ok = true, status = 200) =>
 
 afterEach(() => vi.unstubAllGlobals())
 
+// The list endpoint answers with a page — `{ labels, nextBefore? }` — since it
+// stopped returning every saved label on every call. `listLabels` unwraps it, so
+// these stubs speak the server's shape rather than the function's.
 const mountList = async () => {
   const wrapper = mount(LabelsView, { global: { stubs } })
   await flushPromises()
@@ -33,7 +36,7 @@ const mountList = async () => {
 
 describe('the saved labels list', () => {
   it('lists what the server returned, named by kind', async () => {
-    vi.stubGlobal('fetch', respond(rows))
+    vi.stubGlobal('fetch', respond({ labels: rows }))
     const wrapper = await mountList()
     expect(wrapper.text()).toContain('Granola 340g')
     expect(wrapper.text()).toContain('GHS chemical')
@@ -43,7 +46,7 @@ describe('the saved labels list', () => {
     // An empty list and a failed request look identical to a reader unless the
     // page distinguishes them, and "nothing here" is the wrong answer to "the
     // request failed".
-    vi.stubGlobal('fetch', respond([]))
+    vi.stubGlobal('fetch', respond({ labels: [] }))
     const wrapper = await mountList()
     expect(wrapper.text()).toContain('Nothing saved yet')
   })
@@ -56,7 +59,7 @@ describe('the saved labels list', () => {
   })
 
   it('asks before deleting, and only then deletes', async () => {
-    const fetchMock = respond(rows)
+    const fetchMock = respond({ labels: rows })
     vi.stubGlobal('fetch', fetchMock)
     const wrapper = await mountList()
 
@@ -73,7 +76,7 @@ describe('the saved labels list', () => {
   })
 
   it('keeps the label when the question is declined', async () => {
-    vi.stubGlobal('fetch', respond(rows))
+    vi.stubGlobal('fetch', respond({ labels: rows }))
     const wrapper = await mountList()
     await wrapper.get('[aria-label="Delete Granola 340g"]').trigger('click')
     await wrapper.get('.text-chrome-400.underline').trigger('click')

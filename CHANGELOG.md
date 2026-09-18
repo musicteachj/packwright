@@ -22,6 +22,19 @@ into a version only when there is a reason to.
   excluded by an explicit filter: PDFKit deflates its content streams already, so gzipping an export spends CPU
   to grow it by a percent.
 
+- **The saved-labels list is paged.** `GET /api/labels` returned every document on every call — an unbounded
+  collection scan whose response grew with the number of labels saved. It answers `{ labels, nextBefore? }`
+  now, fifty by default and two hundred at most, over a **cursor** rather than a skip: `skip` re-reads and
+  discards everything before the offset, which makes the last page of a long list the most expensive one to
+  fetch, where a cursor reads from where the previous page stopped. The index that sort already needed serves
+  it. The cursor is compound, `(updatedAt, _id)`, and the first version was not — Mongo stores milliseconds,
+  labels saved inside one of them tie, and a cursor of `updatedAt < boundary` steps over every neighbour of the
+  boundary. Four labels sharing a timestamp came back as two, with the list reporting itself finished. A cursor
+  that cannot be read is answered with a 400 rather than ignored, because treating a corrupt one as "start
+  again" loops a client over the head of the list with nothing to say why. `listLabels` follows the cursor to
+  the end, so the client behaves as it always did while every individual query is bounded; a "load more"
+  control is a decision for the view rather than the client, and is in `docs/BACKLOG.md`.
+
 - **A check that could not run says so, instead of saying nothing.** An empty `check` meant four different
   things and only one of them was worth telling somebody, so all four were silent — and silence beside a clean
   report reads as approval. `Rule.declines` is an opt-in second answer: where a rule stands down because the
