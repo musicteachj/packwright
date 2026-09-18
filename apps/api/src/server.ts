@@ -1,4 +1,5 @@
 import { createApp } from './app'
+import { DEFAULT_AUDIT_LIMITS } from './audit/routes'
 import { extractGhsLabel, sendThrough, visionClient, type ExtractLabel } from './audit/extract'
 import { connectToDatabase, databaseStatus } from './db'
 import { loadDotenv } from './dotenv'
@@ -43,6 +44,13 @@ const app = createApp({
   webRoot,
   databaseStatus,
   extract,
+  // The quotas are stated here rather than defaulted inside `createApp`, which
+  // builds the same application every time it is called. This is the only place
+  // that knows it is a real server rather than a test harness, so it is the
+  // place that decides what the route may spend.
+  auditLimits: DEFAULT_AUDIT_LIMITS,
+  ...(env.AUDIT_API_KEY === undefined ? {} : { auditApiKey: env.AUDIT_API_KEY }),
+  ...(env.TRUST_PROXY_HOPS === undefined ? {} : { trustProxyHops: env.TRUST_PROXY_HOPS }),
 })
 
 app.listen(env.PORT, () => {

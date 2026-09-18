@@ -2,7 +2,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import helmet from 'helmet'
 import morgan from 'morgan'
 import { join } from 'node:path'
-import { createAuditRouter } from './audit/routes'
+import { createAuditRouter, type AuditLimits } from './audit/routes'
 import { createLabelDocumentRouter } from './labels/labelDocumentRoutes'
 import { createLabelRouter } from './labels/routes'
 import type { ExtractLabel } from './audit/extract'
@@ -43,6 +43,32 @@ export interface AppOptions {
    * `ANTHROPIC_API_KEY` staying optional in `env.ts` is there to allow.
    */
   extract?: ExtractLabel | undefined
+  /**
+   * The shared secret the audit route requires, or nothing to require none.
+   *
+   * Injected for the reason `extract` is: reading it here would make every
+   * route test in this workspace depend on the environment to build an
+   * application that checks nothing.
+   */
+  auditApiKey?: string | undefined
+  /**
+   * The audit route's quotas, or `false` to enforce none.
+   *
+   * Stated rather than defaulted from `NODE_ENV`, because this factory builds
+   * the same application every time it is called and an application that
+   * quietly drops its own spending limits under one environment variable is not
+   * the same application. `server.ts` passes the defaults; a test that is not
+   * about the quotas passes `false`.
+   */
+  auditLimits?: AuditLimits | false | undefined
+  /**
+   * How many proxies sit in front of this server. See `TRUST_PROXY_HOPS`.
+   *
+   * Nothing means none, which is the safe reading: the per-client quota then
+   * keys on the socket address, and behind an unconfigured proxy that is one
+   * shared bucket rather than a forgeable one.
+   */
+  trustProxyHops?: number | undefined
 }
 
 /**
@@ -114,8 +140,31 @@ function statusOf(error: Error): number | undefined {
  * so route tests need neither a port nor a running process.
  */
 export function createApp(options: AppOptions = {}): Express {
-  const { enableLogging = true, webRoot, databaseStatus, extract } = options
+  const {
+    enableLogging = true,
+    webRoot,
+    databaseStatus,
+    extract,
+    auditApiKey,
+    auditLimits,
+    trustProxyHops,
+  } = options
   const app = express()
+
+  /**
+   * Who to believe about a client's address, and why the default is nobody.
+   *
+   * Express trusts no proxy unless told to, so `request.ip` is the socket's
+   * peer — the load balancer, in a deployment that has one. The audit route's
+   * per-client quota then treats the world as one caller, which is blunt but
+   * refuses rather than admits. Setting `trust proxy` to `true` instead would
+   * make Express believe whatever `X-Forwarded-For` says, and a caller who can
+   * write that header can mint a fresh quota for every request. A hop count is
+   * the only form of this setting that is safe to hold: it reads exactly that
+   * many addresses from the right, which are the ones a proxy it is behind
+   * appended.
+   */
+  if (trustProxyHops !== undefined) app.set('trust proxy', trustProxyHops)
 
   /**
    * helmet's defaults, with one directive widened and the reason recorded.
@@ -198,7 +247,7 @@ export function createApp(options: AppOptions = {}): Express {
   // about either mount shadows the other.
   app.use('/api/labels', createLabelDocumentRouter())
   app.use('/api/labels', createLabelRouter())
-  app.use('/api/audit', createAuditRouter({ extract }))
+  app.use('/api/audit', createAuditRouter({ extract, apiKey: auditApiKey, limits: auditLimits }))
 
   /**
    * The built client, served from the same origin as the API it calls.
