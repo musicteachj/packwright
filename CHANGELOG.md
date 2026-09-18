@@ -161,6 +161,24 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **A second column is not the second column.** `us-food/dual-column-required` cleared any label that drew a
+  second column, whatever that column counted — so a package owing a per-unit column under 21 CFR
+  101.9(b)(2)(i)(D) and drawing a per-container one was certified compliant with a requirement it had not met.
+  Both provisions name what their column must carry, which is the point the rule was missing: (b)(12)(i) asks
+  for one "that lists the quantitative amounts and percent Daily Values **for the entire package**", and
+  (b)(2)(i)(D) for one "**per individual unit**" (read from the eCFR on 2026-09-18). The rule now compares what
+  the label says its second column counts against what the package is owed, and reports the required column
+  absent where they differ. **Where the label says nothing about what the column counts**, neither answer is
+  available — reporting it absent would be a false positive and clearing it would certify a column this engine
+  cannot identify — so a new advisory, `FDA_DUAL_COLUMN_BASIS_UNCONFIRMED`, says what could not be confirmed
+  and what to state. Found by the review of PR #43, which noticed the pass contradicting a sibling rule's
+  finding on the same label; the contradiction was worked around then and the pass left wrong. **A package can
+  owe both columns at once** — one in the band whose individual unit is also in it — and this document model
+  holds a single basis and a single set of second amounts, so no label it can express satisfies both. The check
+  asks which owed columns are *not* on the label rather than whether the one drawn is among those owed, which
+  is the difference between reporting every such package and certifying every one of them. The first version of
+  this fix did the latter, and review caught it.
+
 - **Both GS1 rules cite a release and a section, and `symbol.ts` is re-read against the current one.**
   `gs1/gtin-check-digit` cited "GS1 General Specifications — check digit calculation" with no release and no
   section, and `gs1/digital-link` cited "GS1 Digital Link URI Syntax" with no release at all — unverifiable

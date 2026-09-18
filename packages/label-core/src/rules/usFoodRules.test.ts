@@ -2381,10 +2381,13 @@ describe('a dual-column panel is judged under the paragraph for what its second 
         ...facts
       } = base.nutritionFacts!
       const data = { ...base, nutritionFacts: { ...facts, unitContent: 100 } }
+      // The mandate rule reports the owed column absent rather than clearing the
+      // label — (b)(2)(i)(D) asks for a column "per individual unit" and the one
+      // drawn says it counts the package, which is not that column.
       expect(
         findingsFor(data, US_FOOD_CONFORMANT.stock).map((f) => f.code),
-        'premise: the label owes a column',
-      ).toContain('FDA_DUAL_COLUMN_MET')
+        'premise: the label owes a column it has not drawn',
+      ).toContain('FDA_DUAL_COLUMN_MISSING')
       const found = incompleteIn(data)
       expect(found.citation.reference).toBe('21 CFR 101.9(e)')
       expect(found.message).toContain('owes a per-unit column under 101.9(b)(2)(i)(D)')
