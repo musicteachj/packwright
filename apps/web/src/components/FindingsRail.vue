@@ -14,7 +14,7 @@
  */
 import type { Finding, Severity } from '@packwright/label-core'
 import { computed } from 'vue'
-import { SEVERITY_STYLES } from '../severity'
+import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
 import FindingItem from './FindingItem.vue'
 
 const props = withDefaults(
@@ -91,6 +91,58 @@ const failureGroups = computed(() => props.groups.filter(([severity]) => severit
 
 const findingCount = computed(() => props.failures.length + props.passes.length)
 
+/**
+ * What the visible strip shows: one entry per kind that has anything in it.
+ *
+ * Failures are grouped by severity so the strip distinguishes two violations
+ * from two blocking findings, which a single "4 findings" would not. The two
+ * non-verdict kinds are counted in neutral grey and marked with the glyphs from
+ * `NOT_A_VERDICT`, because a colour on either would imply a severity where no
+ * provision is being applied at all.
+ */
+const counts = computed(() => {
+  const entries: { label: string; mark: string; total: number; tone: string }[] = []
+
+  for (const [severity, items] of failureGroups.value) {
+    entries.push({
+      label: SEVERITY_STYLES[severity].word,
+      mark: SEVERITY_STYLES[severity].icon,
+      total: items.length,
+      tone: SEVERITY_STYLES[severity].text,
+    })
+  }
+
+  if (props.passes.length) {
+    entries.push({
+      label: SEVERITY_STYLES.pass.word,
+      mark: SEVERITY_STYLES.pass.icon,
+      total: props.passes.length,
+      tone: SEVERITY_STYLES.pass.text,
+    })
+  }
+
+  if (props.uncertifiable.length) {
+    entries.push({
+      label: 'cannot be checked',
+      mark: NOT_A_VERDICT.uncertifiable,
+      total: props.uncertifiable.length,
+      tone: 'text-chrome-400',
+    })
+  }
+
+  const declined = props.declined ?? []
+  if (declined.length) {
+    entries.push({
+      label: 'did not run',
+      mark: NOT_A_VERDICT.declined,
+      total: declined.length,
+      tone: 'text-chrome-400',
+    })
+  }
+
+  return entries
+})
+
 const summary = computed(() => {
   const failed = props.failures.length
   const passed = props.passes.length
@@ -135,11 +187,34 @@ const summary = computed(() => {
       {{ summary }}
     </p>
 
+    <!--
+      The same counts the live region announces, made visible.
+
+      `summary` was `sr-only` and nothing else stated a total, so a sighted
+      reader got a heading and then a scroll: on a GHS label the first thing on
+      screen is a violation, and how many there are in total, how many passed, or
+      whether anything below could not be checked at all is four hundred pixels
+      further down. This is `aria-hidden` on purpose — the region above says it
+      in prose already, and a screen reader hearing both would hear it twice.
+    -->
+    <p
+      v-if="counts.length"
+      class="numeric border-chrome-800 bg-chrome-950 flex flex-wrap gap-x-4 gap-y-1 border-b px-4 py-2 text-xs"
+      :aria-hidden="announce ? 'true' : undefined"
+    >
+      <span v-for="count in counts" :key="count.label" :class="count.tone">
+        <span aria-hidden="true">{{ count.mark }}</span
+        >&#8239;{{ count.total }}
+        <span class="sr-only">{{ count.label }}</span>
+      </span>
+    </p>
+
     <div v-for="[severity, items] in failureGroups" :key="severity">
       <h3
-        class="border-chrome-800 bg-chrome-950 border-b px-4 py-2 text-xs font-semibold tracking-wide"
+        class="border-chrome-800 bg-chrome-950 flex items-center gap-2 border-b px-4 py-2 text-xs font-semibold tracking-wide"
         :class="SEVERITY_STYLES[severity].text"
       >
+        <span aria-hidden="true">{{ SEVERITY_STYLES[severity].icon }}</span>
         {{ SEVERITY_STYLES[severity].heading }} ({{ items.length }})
       </h3>
       <FindingItem
@@ -162,16 +237,39 @@ const summary = computed(() => {
       decline to certify it, and without this block those checks would simply
       vanish from the rail, which reads exactly like a check nobody wrote.
     -->
+    <!--
+      The line where verdicts stop.
+
+      Everything above is a provision applied to this label; everything below is
+      the report saying it did not apply one, and why. Those are different
+      claims, and until this rule existed the only thing distinguishing them was
+      hue — "Cannot be checked" wore CAUTION's own diamond and colour, so on a
+      GHS label it sat under two warnings and read as a third. The blocks below
+      are indented, dashed and neutral for the same reason: no provision is being
+      applied, so nothing here may look like a severity.
+
+      The headings themselves do not change. `docs/WHAT-IS-NOT-CHECKED.md` uses
+      "cannot be checked" and "checks that did not run" verbatim to tell a reader
+      they are distinct and only one is theirs to fix; changing either here would
+      make that document wrong.
+    -->
+    <p
+      v-if="uncertifiable.length || (declined ?? []).length"
+      class="text-chrome-400 border-chrome-800 mt-4 border-t px-4 pt-3 pb-1 text-[10px] font-semibold tracking-wider uppercase"
+    >
+      Not verdicts &#8212; no provision is being applied
+    </p>
+
     <section
       v-if="uncertifiable.length"
-      class="border-caution bg-chrome-950 m-4 border-l-2 px-3 py-3"
+      class="border-chrome-400 mx-4 my-2 border-l border-dashed py-1 pl-4"
       :aria-labelledby="declinedHeadingId"
     >
       <h3
         :id="declinedHeadingId"
-        class="text-caution flex items-center gap-2 text-xs font-semibold"
+        class="text-chrome-300 flex items-center gap-2 text-xs font-semibold"
       >
-        <span aria-hidden="true">{{ SEVERITY_STYLES.advisory.icon }}</span>
+        <span aria-hidden="true">{{ NOT_A_VERDICT.uncertifiable }}</span>
         Cannot be checked
       </h3>
       <template v-for="item in uncertifiable" :key="item.elementId">
@@ -199,14 +297,14 @@ const summary = computed(() => {
     -->
     <section
       v-if="(declined ?? []).length"
-      class="border-chrome-600 bg-chrome-950 m-4 border-l-2 px-3 py-3"
+      class="border-chrome-400 mx-4 my-2 border-l border-dashed py-1 pl-4"
       :aria-labelledby="notRunHeadingId"
     >
       <h3
         :id="notRunHeadingId"
-        class="text-chrome-200 flex items-center gap-2 text-xs font-semibold"
+        class="text-chrome-300 flex items-center gap-2 text-xs font-semibold"
       >
-        <span aria-hidden="true">?</span>
+        <span aria-hidden="true">{{ NOT_A_VERDICT.declined }}</span>
         Checks that did not run
       </h3>
       <div v-for="item in declined ?? []" :key="item.ruleId" class="mt-2">

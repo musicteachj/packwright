@@ -696,6 +696,35 @@ voluntary second column, a reference amount the tool does not carry the table fo
 `FormField` can take a `required` flag whenever the answer arrives; nothing in its shape forecloses it. What
 this entry records is that the decision was deliberately not taken inside the migration.
 
+## From stage 2, the report surface
+
+**The rail repeats a forty-word explanation once per element, and the fix belongs in the engine.** On a GHS
+label the "cannot be checked" block prints the same sentence twice — once for GHS02, once for GHS07 —
+differing only in the code and the symbol's name. Five pictograms would print it five times.
+
+Deduplicating it in the rail means the interface splitting sentences the engine wrote, detecting that two
+share an identical tail, and recomposing them. `LayoutOmission` is `{ elementId, reason: string }`: prose and
+nothing else, so there is no structure to group on and the only lever is string surgery on the report's own
+words. This project does not paraphrase a regulated statement by a single character, and an interface taking
+the engine's prose apart to shorten it is the same move wearing a different hat. The engine should emit the
+shared explanation once and the per-element part separately; the rail then renders what it is given.
+
+**"Checks that did not run" names facts a user could state and cannot link to any of them.** The US food
+decline says the label has not stated "a reference amount, what the whole package holds, and whether it is
+packaged and sold individually" — three fields that exist, with ids, a few hundred pixels away in the form
+rail. Turning that into a list that links to each is this application's own best idea, the finding → canvas
+→ form link, applied where it would pay most.
+
+It is not possible today. `Decline` is `{ reason: string, citation?: Citation }` — there is nothing saying
+which fields a check is waiting on, and the rail cannot infer them from prose without guessing. Closing it
+means extending `Decline` to carry the field ids a check wants, which is a change in
+`packages/label-core/src/rules/types.ts` and therefore a change in `rules/`.
+
+**Both are deferred for the same reason, and it is about the review rung rather than the effort.** A pull
+request touching `rules/` takes `/code-review high` under the ladder. Stage 2 was a UI change reviewed at
+`medium`; folding an engine change into it would carry `rules/` past the rung that exists for it. They are
+one stage of their own, scoped as `label-core` work from the start.
+
 ## From the stage 1 rail migrations
 
 **The GTIN's scan note is created in the same render as the text it announces, so it may never be spoken.**

@@ -156,6 +156,44 @@ describe('the palette states its provenance', () => {
   })
 })
 
+/**
+ * Rules that carry meaning answer to 3:1, and nothing was checking them.
+ *
+ * `theme.test.ts` measures `text-*` and only `text-*`. The rail's new dashed
+ * rule — the one separating verdicts from everything that is not a verdict — was
+ * written in `chrome-600`, which measures **1.65:1** against the surfaces it sits
+ * on. A structural line nobody can see is not structure, and the review caught
+ * it rather than this file.
+ *
+ * Not every border needs 3:1: a card outline is decoration and a hairline
+ * divider is texture. What is listed here is the set that carries a distinction
+ * a reader is expected to act on, and it is a list rather than a scan because no
+ * test can tell from a class name whether a line means something.
+ */
+describe('a rule that carries meaning is visible as one', () => {
+  const STRUCTURAL_RULES = [
+    // Separates the verdicts from the blocks where no provision is applied.
+    'chrome-400',
+    ...SEVERITIES.map((severity) => `${severity}-edge`),
+  ]
+
+  it.each(STRUCTURAL_RULES)('%s clears 3:1 on every surface', (rule) => {
+    for (const surface of SURFACES) {
+      expect(contrast(token(rule), token(surface)), `${rule} on ${surface}`).toBeGreaterThanOrEqual(
+        3,
+      )
+    }
+  })
+
+  it('records the values that are NOT structural, so the list is a decision', () => {
+    // chrome-600 and chrome-700 are hairlines and card edges. They are dim on
+    // purpose and must not be promoted into the list above by someone reaching
+    // for a border token; this pins why.
+    expect(contrast(token('chrome-600'), token('chrome-800'))).toBeLessThan(3)
+    expect(contrast(token('chrome-700'), token('chrome-800'))).toBeLessThan(3)
+  })
+})
+
 describe('the guardrail is enforced, not just documented', () => {
   it('no component sets text in a token that fails contrast', () => {
     // chrome-500 measures 3.01:1 on chrome-900 — legible enough to look fine to

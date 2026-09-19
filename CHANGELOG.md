@@ -10,6 +10,30 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The findings rail tells a verdict apart from a silence by structure, not by hue.** It states four
+  different kinds of thing and only one of them is a severity, but with one colour per severity the only
+  tool it had was colour — so "cannot be checked" used CAUTION's own diamond and `text-caution`, and on a
+  GHS label it sat beneath two `▲ WARNING` findings and read as a third. A reader who had learned that a
+  diamond means CAUTION was being taught something false.
+
+  Findings now carry their severity's `edge`, the 2 px rule those tokens were measured for. Everything that
+  is not a verdict drops below a line that says so — indented, dashed, neutral — and takes a mark from
+  outside the severity set: a hollow square for an element the engine could not draw, an ellipsis for a
+  check that stood down. Neither has a colour, because a colour there would imply a severity where no
+  provision is being applied at all.
+
+  **A visible count strip**, which the rail has never had. `summary` was `sr-only`, so a sighted specialist
+  got a heading and then a scroll: on a GHS label the first thing on screen is one violation, and the total,
+  the passes, and whether anything below could not be judged were four hundred pixels further down. The
+  strip is `aria-hidden` — the live region already says the same thing in prose, and announcing both reads
+  it twice.
+
+  **No heading changed and no count moved.** `docs/WHAT-IS-NOT-CHECKED.md` uses "cannot be checked" and
+  "checks that did not run" verbatim to tell a reader they are distinct and only one is theirs to fix.
+  Collapsing the two near-identical GHS findings into one was considered and rejected: it would make the
+  rail say one where the engine found two, which is the interface editorialising over the engine in an
+  application whose whole claim is that the report says what the rules found.
+
 - **`UsFoodFormRail.vue` moves onto the component layer, and with it the last of the three rails.** Seventy
   label sites — 24 number inputs, 18 text fields, 14 selects, 14 checkboxes — across ten sections, migrated
   in two passes. All three rails now carry zero hand-assembled labels and zero uses of `INPUT` or `LABEL`,
@@ -116,6 +140,29 @@ into a version only when there is a reason to.
   slot changes how the name is set, never what it is.
 
 ### Fixed
+
+- **Five things the review of PR #56 found, and the rail's own new rule was invisible.** The dashed line
+  separating verdicts from everything that is not a verdict — the distinction the whole change exists to
+  make — was written in `chrome-600`, which measures **1.65:1** against the surfaces it sits on. A
+  structural line nobody can see is not structure. It is `chrome-400` now, at 4.45:1, and `theme.test.ts`
+  has gained the guard that would have caught it: it measured `text-*` and only `text-*`, so every border
+  carrying meaning went unchecked. The new list is a list rather than a scan, because no test can tell from
+  a class name whether a line means something — and it pins `chrome-600` and `chrome-700` as deliberately
+  *not* structural, so nobody promotes them by reaching for a border token.
+
+  **The count strip reached nobody on the audit report.** It is `aria-hidden` on the grounds that the live
+  region already says the same thing in prose — but that region is gated on `announce`, and `AuditView`
+  passes `false` to keep the application's single live region. So on `/audit` the totals were hidden from
+  assistive technology and stated nowhere else. It is hidden only when something else is announcing, and
+  each entry carries its severity's word for a reader who reaches it.
+
+  The severity edge was an all-sides `border-color` utility, so it recoloured the divider between findings
+  too, and which colour won was decided by Tailwind's emission order rather than by anything written down.
+  It is `border-l-` now.
+
+  And a test selector guessed at an id that does not exist, fell through to the root element, and left its
+  `text-caution` assertion unscoped — passing because nothing anywhere carried that class, and ready to fail
+  for the wrong reason the day a legitimate advisory finding appeared. It finds the block by its own text.
 
 - **Seven things two review passes found, and the ones worth naming are the fixes that were themselves
   wrong.** `CheckboxField`'s guard reports a label whose rendered text disagrees with its stated one — but
