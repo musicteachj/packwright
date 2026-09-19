@@ -30,16 +30,35 @@ import {
   applyPrecedence,
   requiredPictograms,
   smallContainerThresholdL,
+  type GhsRegime,
   type GhsSignalWord,
+  type HazardClassEntry,
 } from '@packwright/label-core'
 import { computed } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorSection from './EditorSection.vue'
-import { CHIP, CHIP_REMOVE, INPUT, LABEL } from './formStyles'
+import { CHIP, CHIP_REMOVE } from './formStyles'
+import TextField from './ui/TextField.vue'
+import MeasurementField from './ui/MeasurementField.vue'
+import SelectField from './ui/SelectField.vue'
+import CheckboxField from './ui/CheckboxField.vue'
 
 const store = useLabelDocumentStore()
 const data = store.ghsData
 const select = (elementId: string) => store.select(elementId)
+
+/**
+ * `SelectField`'s model is typed `string`, generic across every select in the
+ * app; `data.regime` is the narrower `GhsRegime` union. Read straight through
+ * — the field is required, never `undefined` — and written back through this
+ * setter, the same shape `UpcAFormRail.vue` uses for `symbolPlacement`/`Anchor`.
+ */
+const regime = computed({
+  get: () => data.regime,
+  set: (value: GhsRegime) => {
+    data.regime = value
+  },
+})
 
 /** Annex I part, so 44 classifications read as four groups rather than one list. */
 const PART_NAMES: Record<string, string> = {
@@ -59,6 +78,15 @@ const hazardGroups = computed(() => {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([part, entries]) => ({ part, name: PART_NAMES[part] ?? `Part ${part}`, entries }))
 })
+
+/**
+ * spans the hand-written markup used — `entry.section` in the mono face, the
+ * pictogram arrow in its own colour — cannot come along unchanged. The words
+ * are exactly what was there; only the per-run styling is kept, through that slot, and it carried
+ * no regulatory meaning of its own.
+ */
+const hazardLabel = (entry: HazardClassEntry) =>
+  `${entry.section} ${entry.description} → ${entry.pictogram ?? 'no pictogram'}`
 
 const hazards = computed(() => data.hazards ?? [])
 
@@ -131,6 +159,12 @@ const precautionaryOptions = computed(() => optionsFor('precautionary'))
 const chosenHazardStatements = computed(() => data.hazardStatementCodes ?? [])
 const chosenPrecautionary = computed(() => data.precautionaryStatementCodes ?? [])
 
+/**
+ * `#field-add-h` and `#field-add-p` have no bound value at all — the control is
+ * an action, not state, and resets itself once the code is taken. `SelectField`
+ * is used with no `v-model` for exactly this: its own `model` stays unbound, so
+ * `:value="model"` never fights the reset this handler performs by hand.
+ */
 function addStatement(kind: 'hazard' | 'precautionary', event: Event): void {
   const select = event.target as HTMLSelectElement
   const code = select.value
@@ -172,11 +206,32 @@ const smallContainer = computed({
  */
 const thresholdL = computed(() => smallContainerThresholdL(data.regime))
 
+/**
+ * `outerPackageStatement` is optional on the document; `TextField`'s model is
+ * not. Read back `''` for the unset case and write straight through — no trim,
+ * no delete-on-empty, matching the plain native `v-model` this field used
+ * before the migration.
+ */
+const outerPackageStatement = computed({
+  get: () => data.outerPackageStatement ?? '',
+  set: (value: string) => {
+    data.outerPackageStatement = value
+  },
+})
+
 const hasSupplier = computed({
   get: () => data.supplier !== undefined,
   set: (on: boolean) => {
     if (on) data.supplier = { name: 'Example Chemicals Ltd', address: '1 Example Way' }
     else delete data.supplier
+  },
+})
+
+/** `telephone` is optional on `GhsSupplier`; same reasoning as `outerPackageStatement`. */
+const supplierTelephone = computed({
+  get: () => data.supplier?.telephone ?? '',
+  set: (value: string) => {
+    if (data.supplier) data.supplier.telephone = value
   },
 })
 </script>
@@ -189,31 +244,25 @@ const hasSupplier = computed({
       :selected-element-id="store.selectedElementId"
       @select="select"
     >
-      <label :class="LABEL" for="field-ghs-product">
-        Product identifier
-        <input id="field-ghs-product" v-model="data.productIdentifier" :class="INPUT" type="text" />
-      </label>
+      <TextField
+        id="field-ghs-product"
+        v-model="data.productIdentifier"
+        label="Product identifier"
+      />
 
-      <label :class="LABEL" for="field-ghs-regime">
-        Market
-        <select id="field-ghs-regime" v-model="data.regime" :class="INPUT">
-          <option v-for="regime in GHS_REGIMES" :key="regime" :value="regime">
-            {{ regime === 'eu-clp' ? 'EU — CLP' : 'US — OSHA HazCom' }}
-          </option>
-        </select>
-      </label>
+      <SelectField id="field-ghs-regime" v-model="regime" label="Market">
+        <option v-for="option in GHS_REGIMES" :key="option" :value="option">
+          {{ option === 'eu-clp' ? 'EU — CLP' : 'US — OSHA HazCom' }}
+        </option>
+      </SelectField>
 
-      <label :class="LABEL" for="field-ghs-capacity">
-        Package capacity (litres)
-        <input
-          id="field-ghs-capacity"
-          v-model.number="data.capacityL"
-          :class="INPUT"
-          type="number"
-          min="0.001"
-          step="0.1"
-        />
-      </label>
+      <MeasurementField
+        id="field-ghs-capacity"
+        v-model.number="data.capacityL"
+        label="Package capacity (litres)"
+        min="0.001"
+        step="0.1"
+      />
       <p class="text-chrome-400 text-xs">
         Capacity selects the minimum label and pictogram size. It is not the size of the label.
       </p>
@@ -237,28 +286,27 @@ const hasSupplier = computed({
         <h4 class="text-chrome-400 mt-2 text-xs font-semibold tracking-wide uppercase">
           {{ group.name }}
         </h4>
-        <label
+        <CheckboxField
           v-for="entry in group.entries"
+          :id="`field-hazard-${entry.id}`"
           :key="entry.id"
-          :for="`field-hazard-${entry.id}`"
-          class="text-chrome-300 flex items-start gap-2 text-xs"
+          :checked="hazards.includes(entry.id)"
+          :label="hazardLabel(entry)"
+          @change="toggleHazard(entry.id, ($event.target as HTMLInputElement).checked)"
         >
-          <input
-            :id="`field-hazard-${entry.id}`"
-            type="checkbox"
-            class="accent-notice mt-0.5 shrink-0"
-            :checked="hazards.includes(entry.id)"
-            @change="toggleHazard(entry.id, ($event.target as HTMLInputElement).checked)"
-          />
-          <span>
-            <span class="numeric text-chrome-400">{{ entry.section }}</span>
-            {{ entry.description }}
-            <span v-if="entry.pictogram" class="numeric text-chrome-200">
-              → {{ entry.pictogram }}
-            </span>
-            <span v-else class="text-chrome-400">→ no pictogram</span>
+          <!--
+            The `label` prop above is still the accessible name — this slot only
+            sets the same words differently. A hazard class number and a
+            pictogram code are identifiers, so they take the mono face; the
+            description between them is prose and does not.
+          -->
+          <span class="numeric text-chrome-400">{{ entry.section }}</span>
+          {{ entry.description }}
+          <span v-if="entry.pictogram" class="numeric text-chrome-200">
+            → {{ entry.pictogram }}
           </span>
-        </label>
+          <span v-else class="text-chrome-400">→ no pictogram</span>
+        </CheckboxField>
       </div>
     </EditorSection>
 
@@ -269,21 +317,14 @@ const hasSupplier = computed({
       :status="signalWords.length ? signalWords.join(' + ') : 'none'"
       @select="select"
     >
-      <label
+      <CheckboxField
         v-for="word in GHS_SIGNAL_WORDS"
+        :id="`field-signal-${word}`"
         :key="word"
-        :for="`field-signal-${word}`"
-        class="text-chrome-300 flex items-center gap-2 text-xs"
-      >
-        <input
-          :id="`field-signal-${word}`"
-          type="checkbox"
-          class="accent-notice"
-          :checked="signalWords.includes(word)"
-          @change="toggleSignalWord(word, ($event.target as HTMLInputElement).checked)"
-        />
-        {{ word }}
-      </label>
+        :checked="signalWords.includes(word)"
+        :label="word"
+        @change="toggleSignalWord(word, ($event.target as HTMLInputElement).checked)"
+      />
       <p class="text-chrome-400 text-xs">
         Both can be selected, so a label carrying both can be drawn and reported.
       </p>
@@ -296,15 +337,17 @@ const hasSupplier = computed({
       :status="`${chosenHazardStatements.length} selected`"
       @select="select"
     >
-      <label v-if="hazardOptions.length" :class="LABEL" for="field-add-h">
-        Add a statement
-        <select id="field-add-h" :class="INPUT" @change="addStatement('hazard', $event)">
-          <option value="">Choose an H-statement…</option>
-          <option v-for="[code, text] in hazardOptions" :key="code" :value="code">
-            {{ code }} — {{ text }}
-          </option>
-        </select>
-      </label>
+      <SelectField
+        v-if="hazardOptions.length"
+        id="field-add-h"
+        label="Add a statement"
+        @change="addStatement('hazard', $event)"
+      >
+        <option value="">Choose an H-statement…</option>
+        <option v-for="[code, text] in hazardOptions" :key="code" :value="code">
+          {{ code }} — {{ text }}
+        </option>
+      </SelectField>
       <p v-else class="text-chrome-400 text-xs">
         No verified statement text exists for this market yet, so none can be offered. The EU
         wording is deliberately not reused.
@@ -334,15 +377,17 @@ const hasSupplier = computed({
       :status="`${chosenPrecautionary.length} selected`"
       @select="select"
     >
-      <label v-if="precautionaryOptions.length" :class="LABEL" for="field-add-p">
-        Add a statement
-        <select id="field-add-p" :class="INPUT" @change="addStatement('precautionary', $event)">
-          <option value="">Choose a P-statement…</option>
-          <option v-for="[code, text] in precautionaryOptions" :key="code" :value="code">
-            {{ code }} — {{ text }}
-          </option>
-        </select>
-      </label>
+      <SelectField
+        v-if="precautionaryOptions.length"
+        id="field-add-p"
+        label="Add a statement"
+        @change="addStatement('precautionary', $event)"
+      >
+        <option value="">Choose a P-statement…</option>
+        <option v-for="[code, text] in precautionaryOptions" :key="code" :value="code">
+          {{ code }} — {{ text }}
+        </option>
+      </SelectField>
       <p v-else class="text-chrome-400 text-xs">
         No verified statement text exists for this market yet.
       </p>
@@ -371,39 +416,16 @@ const hasSupplier = computed({
       :status="hasSupplier ? 'set' : 'not set'"
       @select="select"
     >
-      <label for="field-has-supplier" class="text-chrome-300 flex items-center gap-2 text-xs">
-        <input
-          id="field-has-supplier"
-          v-model="hasSupplier"
-          type="checkbox"
-          class="accent-notice"
-        />
-        Include supplier identification
-      </label>
+      <CheckboxField
+        id="field-has-supplier"
+        v-model="hasSupplier"
+        label="Include supplier identification"
+      />
 
       <template v-if="data.supplier">
-        <label :class="LABEL" for="field-supplier-name">
-          Name
-          <input id="field-supplier-name" v-model="data.supplier.name" :class="INPUT" type="text" />
-        </label>
-        <label :class="LABEL" for="field-supplier-address">
-          Address
-          <input
-            id="field-supplier-address"
-            v-model="data.supplier.address"
-            :class="INPUT"
-            type="text"
-          />
-        </label>
-        <label :class="LABEL" for="field-supplier-phone">
-          Telephone
-          <input
-            id="field-supplier-phone"
-            v-model="data.supplier.telephone"
-            :class="INPUT"
-            type="text"
-          />
-        </label>
+        <TextField id="field-supplier-name" v-model="data.supplier.name" label="Name" />
+        <TextField id="field-supplier-address" v-model="data.supplier.address" label="Address" />
+        <TextField id="field-supplier-phone" v-model="supplierTelephone" label="Telephone" />
       </template>
     </EditorSection>
 
@@ -414,15 +436,11 @@ const hasSupplier = computed({
       :status="smallContainer ? 'in use' : 'not used'"
       @select="select"
     >
-      <label for="field-small-container" class="text-chrome-300 flex items-start gap-2 text-xs">
-        <input
-          id="field-small-container"
-          v-model="smallContainer"
-          type="checkbox"
-          class="accent-notice mt-0.5"
-        />
-        This container uses reduced labelling for small containers
-      </label>
+      <CheckboxField
+        id="field-small-container"
+        v-model="smallContainer"
+        label="This container uses reduced labelling for small containers"
+      />
       <p class="text-chrome-400 text-xs">
         Declared, not inferred from capacity. Both regimes make this conditional on a determination
         about the packaging that no label can settle — for
@@ -433,49 +451,34 @@ const hasSupplier = computed({
         }}. The threshold is {{ thresholdL }} litres.
       </p>
 
-      <label v-if="data.regime === 'us-osha'" :class="LABEL" for="field-outer-statement">
-        Outer package statement
-        <input
-          id="field-outer-statement"
-          v-model="data.outerPackageStatement"
-          :class="INPUT"
-          type="text"
-          placeholder="Full label information is provided on the immediate outer package."
-        />
-      </label>
+      <TextField
+        v-if="data.regime === 'us-osha'"
+        id="field-outer-statement"
+        v-model="outerPackageStatement"
+        label="Outer package statement"
+        placeholder="Full label information is provided on the immediate outer package."
+      />
     </EditorSection>
 
     <EditorSection title="Stock" :selected-element-id="store.selectedElementId" @select="select">
-      <label :class="LABEL" for="field-ghs-width">
-        Width (mm)
-        <input
-          id="field-ghs-width"
-          v-model.number="store.ghsStock.widthMm"
-          :class="INPUT"
-          type="number"
-          min="1"
-        />
-      </label>
-      <label :class="LABEL" for="field-ghs-height">
-        Height (mm)
-        <input
-          id="field-ghs-height"
-          v-model.number="store.ghsStock.heightMm"
-          :class="INPUT"
-          type="number"
-          min="1"
-        />
-      </label>
-      <label :class="LABEL" for="field-ghs-margin">
-        Margin (mm)
-        <input
-          id="field-ghs-margin"
-          v-model.number="store.ghsStock.marginMm"
-          :class="INPUT"
-          type="number"
-          min="0"
-        />
-      </label>
+      <MeasurementField
+        id="field-ghs-width"
+        v-model.number="store.ghsStock.widthMm"
+        label="Width (mm)"
+        min="1"
+      />
+      <MeasurementField
+        id="field-ghs-height"
+        v-model.number="store.ghsStock.heightMm"
+        label="Height (mm)"
+        min="1"
+      />
+      <MeasurementField
+        id="field-ghs-margin"
+        v-model.number="store.ghsStock.marginMm"
+        label="Margin (mm)"
+        min="0"
+      />
     </EditorSection>
   </div>
 </template>

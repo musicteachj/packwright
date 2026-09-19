@@ -119,6 +119,51 @@ source is degenerate. An ingredient whose name does not reveal the allergen — 
 `marzipan (almonds)` — would show the feature earning its place. A content decision about the seeded
 document, not a correctness fix.
 
+**~~`gtin-scan-note`'s id changed when the GTIN field moved onto `TextField`.~~ Closed** in the same stage,
+and the entry is kept because what it cost to close is the interesting part.
+
+The scan note used to be two mutually exclusive `<p>`s sharing a hand-written id, wired to the field by a
+hand-written conditional `aria-describedby`. On `TextField`'s `description` slot both ends move onto the
+component: `FormField` generates the id itself. `EditorView.test.ts` asserted the literal string
+`'gtin-scan-note'`, so it failed.
+
+**Neither remedy this entry originally proposed was taken.** Giving `FormField` a caller-supplied id would
+have added API surface to serve a test's string. Swapping one literal for another would have kept the
+coupling and merely renamed it. The assertion was rewritten as the relationship it was always making — read
+`aria-describedby` off the field, then look for *that* element — which is id-agnostic and strictly stronger.
+
+Doing so exposed a second test passing for free. `clears the note once the field is typed in` asserted
+`find('#gtin-scan-note').exists()` was `false`, and an element that no longer exists under any condition is
+always absent, so it would have stayed green however broken the clearing became. It now asserts the field
+points at nothing. Both are mutation-tested: removing the description slot fails two tests.
+
+The general lesson, which is the reason this is not simply struck: **an assertion written as a literal id is
+a relationship in disguise**, and it fails or goes vacuous the moment the wiring moves. `UsFoodFormRail` has
+seventy of these sites left to migrate.
+
+**~~`GhsFormRail.vue`'s 44 hazard-class checkboxes lost their per-run styling when they moved onto
+`CheckboxField`.~~ Fixed in the same stage, and the entry is kept for what it nearly cost.**
+
+The hand-written markup set the Annex I section number in the mono face and the pictogram code in its own —
+`numeric text-chrome-400` for `entry.section`, `numeric text-chrome-200` for `→ GHS0x`. `CheckboxField`'s
+`label` was a plain string with no slot, so the migration concatenated all three runs into one and the
+styling went.
+
+It was recorded here as a deliberate simplification on the grounds that nothing observable moved: the
+accessible name was always that concatenation, and no test reads a section number's font. Both of those are
+true and the conclusion still does not follow. **A GHS hazard class number and a pictogram code are
+identifiers**, and this entire component layer exists to put identifiers in the mono face — the migration
+would have undone that rule on forty-four rows at once, in the name of applying it. "No test covers it" is
+the reason it needed catching by eye, not a reason to accept it.
+
+`CheckboxField` takes a default slot now, with `label` still required and still the accessible name, on the
+same pattern as `FormField`'s description: a slot changes how the name is set, never what it is. Mutation
+tested — removing the slot fails a named test.
+
+The general shape, for the seventy sites in `UsFoodFormRail` still to migrate: **a component API that only
+takes strings will quietly flatten every label that was not one run of prose**, and no test will say so
+because styling is not part of an accessible name.
+
 ## Saved labels
 
 **~~A saved label's `data` cannot be posted to the export route as it stands.~~ Closed** by the saved-labels
