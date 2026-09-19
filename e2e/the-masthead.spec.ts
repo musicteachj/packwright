@@ -18,7 +18,7 @@ import { expect, test } from '@playwright/test'
  * what is asserted.
  */
 
-const ROUTES = ['/', '/labels', '/rules', '/audit'] as const
+const ROUTES = ['/', '/labels', '/rules', '/audit', '/design'] as const
 const MASTHEAD = 'header:has(nav[aria-label="Sections"])'
 
 for (const width of [375, 1440] as const) {

@@ -20,6 +20,27 @@ into a version only when there is a reason to.
   is now swapped for `danger-edge`, which is the token that band was measured for. Never the only signal —
   an invalid field still carries its reason in the description beneath it.
 
+- **`/design` catalogues the interface the same way `/rules` catalogues the rule set — generated from the
+  same components the app renders, rather than a second description of them that can drift.** It mounts
+  `FormField`, `TextField`, `MeasurementField`, `SelectField` and `CheckboxField` directly, and deliberately
+  exercises the awkward shapes rather than only the tidy ones: a `MeasurementField` with `labelHidden`, one
+  of the seven sites in `UsFoodFormRail.vue` that hide a label without touching its accessible name; an
+  invalid field with a live, coloured description mirroring the GTIN field's own two-mutually-exclusive-
+  paragraphs shape; and a bare `FormField` wrapping a `range` input with no `v-model` at all, for
+  `UpcAFormRail.vue`'s magnification slider. Building it is what found the gap that closed
+  below: the three `FormField`-based controls forwarded only the string `description` and dropped a
+  `description` slot silently, which is the exact shape the GTIN field needs. It also renders
+  all five severities against `severity.ts`'s own `SEVERITY_STYLES`, so nothing here is a second copy of the
+  glyphs. No rail has been migrated onto any of these components yet — this page exists specifically so the
+  component API meets its hardest consumers before the migration does, not after.
+
+- **The masthead's nav wraps at narrow widths, because a fifth link finally overflowed a budget that had
+  no room left in it.** Adding `/design`'s nav link pushed the five-link row to 240px against 189px of
+  space beside the wordmark at 375px wide — the four-link row had only 5px to spare, so the fifth ran the
+  whole nav 19px past the edge of the viewport instead of shrinking, on every reading route at once, since
+  the masthead is shared. `flex-wrap` with `justify-end` lets the row break onto a second line that still
+  ends flush with the page's own right gutter, which is what `the-masthead.spec.ts` measures.
+
 - **The three `FormField`-based controls relay a `description` slot instead of swallowing it.** They forwarded
   the string `description` prop only, so `<template #description>` handed to a `TextField` was dropped on
   the floor — no error, no warning, the content simply gone. The one call site that needs the richer shape

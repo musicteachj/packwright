@@ -8,8 +8,17 @@
  * push the canvas off the bottom of the window. The two shapes are different on
  * purpose, so the shared part is a component the reading routes mount rather than
  * a wrapper imposed on everything.
+ *
+ * The nav wraps at narrow widths on purpose. Five links at `gap-5` measured
+ * 240px against 189px of room beside the wordmark at 375px wide — a fifth link
+ * (`Design`) was 51px more than the four before it left to spare, and a plain
+ * `flex` row simply ran the nav 19px past the edge of the viewport instead of
+ * shrinking. `flex-wrap` with `justify-end` lets it break onto a second line
+ * that still ends flush with the page's own right gutter, which is what
+ * `the-masthead.spec.ts` actually measures — not the number of links a single
+ * line happens to fit today.
  */
-type Section = 'landing' | 'labels' | 'audit' | 'rules'
+type Section = 'landing' | 'labels' | 'audit' | 'rules' | 'design'
 
 const props = defineProps<{ current: Section }>()
 
@@ -39,7 +48,10 @@ const ariaCurrent = (section: Section) =>
       <span class="text-sm font-semibold tracking-tight">packwright</span>
     </RouterLink>
 
-    <nav class="flex items-baseline gap-5 text-xs" aria-label="Sections">
+    <nav
+      class="flex flex-wrap items-baseline justify-end gap-x-5 gap-y-1 text-xs"
+      aria-label="Sections"
+    >
       <RouterLink
         class="focus-visible:outline-notice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         :class="linkClass('labels')"
@@ -63,6 +75,14 @@ const ariaCurrent = (section: Section) =>
         to="/rules"
       >
         Rules
+      </RouterLink>
+      <RouterLink
+        class="focus-visible:outline-notice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        :class="linkClass('design')"
+        :aria-current="ariaCurrent('design')"
+        to="/design"
+      >
+        Design
       </RouterLink>
       <RouterLink
         class="text-chrome-400 hover:text-chrome-200 focus-visible:outline-notice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
