@@ -271,3 +271,83 @@ describe('a colour utility may only name a token that exists', () => {
     expect(offenders).toEqual([])
   })
 })
+
+/**
+ * The mono face and tabular figures come from `numeric`, or they do not come.
+ *
+ * `main.css` declares one utility for this and it is three declarations:
+ * `font-family: var(--font-mono)`, `font-variant-numeric: tabular-nums` and
+ * `font-feature-settings: 'tnum' 1`. A hand-rolled `font-mono tabular-nums` is
+ * the first two and not the third, which is the one that fixes the advance
+ * width — so a figure written that way still jitters on every keystroke, and
+ * looks close enough that nobody would notice by eye. `FindingsRail.vue` spelled
+ * it that way for the citation under every declined check, and
+ * `LabelCanvas.vue` wrote a bare `font-family="IBM Plex Mono"` presentation
+ * attribute on the dimension callout — a live millimetre figure, with no
+ * tabular figures at all and no fallback stack.
+ *
+ * Neither was reachable by an existing test. `fontFamilies.test.ts` compares
+ * `@font-face` against `layout.primitives`, and the callout is chrome the
+ * component draws itself rather than anything `toSVG` emits.
+ *
+ * This sits beside the colour guard rather than in `fontFamilies.test.ts` so it
+ * can share `withoutComments`. Three files name "IBM Plex Mono" in prose in
+ * order to explain this very rule, and a second copy of the stripper is the
+ * drift the rest of this file exists to prevent.
+ */
+const HAND_ROLLED_TYPOGRAPHY = [
+  // The two Tailwind utilities `numeric` replaces.
+  /\bfont-mono\b/g,
+  /\btabular-nums\b/g,
+  // A family named directly, in CSS, in an SVG presentation attribute, or as a
+  // quoted string. `US_FOOD_TYPE_DEFAULT.fontFamily` is layout data the engine
+  // reads and not a typeface choice this layer is making, so a bare
+  // `.fontFamily` property access deliberately does not match.
+  /font-family\s*[:=]/g,
+  /['"]IBM Plex/g,
+]
+
+/**
+ * The two files whose subject is the declarations themselves.
+ *
+ * `fontFamilies.test.ts` parses `@font-face` out of `main.css` and checks the
+ * declared families and weights against what the layout engine asks for; it
+ * cannot do that without writing `font-family:` and `'IBM Plex`. This file
+ * holds the patterns below, which have to spell the utilities they forbid.
+ * Both read the token system rather than restating it, which is the property
+ * being protected here, not a violation of it. Neither renders anything: they
+ * run in `node` and their only output is an assertion.
+ *
+ * Named rather than excluding every `*.test.ts`, because a component test is
+ * exactly where the colour version of this defect hid — `LabelsView.test.ts`
+ * selected on `.text-danger-300`, and a class name is present whether or not it
+ * styles anything.
+ *
+ * **This list is load-bearing and was not always.** Without it the guard missed
+ * its own patterns by accident: `/\bfont-mono\b/` written into a source file
+ * reads as the characters `\bfont-mono\b`, and there is no word boundary
+ * between `b` and `f`, so the pattern happened not to match itself. Spelling a
+ * pattern any other way would have made this file flag itself with no way to
+ * fix it, and the exclusion states the intent rather than leaving it to that.
+ */
+const READS_THE_TOKEN_DECLARATIONS = new Set([
+  '../assets/fontFamilies.test.ts',
+  '../assets/theme.test.ts',
+])
+
+describe('typography comes from the utility, not from a copy of it', () => {
+  it('no source file sets the mono face or tabular figures by hand', () => {
+    const root = dirname(fileURLToPath(import.meta.url))
+
+    const offenders: string[] = []
+    for (const file of globSync(['../**/*.vue', '../**/*.ts'], { cwd: root })) {
+      if (READS_THE_TOKEN_DECLARATIONS.has(file)) continue
+      const source = withoutComments(readFileSync(join(root, file), 'utf8'))
+      for (const pattern of HAND_ROLLED_TYPOGRAPHY) {
+        for (const [found] of source.matchAll(pattern)) offenders.push(`${file} → ${found}`)
+      }
+    }
+
+    expect(offenders).toEqual([])
+  })
+})

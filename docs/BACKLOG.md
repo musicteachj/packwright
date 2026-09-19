@@ -696,6 +696,38 @@ voluntary second column, a reference amount the tool does not carry the table fo
 `FormField` can take a `required` flag whenever the answer arrives; nothing in its shape forecloses it. What
 this entry records is that the decision was deliberately not taken inside the migration.
 
+## From stage 4, canvas and editor
+
+Both of these were found by taking a screenshot and looking at it, which is the method that found every
+finding that mattered in this phase. Neither is a regression: both predate the stage, and the typography
+fix that was in scope does not move either of them.
+
+**The dimension callout's figure is drawn over the barcode's own digits.** `LabelCanvas.vue`'s
+`symbolCallouts` puts the rule at `yMm + drawnHeightMm + 2` — cleanly below the symbol — and then the
+label at `callout.yMm - 1.2`, which is *above* the rule. An SVG `<text>` `y` is its baseline, and at
+`font-size="1.8"` the glyphs reach roughly 1.3mm above it, so the figure occupies the band from about
+0.5mm inside the symbol's drawn box downwards, and `drawnHeightMm` includes the human-readable digits.
+At 200% on a UPC-A the result is `37.29 mm` set across `36000` and `29145`. Screenshot the preview with
+Dimensions on and it is unmissable; nothing in the suite can see it, because every existing assertion
+about the callout is about its text or its typeface.
+
+Not fixed here because it is a change to where the engine's own apparatus is drawn rather than to how it
+is set, and the stage in front of it is the numeric-input policy. The fix is to put the figure below the
+rule rather than above it, or to give the callout its own clearance from `drawnHeightMm`; either way it
+wants a browser test measuring the two boxes, since jsdom cannot say whether they overlap.
+
+**The canvas's two overlay checkboxes never joined the component layer.** `docs/specs/2026-09-18-interface-foundation-design.md`
+lists them under what stage 1 closes without separate work — "including `LabelCanvas.vue:342-359`, where the
+two overlay labels carry no class at all and the measured gap between box and word is **0 px**" — and they
+still carry no class. The migration was scoped to the three form rails, and the changelog says exactly that
+and no more, so nothing shipped a false claim; the spec's expectation simply was not met. Quiet zones and
+Dimensions are still a bare `<label>` wrapping a bare `<input type="checkbox">`, so they keep the 0px gap
+and the 13x13 target the `CheckboxField` row exists to fix.
+
+Cheap to close — import `CheckboxField` and pass the two `v-model`s — and deliberately not done in a commit
+whose subject is a typeface, because it changes hit targets and row heights in the pane a browser test
+measures.
+
 ## From stage 2, the report surface
 
 **The rail repeats a forty-word explanation once per element, and the fix belongs in the engine.** On a GHS

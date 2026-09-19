@@ -141,6 +141,42 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **Two figures were set in a face the design system does not have, and no test could see either.**
+  `main.css` declares one utility for identifiers and measurements, and it is three declarations:
+  the mono family, `font-variant-numeric: tabular-nums`, and `font-feature-settings: 'tnum' 1`. The
+  findings rail spelled the citation under every declined check as `font-mono tabular-nums` — the first
+  two and not the third, which is the one that actually fixes the advance width — while the count strip
+  one block above it and the identical citation in `FindingItem.vue` both used the utility. The canvas
+  went further and wrote `font-family="IBM Plex Mono"` as a bare SVG presentation attribute on the
+  dimension callout: no tabular figures at all, no fallback stack, on a millimetre figure that updates
+  live as the label is resized. Both now take `numeric`.
+
+  Neither was reachable from an existing test. `fontFamilies.test.ts` compares `@font-face` against
+  `layout.primitives`, and the callout is chrome the component draws rather than anything `toSVG` emits.
+  So a guard now reads every `.vue` and `.ts` file under `apps/web/src` and asserts that none of them
+  sets the mono face or tabular figures by hand — the class of defect rather than the two instances,
+  on the pattern of the colour-token guard beside it.
+
+  **The browser test earned its place by failing.** A class assertion in jsdom proves a string is present,
+  which is exactly how `text-danger-300` shipped, so `e2e/the-figures-are-tabular.spec.ts` reads the
+  resolved `font-family`, `font-variant-numeric` and `font-feature-settings` out of a real Chromium. Its
+  first version located the declined citation with `filter({ has: heading })`, which matched the rail
+  *and* the block inside it, and landed on the count strip — an element that has carried `numeric` since
+  the previous stage. It passed against the unfixed citation. Only reverting the fix said so; the
+  selector now reads the `aria-labelledby` the block actually carries, and takes the citation from the
+  first declined entry rather than from the block's paragraphs as a whole — the first form was pinned to
+  there being exactly one declining rule on the starting food document.
+
+  **The same trap was already in the unit tests, in both directions.** `FindingsRail.test.ts` located a
+  block by looking for the section whose text mentions it — and the rail's own root is a `<section>` whose
+  text contains every word beneath it, so that predicate returns the root and every assertion after it
+  runs against the whole rail. The new citation test was written that way and passed only because no other
+  paragraph happened to print `1.2`. The `text-caution` assertion beside it has been that way since the
+  report surface shipped, with a comment claiming the opposite, and passed because nothing anywhere
+  carried the class. Both now go through a `blockNamed` helper that reads the heading's id off the DOM and
+  asks for the section pointing at it. Demonstrated rather than assumed: planting `text-caution` in the
+  *declined* block no longer trips the *uncertifiable* block's assertion, which it would have before.
+
 - **Five things the review of PR #56 found, and the rail's own new rule was invisible.** The dashed line
   separating verdicts from everything that is not a verdict — the distinction the whole change exists to
   make — was written in `chrome-600`, which measures **1.65:1** against the surfaces it sits on. A

@@ -309,7 +309,7 @@ const summary = computed(() => {
       </h3>
       <div v-for="item in declined ?? []" :key="item.ruleId" class="mt-2">
         <p class="text-chrome-200 text-sm leading-snug">{{ item.reason }}</p>
-        <p class="text-chrome-400 mt-1 font-mono text-xs tabular-nums">
+        <p class="numeric text-chrome-400 mt-1 text-xs">
           {{ item.citation.reference }}
         </p>
       </div>
