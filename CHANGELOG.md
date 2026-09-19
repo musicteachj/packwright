@@ -10,6 +10,53 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **An identifier is text and still monospace, and an invalid field now shows it.** Both found by opening
+  `/design` in a browser rather than by a test, which is the reason the page exists. The typeface rule is
+  about content, not control type: a GTIN is `type="text"` — it has a leading zero and is never arithmetic —
+  and so are an SSCC, a lot code and a GS1 element string, but the only monospace control was
+  `MeasurementField`, a number input, so every identifier in the rails would have migrated into the prose
+  face. `TextField` takes an `identifier` flag, named for the reason rather than the appearance. And
+  `invalid` set `aria-invalid` and changed nothing a sighted reader could see; the control's resting border
+  is now swapped for `danger-edge`, which is the token that band was measured for. Never the only signal —
+  an invalid field still carries its reason in the description beneath it.
+
+- **The three `FormField`-based controls relay a `description` slot instead of swallowing it.** They forwarded
+  the string `description` prop only, so `<template #description>` handed to a `TextField` was dropped on
+  the floor — no error, no warning, the content simply gone. The one call site that needs the richer shape
+  is the GTIN field, whose note is two mutually exclusive live paragraphs sharing an id, and it is in the
+  next rail to be migrated. Found by building the catalogue against the awkward variants, which is what the
+  catalogue is for.
+
+- **Four controls — `TextField`, `MeasurementField`, `SelectField`, `CheckboxField` — sit on top of `FormField`
+  and close four defects measured in a real browser, not inferred from the markup.** `formStyles.ts`'s
+  `INPUT` carried `numeric`, IBM Plex Mono with tabular figures, on every text field and all 19 selects
+  alike, so "Oat and almond granola" and "Example solvent" rendered in a face built for columns of digits;
+  `TextField` and `SelectField` drop it, `MeasurementField` keeps it, unchanged, for the fields the rule was
+  written for. A `<select>`'s `padding-right` measured 8px, identical to the left, with the native arrow
+  drawn inside that same 8px, so a long option — "Standard — both measurement systems r" — was clipped
+  mid-word against the glyph with no ellipsis; `SelectField` turns the native arrow off and draws its own as
+  an absolutely-positioned sibling, with 32px reserved ahead of it. A checkbox measured 13×13 in a 16px row,
+  under WCAG 2.2 AA's 24×24 target-size floor, with a 0px gap to its own word because those `<label>`s carry
+  no class at all; `CheckboxField` is 16px with a 10px gap in a 24px row, `items-start` so a wrapping label
+  keeps its box level with the first line rather than the middle of the block, and `accent-notice` — already
+  on the six GHS and UPC-A checkboxes and on none of the fourteen US food ones — on all of them. Each control
+  wires its model to the element by hand, `:value`/`@input` or `:checked`/`@change` rather than a literal
+  `v-model` on the element itself, because Vue's own `v-model` directive reasserts the bound value on every
+  update even when nothing is bound — with `defineModel` left unbound, the pattern GHS's "Add a statement"
+  select and the ingredient rows both use, that reassertion would silently overwrite a caller's own value.
+  No rail has been moved onto any of the four yet.
+
+- **A `FormField` component owns the label/control/description wiring the three form rails were assembling by
+  hand, 105 times.** The description renders as a sibling of the `<label>`, addressed by `aria-describedby`,
+  never nested inside it — `UsFoodFormRail.vue` nests a forty-word paragraph in the `<label>` today, which
+  makes that paragraph part of the field's accessible name, and the new component makes that shape
+  unrepresentable rather than merely discouraged. `describedBy` is handed to the control's slot as
+  `undefined` whenever there is nothing to describe, so a caller that always binds it never emits a dangling
+  reference to an element that was never drawn. The control itself is a scoped slot rather than a prop,
+  because not every field is `v-model` — ingredient rows write through an array map with `:value` +
+  `@input` — and a `description` slot sits alongside the string prop for the one field, GTIN entry, whose
+  help is two mutually exclusive live regions rather than static text. No rail has been moved onto it yet.
+
 - **Each severity now has three tokens rather than one, so structure can stop being carried by hue.** The
   findings rail states four different kinds of thing — a verdict, an element the engine could not draw, a
   check that stood down, and a silence where no provision governs — and with one colour per severity the
