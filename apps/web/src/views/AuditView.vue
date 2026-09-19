@@ -364,379 +364,389 @@ const canRead = computed(() => camera.photo.value !== null && regime.value !== '
 
 <template>
   <div :class="PAGE">
-    <SiteHeader current="audit" />
-    <main :class="PAGE_INNER">
-      <header class="flex flex-col gap-2">
-        <h1 class="text-2xl">Audit a label from a photograph</h1>
-        <p class="text-chrome-300 max-w-2xl text-sm">
-          Claude reads what is printed. Nothing it reads becomes label data until you accept it, and
-          every compliance finding comes from this application's own rules rather than from the
-          model.
-        </p>
-      </header>
+    <div :class="PAGE_INNER">
+      <SiteHeader current="audit" />
 
-      <section class="flex flex-col gap-4" aria-labelledby="market-heading">
-        <h2 id="market-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
-          The market this label is for
-        </h2>
-        <label :class="LABEL" class="max-w-sm" for="audit-regime">
-          Regime
-          <select id="audit-regime" v-model="regime" :class="INPUT" data-test="regime">
-            <option value="">Choose a market</option>
-            <option v-for="value in GHS_REGIMES" :key="value" :value="value">
-              {{ REGIME_NAMES[value] }}
-            </option>
-          </select>
-        </label>
-        <p class="text-chrome-400 max-w-2xl text-xs">
-          Not read from the photograph, and deliberately not defaulted. It selects which rules apply
-          and which statement wording is correct, so a label judged under the wrong one is judged
-          wrongly rather than approximately.
-        </p>
-      </section>
+      <main class="flex flex-col gap-12">
+        <header class="flex flex-col gap-2">
+          <h1 class="text-2xl">Audit a label from a photograph</h1>
+          <p class="text-chrome-300 max-w-2xl text-sm">
+            Claude reads what is printed. Nothing it reads becomes label data until you accept it,
+            and every compliance finding comes from this application's own rules rather than from
+            the model.
+          </p>
+        </header>
 
-      <section class="flex flex-col gap-4" aria-labelledby="photo-heading">
-        <h2 id="photo-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
-          The photograph
-        </h2>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <label :class="[BUTTON, 'cursor-pointer px-3 py-1.5 text-sm']" for="audit-photo-file">
-            Choose a photograph
-            <input
-              id="audit-photo-file"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              class="sr-only"
-              data-test="photo-file"
-              @change="onFile"
-            />
+        <section class="flex flex-col gap-4" aria-labelledby="market-heading">
+          <h2 id="market-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
+            The market this label is for
+          </h2>
+          <label :class="LABEL" class="max-w-sm" for="audit-regime">
+            Regime
+            <select id="audit-regime" v-model="regime" :class="INPUT" data-test="regime">
+              <option value="">Choose a market</option>
+              <option v-for="value in GHS_REGIMES" :key="value" :value="value">
+                {{ REGIME_NAMES[value] }}
+              </option>
+            </select>
           </label>
-          <button
-            v-if="camera.state.value !== 'previewing'"
-            type="button"
-            :class="[BUTTON, 'px-3 py-1.5 text-sm']"
-            data-test="camera-start"
-            @click="camera.start()"
-          >
-            Use the camera
-          </button>
-          <button
-            v-else
-            type="button"
-            :class="[BUTTON, 'px-3 py-1.5 text-sm']"
-            data-test="camera-capture"
-            @click="camera.capture()"
-          >
-            Take the photograph
-          </button>
-          <button
-            v-if="camera.photo.value !== null"
-            type="button"
-            :class="[BUTTON, 'px-3 py-1.5 text-sm']"
-            @click="camera.discard()"
-          >
-            Discard it
-          </button>
-        </div>
+          <p class="text-chrome-400 max-w-2xl text-xs">
+            Not read from the photograph, and deliberately not defaulted. It selects which rules
+            apply and which statement wording is correct, so a label judged under the wrong one is
+            judged wrongly rather than approximately.
+          </p>
+        </section>
 
-        <video
-          v-show="camera.state.value === 'previewing'"
-          ref="video"
-          class="border-chrome-700 max-h-80 w-full max-w-lg border bg-black"
-          muted
-          playsinline
-          aria-label="Camera preview"
-        ></video>
+        <section class="flex flex-col gap-4" aria-labelledby="photo-heading">
+          <h2 id="photo-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
+            The photograph
+          </h2>
 
-        <!--
-          The photograph itself, not merely a note that there is one.
-
-          Added after seeing this screen in a browser for the first time, which
-          is where it became obvious: the readings below are a claim about a
-          label, and checking a claim against a label you cannot see is not
-          checking it. On a phone the product is in your other hand; on a desktop
-          it is a file you chose a minute ago and may not remember.
-        -->
-        <img
-          v-if="camera.photo.value !== null"
-          :src="`data:${camera.photo.value.mediaType};base64,${camera.photo.value.data}`"
-          :width="camera.photo.value.widthPx"
-          :height="camera.photo.value.heightPx"
-          alt="The photograph being read. The fields read from it are listed below."
-          class="border-chrome-700 max-h-80 w-auto max-w-lg border bg-white object-contain"
-          data-test="photo-preview"
-        />
-
-        <p
-          class="text-chrome-300 text-sm"
-          role="status"
-          aria-live="polite"
-          :data-capture-state="camera.state.value"
-        >
-          <span v-if="camera.message.value !== null">{{ camera.message.value }}</span>
-          <span v-else-if="camera.photo.value !== null" data-test="photo-taken">
-            A photograph is ready — {{ camera.photo.value.widthPx }} ×
-            {{ camera.photo.value.heightPx }} px.
-          </span>
-          <span v-else>No photograph yet.</span>
-        </p>
-
-        <div>
-          <button
-            type="button"
-            :class="[BUTTON, 'px-4 py-2 text-sm']"
-            :disabled="!canRead"
-            data-test="read"
-            @click="read()"
-          >
-            {{ busy ? 'Reading…' : 'Read this label' }}
-          </button>
-        </div>
-
-        <p v-if="readingError !== null" class="text-danger max-w-2xl text-sm" role="alert">
-          {{ readingError }}
-          <span v-if="readingDetail.length > 0"> — {{ readingDetail.join('; ') }}</span>
-        </p>
-      </section>
-
-      <section v-if="rows.length > 0" class="flex flex-col gap-4" aria-labelledby="read-heading">
-        <h2 id="read-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
-          What the photograph showed
-        </h2>
-        <p class="text-chrome-400 max-w-2xl text-xs">
-          Every reading below is unverified. Accept the ones that match the label in front of you.
-        </p>
-
-        <ul class="flex flex-col gap-3">
-          <li
-            v-for="row in rows"
-            :key="row.key"
-            class="border-chrome-800 flex flex-col gap-2 border-l-2 pl-4"
-            :data-field="row.key"
-            :data-accepted="accepted.has(row.key)"
-          >
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <span class="text-chrome-100 text-sm">{{ row.label }}</span>
-              <span class="numeric text-chrome-400 text-xs">
-                <template v-if="row.confidence !== null">
-                  confidence {{ row.confidence.toFixed(2) }}
-                </template>
-                <template v-else>edited</template>
-              </span>
-            </div>
-
-            <textarea
-              v-if="editing === row.key"
-              :class="INPUT"
-              :rows="row.editor === 'supplier' ? 3 : 2"
-              :value="row.text"
-              :aria-label="`${row.label}, as read`"
-              :data-test="`edit-${row.key}`"
-              @input="edit(row.key, ($event.target as HTMLTextAreaElement).value)"
-            ></textarea>
-            <p v-else class="text-chrome-200 text-sm whitespace-pre-line" :data-value="row.key">
-              {{ row.text }}
-            </p>
-            <p v-if="row.hint !== undefined && editing === row.key" class="text-chrome-400 text-xs">
-              {{ row.hint }}
-            </p>
-
-            <p
-              v-if="row.unusable.length > 0"
-              class="border-caution text-caution border-l-2 pl-3 text-xs"
-              :data-unusable="row.key"
+          <div class="flex flex-wrap items-center gap-3">
+            <label :class="[BUTTON, 'cursor-pointer px-3 py-1.5 text-sm']" for="audit-photo-file">
+              Choose a photograph
+              <input
+                id="audit-photo-file"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                class="sr-only"
+                data-test="photo-file"
+                @change="onFile"
+              />
+            </label>
+            <button
+              v-if="camera.state.value !== 'previewing'"
+              type="button"
+              :class="[BUTTON, 'px-3 py-1.5 text-sm']"
+              data-test="camera-start"
+              @click="camera.start()"
             >
-              {{ row.unusable.join(', ') }} — {{ row.unusableReason }}. It cannot be carried into a
-              label here, and accepting this field takes the rest only.
-            </p>
-
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="button"
-                :class="[BUTTON, 'px-2 py-1 text-xs']"
-                :aria-pressed="accepted.has(row.key)"
-                :disabled="!row.contributes"
-                :data-test="`accept-${row.key}`"
-                @click="toggle(row.key)"
-              >
-                {{ accepted.has(row.key) ? 'Accepted' : 'Accept' }}
-              </button>
-              <!--
-                Disabled rather than silently inert. A field edited down to
-                something the parser rejects — a supplier with only a name, a
-                list of nothing — took the click, recorded the acceptance and
-                contributed nothing, with no way to tell that from a field that
-                had worked.
-              -->
-              <span v-if="!row.contributes" class="text-caution self-center text-xs">
-                Nothing to accept yet.
-              </span>
-              <button
-                type="button"
-                :class="[BUTTON, 'px-2 py-1 text-xs']"
-                @click="editing = editing === row.key ? null : row.key"
-              >
-                {{ editing === row.key ? 'Done' : 'Edit' }}
-              </button>
-              <button
-                type="button"
-                :class="[BUTTON, 'px-2 py-1 text-xs']"
-                :data-test="`discard-${row.key}`"
-                @click="discard(row.key)"
-              >
-                Discard
-              </button>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <section
-        v-if="reading !== null"
-        class="flex flex-col gap-4"
-        aria-labelledby="measured-heading"
-      >
-        <h2 id="measured-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
-          What the photograph cannot show
-        </h2>
-        <p class="text-chrome-400 max-w-2xl text-xs">
-          Measured or looked up by you, not read by the model. None of these is filled in for you:
-          the smallest label CLP permits for a three-litre package is 74 × 105 mm, so a default here
-          would clear a size nobody checked.
-        </p>
-        <div class="grid max-w-2xl gap-4 sm:grid-cols-3">
-          <label :class="LABEL" for="audit-capacity">
-            Package capacity (L)
-            <input
-              id="audit-capacity"
-              v-model="capacityL"
-              :class="INPUT"
-              inputmode="decimal"
-              data-test="capacity"
-            />
-          </label>
-          <label :class="LABEL" for="audit-width">
-            Label width (mm)
-            <input
-              id="audit-width"
-              v-model="widthMm"
-              :class="INPUT"
-              inputmode="decimal"
-              data-test="width"
-            />
-          </label>
-          <label :class="LABEL" for="audit-height">
-            Label height (mm)
-            <input
-              id="audit-height"
-              v-model="heightMm"
-              :class="INPUT"
-              inputmode="decimal"
-              data-test="height"
-            />
-          </label>
-        </div>
-      </section>
-
-      <section
-        v-if="reading !== null"
-        class="flex flex-col gap-4"
-        aria-labelledby="document-heading"
-      >
-        <h2 id="document-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
-          The document so far
-        </h2>
-        <p
-          v-if="summary.length === 0"
-          class="text-chrome-400 text-sm"
-          data-test="nothing-confirmed"
-        >
-          Nothing has been accepted yet, so there is no document.
-        </p>
-        <dl v-else class="flex flex-col gap-2 text-sm" data-test="document">
-          <div v-for="entry in summary" :key="entry.key" class="flex flex-col gap-0.5">
-            <dt class="text-chrome-400 text-xs">{{ entry.label }}</dt>
-            <dd class="text-chrome-100">{{ entry.text }}</dd>
+              Use the camera
+            </button>
+            <button
+              v-else
+              type="button"
+              :class="[BUTTON, 'px-3 py-1.5 text-sm']"
+              data-test="camera-capture"
+              @click="camera.capture()"
+            >
+              Take the photograph
+            </button>
+            <button
+              v-if="camera.photo.value !== null"
+              type="button"
+              :class="[BUTTON, 'px-3 py-1.5 text-sm']"
+              @click="camera.discard()"
+            >
+              Discard it
+            </button>
           </div>
-        </dl>
-        <p v-if="missing.length > 0" class="text-chrome-300 max-w-2xl text-xs" data-test="missing">
-          Still needed before this can be checked: {{ missing.join(', ') }}.
-        </p>
-      </section>
 
-      <section
-        v-if="report !== null"
-        class="flex flex-col gap-4"
-        aria-labelledby="audit-report-heading"
-      >
-        <h2 id="audit-report-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
-          What the rules say
-        </h2>
+          <video
+            v-show="camera.state.value === 'previewing'"
+            ref="video"
+            class="border-chrome-700 max-h-80 w-full max-w-lg border bg-black"
+            muted
+            playsinline
+            aria-label="Camera preview"
+          ></video>
 
-        <p v-if="report.outcome === 'refused'" class="text-danger text-sm" role="alert">
-          {{ report.reason }}
-        </p>
-
-        <template v-else>
           <!--
-            Above the findings, not beneath them.
+            The photograph itself, not merely a note that there is one.
 
-            Three things are true of every audit this build produces and each
-            would mislead if it were left to sit in a list looking like a
-            finding: the engine judges a label rebuilt from what was confirmed
-            rather than the photograph; a rule that cleared because its field was
-            never confirmed has not cleared; and half of what this application
-            cannot do reads as a defect on somebody's label.
+            Added after seeing this screen in a browser for the first time, which
+            is where it became obvious: the readings below are a claim about a
+            label, and checking a claim against a label you cannot see is not
+            checking it. On a phone the product is in your other hand; on a desktop
+            it is a file you chose a minute ago and may not remember.
           -->
-          <div class="border-caution flex flex-col gap-2 border-l-2 pl-4" data-test="not-judged">
-            <p class="text-chrome-200 text-xs">
-              These findings describe a label built from what you confirmed above, drawn by this
-              application — not the photograph itself. Anything you did not confirm is not in it.
-            </p>
-            <p
-              v-if="report.unconfirmed.length > 0"
-              class="text-caution text-xs"
-              data-test="unconfirmed"
-            >
-              Read but not confirmed: {{ report.unconfirmed.join(', ') }}. Rules about
-              {{ report.unconfirmed.length === 1 ? 'that field' : 'those fields' }} judged their
-              absence, so a check that cleared here may have cleared because there was nothing to
-              check.
-            </p>
-          </div>
+          <img
+            v-if="camera.photo.value !== null"
+            :src="`data:${camera.photo.value.mediaType};base64,${camera.photo.value.data}`"
+            :width="camera.photo.value.widthPx"
+            :height="camera.photo.value.heightPx"
+            alt="The photograph being read. The fields read from it are listed below."
+            class="border-chrome-700 max-h-80 w-auto max-w-lg border bg-white object-contain"
+            data-test="photo-preview"
+          />
 
-          <div class="border-chrome-800 border">
-            <FindingsRail
-              :groups="report.groups"
-              :failures="report.failures"
-              :passes="report.passes"
-              :uncertifiable="report.uncertifiable"
-              :declined="report.declined"
-              :selected-element-id="null"
-              heading-id="audit-findings-heading"
-              title="What the rules say about it"
-              :announce="false"
-              :selectable="false"
-            />
-          </div>
+          <p
+            class="text-chrome-300 text-sm"
+            role="status"
+            aria-live="polite"
+            :data-capture-state="camera.state.value"
+          >
+            <span v-if="camera.message.value !== null">{{ camera.message.value }}</span>
+            <span v-else-if="camera.photo.value !== null" data-test="photo-taken">
+              A photograph is ready — {{ camera.photo.value.widthPx }} ×
+              {{ camera.photo.value.heightPx }} px.
+            </span>
+            <span v-else>No photograph yet.</span>
+          </p>
 
           <div>
             <button
               type="button"
               :class="[BUTTON, 'px-4 py-2 text-sm']"
-              data-test="open-in-editor"
-              @click="openInEditor()"
+              :disabled="!canRead"
+              data-test="read"
+              @click="read()"
             >
-              Open in the editor
+              {{ busy ? 'Reading…' : 'Read this label' }}
             </button>
-            <p class="text-chrome-400 mt-2 max-w-2xl text-xs">
-              Opened unsaved. Saving it, and naming it, stays the editor's job.
-            </p>
           </div>
-        </template>
-      </section>
-    </main>
+
+          <p v-if="readingError !== null" class="text-danger max-w-2xl text-sm" role="alert">
+            {{ readingError }}
+            <span v-if="readingDetail.length > 0"> — {{ readingDetail.join('; ') }}</span>
+          </p>
+        </section>
+
+        <section v-if="rows.length > 0" class="flex flex-col gap-4" aria-labelledby="read-heading">
+          <h2 id="read-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
+            What the photograph showed
+          </h2>
+          <p class="text-chrome-400 max-w-2xl text-xs">
+            Every reading below is unverified. Accept the ones that match the label in front of you.
+          </p>
+
+          <ul class="flex flex-col gap-3">
+            <li
+              v-for="row in rows"
+              :key="row.key"
+              class="border-chrome-800 flex flex-col gap-2 border-l-2 pl-4"
+              :data-field="row.key"
+              :data-accepted="accepted.has(row.key)"
+            >
+              <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <span class="text-chrome-100 text-sm">{{ row.label }}</span>
+                <span class="numeric text-chrome-400 text-xs">
+                  <template v-if="row.confidence !== null">
+                    confidence {{ row.confidence.toFixed(2) }}
+                  </template>
+                  <template v-else>edited</template>
+                </span>
+              </div>
+
+              <textarea
+                v-if="editing === row.key"
+                :class="INPUT"
+                :rows="row.editor === 'supplier' ? 3 : 2"
+                :value="row.text"
+                :aria-label="`${row.label}, as read`"
+                :data-test="`edit-${row.key}`"
+                @input="edit(row.key, ($event.target as HTMLTextAreaElement).value)"
+              ></textarea>
+              <p v-else class="text-chrome-200 text-sm whitespace-pre-line" :data-value="row.key">
+                {{ row.text }}
+              </p>
+              <p
+                v-if="row.hint !== undefined && editing === row.key"
+                class="text-chrome-400 text-xs"
+              >
+                {{ row.hint }}
+              </p>
+
+              <p
+                v-if="row.unusable.length > 0"
+                class="border-caution text-caution border-l-2 pl-3 text-xs"
+                :data-unusable="row.key"
+              >
+                {{ row.unusable.join(', ') }} — {{ row.unusableReason }}. It cannot be carried into
+                a label here, and accepting this field takes the rest only.
+              </p>
+
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  :class="[BUTTON, 'px-2 py-1 text-xs']"
+                  :aria-pressed="accepted.has(row.key)"
+                  :disabled="!row.contributes"
+                  :data-test="`accept-${row.key}`"
+                  @click="toggle(row.key)"
+                >
+                  {{ accepted.has(row.key) ? 'Accepted' : 'Accept' }}
+                </button>
+                <!--
+                  Disabled rather than silently inert. A field edited down to
+                  something the parser rejects — a supplier with only a name, a
+                  list of nothing — took the click, recorded the acceptance and
+                  contributed nothing, with no way to tell that from a field that
+                  had worked.
+                -->
+                <span v-if="!row.contributes" class="text-caution self-center text-xs">
+                  Nothing to accept yet.
+                </span>
+                <button
+                  type="button"
+                  :class="[BUTTON, 'px-2 py-1 text-xs']"
+                  @click="editing = editing === row.key ? null : row.key"
+                >
+                  {{ editing === row.key ? 'Done' : 'Edit' }}
+                </button>
+                <button
+                  type="button"
+                  :class="[BUTTON, 'px-2 py-1 text-xs']"
+                  :data-test="`discard-${row.key}`"
+                  @click="discard(row.key)"
+                >
+                  Discard
+                </button>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <section
+          v-if="reading !== null"
+          class="flex flex-col gap-4"
+          aria-labelledby="measured-heading"
+        >
+          <h2 id="measured-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
+            What the photograph cannot show
+          </h2>
+          <p class="text-chrome-400 max-w-2xl text-xs">
+            Measured or looked up by you, not read by the model. None of these is filled in for you:
+            the smallest label CLP permits for a three-litre package is 74 × 105 mm, so a default
+            here would clear a size nobody checked.
+          </p>
+          <div class="grid max-w-2xl gap-4 sm:grid-cols-3">
+            <label :class="LABEL" for="audit-capacity">
+              Package capacity (L)
+              <input
+                id="audit-capacity"
+                v-model="capacityL"
+                :class="INPUT"
+                inputmode="decimal"
+                data-test="capacity"
+              />
+            </label>
+            <label :class="LABEL" for="audit-width">
+              Label width (mm)
+              <input
+                id="audit-width"
+                v-model="widthMm"
+                :class="INPUT"
+                inputmode="decimal"
+                data-test="width"
+              />
+            </label>
+            <label :class="LABEL" for="audit-height">
+              Label height (mm)
+              <input
+                id="audit-height"
+                v-model="heightMm"
+                :class="INPUT"
+                inputmode="decimal"
+                data-test="height"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section
+          v-if="reading !== null"
+          class="flex flex-col gap-4"
+          aria-labelledby="document-heading"
+        >
+          <h2 id="document-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
+            The document so far
+          </h2>
+          <p
+            v-if="summary.length === 0"
+            class="text-chrome-400 text-sm"
+            data-test="nothing-confirmed"
+          >
+            Nothing has been accepted yet, so there is no document.
+          </p>
+          <dl v-else class="flex flex-col gap-2 text-sm" data-test="document">
+            <div v-for="entry in summary" :key="entry.key" class="flex flex-col gap-0.5">
+              <dt class="text-chrome-400 text-xs">{{ entry.label }}</dt>
+              <dd class="text-chrome-100">{{ entry.text }}</dd>
+            </div>
+          </dl>
+          <p
+            v-if="missing.length > 0"
+            class="text-chrome-300 max-w-2xl text-xs"
+            data-test="missing"
+          >
+            Still needed before this can be checked: {{ missing.join(', ') }}.
+          </p>
+        </section>
+
+        <section
+          v-if="report !== null"
+          class="flex flex-col gap-4"
+          aria-labelledby="audit-report-heading"
+        >
+          <h2 id="audit-report-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
+            What the rules say
+          </h2>
+
+          <p v-if="report.outcome === 'refused'" class="text-danger text-sm" role="alert">
+            {{ report.reason }}
+          </p>
+
+          <template v-else>
+            <!--
+              Above the findings, not beneath them.
+
+              Three things are true of every audit this build produces and each
+              would mislead if it were left to sit in a list looking like a
+              finding: the engine judges a label rebuilt from what was confirmed
+              rather than the photograph; a rule that cleared because its field was
+              never confirmed has not cleared; and half of what this application
+              cannot do reads as a defect on somebody's label.
+            -->
+            <div class="border-caution flex flex-col gap-2 border-l-2 pl-4" data-test="not-judged">
+              <p class="text-chrome-200 text-xs">
+                These findings describe a label built from what you confirmed above, drawn by this
+                application — not the photograph itself. Anything you did not confirm is not in it.
+              </p>
+              <p
+                v-if="report.unconfirmed.length > 0"
+                class="text-caution text-xs"
+                data-test="unconfirmed"
+              >
+                Read but not confirmed: {{ report.unconfirmed.join(', ') }}. Rules about
+                {{ report.unconfirmed.length === 1 ? 'that field' : 'those fields' }} judged their
+                absence, so a check that cleared here may have cleared because there was nothing to
+                check.
+              </p>
+            </div>
+
+            <div class="border-chrome-800 border">
+              <FindingsRail
+                :groups="report.groups"
+                :failures="report.failures"
+                :passes="report.passes"
+                :uncertifiable="report.uncertifiable"
+                :declined="report.declined"
+                :selected-element-id="null"
+                heading-id="audit-findings-heading"
+                title="What the rules say about it"
+                :announce="false"
+                :selectable="false"
+              />
+            </div>
+
+            <div>
+              <button
+                type="button"
+                :class="[BUTTON, 'px-4 py-2 text-sm']"
+                data-test="open-in-editor"
+                @click="openInEditor()"
+              >
+                Open in the editor
+              </button>
+              <p class="text-chrome-400 mt-2 max-w-2xl text-xs">
+                Opened unsaved. Saving it, and naming it, stays the editor's job.
+              </p>
+            </div>
+          </template>
+        </section>
+      </main>
+    </div>
   </div>
 </template>

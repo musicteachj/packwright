@@ -82,12 +82,8 @@ onMounted(load)
           </p>
         </header>
 
-        <p
-          v-if="error"
-          class="border-danger-600 text-danger-300 border-l-2 pl-4 text-sm"
-          role="alert"
-        >
-          {{ error }}
+        <p v-if="error" class="border-danger text-danger border-l-2 pl-4 text-sm" role="alert">
+          <span class="font-semibold">Error</span> — {{ error }}
         </p>
 
         <p v-if="loading" class="text-chrome-400 text-sm">Loading…</p>
@@ -136,7 +132,12 @@ onMounted(load)
             -->
             <span v-if="confirming === label.id" class="flex items-center gap-3 text-xs">
               <span class="text-chrome-300">Delete “{{ label.name }}”?</span>
-              <button type="button" class="text-danger-300 underline" @click="remove(label.id)">
+              <button
+                type="button"
+                class="text-danger underline"
+                data-confirm-delete
+                @click="remove(label.id)"
+              >
                 Delete
               </button>
               <button type="button" class="text-chrome-400 underline" @click="confirming = null">

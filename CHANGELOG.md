@@ -161,6 +161,36 @@ rule set over the confirmed document and shows what `rules/` says about it, whic
 
 ### Fixed
 
+- **The canvas opened at 100% at every width, so a food label did not fit a phone.** A 120mm US food label
+  is 453 CSS pixels; below 1024px the editor opens on the Preview pane by design, so the first thing a
+  phone showed was a label clipped off both edges. The zoom now opens on Fit. The existing responsive test
+  could not see it: it asserts the document does not scroll sideways, and the overflow was inside the pane.
+
+  **`preview == print` is now asserted at the default zoom**, which nothing did before. Review read Fit's
+  `maxWidth` of `widthMm * 4` px against a real 3.7795 px per millimetre and concluded the desktop preview
+  must open at 106% of true scale. It does not: the clamp is always above the SVG's own intrinsic width, so
+  it never binds, and `width: 100%` is what does the shrinking. Measured at 1440, a 120 mm label draws
+  453.55 px against a true 453.54. The finding was an inference from the arithmetic rather than from
+  running it, so the code keeps the cap and gains the measurement that settles it.
+
+- **`/audit`'s masthead spanned the window instead of the page.** `SiteHeader` sat outside `PAGE_INNER`
+  there and inside it on every other route, so the audit masthead had neither the page's horizontal padding
+  nor its maximum width — it was misaligned with its own content, and "Editor" was clipped by the window
+  edge at 375px and at 1440px alike. `e2e/the-masthead.spec.ts` now asserts fit and alignment on all four
+  reading routes at both widths.
+
+- **The saved-labels error said "failed" in red and nowhere else.** It now carries the word as well as the
+  colour. It deliberately borrows none of the ANSI severity vocabulary — a failed request is not a
+  compliance finding and must not read as one.
+
+- **Two colour classes in the saved-labels view named tokens that do not exist.** `text-danger-300` and
+  `border-danger-600` generated no CSS rule, because `main.css` declares a flat `--color-danger` and no
+  scale, so the list's error message and its delete button rendered in inherited body colour. A test now
+  reads every `--color-*` out of `main.css`, derives the token families from them, and asserts that every
+  colour utility naming one of those families names a token that exists — so what is closed is the class of
+  defect rather than the instance. It reads test files too, because the reason this shipped is that a test
+  selected the delete button by a class that styles nothing.
+
 - **A column no provision governs draws no finding.** `us-food/dual-column-form` reported an incomplete or
   unseparated second column as a **violation citing 21 CFR 101.9(e)**, while explaining in the same message
   that no subparagraph of (e) reached it. Read again on 2026-09-18, (e) opens "Nutrition information **may** be

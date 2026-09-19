@@ -39,7 +39,11 @@ const props = withDefaults(
  */
 type Zoom = 'fit' | 1 | 2
 
-const zoom = ref<Zoom>(1)
+// Unconditionally `fit`, not "fit when it would overflow". A conditional
+// default is harder to reason about than a constant one, 100% is one click
+// away, and the case that matters — a 120mm food label on a 375px phone — is
+// the one the editor opens on.
+const zoom = ref<Zoom>('fit')
 const ZOOMS: ReadonlyArray<{ value: Zoom; label: string }> = [
   { value: 'fit', label: 'Fit' },
   { value: 1, label: '100%' },
@@ -75,6 +79,20 @@ const dimensionsId = `overlay-dimensions-${useId()}`
 /**
  * At 100% the SVG's own `mm` dimensions are used untouched — that is the whole
  * point of emitting them. Only the fit case overrides, and only in width.
+ *
+ * **Fit shrinks; it never enlarges**, and it is `width: 100%` that does the
+ * shrinking. The `maxWidth` never binds: `widthMm * 4` px is always more than
+ * the SVG's own intrinsic width of `widthMm * 3.7795` px, for every label, so
+ * the clamp sits above the content and the label draws at true scale wherever
+ * there is room for it.
+ *
+ * Worth stating because the arithmetic invites the opposite reading. A review of
+ * the change that made `fit` the default raised exactly that — 4 against 3.7795
+ * is 5.8% over, so the desktop preview must now open at 106% and `preview ==
+ * print` is broken. Running it says otherwise: measured at 1440, a 120 mm label
+ * draws 453.55 px against a true 453.54. The cap is inert, not wrong.
+ * `e2e/the-canvas-fits.spec.ts` pins the measurement so the next reader gets the
+ * answer rather than the inference.
  */
 const frameStyle = computed(() => {
   if (zoom.value === 'fit') return { width: '100%', maxWidth: `${props.layout.widthMm * 4}px` }

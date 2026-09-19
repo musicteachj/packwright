@@ -631,6 +631,40 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
 
 ---
 
+## From the interface stage 0 review
+
+**The canvas's `fit` does not render at 106% of true scale, and the review that said so was reading rather
+than running.** Raised by `/code-review medium` on the stage 0 diff: `fit` clamps the frame at
+`widthMm * 4` px while a CSS millimetre is 3.7795 px, so making `fit` the default must mean every desktop
+preview opening 5.8% over true scale and `preview == print` quietly broken. The arithmetic is right and the
+conclusion does not follow. `widthMm * 4` is always *greater* than the SVG's own intrinsic width of
+`widthMm * 3.7795`, for every label at every size, so the clamp sits above the content and never binds; what
+shrinks the label on a narrow pane is `width: 100%`, not the ceiling. Measured in a browser at 1440, a
+120 mm label draws **453.55 px against a true 453.54**. Mutating the ceiling to `widthMm * 3` px makes it
+bind and the new assertion fails at 360.00 — so the test has teeth and the original code has no defect.
+
+Nothing to do, and the entry is here because the shape recurs: this is the same error as the "`'' * 240` is
+`0`" entry above, which reasoned correctly about a predicate and wrongly about whether the input ever
+arrives. Kept rather than struck because the next reader of that line will do the same arithmetic.
+`e2e/the-canvas-fits.spec.ts` now pins the measurement, and the comment beside the ceiling says why it is
+inert.
+
+**Two review findings from the same pass were taken and cannot be mutation-tested, which is worth saying
+out loud.** Neither changes behaviour today, so neither has a test that dies without it:
+
+- `theme.test.ts`'s colour-token guard derives its family list from the `--color-*` declarations instead of
+  carrying a hand-written copy. Today the two lists are identical, so nothing observable changes; the value
+  is that declaring a new family in `main.css` extends the guard by itself rather than silently not.
+- `e2e/the-masthead.spec.ts` measures `document.documentElement.clientWidth` rather than the requested
+  viewport width. Headless they are the same number, which is why no run can tell them apart; a visible
+  scrollbar takes real layout width, so the old form would have failed for anyone running it `--headed`.
+
+**Not taken, and left for the stage that owns it.** The `Error` assertion in `LabelsView.test.ts` reads
+`toContain('Error')` against a fixture message of `Internal server error`, so it depends on that fixture not
+itself containing the capitalised word. It is load-bearing today — mutation-tested both ways — but it is
+pinned by the fixture rather than by the markup. Worth tightening when the component layer gives the error
+its own testable element, which is stage 1.
+
 ## Serving the client
 
 **Nothing is compressed.** The API serves `apps/web`'s build uncompressed, and the largest chunk is
