@@ -16,8 +16,12 @@ import { ANCHORS, type Anchor, UPC_A_ELEMENTS } from '@packwright/label-core'
 import { computed } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorSection from './EditorSection.vue'
-import { INPUT, LABEL } from './formStyles'
 import BarcodeScanner from './BarcodeScanner.vue'
+import FormField from './ui/FormField.vue'
+import TextField from './ui/TextField.vue'
+import MeasurementField from './ui/MeasurementField.vue'
+import SelectField from './ui/SelectField.vue'
+import CheckboxField from './ui/CheckboxField.vue'
 
 const store = useLabelDocumentStore()
 
@@ -102,13 +106,65 @@ const hasDigitalLink = computed({
   },
 })
 
+/**
+ * `CheckboxField.vue`'s model is `defineModel<boolean>()` — a plain `boolean`,
+ * not `boolean | undefined`. Both flags below are optional on the document
+ * (`omitHri?: boolean`, `useConvenienceAlphas?: boolean`), so binding the store
+ * field straight through fails `exactOptionalPropertyTypes`. It is a type-level
+ * gap only: a native checkbox's own `v-model`, which is what these fields used
+ * before this migration, already assigns a definite `true`/`false` on every
+ * change, never `undefined`, so treating an unset flag as `false` here changes
+ * nothing at runtime — it only gives the compiler the type it already behaved as.
+ */
+const omitHri = computed({
+  get: () => store.data.omitHri ?? false,
+  set: (value: boolean) => {
+    store.data.omitHri = value
+  },
+})
+
+const useConvenienceAlphas = computed({
+  get: () => store.data.digitalLink?.useConvenienceAlphas ?? false,
+  set: (value: boolean) => {
+    if (store.data.digitalLink) store.data.digitalLink.useConvenienceAlphas = value
+  },
+})
+
+/**
+ * `TextField` has no `.trim` modifier of its own.
+ *
+ * `defineModel` only applies a transform a component asks for by destructuring
+ * `modelModifiers` — `MeasurementField` does this for `.number`, but `TextField`
+ * does not do it for `.trim`, so a bare `v-model.trim="…"` written on the
+ * component (rather than on a raw `<input>`) would silently stop stripping
+ * whitespace: the modifier would still be passed down as an unread prop, and
+ * nothing would ever call `.trim()`. The five fields that used to lean on the
+ * native modifier do their own trimming here instead, in the same place the
+ * rest of their validation already lives, rather than teaching the shared
+ * component a modifier only they use.
+ */
+const gtin = computed({
+  get: () => store.data.gtin,
+  set: (value: string) => {
+    store.data.gtin = value.trim()
+  },
+})
+
+const digitalLinkDomain = computed({
+  get: () => store.data.digitalLink?.domain ?? '',
+  set: (value: string) => {
+    if (store.data.digitalLink) store.data.digitalLink.domain = value.trim()
+  },
+})
+
 function optionalText(field: 'lot' | 'serial' | 'expiry') {
   return computed<string>({
     get: () => store.data.digitalLink?.[field] ?? '',
     set: (value) => {
       if (!store.data.digitalLink) return
-      if (value === '') delete store.data.digitalLink[field]
-      else store.data.digitalLink[field] = value
+      const trimmed = value.trim()
+      if (trimmed === '') delete store.data.digitalLink[field]
+      else store.data.digitalLink[field] = trimmed
     },
   })
 }
@@ -129,61 +185,62 @@ const select = (elementId: string) => store.select(elementId)
       :status="gtinIsComplete ? '12 digits' : 'incomplete'"
       @select="select"
     >
-      <label :class="LABEL" for="field-gtin">
-        <span>GTIN-12, as printed on the pack</span>
-        <input
-          id="field-gtin"
-          v-model.trim="store.data.gtin"
-          :class="INPUT"
-          type="text"
-          inputmode="numeric"
-          maxlength="12"
-          autocomplete="off"
-          :aria-invalid="!gtinIsComplete"
-          :aria-describedby="store.lastScan ? 'gtin-scan-note' : undefined"
-          @paste="onPaste"
-          @input="store.clearScan()"
-        />
-      </label>
-
-      <!--
-        A pasted symbol goes through the normaliser rather than into the field.
-        `maxlength="12"` is right for typing and wrong for a paste: it keeps the
-        first twelve characters of a 13-digit read, so the check digit is what
-        falls off. Most truncations then fail that check — but about one in ten
-        passes it, and becomes a structurally valid GTIN naming a different
-        article with nothing said.
-
-        Announced, not merely shown. A refusal a screen reader never hears is the
-        state the whole feature exists to avoid: the field simply does not change
-        and nothing says why.
-      -->
-      <p
-        v-if="store.lastScan && !store.lastScan.ok"
-        id="gtin-scan-note"
-        class="text-caution text-xs"
-        role="status"
-        aria-live="polite"
+      <TextField
+        id="field-gtin"
+        v-model="gtin"
+        label="GTIN-12, as printed on the pack"
+        identifier
+        :invalid="!gtinIsComplete"
+        live
+        inputmode="numeric"
+        maxlength="12"
+        autocomplete="off"
+        @paste="onPaste"
+        @input="store.clearScan()"
       >
-        <span class="numeric">{{ store.lastScan.scanned }}</span> was not taken:
-        {{ store.lastScan.reason }}
-      </p>
-      <p
-        v-else-if="store.lastScan?.note"
-        id="gtin-scan-note"
-        class="text-chrome-300 text-xs"
-        role="status"
-        aria-live="polite"
-      >
-        {{ store.lastScan.note }}
-      </p>
+        <!--
+          A pasted symbol goes through the normaliser rather than into the field.
+          `maxlength="12"` is right for typing and wrong for a paste: it keeps the
+          first twelve characters of a 13-digit read, so the check digit is what
+          falls off. Most truncations then fail that check — but about one in ten
+          passes it, and becomes a structurally valid GTIN naming a different
+          article with nothing said.
+
+          Two mutually exclusive paragraphs sharing one id, moved into the
+          `description` slot `FormField` was built for — see that component's own
+          block comment, point 1. `FormField` generates the id itself
+          (`field-gtin-description`) and marks it `role="status" aria-live="polite"`
+          via `live` above, so the hand-written `gtin-scan-note` id and this
+          field's own `role`/`aria-live`/`aria-describedby` all move to the
+          component; only the colour, which is tone rather than structure, stays
+          on the `<p>`.
+        -->
+        <template v-if="store.lastScan && !store.lastScan.ok" #description>
+          <p class="text-caution text-xs">
+            <span class="numeric">{{ store.lastScan.scanned }}</span> was not taken:
+            {{ store.lastScan.reason }}
+          </p>
+        </template>
+        <template v-else-if="store.lastScan?.note" #description>
+          <p class="text-chrome-300 text-xs">{{ store.lastScan.note }}</p>
+        </template>
+        <!--
+          The same words that used to sit in a loose `<p>` beside this field,
+          moved into the slot that associates them with it. They were always
+          shown; they were never announced, because nothing tied them to the
+          control. That mattered more once `invalid` began swapping the border
+          for `danger-edge` — a red box whose explanation is adjacent but
+          unlinked is colour doing the work for anyone who cannot see it.
+        -->
+        <template v-else-if="!gtinIsComplete" #description>
+          <p class="text-chrome-400 text-xs">
+            Twelve digits, check digit included. The check digit is verified rather than computed,
+            so a transposed one is caught instead of silently corrected.
+          </p>
+        </template>
+      </TextField>
 
       <BarcodeScanner />
-
-      <p v-if="!gtinIsComplete" class="text-chrome-400 text-xs">
-        Twelve digits, check digit included. The check digit is verified rather than computed, so a
-        transposed one is caught instead of silently corrected.
-      </p>
     </EditorSection>
 
     <EditorSection
@@ -194,46 +251,39 @@ const select = (elementId: string) => store.select(elementId)
       :status="`${magnification.toFixed(2)}x`"
       @select="select"
     >
-      <label :class="LABEL" for="field-magnification">
-        <span>Magnification</span>
-        <input
-          id="field-magnification"
-          v-model.number="magnification"
-          type="range"
-          min="0.5"
-          max="2.5"
-          step="0.05"
-        />
-      </label>
+      <!--
+        A bare `FormField` wrapping a `range` input with no `v-model` on the
+        component itself — none of the four named controls covers a slider, so
+        the control is handed the slot directly, the same shape `DesignView.vue`
+        demonstrates for this exact field.
+      -->
+      <FormField id="field-magnification" label="Magnification">
+        <template #default="{ id: controlId, describedBy }">
+          <input
+            :id="controlId"
+            v-model.number="magnification"
+            type="range"
+            min="0.5"
+            max="2.5"
+            step="0.05"
+            :aria-describedby="describedBy"
+          />
+        </template>
+      </FormField>
 
-      <label :class="LABEL" for="field-bar-height">
-        <span>Bar height, mm — blank uses the specification’s minimum</span>
-        <input
-          id="field-bar-height"
-          v-model="barHeightMm"
-          :class="INPUT"
-          type="number"
-          min="1"
-          step="0.5"
-        />
-      </label>
+      <MeasurementField
+        id="field-bar-height"
+        v-model="barHeightMm"
+        label="Bar height, mm — blank uses the specification’s minimum"
+        min="1"
+        step="0.5"
+      />
 
-      <label :class="LABEL" for="field-placement">
-        <span>Placement</span>
-        <select id="field-placement" v-model="symbolPlacement" :class="INPUT">
-          <option v-for="anchor in ANCHORS" :key="anchor" :value="anchor">{{ anchor }}</option>
-        </select>
-      </label>
+      <SelectField id="field-placement" v-model="symbolPlacement" label="Placement">
+        <option v-for="anchor in ANCHORS" :key="anchor" :value="anchor">{{ anchor }}</option>
+      </SelectField>
 
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-omit-hri">
-        <input
-          id="field-omit-hri"
-          v-model="store.data.omitHri"
-          type="checkbox"
-          class="accent-notice"
-        />
-        <span>Omit the human-readable digits</span>
-      </label>
+      <CheckboxField id="field-omit-hri" v-model="omitHri" label="Omit the human-readable digits" />
     </EditorSection>
 
     <EditorSection
@@ -243,42 +293,24 @@ const select = (elementId: string) => store.select(elementId)
       @select="select"
     >
       <div class="grid grid-cols-3 gap-2">
-        <div>
-          <label :class="LABEL" for="field-stock-width">
-            <span>Width</span>
-            <input
-              id="field-stock-width"
-              v-model.number="store.stock.widthMm"
-              :class="INPUT"
-              type="number"
-              min="1"
-            />
-          </label>
-        </div>
-        <div>
-          <label :class="LABEL" for="field-stock-height">
-            <span>Height</span>
-            <input
-              id="field-stock-height"
-              v-model.number="store.stock.heightMm"
-              :class="INPUT"
-              type="number"
-              min="1"
-            />
-          </label>
-        </div>
-        <div>
-          <label :class="LABEL" for="field-stock-margin">
-            <span>Margin</span>
-            <input
-              id="field-stock-margin"
-              v-model.number="store.stock.marginMm"
-              :class="INPUT"
-              type="number"
-              min="0"
-            />
-          </label>
-        </div>
+        <MeasurementField
+          id="field-stock-width"
+          v-model.number="store.stock.widthMm"
+          label="Width"
+          min="1"
+        />
+        <MeasurementField
+          id="field-stock-height"
+          v-model.number="store.stock.heightMm"
+          label="Height"
+          min="1"
+        />
+        <MeasurementField
+          id="field-stock-margin"
+          v-model.number="store.stock.marginMm"
+          label="Margin"
+          min="0"
+        />
       </div>
     </EditorSection>
 
@@ -289,59 +321,28 @@ const select = (elementId: string) => store.select(elementId)
       :status="hasArtwork ? 'placed' : 'none'"
       @select="select"
     >
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-artwork-enabled">
-        <input
-          id="field-artwork-enabled"
-          v-model="hasArtwork"
-          type="checkbox"
-          class="accent-notice"
-        />
-        <span>Place a brand block</span>
-      </label>
+      <CheckboxField id="field-artwork-enabled" v-model="hasArtwork" label="Place a brand block" />
 
       <template v-if="store.data.artwork">
-        <label :class="LABEL" for="field-artwork-text">
-          <span>Text</span>
-          <input
-            id="field-artwork-text"
-            v-model="store.data.artwork.text"
-            :class="INPUT"
-            type="text"
-          />
-        </label>
+        <TextField id="field-artwork-text" v-model="store.data.artwork.text" label="Text" />
 
-        <label :class="LABEL" for="field-artwork-anchor">
-          <span>Anchor</span>
-          <select id="field-artwork-anchor" v-model="store.data.artwork.anchor" :class="INPUT">
-            <option v-for="anchor in ANCHORS" :key="anchor" :value="anchor">{{ anchor }}</option>
-          </select>
-        </label>
+        <SelectField id="field-artwork-anchor" v-model="store.data.artwork.anchor" label="Anchor">
+          <option v-for="anchor in ANCHORS" :key="anchor" :value="anchor">{{ anchor }}</option>
+        </SelectField>
 
         <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label :class="LABEL" for="field-artwork-width">
-              <span>Width, mm</span>
-              <input
-                id="field-artwork-width"
-                v-model.number="store.data.artwork.widthMm"
-                :class="INPUT"
-                type="number"
-                min="1"
-              />
-            </label>
-          </div>
-          <div>
-            <label :class="LABEL" for="field-artwork-height">
-              <span>Height, mm</span>
-              <input
-                id="field-artwork-height"
-                v-model.number="store.data.artwork.heightMm"
-                :class="INPUT"
-                type="number"
-                min="1"
-              />
-            </label>
-          </div>
+          <MeasurementField
+            id="field-artwork-width"
+            v-model.number="store.data.artwork.widthMm"
+            label="Width, mm"
+            min="1"
+          />
+          <MeasurementField
+            id="field-artwork-height"
+            v-model.number="store.data.artwork.heightMm"
+            label="Height, mm"
+            min="1"
+          />
         </div>
       </template>
     </EditorSection>
@@ -352,63 +353,31 @@ const select = (elementId: string) => store.select(elementId)
       :status="hasDigitalLink ? 'configured' : 'none'"
       @select="select"
     >
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-dl-enabled">
-        <input
-          id="field-dl-enabled"
-          v-model="hasDigitalLink"
-          type="checkbox"
-          class="accent-notice"
-        />
-        <span>Carry a GS1 Digital Link</span>
-      </label>
+      <CheckboxField
+        id="field-dl-enabled"
+        v-model="hasDigitalLink"
+        label="Carry a GS1 Digital Link"
+      />
 
       <template v-if="store.data.digitalLink">
-        <label :class="LABEL" for="field-dl-domain">
-          <span>Resolver domain</span>
-          <input
-            id="field-dl-domain"
-            v-model.trim="store.data.digitalLink.domain"
-            :class="INPUT"
-            type="text"
-          />
-        </label>
+        <TextField id="field-dl-domain" v-model="digitalLinkDomain" label="Resolver domain" />
 
         <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label :class="LABEL" for="field-dl-lot">
-              <span>Lot (10)</span>
-              <input id="field-dl-lot" v-model.trim="lot" :class="INPUT" type="text" />
-            </label>
-          </div>
-          <div>
-            <label :class="LABEL" for="field-dl-serial">
-              <span>Serial (21)</span>
-              <input id="field-dl-serial" v-model.trim="serial" :class="INPUT" type="text" />
-            </label>
-          </div>
-          <div>
-            <label :class="LABEL" for="field-dl-expiry">
-              <span>Expiry (17)</span>
-              <input
-                id="field-dl-expiry"
-                v-model.trim="expiry"
-                :class="INPUT"
-                type="text"
-                placeholder="YYMMDD"
-              />
-            </label>
-          </div>
+          <TextField id="field-dl-lot" v-model="lot" label="Lot (10)" identifier />
+          <TextField id="field-dl-serial" v-model="serial" label="Serial (21)" />
+          <TextField
+            id="field-dl-expiry"
+            v-model="expiry"
+            label="Expiry (17)"
+            placeholder="YYMMDD"
+          />
         </div>
 
-        <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-dl-alphas">
-          <input
-            id="field-dl-alphas"
-            v-model="store.data.digitalLink.useConvenienceAlphas"
-            type="checkbox"
-            class="accent-notice"
-          />
-          <span>Use the convenience alphas (/gtin/)</span>
-        </label>
+        <CheckboxField
+          id="field-dl-alphas"
+          v-model="useConvenienceAlphas"
+          label="Use the convenience alphas (/gtin/)"
+        />
       </template>
     </EditorSection>
   </div>

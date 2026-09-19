@@ -294,10 +294,17 @@ describe('pasting a barcode into the GTIN field', () => {
 
     await paste(wrapper, '4006381333931')
 
-    const note = wrapper.find('#gtin-scan-note')
-    expect(note.exists()).toBe(true)
+    // Asserted as a relationship rather than as a literal id. The claim is that
+    // the field names an announced note and the note says which scan was
+    // refused; which string that id happens to be is the wiring's business, and
+    // it moved when the wiring did.
+    const describedBy = wrapper.find('#field-gtin').attributes('aria-describedby')
+    expect(describedBy, 'the field must name the note that describes it').toBeTruthy()
+
+    const note = wrapper.find(`#${describedBy}`)
+    expect(note.exists(), 'and that note must be in the document').toBe(true)
     expect(note.attributes('aria-live')).toBe('polite')
-    expect(wrapper.find('#field-gtin').attributes('aria-describedby')).toBe('gtin-scan-note')
+    expect(note.text(), 'saying which scan was refused').toContain('4006381333931')
     expect(store.lastScan?.ok).toBe(false)
   })
 
@@ -312,7 +319,16 @@ describe('pasting a barcode into the GTIN field', () => {
     await nextTick()
 
     expect(store.lastScan, 'typing over a refusal clears it').toBeNull()
-    expect(wrapper.find('#gtin-scan-note').exists()).toBe(false)
+    // Was `find('#gtin-scan-note').exists()` — which passed for free the moment
+    // the id changed, because an element that never exists is always absent.
+    //
+    // The claim is that the refusal is gone, not that the field describes
+    // nothing: an incomplete GTIN still carries the "twelve digits" help in the
+    // same slot, which is why this reads the note's text rather than its
+    // presence.
+    const describedBy = wrapper.find('#field-gtin').attributes('aria-describedby')
+    const note = describedBy === undefined ? '' : wrapper.find(`#${describedBy}`).text()
+    expect(note, 'the refused scan is no longer named').not.toContain('4006381333931')
   })
 
   it('refuses a GTIN-13 and shows the reason', async () => {

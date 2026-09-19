@@ -26,7 +26,7 @@
  * own `:checked`/`@change` pair overwrites the unbound default instead of
  * fighting a directive that would otherwise reassert it.
  */
-import { computed, useAttrs } from 'vue'
+import { computed, onMounted, useAttrs, useTemplateRef } from 'vue'
 import { CHECKBOX_INPUT, CHECKBOX_LABEL } from '../formStyles'
 
 defineOptions({ inheritAttrs: false })
@@ -54,6 +54,28 @@ const props = defineProps<{
 }>()
 
 const model = defineModel<boolean>()
+
+/**
+ * The visible text and the stated name have to agree, and nothing else checks.
+ *
+ * `label` is required because it says what the control is called; a slot then
+ * renders it differently. If the two drift apart the control is named one thing
+ * and reads as another — which breaks voice control, where a user says what they
+ * can see, and misleads anyone auditing the rail against its label prop.
+ */
+const text = useTemplateRef<HTMLElement>('text')
+
+onMounted(() => {
+  if (!import.meta.env.DEV) return
+  const rendered = text.value?.textContent?.replace(/\s+/g, ' ').trim()
+  const stated = props.label.replace(/\s+/g, ' ').trim()
+  if (rendered && rendered !== stated) {
+    console.warn(
+      `[CheckboxField] #${props.id} renders "${rendered}" but its label prop says "${stated}". ` +
+        'The rendered text is the accessible name, so these must agree.',
+    )
+  }
+})
 </script>
 
 <template>
@@ -66,6 +88,24 @@ const model = defineModel<boolean>()
       v-bind="controlAttrs"
       @change="model = ($event.target as HTMLInputElement).checked"
     />
-    <span>{{ props.label }}</span>
+    <!--
+      A slot over the prop, for the same reason `FormField`'s description has
+      one: some labels are not a single run of prose. The 44 GHS hazard classes
+      read `2.6 Flammable liquids Category 1,2,3 → GHS02`, where the class number
+      and the pictogram code are identifiers and belong in the mono face — losing
+      that on migration would have undone the typeface rule on 44 rows at once,
+      which is the rule this component layer exists to apply.
+
+      **The slot becomes the accessible name.** An earlier version of this comment
+      claimed it did not — that `label` stayed the name and the slot only changed
+      how it was set — and that was plainly wrong: the name of a `<label>` is its
+      text content, so whatever the slot renders *is* the name. The `label` prop
+      is the fallback and the stated intent, and the two silently disagreeing is
+      the failure worth catching, so the mismatch is reported in development
+      rather than trusted.
+    -->
+    <span ref="text"
+      ><slot>{{ props.label }}</slot></span
+    >
   </label>
 </template>

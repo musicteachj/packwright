@@ -302,3 +302,46 @@ describe('MeasurementField honours the .number modifier', () => {
     expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toBe('120')
   })
 })
+
+describe('CheckboxField renders a label that is not one run of prose', () => {
+  // The 44 GHS hazard classes read "2.6 Flammable liquids → GHS02", where the
+  // class number and pictogram code are identifiers and take the mono face.
+  // Migrating them through a string-only `label` collapsed all 44 into plain
+  // sans, undoing the typeface rule this component layer exists to apply.
+  it('renders the slot when given one', () => {
+    const wrapper = mount(CheckboxField, {
+      props: { id: 'h', label: '2.6 Flammable liquids → GHS02' },
+      slots: { default: '<span class="numeric">2.6</span> Flammable liquids → GHS02' },
+    })
+    expect(wrapper.get('span.numeric').text()).toBe('2.6')
+  })
+
+  it('makes the slot the accessible name, and it must match the stated one', () => {
+    // The name of a label is its text content, so the slot IS the name — an
+    // earlier comment here claimed otherwise and was wrong. The two silently
+    // disagreeing is what breaks voice control, where a user says what they see.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const wrapper = mount(CheckboxField, {
+      props: { id: 'h', label: '2.6 Flammable liquids → GHS02' },
+      slots: { default: '<span class="numeric">2.6</span> Flammable liquids → GHS02' },
+    })
+    expect(wrapper.get('label').text().replace(/\s+/g, ' ')).toBe('2.6 Flammable liquids → GHS02')
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('complains when the rendered text and the stated name disagree', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mount(CheckboxField, {
+      props: { id: 'h', label: '2.6 Flammable liquids → GHS02' },
+      slots: { default: 'Something else entirely' },
+    })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('accessible name'))
+    warn.mockRestore()
+  })
+
+  it('falls back to the label prop, which is the name when there is no slot', () => {
+    const wrapper = mount(CheckboxField, { props: { id: 'h', label: 'Omit the digits' } })
+    expect(wrapper.get('label').text()).toContain('Omit the digits')
+  })
+})

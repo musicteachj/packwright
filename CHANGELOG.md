@@ -8,7 +8,107 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Changed
+
+- **`UpcAFormRail.vue` and `GhsFormRail.vue` move onto `FormField`, `TextField`, `MeasurementField`,
+  `SelectField` and `CheckboxField` — the component layer `/design` was built to catalogue, and the first two
+  rails actually migrated onto it.** All nineteen `<label>` sites in `UpcAFormRail.vue` move: the GTIN entry
+  onto `TextField` with `identifier`, a dynamic `invalid` and `live`; the magnification slider onto a bare
+  `FormField` wrapping a slotted `range`
+  input, the exact shape `DesignView.vue` demonstrates for this field, since none of the four named controls
+  covers a slider; six measurements — bar height, the three stock dimensions, the two artwork dimensions —
+  onto `MeasurementField`; two selects, placement and artwork anchor, onto `SelectField`; four checkboxes onto
+  `CheckboxField`; and the remaining prose fields — artwork text, the Digital Link domain, lot, serial and
+  expiry — onto `TextField`, with `identifier` set only where `TextField`'s own doc comment names this file's
+  fields, the GTIN and the lot code, so serial, expiry and the resolver domain render in the plain prose face
+  rather than the mono one every text input used indiscriminately before. Every id stays exactly where the
+  `e2e/` specs and `EditorView.test.ts` address it, and the rail's rendered markup is otherwise unchanged,
+  which `EditorView.test.ts`, `the-unsaved-editor.spec.ts` and `the-scanner.spec.ts` demonstrate by passing —
+  two assertions excepted, below, and those were rewritten rather than relaxed.
+
+  Two things moved with it rather than staying template-level. `TextField` has no `.trim` modifier —
+  `defineModel` only applies a transform a component reads for itself out of `modelModifiers`, and
+  `TextField` never does, so a bare `v-model.trim` written on the component, rather than on a raw `<input>`,
+  would have silently stopped stripping whitespace on the five fields that relied on it. They trim in a local
+  computed setter now, in script rather than in the template, the same place their other validation already
+  lives. And `CheckboxField`'s model is a plain `boolean`, while `omitHri` and `useConvenienceAlphas` are both
+  optional on the document; a local computed answers `false` for the unset case, matching what a native
+  checkbox's own `v-model` already assigned on every change regardless, so this closes an
+  `exactOptionalPropertyTypes` type error with no runtime difference at all.
+
+  **Two assertions were rewritten, and finding out why is the useful part.** The GTIN field's scan note — two
+  mutually exclusive `role="status"` paragraphs that used to share a hand-written id, `gtin-scan-note` —
+  moves into `TextField`'s `description` slot, which is what `FormField.vue`'s own doc comment names this
+  exact field as needing. `FormField` generates the description's id itself, so the old id and the field's
+  hand-written conditional `aria-describedby` both retire in favour of the component's wiring, and a test
+  asserting the literal string failed.
+
+  Neither obvious remedy was taken. Giving `FormField` a caller-supplied id would have added API surface to
+  serve a test's string; swapping one literal for another would have kept the coupling and renamed it. The
+  assertion was rewritten as the relationship it was always making — read `aria-describedby` off the field,
+  then look for *that* element — which is id-agnostic and strictly stronger.
+
+  Doing that exposed a second test passing for free. `clears the note once the field is typed in` asserted
+  that `#gtin-scan-note` did not exist, and an element that no longer exists under any condition is always
+  absent, so it would have stayed green however broken the clearing became. It asserts now that the field
+  points at nothing. Both are mutation-tested: removing the description slot fails two tests.
+
+  The general shape is worth carrying into the rails still to migrate — **an assertion written as a literal
+  id is a relationship in disguise**, and it either fails or goes quietly vacuous the moment the wiring
+  moves.
+
+  **`GhsFormRail.vue`'s sixteen `<label>` sites move the same way, an hour later on the same branch.** The
+  product identifier, supplier name/address and outer package statement onto `TextField`; Market and the two
+  "add a statement" action menus onto `SelectField`; capacity and the three stock dimensions onto
+  `MeasurementField`; the include-supplier and small-container flags, the 44 hazard-class checkboxes and the
+  two signal-word checkboxes onto `CheckboxField`. Every id stays exactly where `EditorGhsView.test.ts` and
+  `e2e/the-label-audit.spec.ts` address it, and both pass unmodified — no test needed rewriting this time,
+  because nothing here had a hand-written id sharing space with one `FormField` now generates.
+
+  `data.regime` needed the same treatment `UpcAFormRail.vue` gave `symbolPlacement`: `SelectField`'s model is
+  the generic `string` every select in the app shares, and `GhsRegime` is a two-member literal union, so a
+  local computed reads the field straight through and writes it back through a narrowly typed setter, rather
+  than binding the union directly. `outerPackageStatement` and the supplier's `telephone` are optional strings
+  where `TextField`'s model is not, so they get the same local-computed treatment `barHeightMm` and the
+  Digital Link fields got on the retail rail — except neither trims nor deletes on empty, because the fields
+  they replace never did either.
+
+  The two "add a statement" selects (`#field-add-h`, `#field-add-p`) carry no bound value at all: they are an
+  action, not state, and the handler resets the control by hand (`select.value = ''`) once a code is taken.
+  They move onto `SelectField` with no `v-model`, keeping `@change` unchanged, on the strength of
+  `SelectField`'s own doc comment — `mergeProps` runs the caller's handler before the component's own inert
+  internal one, so the reset survives. `EditorGhsView.test.ts` does not assert the reset either before or
+  after this migration; it was checked by hand instead, with a throwaway mount asserting the control's own
+  `.value` returns to `''` after a selection and stays usable for a second one, discarded once it passed
+  rather than committed, since adding suite coverage was judged outside a behaviour-preserving migration's
+  scope. Worth a real test of its own.
+
+  The 44 hazard-class checkboxes nearly lost something real, and catching it changed a component.
+  `CheckboxField`'s `label` was a plain string, so three differently styled runs — the Annex I section number
+  in the mono face, the pictogram code in its own — collapsed into one. The words were unchanged and nothing
+  tested the difference, which is exactly why it had to be caught by eye: **a GHS hazard class number and a
+  pictogram code are identifiers**, and putting identifiers in the mono face is what this component layer is
+  for. The migration would have undone that rule on forty-four rows at once while claiming to apply it.
+  `CheckboxField` takes a default slot now, with `label` still required and still the accessible name — a
+  slot changes how the name is set, never what it is.
+
 ### Fixed
+
+- **Three things the review of the rail migration found, one of which was a claim in a comment rather than a
+  bug in code — and that one was the worst.** `CheckboxField`'s new label slot was documented as changing
+  "how the name is set, never what it is". That is false: the accessible name of a label is its text content,
+  so a slot rendering different words *is* a different name, and the test fixture written to prove the slot
+  worked was itself demonstrating the mismatch while asserting nothing about it. The comment says what
+  happens now, the fixture's two strings agree, and a development-time warning reports any control whose
+  rendered text and stated `label` drift apart — the failure that breaks voice control, where a user says
+  what they can see.
+
+  The GTIN field had begun swapping its border for `danger-edge` while incomplete, with its explanation
+  sitting in a loose paragraph beside it rather than tied to it. Nothing was added: the words that were
+  always there moved into the field's own description slot, which associates them. And a comment in the GHS
+  rail still described the hazard rows as having lost their styling two hundred lines above the code that
+  keeps it.
+
 
 - **Five things the review of PR #52 found in the new component layer, two of which would have surfaced as
   migration damage rather than as anything obvious.** `MeasurementField` typed its model `string`, while
