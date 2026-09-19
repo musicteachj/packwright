@@ -65,7 +65,11 @@ import {
 import { computed, ref } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorSection from './EditorSection.vue'
-import { CHIP, CHIP_REMOVE, INPUT, LABEL } from './formStyles'
+import { CHIP, CHIP_REMOVE } from './formStyles'
+import TextField from './ui/TextField.vue'
+import MeasurementField from './ui/MeasurementField.vue'
+import SelectField from './ui/SelectField.vue'
+import CheckboxField from './ui/CheckboxField.vue'
 
 const store = useLabelDocumentStore()
 const data = store.foodData
@@ -285,6 +289,28 @@ const thresholdPercent = computed({
 })
 
 /**
+ * `SelectField` has no `.number` modifier, for the same reason `TextField` has
+ * no `.trim` — `defineModel` only applies a transform a component reads for
+ * itself, and `SelectField`'s own `<select>` is wired by hand (`:value` +
+ * `@change`) rather than through Vue's `v-model` directive, so it always emits
+ * the DOM's own `string` value. A bare `v-model.number="thresholdPercent"` on
+ * the component would silently store `'2'` where `thresholdPercent`'s setter,
+ * `INGREDIENT_THRESHOLD_PERCENTS` and `Array.prototype.includes` all expect the
+ * number `2` — `usFoodIngredientThresholdRule` uses `includes`, which is a
+ * strict-equality check, so a string would misreport a compliant 2 percent
+ * statement as the 101.4(a)(2) violation "the quantifying statement reads 2
+ * percent" reserved for a figure the paragraph does not permit. This computed
+ * converts back to a number and writes through `thresholdPercent`'s own setter
+ * unchanged, the same shape `.trim`'s computed workaround takes.
+ */
+const thresholdPercentField = computed({
+  get: () => String(thresholdPercent.value),
+  set: (next: string) => {
+    thresholdPercent.value = Number(next) as IngredientThresholdPercent
+  },
+})
+
+/**
  * The § 101.100 paragraph claimed, `''` for none. A label saved with the old bare
  * flag reads `'unstated'` until a paragraph is picked — which clears the flag, so a
  * document never carries both answers to one question.
@@ -321,6 +347,13 @@ const assortmentStatement = computed({
  * The names the statement must carry, typed as one comma-separated field. Bound lazily,
  * so the list is rewritten when the field is left rather than on every keystroke — which
  * would swallow a trailing comma the moment it was typed.
+ *
+ * `TextField` has no `.lazy` modifier either, for the same reason it has none for
+ * `.trim`: its own `<input>` always commits on `input`. The template below keeps
+ * the lazy commit by wiring the field by hand — `:value` + `@change` — the same
+ * mechanism `FormField`'s own notes describe for a control with no single bound
+ * ref, so the DOM's native `change` timing (blur or Enter) is what still writes
+ * here, not every keystroke.
  */
 const assortmentNames = computed({
   get: () => (assortment()?.mayBePresent ?? []).join(', '),
@@ -697,18 +730,45 @@ const requiredNumber = <T extends object, K extends keyof T>(target: () => T | u
 const shaped = <S extends Container['shape']>(shape: S) =>
   data.container.shape === shape ? (data.container as Extract<Container, { shape: S }>) : undefined
 
+/**
+ * `MeasurementField`'s `modelValue` is typed `number | string`, never
+ * `undefined` — `defineModel<number | string>()` doesn't admit it, and
+ * `exactOptionalPropertyTypes` holds the two apart at the prop boundary.
+ * `requiredNumber` and `optionalNumber` hand back `number | undefined` for the
+ * blank case, which is what lets a cleared box read as `NaN` (required) or
+ * delete its key (optional) — changing either is changing the guard, which is
+ * out of scope here. This adapts the component's type instead, not the guard's:
+ * `''` stands in for `undefined` on the way out, rendering the same empty box a
+ * `number | undefined` ref already produced under the native `v-model.number`
+ * this replaces, and whatever the field emits on the way back — a parsed
+ * number, or the original string when parsing failed — is handed to the
+ * guard's own setter unchanged, exactly as a native `<input v-model.number>`
+ * already did.
+ */
+const numberField = (guarded: { value: number | undefined }) =>
+  computed<number | string>({
+    get: () => guarded.value ?? '',
+    set: (next) => {
+      guarded.value = next as number
+    },
+  })
+
 const panelWidthMm = requiredNumber(() => shaped('rectangular'), 'widthMm')
+const panelWidthMmField = numberField(panelWidthMm)
 const panelHeightMm = requiredNumber(
   () => shaped('rectangular') ?? shaped('cylindrical'),
   'heightMm',
 )
+const panelHeightMmField = numberField(panelHeightMm)
 const containerCircumferenceMm = requiredNumber(() => shaped('cylindrical'), 'circumferenceMm')
+const containerCircumferenceMmField = numberField(containerCircumferenceMm)
 
 /** The small package's particulars, where that is the exemption claimed. */
 const smallPackage = () =>
   data.nutritionExemption?.kind === 'small-package' ? data.nutritionExemption : undefined
 
 const smallPackageAreaSqInches = requiredNumber(smallPackage, 'availableSurfaceSqInches')
+const smallPackageAreaSqInchesField = numberField(smallPackageAreaSqInches)
 
 const smallPackageContactLine = computed({
   get: () => smallPackage()?.contactLine ?? '',
@@ -744,9 +804,12 @@ const unitContainerWording = computed({
   },
 })
 const containerSurfaceAreaSqMm = requiredNumber(() => shaped('other'), 'totalSurfaceAreaSqMm')
+const containerSurfaceAreaSqMmField = numberField(containerSurfaceAreaSqMm)
 
 const servingsPerContainer = optionalNumber(() => data.nutritionFacts, 'servingsPerContainer')
+const servingsPerContainerField = numberField(servingsPerContainer)
 const netQuantityFontSizeMm = optionalNumber(() => data, 'netQuantityFontSizeMm')
+const netQuantityFontSizeMmField = numberField(netQuantityFontSizeMm)
 
 const typeScalePercent = computed({
   get: () => Math.round((data.nutritionFacts?.typeScale ?? 1) * 100),
@@ -829,10 +892,12 @@ const availableSurfaceSqInches = optionalNumber(
   () => data.nutritionFacts,
   'availableSurfaceSqInches',
 )
+const availableSurfaceSqInchesField = numberField(availableSurfaceSqInches)
 const continuousVerticalSpaceInches = optionalNumber(
   () => data.nutritionFacts,
   'continuousVerticalSpaceInches',
 )
+const continuousVerticalSpaceInchesField = numberField(continuousVerticalSpaceInches)
 
 const declaredFact = (key: 'cannotAccommodateVertical' | 'cannotAccommodateTabular') =>
   computed({
@@ -912,6 +977,7 @@ const referenceAmount = computed({
     }
   },
 })
+const referenceAmountField = numberField(referenceAmount)
 
 const referenceAmountUnit = computed({
   get: (): 'g' | 'mL' => data.nutritionFacts?.referenceAmount?.unit ?? pendingReferenceUnit.value,
@@ -944,7 +1010,9 @@ const contentFigure = (key: 'packageContent' | 'unitContent') =>
   })
 
 const packageContent = contentFigure('packageContent')
+const packageContentField = numberField(packageContent)
 const unitContent = contentFigure('unitContent')
+const unitContentField = numberField(unitContent)
 
 /**
  * Three states, not two, and the third is the point.
@@ -1058,15 +1126,11 @@ const packaging = computed({
       :selected-element-id="store.selectedElementId"
       @select="select"
     >
-      <label :class="LABEL" for="field-food-identity">
-        Statement of identity
-        <input
-          id="field-food-identity"
-          v-model="data.statementOfIdentity"
-          :class="INPUT"
-          type="text"
-        />
-      </label>
+      <TextField
+        id="field-food-identity"
+        v-model="data.statementOfIdentity"
+        label="Statement of identity"
+      />
       <p class="text-chrome-400 text-xs">
         What the food is, under 21 CFR 101.3. The net quantity must stand clear of it.
       </p>
@@ -1078,72 +1142,49 @@ const packaging = computed({
       :selected-element-id="store.selectedElementId"
       @select="select"
     >
-      <label :class="LABEL" for="field-food-shape">
-        Container shape
-        <select id="field-food-shape" v-model="shape" :class="INPUT">
-          <option v-for="(name, value) in SHAPE_NAMES" :key="value" :value="value">
-            {{ name }}
-          </option>
-        </select>
-      </label>
+      <SelectField id="field-food-shape" v-model="shape" label="Container shape">
+        <option v-for="(name, value) in SHAPE_NAMES" :key="value" :value="value">
+          {{ name }}
+        </option>
+      </SelectField>
 
       <template v-if="data.container.shape === 'rectangular'">
-        <label :class="LABEL" for="field-food-panel-width">
-          Panel width (mm)
-          <input
-            id="field-food-panel-width"
-            v-model.number="panelWidthMm"
-            :class="INPUT"
-            type="number"
-            min="1"
-          />
-        </label>
-        <label :class="LABEL" for="field-food-panel-height">
-          Panel height (mm)
-          <input
-            id="field-food-panel-height"
-            v-model.number="panelHeightMm"
-            :class="INPUT"
-            type="number"
-            min="1"
-          />
-        </label>
+        <MeasurementField
+          id="field-food-panel-width"
+          v-model.number="panelWidthMmField"
+          label="Panel width (mm)"
+          min="1"
+        />
+        <MeasurementField
+          id="field-food-panel-height"
+          v-model.number="panelHeightMmField"
+          label="Panel height (mm)"
+          min="1"
+        />
       </template>
 
       <template v-else-if="data.container.shape === 'cylindrical'">
-        <label :class="LABEL" for="field-food-cylinder-height">
-          Container height (mm)
-          <input
-            id="field-food-cylinder-height"
-            v-model.number="panelHeightMm"
-            :class="INPUT"
-            type="number"
-            min="1"
-          />
-        </label>
-        <label :class="LABEL" for="field-food-circumference">
-          Circumference (mm)
-          <input
-            id="field-food-circumference"
-            v-model.number="containerCircumferenceMm"
-            :class="INPUT"
-            type="number"
-            min="1"
-          />
-        </label>
+        <MeasurementField
+          id="field-food-cylinder-height"
+          v-model.number="panelHeightMmField"
+          label="Container height (mm)"
+          min="1"
+        />
+        <MeasurementField
+          id="field-food-circumference"
+          v-model.number="containerCircumferenceMmField"
+          label="Circumference (mm)"
+          min="1"
+        />
       </template>
 
       <template v-else>
-        <label :class="LABEL" for="field-food-surface">
-          Total surface area (mm²)
-          <input
-            id="field-food-surface"
-            v-model.number="containerSurfaceAreaSqMm"
-            :class="INPUT"
-            type="number"
-            min="1"
-          />
-        </label>
+        <MeasurementField
+          id="field-food-surface"
+          v-model.number="containerSurfaceAreaSqMmField"
+          label="Total surface area (mm²)"
+          min="1"
+        />
       </template>
 
       <p class="text-chrome-400 text-xs">
@@ -1161,40 +1202,29 @@ const packaging = computed({
       :selected-element-id="store.selectedElementId"
       @select="select"
     >
-      <label :class="LABEL" for="field-food-inch-pound">
-        Inch/pound declaration
-        <input
-          id="field-food-inch-pound"
-          v-model="data.netQuantity.inchPound"
-          :class="INPUT"
-          type="text"
-          placeholder="NET WT 12 OZ"
-        />
-      </label>
+      <TextField
+        id="field-food-inch-pound"
+        v-model="data.netQuantity.inchPound"
+        label="Inch/pound declaration"
+        placeholder="NET WT 12 OZ"
+      />
 
-      <label :class="LABEL" for="field-food-metric">
-        SI metric declaration
-        <input
-          id="field-food-metric"
-          v-model="metric"
-          :class="INPUT"
-          type="text"
-          placeholder="(340 g)"
-        />
-      </label>
+      <TextField
+        id="field-food-metric"
+        v-model="metric"
+        label="SI metric declaration"
+        placeholder="(340 g)"
+      />
       <p class="text-chrome-400 text-xs">
         Typed, not converted. Working out the equivalent is the labeller's job — this tool will not
         author half of a regulated statement.
       </p>
 
-      <label :class="LABEL" for="field-food-packaging">
-        How the package is put up
-        <select id="field-food-packaging" v-model="packaging" :class="INPUT">
-          <option v-for="(name, value) in PACKAGING_NAMES" :key="value" :value="value">
-            {{ name }}
-          </option>
-        </select>
-      </label>
+      <SelectField id="field-food-packaging" v-model="packaging" label="How the package is put up">
+        <option v-for="(name, value) in PACKAGING_NAMES" :key="value" :value="value">
+          {{ name }}
+        </option>
+      </SelectField>
       <p class="text-chrome-400 text-xs">
         Both measurement systems are required by the Fair Packaging and Labeling Act, 15 U.S.C.
         1453(a)(2) — not by 21 CFR 101, which was never amended to ask for the metric half.
@@ -1208,40 +1238,36 @@ const packaging = computed({
       :scroll-on-select="false"
       @select="select"
     >
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-molded">
-        <input id="field-food-molded" v-model="molded" type="checkbox" />
-        Blown, embossed or molded into the surface
-      </label>
+      <CheckboxField
+        id="field-food-molded"
+        v-model="molded"
+        label="Blown, embossed or molded into the surface"
+      />
       <p class="text-chrome-400 text-xs">
         Adds one sixteenth of an inch to the minimum, under the closing sentence of 21 CFR 101.7(i).
       </p>
 
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-override-type">
-        <input id="field-food-override-type" v-model="overrideTypeSize" type="checkbox" />
-        Set the type size by hand
-      </label>
+      <CheckboxField
+        id="field-food-override-type"
+        v-model="overrideTypeSize"
+        label="Set the type size by hand"
+      />
 
-      <label v-if="overrideTypeSize" :class="LABEL" for="field-food-type-size">
-        Type size, em (mm)
-        <input
-          id="field-food-type-size"
-          v-model.number="netQuantityFontSizeMm"
-          :class="INPUT"
-          type="number"
-          min="0.1"
-          step="0.1"
-        />
-      </label>
+      <MeasurementField
+        v-if="overrideTypeSize"
+        id="field-food-type-size"
+        v-model.number="netQuantityFontSizeMmField"
+        label="Type size, em (mm)"
+        min="0.1"
+        step="0.1"
+      />
       <p v-else class="text-chrome-400 text-xs">
         Derived from the panel area, so the label complies as drawn.
       </p>
 
-      <label :class="LABEL" for="field-food-anchor">
-        Placement on the panel
-        <select id="field-food-anchor" v-model="anchor" :class="INPUT">
-          <option v-for="value in ANCHORS" :key="value" :value="value">{{ value }}</option>
-        </select>
-      </label>
+      <SelectField id="field-food-anchor" v-model="anchor" label="Placement on the panel">
+        <option v-for="value in ANCHORS" :key="value" :value="value">{{ value }}</option>
+      </SelectField>
       <p class="text-chrome-400 text-xs">
         21 CFR 101.7(f) wants the declaration in the bottom 30% of the panel, on all but the
         smallest packages.
@@ -1259,37 +1285,31 @@ const packaging = computed({
       "
       @select="select"
     >
-      <label :class="LABEL" for="field-food-ing-exemption">
-        Exemption from ingredient labelling
-        <select id="field-food-ing-exemption" v-model="ingredientsExemption" :class="INPUT">
-          <option value="">None claimed</option>
-          <option v-if="ingredientsExemption === 'unstated'" value="unstated">
-            Exempt — paragraph not stated
-          </option>
-          <option v-for="(name, value) in INGREDIENTS_EXEMPTION_NAMES" :key="value" :value="value">
-            {{ name }}
-          </option>
-        </select>
-      </label>
+      <SelectField
+        id="field-food-ing-exemption"
+        v-model="ingredientsExemption"
+        label="Exemption from ingredient labelling"
+      >
+        <option value="">None claimed</option>
+        <option v-if="ingredientsExemption === 'unstated'" value="unstated">
+          Exempt — paragraph not stated
+        </option>
+        <option v-for="(name, value) in INGREDIENTS_EXEMPTION_NAMES" :key="value" :value="value">
+          {{ name }}
+        </option>
+      </SelectField>
       <template v-if="ingredientsExemption === 'assortment'">
-        <label :class="LABEL" for="field-food-ing-assortment-statement">
-          Statement of other ingredients that may be present
-          <input
-            id="field-food-ing-assortment-statement"
-            v-model="assortmentStatement"
-            :class="INPUT"
-            type="text"
-          />
-        </label>
-        <label :class="LABEL" for="field-food-ing-may-be-present">
-          Ingredients it must name, separated by commas
-          <input
-            id="field-food-ing-may-be-present"
-            v-model.lazy="assortmentNames"
-            :class="INPUT"
-            type="text"
-          />
-        </label>
+        <TextField
+          id="field-food-ing-assortment-statement"
+          v-model="assortmentStatement"
+          label="Statement of other ingredients that may be present"
+        />
+        <TextField
+          id="field-food-ing-may-be-present"
+          :value="assortmentNames"
+          label="Ingredients it must name, separated by commas"
+          @change="assortmentNames = ($event.target as HTMLInputElement).value"
+        />
         <p class="text-chrome-400 text-xs">
           § 101.100(a)(1) exempts an assortment from listing the ingredients not common to every
           package, on the condition that the label bears a statement naming the others which may be
@@ -1316,49 +1336,45 @@ const packaging = computed({
         :key="index"
         class="border-chrome-800 flex items-end gap-1 border-b pb-2"
       >
-        <label :class="LABEL" class="flex-1" :for="`field-food-ing-name-${index}`">
-          <span class="sr-only">Ingredient {{ index + 1 }} name</span>
-          <input
-            :id="`field-food-ing-name-${index}`"
-            :value="ingredient.name"
-            :class="INPUT"
-            type="text"
-            placeholder="common or usual name"
-            @input="
-              setIngredients(
-                ingredients.map((entry, i) =>
-                  i === index
-                    ? { ...entry, name: ($event.target as HTMLInputElement).value }
-                    : { ...entry },
-                ),
-              )
-            "
-          />
-        </label>
-        <label :class="LABEL" class="w-20" :for="`field-food-ing-pct-${index}`">
-          <span class="sr-only">Ingredient {{ index + 1 }} percent by weight</span>
-          <input
-            :id="`field-food-ing-pct-${index}`"
-            :value="ingredient.percentByWeight"
-            :class="INPUT"
-            type="number"
-            min="0"
-            max="100"
-            step="0.1"
-            @input="
-              setIngredients(
-                ingredients.map((entry, i) =>
-                  i === index
-                    ? {
-                        ...entry,
-                        percentByWeight: Number(($event.target as HTMLInputElement).value),
-                      }
-                    : { ...entry },
-                ),
-              )
-            "
-          />
-        </label>
+        <TextField
+          :id="`field-food-ing-name-${index}`"
+          class="flex-1"
+          :label="`Ingredient ${index + 1} name`"
+          label-hidden
+          :value="ingredient.name"
+          placeholder="common or usual name"
+          @input="
+            setIngredients(
+              ingredients.map((entry, i) =>
+                i === index
+                  ? { ...entry, name: ($event.target as HTMLInputElement).value }
+                  : { ...entry },
+              ),
+            )
+          "
+        />
+        <MeasurementField
+          :id="`field-food-ing-pct-${index}`"
+          class="w-20"
+          :label="`Ingredient ${index + 1} percent by weight`"
+          label-hidden
+          :value="ingredient.percentByWeight"
+          min="0"
+          max="100"
+          step="0.1"
+          @input="
+            setIngredients(
+              ingredients.map((entry, i) =>
+                i === index
+                  ? {
+                      ...entry,
+                      percentByWeight: Number(($event.target as HTMLInputElement).value),
+                    }
+                  : { ...entry },
+              ),
+            )
+          "
+        />
         <button
           :class="CHIP_REMOVE"
           type="button"
@@ -1386,92 +1402,69 @@ const packaging = computed({
       </div>
 
       <div v-for="(ingredient, index) in ingredients" :key="`allergen-${index}`">
-        <label :class="LABEL" :for="`field-food-ing-allergen-${index}`">
-          <span class="sr-only">
-            Major food allergen in {{ ingredient.name || `ingredient ${index + 1}` }}
-          </span>
-          <select
-            :id="`field-food-ing-allergen-${index}`"
-            :value="allergenOf(index)"
-            :class="INPUT"
-            @change="setAllergen(index, ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">
-              {{ ingredient.name || `Ingredient ${index + 1}` }} — no major food allergen
-            </option>
-            <option
-              v-for="allergen in MAJOR_FOOD_ALLERGENS"
-              :key="allergen.id"
-              :value="allergen.id"
-            >
-              {{ ingredient.name || `Ingredient ${index + 1}` }} — {{ allergen.name }}
-            </option>
-          </select>
-        </label>
+        <SelectField
+          :id="`field-food-ing-allergen-${index}`"
+          :label="`Major food allergen in ${ingredient.name || `ingredient ${index + 1}`}`"
+          label-hidden
+          :value="allergenOf(index)"
+          @change="setAllergen(index, ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">
+            {{ ingredient.name || `Ingredient ${index + 1}` }} — no major food allergen
+          </option>
+          <option v-for="allergen in MAJOR_FOOD_ALLERGENS" :key="allergen.id" :value="allergen.id">
+            {{ ingredient.name || `Ingredient ${index + 1}` }} — {{ allergen.name }}
+          </option>
+        </SelectField>
 
-        <label
+        <TextField
           v-if="needsSpecificType(index)"
-          :class="LABEL"
-          :for="`field-food-ing-source-${index}`"
-        >
-          Specific type or species
-          <input
-            :id="`field-food-ing-source-${index}`"
-            :value="ingredient.allergenSpecificType ?? ''"
-            :class="INPUT"
-            type="text"
-            :placeholder="specificTypeExamples(index)"
-            @input="
-              setIngredientField(index, {
-                allergenSpecificType: ($event.target as HTMLInputElement).value,
-              })
-            "
-          />
-        </label>
+          :id="`field-food-ing-source-${index}`"
+          label="Specific type or species"
+          :value="ingredient.allergenSpecificType ?? ''"
+          :placeholder="specificTypeExamples(index)"
+          @input="
+            setIngredientField(index, {
+              allergenSpecificType: ($event.target as HTMLInputElement).value,
+            })
+          "
+        />
 
-        <label
+        <CheckboxField
           v-if="ingredient.allergen"
-          class="text-chrome-300 flex items-center gap-2 text-xs"
-          :for="`field-food-ing-inline-${index}`"
-        >
-          <input
-            :id="`field-food-ing-inline-${index}`"
-            type="checkbox"
-            :checked="ingredient.declareInline === true"
-            @change="
-              setIngredientField(index, {
-                declareInline: ($event.target as HTMLInputElement).checked,
-              })
-            "
-          />
-          Name the source in parentheses after this ingredient
-        </label>
+          :id="`field-food-ing-inline-${index}`"
+          :checked="ingredient.declareInline === true"
+          label="Name the source in parentheses after this ingredient"
+          @change="
+            setIngredientField(index, {
+              declareInline: ($event.target as HTMLInputElement).checked,
+            })
+          "
+        />
       </div>
 
       <button id="field-food-ing-add" :class="CHIP" type="button" @click="addIngredient">
         Add an ingredient
       </button>
 
-      <label :class="LABEL" for="field-food-grouped">
-        Entries grouped behind a quantifying statement
-        <input
-          id="field-food-grouped"
-          v-model.number="groupedCount"
-          :class="INPUT"
-          type="number"
-          min="0"
-          :max="ingredients.length"
-        />
-      </label>
+      <MeasurementField
+        id="field-food-grouped"
+        v-model.number="groupedCount"
+        label="Entries grouped behind a quantifying statement"
+        min="0"
+        :max="ingredients.length"
+      />
 
-      <label v-if="groupedCount > 0" :class="LABEL" for="field-food-threshold">
-        Threshold
-        <select id="field-food-threshold" v-model.number="thresholdPercent" :class="INPUT">
-          <option v-for="percent in INGREDIENT_THRESHOLD_PERCENTS" :key="percent" :value="percent">
-            {{ percent }} percent or less
-          </option>
-        </select>
-      </label>
+      <SelectField
+        v-if="groupedCount > 0"
+        id="field-food-threshold"
+        v-model="thresholdPercentField"
+        label="Threshold"
+      >
+        <option v-for="percent in INGREDIENT_THRESHOLD_PERCENTS" :key="percent" :value="percent">
+          {{ percent }} percent or less
+        </option>
+      </SelectField>
       <p v-if="groupedCount > 0" class="text-chrome-400 text-xs">
         The last {{ groupedCount }} may run out of order, and none of them may exceed the threshold.
         101.4(a)(2) permits only these four figures.
@@ -1495,20 +1488,14 @@ const packaging = computed({
           the recipe holds and what the statement names are separate, so a statement that leaves one
           out can be drawn — and reported.
         </p>
-        <label
+        <CheckboxField
           v-for="allergen in allergensPresent"
+          :id="`field-food-contains-${allergen.id}`"
           :key="allergen.id"
-          class="text-chrome-300 flex items-center gap-2 text-xs"
-          :for="`field-food-contains-${allergen.id}`"
-        >
-          <input
-            :id="`field-food-contains-${allergen.id}`"
-            type="checkbox"
-            :checked="containsStatement.includes(allergen.id)"
-            @change="toggleContains(allergen.id, ($event.target as HTMLInputElement).checked)"
-          />
-          {{ allergen.name }}
-        </label>
+          :checked="containsStatement.includes(allergen.id)"
+          :label="allergen.name"
+          @change="toggleContains(allergen.id, ($event.target as HTMLInputElement).checked)"
+        />
       </template>
     </EditorSection>
 
@@ -1519,41 +1506,34 @@ const packaging = computed({
       :status="nutritionExemption !== '' ? 'exempt' : hasPanel ? 'present' : 'none'"
       @select="select"
     >
-      <label :class="LABEL" for="field-food-nf-exemption">
-        Exemption from nutrition labelling
-        <select id="field-food-nf-exemption" v-model="nutritionExemption" :class="INPUT">
-          <option value="">None claimed</option>
-          <option v-if="nutritionExemption === 'unstated'" value="unstated">
-            Exempt — paragraph not stated
-          </option>
-          <option v-for="(name, value) in NUTRITION_EXEMPTION_NAMES" :key="value" :value="value">
-            {{ name }}
-          </option>
-        </select>
-      </label>
+      <SelectField
+        id="field-food-nf-exemption"
+        v-model="nutritionExemption"
+        label="Exemption from nutrition labelling"
+      >
+        <option value="">None claimed</option>
+        <option v-if="nutritionExemption === 'unstated'" value="unstated">
+          Exempt — paragraph not stated
+        </option>
+        <option v-for="(name, value) in NUTRITION_EXEMPTION_NAMES" :key="value" :value="value">
+          {{ name }}
+        </option>
+      </SelectField>
 
       <template v-if="nutritionExemption === 'small-package'">
-        <label :class="LABEL" for="field-food-nf-small-area">
-          Package surface available to bear labeling (in²)
-          <input
-            id="field-food-nf-small-area"
-            v-model.number="smallPackageAreaSqInches"
-            :class="INPUT"
-            type="number"
-            min="0.1"
-            step="0.1"
-          />
-        </label>
-        <label :class="LABEL" for="field-food-nf-contact">
-          Line for obtaining the nutrition information
-          <input
-            id="field-food-nf-contact"
-            v-model="smallPackageContactLine"
-            :class="INPUT"
-            type="text"
-            placeholder="For nutrition information, call 1-800-123-4567"
-          />
-        </label>
+        <MeasurementField
+          id="field-food-nf-small-area"
+          v-model.number="smallPackageAreaSqInchesField"
+          label="Package surface available to bear labeling (in²)"
+          min="0.1"
+          step="0.1"
+        />
+        <TextField
+          id="field-food-nf-contact"
+          v-model="smallPackageContactLine"
+          label="Line for obtaining the nutrition information"
+          placeholder="For nutrition information, call 1-800-123-4567"
+        />
         <p class="text-chrome-400 text-xs">
           21 CFR 101.9(j)(13)(i) exempts a package with less than 12 in² of total surface available
           to bear labeling — the package, not this label — on the condition that the label bears an
@@ -1563,18 +1543,19 @@ const packaging = computed({
       </template>
 
       <template v-if="nutritionExemption === 'egg-carton'">
-        <label :class="LABEL" for="field-food-nf-egg-location">
-          Where the nutrition information is presented
-          <select id="field-food-nf-egg-location" v-model="eggCartonPresentedIn" :class="INPUT">
-            <option
-              v-for="presentation in US_FOOD_EGG_CARTON_PRESENTATIONS"
-              :key="presentation"
-              :value="presentation"
-            >
-              {{ US_FOOD_EGG_CARTON_PRESENTED[presentation] }}
-            </option>
-          </select>
-        </label>
+        <SelectField
+          id="field-food-nf-egg-location"
+          v-model="eggCartonPresentedIn"
+          label="Where the nutrition information is presented"
+        >
+          <option
+            v-for="presentation in US_FOOD_EGG_CARTON_PRESENTATIONS"
+            :key="presentation"
+            :value="presentation"
+          >
+            {{ US_FOOD_EGG_CARTON_PRESENTED[presentation] }}
+          </option>
+        </SelectField>
         <p class="text-chrome-400 text-xs">
           21 CFR 101.9(j)(14) exempts shell eggs in a carton whose top lid conforms to the shape of
           the eggs from outer carton label requirements, where the required nutrition information is
@@ -1586,14 +1567,15 @@ const packaging = computed({
       </template>
 
       <template v-if="nutritionExemption === 'unit-container'">
-        <label :class="LABEL" for="field-food-nf-unit-wording">
-          Statement the unit bears
-          <select id="field-food-nf-unit-wording" v-model="unitContainerWording" :class="INPUT">
-            <option v-for="wording in UNIT_CONTAINER_WORDINGS" :key="wording" :value="wording">
-              {{ UNIT_CONTAINER_STATEMENTS[wording] }}
-            </option>
-          </select>
-        </label>
+        <SelectField
+          id="field-food-nf-unit-wording"
+          v-model="unitContainerWording"
+          label="Statement the unit bears"
+        >
+          <option v-for="wording in UNIT_CONTAINER_WORDINGS" :key="wording" :value="wording">
+            {{ UNIT_CONTAINER_STATEMENTS[wording] }}
+          </option>
+        </SelectField>
         <p class="text-chrome-400 text-xs">
           21 CFR 101.9(j)(15) exempts the unit containers of a multiunit retail package whose
           labeling carries the nutrition information, where the units are securely enclosed and not
@@ -1604,44 +1586,38 @@ const packaging = computed({
         </p>
       </template>
 
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-present">
-        <input id="field-food-nf-present" v-model="hasPanel" type="checkbox" />
-        The label bears a Nutrition Facts panel
-      </label>
+      <CheckboxField
+        id="field-food-nf-present"
+        v-model="hasPanel"
+        label="The label bears a Nutrition Facts panel"
+      />
 
       <template v-if="data.nutritionFacts">
-        <label :class="LABEL" for="field-food-nf-serving">
-          Serving size
-          <input
-            id="field-food-nf-serving"
-            v-model="data.nutritionFacts.servingSize"
-            :class="INPUT"
-            type="text"
-            placeholder="1/2 cup (40g)"
-          />
-        </label>
-        <label :class="LABEL" for="field-food-nf-servings">
-          Servings per container
-          <input
-            id="field-food-nf-servings"
-            v-model.number="servingsPerContainer"
-            :class="INPUT"
-            type="number"
-            min="1"
-          />
-        </label>
-        <label :class="LABEL" for="field-food-nf-represented-for">
-          Represented or purported to be for
-          <select id="field-food-nf-represented-for" v-model="representedFor" :class="INPUT">
-            <option
-              v-for="population in DAILY_VALUE_POPULATIONS"
-              :key="population"
-              :value="population"
-            >
-              {{ DAILY_VALUE_POPULATION_NAMES[population] }}
-            </option>
-          </select>
-        </label>
+        <TextField
+          id="field-food-nf-serving"
+          v-model="data.nutritionFacts.servingSize"
+          label="Serving size"
+          placeholder="1/2 cup (40g)"
+        />
+        <MeasurementField
+          id="field-food-nf-servings"
+          v-model.number="servingsPerContainerField"
+          label="Servings per container"
+          min="1"
+        />
+        <SelectField
+          id="field-food-nf-represented-for"
+          v-model="representedFor"
+          label="Represented or purported to be for"
+        >
+          <option
+            v-for="population in DAILY_VALUE_POPULATIONS"
+            :key="population"
+            :value="population"
+          >
+            {{ DAILY_VALUE_POPULATION_NAMES[population] }}
+          </option>
+        </SelectField>
         <p v-if="representedFor === 'children-1-through-3'" class="text-chrome-400 text-xs">
           21 CFR 101.9(c)(8)(i) labels a food for children 1 through 3 against that group's Daily
           Values, and (d)(9) substitutes "1,000 calories" in its footnote. Both follow this choice.
@@ -1660,34 +1636,25 @@ const packaging = computed({
           :key="entry.id"
           class="border-chrome-800 flex items-end gap-1 border-b pb-1"
         >
-          <label :class="LABEL" class="flex-1" :for="`field-food-nf-${entry.id}`">
-            {{ entry.name }}
-            <input
-              :id="`field-food-nf-${entry.id}`"
-              :value="amountOf(entry.id)"
-              :class="INPUT"
-              type="number"
-              step="0.1"
-              min="0"
-              @input="setAmount(entry.id, ($event.target as HTMLInputElement).value)"
-            />
-          </label>
-          <label
+          <MeasurementField
+            :id="`field-food-nf-${entry.id}`"
+            class="flex-1"
+            :label="entry.name"
+            :value="amountOf(entry.id)"
+            step="0.1"
+            min="0"
+            @input="setAmount(entry.id, ($event.target as HTMLInputElement).value)"
+          />
+          <MeasurementField
             v-if="data.nutritionFacts.columns"
-            :class="LABEL"
+            :id="`field-food-nf2-${entry.id}`"
             class="w-24"
-            :for="`field-food-nf2-${entry.id}`"
-          >
-            <span class="sr-only">{{ entry.name }}, second column</span>
-            <input
-              :id="`field-food-nf2-${entry.id}`"
-              :value="secondAmountOf(entry.id)"
-              :class="INPUT"
-              type="number"
-              step="any"
-              @input="setSecondAmount(entry.id, ($event.target as HTMLInputElement).value)"
-            />
-          </label>
+            :label="`${entry.name}, second column`"
+            label-hidden
+            :value="secondAmountOf(entry.id)"
+            step="any"
+            @input="setSecondAmount(entry.id, ($event.target as HTMLInputElement).value)"
+          />
           <p
             :data-testid="`field-food-nf-readout-${entry.id}`"
             class="text-chrome-400 numeric w-24 pb-2 text-right text-xs"
@@ -1697,10 +1664,11 @@ const packaging = computed({
           </p>
         </div>
 
-        <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-override">
-          <input id="field-food-nf-override" v-model="showOverrides" type="checkbox" />
-          Print figures other than the ones derived
-        </label>
+        <CheckboxField
+          id="field-food-nf-override"
+          v-model="showOverrides"
+          label="Print figures other than the ones derived"
+        />
 
         <template v-if="showOverrides">
           <p class="text-chrome-400 text-xs">
@@ -1708,74 +1676,54 @@ const packaging = computed({
             that rounds wrongly or shows the wrong percentage gets drawn — and reported.
           </p>
           <div v-for="entry in panelRows" :key="`ovr-${entry.id}`" class="flex items-end gap-1">
-            <label :class="LABEL" class="flex-1" :for="`field-food-nf-amt-${entry.id}`">
-              <span class="sr-only">{{ entry.name }} as printed</span>
-              <input
-                :id="`field-food-nf-amt-${entry.id}`"
-                :value="overrideOf('declaredAmounts', entry.id)"
-                :class="INPUT"
-                type="number"
-                step="0.1"
-                :placeholder="`${entry.name} as printed`"
-                @input="
-                  setOverride(
-                    'declaredAmounts',
-                    entry.id,
-                    ($event.target as HTMLInputElement).value,
-                  )
-                "
-              />
-            </label>
-            <label :class="LABEL" class="w-20" :for="`field-food-nf-dv-${entry.id}`">
-              <span class="sr-only">{{ entry.name }} percent Daily Value as printed</span>
-              <input
-                :id="`field-food-nf-dv-${entry.id}`"
-                :value="overrideOf('declaredPercentDv', entry.id)"
-                :class="INPUT"
-                type="number"
-                placeholder="% DV"
-                @input="
-                  setOverride(
-                    'declaredPercentDv',
-                    entry.id,
-                    ($event.target as HTMLInputElement).value,
-                  )
-                "
-              />
-            </label>
-            <label
-              v-if="data.nutritionFacts.columns"
-              :class="LABEL"
+            <MeasurementField
+              :id="`field-food-nf-amt-${entry.id}`"
+              class="flex-1"
+              :label="`${entry.name} as printed`"
+              label-hidden
+              :value="overrideOf('declaredAmounts', entry.id)"
+              step="0.1"
+              :placeholder="`${entry.name} as printed`"
+              @input="
+                setOverride('declaredAmounts', entry.id, ($event.target as HTMLInputElement).value)
+              "
+            />
+            <MeasurementField
+              :id="`field-food-nf-dv-${entry.id}`"
               class="w-20"
-              :for="`field-food-nf2-dv-${entry.id}`"
-            >
-              <span class="sr-only">
-                {{ entry.name }} percent Daily Value as printed, second column
-              </span>
-              <input
-                :id="`field-food-nf2-dv-${entry.id}`"
-                :value="secondPercentOf(entry.id)"
-                :class="INPUT"
-                type="number"
-                placeholder="% DV, 2nd"
-                @input="setSecondPercent(entry.id, ($event.target as HTMLInputElement).value)"
-              />
-            </label>
+              :label="`${entry.name} percent Daily Value as printed`"
+              label-hidden
+              :value="overrideOf('declaredPercentDv', entry.id)"
+              placeholder="% DV"
+              @input="
+                setOverride(
+                  'declaredPercentDv',
+                  entry.id,
+                  ($event.target as HTMLInputElement).value,
+                )
+              "
+            />
+            <MeasurementField
+              v-if="data.nutritionFacts.columns"
+              :id="`field-food-nf2-dv-${entry.id}`"
+              class="w-20"
+              :label="`${entry.name} percent Daily Value as printed, second column`"
+              label-hidden
+              :value="secondPercentOf(entry.id)"
+              placeholder="% DV, 2nd"
+              @input="setSecondPercent(entry.id, ($event.target as HTMLInputElement).value)"
+            />
           </div>
         </template>
 
-        <label :class="LABEL" for="field-food-nf-scale">
-          Panel type size (% of the minimum)
-          <input
-            id="field-food-nf-scale"
-            v-model.number="typeScalePercent"
-            :class="INPUT"
-            type="number"
-            min="10"
-            max="300"
-            step="5"
-          />
-        </label>
+        <MeasurementField
+          id="field-food-nf-scale"
+          v-model.number="typeScalePercent"
+          label="Panel type size (% of the minimum)"
+          min="10"
+          max="300"
+          step="5"
+        />
         <p class="text-chrome-400 text-xs">
           Every size in 101.9(d) is a minimum, so anything under 100% puts the panel below one.
         </p>
@@ -1789,56 +1737,41 @@ const packaging = computed({
       :selected-element-id="store.selectedElementId"
       @select="select"
     >
-      <label :class="LABEL" for="field-food-nf-format">
-        Display
-        <select id="field-food-nf-format" v-model="displayFormat" :class="INPUT">
-          <option v-for="value in NUTRITION_FORMATS" :key="value" :value="value">
-            {{ FORMAT_NAMES[value] }}
-          </option>
-        </select>
-      </label>
+      <SelectField id="field-food-nf-format" v-model="displayFormat" label="Display">
+        <option v-for="value in NUTRITION_FORMATS" :key="value" :value="value">
+          {{ FORMAT_NAMES[value] }}
+        </option>
+      </SelectField>
 
-      <label :class="LABEL" for="field-food-nf-area">
-        Surface available to bear labeling (in²)
-        <input
-          id="field-food-nf-area"
-          v-model.number="availableSurfaceSqInches"
-          :class="INPUT"
-          type="number"
-          min="0"
-          step="0.1"
-        />
-        <span class="text-chrome-400 numeric text-xs">
-          101.9(j)(13) measures the whole package, not the 101.1 principal display panel. The two
-          are different numbers answering different questions.
-        </span>
-      </label>
+      <MeasurementField
+        id="field-food-nf-area"
+        v-model.number="availableSurfaceSqInchesField"
+        label="Surface available to bear labeling (in²)"
+        min="0"
+        step="0.1"
+        description="101.9(j)(13) measures the whole package, not the 101.1 principal display panel. The two are different numbers answering different questions."
+      />
 
-      <label :class="LABEL" for="field-food-nf-vertical-space">
-        Continuous vertical space for the panel (in)
-        <input
-          id="field-food-nf-vertical-space"
-          v-model.number="continuousVerticalSpaceInches"
-          :class="INPUT"
-          type="number"
-          min="0"
-          step="0.1"
-        />
-        <span class="text-chrome-400 numeric text-xs">
-          Under 101.9(d)(11)(iii), less than approximately 3 in entitles a package of any size to
-          the tabular display.
-        </span>
-      </label>
+      <MeasurementField
+        id="field-food-nf-vertical-space"
+        v-model.number="continuousVerticalSpaceInchesField"
+        label="Continuous vertical space for the panel (in)"
+        min="0"
+        step="0.1"
+        description="Under 101.9(d)(11)(iii), less than approximately 3 in entitles a package of any size to the tabular display."
+      />
 
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-no-vert">
-        <input id="field-food-nf-no-vert" v-model="cannotAccommodateVertical" type="checkbox" />
-        The package shape or size cannot take a standard vertical column
-      </label>
+      <CheckboxField
+        id="field-food-nf-no-vert"
+        v-model="cannotAccommodateVertical"
+        label="The package shape or size cannot take a standard vertical column"
+      />
 
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-no-tab">
-        <input id="field-food-nf-no-tab" v-model="cannotAccommodateTabular" type="checkbox" />
-        The label will not take a tabular display
-      </label>
+      <CheckboxField
+        id="field-food-nf-no-tab"
+        v-model="cannotAccommodateTabular"
+        label="The label will not take a tabular display"
+      />
 
       <p class="text-chrome-400 text-xs">
         A package holding 200 to 300 percent of its reference amount must carry a second column
@@ -1848,120 +1781,99 @@ const packaging = computed({
       </p>
 
       <div class="flex gap-2">
-        <label :class="LABEL" class="flex-1" for="field-food-nf-racc">
-          Reference amount
-          <input
-            id="field-food-nf-racc"
-            v-model.number="referenceAmount"
-            :class="INPUT"
-            min="0"
-            step="any"
-            type="number"
-          />
-        </label>
-        <label :class="LABEL" for="field-food-nf-racc-unit">
-          Unit
-          <select id="field-food-nf-racc-unit" v-model="referenceAmountUnit" :class="INPUT">
-            <option value="g">g</option>
-            <option value="mL">mL</option>
-          </select>
-        </label>
+        <MeasurementField
+          id="field-food-nf-racc"
+          v-model.number="referenceAmountField"
+          class="flex-1"
+          label="Reference amount"
+          min="0"
+          step="any"
+        />
+        <SelectField id="field-food-nf-racc-unit" v-model="referenceAmountUnit" label="Unit">
+          <option value="g">g</option>
+          <option value="mL">mL</option>
+        </SelectField>
       </div>
 
-      <label v-if="data.nutritionFacts.referenceAmount" :class="LABEL" for="field-food-nf-racc-cat">
-        Reference amount category
-        <input
-          id="field-food-nf-racc-cat"
-          v-model="referenceAmountCategory"
-          :class="INPUT"
-          placeholder="the §101.12(b) row this figure comes from"
-          type="text"
-        />
-      </label>
+      <TextField
+        v-if="data.nutritionFacts.referenceAmount"
+        id="field-food-nf-racc-cat"
+        v-model="referenceAmountCategory"
+        label="Reference amount category"
+        placeholder="the §101.12(b) row this figure comes from"
+      />
 
       <div class="flex gap-2">
-        <label :class="LABEL" class="flex-1" for="field-food-nf-package-content">
-          The whole package holds ({{ referenceAmountUnit }})
-          <input
-            id="field-food-nf-package-content"
-            v-model.number="packageContent"
-            :class="INPUT"
-            min="0"
-            step="any"
-            type="number"
-          />
-        </label>
-        <label :class="LABEL" class="flex-1" for="field-food-nf-unit-content">
-          One individual unit holds ({{ referenceAmountUnit }})
-          <input
-            id="field-food-nf-unit-content"
-            v-model.number="unitContent"
-            :class="INPUT"
-            min="0"
-            step="any"
-            type="number"
-          />
-        </label>
+        <MeasurementField
+          id="field-food-nf-package-content"
+          v-model.number="packageContentField"
+          class="flex-1"
+          :label="`The whole package holds (${referenceAmountUnit})`"
+          min="0"
+          step="any"
+        />
+        <MeasurementField
+          id="field-food-nf-unit-content"
+          v-model.number="unitContentField"
+          class="flex-1"
+          :label="`One individual unit holds (${referenceAmountUnit})`"
+          min="0"
+          step="any"
+        />
       </div>
 
-      <label :class="LABEL" for="field-food-nf-sold-individually">
-        Packaged and sold individually
-        <select
-          id="field-food-nf-sold-individually"
-          v-model="packagedAndSoldIndividually"
-          :class="INPUT"
-        >
-          <option v-for="value in SOLD_INDIVIDUALLY" :key="value" :value="value">
-            {{ SOLD_INDIVIDUALLY_NAMES[value] }}
-          </option>
-        </select>
-      </label>
-
-      <label
-        class="text-chrome-300 flex items-center gap-2 text-xs"
-        for="field-food-nf-raw-commodity"
+      <SelectField
+        id="field-food-nf-sold-individually"
+        v-model="packagedAndSoldIndividually"
+        label="Packaged and sold individually"
       >
-        <input id="field-food-nf-raw-commodity" v-model="rawCommodityVoluntary" type="checkbox" />
-        A raw fruit, vegetable or seafood labelled voluntarily — (b)(12)(i)(B)
-      </label>
+        <option v-for="value in SOLD_INDIVIDUALLY" :key="value" :value="value">
+          {{ SOLD_INDIVIDUALLY_NAMES[value] }}
+        </option>
+      </SelectField>
 
-      <label
-        class="text-chrome-300 flex items-center gap-2 text-xs"
-        for="field-food-nf-varied-weight"
-      >
-        <input id="field-food-nf-varied-weight" v-model="variedWeight" type="checkbox" />
-        A varied-weight product under (b)(8)(iii) — (b)(12)(i)(C)
-      </label>
+      <CheckboxField
+        id="field-food-nf-raw-commodity"
+        v-model="rawCommodityVoluntary"
+        label="A raw fruit, vegetable or seafood labelled voluntarily — (b)(12)(i)(B)"
+      />
 
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-nf-dual">
-        <input id="field-food-nf-dual" v-model="hasSecondColumn" type="checkbox" />
-        The panel carries a second column of values
-      </label>
+      <CheckboxField
+        id="field-food-nf-varied-weight"
+        v-model="variedWeight"
+        label="A varied-weight product under (b)(8)(iii) — (b)(12)(i)(C)"
+      />
+
+      <CheckboxField
+        id="field-food-nf-dual"
+        v-model="hasSecondColumn"
+        label="The panel carries a second column of values"
+      />
 
       <template v-if="data.nutritionFacts.columns">
-        <label :class="LABEL" for="field-food-nf-basis">
-          What the second column counts
-          <select id="field-food-nf-basis" v-model="columnBasis" :class="INPUT">
-            <option v-for="value in DUAL_COLUMN_BASES" :key="value" :value="value">
-              {{ BASIS_NAMES[value] }}
-            </option>
-          </select>
-        </label>
+        <SelectField
+          id="field-food-nf-basis"
+          v-model="columnBasis"
+          label="What the second column counts"
+        >
+          <option v-for="value in DUAL_COLUMN_BASES" :key="value" :value="value">
+            {{ BASIS_NAMES[value] }}
+          </option>
+        </SelectField>
 
         <div class="flex gap-2">
-          <label :class="LABEL" class="flex-1" for="field-food-nf-heading-0">
-            First column heading
-            <input id="field-food-nf-heading-0" v-model="firstHeading" :class="INPUT" type="text" />
-          </label>
-          <label :class="LABEL" class="flex-1" for="field-food-nf-heading-1">
-            Second column heading
-            <input
-              id="field-food-nf-heading-1"
-              v-model="secondHeading"
-              :class="INPUT"
-              type="text"
-            />
-          </label>
+          <TextField
+            id="field-food-nf-heading-0"
+            v-model="firstHeading"
+            class="flex-1"
+            label="First column heading"
+          />
+          <TextField
+            id="field-food-nf-heading-1"
+            v-model="secondHeading"
+            class="flex-1"
+            label="Second column heading"
+          />
         </div>
       </template>
     </EditorSection>
@@ -1972,89 +1884,62 @@ const packaging = computed({
       :selected-element-id="store.selectedElementId"
       @select="select"
     >
-      <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-has-firm">
-        <input id="field-food-has-firm" v-model="hasFirm" type="checkbox" />
-        The label names a manufacturer, packer or distributor
-      </label>
+      <CheckboxField
+        id="field-food-has-firm"
+        v-model="hasFirm"
+        label="The label names a manufacturer, packer or distributor"
+      />
 
       <template v-if="firm">
-        <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-is-mfr">
-          <input id="field-food-is-mfr" v-model="firm.isManufacturer" type="checkbox" />
-          This firm manufactured the food
-        </label>
+        <CheckboxField
+          id="field-food-is-mfr"
+          v-model="firm.isManufacturer"
+          label="This firm manufactured the food"
+        />
 
-        <label v-if="!firm.isManufacturer" :class="LABEL" for="field-food-qualifier">
-          Qualifying phrase
-          <input
-            id="field-food-qualifier"
-            v-model="qualifyingPhrase"
-            :class="INPUT"
-            type="text"
-            placeholder="Distributed by"
-          />
-        </label>
+        <TextField
+          v-if="!firm.isManufacturer"
+          id="field-food-qualifier"
+          v-model="qualifyingPhrase"
+          label="Qualifying phrase"
+          placeholder="Distributed by"
+        />
         <p v-if="!firm.isManufacturer" class="text-chrome-400 text-xs">
           Free text, because 101.5(c) permits “any other wording that expresses the facts”.
         </p>
 
-        <label :class="LABEL" for="field-food-firm-name">
-          Name
-          <input id="field-food-firm-name" v-model="firm.name" :class="INPUT" type="text" />
-        </label>
-        <label :class="LABEL" for="field-food-street">
-          Street address
-          <input id="field-food-street" v-model="streetAddress" :class="INPUT" type="text" />
-        </label>
-        <label class="text-chrome-300 flex items-center gap-2 text-xs" for="field-food-directory">
-          <input id="field-food-directory" v-model="streetInDirectory" type="checkbox" />
-          The address is in a current city or telephone directory
-        </label>
-        <label :class="LABEL" for="field-food-city">
-          City
-          <input id="field-food-city" v-model="firm.city" :class="INPUT" type="text" />
-        </label>
-        <label :class="LABEL" for="field-food-state">
-          State
-          <input id="field-food-state" v-model="firm.state" :class="INPUT" type="text" />
-        </label>
-        <label :class="LABEL" for="field-food-zip">
-          ZIP code
-          <input id="field-food-zip" v-model="zip" :class="INPUT" type="text" />
-        </label>
+        <TextField id="field-food-firm-name" v-model="firm.name" label="Name" />
+        <TextField id="field-food-street" v-model="streetAddress" label="Street address" />
+        <CheckboxField
+          id="field-food-directory"
+          v-model="streetInDirectory"
+          label="The address is in a current city or telephone directory"
+        />
+        <TextField id="field-food-city" v-model="firm.city" label="City" />
+        <TextField id="field-food-state" v-model="firm.state" label="State" />
+        <TextField id="field-food-zip" v-model="zip" label="ZIP code" />
       </template>
     </EditorSection>
 
     <EditorSection title="Stock" :selected-element-id="store.selectedElementId" @select="select">
-      <label :class="LABEL" for="field-food-width">
-        Width (mm)
-        <input
-          id="field-food-width"
-          v-model.number="store.foodStock.widthMm"
-          :class="INPUT"
-          type="number"
-          min="1"
-        />
-      </label>
-      <label :class="LABEL" for="field-food-height">
-        Height (mm)
-        <input
-          id="field-food-height"
-          v-model.number="store.foodStock.heightMm"
-          :class="INPUT"
-          type="number"
-          min="1"
-        />
-      </label>
-      <label :class="LABEL" for="field-food-margin">
-        Margin (mm)
-        <input
-          id="field-food-margin"
-          v-model.number="store.foodStock.marginMm"
-          :class="INPUT"
-          type="number"
-          min="0"
-        />
-      </label>
+      <MeasurementField
+        id="field-food-width"
+        v-model.number="store.foodStock.widthMm"
+        label="Width (mm)"
+        min="1"
+      />
+      <MeasurementField
+        id="field-food-height"
+        v-model.number="store.foodStock.heightMm"
+        label="Height (mm)"
+        min="1"
+      />
+      <MeasurementField
+        id="field-food-margin"
+        v-model.number="store.foodStock.marginMm"
+        label="Margin (mm)"
+        min="0"
+      />
     </EditorSection>
   </div>
 </template>

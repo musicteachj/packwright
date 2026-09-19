@@ -191,7 +191,7 @@ const select = (elementId: string) => store.select(elementId)
         label="GTIN-12, as printed on the pack"
         identifier
         :invalid="!gtinIsComplete"
-        live
+        :live="store.lastScan !== null"
         inputmode="numeric"
         maxlength="12"
         autocomplete="off"
@@ -206,14 +206,16 @@ const select = (elementId: string) => store.select(elementId)
           passes it, and becomes a structurally valid GTIN naming a different
           article with nothing said.
 
-          Two mutually exclusive paragraphs sharing one id, moved into the
-          `description` slot `FormField` was built for — see that component's own
-          block comment, point 1. `FormField` generates the id itself
-          (`field-gtin-description`) and marks it `role="status" aria-live="polite"`
-          via `live` above, so the hand-written `gtin-scan-note` id and this
-          field's own `role`/`aria-live`/`aria-describedby` all move to the
-          component; only the colour, which is tone rather than structure, stays
-          on the `<p>`.
+          `live` is conditional, and that is a compromise rather than a design.
+          The region is created in the same render as the text it carries, which
+          is weak — a screen reader has nothing to observe changing. Making it
+          unconditional fixes the announcement and gives the editor a second
+          always-present `aria-live` region, which the app deliberately does not
+          have: the findings rail carries the only one, and
+          `the-responsive-collapse.spec.ts` asserts exactly that. The original
+          markup had the same weakness and this keeps it rather than trading it
+          for a broken invariant. `docs/BACKLOG.md` records what closing it
+          properly would take.
         -->
         <template v-if="store.lastScan && !store.lastScan.ok" #description>
           <p class="text-caution text-xs">
@@ -224,14 +226,6 @@ const select = (elementId: string) => store.select(elementId)
         <template v-else-if="store.lastScan?.note" #description>
           <p class="text-chrome-300 text-xs">{{ store.lastScan.note }}</p>
         </template>
-        <!--
-          The same words that used to sit in a loose `<p>` beside this field,
-          moved into the slot that associates them with it. They were always
-          shown; they were never announced, because nothing tied them to the
-          control. That mattered more once `invalid` began swapping the border
-          for `danger-edge` — a red box whose explanation is adjacent but
-          unlinked is colour doing the work for anyone who cannot see it.
-        -->
         <template v-else-if="!gtinIsComplete" #description>
           <p class="text-chrome-400 text-xs">
             Twelve digits, check digit included. The check digit is verified rather than computed,

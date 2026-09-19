@@ -80,10 +80,13 @@ const hazardGroups = computed(() => {
 })
 
 /**
- * spans the hand-written markup used — `entry.section` in the mono face, the
- * pictogram arrow in its own colour — cannot come along unchanged. The words
- * are exactly what was there; only the per-run styling is kept, through that slot, and it carried
- * no regulatory meaning of its own.
+ * The flattened form of a hazard label, for the accessible name only.
+ *
+ * The rendered label is not this string — it is the slot below, which keeps the
+ * Annex I section number and the pictogram code in the mono face because both
+ * are identifiers. This concatenation is what `CheckboxField`'s `label` prop
+ * gets, and the two have to say the same words: the slot is the accessible name,
+ * and the component warns in development if they drift apart.
  */
 const hazardLabel = (entry: HazardClassEntry) =>
   `${entry.section} ${entry.description} → ${entry.pictogram ?? 'no pictogram'}`
