@@ -10,6 +10,30 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The findings rail tells a verdict apart from a silence by structure, not by hue.** It states four
+  different kinds of thing and only one of them is a severity, but with one colour per severity the only
+  tool it had was colour — so "cannot be checked" used CAUTION's own diamond and `text-caution`, and on a
+  GHS label it sat beneath two `▲ WARNING` findings and read as a third. A reader who had learned that a
+  diamond means CAUTION was being taught something false.
+
+  Findings now carry their severity's `edge`, the 2 px rule those tokens were measured for. Everything that
+  is not a verdict drops below a line that says so — indented, dashed, neutral — and takes a mark from
+  outside the severity set: a hollow square for an element the engine could not draw, an ellipsis for a
+  check that stood down. Neither has a colour, because a colour there would imply a severity where no
+  provision is being applied at all.
+
+  **A visible count strip**, which the rail has never had. `summary` was `sr-only`, so a sighted specialist
+  got a heading and then a scroll: on a GHS label the first thing on screen is one violation, and the total,
+  the passes, and whether anything below could not be judged were four hundred pixels further down. The
+  strip is `aria-hidden` — the live region already says the same thing in prose, and announcing both reads
+  it twice.
+
+  **No heading changed and no count moved.** `docs/WHAT-IS-NOT-CHECKED.md` uses "cannot be checked" and
+  "checks that did not run" verbatim to tell a reader they are distinct and only one is theirs to fix.
+  Collapsing the two near-identical GHS findings into one was considered and rejected: it would make the
+  rail say one where the engine found two, which is the interface editorialising over the engine in an
+  application whose whole claim is that the report says what the rules found.
+
 - **`UsFoodFormRail.vue` moves onto the component layer, and with it the last of the three rails.** Seventy
   label sites — 24 number inputs, 18 text fields, 14 selects, 14 checkboxes — across ten sections, migrated
   in two passes. All three rails now carry zero hand-assembled labels and zero uses of `INPUT` or `LABEL`,
