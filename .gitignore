@@ -32,6 +32,17 @@ print-test-sheet*.pdf
 /playwright-report/
 /e2e/__screenshots__/
 
+# Scratch from the brainstorming companion — mockups written to be looked at
+# once, during one conversation. Same reasoning as the screenshots below.
+/.superpowers/
+
+# Screenshots taken to look at the interface during a review, kept beside the
+# notes they support. Same reasoning as the line above and one more: these are
+# megabytes of PNG whose whole job is to be read once, by the person who asked
+# for them. The findings they evidence belong in a document; the pixels do not
+# belong in the history.
+/docs/ui-audit-*/
+
 # The fake-camera video the scanner tests read is generated into the system
 # temporary directory at launch, not into the repository — eight uncompressed
 # frames is five megabytes, and it is derived from the engine in this repository,

@@ -123,3 +123,65 @@ describe('the guardrail is enforced, not just documented', () => {
     expect(offenders).toEqual([])
   })
 })
+
+/** Every `--color-*` main.css actually declares. */
+const DECLARED = new Set([...css.matchAll(/--color-([a-z0-9-]+):/g)].map((m) => m[1] as string))
+
+/**
+ * The families that resolve to a `--color-*` token rather than to a Tailwind
+ * built-in — `border-b` and `text-xs` are not colours and must not be caught.
+ *
+ * **Derived, not listed.** A hand-written list is a second copy of the palette,
+ * and the whole reason this file reads `main.css` rather than restating it is
+ * that two copies drift while each passes its own checks. Declaring a new family
+ * in `main.css` now extends this guard by itself.
+ */
+const COLOUR_FAMILIES = [...new Set([...DECLARED].map((name) => name.replace(/-\d+$/, '')))]
+
+/**
+ * Comments are prose, and prose has to be able to name a broken class in order
+ * to explain it — the note inside the test below does exactly that. An earlier
+ * draft of this guard scanned comments too and flagged its own explanation,
+ * which is unfixable without either weakening the guard or forbidding a comment
+ * from quoting a class name. Only code may *use* a utility, so comments come
+ * out first.
+ */
+function withoutComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trimStart()
+      return !trimmed.startsWith('//') && !trimmed.startsWith('*')
+    })
+    .join('\n')
+}
+
+describe('a colour utility may only name a token that exists', () => {
+  it('no source file asks for a token main.css does not declare', () => {
+    // `LabelsView` asked for `text-danger-300` and `border-danger-600` for a
+    // phase. Neither is a token — `main.css` declares a flat `--color-danger` —
+    // so Tailwind generated no rule at all and the saved-labels error and the
+    // delete button rendered in inherited body colour. Nothing failed, because
+    // the test that touched it selected on the class name, and a class name is
+    // present whether or not it styles anything.
+    const root = dirname(fileURLToPath(import.meta.url))
+    const pattern = new RegExp(
+      `\\b(?:text|bg|border|outline|accent|fill|stroke|ring|divide|decoration)-` +
+        `(?:${COLOUR_FAMILIES.join('|')})(?:-[a-z0-9]+)?\\b`,
+      'g',
+    )
+
+    const offenders: string[] = []
+    for (const file of globSync(['../**/*.vue', '../**/*.ts'], { cwd: root })) {
+      const source = withoutComments(readFileSync(join(root, file), 'utf8'))
+      for (const [utility] of source.matchAll(pattern)) {
+        const name = utility.slice(utility.indexOf('-') + 1)
+        if (!DECLARED.has(name)) offenders.push(`${file} → ${utility}`)
+      }
+    }
+
+    expect(offenders).toEqual([])
+  })
+})

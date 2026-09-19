@@ -55,6 +55,10 @@ describe('the saved labels list', () => {
     vi.stubGlobal('fetch', respond({ error: 'Internal server error' }, false, 500))
     const wrapper = await mountList()
     expect(wrapper.find('[role="alert"]').text()).toContain('Internal server error')
+    // Colour is never the only signal. This is not a compliance finding, so it
+    // borrows none of the severity vocabulary — no ⊘, no "DANGER" — just the
+    // word, so a reader who cannot see the red still knows what they are reading.
+    expect(wrapper.find('[role="alert"]').text()).toContain('Error')
     expect(wrapper.text()).not.toContain('Nothing saved yet')
   })
 
@@ -69,7 +73,7 @@ describe('the saved labels list', () => {
     expect(wrapper.text()).toContain('Delete “Granola 340g”?')
 
     vi.stubGlobal('fetch', respond(undefined, true, 204))
-    await wrapper.get('.text-danger-300').trigger('click')
+    await wrapper.get('[data-confirm-delete]').trigger('click')
     await flushPromises()
     expect(wrapper.text()).not.toContain('Granola 340g')
     expect(wrapper.text()).toContain('Acetone 5L')
