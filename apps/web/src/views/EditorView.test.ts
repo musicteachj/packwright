@@ -301,7 +301,9 @@ describe('pasting a barcode into the GTIN field', () => {
     const describedBy = wrapper.find('#field-gtin').attributes('aria-describedby')
     expect(describedBy, 'the field must name the note that describes it').toBeTruthy()
 
-    const note = wrapper.find(`#${describedBy}`)
+    // `aria-describedby` is a space-separated list of ids, not one id. It holds
+    // a single entry here only because `FormField` emits one.
+    const note = wrapper.find(`#${describedBy!.split(' ')[0]}`)
     expect(note.exists(), 'and that note must be in the document').toBe(true)
     expect(note.attributes('aria-live')).toBe('polite')
     expect(note.text(), 'saying which scan was refused').toContain('4006381333931')
@@ -327,7 +329,8 @@ describe('pasting a barcode into the GTIN field', () => {
     // same slot, which is why this reads the note's text rather than its
     // presence.
     const describedBy = wrapper.find('#field-gtin').attributes('aria-describedby')
-    const note = describedBy === undefined ? '' : wrapper.find(`#${describedBy}`).text()
+    const note =
+      describedBy === undefined ? '' : wrapper.find(`#${describedBy.split(' ')[0]}`).text()
     expect(note, 'the refused scan is no longer named').not.toContain('4006381333931')
   })
 

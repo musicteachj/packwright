@@ -340,6 +340,19 @@ describe('CheckboxField renders a label that is not one run of prose', () => {
     warn.mockRestore()
   })
 
+  it('complains loudest when a slot renders nothing at all', () => {
+    // The worst case, and the one an earlier guard skipped: `if (rendered && …)`
+    // stayed silent for the empty string, which is the control with no
+    // accessible name whatsoever.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mount(CheckboxField, {
+      props: { id: 'h', label: 'Omit the human-readable digits' },
+      slots: { default: '<span></span>' },
+    })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('no accessible name'))
+    warn.mockRestore()
+  })
+
   it('falls back to the label prop, which is the name when there is no slot', () => {
     const wrapper = mount(CheckboxField, { props: { id: 'h', label: 'Omit the digits' } })
     expect(wrapper.get('label').text()).toContain('Omit the digits')

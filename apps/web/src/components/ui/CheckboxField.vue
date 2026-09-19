@@ -26,7 +26,7 @@
  * own `:checked`/`@change` pair overwrites the unbound default instead of
  * fighting a directive that would otherwise reassert it.
  */
-import { computed, onMounted, useAttrs, useTemplateRef } from 'vue'
+import { computed, onMounted, useAttrs, useTemplateRef, watch } from 'vue'
 import { CHECKBOX_INPUT, CHECKBOX_LABEL } from '../formStyles'
 
 defineOptions({ inheritAttrs: false })
@@ -65,17 +65,38 @@ const model = defineModel<boolean>()
  */
 const text = useTemplateRef<HTMLElement>('text')
 
-onMounted(() => {
+const warnIfNameDisagrees = () => {
   if (!import.meta.env.DEV) return
   const rendered = text.value?.textContent?.replace(/\s+/g, ' ').trim()
   const stated = props.label.replace(/\s+/g, ' ').trim()
-  if (rendered && rendered !== stated) {
+
+  // `rendered === ''` is the worst case, not a case to skip: a slot that renders
+  // nothing leaves the control with no accessible name at all. An earlier
+  // version of this guard tested `if (rendered && ...)`, which stayed silent for
+  // exactly that.
+  if (rendered === undefined) return
+  if (rendered === '') {
+    console.warn(
+      `[CheckboxField] #${props.id} renders no text, so it has no accessible name. ` +
+        `Its label prop says "${stated}".`,
+    )
+    return
+  }
+  if (rendered !== stated) {
     console.warn(
       `[CheckboxField] #${props.id} renders "${rendered}" but its label prop says "${stated}". ` +
         'The rendered text is the accessible name, so these must agree.',
     )
   }
-})
+}
+
+// Mounted and on change, matching `FormField`'s sibling guard — a label that
+// starts in agreement and drifts later is the same defect discovered later.
+onMounted(warnIfNameDisagrees)
+// `flush: 'post'`, because the check reads the DOM. A pre-flush watcher fires
+// before Vue has patched the text, so it compares the new prop against the old
+// rendering and reports a disagreement that the next tick resolves.
+watch(() => props.label, warnIfNameDisagrees, { flush: 'post' })
 </script>
 
 <template>

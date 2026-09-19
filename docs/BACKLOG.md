@@ -157,8 +157,9 @@ would have undone that rule on forty-four rows at once, in the name of applying 
 the reason it needed catching by eye, not a reason to accept it.
 
 `CheckboxField` takes a default slot now, with `label` still required and still the accessible name, on the
-same pattern as `FormField`'s description: a slot changes how the name is set, never what it is. Mutation
-tested — removing the slot fails a named test.
+same pattern as `FormField`'s description. `label` stays required as the stated intent and the fallback —
+but the slot is what renders, and a label's accessible name is its text content, so the slot *is* the name.
+The component warns in development when the two disagree. Mutation tested — removing the slot fails a named test.
 
 The general shape, for the seventy sites in `UsFoodFormRail` still to migrate: **a component API that only
 takes strings will quietly flatten every label that was not one run of prose**, and no test will say so
@@ -694,6 +695,30 @@ voluntary second column, a reference amount the tool does not carry the table fo
 
 `FormField` can take a `required` flag whenever the answer arrives; nothing in its shape forecloses it. What
 this entry records is that the decision was deliberately not taken inside the migration.
+
+## From the stage 1 rail migrations
+
+**The GTIN's scan note is created in the same render as the text it announces, so it may never be spoken.**
+A live region has to be in the document before its content arrives; a screen reader announces a *change* to
+a region it is already observing, and a region that appears already full has nothing to compare against.
+`UpcAFormRail`'s refusal note has always had this shape — `role="status"` on a `v-if`'d paragraph — and the
+migration onto `FormField` reproduced it faithfully, which for a behaviour-preserving migration is the right
+outcome and not a good one.
+
+**Two attempts to fix it inside the migration both failed, in opposite directions**, and that is why this is
+an entry rather than a commit. Gating `live` on there being a scan is the same defect wearing a different
+hat: the region still materialises with its content. Making it unconditional does fix the announcement — and
+gives the editor a second always-present `aria-live` region, which the application deliberately does not
+have. The findings rail carries the only one, `EditorView.test.ts:158` reads it as *the* polite region by
+selector, and `e2e/the-responsive-collapse.spec.ts` asserts that exactly one is perceivable at every width.
+Two tests fail immediately, and they are right to.
+
+Closing it properly is a design decision about that invariant, not a patch. The shape that works is an
+always-present region that is empty until there is something to say — which means either the editor accepts
+a second live region and the "exactly one" rule becomes "exactly one per concern", or the rail routes its
+announcements through the rail's existing region. Both are real changes with real arguments, and neither
+belongs inside a migration whose entire warrant is that nothing about the rendered form moved.
+
 
 ## From the interface stage 0 review
 

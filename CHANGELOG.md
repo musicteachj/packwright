@@ -10,6 +10,29 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **`UsFoodFormRail.vue` moves onto the component layer, and with it the last of the three rails.** Seventy
+  label sites — 24 number inputs, 18 text fields, 14 selects, 14 checkboxes — across ten sections, migrated
+  in two passes. All three rails now carry zero hand-assembled labels and zero uses of `INPUT` or `LABEL`,
+  and the rendered form is unchanged, which the existing tests demonstrate by passing unmodified.
+
+  Two fields stop lying about their own names. `field-food-nf-area` and `field-food-nf-vertical-space` each
+  nested forty words of help *inside* their `<label>`, which made that prose part of the field's accessible
+  name, and set it in the mono face while the identical prose two fields below was sans. Both are
+  descriptions now, which is the shape `FormField` exists to make the only representable one.
+
+  Three traps in the component API surfaced only under a real rail, each caught by a mutation test rather
+  than by the suite. `SelectField` has no `.number` modifier — its `<select>` is hand-wired, so it always
+  emits a string, and `field-food-threshold` would have stored `'2'` where `usFoodIngredientThresholdRule`
+  does a strict-equality check against the permitted figures: **a compliant two-percent selection would have
+  been reported as a 101.4(a)(2) violation that does not exist.** `TextField` has no `.lazy` either, so the
+  assortment field would have committed on every keystroke and stripped a trailing comma mid-typing. And
+  `MeasurementField`'s model is `number | string` and never `undefined`, which `exactOptionalPropertyTypes`
+  enforces against the guards' own `number | undefined` — a `numberField()` adapter wraps the boundary
+  without touching `requiredNumber`, `optionalNumber` or `asMeasurement`, all three of which keep their
+  behaviour exactly, including the three fields where typing a zero is refused while the box goes on showing
+  it. That is a separate recorded decision; a migration that also changed behaviour could not prove it
+  preserved any.
+
 - **`UpcAFormRail.vue` and `GhsFormRail.vue` move onto `FormField`, `TextField`, `MeasurementField`,
   `SelectField` and `CheckboxField` — the component layer `/design` was built to catalogue, and the first two
   rails actually migrated onto it.** All nineteen `<label>` sites in `UpcAFormRail.vue` move: the GTIN entry
@@ -93,6 +116,28 @@ into a version only when there is a reason to.
   slot changes how the name is set, never what it is.
 
 ### Fixed
+
+- **Seven things two review passes found, and the ones worth naming are the fixes that were themselves
+  wrong.** `CheckboxField`'s guard reports a label whose rendered text disagrees with its stated one — but
+  was written `if (rendered && …)`, so the case it stayed silent for was a slot rendering *nothing*, which
+  is a control with no accessible name at all. The guard that exists to catch a missing name skipped the
+  missing name. Its watcher was then added pre-flush, so it compared the new prop against the not-yet-patched
+  DOM and warned about a disagreement the next tick resolved; a guard that cries wolf gets switched off, so
+  it is `flush: 'post'` now.
+
+  The GTIN's `live` handling changed twice and ended where it started. Its scan note is created in the same
+  render as the text it announces, so a screen reader may never speak it. Gating `live` does not fix that —
+  the region still materialises with its content — and making it unconditional does, at the cost of a second
+  always-present `aria-live` region in an editor that deliberately has one. Two tests fail on that
+  immediately and are right to. `docs/BACKLOG.md` records what closing it properly would take, because it is
+  a decision about that invariant rather than a patch.
+
+  The rest were sentences rather than code: the claim that a `CheckboxField` slot "changes how the name is
+  set, never what it is" had been corrected in the component and left standing in two documents, so the
+  changelog asserted it and contradicted itself eighty lines later; a comment above `hazardLabel` had been
+  mangled into a fragment claiming the styling "is kept" by the very function that flattens it; and a test
+  interpolated `aria-describedby` into a CSS id selector, which is a space-separated list and worked only
+  because `FormField` emits one.
 
 - **Three things the review of the rail migration found, one of which was a claim in a comment rather than a
   bug in code — and that one was the worst.** `CheckboxField`'s new label slot was documented as changing
