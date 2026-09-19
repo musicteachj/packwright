@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import CheckboxField from './CheckboxField.vue'
 import MeasurementField from './MeasurementField.vue'
@@ -350,6 +351,20 @@ describe('CheckboxField renders a label that is not one run of prose', () => {
       slots: { default: '<span></span>' },
     })
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('no accessible name'))
+    warn.mockRestore()
+  })
+
+  it('does not cry wolf when the label changes', async () => {
+    // The watcher reads the DOM, so it has to run after Vue has written it.
+    // Pre-flush it compared the new prop against the old rendering and reported
+    // a disagreement the next tick resolved — and a guard that cries wolf is a
+    // guard somebody switches off. `flush: 'post'` is the whole fix, and without
+    // this test nothing failed when it was removed.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const wrapper = mount(CheckboxField, { props: { id: 'h', label: 'Alpha' } })
+    await wrapper.setProps({ label: 'Beta' })
+    await nextTick()
+    expect(warn).not.toHaveBeenCalled()
     warn.mockRestore()
   })
 
