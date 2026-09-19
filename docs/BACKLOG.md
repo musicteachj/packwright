@@ -521,13 +521,26 @@ cannot be persisted, and the geometry fields are guarded by `requiredNumber` wri
 that a user can type one, see the preview change, and learn only on save. Worth one pass over the rail's
 numeric inputs with a shared guard rather than four more copies of the same three lines.
 
-**The rejected figure also stays on screen**, which is the sharper half and was raised by the review of PR #46.
-Where the four dual-column inputs refuse a zero, the box goes on showing the `0` the user typed while the
-document holds nothing at all — so the rail and the document disagree, and the rail is the one the user
-believes. The dual-column message will say the figure was never stated, which reads as a contradiction rather
-than as an explanation. Fixing it means deciding what a numeric input does with a value it will not store:
-clamp it, refuse the keystroke, or show it as rejected. That is a question about every numeric field in the
-rail, which is why it sits with the entry above rather than being patched into four of them.
+**~~The rejected figure also stays on screen.~~ Settled in interface stage 4, for the three fields it
+applied to.** The policy is **show it as rejected**: the box keeps the figure, the field takes
+`aria-invalid`, and a sentence beside it says the label does not hold it and what to state instead.
+Clamping was rejected outright — the document would hold a measurement nobody typed, on a tool whose only
+value is being right — and refusing the keystroke was rejected because `type="number"` sanitises its own
+value, so the control cannot tell a refused figure from a half-typed one without becoming a text input.
+
+The entry as written was half wrong in a way worth keeping. It described one defect; there were two, in
+opposite directions, from the same keystroke. Where the field had never been filled the `0` did stay on
+screen, as recorded. Where it already held a figure the box was **blanked** instead, because the bound
+value moved and Vue patched the element — which is the worse of the two, since it takes back a keystroke
+as it is typed.
+
+**What stands is the wider half of the entry above, and it is untouched.** `optionalNumber` still accepts
+`0` and negatives into `servingsPerContainer`, `netQuantityFontSizeMm`, `availableSurfaceSqInches` and
+`continuousVerticalSpaceInches`; eight `min="0"` attributes still mean `positive()`; and nine bindings
+across the three rails still write `''` into a field typed `number`. None of those refuses anything today,
+so none of them has the disagreement that was just fixed — a user types a zero, sees the preview change,
+and learns on save. Closing them is a change to what the guards accept rather than to what the control
+shows, which is a different question and a much larger diff. Left out of stage 4 for scope, not doubt.
 
 **~~The editor has no inputs for the three facts a dual-column duty turns on.~~ Fixed.** Found by
 `/code-review high` on PR #43. `UsFoodFormRail.vue` collected no reference amount, package content, unit
@@ -697,6 +710,28 @@ voluntary second column, a reference amount the tool does not carry the table fo
 this entry records is that the decision was deliberately not taken inside the migration.
 
 ## From stage 4, canvas and editor
+
+**A refused figure is shown but not announced, and it is the editor's live-region question again rather
+than a new one.** The three fields that refuse a zero take `aria-invalid` and gain a description saying
+the label does not hold the figure — but that description is a plain `<div>`, so a screen-reader user
+typing `0` hears the field go invalid and hears the sentence only when they come back to the field, not
+as it appears. `FormField` has `live` for exactly this, and `UpcAFormRail`'s GTIN note sets it
+conditionally. Raised by review, and deliberately not copied.
+
+Copying it would reproduce a pattern this file already records as a compromise, twice over. A live region
+has to be in the document before its content arrives, and a conditional `live` on a conditional
+description creates the region already full — which is the GTIN scan note's defect verbatim, recorded
+under *From the stage 1 rail migrations*. It would also give the editor a second always-present live
+region in the refused state, against an invariant `e2e/the-responsive-collapse.spec.ts` asserts at every
+width: exactly one perceivable. No test would fail, because none types a zero — which is the worst way
+for an invariant to be broken.
+
+So this is a third instance of one open design decision, not a patch waiting to be applied: either the
+editor accepts that "exactly one live region" becomes "one per concern", or the rails route their
+announcements through the findings rail's existing region. The arguments are in the stage 1 entry and
+have not changed; what has changed is that three fields now want the same thing, which is the strongest
+case yet for settling it.
+
 
 Both of these were found by taking a screenshot and looking at it, which is the method that found every
 finding that mattered in this phase. Neither is a regression: both predate the stage, and the typography

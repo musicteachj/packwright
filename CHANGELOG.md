@@ -10,6 +10,48 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **A numeric field that refuses a figure now says so, instead of disagreeing with the document in
+  silence.** The three fields backing 21 CFR 101.9(b)(12)(i) and (b)(2)(i)(D) — the reference amount, what
+  the whole package holds, what one unit holds — require a figure above zero, and are right to:
+  `label-core`'s own `stated()` refuses a zero independently, `inBand` cannot divide by one, and the API
+  schema would not save the document. What was wrong is that nothing on screen said the figure had been
+  declined, and one keystroke produced two different disagreements. On a field never filled, the bound
+  value round-tripped from blank to blank, so Vue had no change to patch and the `0` sat on screen in
+  front of a document holding nothing. On a field that already held a figure the box was blanked instead,
+  taking the keystroke back mid-edit.
+
+  The three now report the refused figure rather than a blank, take `aria-invalid`, and carry a sentence
+  saying the label does not hold it and what to do instead. It deliberately borrows nothing from the
+  severity vocabulary — no glyph, no signal word — because this is the rail explaining its own guard and
+  not a compliance finding. `asMeasurement` is untouched, so no document that could exist before can fail
+  to exist now.
+
+  **A blank stays an answer.** Leaving the box empty is what §101.12(b) permits, since this tool does not
+  carry that table, and marking it invalid would report a label for declining to state something.
+
+  **`min="0"` stays on all three, and taking it off was this change's own worst idea.** The audit is right
+  that it advertises a value the guard refuses — HTML has no exclusive minimum, so it cannot say "above
+  zero" — but it is half a floor rather than a lie, and removing it turned two presses of the down arrow
+  from `0` into `-2`. Measured, and caught by review. What made it misleading was never the attribute; it
+  was that nothing said when the guard had declined a figure, which is what this change fixes.
+
+  **A refusal is derived rather than remembered, so it cannot outlive the document it was made on.** The
+  first version held a boolean only a keystroke could clear, so typing `0` and then opening a saved label
+  stating 40 g left the box reading `40` beneath an `aria-invalid` and a sentence saying the label did not
+  hold it — the module note claimed the document won and the code did not. Found by review, reproduced
+  through the real editor, and invisible to the suite because no test had ever opened a second document.
+  Two now do, including the harder mirror where the label opened over it states nothing either and the
+  figure is `undefined` on both sides: what retires the refusal there is the record, since `loadSaved` and
+  the audit hand-off both swap `nutritionFacts` wholesale.
+
+  **Two of the three browser assertions proved nothing until a mutation run said so, and the reasoning
+  behind them was wrong as well.** The claim was that a field snapping back to blank would make `0.5`
+  untypable, since every figure under one begins with the character the guard refuses. Measured in
+  Chromium, that is not what happened: the box blanked on the `0` and left `.5` showing, which the browser
+  reads back as `0.5` — so the document ended up correct and what the user lost was a keystroke, not a
+  figure. The test asserts the box after every character for that reason. Two earlier versions of it, one
+  starting from an empty box and one checking only the figure at the end, passed against the unfixed code.
+
 - **The findings rail tells a verdict apart from a silence by structure, not by hue.** It states four
   different kinds of thing and only one of them is a severity, but with one colour per severity the only
   tool it had was colour — so "cannot be checked" used CAUTION's own diamond and `text-caution`, and on a
