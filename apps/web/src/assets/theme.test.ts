@@ -69,6 +69,54 @@ describe('severity colours against the chrome', () => {
   })
 })
 
+/**
+ * Three tokens per severity, each with a job.
+ *
+ * `text` is the word. `edge` is a 2px rule, and answers to WCAG 2.2's 3:1
+ * minimum for a graphical object rather than to 4.5 — it is structure, not
+ * reading matter. `surface` is a wash a block sits on, so what it owes is that
+ * body text and the severity's own word both stay legible on top of it.
+ *
+ * Derived from the five above by mixing toward `chrome-950`, then measured. Same
+ * provenance as the five and the same disclaimer: these are interface colours
+ * chosen to read against this chrome, not a claim about what the standard
+ * prints, and nothing drawn onto a label may take its colour from here.
+ *
+ * The point of the trio is that the findings rail can separate its four kinds of
+ * statement by structure rather than by hue — today "cannot be checked" borrows
+ * CAUTION's own colour and glyph and reads as a third finding.
+ */
+describe('every severity carries a text, an edge and a surface', () => {
+  it.each(SEVERITIES)('%s declares all three', (severity) => {
+    for (const role of ['', '-edge', '-surface']) {
+      expect(() => token(`${severity}${role}`), `${severity}${role}`).not.toThrow()
+    }
+  })
+
+  it.each(SEVERITIES)('%s-edge is visible as a rule on every surface', (severity) => {
+    // 3:1, not 4.5:1. An earlier draft mixed the edges at 0.55 and put
+    // danger-edge at 2.62 against chrome-950 — a 2px rule nobody can see is not
+    // structure, and it would have shipped looking deliberate.
+    for (const surface of SURFACES) {
+      expect(
+        contrast(token(`${severity}-edge`), token(surface)),
+        `${severity}-edge on ${surface}`,
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it.each(SEVERITIES)('%s-surface carries both body text and its own word', (severity) => {
+    expect(
+      contrast(token('chrome-100'), token(`${severity}-surface`)),
+      `chrome-100 on ${severity}-surface`,
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrast(token(severity), token(`${severity}-surface`)),
+      `${severity} on ${severity}-surface`,
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 describe('text on the chrome', () => {
   it.each(['chrome-100', 'chrome-300'] as const)('%s is readable as body text', (text) => {
     for (const surface of SURFACES) {

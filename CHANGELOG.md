@@ -10,6 +10,17 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **Each severity now has three tokens rather than one, so structure can stop being carried by hue.** The
+  findings rail states four different kinds of thing — a verdict, an element the engine could not draw, a
+  check that stood down, and a silence where no provision governs — and with one colour per severity the
+  only tool available was hue, so "cannot be checked" borrowed CAUTION's own colour and glyph and read as a
+  third finding beneath two warnings. Each severity gains an `edge` for a rule and a `surface` for a wash,
+  derived from the existing five by mixing toward `chrome-950` and then measured. They answer to different
+  bars and `theme.test.ts` holds all three: an edge clears WCAG 2.2's 3:1 for a graphical object rather than
+  4.5:1, and a surface has to carry both body text and its own severity's word. A first draft mixed the
+  edges at 0.55, which put `danger-edge` at 2.62 against `chrome-950` — a 2 px rule nobody can see, and it
+  would have shipped looking deliberate.
+
 - **The API costs less to abuse and less to use.** Four changes, all of them things a deployment would have
   found the hard way. `express.json`'s ten-megabyte limit was **global**, so every route buffered and parsed
   ten megabytes before anything looked at it — including the audit route's own guards, so a request they were

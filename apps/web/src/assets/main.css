@@ -91,6 +91,42 @@
   --color-notice: #5aa9e6;
   --color-pass: #52c57e;
 
+  /**
+   * Each severity three times over, because hue alone cannot carry structure.
+   *
+   * The findings rail states four different kinds of thing — a verdict, an
+   * element the engine could not draw, a check that stood down, and a silence
+   * where no provision governs. With one colour per severity the only tool
+   * available was hue, so "cannot be checked" borrowed CAUTION's own colour and
+   * glyph and read as a third finding sitting under two warnings. An `edge` and
+   * a `surface` let the rail separate those four by structure, and give colour
+   * back its single job.
+   *
+   * **Derived from the five above, then measured**, by mixing toward
+   * `chrome-950` — 0.80 for an edge, 0.12 for a surface. Each answers to a
+   * different bar and `theme.test.ts` holds all three: an `edge` is a 2 px rule
+   * and clears WCAG 2.2's 3:1 for a graphical object rather than 4.5:1, and a
+   * `surface` is a wash that has to carry both body text and its own severity's
+   * word. An earlier draft mixed the edges at 0.55, which put `danger-edge` at
+   * 2.62 against `chrome-950` — a rule nobody can see, and it would have shipped
+   * looking deliberate.
+   *
+   * Same provenance as the five, and the same disclaimer: these read against
+   * this chrome, they are not the standard's published values, and nothing
+   * generated onto a label may take its colour from here.
+   */
+  --color-danger-edge: #d04d41;
+  --color-warning-edge: #c87936;
+  --color-caution-edge: #c8a83e;
+  --color-notice-edge: #4c8bbb;
+  --color-pass-edge: #46a168;
+
+  --color-danger-surface: #301b16;
+  --color-warning-surface: #2f2115;
+  --color-caution-surface: #2f2916;
+  --color-notice-surface: #1c2429;
+  --color-pass-surface: #1b271c;
+
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'Courier New', monospace;
 }
