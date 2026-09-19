@@ -40,12 +40,22 @@ describe('the rail tells a verdict from a silence', () => {
     // who has learned that a diamond means CAUTION was being taught something
     // false.
     const rail = mountRail()
-    const uncertifiable = rail.get('[aria-labelledby$="uncertifiable-heading"], section:has(h3)')
 
-    expect(rail.text()).toContain(NOT_A_VERDICT.uncertifiable)
+    // Found by the section's own text, not by an id. The first version of this
+    // guessed `[aria-labelledby$="uncertifiable-heading"]`, which matches
+    // nothing — the id is built elsewhere — so the selector fell through to the
+    // root rail and the `text-caution` assertion was unscoped. It passed because
+    // nothing anywhere carried that class, and would have started failing for
+    // the wrong reason the day a legitimate advisory finding appeared.
+    const block = rail
+      .findAll('section')
+      .find((section) => section.text().includes('Cannot be checked'))
+    expect(block, 'the uncertifiable block must be findable').toBeDefined()
+
+    expect(block!.text()).toContain(NOT_A_VERDICT.uncertifiable)
+    expect(block!.html()).not.toContain('text-caution')
+    expect(block!.html()).not.toContain(SEVERITY_STYLES.advisory.icon)
     expect(rail.text()).toContain(NOT_A_VERDICT.declined)
-    expect(uncertifiable.html()).not.toContain('text-caution')
-    expect(rail.html()).not.toContain(`>${SEVERITY_STYLES.advisory.icon}<`)
   })
 
   it('draws a line where the verdicts stop', () => {

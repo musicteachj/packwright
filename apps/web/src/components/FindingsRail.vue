@@ -200,10 +200,12 @@ const summary = computed(() => {
     <p
       v-if="counts.length"
       class="numeric border-chrome-800 bg-chrome-950 flex flex-wrap gap-x-4 gap-y-1 border-b px-4 py-2 text-xs"
-      aria-hidden="true"
+      :aria-hidden="announce ? 'true' : undefined"
     >
       <span v-for="count in counts" :key="count.label" :class="count.tone">
-        {{ count.mark }}&#8239;{{ count.total }}
+        <span aria-hidden="true">{{ count.mark }}</span
+        >&#8239;{{ count.total }}
+        <span class="sr-only">{{ count.label }}</span>
       </span>
     </p>
 
@@ -260,7 +262,7 @@ const summary = computed(() => {
 
     <section
       v-if="uncertifiable.length"
-      class="border-chrome-600 mx-4 my-2 border-l border-dashed py-1 pl-4"
+      class="border-chrome-400 mx-4 my-2 border-l border-dashed py-1 pl-4"
       :aria-labelledby="declinedHeadingId"
     >
       <h3
@@ -295,7 +297,7 @@ const summary = computed(() => {
     -->
     <section
       v-if="(declined ?? []).length"
-      class="border-chrome-600 mx-4 my-2 border-l border-dashed py-1 pl-4"
+      class="border-chrome-400 mx-4 my-2 border-l border-dashed py-1 pl-4"
       :aria-labelledby="notRunHeadingId"
     >
       <h3

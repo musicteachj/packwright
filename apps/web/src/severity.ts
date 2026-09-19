@@ -38,7 +38,7 @@ export const SEVERITY_STYLES: Record<Severity, SeverityStyle> = {
     icon: '⊘',
     text: 'text-danger',
     border: 'border-danger',
-    edge: 'border-danger-edge',
+    edge: 'border-l-danger-edge',
     heading: 'Blocking — non-compliant as drawn',
   },
   violation: {
@@ -46,7 +46,7 @@ export const SEVERITY_STYLES: Record<Severity, SeverityStyle> = {
     icon: '▲',
     text: 'text-warning',
     border: 'border-warning',
-    edge: 'border-warning-edge',
+    edge: 'border-l-warning-edge',
     heading: 'Violations',
   },
   advisory: {
@@ -54,7 +54,7 @@ export const SEVERITY_STYLES: Record<Severity, SeverityStyle> = {
     icon: '◆',
     text: 'text-caution',
     border: 'border-caution',
-    edge: 'border-caution-edge',
+    edge: 'border-l-caution-edge',
     heading: 'Advisories',
   },
   guidance: {
@@ -62,7 +62,7 @@ export const SEVERITY_STYLES: Record<Severity, SeverityStyle> = {
     icon: 'ⓘ',
     text: 'text-notice',
     border: 'border-notice',
-    edge: 'border-notice-edge',
+    edge: 'border-l-notice-edge',
     heading: 'Guidance',
   },
   pass: {
@@ -70,7 +70,7 @@ export const SEVERITY_STYLES: Record<Severity, SeverityStyle> = {
     icon: '✓',
     text: 'text-pass',
     border: 'border-pass',
-    edge: 'border-pass-edge',
+    edge: 'border-l-pass-edge',
     heading: 'Checks passed',
   },
 }

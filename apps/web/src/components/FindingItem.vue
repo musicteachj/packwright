@@ -60,6 +60,11 @@ const interactive = computed(() => props.selectable && props.finding.elementId !
       // The severity's own edge, which is what lets everything that is NOT a
       // verdict stop competing for colour. A finding is the only thing in the
       // rail that carries one.
+      //
+      // `border-l-` and not the all-sides utility: that one sets `border-color`
+      // outright, so it recoloured the `border-b` divider between findings too,
+      // and which colour won was decided by where Tailwind happened to emit the
+      // two rules rather than by anything written here.
       style.edge,
       interactive
         ? 'hover:bg-chrome-800 focus-visible:outline-notice cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2'
