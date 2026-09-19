@@ -12,10 +12,10 @@
  * is. This component exists to be the plain-prose control that rule actually
  * describes; it uses `TEXT_INPUT`, the same styling with `numeric` dropped.
  *
- * The label, description and `aria-describedby` wiring are `Field`'s job, not
- * this component's — see `Field.vue` for why that structure is shaped the way
+ * The label, description and `aria-describedby` wiring are `FormField`'s job, not
+ * this component's — see `FormField.vue` for why that structure is shaped the way
  * it is. This component's own job is narrower: forward the handful of props
- * `Field` needs, and put an `<input>` in its slot.
+ * `FormField` needs, and put an `<input>` in its slot.
  *
  * Not every call site owns a ref to bind. Ingredient rows in
  * `UsFoodFormRail.vue` write through an array map with `:value` + `@input`
@@ -28,7 +28,7 @@
  * reassertion would overwrite the caller's own `value` with the literal
  * string `"undefined"` on the next re-render. Binding by hand and letting
  * `v-bind="controlAttrs"` land after it sidesteps that: `inheritAttrs` is off so
- * attrs don't land on `Field`'s own root, and an attrs `value`/`onInput`
+ * attrs don't land on `FormField`'s own root, and an attrs `value`/`onInput`
  * pair — present only when a caller uses the plain form — overwrites the
  * unbound default rather than fighting it, while an unrelated attr like
  * `inputmode` or `placeholder` just rides along untouched.

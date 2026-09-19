@@ -1,11 +1,11 @@
 <script setup lang="ts">
 /**
- * A checkbox and its own label, on one line — not a variant of `Field`'s
+ * A checkbox and its own label, on one line — not a variant of `FormField`'s
  * label/control/description shape, because a checkbox's label follows the
- * control rather than sitting above it. `Field` puts the accessible name
+ * control rather than sitting above it. `FormField` puts the accessible name
  * before the slot and help below it; neither is what a checkbox wants, so
  * this component renders `<label><input type="checkbox"><span>…</span></label>`
- * directly and does not use `Field` at all.
+ * directly and does not use `FormField` at all.
  *
  * Two things were measured on the canvas, not inferred: the box came out
  * 13×13 in a 16px row, under WCAG 2.2 AA's 24×24 target-size floor, and the

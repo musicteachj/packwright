@@ -19,17 +19,6 @@ export const CHIP_REMOVE =
   'text-chrome-400 hover:text-danger focus-visible:outline-notice shrink-0 px-1 focus-visible:outline focus-visible:outline-2'
 
 /**
- * `TextField`'s control — `INPUT` without `numeric`.
- *
- * `numeric` is IBM Plex Mono with tabular figures, and `INPUT` puts it on every
- * text field and all 19 selects alike. CLAUDE.md's rule is narrower than that:
- * monospace and tabular figures for identifiers and measurements, not for
- * running prose — but under `INPUT` a statement of identity ("Oat and almond
- * granola") or a supplier name ("Example solvent") renders in a face built for
- * columns of digits, for no reason connected to what it is. `MeasurementField`
- * keeps `INPUT`, unchanged, for the fields the rule is actually for.
- */
-/**
  * The resting border, and the one an invalid field replaces it with.
  *
  * Kept out of the control strings below so the two can never both apply. Two
@@ -57,6 +46,17 @@ export const CONTROL_BORDER_INVALID = 'border-danger-edge'
 export const MEASUREMENT_INPUT =
   'numeric bg-chrome-950 text-chrome-100 focus-visible:outline-notice w-full border px-2 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-1'
 
+/**
+ * `TextField`'s control — `INPUT` without `numeric`.
+ *
+ * `numeric` is IBM Plex Mono with tabular figures, and `INPUT` puts it on every
+ * text field and all 19 selects alike. CLAUDE.md's rule is narrower than that:
+ * monospace and tabular figures for identifiers and measurements, not for
+ * running prose — but under `INPUT` a statement of identity ("Oat and almond
+ * granola") or a supplier name ("Example solvent") renders in a face built for
+ * columns of digits, for no reason connected to what it is. `MeasurementField`
+ * keeps `INPUT`, unchanged, for the fields the rule is actually for.
+ */
 export const TEXT_INPUT =
   'bg-chrome-950 text-chrome-100 focus-visible:outline-notice w-full border px-2 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-1'
 

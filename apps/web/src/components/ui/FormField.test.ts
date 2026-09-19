@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { defineComponent, h, ref } from 'vue'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import FormField from './FormField.vue'
 
 const mountField = (props: Record<string, unknown> = {}, slots: Record<string, string> = {}) =>
@@ -125,5 +125,29 @@ describe('FormField notices its slots changing', () => {
     show.value = true
     await wrapper.vm.$nextTick()
     expect(wrapper.find('#f-description').text()).toContain('refused')
+  })
+})
+
+describe('FormField will not let a field be invalid in silence', () => {
+  it('complains when invalid carries no description', () => {
+    // `invalid` swaps the border for `danger-edge`, and a sighted reader gets
+    // nothing else. Colour never carries meaning alone here.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mountField({ invalid: true })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('no description'))
+    warn.mockRestore()
+  })
+
+  it('says nothing when the field explains itself', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mountField({ invalid: true, description: 'The check digit does not match.' })
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('spaces the description off the control it describes', () => {
+    // It abutted at 0px: `LABEL`'s own gap stops at the closing label tag, and
+    // moving the description outside is what created the space to restore.
+    expect(mountField({ description: 'x' }).classes()).toContain('gap-1')
   })
 })

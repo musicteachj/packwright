@@ -47,7 +47,7 @@
  * `:aria-describedby="describedBy"` never emits a dangling reference to an
  * element this component did not render.
  */
-import { useSlots } from 'vue'
+import { onMounted, useSlots, watch } from 'vue'
 import { LABEL } from '../formStyles'
 
 const props = withDefaults(
@@ -89,10 +89,42 @@ const slots = useSlots()
 const hasDescription = () => !!props.description || !!slots.description
 
 const describedBy = () => (hasDescription() ? `${props.id}-description` : undefined)
+
+/**
+ * An invalid field with nothing to read is colour on its own, and this app does
+ * not allow that anywhere else.
+ *
+ * `invalid` swaps the control's border for `danger-edge`. A screen reader gets
+ * `aria-invalid` regardless, but a sighted reader gets hue and nothing else —
+ * which is the rule `CLAUDE.md` states and the severity scale is built around.
+ * The remedy is a description saying what is wrong, so this complains in
+ * development rather than failing in production: a field that cannot explain
+ * itself is a design mistake at the call site, not a state to render differently.
+ */
+const warnIfUnexplained = () => {
+  if (!import.meta.env.DEV) return
+  if (props.invalid && !hasDescription()) {
+    console.warn(
+      `[FormField] "${props.label}" (#${props.id}) is invalid and has no description. ` +
+        'The border would be the only signal a sighted reader gets. ' +
+        'Give it a description, or a `description` slot, saying what is wrong.',
+    )
+  }
+}
+
+onMounted(warnIfUnexplained)
+watch(() => props.invalid, warnIfUnexplained)
 </script>
 
 <template>
-  <div>
+  <div class="flex flex-col gap-1">
+    <!--
+      `flex flex-col gap-1` because the description is a sibling of the label, not
+      a child of it. `LABEL`'s own `gap-1` spaces the label text from its control
+      and stops at the closing tag, so help text landed hard against the box it
+      describes — 0px, on `/design` and on all 105 sites after migration. Moving
+      the description out of the label is what created the gap to restore.
+    -->
     <!--
       The control is in the slot, and a lint rule cannot see through a slot.
 

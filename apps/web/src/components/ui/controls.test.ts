@@ -275,3 +275,30 @@ describe('an identifier is text, and still mono', () => {
     expect(wrapper.get('input').attributes('type')).toBe('text')
   })
 })
+
+describe('MeasurementField honours the .number modifier', () => {
+  // Thirty-two of the thirty-four number sites it replaces are written
+  // `v-model.number`. Without the modifier they would store "12" where the
+  // layout engine expects 12.
+  it('emits a number when the caller asked for one', async () => {
+    const wrapper = mount(MeasurementField, {
+      props: {
+        id: 'n',
+        label: 'Panel width (mm)',
+        modelValue: 0,
+        modelModifiers: { number: true },
+        'onUpdate:modelValue': (v: unknown) => wrapper.setProps({ modelValue: v as number }),
+      },
+    })
+    await wrapper.get('input').setValue('120')
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toBe(120)
+  })
+
+  it('emits the raw string when it does not', async () => {
+    const wrapper = mount(MeasurementField, {
+      props: { id: 'n', label: 'Panel width (mm)', modelValue: '' },
+    })
+    await wrapper.get('input').setValue('120')
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toBe('120')
+  })
+})

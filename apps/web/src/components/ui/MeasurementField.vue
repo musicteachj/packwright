@@ -59,7 +59,33 @@ const props = withDefaults(
   },
 )
 
-const model = defineModel<string>()
+/**
+ * Typed for both bindings, and it honours `.number`.
+ *
+ * Thirty-two of the thirty-four `type="number"` sites this replaces are written
+ * `v-model.number`, because on a raw input that is what turns "12" into 12
+ * before it reaches a store field the layout engine will do arithmetic on.
+ * Declared `<string>` and without the modifier, those sites would either fail
+ * `vue-tsc` on migration or quietly store strings where millimetres are
+ * expected.
+ *
+ * `looseToNumber` is Vue's own rule for the modifier, reimplemented because it
+ * is not exported: parse it, and hand back the original string if the parse
+ * produced nothing — so a half-typed "1e" stays "1e" rather than becoming `NaN`
+ * mid-keystroke. The rails' own guards (`requiredNumber`, `optionalNumber`,
+ * `asMeasurement`) still decide what an empty or refused value means; this only
+ * stops the component lying about the type it emits.
+ */
+const [model, modelModifiers] = defineModel<number | string>()
+
+const looseToNumber = (value: string): number | string => {
+  const parsed = Number.parseFloat(value)
+  return Number.isNaN(parsed) ? value : parsed
+}
+
+const emitValue = (raw: string) => {
+  model.value = modelModifiers.number ? looseToNumber(raw) : raw
+}
 </script>
 
 <template>
@@ -82,7 +108,7 @@ const model = defineModel<string>()
         :aria-invalid="controlInvalid || undefined"
         :value="model"
         v-bind="controlAttrs"
-        @input="model = ($event.target as HTMLInputElement).value"
+        @input="emitValue(($event.target as HTMLInputElement).value)"
       />
     </template>
   </FormField>

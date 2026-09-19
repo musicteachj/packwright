@@ -8,6 +8,28 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Five things the review of PR #52 found in the new component layer, two of which would have surfaced as
+  migration damage rather than as anything obvious.** `MeasurementField` typed its model `string`, while
+  thirty-two of the thirty-four number inputs it replaces are written `v-model.number` — those sites would
+  have failed `vue-tsc` on migration or quietly stored `"12"` where the layout engine expects `12`. It takes
+  `number | string` now and honours the modifier with Vue's own `looseToNumber` rule, reimplemented because
+  it is not exported. And the description had lost the gap it used to have: `LABEL`'s `gap-1` spaces the
+  label from its control and stops at the closing tag, so moving the description outside the label — the
+  whole point of the component — left help text hard against the box it describes, at 0 px, on all 105 sites
+  after migration.
+
+  Fixing that one found a third defect by breaking the tests: an HTML comment placed before the root `<div>`
+  makes a Vue template multi-root, which **silently disables attribute inheritance**, so every caller's
+  `class` stopped reaching the field root. Four assertions caught it, and the mutation is now pinned.
+
+  The other two are smaller. An `invalid` field with no description leaves the border as the only signal a
+  sighted reader gets, which `CLAUDE.md` rules out everywhere else, so `FormField` now complains in
+  development rather than rendering it quietly. And the rename to `FormField` had left the doc comments
+  citing `Field.vue`, a file that does not exist — the rationale for the API unreachable from every file
+  that pointed at it.
+
 ### Added
 
 - **An identifier is text and still monospace, and an invalid field now shows it.** Both found by opening
