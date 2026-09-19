@@ -8,7 +8,108 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Five things the review of PR #52 found in the new component layer, two of which would have surfaced as
+  migration damage rather than as anything obvious.** `MeasurementField` typed its model `string`, while
+  thirty-two of the thirty-four number inputs it replaces are written `v-model.number` — those sites would
+  have failed `vue-tsc` on migration or quietly stored `"12"` where the layout engine expects `12`. It takes
+  `number | string` now and honours the modifier with Vue's own `looseToNumber` rule, reimplemented because
+  it is not exported. And the description had lost the gap it used to have: `LABEL`'s `gap-1` spaces the
+  label from its control and stops at the closing tag, so moving the description outside the label — the
+  whole point of the component — left help text hard against the box it describes, at 0 px, on all 105 sites
+  after migration.
+
+  Fixing that one found a third defect by breaking the tests: an HTML comment placed before the root `<div>`
+  makes a Vue template multi-root, which **silently disables attribute inheritance**, so every caller's
+  `class` stopped reaching the field root. Four assertions caught it, and the mutation is now pinned.
+
+  The other two are smaller. An `invalid` field with no description leaves the border as the only signal a
+  sighted reader gets, which `CLAUDE.md` rules out everywhere else, so `FormField` now complains in
+  development rather than rendering it quietly. And the rename to `FormField` had left the doc comments
+  citing `Field.vue`, a file that does not exist — the rationale for the API unreachable from every file
+  that pointed at it.
+
 ### Added
+
+- **An identifier is text and still monospace, and an invalid field now shows it.** Both found by opening
+  `/design` in a browser rather than by a test, which is the reason the page exists. The typeface rule is
+  about content, not control type: a GTIN is `type="text"` — it has a leading zero and is never arithmetic —
+  and so are an SSCC, a lot code and a GS1 element string, but the only monospace control was
+  `MeasurementField`, a number input, so every identifier in the rails would have migrated into the prose
+  face. `TextField` takes an `identifier` flag, named for the reason rather than the appearance. And
+  `invalid` set `aria-invalid` and changed nothing a sighted reader could see; the control's resting border
+  is now swapped for `danger-edge`, which is the token that band was measured for. Never the only signal —
+  an invalid field still carries its reason in the description beneath it.
+
+- **`/design` catalogues the interface the same way `/rules` catalogues the rule set — generated from the
+  same components the app renders, rather than a second description of them that can drift.** It mounts
+  `FormField`, `TextField`, `MeasurementField`, `SelectField` and `CheckboxField` directly, and deliberately
+  exercises the awkward shapes rather than only the tidy ones: a `MeasurementField` with `labelHidden`, one
+  of the seven sites in `UsFoodFormRail.vue` that hide a label without touching its accessible name; an
+  invalid field with a live, coloured description mirroring the GTIN field's own two-mutually-exclusive-
+  paragraphs shape; and a bare `FormField` wrapping a `range` input with no `v-model` at all, for
+  `UpcAFormRail.vue`'s magnification slider. Building it is what found the gap that closed
+  below: the three `FormField`-based controls forwarded only the string `description` and dropped a
+  `description` slot silently, which is the exact shape the GTIN field needs. It also renders
+  all five severities against `severity.ts`'s own `SEVERITY_STYLES`, so nothing here is a second copy of the
+  glyphs. No rail has been migrated onto any of these components yet — this page exists specifically so the
+  component API meets its hardest consumers before the migration does, not after.
+
+- **The masthead's nav wraps at narrow widths, because a fifth link finally overflowed a budget that had
+  no room left in it.** Adding `/design`'s nav link pushed the five-link row to 240px against 189px of
+  space beside the wordmark at 375px wide — the four-link row had only 5px to spare, so the fifth ran the
+  whole nav 19px past the edge of the viewport instead of shrinking, on every reading route at once, since
+  the masthead is shared. `flex-wrap` with `justify-end` lets the row break onto a second line that still
+  ends flush with the page's own right gutter, which is what `the-masthead.spec.ts` measures.
+
+- **The three `FormField`-based controls relay a `description` slot instead of swallowing it.** They forwarded
+  the string `description` prop only, so `<template #description>` handed to a `TextField` was dropped on
+  the floor — no error, no warning, the content simply gone. The one call site that needs the richer shape
+  is the GTIN field, whose note is two mutually exclusive live paragraphs sharing an id, and it is in the
+  next rail to be migrated. Found by building the catalogue against the awkward variants, which is what the
+  catalogue is for.
+
+- **Four controls — `TextField`, `MeasurementField`, `SelectField`, `CheckboxField` — sit on top of `FormField`
+  and close four defects measured in a real browser, not inferred from the markup.** `formStyles.ts`'s
+  `INPUT` carried `numeric`, IBM Plex Mono with tabular figures, on every text field and all 19 selects
+  alike, so "Oat and almond granola" and "Example solvent" rendered in a face built for columns of digits;
+  `TextField` and `SelectField` drop it, `MeasurementField` keeps it, unchanged, for the fields the rule was
+  written for. A `<select>`'s `padding-right` measured 8px, identical to the left, with the native arrow
+  drawn inside that same 8px, so a long option — "Standard — both measurement systems r" — was clipped
+  mid-word against the glyph with no ellipsis; `SelectField` turns the native arrow off and draws its own as
+  an absolutely-positioned sibling, with 32px reserved ahead of it. A checkbox measured 13×13 in a 16px row,
+  under WCAG 2.2 AA's 24×24 target-size floor, with a 0px gap to its own word because those `<label>`s carry
+  no class at all; `CheckboxField` is 16px with a 10px gap in a 24px row, `items-start` so a wrapping label
+  keeps its box level with the first line rather than the middle of the block, and `accent-notice` — already
+  on the six GHS and UPC-A checkboxes and on none of the fourteen US food ones — on all of them. Each control
+  wires its model to the element by hand, `:value`/`@input` or `:checked`/`@change` rather than a literal
+  `v-model` on the element itself, because Vue's own `v-model` directive reasserts the bound value on every
+  update even when nothing is bound — with `defineModel` left unbound, the pattern GHS's "Add a statement"
+  select and the ingredient rows both use, that reassertion would silently overwrite a caller's own value.
+  No rail has been moved onto any of the four yet.
+
+- **A `FormField` component owns the label/control/description wiring the three form rails were assembling by
+  hand, 105 times.** The description renders as a sibling of the `<label>`, addressed by `aria-describedby`,
+  never nested inside it — `UsFoodFormRail.vue` nests a forty-word paragraph in the `<label>` today, which
+  makes that paragraph part of the field's accessible name, and the new component makes that shape
+  unrepresentable rather than merely discouraged. `describedBy` is handed to the control's slot as
+  `undefined` whenever there is nothing to describe, so a caller that always binds it never emits a dangling
+  reference to an element that was never drawn. The control itself is a scoped slot rather than a prop,
+  because not every field is `v-model` — ingredient rows write through an array map with `:value` +
+  `@input` — and a `description` slot sits alongside the string prop for the one field, GTIN entry, whose
+  help is two mutually exclusive live regions rather than static text. No rail has been moved onto it yet.
+
+- **Each severity now has three tokens rather than one, so structure can stop being carried by hue.** The
+  findings rail states four different kinds of thing — a verdict, an element the engine could not draw, a
+  check that stood down, and a silence where no provision governs — and with one colour per severity the
+  only tool available was hue, so "cannot be checked" borrowed CAUTION's own colour and glyph and read as a
+  third finding beneath two warnings. Each severity gains an `edge` for a rule and a `surface` for a wash,
+  derived from the existing five by mixing toward `chrome-950` and then measured. They answer to different
+  bars and `theme.test.ts` holds all three: an edge clears WCAG 2.2's 3:1 for a graphical object rather than
+  4.5:1, and a surface has to carry both body text and its own severity's word. A first draft mixed the
+  edges at 0.55, which put `danger-edge` at 2.62 against `chrome-950` — a 2 px rule nobody can see, and it
+  would have shipped looking deliberate.
 
 - **The API costs less to abuse and less to use.** Four changes, all of them things a deployment would have
   found the hard way. `express.json`'s ten-megabyte limit was **global**, so every route buffered and parsed
