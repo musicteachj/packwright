@@ -631,6 +631,25 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
 
 ---
 
+## From the stage 1 migration
+
+**No field in any rail is marked required, and the migration is not the place to change that.** There is no
+`required`, no `aria-required`, no asterisk convention and no "(required)" text anywhere across the 105
+label sites in the three rails — confirmed by grep, not by reading. A user finds out what was mandatory from
+the findings rail, after the fact.
+
+Adding it during the migration to `FormField` would be cheap and is the wrong move. Migrating three rails is
+a structural change that must be behaviour-preserving, because the only way to know the component layer is
+correct is that nothing about the rendered form changed; a product change smuggled into a refactor makes
+every diff ambiguous — did this field move because the component works, or because somebody decided it was
+required? It is also genuinely a product question rather than a component one, and the answer is not
+uniformly yes: `CLAUDE.md` is emphatic that reporting a label for exercising a permission is a false positive
+its user cannot argue with, and several of these fields are exactly that shape — a declared exemption, a
+voluntary second column, a reference amount the tool does not carry the table for.
+
+`FormField` can take a `required` flag whenever the answer arrives; nothing in its shape forecloses it. What
+this entry records is that the decision was deliberately not taken inside the migration.
+
 ## From the interface stage 0 review
 
 **The canvas's `fit` does not render at 106% of true scale, and the review that said so was reading rather

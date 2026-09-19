@@ -55,6 +55,28 @@ rather than to reach for a bigger review.
 past a write-vs-rename race in the test-database wrapper — a plain write truncates first, so a concurrent
 sweep read an empty owner file and deleted a live database's directory. `high` found it on its first pass.
 
+**The UI row asks the wrong question, so ask a better one: what would a defect here cost?** That row exists
+because a defect in a screen costs a screen. It stops being true the moment a UI pull request is really an
+*API* — a component layer that many call sites will be migrated onto, where a wrong boundary costs every one
+of them and fails silently rather than loudly.
+
+PR #52 is the evidence. UI only by the letter of the ladder, nothing in `rules/`, `fda/` or `layout/`, and
+CI green. A `medium` run on it anyway found five real defects, two of which would have arrived as migration
+damage rather than as anything anybody would notice: `MeasurementField` typed its model `string` while 32 of
+the 34 number inputs it replaces are written `v-model.number`, and the description had lost its spacing, so
+help text would have sat at 0 px against its control on all 105 sites at once. Fixing the second found a
+third by breaking four tests — an HTML comment before a Vue template's root makes the component multi-root,
+which **silently stops it inheriting attributes**, so every caller's `class` stopped reaching the field root.
+
+So: `medium` on the pull request when the diff is a component API, whatever directory it sits in. Still
+`medium` and not `high` — the risk there is API shape rather than a false clearance, and the budget is real.
+
+**A review of the working tree does not cover what you write in response to it.** The commit row reviews the
+uncommitted diff, which is the right unit — but findings get fixed, fixes get extended, and the extension is
+unreviewed. On `feat/interface-foundation` that gap reached about 250 lines, including a whole prop and the
+mechanism behind an invalid state. Either re-run the `medium` before committing, or say plainly in the pull
+request which parts no review has seen.
+
 **Fix what is in the current scope and record the rest in `docs/BACKLOG.md`, with the reasoning.** Fixing
 every finding the moment it appears turned four planned items into four unplanned commits in one session,
 and left the stage no further forward.
