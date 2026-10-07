@@ -711,31 +711,11 @@ this entry records is that the decision was deliberately not taken inside the mi
 
 ## From stage 4, canvas and editor
 
-**A refused figure is shown but not announced, and it is the editor's live-region question again rather
-than a new one.** The three fields that refuse a zero take `aria-invalid` and gain a description saying
-the label does not hold the figure — but that description is a plain `<div>`, so a screen-reader user
-typing `0` hears the field go invalid and hears the sentence only when they come back to the field, not
-as it appears. `FormField` has `live` for exactly this, and `UpcAFormRail`'s GTIN note sets it
-conditionally. Raised by review, and deliberately not copied.
-
-Copying it would reproduce a pattern this file already records as a compromise, twice over. A live region
-has to be in the document before its content arrives, and a conditional `live` on a conditional
-description creates the region already full — which is the GTIN scan note's defect verbatim, recorded
-under *From the stage 1 rail migrations*. It would also give the editor a second always-present live
-region in the refused state, against an invariant `e2e/the-responsive-collapse.spec.ts` asserts at every
-width: exactly one perceivable. No test would fail, because none types a zero — which is the worst way
-for an invariant to be broken.
-
-So this is a third instance of one open design decision, not a patch waiting to be applied: either the
-editor accepts that "exactly one live region" becomes "one per concern", or the rails route their
-announcements through the findings rail's existing region. The arguments are in the stage 1 entry and
-have not changed; what has changed is that three fields now want the same thing, which is the strongest
-case yet for settling it.
-
-
-Both of these were found by taking a screenshot and looking at it, which is the method that found every
-finding that mattered in this phase. Neither is a regression: both predate the stage, and the typography
-fix that was in scope does not move either of them.
+**~~A refused figure is shown but not announced.~~ Fixed in interface stage 5**, through the announcer
+rather than through the description. Each of the three fields says its refusal on a line of its own, with
+the field named, because it is heard away from the box it is about; the line goes when the field is
+answered or left empty. Copying the GTIN's conditional `live` was not done, for the reasons this entry
+gave, and `live` no longer exists to copy.
 
 **A failed open says the editor is showing a new document, and it is not.** `openFromRoute`'s catch writes
 "That label no longer exists. The editor is showing a new document." for a 404, but nothing detaches — so
@@ -769,16 +749,13 @@ label…" because the page itself is. That is page content arriving, not a chang
 that follows it is heard. The live-region question for the GTIN note and the refused measurements is
 unaffected and still open.
 
-**On a narrow screen showing Checks, two live regions are perceivable, and a comment says it cannot
-happen.** `EditorView.vue`'s own `sr-only` region exists so a narrow window hears compliance at all,
-because below `lg` the rail is `display: none` — and its comment says it "exists only while that is true,
-so exactly one is ever live". It is gated on `narrow` alone. Switch to the Checks pane and the rail is on
-screen with its region beside the editor's, so a screen reader can hear every count twice.
-`e2e/the-responsive-collapse.spec.ts` asserts exactly one perceivable region, but only on the default pane,
-so it cannot see this. Pre-existing on `dev`, found by the review of stage 4's live-region fix. The fix
-looks like one condition — the editor's region gated on the Checks pane not showing — but switching panes
-would then move the announcement from one node to another, which is the born-full problem again; it
-belongs with the rest of the live-region question rather than as a patch beside it.
+**~~On a narrow screen showing Checks, two live regions are perceivable, and a comment says it cannot
+happen.~~ Fixed in interface stage 5**, by there being one region to perceive. The findings rail and the
+editor's narrow-only region both said the summary, in two wordings; both are gone, and the summary is said
+once through the announcer at the application root. The patch this entry warned against — gating the
+editor's region on the pane — was not needed and was not taken, for the reason given: it would have moved
+the announcement from node to node as the panes changed. `e2e/the-responsive-collapse.spec.ts` now visits
+every narrow pane, which is how the old version missed this.
 
 **The editor's header keeps naming the previous label while the next one is being opened.** The panes go,
 but the name field still reads "Granola 340g" and the chip beside it still reads "Saved" — a document
@@ -844,27 +821,21 @@ one stage of their own, scoped as `label-core` work from the start.
 
 ## From the stage 1 rail migrations
 
-**The GTIN's scan note is created in the same render as the text it announces, so it may never be spoken.**
-A live region has to be in the document before its content arrives; a screen reader announces a *change* to
-a region it is already observing, and a region that appears already full has nothing to compare against.
-`UpcAFormRail`'s refusal note has always had this shape — `role="status"` on a `v-if`'d paragraph — and the
-migration onto `FormField` reproduced it faithfully, which for a behaviour-preserving migration is the right
-outcome and not a good one.
+**~~The GTIN's scan note is created in the same render as the text it announces, so it may never be
+spoken.~~ Settled in interface stage 5, and the decision this entry asked for was taken.** It set out two
+shapes: accept a second live region and make "exactly one" into "one per concern", or route announcements
+through a region that already exists. The second was taken, in a stronger form — not the findings rail's
+region, which came and went with the rail, but one announcer mounted at the application root that nothing
+can unmount. The scan note is now only a description; what a scan did is said through the announcer.
 
-**Two attempts to fix it inside the migration both failed, in opposite directions**, and that is why this is
-an entry rather than a commit. Gating `live` on there being a scan is the same defect wearing a different
-hat: the region still materialises with its content. Making it unconditional does fix the announcement — and
-gives the editor a second always-present `aria-live` region, which the application deliberately does not
-have. The findings rail carries the only one, `EditorView.test.ts:158` reads it as *the* polite region by
-selector, and `e2e/the-responsive-collapse.spec.ts` asserts that exactly one is perceivable at every width.
-Two tests fail immediately, and they are right to.
+The first shape turned out to be half-true already, which is worth keeping. "Exactly one live region" was
+never so: with the barcode scanner open there were two, measured, and nobody had decided it. The rule as
+written now admits that — a widget the user opens may keep a status line about itself — and asserts the
+thing that matters to someone listening, that a fact is heard once.
 
-Closing it properly is a design decision about that invariant, not a patch. The shape that works is an
-always-present region that is empty until there is something to say — which means either the editor accepts
-a second live region and the "exactly one" rule becomes "exactly one per concern", or the rail routes its
-announcements through the rail's existing region. Both are real changes with real arguments, and neither
-belongs inside a migration whose entire warrant is that nothing about the rendered form moved.
-
+**`live` is gone from `FormField` and the three controls built on it.** It existed for this one field, and
+the shape it offered — a description that is also a live region — cannot work, because the description is
+created in the same render as its text. Removed rather than left unused, so the shape cannot come back.
 
 ## From the interface stage 0 review
 

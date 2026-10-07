@@ -57,13 +57,11 @@ const props = withDefaults(
     label: string
     labelHidden?: boolean
     description?: string
-    live?: boolean
     invalid?: boolean
   }>(),
   {
     labelHidden: false,
     description: '',
-    live: false,
     invalid: false,
   },
 )
@@ -77,7 +75,6 @@ const model = defineModel<string>()
     :id="props.id"
     :label="props.label"
     :label-hidden="props.labelHidden"
-    :live="props.live"
     :invalid="props.invalid"
     :description="props.description"
   >

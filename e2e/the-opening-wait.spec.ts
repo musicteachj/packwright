@@ -10,10 +10,10 @@ import { expect, test, type Page } from '@playwright/test'
  * still went silent — but that the region speaking during the wait is the very
  * node that speaks after it, with different words.
  *
- * jsdom cannot make this claim at the width where it is hardest. Below `lg` the
- * findings rail is `display: none` and the editor's own `sr-only` region speaks
- * instead, and that one is switched on by a `matchMedia` listener jsdom does
- * not have.
+ * The unit tests prove the same node in jsdom. This proves it in the shipped
+ * build, where the region is the announcer `App.vue` mounts at the root and the
+ * route actually changes beneath it — at a width where the findings rail is
+ * `display: none`, and one where it is on screen.
  */
 
 const SAVED = {
@@ -69,11 +69,11 @@ for (const width of [375, 1440] as const) {
     const release = await holdTheRead(page)
     await page.goto('/labels/abc123')
 
-    // Through the perceivable region, not `[aria-live]` with the text. Below
-    // `lg` two nodes carry these words — the editor's own region, which a
-    // reader hears, and the rail's, inside a pane that is `display: none` — and
-    // the first draft of this assertion counted both and failed on a page that
-    // was right. The invariant is about what can be heard.
+    // Through the perceivable regions, not `[aria-live]` with the text. When
+    // this spec was written two nodes carried these words below `lg` — the
+    // editor's own region and the rail's, inside a pane that was `display: none`
+    // — and a first draft counted both. The rail has no region now, but the
+    // invariant was always about what can be heard, so that is what is read.
     // Polled through a reader that cannot throw: before the first render there
     // are no regions at all, and a helper that throws on "not exactly one" ends
     // a poll on its first attempt rather than retrying.

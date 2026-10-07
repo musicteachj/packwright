@@ -6,6 +6,7 @@ import { US_FOOD_RULES } from '@packwright/label-core'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
 import { testRouter } from './editorTestRouter'
+import { withAnnouncer } from './withAnnouncer'
 
 /**
  * The US food label, driven through the real editor.
@@ -25,7 +26,9 @@ import { testRouter } from './editorTestRouter'
 Element.prototype.scrollIntoView = vi.fn()
 
 const mountEditor = () =>
-  mount(EditorView, { global: { plugins: [testRouter()], stubs: { RouterLink: true } } })
+  mount(withAnnouncer(EditorView), {
+    global: { plugins: [testRouter()], stubs: { RouterLink: true } },
+  })
 
 const mountFood = async () => {
   const store = useLabelDocumentStore()
@@ -936,6 +939,48 @@ describe('the Nutrition Facts displays, from the editor', () => {
         expect(
           box(wrapper, '#field-food-nf-unit-content').attributes('aria-invalid'),
         ).toBeUndefined()
+      })
+
+      it('says the refusal aloud, naming the field, and stops when it is answered', async () => {
+        // Shown and never heard, until the announcer. The description beside the
+        // field is a plain description — made a live region it would have been
+        // created full, which a screen reader does not announce — so typing a
+        // zero was silent. It is heard away from the box, so it names the box.
+        const { wrapper } = await mountFood()
+        const heard = () => wrapper.get('[aria-live]').text()
+
+        await box(wrapper, '#field-food-nf-unit-content').setValue('0')
+        await nextTick()
+        expect(heard()).toContain(
+          'One individual unit holds (g): A measurement has to be above zero',
+        )
+
+        await box(wrapper, '#field-food-nf-racc').setValue('-4')
+        await nextTick()
+        expect(heard(), 'two refused at once are two lines, not one').toContain(
+          'Reference amount: A measurement has to be above zero',
+        )
+        expect(heard()).toContain('One individual unit holds (g):')
+
+        await box(wrapper, '#field-food-nf-unit-content').setValue('140')
+        await nextTick()
+        expect(heard(), 'an answered field stops being said').not.toContain(
+          'One individual unit holds',
+        )
+        expect(heard()).toContain('Reference amount:')
+      })
+
+      it('does not say anything about a box left empty', async () => {
+        // A blank is an answer the regulation permits, and announcing it as a
+        // refusal would be reporting a label, aloud, for declining to state
+        // something.
+        const { wrapper } = await mountFood()
+        await box(wrapper, '#field-food-nf-package-content').setValue('100')
+        await box(wrapper, '#field-food-nf-package-content').setValue('')
+        await nextTick()
+        expect(wrapper.get('[aria-live]').text()).not.toContain(
+          'A measurement has to be above zero',
+        )
       })
 
       it('lets go of the refusal as soon as a figure is accepted', async () => {

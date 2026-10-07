@@ -15,6 +15,7 @@
 import { ANCHORS, type Anchor, UPC_A_ELEMENTS } from '@packwright/label-core'
 import { computed } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
+import { useAnnouncement } from '../stores/announcer'
 import EditorSection from './EditorSection.vue'
 import BarcodeScanner from './BarcodeScanner.vue'
 import FormField from './ui/FormField.vue'
@@ -174,6 +175,22 @@ const serial = optionalText('serial')
 const expiry = optionalText('expiry')
 
 const select = (elementId: string) => store.select(elementId)
+
+/**
+ * What a scan did, said once through the application's announcer.
+ *
+ * The same two cases the field's description shows: a symbol refused, with
+ * what was read and why, and one taken with a caveat. Said rather than left to
+ * the description, because the description appears in the same render as the
+ * scan and a region that is created full is usually not announced. Typing
+ * clears the scan, which clears the line.
+ */
+useAnnouncement('gtin-scan', () => {
+  const scan = store.lastScan
+  if (scan === null) return ''
+  if (!scan.ok) return `${scan.scanned} was not taken: ${scan.reason}`
+  return scan.note ?? ''
+})
 </script>
 
 <template>
@@ -191,7 +208,6 @@ const select = (elementId: string) => store.select(elementId)
         label="GTIN-12, as printed on the pack"
         identifier
         :invalid="!gtinIsComplete"
-        :live="store.lastScan !== null"
         inputmode="numeric"
         maxlength="12"
         autocomplete="off"
@@ -206,16 +222,13 @@ const select = (elementId: string) => store.select(elementId)
           passes it, and becomes a structurally valid GTIN naming a different
           article with nothing said.
 
-          `live` is conditional, and that is a compromise rather than a design.
-          The region is created in the same render as the text it carries, which
-          is weak — a screen reader has nothing to observe changing. Making it
-          unconditional fixes the announcement and gives the editor a second
-          always-present `aria-live` region, which the app deliberately does not
-          have: the findings rail carries the only one, and
-          `the-responsive-collapse.spec.ts` asserts exactly that. The original
-          markup had the same weakness and this keeps it rather than trading it
-          for a broken invariant. `docs/BACKLOG.md` records what closing it
-          properly would take.
+          What a scan did is said aloud through the announcer — see
+          the `useAnnouncement('gtin-scan', …)` call in the script — and shown here. The note was once a live region of
+          its own, created in the same render as its text, so a screen reader had
+          nothing to observe changing and the refusal usually went unheard.
+          Making it always present instead would have put a second region beside
+          the findings summary. The description is now only a description; the
+          announcer, which was already listening, does the saying.
         -->
         <template v-if="store.lastScan && !store.lastScan.ok" #description>
           <p class="text-caution text-xs">

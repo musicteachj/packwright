@@ -170,3 +170,42 @@ describe('attaching to a saved label', () => {
     expect(store.labelType).toBe('ghs-chemical')
   })
 })
+
+describe('a scan belongs to the document it was made on', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('is forgotten when another label is opened', () => {
+    // Nothing cleared it, so a refusal left from the last label was shown on
+    // the next — and once scans were said through the announcer, read out
+    // beside the new label's findings as though it were about them. Found by
+    // review of that change.
+    const store = useLabelDocumentStore()
+    store.applyScan('4006381333931')
+    expect(store.lastScan?.ok).toBe(false)
+
+    store.loadSaved(A_SAVED_LABEL)
+    expect(store.lastScan).toBeNull()
+  })
+
+  it('is forgotten when an audited label is handed over, which opens the same way', () => {
+    const store = useLabelDocumentStore()
+    store.applyScan('4006381333931')
+    store.loadUnsaved({
+      labelType: 'gs1-retail',
+      stock: A_SAVED_LABEL.stock,
+      data: A_SAVED_LABEL.data,
+    })
+    expect(store.lastScan).toBeNull()
+  })
+
+  it('is kept across a switch of label type, because the document is still the same one', () => {
+    // Switching to food and back holds the same retail document, so a note
+    // about its GTIN field is still true of it. Clearing it here would be
+    // tidier and would drop something accurate.
+    const store = useLabelDocumentStore()
+    store.applyScan('4006381333931')
+    store.labelType = 'us-food'
+    store.labelType = 'gs1-retail'
+    expect(store.lastScan?.ok).toBe(false)
+  })
+})

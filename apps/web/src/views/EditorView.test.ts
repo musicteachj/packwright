@@ -6,6 +6,7 @@ import { nextTick } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
 import { testRouter } from './editorTestRouter'
+import { withAnnouncer } from './withAnnouncer'
 
 /**
  * The signature interaction, tested rather than asserted.
@@ -21,7 +22,9 @@ import { testRouter } from './editorTestRouter'
 Element.prototype.scrollIntoView = vi.fn()
 
 function mountEditor() {
-  return mount(EditorView, { global: { plugins: [testRouter()], stubs: { RouterLink: true } } })
+  return mount(withAnnouncer(EditorView), {
+    global: { plugins: [testRouter()], stubs: { RouterLink: true } },
+  })
 }
 
 describe('the editor', () => {
@@ -305,9 +308,18 @@ describe('pasting a barcode into the GTIN field', () => {
     // a single entry here only because `FormField` emits one.
     const note = wrapper.find(`#${describedBy!.split(' ')[0]}`)
     expect(note.exists(), 'and that note must be in the document').toBe(true)
-    expect(note.attributes('aria-live')).toBe('polite')
     expect(note.text(), 'saying which scan was refused').toContain('4006381333931')
     expect(store.lastScan?.ok).toBe(false)
+
+    // Heard through the announcer, not through the note. The note was its own
+    // live region once, created in the same render as its text, which a screen
+    // reader does not announce — so the refusal this test is named for was
+    // shown and, in practice, silent. Now it is said in the region that was
+    // already listening, and the note only describes.
+    expect(note.attributes('aria-live'), 'the note is not a region of its own').toBeUndefined()
+    const regions = wrapper.findAll('[aria-live]')
+    expect(regions, 'one region, and it is the announcer').toHaveLength(1)
+    expect(regions[0]!.text()).toContain('4006381333931 was not taken')
   })
 
   it('clears the note once the field is typed in', async () => {
@@ -332,6 +344,10 @@ describe('pasting a barcode into the GTIN field', () => {
     const note =
       describedBy === undefined ? '' : wrapper.find(`#${describedBy.split(' ')[0]}`).text()
     expect(note, 'the refused scan is no longer named').not.toContain('4006381333931')
+    expect(
+      wrapper.get('[aria-live]').text(),
+      'and no longer said: the line goes with the scan',
+    ).not.toContain('4006381333931')
   })
 
   it('refuses a GTIN-13 and shows the reason', async () => {
@@ -414,7 +430,7 @@ describe('opening a saved label from the route', () => {
 
     const router = testRouter('/labels/abc123')
     await router.isReady()
-    const wrapper = mount(EditorView, {
+    const wrapper = mount(withAnnouncer(EditorView), {
       global: { plugins: [router], stubs: { RouterLink: true } },
     })
     await nextTick()
@@ -454,21 +470,21 @@ describe('opening a saved label from the route', () => {
   it('says what it is doing rather than showing an empty frame', async () => {
     const { wrapper, land } = await openDeferred()
 
-    const status = wrapper.find('[role="status"]')
-    expect(status.exists(), 'a wait a user can read').toBe(true)
-    expect(status.text()).toContain('Opening')
+    const heard = wrapper.get('[aria-live]')
+    expect(heard.text(), 'a wait a user can hear').toContain('Opening')
 
     land()
     await flushPromises()
 
-    // Not `[role="status"]` absent — that region is the findings rail's own,
-    // and it never leaves; saying the wait is one of the things it says. The
-    // claim is that the wait is over.
+    // Not the region absent — it is the application's announcer and it never
+    // leaves; saying the wait is one of the things it says. The claim is that
+    // the wait is over, in what is heard and in what is shown.
+    expect(heard.text()).not.toContain('Opening this label')
     expect(wrapper.text()).not.toContain('Opening this label')
   })
 
   it('waits for the label it was last asked for, not the first one to arrive', async () => {
-    // Why `opening` holds an id rather than a boolean. Two route changes can
+    // Why `opening` holds the request rather than a boolean. Two route changes can
     // overlap — the saved-labels list makes that a double click — and a
     // `finally` clearing a flag would let the first read to land declare the
     // second one finished, putting the wrong label on screen under the right
@@ -489,7 +505,7 @@ describe('opening a saved label from the route', () => {
 
     const router = testRouter('/labels/abc123')
     await router.isReady()
-    const wrapper = mount(EditorView, {
+    const wrapper = mount(withAnnouncer(EditorView), {
       global: { plugins: [router], stubs: { RouterLink: true } },
     })
     await nextTick()
@@ -536,7 +552,7 @@ describe('opening a saved label from the route', () => {
     const landings = deferredByLabel()
     const router = testRouter('/labels/abc123')
     await router.isReady()
-    const wrapper = mount(EditorView, {
+    const wrapper = mount(withAnnouncer(EditorView), {
       global: { plugins: [router], stubs: { RouterLink: true } },
     })
     await nextTick()
@@ -566,7 +582,7 @@ describe('opening a saved label from the route', () => {
     const landings = deferredByLabel()
     const router = testRouter('/labels/abc123')
     await router.isReady()
-    const wrapper = mount(EditorView, {
+    const wrapper = mount(withAnnouncer(EditorView), {
       global: { plugins: [router], stubs: { RouterLink: true } },
     })
     await nextTick()
@@ -607,7 +623,7 @@ describe('opening a saved label from the route', () => {
 
     const router = testRouter('/labels/abc123')
     await router.isReady()
-    const wrapper = mount(EditorView, {
+    const wrapper = mount(withAnnouncer(EditorView), {
       global: { plugins: [router], stubs: { RouterLink: true } },
     })
     await nextTick()
@@ -643,7 +659,7 @@ describe('opening a saved label from the route', () => {
     const landings = deferredByLabel()
     const router = testRouter('/labels/abc123')
     await router.isReady()
-    const wrapper = mount(EditorView, {
+    const wrapper = mount(withAnnouncer(EditorView), {
       global: { plugins: [router], stubs: { RouterLink: true } },
     })
     await nextTick()
@@ -682,7 +698,7 @@ describe('opening a saved label from the route', () => {
     const landings = deferredByLabel()
     const router = testRouter('/labels/abc123')
     await router.isReady()
-    const wrapper = mount(EditorView, {
+    const wrapper = mount(withAnnouncer(EditorView), {
       global: { plugins: [router], stubs: { RouterLink: true } },
     })
     await nextTick()
@@ -704,11 +720,42 @@ describe('opening a saved label from the route', () => {
     expect(region.textContent).toContain('checks passed')
   })
 
+  it('does not say a scan from the last label over the next one', async () => {
+    // A refusal is about the document it was made on. Nothing cleared it when
+    // another label opened, so the GTIN field — remounted when the wait ended —
+    // said "… was not taken" again beside the new label's findings, as if it
+    // were about them. Found by review of the announcer change.
+    const landings = deferredByLabel()
+    const router = testRouter('/labels/abc123')
+    await router.isReady()
+    const wrapper = mount(withAnnouncer(EditorView), {
+      global: { plugins: [router], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+    landings.get('abc123')!()
+    await flushPromises()
+
+    await wrapper.find('#field-gtin').trigger('paste', {
+      clipboardData: { getData: () => '4006381333931' },
+    })
+    await nextTick()
+    expect(wrapper.get('[aria-live]').text()).toContain('4006381333931 was not taken')
+
+    await router.push('/labels/def456')
+    await nextTick()
+    landings.get('def456')!()
+    await flushPromises()
+
+    expect(useLabelDocumentStore().savedId).toBe('def456')
+    expect(wrapper.get('[aria-live]').text(), 'not said').not.toContain('4006381333931')
+    expect(wrapper.text(), 'and not shown either').not.toContain('4006381333931 was not taken')
+  })
+
   it('keeps exactly one live region while it waits', async () => {
-    // The findings rail carries the only `aria-live` region in the application
-    // and `e2e/the-responsive-collapse.spec.ts` asserts exactly one is
-    // perceivable at every width. A wait that adds a second would break that in
-    // a state no test visits — which is the worst way for an invariant to go.
+    // The editor speaks through the application's one announcer, and
+    // `e2e/the-responsive-collapse.spec.ts` asserts the summary is heard exactly
+    // once at every width. A wait that adds a region of its own would break that
+    // in a state no test visits — which is the worst way for an invariant to go.
     const { wrapper, land } = await openDeferred()
     expect(wrapper.findAll('[aria-live]')).toHaveLength(1)
 

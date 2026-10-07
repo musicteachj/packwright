@@ -10,6 +10,45 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The application says what it has to say about a label once, through one announcer.** A screen reader
+  announces a *change* to a live region it is already observing, and a region created with its text already
+  in it usually says nothing. Four recorded defects were that shape or its opposite, and the last of them was
+  measured on `dev` before any of this was written: on a narrow screen showing Checks, two regions were
+  perceivable at once — the findings rail's and the editor's narrow-only copy — saying the same counts in two
+  wordings, "0 findings, 6 checks passed." and "All 6 checks passed.". The spec asserting exactly one region
+  only ever looked at the default pane, which is why it passed throughout.
+
+  `stores/announcer.ts` now holds one line per concern, and `LiveAnnouncer.vue`, mounted once in `App.vue`
+  outside the router view, renders them in a single polite region that no route or pane can unmount. A
+  concern's line changes in place, so a change is heard and an unchanged count is not read out again; a line
+  goes when the component that said it does. The region is deliberately not `role="status"`, whose implied
+  `aria-atomic` would re-read every line whenever any one changed. The rail's own region and the editor's
+  narrow-only one are gone, and the second wording with them.
+
+  **The invariant changes its wording, and becomes true.** "Exactly one live region" was never so: with the
+  barcode scanner open there were two, measured. The rule is now that everything said about the document goes
+  through the announcer, and a widget the user opens — the scanner, the audit camera — may keep a status line
+  about itself. `e2e/the-responsive-collapse.spec.ts` asserts what matters to someone listening: the summary is
+  heard exactly once, at both widths and on every narrow pane. Putting the narrow-only region back fails it
+  with the two wordings side by side.
+
+  **What a field has to say goes the same way, and two things that were shown but not heard now are.** The
+  GTIN's scan note was a live region switched on by the scan and created full in the same render, so a
+  refused paste was, in practice, silent — and once a scan had run it was perceivable beside the summary on
+  the narrow Form pane, which the review of this change raised before anything else had. The three refused
+  measurements were never live at all. Both now say their piece through the announcer on a line of their
+  own, the refusals with their field named because they are heard away from the box they are about, and the
+  descriptions beside the fields go back to only describing. `live` is removed from `FormField` and the three
+  controls built on it rather than left unused: it existed for the GTIN note, and the shape it offered — a
+  description that is also a live region — cannot work.
+
+  **Saying the scan aloud made an old defect audible, so it is fixed too.** Nothing cleared the last scan when
+  another label was opened, so a refusal from one label was shown on the next; it had been shown silently,
+  and through the announcer it would have been read out beside the new label's findings as though it were
+  about them. Found by review. `loadSaved` now forgets the scan, and the audit hand-off goes through it. A
+  switch of label type does not, deliberately — the retail document is still the one held, and the note is
+  still true of it.
+
 - **A numeric field that refuses a figure now says so, instead of disagreeing with the document in
   silence.** The three fields backing 21 CFR 101.9(b)(12)(i) and (b)(2)(i)(D) — the reference amount, what
   the whole package holds, what one unit holds — require a figure above zero, and are right to:

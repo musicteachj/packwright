@@ -10,8 +10,8 @@
  * second markup copy that can drift from what the rails actually ship.
  *
  * Its second job is why it exists before any rail was migrated onto these
- * components. Every awkward call site in this app — a hidden label, a live
- * region on an invalid field, a control with no `v-model` at all — lives in
+ * components. Every awkward call site in this app — a hidden label, an invalid
+ * field whose description is markup, a control with no `v-model` at all — lives in
  * `UsFoodFormRail.vue` or `UpcAFormRail.vue`, the two rails still to be
  * migrated. Showing only the tidy cases here would prove nothing about whether
  * the component API survives contact with either of them, so this page renders
@@ -84,9 +84,9 @@ const magnification = ref(1)
           </p>
           <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
             It renders the awkward variants on purpose, not only the pretty ones: a label that is
-            named but not shown, a field that is invalid and carries a live region, and a control
-            with no <span class="numeric text-chrome-200">v-model</span> to bind at all. Every one
-            of those shapes has a real call site in
+            named but not shown, a field that is invalid and explains itself in markup, and a
+            control with no <span class="numeric text-chrome-200">v-model</span> to bind at all.
+            Every one of those shapes has a real call site in
             <span class="numeric text-chrome-200">UsFoodFormRail.vue</span> or
             <span class="numeric text-chrome-200">UpcAFormRail.vue</span> — the last rails left to
             migrate — so this page has to meet its hardest consumer before either of them does.
@@ -191,8 +191,10 @@ const magnification = ref(1)
               GTIN entry, mirroring its real shape in `UpcAFormRail.vue`: an
               identifier rather than prose, so it keeps the mono face; invalid,
               so the border takes `danger-edge`; and a description that is
-              markup — a coloured, live-announced paragraph — rather than a
-              static string. Building this entry is what found two gaps: the
+              markup — a coloured paragraph — rather than a static string. It
+              is not a live region: what a scan did is said aloud through the
+              application's announcer, and a description created full is not
+              heard. Building this entry is what found two gaps: the
               controls were dropping a `description` slot on the floor, and
               there was no way to ask for a text field in the identifier face at
               all.
@@ -203,7 +205,6 @@ const magnification = ref(1)
               label="GTIN-12"
               identifier
               invalid
-              live
               inputmode="numeric"
               maxlength="12"
               autocomplete="off"

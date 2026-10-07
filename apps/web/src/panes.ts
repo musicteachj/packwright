@@ -37,7 +37,9 @@ export const DEFAULT_EDITOR_PANE: EditorPane = 'preview'
  * three `tabpanel`s and no visible `tab` owning them, and a narrow one had its
  * only `aria-live` region inside a pane that was `display:none`. Both were
  * measured in a browser rather than argued about — zero visible tabs against
- * three visible panels, and a live region with no client rects.
+ * three visible panels, and a live region with no client rects. The second no
+ * longer turns on this query: everything the editor says goes through the
+ * announcer at the application root, which no pane can hide.
  *
  * 1023.98px rather than 1023px, because a viewport can be fractional on a
  * scaled display and `max-width: 1023px` leaves 1023.5 matching neither this nor

@@ -96,8 +96,20 @@ test('reads a photographed label and judges it with a cited rule', async ({ page
   // confirmed, and one field was read and left alone.
   await expect(page.locator('[data-test="unconfirmed"]')).toContainText('Hazard statements')
 
-  // One live region on the page, not two announcing over each other.
-  await expect(page.locator('[aria-live]')).toHaveCount(1)
+  // Nothing announcing over anything else. This counted `[aria-live]` nodes and
+  // asserted one, which stopped meaning anything when the application's
+  // announcer moved to the root: the page now has the camera's status line and
+  // the announcer, and the count is two whatever either says. The property was
+  // always about speech — the report's rail is told not to talk while the camera
+  // is — so that is what is read: one region with something to say, and it is
+  // the capture status.
+  const speaking = await page.evaluate(() =>
+    [...document.querySelectorAll('[aria-live]')]
+      .filter((el) => (el.textContent ?? '').trim() !== '')
+      .map((el) => el.getAttribute('data-capture-state') ?? 'not the capture status'),
+  )
+  expect(speaking, 'only the camera is saying anything').toHaveLength(1)
+  expect(speaking[0], 'and it is the camera').not.toBe('not the capture status')
 })
 
 test('hands the confirmed label to the editor without saving it', async ({ page }) => {
