@@ -285,31 +285,39 @@ const supplierTelephone = computed({
         </span>
       </p>
 
-      <div v-for="group in hazardGroups" :key="group.part" class="flex flex-col gap-1">
-        <h4 class="text-chrome-400 mt-2 text-xs font-semibold tracking-wide uppercase">
-          {{ group.name }}
-        </h4>
-        <CheckboxField
-          v-for="entry in group.entries"
-          :id="`field-hazard-${entry.id}`"
-          :key="entry.id"
-          :checked="hazards.includes(entry.id)"
-          :label="hazardLabel(entry)"
-          @change="toggleHazard(entry.id, ($event.target as HTMLInputElement).checked)"
-        >
-          <!--
+      <!--
+        One id for the whole classification, so a check waiting on it can bring
+        a user here; `DECLINED_FACT_FIELDS` names it, and focus lands on the
+        first hazard class inside. `gap-3` because these groups were spaced by
+        `EditorSection`'s own `gap-3` before this wrapper came between them.
+      -->
+      <div id="field-ghs-classification" class="flex flex-col gap-3">
+        <div v-for="group in hazardGroups" :key="group.part" class="flex flex-col gap-1">
+          <h4 class="text-chrome-400 mt-2 text-xs font-semibold tracking-wide uppercase">
+            {{ group.name }}
+          </h4>
+          <CheckboxField
+            v-for="entry in group.entries"
+            :id="`field-hazard-${entry.id}`"
+            :key="entry.id"
+            :checked="hazards.includes(entry.id)"
+            :label="hazardLabel(entry)"
+            @change="toggleHazard(entry.id, ($event.target as HTMLInputElement).checked)"
+          >
+            <!--
             The `label` prop above is still the accessible name — this slot only
             sets the same words differently. A hazard class number and a
             pictogram code are identifiers, so they take the mono face; the
             description between them is prose and does not.
           -->
-          <span class="numeric text-chrome-400">{{ entry.section }}</span>
-          {{ entry.description }}
-          <span v-if="entry.pictogram" class="numeric text-chrome-200">
-            → {{ entry.pictogram }}
-          </span>
-          <span v-else class="text-chrome-400">→ no pictogram</span>
-        </CheckboxField>
+            <span class="numeric text-chrome-400">{{ entry.section }}</span>
+            {{ entry.description }}
+            <span v-if="entry.pictogram" class="numeric text-chrome-200">
+              → {{ entry.pictogram }}
+            </span>
+            <span v-else class="text-chrome-400">→ no pictogram</span>
+          </CheckboxField>
+        </div>
       </div>
     </EditorSection>
 

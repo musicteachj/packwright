@@ -35,6 +35,7 @@ const mountRail = (over: Record<string, unknown> = {}) =>
           ruleId: 'ghs/pictograms',
           reason: 'State a classification.',
           citation: { reference: '1.2' },
+          wants: ['hazards'],
         },
       ],
       selectedElementId: null,
@@ -277,5 +278,50 @@ describe('an explanation the engine shares is said once', () => {
       uncertifiable: [pictogram('GHS02', 'flame'), pictogram('GHS07', 'exclamation mark')],
     })
     expect(heard()[0]).toContain('2 elements could not be checked')
+  })
+})
+
+describe('a check that did not run links to what would let it run', () => {
+  const foodDecline = {
+    ruleId: 'us-food/dual-column-required',
+    reason: 'This label has not stated everything 101.9(b)(12)(i) turns on.',
+    citation: { reference: '21 CFR 101.9(b)(12)(i)' },
+    wants: ['nutritionFacts.referenceAmount', 'nutritionFacts.packagedAndSoldIndividually'],
+  }
+
+  it('offers one control per fact, named as the field is', () => {
+    // The reason names the facts in prose and the user had to go and find
+    // them. Each one is a control now, carrying the name the form gives it.
+    const block = blockNamed(mountRail({ declined: [foodDecline] }), 'Checks that did not run')
+    const controls = block.findAll('button')
+    expect(controls.map((c) => c.text())).toEqual([
+      'Reference amount',
+      'Packaged and sold individually',
+    ])
+  })
+
+  it('says which fact was asked for, not which element of the form holds it', async () => {
+    // The rail is shared with the audit view and knows nothing of the editor's
+    // form; it hands back the fact, and whoever owns the form finds the field.
+    const rail = mountRail({ declined: [foodDecline] })
+    await blockNamed(rail, 'Checks that did not run').findAll('button')[1]!.trigger('click')
+    expect(rail.emitted('state')).toEqual([['nutritionFacts.packagedAndSoldIndividually']])
+  })
+
+  it('offers nothing to follow where there is no form to follow it to', () => {
+    // The audit view: a photograph, confirmed field by field, and no rail of
+    // inputs. A control that went nowhere would be worse than the prose alone.
+    const block = blockNamed(
+      mountRail({ declined: [foodDecline], stateable: false }),
+      'Checks that did not run',
+    )
+    expect(block.findAll('button')).toHaveLength(0)
+  })
+
+  it('takes no severity colour, because nothing here is a verdict', () => {
+    const block = blockNamed(mountRail({ declined: [foodDecline] }), 'Checks that did not run')
+    for (const control of block.findAll('button')) {
+      expect(control.classes().join(' ')).not.toMatch(/text-(danger|warning|caution|notice|pass)\b/)
+    }
   })
 })

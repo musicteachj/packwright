@@ -805,21 +805,23 @@ the same way, so they call one builder now. The audit's copy had left out the ov
 purpose, since an audit layout has no symbols — an earlier draft of this entry called that drift, which a
 review corrected by quoting the comment that said why.
 
-**"Checks that did not run" names facts a user could state and cannot link to any of them.** The US food
-decline says the label has not stated "a reference amount, what the whole package holds, and whether it is
-packaged and sold individually" — three fields that exist, with ids, a few hundred pixels away in the form
-rail. Turning that into a list that links to each is this application's own best idea, the finding → canvas
-→ form link, applied where it would pay most.
+**~~"Checks that did not run" names facts a user could state and cannot link to any of them.~~ Fixed.**
+`Decline` carries `wants`: the facts the label has not stated, named as paths into its own data
+(`nutritionFacts.referenceAmount`) rather than as anything of the interface's, from a closed union. The web
+app maps each to the field that states it in a `Record` over that union, so a fact without a field is a
+compile error; a test renders each declining state and checks every field asked for is on the page. Each
+check that did not run now offers a control per fact, and following one shows the Form pane on a narrow
+screen and focuses the field.
 
-It is not possible today. `Decline` is `{ reason: string, citation?: Citation }` — there is nothing saying
-which fields a check is waiting on, and the rail cannot infer them from prose without guessing. Closing it
-means extending `Decline` to carry the field ids a check wants, which is a change in
-`packages/label-core/src/rules/types.ts` and therefore a change in `rules/`.
-
-**Both are deferred for the same reason, and it is about the review rung rather than the effort.** A pull
-request touching `rules/` takes `/code-review high` under the ladder. Stage 2 was a UI change reviewed at
-`medium`; folding an engine change into it would carry `rules/` past the rung that exists for it. They are
-one stage of their own, scoped as `label-core` work from the start.
+**Writing the test that holds a decline to its word found the word broken.** `Decline.reason` promises that
+doing what it says makes the check run. For a second column counting the individual unit, two rules told
+the user to state the reference amount, what the package holds and whether it is packaged and sold
+individually — and (b)(2)(i)(D) reads the reference amount and the *unit* content, nothing of the package. An
+existing fixture reached it: a label that had stated all three package facts was asked for all three again,
+and could never make the check run. The duty computation now reports what each provision is still missing
+from the same `stated` test it decides with, each rule names its own provision's facts, and the "State …"
+sentence is built from that list, so the instruction and the links cannot disagree. `rules.test.ts` follows
+every decline's ask until the rule runs.
 
 ## From the stage 1 rail migrations
 

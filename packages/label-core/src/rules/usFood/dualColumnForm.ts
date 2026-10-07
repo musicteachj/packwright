@@ -51,7 +51,7 @@ import {
 } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
 import type { DualColumnBasis, DualColumnDuty } from '../../fda/nutritionFormats'
-import { dualColumnDutyFor } from './mandatoryColumns'
+import { asDeclinedFacts, dualColumnDutyFor, PROVISION_FOR, stateThese } from './mandatoryColumns'
 import { MM_PER_POINT } from '../../geometry/units'
 
 export const FDA_DUAL_COLUMN_HEADINGS_MISSING = 'FDA_DUAL_COLUMN_HEADINGS_MISSING'
@@ -134,6 +134,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
           'The panel draws a second column and the label does not say what it counts, so which ' +
           'paragraph of 101.9(e) governs its form — or whether any does — cannot be told. State ' +
           'what the second column counts and this check will run.',
+        wants: ['nutritionFacts.columns.basis'],
       }
     }
 
@@ -147,15 +148,22 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     // any rule at all. Silence is right where no provision governs; here the
     // question is answerable and unanswered.
     if (basis !== 'per-container' && basis !== 'per-unit') return undefined
-    const { standing } = dualColumnDutyFor(data, stock)
+    const { standing, unstated } = dualColumnDutyFor(data, stock)
     if (standing[basis] !== 'undetermined') return undefined
+    // The facts of the provision this column's basis answers to, and only the
+    // ones not yet stated. It said "the reference amount, what the package holds
+    // and whether it is packaged and sold individually" for every basis, and for
+    // a per-unit column — whose provision reads the unit content and nothing of
+    // the package — a user who did exactly that was left where they started.
+    // `rules.test.ts` now follows every decline's ask to the check running.
     return {
       reason:
         'The panel draws a second column counting the ' +
         `${basis === 'per-container' ? 'whole package' : 'individual unit'}, and whether ` +
-        '101.9(b)(12)(i) or (b)(2)(i)(D) requires it cannot be told from what the label states ' +
-        '— so whether 101.9(e)(6) governs its form cannot be told either. State the reference ' +
-        'amount, what the package holds and whether it is packaged and sold individually.',
+        `${PROVISION_FOR[basis]} requires it cannot be told from what the label states — so ` +
+        'whether 101.9(e)(6) governs its form cannot be told either. ' +
+        `${stateThese(unstated[basis])} and this check will run.`,
+      wants: asDeclinedFacts(unstated[basis]),
     }
   },
 

@@ -16,7 +16,8 @@
  */
 
 import { dualColumnDuty, smallPackageRouteApplies } from '../../fda/nutritionFormats'
-import type { DualColumnDuty } from '../../fda/nutritionFormats'
+import type { DualColumnDuty, DualColumnFact } from '../../fda/nutritionFormats'
+import type { DeclinedFact } from '../types'
 import { labelingSurfaceFloor } from '../../geometry/pdp'
 import type { LabelStock } from '../../templates/stock'
 import type { UsFoodLabelData } from '../../templates/usFood'
@@ -30,7 +31,13 @@ import type { UsFoodLabelData } from '../../templates/usFood'
 export function dualColumnDutyFor(data: UsFoodLabelData, stock: LabelStock): DualColumnDuty {
   const panel = data.nutritionFacts
   if (panel === undefined) {
-    return { standing: { 'per-container': 'undetermined', 'per-unit': 'undetermined' } }
+    return {
+      standing: { 'per-container': 'undetermined', 'per-unit': 'undetermined' },
+      unstated: {
+        'per-container': ['referenceAmount', 'packageContent', 'packagedAndSoldIndividually'],
+        'per-unit': ['referenceAmount', 'unitContent'],
+      },
+    }
   }
 
   // (A) turns on entitlement — "products that **meet the requirements to use**
@@ -65,4 +72,44 @@ export function dualColumnDutyFor(data: UsFoodLabelData, stock: LabelStock): Dua
       : { variedWeight: panel.dualColumnExemption.variedWeight }),
     meetsSmallPackageRequirements,
   })
+}
+
+/**
+ * A provision's missing facts, as the paths a decline names them by.
+ *
+ * `fda/` speaks of `DualColumnInput`'s own fields; a decline speaks of the
+ * label's data, where those fields sit under `nutritionFacts`.
+ */
+export const asDeclinedFacts = (facts: readonly DualColumnFact[]): DeclinedFact[] =>
+  facts.map((fact) => `nutritionFacts.${fact}` as const)
+
+/** What each fact is called when a user is asked to state it. */
+const FACT_NAMES: Readonly<Record<DualColumnFact, string>> = {
+  referenceAmount: 'the reference amount',
+  packageContent: 'what the whole package holds',
+  unitContent: 'what one individual unit holds',
+  packagedAndSoldIndividually: 'whether it is packaged and sold individually',
+}
+
+/**
+ * "State the reference amount and what one individual unit holds" — the
+ * instruction a decline ends on, built from the same facts it names in `wants`.
+ *
+ * Written by hand in each rule, the instruction had drifted from what the rule
+ * needed: two rules told a user with a per-unit column to state the package's
+ * facts, which (b)(2)(i)(D) does not read, so somebody who did exactly as told
+ * was left with the check still standing down. Generated from the list, the
+ * words and the links beneath them cannot disagree.
+ */
+export function stateThese(facts: readonly DualColumnFact[]): string {
+  const names = facts.map((fact) => FACT_NAMES[fact])
+  const list =
+    names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+  return `State ${list}`
+}
+
+/** The provision that decides whether a mandatory column on this basis is owed. */
+export const PROVISION_FOR: Readonly<Record<'per-container' | 'per-unit', string>> = {
+  'per-container': '101.9(b)(12)(i)',
+  'per-unit': '101.9(b)(2)(i)(D)',
 }

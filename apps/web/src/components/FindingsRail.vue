@@ -17,11 +17,12 @@
  * showing Checks it sat beside the editor's own copy of the same counts, worded
  * differently — the reader heard both. See `stores/announcer.ts`.
  */
-import type { Finding, Severity } from '@packwright/label-core'
+import type { DeclinedFact, Finding, Severity } from '@packwright/label-core'
 import { computed } from 'vue'
 import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
 import { useAnnouncement } from '../stores/announcer'
 import type { Uncheckable } from '../uncheckable'
+import { DECLINED_FACT_FIELDS } from '../declinedFacts'
 import FindingItem from './FindingItem.vue'
 
 const props = withDefaults(
@@ -38,7 +39,12 @@ const props = withDefaults(
      * not draw. These are questions nobody answered, and each reason ends by
      * naming what to state.
      */
-    declined?: ReadonlyArray<{ ruleId: string; reason: string; citation: { reference: string } }>
+    declined?: ReadonlyArray<{
+      ruleId: string
+      reason: string
+      citation: { reference: string }
+      wants?: readonly DeclinedFact[]
+    }>
     selectedElementId: string | null
     /**
      * The id this rail's heading takes, so two of them can share a page.
@@ -62,6 +68,11 @@ const props = withDefaults(
     /** Passed through: false where there is no canvas for a selection to reach. */
     selectable?: boolean
     /**
+     * Whether a check that did not run links to the fields that would let it.
+     * Off where there is no form to link to — the audit view.
+     */
+    stateable?: boolean
+    /**
      * The label is still being fetched, so nothing here is about it yet.
      *
      * A prop rather than the caller unmounting the rail. The editor's first wait
@@ -81,6 +92,7 @@ const props = withDefaults(
     // said so immediately. A flag whose safe value is "on" has to say so here.
     announce: true,
     selectable: true,
+    stateable: true,
     pending: false,
   },
 )
@@ -102,7 +114,11 @@ const notRunHeadingId = computed(() =>
   props.headingId === 'findings-heading' ? 'not-run-heading' : `${props.headingId}-not-run`,
 )
 
-defineEmits<{ select: [elementId: string | undefined] }>()
+defineEmits<{
+  select: [elementId: string | undefined]
+  /** A fact a check that did not run is waiting for. The owner of the form finds its field. */
+  state: [fact: DeclinedFact]
+}>()
 
 const failureGroups = computed(() => props.groups.filter(([severity]) => severity !== 'pass'))
 
@@ -380,6 +396,27 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
           <p class="text-chrome-200 text-sm leading-snug">{{ item.reason }}</p>
           <p class="numeric text-chrome-400 mt-1 text-xs">
             {{ item.citation.reference }}
+          </p>
+          <!--
+            What would let it run, each a control. The reason names these in
+            prose; the controls take a user to them. Neutral like everything else
+            in this block — underlined for a link, never a severity's colour,
+            because nothing here is a verdict.
+          -->
+          <p
+            v-if="stateable && item.wants?.length"
+            class="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs"
+          >
+            <span class="text-chrome-400">State</span>
+            <button
+              v-for="fact in item.wants"
+              :key="fact"
+              type="button"
+              class="text-chrome-200 decoration-chrome-400 hover:text-chrome-100 focus-visible:outline-notice underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              @click="$emit('state', fact)"
+            >
+              {{ DECLINED_FACT_FIELDS[fact].name }}
+            </button>
           </p>
         </div>
       </section>

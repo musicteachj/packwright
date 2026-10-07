@@ -10,6 +10,28 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **A check that did not run names the facts it is waiting for, and links to each.** `Decline` gains `wants`:
+  the facts the label has not stated, as paths into its own data from a closed `DeclinedFact` union, so
+  `label-core` names `nutritionFacts.referenceAmount` and never a form's markup. The web app maps each fact
+  to the field that states it in a `Record` over that union — a fact with no field is a compile error — and a
+  test renders every declining state and checks the field asked for is on the page. Under each check that did
+  not run the rail offers a control per fact, neutral and underlined rather than in any severity's colour;
+  following one shows the Form pane on a narrow screen first, and focuses the field. The audit view, which has
+  no form, offers none.
+
+  **Holding a decline to its own promise found it broken.** `Decline.reason` says doing what it asks makes
+  the check run, and nothing checked. `rules.test.ts` now states what every decline wants, repeatedly, and
+  asserts the rule runs. For a second column counting the individual unit, `us-food/dual-column-form` and
+  `us-food/protein-percent` told the user to state the reference amount, the package content and whether it
+  is sold individually — but (b)(2)(i)(D) reads the reference amount and the unit content and nothing of the
+  package, so following the instruction left the check standing down. An existing fixture reached it with all
+  three package facts already stated. The duty computation now reports what each provision is still missing,
+  from the same `stated` test it decides with; each rule asks for its own provision's facts and names that
+  provision alone; and the "State …" sentence is generated from the same list, so the words and the controls
+  beneath them cannot disagree. The first draft of the test passed the defect too — a decline that asked for
+  nothing never entered its loop — and it now asserts the rule stopped standing down, not that the asks ran
+  out.
+
 - **A shared explanation is said once, because the engine now says which part of its sentence is shared.**
   On a GHS label the "cannot be checked" block printed the same forty-word explanation once per pictogram,
   differing only in the code and the symbol's name; five pictograms would have printed it five times.

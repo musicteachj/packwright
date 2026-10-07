@@ -39,7 +39,7 @@
 import { willDrawSecondColumn } from '../../layout/nutritionPanel'
 import { DUAL_COLUMN_BASIS_REFERENCE } from '../../fda/nutritionFormats'
 import type { DualColumnBasis, MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
-import { dualColumnDutyFor } from './mandatoryColumns'
+import { asDeclinedFacts, dualColumnDutyFor, stateThese } from './mandatoryColumns'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import type { Decline } from '../types'
@@ -164,9 +164,10 @@ export const usFoodDualColumnRule: UsFoodRule = {
       reason:
         'This label has not stated everything 101.9(b)(12)(i) turns on — a reference amount, ' +
         'what the whole package holds, and whether it is packaged and sold individually — so ' +
-        'whether a second column of nutrition information is required cannot be told. State ' +
-        'those three and this check will run. (b)(2)(i)(D) asks the same of an individual ' +
-        'unit, where the product has them.',
+        'whether a second column of nutrition information is required cannot be told. ' +
+        `${stateThese(duty.unstated['per-container'])} and this check will run. ` +
+        '(b)(2)(i)(D) asks the same of an individual unit, where the product has them.',
+      wants: asDeclinedFacts(duty.unstated['per-container']),
     }
   },
 

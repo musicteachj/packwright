@@ -341,7 +341,22 @@ export interface DualColumnDuty {
   percentOfReferenceAmount?: number
   /** Which paragraph excused it, where one did. */
   exemption?: string
+  /**
+   * What each provision is still waiting for — empty unless its standing is
+   * `undetermined`, and never empty when it is.
+   *
+   * Computed here, beside the `stated` test and the two `…Asked` predicates,
+   * because anywhere else is a second copy of them. A rule that stands down for
+   * want of these names them to the user; the rules that did it in prose named
+   * the package provision's facts for a per-unit column as well, whose
+   * provision does not read the package at all.
+   */
+  unstated: Readonly<Record<MandatoryDualColumnBasis, readonly DualColumnFact[]>>
 }
+
+/** A fact one of the two mandatory dual-column provisions turns on. */
+export type DualColumnFact =
+  'referenceAmount' | 'packageContent' | 'unitContent' | 'packagedAndSoldIndividually'
 
 export interface DualColumnInput {
   referenceAmount?: { amount: number }
@@ -467,11 +482,34 @@ export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
     'per-unit': standingOf(perUnit, perUnitAsked, exemption),
   } as const
 
-  if (basis === undefined) return { standing }
+  // The complement of each `…Asked`, fact by fact, from the same predicates.
+  // (b)(12)(i) wants the reference amount, the package content and whether it
+  // is sold individually; (b)(2)(i)(D) wants the reference amount and the unit
+  // content, and nothing about the package.
+  const missing = (facts: ReadonlyArray<[DualColumnFact, boolean]>) =>
+    facts.filter(([, isStated]) => !isStated).map(([fact]) => fact)
+  const unstated = {
+    'per-container': perContainerAsked
+      ? []
+      : missing([
+          ['referenceAmount', stated(referenceAmount)],
+          ['packageContent', stated(input.packageContent)],
+          ['packagedAndSoldIndividually', input.packagedAndSoldIndividually !== undefined],
+        ]),
+    'per-unit': perUnitAsked
+      ? []
+      : missing([
+          ['referenceAmount', stated(referenceAmount)],
+          ['unitContent', stated(input.unitContent)],
+        ]),
+  } as const
+
+  if (basis === undefined) return { standing, unstated }
 
   return {
     basis,
     standing,
+    unstated,
     percentOfReferenceAmount: perContainer ?? perUnit!,
     ...(exemption === undefined ? {} : { exemption }),
   }

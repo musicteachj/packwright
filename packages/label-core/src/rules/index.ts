@@ -11,6 +11,7 @@ export { LABEL_TYPES, SEVERITY_ORDER, citationsOf, compareSeverity } from './typ
 export type {
   Decline,
   DeclinedCheck,
+  DeclinedFact,
   GhsChemicalContext,
   GhsChemicalRule,
   Gs1RetailContext,

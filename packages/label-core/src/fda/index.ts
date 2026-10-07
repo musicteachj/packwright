@@ -59,6 +59,7 @@ export type { UnitContainerWording } from './unitContainerStatement'
 export type {
   DualColumnBasis,
   DualColumnDuty,
+  DualColumnFact,
   DualColumnInput,
   MandatoryDualColumnBasis,
   FormatEntitlement,
