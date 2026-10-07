@@ -39,3 +39,19 @@ export function omissionsForElement(layout: ResolvedLayout, elementId: string): 
 export function wasFullyDrawn(layout: ResolvedLayout, elementId: string): boolean {
   return omissionsForElement(layout, elementId).length === 0
 }
+
+/**
+ * An omission whose explanation other omissions share.
+ *
+ * The only way to build one, so `reason` and `explanation` cannot disagree: the
+ * sentence a reader is given is assembled from the two halves here, once.
+ */
+export function explainedOmission(omission: {
+  elementId: string
+  scope: LayoutOmission['scope']
+  what: string
+  why: string
+}): LayoutOmission {
+  const { elementId, scope, what, why } = omission
+  return { elementId, scope, reason: `${what} ${why}`, explanation: { what, why } }
+}

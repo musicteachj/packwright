@@ -10,6 +10,21 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **A shared explanation is said once, because the engine now says which part of its sentence is shared.**
+  On a GHS label the "cannot be checked" block printed the same forty-word explanation once per pictogram,
+  differing only in the code and the symbol's name; five pictograms would have printed it five times.
+  Shortening that in the rail meant the interface taking the engine's sentences apart and recomposing them,
+  which this project does not do to any text it reports. So `LayoutOmission` gains an optional
+  `explanation` — what is missing here, and why — and the only way to build one, `explainedOmission`,
+  assembles `reason` from the two halves so they cannot disagree. The rail groups on `why` as a whole string
+  and prints each element's own half above it; every word the engine wrote is still printed. No rule reads an
+  omission's text, so no verdict can move.
+
+  The "cannot be checked" list was assembled twice, in the editor's store and in the audit report, and both
+  had to change the same way, so they share one builder now. The audit's copy had left out the
+  overprinted-symbol half deliberately — an audit layout is GHS and has no symbols — and on one it still finds
+  nothing.
+
 - **The application says what it has to say about a label once, through one announcer.** A screen reader
   announces a *change* to a live region it is already observing, and a region created with its text already
   in it usually says nothing. Four recorded defects were that shape or its opposite, and the last of them was

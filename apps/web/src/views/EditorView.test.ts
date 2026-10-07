@@ -213,7 +213,7 @@ describe('the editor', () => {
     // Once. The store stated the overrun itself before the engine recorded it, and
     // kept doing so afterwards, so the rail listed one defect twice.
     const symbol = store.uncertifiable.find((item) => item.elementId === 'upca-symbol')
-    expect(symbol!.reasons.filter((reason) => reason.includes('past the'))).toHaveLength(1)
+    expect(symbol!.reasons.filter((reason) => reason.text.includes('past the'))).toHaveLength(1)
     expect(symbol!.reasons).toHaveLength(1)
   })
 

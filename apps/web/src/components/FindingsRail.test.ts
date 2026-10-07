@@ -29,7 +29,7 @@ const mountRail = (over: Record<string, unknown> = {}) =>
       ] as ReadonlyArray<[Severity, Finding[]]>,
       failures: [finding('violation', 'A'), finding('violation', 'B')],
       passes: [finding('pass', 'P')],
-      uncertifiable: [{ elementId: 'ghs02', reasons: ['No verified vector.'] }],
+      uncertifiable: [{ elementId: 'ghs02', reasons: [{ text: 'No verified vector.' }] }],
       declined: [
         {
           ruleId: 'ghs/pictograms',
@@ -227,5 +227,55 @@ describe('the rail’s summary, said aloud', () => {
     // to be heard beside.
     mountRail().unmount()
     expect(heard()).toEqual([])
+  })
+})
+
+describe('an explanation the engine shares is said once', () => {
+  const pictogram = (code: string, name: string) => ({
+    elementId: `ghs-pictograms-${code}`,
+    reasons: [
+      {
+        text: `The ${code} symbol (${name}) is not drawn. CLP Annex V requires the specimen.`,
+        explanation: {
+          what: `The ${code} symbol (${name}) is not drawn.`,
+          why: 'CLP Annex V requires the specimen.',
+        },
+      },
+    ],
+  })
+
+  it('prints each element’s own part, and the shared part once', () => {
+    // Two pictograms printed the same explanation twice; five would print it
+    // five times. The engine now says which half is shared, so the rail groups
+    // on that whole string — it does not take the sentence apart itself.
+    const rail = mountRail({
+      uncertifiable: [pictogram('GHS02', 'flame'), pictogram('GHS07', 'exclamation mark')],
+    })
+    const block = blockNamed(rail, 'Cannot be checked')
+    const text = block.text()
+    expect(text).toContain('The GHS02 symbol (flame) is not drawn.')
+    expect(text).toContain('The GHS07 symbol (exclamation mark) is not drawn.')
+    expect(text.split('CLP Annex V requires the specimen.').length - 1, 'said once').toBe(1)
+  })
+
+  it('still prints an explanation of an element’s own in full', () => {
+    const rail = mountRail({
+      uncertifiable: [
+        pictogram('GHS02', 'flame'),
+        { elementId: 'symbol', reasons: [{ text: 'Artwork is printed over the UPC-A symbol.' }] },
+      ],
+    })
+    expect(blockNamed(rail, 'Cannot be checked').text()).toContain(
+      'Artwork is printed over the UPC-A symbol.',
+    )
+  })
+
+  it('counts elements, not sentences, so grouping moves no number', () => {
+    // The strip and the summary say how many elements could not be checked.
+    // Saying an explanation once must not change that count.
+    mountRail({
+      uncertifiable: [pictogram('GHS02', 'flame'), pictogram('GHS07', 'exclamation mark')],
+    })
+    expect(heard()[0]).toContain('2 elements could not be checked')
   })
 })

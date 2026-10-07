@@ -791,16 +791,19 @@ decision about the markup: one pair whose value states both figures, or a differ
 
 ## From stage 2, the report surface
 
-**The rail repeats a forty-word explanation once per element, and the fix belongs in the engine.** On a GHS
-label the "cannot be checked" block prints the same sentence twice — once for GHS02, once for GHS07 —
-differing only in the code and the symbol's name. Five pictograms would print it five times.
+**~~The rail repeats a forty-word explanation once per element, and the fix belongs in the engine.~~ Fixed
+in the engine, as this entry said it should be.** `LayoutOmission` carries an optional `explanation` — what is
+missing here, and why — built only through `explainedOmission`, which assembles `reason` from the two halves
+so the sentence and its parts cannot disagree. The GHS pictogram and statement omissions use it; the rail
+groups on `why` as a whole string it was handed and prints each element's own half above it. Every word the
+engine wrote is still printed. The statement omission's single sentence with a colon became two sentences,
+so its shared half reads as a sentence when said once; nothing quoted the old wording, and no rule reads an
+omission's text — rules ask whether an element has omissions at all.
 
-Deduplicating it in the rail means the interface splitting sentences the engine wrote, detecting that two
-share an identical tail, and recomposing them. `LayoutOmission` is `{ elementId, reason: string }`: prose and
-nothing else, so there is no structure to group on and the only lever is string surgery on the report's own
-words. This project does not paraphrase a regulated statement by a single character, and an interface taking
-the engine's prose apart to shorten it is the same move wearing a different hat. The engine should emit the
-shared explanation once and the per-element part separately; the rail then renders what it is given.
+The editor's store and the audit report each assembled the "cannot be checked" list, and both had to change
+the same way, so they call one builder now. The audit's copy had left out the overprinted-symbol half on
+purpose, since an audit layout has no symbols — an earlier draft of this entry called that drift, which a
+review corrected by quoting the comment that said why.
 
 **"Checks that did not run" names facts a user could state and cannot link to any of them.** The US food
 decline says the label has not stated "a reference amount, what the whole package holds, and whether it is

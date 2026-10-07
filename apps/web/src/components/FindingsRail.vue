@@ -21,6 +21,7 @@ import type { Finding, Severity } from '@packwright/label-core'
 import { computed } from 'vue'
 import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
 import { useAnnouncement } from '../stores/announcer'
+import type { Uncheckable } from '../uncheckable'
 import FindingItem from './FindingItem.vue'
 
 const props = withDefaults(
@@ -29,7 +30,7 @@ const props = withDefaults(
     failures: Finding[]
     passes: Finding[]
     /** Symbols that could not be certified — reported, but deliberately not judged. */
-    uncertifiable: ReadonlyArray<{ elementId: string; reasons: string[] }>
+    uncertifiable: ReadonlyArray<Uncheckable>
     /**
      * Checks that stood down for want of a fact the label never stated.
      *
@@ -157,6 +158,42 @@ const counts = computed(() => {
   }
 
   return entries
+})
+
+/**
+ * The "cannot be checked" block, with each shared explanation said once.
+ *
+ * Two GHS pictograms printed the same forty-word explanation twice, and five
+ * would print it five times. The engine now marks which half of an omission's
+ * sentence is shared (`LayoutOmission.explanation`), so this groups on that
+ * whole string — `why`, exactly as handed over — and prints each element's own
+ * half above it. Nothing here takes a sentence apart or rewrites one; an
+ * explanation the engine did not mark as shared is printed whole, as before.
+ */
+type Said =
+  | { kind: 'own'; key: string; text: string }
+  | { kind: 'shared'; key: string; whats: string[]; why: string }
+
+const uncheckableSaid = computed(() => {
+  const said: Said[] = []
+  const byWhy = new Map<string, Extract<Said, { kind: 'shared' }>>()
+  for (const item of props.uncertifiable) {
+    for (const reason of item.reasons) {
+      if (reason.explanation === undefined) {
+        said.push({ kind: 'own', key: `${item.elementId}:${reason.text}`, text: reason.text })
+        continue
+      }
+      const { what, why } = reason.explanation
+      const shared = byWhy.get(why)
+      if (shared !== undefined) shared.whats.push(what)
+      else {
+        const entry = { kind: 'shared' as const, key: `shared:${why}`, whats: [what], why }
+        byWhy.set(why, entry)
+        said.push(entry)
+      }
+    }
+  }
+  return said
 })
 
 const summary = computed(() => {
@@ -298,14 +335,20 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
           <span aria-hidden="true">{{ NOT_A_VERDICT.uncertifiable }}</span>
           Cannot be checked
         </h3>
-        <template v-for="item in uncertifiable" :key="item.elementId">
-          <p
-            v-for="reason in item.reasons"
-            :key="reason"
-            class="text-chrome-200 mt-2 text-sm leading-snug"
-          >
-            {{ reason }}
+        <template v-for="entry in uncheckableSaid" :key="entry.key">
+          <p v-if="entry.kind === 'own'" class="text-chrome-200 mt-2 text-sm leading-snug">
+            {{ entry.text }}
           </p>
+          <!--
+            Each element's own half, then the half they share, once. Every word
+            the engine wrote is still printed; only the repetition is gone.
+          -->
+          <div v-else class="mt-2">
+            <p v-for="what in entry.whats" :key="what" class="text-chrome-200 text-sm leading-snug">
+              {{ what }}
+            </p>
+            <p class="text-chrome-300 mt-1 text-sm leading-snug">{{ entry.why }}</p>
+          </div>
         </template>
       </section>
 

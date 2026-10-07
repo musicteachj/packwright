@@ -34,6 +34,7 @@ import {
   type Severity,
 } from '@packwright/label-core'
 import { FIELD_SHAPES, type ReadingKey } from './readingRows'
+import { uncheckableIn, type Uncheckable } from '../uncheckable'
 
 export interface AuditReport {
   readonly outcome: 'reported'
@@ -45,12 +46,13 @@ export interface AuditReport {
   /**
    * What the engine could not draw, and why.
    *
-   * The layout's own omissions and nothing else. The editor's version also reads
-   * `layout.symbols` for overprinting and vertical overflow; a GHS layout
-   * returns `symbols: []`, so restating that half here would be code that cannot
-   * run — which is the thing this codebase keeps finding in its own validators.
+   * Assembled by `uncheckableIn`, the builder the editor uses. This file used to
+   * keep its own copy without the half that reads `layout.symbols` for
+   * overprinting, deliberately: an audit layout is GHS and has no symbols, so
+   * that half could not run here. One builder now serves both, and on an audit
+   * layout the symbol half finds nothing — it is shared, not newly needed.
    */
-  readonly uncertifiable: ReadonlyArray<{ elementId: string; reasons: string[] }>
+  readonly uncertifiable: ReadonlyArray<Uncheckable>
   /** Checks that stood down for want of a fact the reading never produced. */
   readonly declined: readonly DeclinedCheck[]
   /** Fields read off the photograph that nobody confirmed. */
@@ -91,15 +93,6 @@ export function auditReport(
     else groups.set(finding.severity, [finding])
   }
 
-  const byElement = new Map<string, string[]>()
-  for (const omission of layout.omissions) {
-    const existing = byElement.get(omission.elementId)
-    // Passed through rather than restated: the omission type exists so nothing
-    // is ever dropped silently, and its reasons are already sentences.
-    if (existing === undefined) byElement.set(omission.elementId, [omission.reason])
-    else existing.push(omission.reason)
-  }
-
   return {
     outcome: 'reported',
     layout,
@@ -107,7 +100,7 @@ export function auditReport(
     groups: [...groups.entries()].sort(([a], [b]) => compareSeverity(a, b)),
     failures: findings.filter((finding) => finding.severity !== 'pass'),
     passes: findings.filter((finding) => finding.severity === 'pass'),
-    uncertifiable: [...byElement.entries()].map(([elementId, reasons]) => ({ elementId, reasons })),
+    uncertifiable: uncheckableIn(layout),
     // The audit path is where this matters most. A photograph yields H-codes and
     // pictograms, never a hazard classification, so the two rules that read one
     // stand down on almost every reading — and until now they did it in silence,

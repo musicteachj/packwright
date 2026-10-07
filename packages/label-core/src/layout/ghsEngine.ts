@@ -44,6 +44,7 @@ import type {
   ResolvedLayout,
   ResolvedPictogram,
 } from './types'
+import { explainedOmission } from './omissions'
 
 export interface GhsLayoutRequest {
   data: GhsLabelData
@@ -305,15 +306,21 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
         glyphDrawn: false,
       })
 
-      omissions.push({
-        elementId,
-        scope: 'detail',
-        reason:
-          `The ${code} symbol (${symbolName}) is not drawn. CLP Annex V requires each ` +
-          'pictogram to conform to the specimen artwork published with the standard, and no ' +
-          'verified vector of that specimen was available. The frame is drawn to its resolved ' +
-          'size; an approximation of the symbol would look compliant without being so.',
-      })
+      omissions.push(
+        explainedOmission({
+          elementId,
+          scope: 'detail',
+          what: `The ${code} symbol (${symbolName}) is not drawn.`,
+          // Said once under every pictogram it applies to, so it names none of
+          // them: "that specimen" and "the frame" read as one particular symbol
+          // when several are listed above it. Found by review.
+          why:
+            'CLP Annex V requires each pictogram to conform to the specimen artwork published ' +
+            'with the standard, and no verified vector of the specimen artwork was available. ' +
+            'Frames are drawn to their resolved size; an approximation of a symbol would look ' +
+            'compliant without being so.',
+        }),
+      )
 
       // Recorded after the glyph, which every pictogram carries. A strip is one
       // row, so it can run off the right as well as the bottom — a label with more
@@ -348,16 +355,21 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     const statements = codes.flatMap((code) => {
       const text = lookup(data.regime, code)
       if (text !== undefined) return [text]
-      omissions.push({
-        // Suffixed with the code: several statements can be omitted from one
-        // block, and each omission should say which statement it is.
-        elementId: `${elementId}-${code}`,
-        scope: 'detail',
-        reason:
-          `The statement ${code} is not drawn: no verified text for it exists under this ` +
-          'label’s regime. Printing another regime’s wording would produce a label that looks ' +
-          'complete and is not.',
-      })
+      omissions.push(
+        explainedOmission({
+          // Suffixed with the code: several statements can be omitted from one
+          // block, and each omission should say which statement it is.
+          elementId: `${elementId}-${code}`,
+          scope: 'detail',
+          what: `The statement ${code} is not drawn.`,
+          // Two sentences where there was one with a colon, so the shared half
+          // reads as a sentence on its own — and with no "it", because it is said
+          // once under several statements and would point at none of them.
+          why:
+            'No verified wording exists under this label’s regime, and printing another ' +
+            'regime’s would produce a label that looks complete and is not.',
+        }),
+      )
       return []
     })
     if (statements.length === 0) continue
