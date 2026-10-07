@@ -33,6 +33,36 @@ const mountRail = (over: Record<string, unknown> = {}) =>
     },
   })
 
+/**
+ * The block a heading names, found through the wiring rather than by its text.
+ *
+ * `findAll('section').find(s => s.text().includes(title))` looks scoped and is
+ * not: the rail's own root is a `<section>`, and its text contains every word
+ * in every block beneath it, so that predicate matches the root first and every
+ * assertion after it runs against the whole rail. The test below was written
+ * that way, the `text-caution` assertion at the top of this file has always been
+ * that way, and both passed — the first because no other paragraph happened to
+ * print `1.2`, the second because nothing anywhere carried that class. The
+ * browser spec added in the same change hit the identical trap and only a
+ * mutation test found it.
+ *
+ * `aria-labelledby` is the relationship the markup actually makes, so read the
+ * heading's id off the DOM and ask for the section that points at it. Nothing
+ * here knows what the id is, which is the point — an assertion written as a
+ * literal id is a relationship in disguise.
+ */
+const blockNamed = (rail: ReturnType<typeof mountRail>, title: string) => {
+  const heading = rail.findAll('h3').find((entry) => entry.text().includes(title))
+  expect(heading, `a heading reading “${title}” must exist`).toBeDefined()
+
+  const id = heading!.attributes('id')
+  expect(id, `“${title}” must have an id for its block to point at`).toBeTruthy()
+
+  const blocks = rail.findAll(`section[aria-labelledby="${id}"]`)
+  expect(blocks, `exactly one block may be named by “${title}”`).toHaveLength(1)
+  return blocks[0]!
+}
+
 describe('the rail tells a verdict from a silence', () => {
   it('borrows no severity mark for the things that are not verdicts', () => {
     // "Cannot be checked" used CAUTION's own diamond and colour, so on a GHS
@@ -41,20 +71,17 @@ describe('the rail tells a verdict from a silence', () => {
     // false.
     const rail = mountRail()
 
-    // Found by the section's own text, not by an id. The first version of this
-    // guessed `[aria-labelledby$="uncertifiable-heading"]`, which matches
-    // nothing — the id is built elsewhere — so the selector fell through to the
-    // root rail and the `text-caution` assertion was unscoped. It passed because
-    // nothing anywhere carried that class, and would have started failing for
-    // the wrong reason the day a legitimate advisory finding appeared.
-    const block = rail
-      .findAll('section')
-      .find((section) => section.text().includes('Cannot be checked'))
-    expect(block, 'the uncertifiable block must be findable').toBeDefined()
+    // Scoped through `aria-labelledby` — see `blockNamed`. An earlier version
+    // of this found the block by its text, which matched the rail's own root
+    // first, so both `not.toContain` assertions ran against every element in
+    // the rail. They passed because nothing anywhere carried that class or that
+    // glyph, and would have started failing for the wrong reason the day a
+    // legitimate advisory finding appeared.
+    const block = blockNamed(rail, 'Cannot be checked')
 
-    expect(block!.text()).toContain(NOT_A_VERDICT.uncertifiable)
-    expect(block!.html()).not.toContain('text-caution')
-    expect(block!.html()).not.toContain(SEVERITY_STYLES.advisory.icon)
+    expect(block.text()).toContain(NOT_A_VERDICT.uncertifiable)
+    expect(block.html()).not.toContain('text-caution')
+    expect(block.html()).not.toContain(SEVERITY_STYLES.advisory.icon)
     expect(rail.text()).toContain(NOT_A_VERDICT.declined)
   })
 
@@ -103,5 +130,66 @@ describe('the rail states its totals where they can be seen', () => {
       declined: [],
     })
     expect(rail.find('[aria-hidden="true"].numeric').exists()).toBe(false)
+  })
+})
+
+describe('a citation is an identifier wherever it appears', () => {
+  it('sets a declined check’s reference in the same face as every other one', () => {
+    // It was spelled `font-mono tabular-nums` here: two of `numeric`'s three
+    // declarations, missing `font-feature-settings: 'tnum' 1` — the one that
+    // fixes the advance width. The same file already used `numeric` for the
+    // count strip one block up, and `FindingItem.vue` uses it for the identical
+    // kind of citation, so this was one block out of step with its neighbours
+    // and nothing could fail because of it.
+    const block = blockNamed(mountRail(), 'Checks that did not run')
+
+    // Found by the reference it prints, not by the class under test — a
+    // selector that asks for `.numeric` and then asserts `numeric` proves only
+    // that `find` works.
+    const citation = block.findAll('p').find((entry) => entry.text() === '1.2')
+    expect(citation, 'the citation must be findable by its reference').toBeDefined()
+
+    // Only the positive claim. The negative one — that the hand-rolled spelling
+    // is gone — belongs to `theme.test.ts`'s source guard, which makes it
+    // everywhere rather than here, and an assertion here would have to write
+    // the forbidden utility into a file that guard scans.
+    expect(citation!.classes()).toContain('numeric')
+  })
+})
+
+describe('a rail waiting for its label', () => {
+  it('says so in its own live region, and reports nothing about any label', () => {
+    // The editor is fetching a label, and the findings it holds belong to
+    // whichever document was there before. Reporting them would be the rail
+    // certifying a label nobody asked for — so it reports none, and says why
+    // through the region a screen reader is already observing.
+    const rail = mountRail({ pending: true })
+
+    const region = rail.get('[aria-live]')
+    expect(region.text()).toBe('Opening this label…')
+
+    expect(rail.text(), 'no finding from the document being replaced').not.toContain(
+      'says something',
+    )
+    expect(rail.text(), 'and no verdict about it either').not.toContain('Not verdicts')
+    expect(rail.find('[aria-hidden="true"].numeric').exists(), 'nor a count strip').toBe(false)
+  })
+
+  it('says it where it can be seen too, without saying it twice to a screen reader', () => {
+    // Below \`lg\` this rail is a pane of its own, and someone on it during a
+    // wait saw a heading over nothing — the region is \`sr-only\`. The visible
+    // line is \`aria-hidden\` for the reason the count strip is: the region beside
+    // it already says the same words, and hearing both is hearing it twice.
+    const rail = mountRail({ pending: true })
+    const shown = rail.findAll('p').filter((p) => p.attributes('aria-live') === undefined)
+    const line = shown.find((p) => p.text() === 'Opening this label…')
+    expect(line, 'a visible line saying the wait').toBeDefined()
+    expect(line!.attributes('aria-hidden')).toBe('true')
+  })
+
+  it('keeps its region even while it says nothing else', () => {
+    // The point of `pending` rather than unmounting: the region outlives the
+    // wait, so the counts that replace this line arrive as a change.
+    expect(mountRail({ pending: true }).findAll('[aria-live]')).toHaveLength(1)
   })
 })

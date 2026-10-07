@@ -521,13 +521,26 @@ cannot be persisted, and the geometry fields are guarded by `requiredNumber` wri
 that a user can type one, see the preview change, and learn only on save. Worth one pass over the rail's
 numeric inputs with a shared guard rather than four more copies of the same three lines.
 
-**The rejected figure also stays on screen**, which is the sharper half and was raised by the review of PR #46.
-Where the four dual-column inputs refuse a zero, the box goes on showing the `0` the user typed while the
-document holds nothing at all — so the rail and the document disagree, and the rail is the one the user
-believes. The dual-column message will say the figure was never stated, which reads as a contradiction rather
-than as an explanation. Fixing it means deciding what a numeric input does with a value it will not store:
-clamp it, refuse the keystroke, or show it as rejected. That is a question about every numeric field in the
-rail, which is why it sits with the entry above rather than being patched into four of them.
+**~~The rejected figure also stays on screen.~~ Settled in interface stage 4, for the three fields it
+applied to.** The policy is **show it as rejected**: the box keeps the figure, the field takes
+`aria-invalid`, and a sentence beside it says the label does not hold it and what to state instead.
+Clamping was rejected outright — the document would hold a measurement nobody typed, on a tool whose only
+value is being right — and refusing the keystroke was rejected because `type="number"` sanitises its own
+value, so the control cannot tell a refused figure from a half-typed one without becoming a text input.
+
+The entry as written was half wrong in a way worth keeping. It described one defect; there were two, in
+opposite directions, from the same keystroke. Where the field had never been filled the `0` did stay on
+screen, as recorded. Where it already held a figure the box was **blanked** instead, because the bound
+value moved and Vue patched the element — which is the worse of the two, since it takes back a keystroke
+as it is typed.
+
+**What stands is the wider half of the entry above, and it is untouched.** `optionalNumber` still accepts
+`0` and negatives into `servingsPerContainer`, `netQuantityFontSizeMm`, `availableSurfaceSqInches` and
+`continuousVerticalSpaceInches`; eight `min="0"` attributes still mean `positive()`; and nine bindings
+across the three rails still write `''` into a field typed `number`. None of those refuses anything today,
+so none of them has the disagreement that was just fixed — a user types a zero, sees the preview change,
+and learns on save. Closing them is a change to what the guards accept rather than to what the control
+shows, which is a different question and a much larger diff. Left out of stage 4 for scope, not doubt.
 
 **~~The editor has no inputs for the three facts a dual-column duty turns on.~~ Fixed.** Found by
 `/code-review high` on PR #43. `UsFoodFormRail.vue` collected no reference amount, package content, unit
@@ -695,6 +708,110 @@ voluntary second column, a reference amount the tool does not carry the table fo
 
 `FormField` can take a `required` flag whenever the answer arrives; nothing in its shape forecloses it. What
 this entry records is that the decision was deliberately not taken inside the migration.
+
+## From stage 4, canvas and editor
+
+**A refused figure is shown but not announced, and it is the editor's live-region question again rather
+than a new one.** The three fields that refuse a zero take `aria-invalid` and gain a description saying
+the label does not hold the figure — but that description is a plain `<div>`, so a screen-reader user
+typing `0` hears the field go invalid and hears the sentence only when they come back to the field, not
+as it appears. `FormField` has `live` for exactly this, and `UpcAFormRail`'s GTIN note sets it
+conditionally. Raised by review, and deliberately not copied.
+
+Copying it would reproduce a pattern this file already records as a compromise, twice over. A live region
+has to be in the document before its content arrives, and a conditional `live` on a conditional
+description creates the region already full — which is the GTIN scan note's defect verbatim, recorded
+under *From the stage 1 rail migrations*. It would also give the editor a second always-present live
+region in the refused state, against an invariant `e2e/the-responsive-collapse.spec.ts` asserts at every
+width: exactly one perceivable. No test would fail, because none types a zero — which is the worst way
+for an invariant to be broken.
+
+So this is a third instance of one open design decision, not a patch waiting to be applied: either the
+editor accepts that "exactly one live region" becomes "one per concern", or the rails route their
+announcements through the findings rail's existing region. The arguments are in the stage 1 entry and
+have not changed; what has changed is that three fields now want the same thing, which is the strongest
+case yet for settling it.
+
+
+Both of these were found by taking a screenshot and looking at it, which is the method that found every
+finding that mattered in this phase. Neither is a regression: both predate the stage, and the typography
+fix that was in scope does not move either of them.
+
+**A failed open says the editor is showing a new document, and it is not.** `openFromRoute`'s catch writes
+"That label no longer exists. The editor is showing a new document." for a 404, but nothing detaches — so
+at `/labels/zzz999` the store still holds the previously opened label's `savedId` and `savedName`, and a
+Save from there issues a `PUT` over the record the user believes they navigated away from. That is the
+same bug the route watcher's own comment documents, reached through the error path rather than through
+the URL. Pre-existing and untouched by stage 4, which only changed when the panes are shown. Closing it
+is either `store.detach()` on a missing label or a sentence that is true, and the two are different
+products: one discards the document on screen, the other keeps it and says so.
+
+**A Save still in flight when the user moves to another label lands on that label.** `persist` awaits the
+write and then, unconditionally, calls `store.markSaved(saved.id, saved.name)` and
+`router.replace('/labels/<saved.id>')`. Navigate to another label while it is outstanding and, once that
+label has loaded, the save's resolution attaches it to the *old* record's id and moves the URL back to the
+old label — so the next Save writes the new label's content over the old one. Found by the phase's hedge
+review (`/code-review medium dev`), and pre-existing: stage 4 did not touch `persist`, and disabling Save
+during a pending open does not reach a save that started before the navigation. The fix is the one the
+pending open already uses — hold the request, and act on its result only if the editor is still holding
+the document that was saved — and it wants a deferred-promise test of the same shape.
+
+**~~The wait's live region is created with its text already in it.~~ Fixed in the same stage**, by not
+giving the wait a region at all. The panes stay mounted through it, the findings rail takes `pending`, and
+the regions already being observed say "Opening this label…" and then the opened label's counts — two
+changes to one node, both of which a screen reader hears. The version this entry described was worse than
+it said: by swapping the grid out it also unmounted the *rail's* region and rebuilt it full on arrival, so
+the opened label's findings went unannounced where on `dev` they had been heard. Found by the phase's
+whole-branch review.
+
+What remains is the first page load of `/labels/:id`, where the region is born saying "Opening this
+label…" because the page itself is. That is page content arriving, not a change to announce, and the change
+that follows it is heard. The live-region question for the GTIN note and the refused measurements is
+unaffected and still open.
+
+**On a narrow screen showing Checks, two live regions are perceivable, and a comment says it cannot
+happen.** `EditorView.vue`'s own `sr-only` region exists so a narrow window hears compliance at all,
+because below `lg` the rail is `display: none` — and its comment says it "exists only while that is true,
+so exactly one is ever live". It is gated on `narrow` alone. Switch to the Checks pane and the rail is on
+screen with its region beside the editor's, so a screen reader can hear every count twice.
+`e2e/the-responsive-collapse.spec.ts` asserts exactly one perceivable region, but only on the default pane,
+so it cannot see this. Pre-existing on `dev`, found by the review of stage 4's live-region fix. The fix
+looks like one condition — the editor's region gated on the Checks pane not showing — but switching panes
+would then move the announcement from one node to another, which is the born-full problem again; it
+belongs with the rest of the live-region question rather than as a patch beside it.
+
+**The editor's header keeps naming the previous label while the next one is being opened.** The panes go,
+but the name field still reads "Granola 340g" and the chip beside it still reads "Saved" — a document
+identity asserted about something not on screen. Everything there is disabled, so nothing can be edited or
+lost, which is why this is an entry rather than part of the fix: the harm the stage closed was a document
+that could be edited and then silently discarded, and this is the cosmetic remainder. Worth doing with the
+shell work, where the header is being looked at anyway.
+
+**The dimension callout's figure is drawn over the barcode's own digits.** `LabelCanvas.vue`'s
+`symbolCallouts` puts the rule at `yMm + drawnHeightMm + 2` — cleanly below the symbol — and then the
+label at `callout.yMm - 1.2`, which is *above* the rule. An SVG `<text>` `y` is its baseline, and at
+`font-size="1.8"` the glyphs reach roughly 1.3mm above it, so the figure occupies the band from about
+0.5mm inside the symbol's drawn box downwards, and `drawnHeightMm` includes the human-readable digits.
+At 200% on a UPC-A the result is `37.29 mm` set across `36000` and `29145`. Screenshot the preview with
+Dimensions on and it is unmissable; nothing in the suite can see it, because every existing assertion
+about the callout is about its text or its typeface.
+
+Not fixed here because it is a change to where the engine's own apparatus is drawn rather than to how it
+is set, and the stage in front of it is the numeric-input policy. The fix is to put the figure below the
+rule rather than above it, or to give the callout its own clearance from `drawnHeightMm`; either way it
+wants a browser test measuring the two boxes, since jsdom cannot say whether they overlap.
+
+**The canvas's two overlay checkboxes never joined the component layer.** `docs/specs/2026-09-18-interface-foundation-design.md`
+lists them under what stage 1 closes without separate work — "including `LabelCanvas.vue:342-359`, where the
+two overlay labels carry no class at all and the measured gap between box and word is **0 px**" — and they
+still carry no class. The migration was scoped to the three form rails, and the changelog says exactly that
+and no more, so nothing shipped a false claim; the spec's expectation simply was not met. Quiet zones and
+Dimensions are still a bare `<label>` wrapping a bare `<input type="checkbox">`, so they keep the 0px gap
+and the 13x13 target the `CheckboxField` row exists to fix.
+
+Cheap to close — import `CheckboxField` and pass the two `v-model`s — and deliberately not done in a commit
+whose subject is a typeface, because it changes hit targets and row heights in the pane a browser test
+measures.
 
 ## From stage 2, the report surface
 

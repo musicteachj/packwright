@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { nextTick, toRaw } from 'vue'
 import { US_FOOD_RULES } from '@packwright/label-core'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
@@ -797,6 +797,160 @@ describe('the Nutrition Facts displays, from the editor', () => {
       await nextTick()
       expect(store.foodData.nutritionFacts!.referenceAmount).toBeUndefined()
       expect(store.failures.map((f) => f.code)).not.toContain('FDA_DUAL_COLUMN_MISSING')
+    })
+
+    /*
+     * A refusal the user can see.
+     *
+     * `asMeasurement` is right to refuse a zero — `label-core`'s own `stated()`
+     * refuses it independently, `inBand` cannot divide by it, and the API schema
+     * would not save the document. What was wrong is that nothing said so, and
+     * the box and the document disagreed in two different directions from one
+     * keystroke. On a field never filled the `0` stayed on screen while the
+     * document held nothing, because the bound value round-tripped from blank to
+     * blank and Vue had no change to patch. On a field that held a figure the
+     * box was blanked instead, taking the keystroke back mid-edit.
+     */
+    describe('a figure the label will not hold says so', () => {
+      /** The element, for reading back what the control is actually showing. */
+      const box = (wrapper: Awaited<ReturnType<typeof mountFood>>['wrapper'], id: string) =>
+        wrapper.find<HTMLInputElement>(id)
+
+      const explanationOf = (
+        wrapper: Awaited<ReturnType<typeof mountFood>>['wrapper'],
+        id: string,
+      ) => {
+        // Read as a relationship, not as a literal id: the field names the thing
+        // that describes it, and which string that is belongs to the wiring.
+        const describedBy = box(wrapper, id).attributes('aria-describedby')
+        if (describedBy === undefined) return undefined
+        const note = wrapper.find(`#${describedBy.split(' ')[0]}`)
+        return note.exists() ? note.text() : undefined
+      }
+
+      it('keeps a refused figure on screen instead of blanking the box', async () => {
+        // The half with teeth. 100 is stated, so the bound value really does move
+        // from 100 to blank and Vue really does patch the element — the user
+        // types a zero and watches their own keystroke vanish.
+        const { store, wrapper } = await mountFood()
+        await stateDutyFacts(wrapper, { racc: '40', packageContent: '100' })
+        expect(store.foodData.nutritionFacts!.packageContent).toBe(100)
+
+        await box(wrapper, '#field-food-nf-package-content').setValue('0')
+        await nextTick()
+
+        expect(store.foodData.nutritionFacts!.packageContent).toBeUndefined()
+        expect(
+          box(wrapper, '#field-food-nf-package-content').element.value,
+          'the box must still show what was typed',
+        ).toBe('0')
+      })
+
+      it('says the figure was not taken, on a field that was never filled', async () => {
+        // Here the box already keeps the `0`, by accident rather than by design —
+        // so asserting only on its value would pass today and prove nothing. The
+        // claim is the explanation beside it.
+        const { store, wrapper } = await mountFood()
+        expect(store.foodData.nutritionFacts!.unitContent).toBeUndefined()
+
+        await box(wrapper, '#field-food-nf-unit-content').setValue('0')
+        await nextTick()
+
+        expect('unitContent' in store.foodData.nutritionFacts!).toBe(false)
+        expect(box(wrapper, '#field-food-nf-unit-content').element.value).toBe('0')
+        expect(box(wrapper, '#field-food-nf-unit-content').attributes('aria-invalid')).toBe('true')
+        expect(explanationOf(wrapper, '#field-food-nf-unit-content')).toContain(
+          'is not in this label',
+        )
+      })
+
+      it('reads a cleared box as unstated rather than as a mistake', async () => {
+        // A blank is the answer the regulation permits: §101.12(b)'s table is not
+        // carried here, so a figure nobody stated is a question this tool has not
+        // asked. Marking it invalid would report a label for declining to state
+        // something, which is the false positive CLAUDE.md is emphatic about.
+        const { store, wrapper } = await mountFood()
+        await stateDutyFacts(wrapper, { racc: '40', packageContent: '100' })
+
+        await box(wrapper, '#field-food-nf-package-content').setValue('')
+        await nextTick()
+
+        expect('packageContent' in store.foodData.nutritionFacts!).toBe(false)
+        expect(box(wrapper, '#field-food-nf-package-content').element.value).toBe('')
+        expect(
+          box(wrapper, '#field-food-nf-package-content').attributes('aria-invalid'),
+        ).toBeUndefined()
+        expect(explanationOf(wrapper, '#field-food-nf-package-content')).toBeUndefined()
+      })
+
+      it('lets go of the refusal when another label is opened over it', async () => {
+        // Found by review, and nothing in the suite could see it: no test had
+        // ever opened a second document. `refused` was a boolean only a
+        // keystroke could clear, so the box read `40` under an `aria-invalid`
+        // and a sentence saying the label did not hold it.
+        const { store, wrapper } = await mountFood()
+        await box(wrapper, '#field-food-nf-racc').setValue('0')
+        await nextTick()
+        expect(box(wrapper, '#field-food-nf-racc').attributes('aria-invalid')).toBe('true')
+
+        const opened = structuredClone(toRaw(store.foodData)) as Record<string, unknown>
+        ;(opened.nutritionFacts as Record<string, unknown>).referenceAmount = {
+          amount: 40,
+          unit: 'g',
+          category: 'Snacks',
+        }
+        store.loadSaved({
+          id: 'another',
+          name: 'Another label',
+          labelType: 'us-food',
+          stock: structuredClone(toRaw(store.foodStock)),
+          data: opened,
+        })
+        await nextTick()
+
+        expect(box(wrapper, '#field-food-nf-racc').element.value).toBe('40')
+        expect(box(wrapper, '#field-food-nf-racc').attributes('aria-invalid')).toBeUndefined()
+        expect(explanationOf(wrapper, '#field-food-nf-racc')).toBeUndefined()
+      })
+
+      it('lets go of it even when the label opened over it states nothing either', async () => {
+        // The mirror, and the harder half: the guarded value is `undefined` on
+        // both sides, so nothing about the figure changed. What changed is the
+        // record — `replaceReactive` swaps `nutritionFacts` wholesale — and a
+        // refusal belongs to the document it was made on.
+        const { store, wrapper } = await mountFood()
+        await box(wrapper, '#field-food-nf-unit-content').setValue('0')
+        await nextTick()
+        expect(box(wrapper, '#field-food-nf-unit-content').attributes('aria-invalid')).toBe('true')
+
+        store.loadSaved({
+          id: 'another',
+          name: 'Another label',
+          labelType: 'us-food',
+          stock: structuredClone(toRaw(store.foodStock)),
+          data: structuredClone(toRaw(store.foodData)),
+        })
+        await nextTick()
+
+        expect(box(wrapper, '#field-food-nf-unit-content').element.value).toBe('')
+        expect(
+          box(wrapper, '#field-food-nf-unit-content').attributes('aria-invalid'),
+        ).toBeUndefined()
+      })
+
+      it('lets go of the refusal as soon as a figure is accepted', async () => {
+        const { store, wrapper } = await mountFood()
+        await box(wrapper, '#field-food-nf-racc').setValue('0')
+        await nextTick()
+        expect(box(wrapper, '#field-food-nf-racc').attributes('aria-invalid')).toBe('true')
+
+        await box(wrapper, '#field-food-nf-racc').setValue('40')
+        await nextTick()
+
+        expect(store.foodData.nutritionFacts!.referenceAmount!.amount).toBe(40)
+        expect(box(wrapper, '#field-food-nf-racc').element.value).toBe('40')
+        expect(box(wrapper, '#field-food-nf-racc').attributes('aria-invalid')).toBeUndefined()
+      })
     })
   })
 

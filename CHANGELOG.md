@@ -10,6 +10,48 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **A numeric field that refuses a figure now says so, instead of disagreeing with the document in
+  silence.** The three fields backing 21 CFR 101.9(b)(12)(i) and (b)(2)(i)(D) — the reference amount, what
+  the whole package holds, what one unit holds — require a figure above zero, and are right to:
+  `label-core`'s own `stated()` refuses a zero independently, `inBand` cannot divide by one, and the API
+  schema would not save the document. What was wrong is that nothing on screen said the figure had been
+  declined, and one keystroke produced two different disagreements. On a field never filled, the bound
+  value round-tripped from blank to blank, so Vue had no change to patch and the `0` sat on screen in
+  front of a document holding nothing. On a field that already held a figure the box was blanked instead,
+  taking the keystroke back mid-edit.
+
+  The three now report the refused figure rather than a blank, take `aria-invalid`, and carry a sentence
+  saying the label does not hold it and what to do instead. It deliberately borrows nothing from the
+  severity vocabulary — no glyph, no signal word — because this is the rail explaining its own guard and
+  not a compliance finding. `asMeasurement` is untouched, so no document that could exist before can fail
+  to exist now.
+
+  **A blank stays an answer.** Leaving the box empty is what §101.12(b) permits, since this tool does not
+  carry that table, and marking it invalid would report a label for declining to state something.
+
+  **`min="0"` stays on all three, and taking it off was this change's own worst idea.** The audit is right
+  that it advertises a value the guard refuses — HTML has no exclusive minimum, so it cannot say "above
+  zero" — but it is half a floor rather than a lie, and removing it turned two presses of the down arrow
+  from `0` into `-2`. Measured, and caught by review. What made it misleading was never the attribute; it
+  was that nothing said when the guard had declined a figure, which is what this change fixes.
+
+  **A refusal is derived rather than remembered, so it cannot outlive the document it was made on.** The
+  first version held a boolean only a keystroke could clear, so typing `0` and then opening a saved label
+  stating 40 g left the box reading `40` beneath an `aria-invalid` and a sentence saying the label did not
+  hold it — the module note claimed the document won and the code did not. Found by review, reproduced
+  through the real editor, and invisible to the suite because no test had ever opened a second document.
+  Two now do, including the harder mirror where the label opened over it states nothing either and the
+  figure is `undefined` on both sides: what retires the refusal there is the record, since `loadSaved` and
+  the audit hand-off both swap `nutritionFacts` wholesale.
+
+  **Two of the three browser assertions proved nothing until a mutation run said so, and the reasoning
+  behind them was wrong as well.** The claim was that a field snapping back to blank would make `0.5`
+  untypable, since every figure under one begins with the character the guard refuses. Measured in
+  Chromium, that is not what happened: the box blanked on the `0` and left `.5` showing, which the browser
+  reads back as `0.5` — so the document ended up correct and what the user lost was a keystroke, not a
+  figure. The test asserts the box after every character for that reason. Two earlier versions of it, one
+  starting from an empty box and one checking only the figure at the end, passed against the unfixed code.
+
 - **The findings rail tells a verdict apart from a silence by structure, not by hue.** It states four
   different kinds of thing and only one of them is a severity, but with one colour per severity the only
   tool it had was colour — so "cannot be checked" used CAUTION's own diamond and `text-caution`, and on a
@@ -140,6 +182,100 @@ into a version only when there is a reason to.
   slot changes how the name is set, never what it is.
 
 ### Fixed
+
+- **The editor presented one label while it was fetching another, and discarded anything typed into it.**
+  `openFromRoute` awaited `readLabel` having set nothing but `loadError`, and the document store is a
+  singleton seeded at construction — so `store.layout` was non-null from the first frame. Under a URL
+  naming somebody else's label the canvas drew the seeded document, the form rail offered its fields for
+  editing, and the findings rail reported "All 6 checks passed" about it. Then `loadSaved` called
+  `replaceReactive`, which deletes every key before assigning, so an edit made in that window went with no
+  warning and no way back.
+
+  The editor now says it is opening the label and shows nothing of the document until it has the one the
+  route asked for, with the header's type, name, save and export controls disabled meanwhile. A failed
+  open falls through to the document already held, which is what `loadError` is there to explain.
+
+  **The wait is said by the regions already listening, not by a new one.** The panes stay mounted and each
+  withholds its own content; the findings rail takes a `pending` prop and its live region says "Opening this
+  label…", and below `lg` the editor's own region says the same. A screen reader announces a *change* to a
+  region it is already observing, so the wait and then the opened label's counts are both heard. Each pane
+  also says it where it can be seen, because below `lg` the panes take turns and someone on Form or Checks
+  during a wait otherwise saw nothing at all; the rail's visible line is `aria-hidden` while its region is
+  speaking, for the reason the count strip is.
+
+  The first version got this wrong while satisfying every assertion written for it. It swapped the whole
+  grid for a waiting panel with a live region of its own — one region, as
+  `e2e/the-responsive-collapse.spec.ts` requires — and in doing so unmounted the findings rail's region and
+  rebuilt it already full when the label arrived, which screen readers usually do not announce. On `dev` the
+  rail's region had been mounted once and only its text moved, so this was a regression for exactly the
+  readers the invariant protects, and counting regions could not see it. Found by the phase's whole-branch
+  review, after four per-commit reviews had not. `e2e/the-opening-wait.spec.ts` now holds the read open, takes
+  a handle to the one perceivable region, and asserts the same connected node is speaking after the label
+  lands, at 375 and 1440 — and mutating back to the swapped-out grid fails it at both.
+
+  **The wait is keyed to the label it is waiting for**, because two route changes can overlap. A `finally`
+  clearing a boolean lets the first read to land declare the second finished: mutating the id back to a
+  flag puts `012000161155` on screen under a URL for another label, with six passes beside it and nothing
+  outstanding to correct it.
+
+  **Keying it was not enough, and each weaker key let a different wrong read win.** Guarding only the
+  `finally` left a stale read calling `loadSaved` anyway, so landing `def456` first and `abc123` second
+  put `abc123` at `/labels/def456` with no wait and no error — the same defect by the other ordering. The
+  watcher's `/labels/new` branch never cleared the wait, so the header's own "Editor" link left the editor
+  on "Opening this label…" at a URL with nothing to open, and the abandoned read then attached the new
+  document to the old record, reintroducing the "Save PUTs over the label you navigated away from" bug
+  that watcher exists to prevent. And an id still cannot tell two reads of the *same* label apart:
+  `/labels/abc123` to `/labels/new` and back leaves two outstanding, and the abandoned one, failing, put
+  "That label no longer exists" in front of a label that was loading perfectly well.
+
+  So the wait holds the request itself, and object identity is the per-request token — the same trick the
+  refused measurements use to tell one document from another. It is a `shallowRef` and that is not a
+  performance choice: a plain `ref` wraps an object in a reactive proxy on the way in, so `opening.value`
+  hands back the proxy, never equals what was put there, and the wait never lifts. Five tests said so at
+  once.
+
+  A fourth ordering survived all of that: back at a label the store already holds, the watcher returns
+  early without starting a read, and left the wait standing — so the editor sat on "Opening this label…"
+  indefinitely while the read for the label it had navigated away from still passed the identity guard and
+  attached itself to this URL. Four orderings, one per review round, each mutation-tested. This entry said
+  "all three" before the fourth arrived, which is worth leaving visible: the mechanism was not hard, and
+  every version of it that looked finished was wrong about a route somebody takes.
+
+- **Two figures were set in a face the design system does not have, and no test could see either.**
+  `main.css` declares one utility for identifiers and measurements, and it is three declarations:
+  the mono family, `font-variant-numeric: tabular-nums`, and `font-feature-settings: 'tnum' 1`. The
+  findings rail spelled the citation under every declined check as `font-mono tabular-nums` — the first
+  two and not the third, which is the one that actually fixes the advance width — while the count strip
+  one block above it and the identical citation in `FindingItem.vue` both used the utility. The canvas
+  went further and wrote `font-family="IBM Plex Mono"` as a bare SVG presentation attribute on the
+  dimension callout: no tabular figures at all, no fallback stack, on a millimetre figure that updates
+  live as the label is resized. Both now take `numeric`.
+
+  Neither was reachable from an existing test. `fontFamilies.test.ts` compares `@font-face` against
+  `layout.primitives`, and the callout is chrome the component draws rather than anything `toSVG` emits.
+  So a guard now reads every `.vue` and `.ts` file under `apps/web/src` and asserts that none of them
+  sets the mono face or tabular figures by hand — the class of defect rather than the two instances,
+  on the pattern of the colour-token guard beside it.
+
+  **The browser test earned its place by failing.** A class assertion in jsdom proves a string is present,
+  which is exactly how `text-danger-300` shipped, so `e2e/the-figures-are-tabular.spec.ts` reads the
+  resolved `font-family`, `font-variant-numeric` and `font-feature-settings` out of a real Chromium. Its
+  first version located the declined citation with `filter({ has: heading })`, which matched the rail
+  *and* the block inside it, and landed on the count strip — an element that has carried `numeric` since
+  the previous stage. It passed against the unfixed citation. Only reverting the fix said so; the
+  selector now reads the `aria-labelledby` the block actually carries, and takes the citation from the
+  first declined entry rather than from the block's paragraphs as a whole — the first form was pinned to
+  there being exactly one declining rule on the starting food document.
+
+  **The same trap was already in the unit tests, in both directions.** `FindingsRail.test.ts` located a
+  block by looking for the section whose text mentions it — and the rail's own root is a `<section>` whose
+  text contains every word beneath it, so that predicate returns the root and every assertion after it
+  runs against the whole rail. The new citation test was written that way and passed only because no other
+  paragraph happened to print `1.2`. The `text-caution` assertion beside it has been that way since the
+  report surface shipped, with a comment claiming the opposite, and passed because nothing anywhere
+  carried the class. Both now go through a `blockNamed` helper that reads the heading's id off the DOM and
+  asks for the section pointing at it. Demonstrated rather than assumed: planting `text-caution` in the
+  *declined* block no longer trips the *uncertifiable* block's assertion, which it would have before.
 
 - **Five things the review of PR #56 found, and the rail's own new rule was invisible.** The dashed line
   separating verdicts from everything that is not a verdict — the distinction the whole change exists to

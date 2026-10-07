@@ -753,6 +753,99 @@ const numberField = (guarded: { value: number | undefined }) =>
     },
   })
 
+/**
+ * What a field says when its guard will not take the figure that was typed.
+ *
+ * Deliberately borrows nothing from the severity vocabulary — no glyph, no
+ * signal word, no `text-danger`. This is the rail explaining its own guard, not
+ * a compliance finding, and dressing it as one would repeat the mistake the
+ * report surface was just fixed for: "cannot be checked" wearing CAUTION's own
+ * diamond and reading as a third violation.
+ */
+const REFUSED_MEASUREMENT =
+  'A measurement has to be above zero, so this figure is not in this label. State one, or leave the box empty.'
+
+/**
+ * `numberField` for a guard that may refuse what was typed, which changes what
+ * the control has to show.
+ *
+ * `asMeasurement` is right to refuse a zero: `label-core`'s own `stated()`
+ * refuses it independently, `inBand` cannot divide by it, and the API schema
+ * would not save the document. What was wrong is that nothing said so, and one
+ * keystroke produced two different disagreements between the box and the
+ * document.
+ *
+ * On a field never filled, the bound value round-tripped from blank to blank —
+ * `numberField` maps `undefined` to `''` — so Vue had no change to patch and
+ * the `0` stayed on screen in front of a document holding nothing. On a field
+ * that held a figure, the value moved from 140 to blank, the patch did run, and
+ * the box emptied under the user mid-edit.
+ *
+ * So the field reports the refused figure rather than a blank, and says beside
+ * itself that the label does not hold it. Reporting it is what keeps the
+ * control still: `patchDOMProp` compares against the element's own `value`
+ * before writing, so a model that already matches what the user typed produces
+ * no DOM write and no lost keystroke.
+ *
+ * The same comparison is what keeps a half-typed figure on screen. A
+ * `type="number"` input sanitises its own value, so the text and the value part
+ * company as soon as a figure is incomplete: measured in Chromium, `0.` shows
+ * the trailing dot and reads back as `"0"` — not as `''`, and not as
+ * `validity.badInput`, both of which an earlier draft of this note claimed. The
+ * model is therefore handed a zero a second time, the field stays refused, and
+ * because the value it reports already matches the element nothing is written
+ * and the dot survives.
+ *
+ * **What the old behaviour cost was the keystroke, not the figure**, and the
+ * difference is worth stating because the first version of the browser test got
+ * it wrong. Typing `0.5` over a stated `140` used to blank the box on the `0`
+ * and leave `.5` showing, which Chromium still reads back as `0.5` — measured,
+ * not reasoned — so the document ended up correct and the user watched a
+ * character they typed disappear. The test asserts the box after every
+ * keystroke for that reason; asserting only the figure at the end passes
+ * either way.
+ *
+ * **A blank is not a refusal.** Leaving the box empty is the answer §101.12(b)
+ * permits, since this tool does not carry that table; marking it invalid would
+ * report a label for declining to state something, which is the false positive
+ * its user cannot argue with. Only a figure the guard declined is a refusal.
+ *
+ * **A refusal belongs to one keystroke on one document, and `refused` is derived
+ * rather than remembered so it cannot outlive either.** The first version of
+ * this held a boolean that only a keystroke could clear, so opening a saved
+ * label that states 40 g left the box reading `40` under an `aria-invalid` and
+ * a sentence saying the label did not hold it — the module note claimed the
+ * document won and the code did not. Found by review, reproduced through the
+ * real editor. `replaceReactive` swaps `nutritionFacts` for a fresh object on
+ * every load, including the audit hand-off, so comparing the record the refusal
+ * was made against with the record in front of the user now retires it on both
+ * paths: the label that states a figure, and the label that states nothing.
+ */
+const refusableNumber = (
+  guarded: { value: number | undefined },
+  recordOf: () => object | undefined,
+) => {
+  const typed = ref<number | string>('')
+  /** The record the refusal was made against, or `undefined` if none stands. */
+  const against = ref<object | undefined>(undefined)
+
+  const refused = computed(
+    () =>
+      against.value !== undefined && against.value === recordOf() && guarded.value === undefined,
+  )
+
+  const field = computed<number | string>({
+    get: () => guarded.value ?? (refused.value ? typed.value : ''),
+    set: (next) => {
+      guarded.value = next as number
+      against.value = next !== '' && guarded.value === undefined ? recordOf() : undefined
+      typed.value = next
+    },
+  })
+
+  return { field, refused }
+}
+
 const panelWidthMm = requiredNumber(() => shaped('rectangular'), 'widthMm')
 const panelWidthMmField = numberField(panelWidthMm)
 const panelHeightMm = requiredNumber(
@@ -977,7 +1070,10 @@ const referenceAmount = computed({
     }
   },
 })
-const referenceAmountField = numberField(referenceAmount)
+const { field: referenceAmountField, refused: referenceAmountRefused } = refusableNumber(
+  referenceAmount,
+  () => data.nutritionFacts,
+)
 
 const referenceAmountUnit = computed({
   get: (): 'g' | 'mL' => data.nutritionFacts?.referenceAmount?.unit ?? pendingReferenceUnit.value,
@@ -1010,9 +1106,15 @@ const contentFigure = (key: 'packageContent' | 'unitContent') =>
   })
 
 const packageContent = contentFigure('packageContent')
-const packageContentField = numberField(packageContent)
+const { field: packageContentField, refused: packageContentRefused } = refusableNumber(
+  packageContent,
+  () => data.nutritionFacts,
+)
 const unitContent = contentFigure('unitContent')
-const unitContentField = numberField(unitContent)
+const { field: unitContentField, refused: unitContentRefused } = refusableNumber(
+  unitContent,
+  () => data.nutritionFacts,
+)
 
 /**
  * Three states, not two, and the third is the point.
@@ -1781,11 +1883,23 @@ const packaging = computed({
       </p>
 
       <div class="flex gap-2">
+        <!--
+          `min="0"` stays, and it is half a floor rather than a lie. HTML has no
+          exclusive minimum, so it cannot say "above zero" and cannot stop the
+          one value `asMeasurement` actually refuses. What it does do is clamp
+          the spinner, and taking it off — which this change did at first —
+          turned two presses of the down arrow from `0` into `-2`. So it keeps
+          the negatives it can keep, and the refused state carries the rest;
+          what made the old `min="0"` misleading was not the attribute but that
+          nothing said when the guard had declined a figure.
+        -->
         <MeasurementField
           id="field-food-nf-racc"
           v-model.number="referenceAmountField"
           class="flex-1"
           label="Reference amount"
+          :invalid="referenceAmountRefused"
+          :description="referenceAmountRefused ? REFUSED_MEASUREMENT : ''"
           min="0"
           step="any"
         />
@@ -1809,6 +1923,8 @@ const packaging = computed({
           v-model.number="packageContentField"
           class="flex-1"
           :label="`The whole package holds (${referenceAmountUnit})`"
+          :invalid="packageContentRefused"
+          :description="packageContentRefused ? REFUSED_MEASUREMENT : ''"
           min="0"
           step="any"
         />
@@ -1817,6 +1933,8 @@ const packaging = computed({
           v-model.number="unitContentField"
           class="flex-1"
           :label="`One individual unit holds (${referenceAmountUnit})`"
+          :invalid="unitContentRefused"
+          :description="unitContentRefused ? REFUSED_MEASUREMENT : ''"
           min="0"
           step="any"
         />

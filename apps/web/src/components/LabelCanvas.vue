@@ -268,10 +268,17 @@ const symbolCallouts = computed(() =>
               stroke="currentColor"
               stroke-width="0.12"
             />
+            <!--
+              `numeric` rather than a `font-family` attribute: the class is the
+              one place the mono face and tabular figures are declared together,
+              and this is a live millimetre figure — the case that utility was
+              written for. `font-size` stays an attribute because 1.8 is 1.8mm
+              of the shared `viewBox`, and CSS `font-size` has no unitless form.
+            -->
             <text
               :x="callout.midMm"
               :y="callout.yMm - 1.2"
-              font-family="IBM Plex Mono"
+              class="numeric"
               font-size="1.8"
               fill="currentColor"
               text-anchor="middle"
