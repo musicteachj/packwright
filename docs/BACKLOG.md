@@ -746,13 +746,39 @@ the URL. Pre-existing and untouched by stage 4, which only changed when the pane
 is either `store.detach()` on a missing label or a sentence that is true, and the two are different
 products: one discards the document on screen, the other keeps it and says so.
 
-**The wait's live region is created with its text already in it**, which is the third instance of one
-recorded question rather than a new defect. A screen reader announces a *change* to a region it is already
-observing; a region that appears already full has nothing to compare against. The GTIN scan note has this
-shape, the refused-measurement description above has it, and now so does "Opening this label…". The test
-beside it counts live regions and cannot see it. The fix is the same one the stage 1 entry describes and
-the same reason it has not been taken: an always-present region is a second always-present region, against
-an invariant `e2e/the-responsive-collapse.spec.ts` asserts at every width.
+**A Save still in flight when the user moves to another label lands on that label.** `persist` awaits the
+write and then, unconditionally, calls `store.markSaved(saved.id, saved.name)` and
+`router.replace('/labels/<saved.id>')`. Navigate to another label while it is outstanding and, once that
+label has loaded, the save's resolution attaches it to the *old* record's id and moves the URL back to the
+old label — so the next Save writes the new label's content over the old one. Found by the phase's hedge
+review (`/code-review medium dev`), and pre-existing: stage 4 did not touch `persist`, and disabling Save
+during a pending open does not reach a save that started before the navigation. The fix is the one the
+pending open already uses — hold the request, and act on its result only if the editor is still holding
+the document that was saved — and it wants a deferred-promise test of the same shape.
+
+**~~The wait's live region is created with its text already in it.~~ Fixed in the same stage**, by not
+giving the wait a region at all. The panes stay mounted through it, the findings rail takes `pending`, and
+the regions already being observed say "Opening this label…" and then the opened label's counts — two
+changes to one node, both of which a screen reader hears. The version this entry described was worse than
+it said: by swapping the grid out it also unmounted the *rail's* region and rebuilt it full on arrival, so
+the opened label's findings went unannounced where on `dev` they had been heard. Found by the phase's
+whole-branch review.
+
+What remains is the first page load of `/labels/:id`, where the region is born saying "Opening this
+label…" because the page itself is. That is page content arriving, not a change to announce, and the change
+that follows it is heard. The live-region question for the GTIN note and the refused measurements is
+unaffected and still open.
+
+**On a narrow screen showing Checks, two live regions are perceivable, and a comment says it cannot
+happen.** `EditorView.vue`'s own `sr-only` region exists so a narrow window hears compliance at all,
+because below `lg` the rail is `display: none` — and its comment says it "exists only while that is true,
+so exactly one is ever live". It is gated on `narrow` alone. Switch to the Checks pane and the rail is on
+screen with its region beside the editor's, so a screen reader can hear every count twice.
+`e2e/the-responsive-collapse.spec.ts` asserts exactly one perceivable region, but only on the default pane,
+so it cannot see this. Pre-existing on `dev`, found by the review of stage 4's live-region fix. The fix
+looks like one condition — the editor's region gated on the Checks pane not showing — but switching panes
+would then move the announcement from one node to another, which is the born-full problem again; it
+belongs with the rest of the live-region question rather than as a patch beside it.
 
 **The editor's header keeps naming the previous label while the next one is being opened.** The panes go,
 but the name field still reads "Granola 340g" and the chip beside it still reads "Saved" — a document

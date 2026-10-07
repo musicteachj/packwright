@@ -55,6 +55,17 @@ const props = withDefaults(
     announce?: boolean
     /** Passed through: false where there is no canvas for a selection to reach. */
     selectable?: boolean
+    /**
+     * The label is still being fetched, so nothing here is about it yet.
+     *
+     * A prop rather than the caller unmounting the rail, and that is the whole
+     * reason it exists. A screen reader announces a *change* to a live region it
+     * is already observing; a region created with its text already in it usually
+     * says nothing. The editor's first wait swapped this rail out for a panel of
+     * its own, so opening a saved label rebuilt the region full and its findings
+     * went unannounced. Pending keeps the region and changes its words.
+     */
+    pending?: boolean
   }>(),
   {
     headingId: 'findings-heading',
@@ -65,6 +76,7 @@ const props = withDefaults(
     // said so immediately. A flag whose safe value is "on" has to say so here.
     announce: true,
     selectable: true,
+    pending: false,
   },
 )
 
@@ -144,6 +156,10 @@ const counts = computed(() => {
 })
 
 const summary = computed(() => {
+  // The findings the store holds during a wait belong to the document being
+  // replaced. Counting them here would announce a verdict about a label the
+  // route did not ask for — the defect the wait exists to remove, spoken aloud.
+  if (props.pending) return 'Opening this label…'
   const failed = props.failures.length
   const passed = props.passes.length
   // "All checks passed" has to account for the checks that were declined, or the
@@ -188,6 +204,12 @@ const summary = computed(() => {
     </p>
 
     <!--
+      Everything below is about a label, so none of it renders while the label
+      is still on its way. The region above stays, which is what lets its next
+      words be heard.
+    -->
+    <template v-if="!pending">
+      <!--
       The same counts the live region announces, made visible.
 
       `summary` was `sr-only` and nothing else stated a total, so a sighted
@@ -197,37 +219,37 @@ const summary = computed(() => {
       further down. This is `aria-hidden` on purpose — the region above says it
       in prose already, and a screen reader hearing both would hear it twice.
     -->
-    <p
-      v-if="counts.length"
-      class="numeric border-chrome-800 bg-chrome-950 flex flex-wrap gap-x-4 gap-y-1 border-b px-4 py-2 text-xs"
-      :aria-hidden="announce ? 'true' : undefined"
-    >
-      <span v-for="count in counts" :key="count.label" :class="count.tone">
-        <span aria-hidden="true">{{ count.mark }}</span
-        >&#8239;{{ count.total }}
-        <span class="sr-only">{{ count.label }}</span>
-      </span>
-    </p>
-
-    <div v-for="[severity, items] in failureGroups" :key="severity">
-      <h3
-        class="border-chrome-800 bg-chrome-950 flex items-center gap-2 border-b px-4 py-2 text-xs font-semibold tracking-wide"
-        :class="SEVERITY_STYLES[severity].text"
+      <p
+        v-if="counts.length"
+        class="numeric border-chrome-800 bg-chrome-950 flex flex-wrap gap-x-4 gap-y-1 border-b px-4 py-2 text-xs"
+        :aria-hidden="announce ? 'true' : undefined"
       >
-        <span aria-hidden="true">{{ SEVERITY_STYLES[severity].icon }}</span>
-        {{ SEVERITY_STYLES[severity].heading }} ({{ items.length }})
-      </h3>
-      <FindingItem
-        v-for="(finding, index) in items"
-        :key="`${finding.code}-${index}`"
-        :selectable="selectable"
-        :finding="finding"
-        :selected="!!finding.elementId && finding.elementId === selectedElementId"
-        @select="$emit('select', $event)"
-      />
-    </div>
+        <span v-for="count in counts" :key="count.label" :class="count.tone">
+          <span aria-hidden="true">{{ count.mark }}</span
+          >&#8239;{{ count.total }}
+          <span class="sr-only">{{ count.label }}</span>
+        </span>
+      </p>
 
-    <!--
+      <div v-for="[severity, items] in failureGroups" :key="severity">
+        <h3
+          class="border-chrome-800 bg-chrome-950 flex items-center gap-2 border-b px-4 py-2 text-xs font-semibold tracking-wide"
+          :class="SEVERITY_STYLES[severity].text"
+        >
+          <span aria-hidden="true">{{ SEVERITY_STYLES[severity].icon }}</span>
+          {{ SEVERITY_STYLES[severity].heading }} ({{ items.length }})
+        </h3>
+        <FindingItem
+          v-for="(finding, index) in items"
+          :key="`${finding.code}-${index}`"
+          :selectable="selectable"
+          :finding="finding"
+          :selected="!!finding.elementId && finding.elementId === selectedElementId"
+          @select="$emit('select', $event)"
+        />
+      </div>
+
+      <!--
       Stated in words because no rule states it, for two reasons that read the
       same way to a user. Artwork printed through a symbol destroys it while
       leaving both quiet zones clear, so every geometric check can pass on a
@@ -237,7 +259,7 @@ const summary = computed(() => {
       decline to certify it, and without this block those checks would simply
       vanish from the rail, which reads exactly like a check nobody wrote.
     -->
-    <!--
+      <!--
       The line where verdicts stop.
 
       Everything above is a provision applied to this label; everything below is
@@ -253,37 +275,37 @@ const summary = computed(() => {
       they are distinct and only one is theirs to fix; changing either here would
       make that document wrong.
     -->
-    <p
-      v-if="uncertifiable.length || (declined ?? []).length"
-      class="text-chrome-400 border-chrome-800 mt-4 border-t px-4 pt-3 pb-1 text-[10px] font-semibold tracking-wider uppercase"
-    >
-      Not verdicts &#8212; no provision is being applied
-    </p>
-
-    <section
-      v-if="uncertifiable.length"
-      class="border-chrome-400 mx-4 my-2 border-l border-dashed py-1 pl-4"
-      :aria-labelledby="declinedHeadingId"
-    >
-      <h3
-        :id="declinedHeadingId"
-        class="text-chrome-300 flex items-center gap-2 text-xs font-semibold"
+      <p
+        v-if="uncertifiable.length || (declined ?? []).length"
+        class="text-chrome-400 border-chrome-800 mt-4 border-t px-4 pt-3 pb-1 text-[10px] font-semibold tracking-wider uppercase"
       >
-        <span aria-hidden="true">{{ NOT_A_VERDICT.uncertifiable }}</span>
-        Cannot be checked
-      </h3>
-      <template v-for="item in uncertifiable" :key="item.elementId">
-        <p
-          v-for="reason in item.reasons"
-          :key="reason"
-          class="text-chrome-200 mt-2 text-sm leading-snug"
-        >
-          {{ reason }}
-        </p>
-      </template>
-    </section>
+        Not verdicts &#8212; no provision is being applied
+      </p>
 
-    <!--
+      <section
+        v-if="uncertifiable.length"
+        class="border-chrome-400 mx-4 my-2 border-l border-dashed py-1 pl-4"
+        :aria-labelledby="declinedHeadingId"
+      >
+        <h3
+          :id="declinedHeadingId"
+          class="text-chrome-300 flex items-center gap-2 text-xs font-semibold"
+        >
+          <span aria-hidden="true">{{ NOT_A_VERDICT.uncertifiable }}</span>
+          Cannot be checked
+        </h3>
+        <template v-for="item in uncertifiable" :key="item.elementId">
+          <p
+            v-for="reason in item.reasons"
+            :key="reason"
+            class="text-chrome-200 mt-2 text-sm leading-snug"
+          >
+            {{ reason }}
+          </p>
+        </template>
+      </section>
+
+      <!--
       A different thing from the block above, and the difference is the whole
       reason this one exists. That one names elements the engine could not
       **draw**; this names questions the label never answered, where a rule
@@ -295,27 +317,27 @@ const summary = computed(() => {
       Every reason ends by naming what to state, so this is a list of things to
       do rather than a list of apologies.
     -->
-    <section
-      v-if="(declined ?? []).length"
-      class="border-chrome-400 mx-4 my-2 border-l border-dashed py-1 pl-4"
-      :aria-labelledby="notRunHeadingId"
-    >
-      <h3
-        :id="notRunHeadingId"
-        class="text-chrome-300 flex items-center gap-2 text-xs font-semibold"
+      <section
+        v-if="(declined ?? []).length"
+        class="border-chrome-400 mx-4 my-2 border-l border-dashed py-1 pl-4"
+        :aria-labelledby="notRunHeadingId"
       >
-        <span aria-hidden="true">{{ NOT_A_VERDICT.declined }}</span>
-        Checks that did not run
-      </h3>
-      <div v-for="item in declined ?? []" :key="item.ruleId" class="mt-2">
-        <p class="text-chrome-200 text-sm leading-snug">{{ item.reason }}</p>
-        <p class="numeric text-chrome-400 mt-1 text-xs">
-          {{ item.citation.reference }}
-        </p>
-      </div>
-    </section>
+        <h3
+          :id="notRunHeadingId"
+          class="text-chrome-300 flex items-center gap-2 text-xs font-semibold"
+        >
+          <span aria-hidden="true">{{ NOT_A_VERDICT.declined }}</span>
+          Checks that did not run
+        </h3>
+        <div v-for="item in declined ?? []" :key="item.ruleId" class="mt-2">
+          <p class="text-chrome-200 text-sm leading-snug">{{ item.reason }}</p>
+          <p class="numeric text-chrome-400 mt-1 text-xs">
+            {{ item.citation.reference }}
+          </p>
+        </div>
+      </section>
 
-    <!--
+      <!--
       Guarded on a check having actually run, not merely on nothing having
       failed. With no resolvable layout there are no findings at all, and the
       earlier condition rendered a green tick and "Every check passed" for a
@@ -328,37 +350,51 @@ const summary = computed(() => {
       the declined block exists to remove. The aria summary had been updated for
       this case and the visible text had not, which is the worse half to miss.
     -->
-    <p
-      v-if="
-        failures.length === 0 &&
-        passes.length > 0 &&
-        uncertifiable.length === 0 &&
-        (declined ?? []).length === 0
-      "
-      class="text-pass flex items-center gap-2 px-4 py-6 text-sm"
-    >
-      <span aria-hidden="true">{{ SEVERITY_STYLES.pass.icon }}</span>
-      Every check passed.
-    </p>
-    <p v-else-if="findingCount === 0" class="text-chrome-300 px-4 py-6 text-sm leading-relaxed">
-      No checks have run — there is no resolved label to measure yet.
-    </p>
-
-    <details v-if="passes.length" class="border-chrome-800 mt-auto border-t">
-      <summary
-        class="text-chrome-300 hover:bg-chrome-800 focus-visible:outline-notice cursor-pointer px-4 py-3 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2"
+      <p
+        v-if="
+          failures.length === 0 &&
+          passes.length > 0 &&
+          uncertifiable.length === 0 &&
+          (declined ?? []).length === 0
+        "
+        class="text-pass flex items-center gap-2 px-4 py-6 text-sm"
       >
-        <span class="text-pass" aria-hidden="true">{{ SEVERITY_STYLES.pass.icon }}</span>
-        {{ passes.length }} checks passed
-      </summary>
-      <FindingItem
-        v-for="(finding, index) in passes"
-        :key="`${finding.code}-${index}`"
-        :selectable="selectable"
-        :finding="finding"
-        :selected="!!finding.elementId && finding.elementId === selectedElementId"
-        @select="$emit('select', $event)"
-      />
-    </details>
+        <span aria-hidden="true">{{ SEVERITY_STYLES.pass.icon }}</span>
+        Every check passed.
+      </p>
+      <p v-else-if="findingCount === 0" class="text-chrome-300 px-4 py-6 text-sm leading-relaxed">
+        No checks have run — there is no resolved label to measure yet.
+      </p>
+
+      <details v-if="passes.length" class="border-chrome-800 mt-auto border-t">
+        <summary
+          class="text-chrome-300 hover:bg-chrome-800 focus-visible:outline-notice cursor-pointer px-4 py-3 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2"
+        >
+          <span class="text-pass" aria-hidden="true">{{ SEVERITY_STYLES.pass.icon }}</span>
+          {{ passes.length }} checks passed
+        </summary>
+        <FindingItem
+          v-for="(finding, index) in passes"
+          :key="`${finding.code}-${index}`"
+          :selectable="selectable"
+          :finding="finding"
+          :selected="!!finding.elementId && finding.elementId === selectedElementId"
+          @select="$emit('select', $event)"
+        />
+      </details>
+    </template>
+    <!--
+      Visible, because below \`lg\` this rail is a pane of its own and the region
+      above is \`sr-only\`: someone on Checks during a wait saw a heading over
+      nothing. \`aria-hidden\` while the region is announcing, for the reason the
+      count strip is — the same words twice is noise, not emphasis.
+    -->
+    <p
+      v-else
+      class="text-chrome-300 px-4 py-6 text-sm"
+      :aria-hidden="announce ? 'true' : undefined"
+    >
+      Opening this label…
+    </p>
   </section>
 </template>

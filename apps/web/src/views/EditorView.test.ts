@@ -439,6 +439,18 @@ describe('opening a saved label from the route', () => {
     expect(useLabelDocumentStore().savedId).toBe('abc123')
   })
 
+  it('says it in the form pane too, which a narrow screen may be showing', async () => {
+    // Below \`lg\` the panes take turns, and the switcher stays on screen through
+    // the wait. Someone on Form saw an empty pane: the only visible "Opening this
+    // label…" was in Preview. Found by review. jsdom cannot apply \`lg:hidden\`,
+    // so this asserts the line exists in the pane; the browser decides when.
+    const { wrapper, land } = await openDeferred()
+    expect(wrapper.get('#pane-form').text()).toContain('Opening this label')
+    land()
+    await flushPromises()
+    expect(wrapper.get('#pane-form').text()).not.toContain('Opening this label')
+  })
+
   it('says what it is doing rather than showing an empty frame', async () => {
     const { wrapper, land } = await openDeferred()
 
@@ -449,8 +461,9 @@ describe('opening a saved label from the route', () => {
     land()
     await flushPromises()
 
-    // Not `[role="status"]` absent — the findings rail carries one of its own
-    // and is back on screen by now. The claim is that the wait is over.
+    // Not `[role="status"]` absent — that region is the findings rail's own,
+    // and it never leaves; saying the wait is one of the things it says. The
+    // claim is that the wait is over.
     expect(wrapper.text()).not.toContain('Opening this label')
   })
 
@@ -655,6 +668,40 @@ describe('opening a saved label from the route', () => {
       useLabelDocumentStore().savedId,
       'a read nobody is waiting for may not attach its label to this URL',
     ).toBe('abc123')
+  })
+
+  it('announces the wait and the arrival through the region already listening', async () => {
+    // Why the panes stay mounted. A screen reader announces a *change* to a
+    // live region it is already observing; one that is created with its text
+    // already in it usually says nothing. On `dev` the findings rail's region
+    // was mounted once and only its text moved, so opening a label announced its
+    // counts. The first version of this wait swapped the whole grid out for a
+    // panel of its own, which destroyed that region and rebuilt it full — so a
+    // screen-reader user opening a saved label heard nothing about it. Found by
+    // the phase's whole-branch review, which the per-commit ones had not seen.
+    const landings = deferredByLabel()
+    const router = testRouter('/labels/abc123')
+    await router.isReady()
+    const wrapper = mount(EditorView, {
+      global: { plugins: [router], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+    landings.get('abc123')!()
+    await flushPromises()
+
+    const region = wrapper.get('[aria-live]').element
+    expect(region.textContent).toContain('checks passed')
+
+    await router.push('/labels/def456')
+    await nextTick()
+    expect(wrapper.get('[aria-live]').element, 'the same region, not a new one').toBe(region)
+    expect(region.textContent).toContain('Opening this label')
+
+    landings.get('def456')!()
+    await flushPromises()
+    expect(wrapper.get('[aria-live]').element, 'and still the same one after').toBe(region)
+    expect(region.textContent).not.toContain('Opening this label')
+    expect(region.textContent).toContain('checks passed')
   })
 
   it('keeps exactly one live region while it waits', async () => {

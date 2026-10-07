@@ -195,10 +195,23 @@ into a version only when there is a reason to.
   route asked for, with the header's type, name, save and export controls disabled meanwhile. A failed
   open falls through to the document already held, which is what `loadError` is there to explain.
 
-  **It is one live region, not a second.** `docs/BACKLOG.md` records why that matters — the findings rail
-  carries the application's only one and `e2e/the-responsive-collapse.spec.ts` asserts exactly one is
-  perceivable at every width — so the wait replaces the rail rather than joining it, and a test pins the
-  count in the state where it could have gone wrong.
+  **The wait is said by the regions already listening, not by a new one.** The panes stay mounted and each
+  withholds its own content; the findings rail takes a `pending` prop and its live region says "Opening this
+  label…", and below `lg` the editor's own region says the same. A screen reader announces a *change* to a
+  region it is already observing, so the wait and then the opened label's counts are both heard. Each pane
+  also says it where it can be seen, because below `lg` the panes take turns and someone on Form or Checks
+  during a wait otherwise saw nothing at all; the rail's visible line is `aria-hidden` while its region is
+  speaking, for the reason the count strip is.
+
+  The first version got this wrong while satisfying every assertion written for it. It swapped the whole
+  grid for a waiting panel with a live region of its own — one region, as
+  `e2e/the-responsive-collapse.spec.ts` requires — and in doing so unmounted the findings rail's region and
+  rebuilt it already full when the label arrived, which screen readers usually do not announce. On `dev` the
+  rail's region had been mounted once and only its text moved, so this was a regression for exactly the
+  readers the invariant protects, and counting regions could not see it. Found by the phase's whole-branch
+  review, after four per-commit reviews had not. `e2e/the-opening-wait.spec.ts` now holds the read open, takes
+  a handle to the one perceivable region, and asserts the same connected node is speaking after the label
+  lands, at 375 and 1440 — and mutating back to the swapped-out grid fails it at both.
 
   **The wait is keyed to the label it is waiting for**, because two route changes can overlap. A `finally`
   clearing a boolean lets the first read to land declare the second finished: mutating the id back to a

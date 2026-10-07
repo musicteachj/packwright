@@ -499,7 +499,7 @@ async function exportPdf() {
       </div>
     </header>
 
-    <PaneSwitcher v-if="narrow && opening === null" :current="pane" @select="pane = $event" />
+    <PaneSwitcher v-if="narrow" :current="pane" @select="pane = $event" />
 
     <!--
       The findings rail carries the only `aria-live` region in the application,
@@ -507,30 +507,31 @@ async function exportPdf() {
       screen — so a screen-reader user got no compliance announcements at all on a
       narrow window. Measured: one live region in the document, zero client rects.
       This one exists only while that is true, so exactly one is ever live.
+
+      It says the wait rather than disappearing for it, for the reason the rail
+      takes `pending`: a region that is already being observed is heard when its
+      words change, and one rebuilt full usually is not.
     -->
-    <p v-if="narrow && opening === null" class="sr-only" role="status" aria-live="polite">
-      {{ store.failures.length }} findings, {{ store.passes.length }} checks passed.
+    <p v-if="narrow" class="sr-only" role="status" aria-live="polite">
+      {{
+        opening !== null
+          ? 'Opening this label…'
+          : `${store.failures.length} findings, ${store.passes.length} checks passed.`
+      }}
     </p>
 
     <!--
-      Nothing of the document while the route is still being answered.
-      `docs/BACKLOG.md` records why this is not a second `aria-live` region
-      bolted beside the rest: the findings rail carries the application's only
-      one, `e2e/the-responsive-collapse.spec.ts` asserts exactly one is
-      perceivable at every width, and this replaces the rail rather than joining
-      it — so the count is unchanged and the one region speaking is the one with
-      something to say.
-    -->
-    <div
-      v-if="opening !== null"
-      class="flex min-h-0 flex-1 items-center justify-center p-8"
-      role="status"
-      aria-live="polite"
-    >
-      <p class="text-chrome-300 text-sm">Opening this label…</p>
-    </div>
+      Nothing of the document while the route is still being answered — but the
+      panes stay, and so do the live regions in them.
 
-    <div v-else class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[380px_1fr_340px]">
+      The first version swapped this whole grid for a waiting panel with a live
+      region of its own. That kept the count of regions at one and destroyed the
+      one that mattered: the findings rail's was unmounted for the wait and
+      rebuilt already full, so a screen-reader user opening a saved label heard
+      nothing about it. Found by the phase's whole-branch review. Each pane now
+      withholds its own content instead, and the regions say the wait in words.
+    -->
+    <div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[380px_1fr_340px]">
       <div
         id="pane-form"
         :role="narrow ? 'tabpanel' : undefined"
@@ -538,7 +539,13 @@ async function exportPdf() {
         class="border-chrome-800 bg-chrome-900 min-h-0 overflow-y-auto lg:overflow-visible lg:border-r"
         :class="paneClass('form')"
       >
-        <EditorFormRail />
+        <EditorFormRail v-if="opening === null" />
+        <!--
+          \`lg:hidden\` because at that width Preview is on screen beside it and
+          already says so; below it the panes take turns and this may be the only
+          one showing.
+        -->
+        <p v-else class="text-chrome-300 px-4 py-6 text-sm lg:hidden">Opening this label…</p>
       </div>
 
       <div
@@ -551,8 +558,9 @@ async function exportPdf() {
         :class="paneClass('preview', 'flex')"
       >
         <div class="flex flex-1 items-center justify-center p-8">
+          <p v-if="opening !== null" class="text-chrome-300 text-sm">Opening this label…</p>
           <LabelCanvas
-            v-if="store.layout"
+            v-else-if="store.layout"
             :layout="store.layout"
             :title="canvasTitle"
             :highlighted-element-id="store.selectedElementId"
@@ -569,7 +577,7 @@ async function exportPdf() {
           </p>
         </div>
 
-        <LabelTextView v-if="store.layout" :layout="store.layout" />
+        <LabelTextView v-if="opening === null && store.layout" :layout="store.layout" />
       </div>
 
       <div
@@ -586,6 +594,7 @@ async function exportPdf() {
           :uncertifiable="store.uncertifiable"
           :declined="store.declined"
           :selected-element-id="store.selectedElementId"
+          :pending="opening !== null"
           @select="selectFromFindings($event)"
         />
       </div>

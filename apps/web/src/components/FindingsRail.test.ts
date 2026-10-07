@@ -156,3 +156,40 @@ describe('a citation is an identifier wherever it appears', () => {
     expect(citation!.classes()).toContain('numeric')
   })
 })
+
+describe('a rail waiting for its label', () => {
+  it('says so in its own live region, and reports nothing about any label', () => {
+    // The editor is fetching a label, and the findings it holds belong to
+    // whichever document was there before. Reporting them would be the rail
+    // certifying a label nobody asked for — so it reports none, and says why
+    // through the region a screen reader is already observing.
+    const rail = mountRail({ pending: true })
+
+    const region = rail.get('[aria-live]')
+    expect(region.text()).toBe('Opening this label…')
+
+    expect(rail.text(), 'no finding from the document being replaced').not.toContain(
+      'says something',
+    )
+    expect(rail.text(), 'and no verdict about it either').not.toContain('Not verdicts')
+    expect(rail.find('[aria-hidden="true"].numeric').exists(), 'nor a count strip').toBe(false)
+  })
+
+  it('says it where it can be seen too, without saying it twice to a screen reader', () => {
+    // Below \`lg\` this rail is a pane of its own, and someone on it during a
+    // wait saw a heading over nothing — the region is \`sr-only\`. The visible
+    // line is \`aria-hidden\` for the reason the count strip is: the region beside
+    // it already says the same words, and hearing both is hearing it twice.
+    const rail = mountRail({ pending: true })
+    const shown = rail.findAll('p').filter((p) => p.attributes('aria-live') === undefined)
+    const line = shown.find((p) => p.text() === 'Opening this label…')
+    expect(line, 'a visible line saying the wait').toBeDefined()
+    expect(line!.attributes('aria-hidden')).toBe('true')
+  })
+
+  it('keeps its region even while it says nothing else', () => {
+    // The point of `pending` rather than unmounting: the region outlives the
+    // wait, so the counts that replace this line arrive as a change.
+    expect(mountRail({ pending: true }).findAll('[aria-live]')).toHaveLength(1)
+  })
+})

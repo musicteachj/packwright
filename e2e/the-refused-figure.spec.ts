@@ -3,15 +3,21 @@ import { expect, test, type Page } from '@playwright/test'
 /**
  * The half of the numeric-input policy jsdom cannot state.
  *
- * A `type="number"` input sanitises its own value: while the box shows `0.`
- * the browser reads `input.value` back as the empty string, because `0.` is
- * not a valid floating-point number. jsdom does no such thing — it hands back
- * whatever was set — so a unit test cannot tell a half-typed figure from a
- * cleared box, and the one way to break this fix is invisible there.
+ * A `type="number"` input sanitises its own value, so what the box shows and
+ * what `input.value` reads back part company as soon as a figure is
+ * incomplete. Measured in Chromium, `0.` shows the trailing dot and reads back
+ * as `"0"`. jsdom does no such thing — it hands back whatever was set — so only
+ * a real browser can say what the control is showing between keystrokes.
  *
- * That break would be a bad one. Every figure between zero and one begins with
- * the character the guard refuses, so a field that snapped back on a refusal
- * would make `0.5` untypable while looking like it was protecting the document.
+ * **This header used to say two things that were wrong**, and both are kept
+ * here because the next reader will reason their way to the same ones. It said
+ * `0.` reads back as the empty string; it reads back as `"0"`. And it said a
+ * field snapping back to blank on a refusal would make `0.5` untypable. It does
+ * not: the old behaviour blanked the box on the `0` and left `.5` on screen,
+ * which Chromium reads as `0.5`, so the figure landed and only the keystroke
+ * was lost. That is why the test below asserts the box after every character —
+ * a version checking only the figure at the end passed against the unfixed
+ * code.
  */
 
 const openFoodEditor = async (page: Page) => {
