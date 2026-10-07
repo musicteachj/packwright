@@ -160,7 +160,7 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
       reason:
         'The panel draws a second column counting the ' +
         `${basis === 'per-container' ? 'whole package' : 'individual unit'}, and whether ` +
-        `${PROVISION_FOR[basis]} requires it cannot be told from what the label states — so ` +
+        `${PROVISION_FOR(basis)} requires it cannot be told from what the label states — so ` +
         'whether 101.9(e)(6) governs its form cannot be told either. ' +
         `${stateThese(unstated[basis])} and this check will run.`,
       wants: asDeclinedFacts(unstated[basis]),

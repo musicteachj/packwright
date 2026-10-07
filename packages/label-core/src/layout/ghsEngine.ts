@@ -59,6 +59,39 @@ function assertFinitePositive(value: number, what: string): void {
   }
 }
 
+/**
+ * Why a pictogram's symbol is not drawn, under the regime that governs the label.
+ *
+ * It said "CLP Annex V requires…" whatever the regime, so a US label was told its
+ * pictograms answered to an EU regulation that does not reach it — and once the
+ * explanation was shared across pictograms it was the one line of the "cannot be
+ * checked" block saying so. Found by `/code-review high` on PR #60; it predates
+ * that PR, which only made the sentence shared.
+ *
+ * The OSHA half is quoted from 29 CFR 1910.1200 Appendix C.2.3.2, read from the
+ * eCFR on 2026-10-07: "One of eight standard hazard symbols shall be used in each
+ * pictogram. The eight hazard symbols are depicted in Figure C.1." The CLP half
+ * is unchanged from what this engine already said. Neither says anything about
+ * what an empty frame is under the regime — C.2.3.1 forbids one on a US label —
+ * because that is a verdict, and an omission is a fact; judging it is
+ * `rules/`'s business.
+ *
+ * Exported so a test can recognise the missing-glyph omission by exact equality
+ * with its explanation. Two helpers found it by searching `reason` for "Annex
+ * V", which stopped matching the day the US wording became correct.
+ */
+export const SYMBOL_NOT_DRAWN_BECAUSE: Readonly<Record<GhsLabelData['regime'], string>> = {
+  'eu-clp':
+    'CLP Annex V requires each pictogram to conform to the specimen artwork published with the ' +
+    'standard, and no verified vector of the specimen artwork was available. Frames are drawn to ' +
+    'their resolved size; an approximation of a symbol would look compliant without being so.',
+  'us-osha':
+    '29 CFR 1910.1200 Appendix C.2.3.2 requires each pictogram to use one of the eight standard ' +
+    'hazard symbols depicted in its Figure C.1, and no verified vector of that artwork was ' +
+    'available. Frames are drawn to their resolved size; an approximation of a symbol would look ' +
+    'compliant without being so.',
+}
+
 export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
   const { data, stock } = request
 
@@ -314,11 +347,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
           // Said once under every pictogram it applies to, so it names none of
           // them: "that specimen" and "the frame" read as one particular symbol
           // when several are listed above it. Found by review.
-          why:
-            'CLP Annex V requires each pictogram to conform to the specimen artwork published ' +
-            'with the standard, and no verified vector of the specimen artwork was available. ' +
-            'Frames are drawn to their resolved size; an approximation of a symbol would look ' +
-            'compliant without being so.',
+          why: SYMBOL_NOT_DRAWN_BECAUSE[data.regime],
         }),
       )
 

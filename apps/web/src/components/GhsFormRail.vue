@@ -36,6 +36,7 @@ import {
 } from '@packwright/label-core'
 import { computed } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
+import { DECLINED_FACT_FIELDS } from '../declinedFacts'
 import EditorSection from './EditorSection.vue'
 import { CHIP, CHIP_REMOVE } from './formStyles'
 import TextField from './ui/TextField.vue'
@@ -272,7 +273,7 @@ const supplierTelephone = computed({
     </EditorSection>
 
     <EditorSection
-      title="Classification"
+      :title="DECLINED_FACT_FIELDS.hazards.name"
       :element-id="GHS_ELEMENTS.pictograms"
       :selected-element-id="store.selectedElementId"
       :status="hazards.length ? `${hazards.length} selected` : 'none'"

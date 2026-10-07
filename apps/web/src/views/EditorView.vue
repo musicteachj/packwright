@@ -113,10 +113,16 @@ async function selectFromFindings(elementId: string | undefined) {
  */
 async function stateFact(fact: DeclinedFact) {
   const { fieldId } = DECLINED_FACT_FIELDS[fact]
-  if (narrow.value) pane.value = 'form'
-  await nextTick()
+  // Found before the pane changes, not after. The panes are hidden by CSS and
+  // never unmounted, so the field is in the document whichever is showing. The
+  // first version switched first and looked second, so a field that was not
+  // there — renamed, or rendered under a condition the decline did not share —
+  // hid the Checks pane, dropped focus with it, and left the user on an empty
+  // form. Found by `/code-review high` on PR #60.
   const field = document.getElementById(fieldId)
   if (field === null) return
+  if (narrow.value) pane.value = 'form'
+  await nextTick()
   const control = field.matches('input, select, textarea, button')
     ? field
     : field.querySelector<HTMLElement>('input, select, textarea, button')

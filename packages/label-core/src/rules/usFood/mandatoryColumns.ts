@@ -15,7 +15,11 @@
  * drift, and the one that drifted would decide a citation.
  */
 
-import { dualColumnDuty, smallPackageRouteApplies } from '../../fda/nutritionFormats'
+import {
+  DUAL_COLUMN_BASIS_REFERENCE,
+  dualColumnDuty,
+  smallPackageRouteApplies,
+} from '../../fda/nutritionFormats'
 import type { DualColumnDuty, DualColumnFact } from '../../fda/nutritionFormats'
 import type { DeclinedFact } from '../types'
 import { labelingSurfaceFloor } from '../../geometry/pdp'
@@ -31,13 +35,10 @@ import type { UsFoodLabelData } from '../../templates/usFood'
 export function dualColumnDutyFor(data: UsFoodLabelData, stock: LabelStock): DualColumnDuty {
   const panel = data.nutritionFacts
   if (panel === undefined) {
-    return {
-      standing: { 'per-container': 'undetermined', 'per-unit': 'undetermined' },
-      unstated: {
-        'per-container': ['referenceAmount', 'packageContent', 'packagedAndSoldIndividually'],
-        'per-unit': ['referenceAmount', 'unitContent'],
-      },
-    }
+    // Asked of the one computation rather than written out: a hand-copied
+    // literal here was a second statement of what each provision waits for,
+    // which is what `unstated` exists to say in one place. Found by review.
+    return dualColumnDuty({})
   }
 
   // (A) turns on entitlement — "products that **meet the requirements to use**
@@ -108,8 +109,13 @@ export function stateThese(facts: readonly DualColumnFact[]): string {
   return `State ${list}`
 }
 
-/** The provision that decides whether a mandatory column on this basis is owed. */
-export const PROVISION_FOR: Readonly<Record<'per-container' | 'per-unit', string>> = {
-  'per-container': '101.9(b)(12)(i)',
-  'per-unit': '101.9(b)(2)(i)(D)',
-}
+/**
+ * The provision that decides whether a mandatory column on this basis is owed,
+ * as the decline prose cites it beside "101.9(e)(6)".
+ *
+ * Taken from `DUAL_COLUMN_BASIS_REFERENCE`, the table the findings cite and
+ * `citations.test.ts` checks, rather than written again — a second table was
+ * a correction to one that would never reach the other. Found by review.
+ */
+export const PROVISION_FOR = (basis: 'per-container' | 'per-unit'): string =>
+  DUAL_COLUMN_BASIS_REFERENCE[basis].replace(/^21 CFR /, '')

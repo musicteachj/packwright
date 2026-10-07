@@ -115,6 +115,24 @@ describe('layOutGhsLabel', () => {
     }
   })
 
+  it('says which regulation the missing symbol answers to, by the label’s regime', () => {
+    // It said "CLP Annex V requires…" on every label, so a US label was told
+    // its pictograms answered to an EU regulation that does not reach it.
+    // Found by `/code-review high` on PR #60; it predates that PR. The US
+    // wording quotes 29 CFR 1910.1200 Appendix C.2.3.2, read from the eCFR on
+    // 2026-10-07.
+    const why = (regime: GhsLabelData['regime']) =>
+      layOutGhsLabel({ data: { ...DATA, regime }, stock: STOCK }).omissions.find((o) =>
+        o.elementId.endsWith('GHS02'),
+      )!.explanation!.why
+
+    expect(why('us-osha')).toContain('29 CFR 1910.1200 Appendix C.2.3.2')
+    expect(why('us-osha')).toContain('one of the eight standard hazard symbols')
+    expect(why('us-osha'), 'no EU regulation on a US label').not.toMatch(/CLP|Annex V|1272\/2008/)
+    expect(why('eu-clp')).toContain('CLP Annex V')
+    expect(why('eu-clp'), 'and no US one on an EU label').not.toContain('1910.1200')
+  })
+
   it('carries the Annex V symbol name for the accessible title', () => {
     const layout = layOutGhsLabel({ data: DATA, stock: STOCK })
     expect(layout.pictograms.map((p) => p.symbolName)).toEqual(['flame', 'exclamation mark'])

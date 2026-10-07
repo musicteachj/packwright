@@ -1,7 +1,7 @@
 import type { Finding, Severity } from '@packwright/label-core'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FindingsRail from './FindingsRail.vue'
 import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
 import { useAnnouncerStore } from '../stores/announcer'
@@ -269,6 +269,48 @@ describe('an explanation the engine shares is said once', () => {
     expect(blockNamed(rail, 'Cannot be checked').text()).toContain(
       'Artwork is printed over the UPC-A symbol.',
     )
+  })
+
+  it('puts an element’s own reasons before the shared ones, so none reads as part of them', () => {
+    // GHS02 lacks its glyph and runs off the edge; GHS07 lacks its glyph.
+    // Interleaved in arrival order, GHS07's line sat between GHS02's two, and
+    // the overrun sat under the shared explanation as if continuing it.
+    const overrun = 'The GHS02 pictogram runs past the right edge of the label.'
+    const gh02 = pictogram('GHS02', 'flame')
+    const rail = mountRail({
+      uncertifiable: [
+        { ...gh02, reasons: [...gh02.reasons, { text: overrun }] },
+        pictogram('GHS07', 'exclamation mark'),
+      ],
+    })
+    const order = blockNamed(rail, 'Cannot be checked')
+      .findAll('p')
+      .map((p) => p.text())
+    expect(order.indexOf(overrun), 'the overrun before the group').toBeLessThan(
+      order.indexOf('The GHS02 symbol (flame) is not drawn.'),
+    )
+    expect(order.at(-1), 'the shared explanation last').toBe('CLP Annex V requires the specimen.')
+  })
+
+  it('keys each line apart even when two elements say the same thing', async () => {
+    // A code listed twice gives two identical lines. Keyed on the text alone,
+    // Vue saw a duplicate key and could drop or mis-patch a row.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const rail = mountRail({
+      uncertifiable: [pictogram('GHS05', 'corrosion'), pictogram('GHS07', 'exclamation mark')],
+    })
+    // Vue checks keys while patching an update, not on first render, and only
+    // among the ones it could not match at either end — so the update shares
+    // neither end with what was there, and both duplicates land in that middle.
+    await rail.setProps({
+      uncertifiable: [pictogram('GHS02', 'flame'), pictogram('GHS02', 'flame')],
+    })
+    const lines = blockNamed(rail, 'Cannot be checked')
+      .findAll('p')
+      .filter((p) => p.text() === 'The GHS02 symbol (flame) is not drawn.')
+    expect(lines).toHaveLength(2)
+    expect(warn.mock.calls.flat().join(' ')).not.toMatch(/Duplicate keys/)
+    warn.mockRestore()
   })
 
   it('counts elements, not sentences, so grouping moves no number', () => {

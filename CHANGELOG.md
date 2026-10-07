@@ -32,6 +32,15 @@ into a version only when there is a reason to.
   nothing never entered its loop — and it now asserts the rule stopped standing down, not that the asks ran
   out.
 
+  The `/code-review high` on the pull request tightened the interface half. A link's name and the field it
+  lands on were written separately and disagreed — "What the whole package holds" for a field labelled "The
+  whole package holds (g)" — so the form now takes those labels from the same map, and a test reads each
+  label off the page against its link. Following a fact switched panes before looking the field up, so a
+  field that was not there hid the Checks pane and dropped focus with it; it now looks first. The rail's
+  `declined` prop is typed from the engine's `DeclinedCheck`, so a decline handed over without `wants` fails
+  to compile rather than rendering no controls. The GHS section the hazard classification lives in is
+  titled "Hazard classification" now, the name the engine and the link already used.
+
 - **A shared explanation is said once, because the engine now says which part of its sentence is shared.**
   On a GHS label the "cannot be checked" block printed the same forty-word explanation once per pictogram,
   differing only in the code and the symbol's name; five pictograms would have printed it five times.
@@ -46,6 +55,11 @@ into a version only when there is a reason to.
   had to change the same way, so they share one builder now. The audit's copy had left out the
   overprinted-symbol half deliberately — an audit layout is GHS and has no symbols — and on one it still finds
   nothing.
+
+  The rail lists each element's own reasons before the shared groups, because interleaved in arrival order a
+  second element's line could land between the first's two reasons, and an element's own reason that followed
+  a group sat beneath the shared explanation as though it continued it. Found by the review of the pull
+  request, with a duplicate list key on repeated codes.
 
 - **The application says what it has to say about a label once, through one announcer.** A screen reader
   announces a *change* to a live region it is already observing, and a region created with its text already
@@ -258,6 +272,21 @@ into a version only when there is a reason to.
   slot changes how the name is set, never what it is.
 
 ### Fixed
+
+- **A US label's missing pictogram symbols were explained as a requirement of CLP, an EU regulation that does
+  not reach it.** The engine's omission said "CLP Annex V requires each pictogram to conform to the specimen
+  artwork…" whatever the label's regime. On an OSHA label it now cites the provision that governs it, 29 CFR
+  1910.1200 Appendix C.2.3.2 — which reads "One of eight standard hazard symbols shall be used in each
+  pictogram. The eight hazard symbols are depicted in Figure C.1.", read from the eCFR on 2026-10-07 and
+  quoted verbatim in the code beside it — and the EU wording is unchanged. Found by `/code-review high` on PR #60; it
+  predates that pull request, which only made the sentence shared and so the one place in the "cannot be
+  checked" block a reader met it. The omission still says nothing of what an empty frame *is* under either
+  regime — C.2.3.1 forbids one on a US label — because that is a verdict and belongs to `rules/`.
+
+  No rule reads an omission's wording, so no verdict moved. Two test helpers did: each picked out the
+  missing-glyph omission by searching its sentence for "Annex V", and on a US label stopped finding it, which
+  failed four tests loudly. They now compare the omission's `explanation` with the engine's own exported
+  constant, exactly.
 
 - **The canvas's dimension callout no longer sits on the barcode's digits, and its overlay toggles are the
   component layer's checkboxes.** Both were recorded in the canvas stage and both were found by looking.

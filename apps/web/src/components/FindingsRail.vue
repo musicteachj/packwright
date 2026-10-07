@@ -17,7 +17,7 @@
  * showing Checks it sat beside the editor's own copy of the same counts, worded
  * differently — the reader heard both. See `stores/announcer.ts`.
  */
-import type { DeclinedFact, Finding, Severity } from '@packwright/label-core'
+import type { DeclinedCheck, DeclinedFact, Finding, Severity } from '@packwright/label-core'
 import { computed } from 'vue'
 import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
 import { useAnnouncement } from '../stores/announcer'
@@ -39,12 +39,11 @@ const props = withDefaults(
      * not draw. These are questions nobody answered, and each reason ends by
      * naming what to state.
      */
-    declined?: ReadonlyArray<{
-      ruleId: string
-      reason: string
-      citation: { reference: string }
-      wants?: readonly DeclinedFact[]
-    }>
+    declined?: ReadonlyArray<
+      Pick<DeclinedCheck, 'ruleId' | 'reason' | 'wants'> & {
+        citation: Pick<DeclinedCheck['citation'], 'reference'>
+      }
+    >
     selectedElementId: string | null
     /**
      * The id this rail's heading takes, so two of them can share a page.
@@ -191,25 +190,30 @@ type Said =
   | { kind: 'shared'; key: string; whats: string[]; why: string }
 
 const uncheckableSaid = computed(() => {
-  const said: Said[] = []
+  const own: Said[] = []
+  const shared: Array<Extract<Said, { kind: 'shared' }>> = []
   const byWhy = new Map<string, Extract<Said, { kind: 'shared' }>>()
   for (const item of props.uncertifiable) {
     for (const reason of item.reasons) {
       if (reason.explanation === undefined) {
-        said.push({ kind: 'own', key: `${item.elementId}:${reason.text}`, text: reason.text })
+        own.push({ kind: 'own', key: `${item.elementId}:${reason.text}`, text: reason.text })
         continue
       }
       const { what, why } = reason.explanation
-      const shared = byWhy.get(why)
-      if (shared !== undefined) shared.whats.push(what)
+      const group = byWhy.get(why)
+      if (group !== undefined) group.whats.push(what)
       else {
         const entry = { kind: 'shared' as const, key: `shared:${why}`, whats: [what], why }
         byWhy.set(why, entry)
-        said.push(entry)
+        shared.push(entry)
       }
     }
   }
-  return said
+  // Each element's own reasons first, then the groups. Interleaved in arrival
+  // order, a second pictogram's line landed between the first one's two
+  // reasons, and a reason of its own that followed a group sat under the shared
+  // explanation where it read as part of it. Found by review.
+  return [...own, ...shared]
 })
 
 const summary = computed(() => {
@@ -360,7 +364,11 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
             the engine wrote is still printed; only the repetition is gone.
           -->
           <div v-else class="mt-2">
-            <p v-for="what in entry.whats" :key="what" class="text-chrome-200 text-sm leading-snug">
+            <p
+              v-for="(what, index) in entry.whats"
+              :key="`${index}:${what}`"
+              class="text-chrome-200 text-sm leading-snug"
+            >
               {{ what }}
             </p>
             <p class="text-chrome-300 mt-1 text-sm leading-snug">{{ entry.why }}</p>
@@ -404,7 +412,7 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
             because nothing here is a verdict.
           -->
           <p
-            v-if="stateable && item.wants?.length"
+            v-if="stateable && item.wants.length"
             class="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs"
           >
             <span class="text-chrome-400">State</span>

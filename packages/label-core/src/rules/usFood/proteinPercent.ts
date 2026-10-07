@@ -127,7 +127,7 @@ export const usFoodProteinPercentRule: UsFoodRule = {
       reason:
         'This food is declared for children 1 through 3 and its panel carries a second column ' +
         'with a protein amount. Whether 101.9(e)(6) asks that column for a percentage of its own ' +
-        `turns on whether ${PROVISION_FOR[basis]} requires the column, which cannot be told ` +
+        `turns on whether ${PROVISION_FOR(basis)} requires the column, which cannot be told ` +
         `from what the label states. ${stateThese(unstated[basis])} and this check will run.`,
       wants: asDeclinedFacts(unstated[basis]),
     }
