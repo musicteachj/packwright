@@ -222,6 +222,22 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The canvas's dimension callout no longer sits on the barcode's digits, and its overlay toggles are the
+  component layer's checkboxes.** Both were recorded in the canvas stage and both were found by looking.
+
+  The callout put its rule 2 mm below the symbol and its figure 1.2 mm *above* the rule, and an SVG
+  `<text>`'s `y` is its baseline, so the glyphs reached back into the band the digits print in — measured,
+  the figure's ink started at 33.39 mm and the digits' ended at 33.85 mm. The figure is now placed from
+  where its ink starts, 0.6 mm clear of the symbol, using the engine's measured capital height for Plex Mono
+  rather than an estimate, with the rule beneath it in drawing order. `e2e/the-canvas-apparatus.spec.ts`
+  compares *ink*, read from each element's own baseline and size, rather than bounding boxes, which carry the
+  font's empty ascent and descent and would have demanded room the ink does not need. The figure is measured
+  by the engine's own name for the face rather than a second spelling of it, because the typography guard
+  added in the canvas stage caught the first draft writing `'IBM Plex Mono'` into a component.
+
+  The Quiet zones and Dimensions toggles were bare inputs the stage 1 migration never reached, being scoped
+  to the form rails: 13×13 boxes in 17 px rows with 0 px between box and word. They are `CheckboxField`s now.
+
 - **The editor presented one label while it was fetching another, and discarded anything typed into it.**
   `openFromRoute` awaited `readLabel` having set nothing but `loadError`, and the document store is a
   singleton seeded at construction — so `store.layout` was non-null from the first frame. Under a URL

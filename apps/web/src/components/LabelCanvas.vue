@@ -18,7 +18,8 @@
  */
 import { computed, ref, useId } from 'vue'
 import type { ElementId, ResolvedLayout } from '@packwright/label-core'
-import { mm, toSVG, xDimensionMm } from '@packwright/label-core'
+import { glyphHeightMm, mm, toSVG, UPC_A_HRI_DEFAULT, xDimensionMm } from '@packwright/label-core'
+import CheckboxField from './ui/CheckboxField.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -146,16 +147,43 @@ const quietZoneBands = computed(() =>
   ]),
 )
 
+/**
+ * Where a callout's figure sits, in the label's own millimetres.
+ *
+ * **The figure used to be drawn over the barcode's digits.** The rule went 2 mm
+ * below the symbol and the figure 1.2 mm *above* the rule — but an SVG
+ * `<text>`'s `y` is its baseline, so the glyphs reached back up into the band
+ * the human-readable digits print in, and at 200% the figure read across
+ * `36000` and `29145`. Found by screenshotting the preview; no test looked.
+ *
+ * So the figure is placed from where its ink starts rather than from its
+ * baseline: clear of the symbol's drawn box by `CALLOUT_CLEARANCE_MM`, with
+ * the ink's height taken from the engine's own measurement of Plex Mono's
+ * capitals — digits stand that tall — rather than estimated here. The rule sits
+ * under the figure, which is the engineering-drawing order of a dimension
+ * line, and nothing in the figure descends below its baseline.
+ */
+const CALLOUT_FONT_MM = 1.8
+const CALLOUT_CLEARANCE_MM = 0.6
+const CALLOUT_BASELINE_TO_RULE_MM = 0.6
+// Measured in the face the engine sets a symbol's digits in, which is also the
+// mono face `numeric` gives this figure — named once, there, rather than
+// spelled again here. `e2e/the-canvas-apparatus.spec.ts` checks the figure
+// really does render in it, so the two cannot drift apart unnoticed.
+const CALLOUT_INK_MM = glyphHeightMm(CALLOUT_FONT_MM, UPC_A_HRI_DEFAULT.fontFamily, 'cap-height')
+
 /** A dimension callout under each symbol footprint, in engineering-drawing notation. */
 const symbolCallouts = computed(() =>
   props.layout.symbols.map((s) => {
     const leftMm = s.xMm - s.requiredQuietZoneLeftMm
     const widthMm = s.requiredQuietZoneLeftMm + s.barPatternWidthMm + s.requiredQuietZoneRightMm
+    const baselineMm = s.yMm + s.drawnHeightMm + CALLOUT_CLEARANCE_MM + CALLOUT_INK_MM
     return {
       key: s.elementId,
       leftMm,
       rightMm: leftMm + widthMm,
-      yMm: s.yMm + s.drawnHeightMm + 2,
+      baselineMm,
+      yMm: baselineMm + CALLOUT_BASELINE_TO_RULE_MM,
       midMm: leftMm + widthMm / 2,
       label: mm(widthMm),
     }
@@ -277,9 +305,9 @@ const symbolCallouts = computed(() =>
             -->
             <text
               :x="callout.midMm"
-              :y="callout.yMm - 1.2"
+              :y="callout.baselineMm"
               class="numeric"
-              font-size="1.8"
+              :font-size="CALLOUT_FONT_MM"
               fill="currentColor"
               text-anchor="middle"
             >
@@ -363,25 +391,16 @@ const symbolCallouts = computed(() =>
           </button>
         </div>
 
-        <div v-if="showOverlayControls" class="text-chrome-300 flex items-center gap-4 text-xs">
-          <label :for="quietZonesId">
-            <input
-              :id="quietZonesId"
-              v-model="showQuietZones"
-              type="checkbox"
-              class="accent-notice"
-            />
-            <span>Quiet zones</span>
-          </label>
-          <label :for="dimensionsId">
-            <input
-              :id="dimensionsId"
-              v-model="showDimensions"
-              type="checkbox"
-              class="accent-notice"
-            />
-            <span>Dimensions</span>
-          </label>
+        <!--
+          `CheckboxField`, which these were listed as getting in stage 1 and did
+          not: that migration was scoped to the form rails. Measured as bare
+          inputs, each was a 13×13 box in a 17px row with 0px between box and
+          word — under WCAG 2.2's 24px target, and the shape the component
+          exists to end everywhere else.
+        -->
+        <div v-if="showOverlayControls" class="flex items-center gap-4">
+          <CheckboxField :id="quietZonesId" v-model="showQuietZones" label="Quiet zones" />
+          <CheckboxField :id="dimensionsId" v-model="showDimensions" label="Dimensions" />
         </div>
       </div>
     </figcaption>
