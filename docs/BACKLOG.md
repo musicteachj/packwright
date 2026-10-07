@@ -764,31 +764,30 @@ lost, which is why this is an entry rather than part of the fix: the harm the st
 that could be edited and then silently discarded, and this is the cosmetic remainder. Worth doing with the
 shell work, where the header is being looked at anyway.
 
-**The dimension callout's figure is drawn over the barcode's own digits.** `LabelCanvas.vue`'s
-`symbolCallouts` puts the rule at `yMm + drawnHeightMm + 2` — cleanly below the symbol — and then the
-label at `callout.yMm - 1.2`, which is *above* the rule. An SVG `<text>` `y` is its baseline, and at
-`font-size="1.8"` the glyphs reach roughly 1.3mm above it, so the figure occupies the band from about
-0.5mm inside the symbol's drawn box downwards, and `drawnHeightMm` includes the human-readable digits.
-At 200% on a UPC-A the result is `37.29 mm` set across `36000` and `29145`. Screenshot the preview with
-Dimensions on and it is unmissable; nothing in the suite can see it, because every existing assertion
-about the callout is about its text or its typeface.
+**~~The dimension callout's figure is drawn over the barcode's own digits.~~ Fixed.** Measured: the
+figure's ink started at 33.39 mm and the human-readable digits' ended at 33.85 mm. It is now placed from
+where its ink starts — clear of the symbol's drawn box by 0.6 mm, with the ink's height taken from the
+engine's own measurement of Plex Mono's capitals — and the rule sits under it. The browser test reads both
+baselines and sizes from the elements and compares ink rather than bounding boxes, which include the
+font's empty ascent and descent and would have demanded room the ink does not need. The measurement also
+corrected a guess in the first version of this entry: the engine's drawn height ends at the digits'
+baseline, not below their descent.
 
-Not fixed here because it is a change to where the engine's own apparatus is drawn rather than to how it
-is set, and the stage in front of it is the numeric-input policy. The fix is to put the figure below the
-rule rather than above it, or to give the callout its own clearance from `drawnHeightMm`; either way it
-wants a browser test measuring the two boxes, since jsdom cannot say whether they overlap.
+The clearance cost 0.46 mm of depth: the callout now reaches about 3.3 mm below the symbol where it reached
+about 2.8. The overlay shares the label's `viewBox`, so a symbol placed closer than that to the bottom edge
+has the callout's tick ends clipped — as it already would have at 2.8 mm. The default retail label leaves
+about 6 mm. Noted by the review of the fix; not worth a change until a label puts a symbol there.
 
-**The canvas's two overlay checkboxes never joined the component layer.** `docs/specs/2026-09-18-interface-foundation-design.md`
-lists them under what stage 1 closes without separate work — "including `LabelCanvas.vue:342-359`, where the
-two overlay labels carry no class at all and the measured gap between box and word is **0 px**" — and they
-still carry no class. The migration was scoped to the three form rails, and the changelog says exactly that
-and no more, so nothing shipped a false claim; the spec's expectation simply was not met. Quiet zones and
-Dimensions are still a bare `<label>` wrapping a bare `<input type="checkbox">`, so they keep the 0px gap
-and the 13x13 target the `CheckboxField` row exists to fix.
+**~~The canvas's two overlay checkboxes never joined the component layer.~~ Fixed.** They are
+`CheckboxField`s now. Measured as bare inputs: 13×13 boxes in 17 px rows with 0 px between box and word.
 
-Cheap to close — import `CheckboxField` and pass the two `v-model`s — and deliberately not done in a commit
-whose subject is a typeface, because it changes hit targets and row heights in the pane a browser test
-measures.
+**"Needs 2.97 mm" wraps onto a line of its own, away from the clear-space figures it qualifies.** An audit
+finding (`docs/ui-audit-2026-09-18/close-figcaption.png`) that was never written down here, and still true:
+at the canvas's width in the editor the figcaption's `<dl>` wraps after "Clear space", so the requirement
+sits under the zoom row's neighbours rather than beside the measurement it is the minimum for. Not fixed
+with the two above because the obvious repair — wrapping the two pairs so they wrap together — is not
+valid inside a `<dl>`, which allows a `div` around one name and its value but not around two. It wants a
+decision about the markup: one pair whose value states both figures, or a different element.
 
 ## From stage 2, the report surface
 

@@ -1,4 +1,9 @@
-import type { ResolvedLayout, ResolvedSymbol } from '@packwright/label-core'
+import {
+  glyphHeightMm,
+  UPC_A_HRI_DEFAULT,
+  type ResolvedLayout,
+  type ResolvedSymbol,
+} from '@packwright/label-core'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import LabelCanvas from './LabelCanvas.vue'
@@ -76,6 +81,19 @@ describe('the dimension callout is a measurement, and is set like one', () => {
 
     expect(callout.classes()).toContain('numeric')
     expect(callout.attributes('font-family')).toBeUndefined()
+  })
+
+  it('starts its ink below the symbol, not inside the band its digits print in', async () => {
+    // The figure was placed 1.2 mm above a rule 2 mm below the symbol, from its
+    // baseline — so its capitals reached back over the digits. Arithmetic on
+    // the element's own attributes, which is all jsdom can do; the browser spec
+    // checks the same against the engine's real digits.
+    const callout = (await withDimensions()).get('svg text')
+    const baselineMm = Number(callout.attributes('y'))
+    const fontSizeMm = Number(callout.attributes('font-size'))
+    const inkTopMm =
+      baselineMm - glyphHeightMm(fontSizeMm, UPC_A_HRI_DEFAULT.fontFamily, 'cap-height')
+    expect(inkTopMm).toBeGreaterThan(symbol.yMm + symbol.drawnHeightMm)
   })
 
   it('keeps its type size in the label’s own millimetres', async () => {
