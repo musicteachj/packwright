@@ -60,6 +60,7 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
         'This label declares no hazard classification, so nothing here can tell you ' +
         'whether the pictograms printed are the ones this substance’s hazards require. A classification cannot be worked out from the H-codes a label ' +
         'prints — classify the substance and this check will run.',
+      wants: ['hazards'],
     }
   },
 

@@ -69,6 +69,18 @@ import {
   GS1_GTIN_CHECK_DIGIT_VALID,
   ghsPictogramSizeRule,
 } from './index'
+import { SYMBOL_NOT_DRAWN_BECAUSE } from '../layout/ghsEngine'
+import type { LayoutOmission } from '../layout/types'
+
+/**
+ * The missing-glyph omission every pictogram carries, recognised by its
+ * explanation rather than by searching its sentence. This matched `reason`
+ * against "Annex V", and stopped matching on US labels the day their wording
+ * stopped wrongly citing CLP — the tests failed, which is how it was found.
+ */
+const isMissingGlyph = (omission: LayoutOmission): boolean =>
+  omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`) &&
+  Object.values(SYMBOL_NOT_DRAWN_BECAUSE).includes(omission.explanation?.why ?? '')
 
 /** Layout and findings together, because every case here asserts its own premise. */
 const judge = (data: UsFoodLabelData, stock: LabelStock) => {
@@ -782,13 +794,7 @@ describe('a GHS pass the guard cannot reach is withheld by its own rule', () => 
   // and a review caught an assertion that could then never fail.
   const glyphsDrawn = (layout: ResolvedLayout): ResolvedLayout => ({
     ...layout,
-    omissions: layout.omissions.filter(
-      (omission) =>
-        !(
-          omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`) &&
-          omission.reason.includes('Annex V')
-        ),
-    ),
+    omissions: layout.omissions.filter((omission) => !isMissingGlyph(omission)),
   })
   const codesFor = (data: GhsLabelData, layout: ResolvedLayout) =>
     runRules({ labelType: 'ghs-chemical', data, stock: GHS_CONFORMANT.stock, layout }).map(

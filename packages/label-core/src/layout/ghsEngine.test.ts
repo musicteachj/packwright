@@ -81,6 +81,58 @@ describe('layOutGhsLabel', () => {
     }
   })
 
+  it('says what each missing symbol is apart from why, so the why can be said once', () => {
+    // Two pictograms printed the same forty-word explanation twice, differing
+    // only in the code and the symbol's name, and five would print it five
+    // times. The rail could only shorten that by taking the engine's sentence
+    // apart, which this project does not do to its own report. So the engine
+    // states the two halves itself: what is missing here, and why — the second
+    // identical across every pictogram, so a reader can group on it whole.
+    const layout = layOutGhsLabel({ data: DATA, stock: STOCK })
+    const explained = ['GHS02', 'GHS07'].map(
+      (code) => layout.omissions.find((o) => o.elementId.endsWith(code))!.explanation,
+    )
+
+    expect(explained.every((e) => e !== undefined)).toBe(true)
+    expect(explained[0]!.what).toBe('The GHS02 symbol (flame) is not drawn.')
+    expect(explained[1]!.what).toBe('The GHS07 symbol (exclamation mark) is not drawn.')
+    expect(explained[0]!.why, 'one explanation, word for word').toBe(explained[1]!.why)
+    expect(explained[0]!.why).toContain('Annex V')
+  })
+
+  it('keeps the whole sentence exactly the two halves, so nothing reads one and misses the other', () => {
+    // `reason` is what the export gate, the API and every existing reader use.
+    // It must stay the sentence it was, or the split changed what the engine
+    // says rather than only how it can be grouped.
+    const layout = layOutGhsLabel({
+      data: { ...DATA, hazardStatementCodes: ['H225', 'H999' as never] },
+      stock: STOCK,
+    })
+    const explainedOmissions = layout.omissions.filter((o) => o.explanation !== undefined)
+    expect(explainedOmissions.length, 'two pictograms and one unknown statement').toBe(3)
+    for (const omission of explainedOmissions) {
+      expect(omission.reason).toBe(`${omission.explanation!.what} ${omission.explanation!.why}`)
+    }
+  })
+
+  it('says which regulation the missing symbol answers to, by the label’s regime', () => {
+    // It said "CLP Annex V requires…" on every label, so a US label was told
+    // its pictograms answered to an EU regulation that does not reach it.
+    // Found by `/code-review high` on PR #60; it predates that PR. The US
+    // wording quotes 29 CFR 1910.1200 Appendix C.2.3.2, read from the eCFR on
+    // 2026-10-07.
+    const why = (regime: GhsLabelData['regime']) =>
+      layOutGhsLabel({ data: { ...DATA, regime }, stock: STOCK }).omissions.find((o) =>
+        o.elementId.endsWith('GHS02'),
+      )!.explanation!.why
+
+    expect(why('us-osha')).toContain('29 CFR 1910.1200 Appendix C.2.3.2')
+    expect(why('us-osha')).toContain('one of the eight standard hazard symbols')
+    expect(why('us-osha'), 'no EU regulation on a US label').not.toMatch(/CLP|Annex V|1272\/2008/)
+    expect(why('eu-clp')).toContain('CLP Annex V')
+    expect(why('eu-clp'), 'and no US one on an EU label').not.toContain('1910.1200')
+  })
+
   it('carries the Annex V symbol name for the accessible title', () => {
     const layout = layOutGhsLabel({ data: DATA, stock: STOCK })
     expect(layout.pictograms.map((p) => p.symbolName)).toEqual(['flame', 'exclamation mark'])

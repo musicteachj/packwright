@@ -269,6 +269,7 @@ function declinesOf<TContext extends RuleContext>(
         title: rule.title,
         citation: declined.citation ?? rule.citation,
         reason: declined.reason,
+        wants: declined.wants,
       },
     ]
   })

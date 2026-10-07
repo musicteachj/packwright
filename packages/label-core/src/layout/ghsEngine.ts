@@ -44,6 +44,7 @@ import type {
   ResolvedLayout,
   ResolvedPictogram,
 } from './types'
+import { explainedOmission } from './omissions'
 
 export interface GhsLayoutRequest {
   data: GhsLabelData
@@ -56,6 +57,39 @@ function assertFinitePositive(value: number, what: string): void {
   if (!Number.isFinite(value) || value <= 0) {
     throw new LayoutError(`${what} must be a positive finite number, received ${value}.`)
   }
+}
+
+/**
+ * Why a pictogram's symbol is not drawn, under the regime that governs the label.
+ *
+ * It said "CLP Annex V requires…" whatever the regime, so a US label was told its
+ * pictograms answered to an EU regulation that does not reach it — and once the
+ * explanation was shared across pictograms it was the one line of the "cannot be
+ * checked" block saying so. Found by `/code-review high` on PR #60; it predates
+ * that PR, which only made the sentence shared.
+ *
+ * The OSHA half is quoted from 29 CFR 1910.1200 Appendix C.2.3.2, read from the
+ * eCFR on 2026-10-07: "One of eight standard hazard symbols shall be used in each
+ * pictogram. The eight hazard symbols are depicted in Figure C.1." The CLP half
+ * is unchanged from what this engine already said. Neither says anything about
+ * what an empty frame is under the regime — C.2.3.1 forbids one on a US label —
+ * because that is a verdict, and an omission is a fact; judging it is
+ * `rules/`'s business.
+ *
+ * Exported so a test can recognise the missing-glyph omission by exact equality
+ * with its explanation. Two helpers found it by searching `reason` for "Annex
+ * V", which stopped matching the day the US wording became correct.
+ */
+export const SYMBOL_NOT_DRAWN_BECAUSE: Readonly<Record<GhsLabelData['regime'], string>> = {
+  'eu-clp':
+    'CLP Annex V requires each pictogram to conform to the specimen artwork published with the ' +
+    'standard, and no verified vector of the specimen artwork was available. Frames are drawn to ' +
+    'their resolved size; an approximation of a symbol would look compliant without being so.',
+  'us-osha':
+    '29 CFR 1910.1200 Appendix C.2.3.2 requires each pictogram to use one of the eight standard ' +
+    'hazard symbols depicted in its Figure C.1, and no verified vector of that artwork was ' +
+    'available. Frames are drawn to their resolved size; an approximation of a symbol would look ' +
+    'compliant without being so.',
 }
 
 export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
@@ -305,15 +339,17 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
         glyphDrawn: false,
       })
 
-      omissions.push({
-        elementId,
-        scope: 'detail',
-        reason:
-          `The ${code} symbol (${symbolName}) is not drawn. CLP Annex V requires each ` +
-          'pictogram to conform to the specimen artwork published with the standard, and no ' +
-          'verified vector of that specimen was available. The frame is drawn to its resolved ' +
-          'size; an approximation of the symbol would look compliant without being so.',
-      })
+      omissions.push(
+        explainedOmission({
+          elementId,
+          scope: 'detail',
+          what: `The ${code} symbol (${symbolName}) is not drawn.`,
+          // Said once under every pictogram it applies to, so it names none of
+          // them: "that specimen" and "the frame" read as one particular symbol
+          // when several are listed above it. Found by review.
+          why: SYMBOL_NOT_DRAWN_BECAUSE[data.regime],
+        }),
+      )
 
       // Recorded after the glyph, which every pictogram carries. A strip is one
       // row, so it can run off the right as well as the bottom — a label with more
@@ -348,16 +384,21 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     const statements = codes.flatMap((code) => {
       const text = lookup(data.regime, code)
       if (text !== undefined) return [text]
-      omissions.push({
-        // Suffixed with the code: several statements can be omitted from one
-        // block, and each omission should say which statement it is.
-        elementId: `${elementId}-${code}`,
-        scope: 'detail',
-        reason:
-          `The statement ${code} is not drawn: no verified text for it exists under this ` +
-          'label’s regime. Printing another regime’s wording would produce a label that looks ' +
-          'complete and is not.',
-      })
+      omissions.push(
+        explainedOmission({
+          // Suffixed with the code: several statements can be omitted from one
+          // block, and each omission should say which statement it is.
+          elementId: `${elementId}-${code}`,
+          scope: 'detail',
+          what: `The statement ${code} is not drawn.`,
+          // Two sentences where there was one with a colon, so the shared half
+          // reads as a sentence on its own — and with no "it", because it is said
+          // once under several statements and would point at none of them.
+          why:
+            'No verified wording exists under this label’s regime, and printing another ' +
+            'regime’s would produce a label that looks complete and is not.',
+        }),
+      )
       return []
     })
     if (statements.length === 0) continue

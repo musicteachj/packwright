@@ -7,7 +7,7 @@ import type { Finding } from '../types/index'
 import { CONFORMANT_FIXTURE, GS1_RETAIL_FIXTURES } from './fixtures/gs1Retail'
 import { layOutGhsLabel } from '../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
-import { GHS_FIXTURES } from './fixtures/ghs'
+import { GHS_FIXTURES, HAZARDS } from './fixtures/ghs'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES } from './fixtures/usFood'
 import {
   GHS_RULES,
@@ -17,7 +17,9 @@ import {
   listRules,
   runRules,
 } from './registry'
-import { compareSeverity } from './types'
+import { compareSeverity, type DeclinedFact, type RuleContext } from './types'
+import type { GhsLabelData } from '../templates/ghs'
+import type { UsFoodLabelData } from '../templates/usFood'
 
 function findingsFor(data: UpcALabelData, stock: LabelStock): Finding[] {
   const layout = layOutUpcALabel(bwip as never, { data, stock })
@@ -572,5 +574,232 @@ describe('a rule that stands down says so, and only then', () => {
     expect(declined, 'the conformant label states no reference amount').toBeDefined()
     expect(declined!.reason).toContain('reference amount')
     expect(declined!.citation.reference).toBe('21 CFR 101.9(b)(12)(i)')
+  })
+})
+
+/**
+ * What a check that stood down asks for, held to its word.
+ *
+ * `Decline.reason` promises that doing what it says makes the check run, and
+ * nothing enforced it. Designing the test below is what found it broken: for a
+ * second column counting the individual unit, two rules told a user to state
+ * the reference amount, the package content and whether it is sold
+ * individually — and (b)(2)(i)(D) turns on the reference amount and the *unit*
+ * content, so a user who did exactly that was left with a check still standing
+ * down. The facts are now named in the data, and this states them and watches.
+ */
+describe('a check that stood down names what would let it run', () => {
+  const foodBase = US_FOOD_CONFORMANT
+  const foodPanel = foodBase.data.nutritionFacts!
+  const food = (name: string, panel: Partial<NonNullable<UsFoodLabelData['nutritionFacts']>>) => ({
+    name,
+    data: { ...foodBase.data, nutritionFacts: { ...foodPanel, ...panel } } as UsFoodLabelData,
+  })
+
+  /** The shapes no fixture reaches, one per declining branch the fixtures miss. */
+  const constructed = [
+    food('a second column that does not say what it counts', {
+      columns: {
+        mode: 'dual',
+        headings: ['Per serving', 'Per container'],
+        secondAmounts: { ...foodPanel.amounts },
+      },
+    }),
+    food('a per-unit column whose duty turns on a unit content nobody stated', {
+      availableSurfaceSqInches: 60,
+      referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+      packagedAndSoldIndividually: false,
+      columns: {
+        mode: 'dual',
+        basis: 'per-unit',
+        headings: ['Per serving', 'Per unit'],
+        secondAmounts: { 'total-fat': 7.5 },
+        separated: false,
+      },
+    }),
+    food('a per-container column whose duty turns on a package content nobody stated', {
+      availableSurfaceSqInches: 60,
+      referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+      columns: {
+        mode: 'dual',
+        basis: 'per-container',
+        headings: ['Per serving', 'Per container'],
+        secondAmounts: { 'total-fat': 7.5 },
+        separated: false,
+      },
+    }),
+    food('a toddler food whose second column carries protein and says nothing of what it counts', {
+      representedFor: 'children-1-through-3',
+      declaredPercentDv: { ...foodPanel.declaredPercentDv, protein: 38 },
+      columns: {
+        mode: 'dual',
+        headings: ['Per serving', 'Per container'],
+        secondAmounts: { ...foodPanel.amounts },
+      },
+    }),
+    food('a toddler food whose per-unit column carries protein, unit content unstated', {
+      representedFor: 'children-1-through-3',
+      declaredPercentDv: { ...foodPanel.declaredPercentDv, protein: 38 },
+      referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+      packagedAndSoldIndividually: false,
+      columns: {
+        mode: 'dual',
+        basis: 'per-unit',
+        headings: ['Per serving', 'Per unit'],
+        secondAmounts: { ...foodPanel.amounts },
+      },
+    }),
+  ]
+
+  const contextOf = (labelType: 'us-food' | 'ghs-chemical', data: unknown, stock: LabelStock) =>
+    labelType === 'us-food'
+      ? ({
+          labelType,
+          data: data as UsFoodLabelData,
+          stock,
+          layout: layOutUsFoodLabel({ data: data as UsFoodLabelData, stock }),
+        } satisfies RuleContext)
+      : ({
+          labelType,
+          data: data as GhsLabelData,
+          stock,
+          layout: layOutGhsLabel({ data: data as GhsLabelData, stock }),
+        } satisfies RuleContext)
+
+  const cases = [
+    ...US_FOOD_FIXTURES.map((f) => ({
+      name: f.name,
+      labelType: 'us-food' as const,
+      data: f.data as unknown,
+      stock: f.stock,
+    })),
+    ...constructed.map((c) => ({ ...c, labelType: 'us-food' as const, stock: foodBase.stock })),
+    ...GHS_FIXTURES.map((f) => ({
+      name: f.name,
+      labelType: 'ghs-chemical' as const,
+      data: f.data as unknown,
+      stock: f.stock,
+    })),
+  ]
+
+  /** Whether the label has already stated a fact — never asked for twice. */
+  const stated = (data: unknown, fact: DeclinedFact): boolean => {
+    const figure = (value: unknown) =>
+      typeof value === 'number' && Number.isFinite(value) && value > 0
+    const ghs = data as GhsLabelData
+    const panel = (data as UsFoodLabelData).nutritionFacts
+    switch (fact) {
+      case 'hazards':
+        return (ghs.hazards ?? []).length > 0
+      case 'nutritionFacts.referenceAmount':
+        return figure(panel?.referenceAmount?.amount)
+      case 'nutritionFacts.packageContent':
+        return figure(panel?.packageContent)
+      case 'nutritionFacts.unitContent':
+        return figure(panel?.unitContent)
+      case 'nutritionFacts.packagedAndSoldIndividually':
+        return panel?.packagedAndSoldIndividually !== undefined
+      case 'nutritionFacts.columns.basis':
+        return panel?.columns?.basis !== undefined
+    }
+  }
+
+  /** A valid answer to each fact, as a user filling the field would give one. */
+  const state = (data: unknown, fact: DeclinedFact): unknown => {
+    if (fact === 'hazards') return { ...(data as GhsLabelData), hazards: [HAZARDS.flammableLiquid] }
+    const label = data as UsFoodLabelData
+    const panel = label.nutritionFacts!
+    const answer: Record<Exclude<DeclinedFact, 'hazards'>, object> = {
+      'nutritionFacts.referenceAmount': {
+        referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+      },
+      'nutritionFacts.packageContent': { packageContent: 100 },
+      'nutritionFacts.unitContent': { unitContent: 100 },
+      'nutritionFacts.packagedAndSoldIndividually': { packagedAndSoldIndividually: true },
+      'nutritionFacts.columns.basis': { columns: { ...panel.columns!, basis: 'per-container' } },
+    }
+    return { ...label, nutritionFacts: { ...panel, ...answer[fact] } }
+  }
+
+  it('names at least one fact, and never one the label already states', () => {
+    for (const one of cases) {
+      const context = contextOf(one.labelType, one.data, one.stock)
+      for (const declined of declinedChecks(context)) {
+        expect(
+          declined.wants.length,
+          `${declined.ruleId} on ${one.name} names nothing`,
+        ).toBeGreaterThan(0)
+        for (const fact of declined.wants) {
+          expect(
+            stated(one.data, fact),
+            `${declined.ruleId} on ${one.name} asks again for ${fact}`,
+          ).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('runs once the label states what it was asked for', () => {
+    // Followed to the end, because one answer can turn a decline into a
+    // different one — stating what a column counts can leave its duty to be
+    // determined — and the promise is about where following leads.
+    //
+    // **Asserted on the rule standing down, not on the asks running out.** The
+    // first version ended when `wants` was empty and then asserted it was, so a
+    // decline that asked for nothing passed by never entering the loop — which
+    // is exactly the decline that cannot be followed.
+    for (const one of cases) {
+      for (const first of declinedChecks(contextOf(one.labelType, one.data, one.stock))) {
+        let data = one.data
+        let asked: readonly DeclinedFact[] = first.wants
+        const path: string[] = []
+        for (let step = 0; step < 4 && asked.length > 0; step += 1) {
+          for (const fact of asked) data = state(data, fact)
+          path.push(asked.join(' + '))
+          asked =
+            declinedChecks(contextOf(one.labelType, data, one.stock)).find(
+              (d) => d.ruleId === first.ruleId,
+            )?.wants ?? []
+        }
+        const still = declinedChecks(contextOf(one.labelType, data, one.stock)).find(
+          (d) => d.ruleId === first.ruleId,
+        )
+        expect(
+          still,
+          `${first.ruleId} on ${one.name} still stands down after ${path.join(' then ') || 'being asked for nothing'}`,
+        ).toBeUndefined()
+      }
+    }
+  })
+
+  it('tells a per-unit column’s author to state the unit, not the package', () => {
+    // The defect the properties above were written to catch, pinned in the
+    // words a user reads. The instruction is built from `wants`, so this also
+    // holds the prose to the links beneath it.
+    const perUnit = constructed.find((c) => c.name.startsWith('a per-unit column'))!
+    const declined = declinedChecks(contextOf('us-food', perUnit.data, foodBase.stock)).find(
+      (d) => d.ruleId === 'us-food/dual-column-form',
+    )!
+    expect(declined.wants).toEqual(['nutritionFacts.unitContent'])
+    expect(declined.reason).toContain(
+      'State what one individual unit holds and this check will run.',
+    )
+    expect(declined.reason).toContain('101.9(b)(2)(i)(D)')
+    expect(declined.reason, 'the package provision is not this column’s').not.toContain(
+      '(b)(12)(i)',
+    )
+    expect(declined.reason).not.toContain('what the whole package holds')
+  })
+
+  it('reaches every rule that can stand down, so neither property above passes for want of a case', () => {
+    const reached = new Set(
+      cases.flatMap((one) =>
+        declinedChecks(contextOf(one.labelType, one.data, one.stock)).map((d) => d.ruleId),
+      ),
+    )
+    const declaring = [...US_FOOD_RULES, ...GHS_RULES]
+      .filter((rule) => rule.declines !== undefined)
+      .map((r) => r.id)
+    expect([...reached].sort()).toEqual([...declaring].sort())
   })
 })

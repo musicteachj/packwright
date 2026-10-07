@@ -269,6 +269,23 @@ export interface LayoutOmission {
    * export a 422.
    */
   scope: 'element' | 'detail'
+  /**
+   * `reason` in two halves, where the second is shared with other omissions:
+   * what is missing here, and why it could not be drawn.
+   *
+   * Two GHS pictograms printed the same forty-word explanation twice, differing
+   * only in the code and the symbol's name. Shortening that downstream meant
+   * the interface taking the engine's sentence apart, detecting a shared tail
+   * and recomposing it — paraphrasing its own report, which this project does
+   * not do to any text it carries. So the engine says which part is shared.
+   * A reader can group omissions on `why` as a whole string it was handed,
+   * and still print every word the engine wrote.
+   *
+   * `reason` is always exactly `` `${what} ${why}` `` where this is present —
+   * build one with `explainedOmission` rather than by hand, and the two cannot
+   * drift. Absent on omissions whose explanation is their own.
+   */
+  explanation?: { what: string; why: string }
 }
 
 /**

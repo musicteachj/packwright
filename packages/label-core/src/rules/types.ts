@@ -157,6 +157,25 @@ export interface Rule<TContext extends RuleContext = RuleContext> {
   declines?(context: TContext): Decline | undefined
 }
 
+/**
+ * A fact a check is waiting for, named as a path into the label's own data.
+ *
+ * In the engine's vocabulary rather than the interface's: this is
+ * `nutritionFacts.referenceAmount`, not `#field-food-nf-racc`. `label-core`
+ * knows nothing of forms, and a rule naming a DOM id would have tied the
+ * engine to one interface's markup. The web app maps each of these to the field
+ * that states it, and because the union is closed that map is a
+ * `Record<DeclinedFact, …>` — a fact added here without a field to state it is
+ * a compile error there, not a link to nowhere.
+ */
+export type DeclinedFact =
+  | 'hazards'
+  | 'nutritionFacts.referenceAmount'
+  | 'nutritionFacts.packageContent'
+  | 'nutritionFacts.unitContent'
+  | 'nutritionFacts.packagedAndSoldIndividually'
+  | 'nutritionFacts.columns.basis'
+
 /** What a rule says when it could not reach an answer. */
 export interface Decline {
   /**
@@ -166,6 +185,17 @@ export interface Decline {
   reason: string
   /** The provision left unjudged, where it is not the rule's own primary one. */
   citation?: Citation
+  /**
+   * The facts the label has not stated that this check is waiting for — only
+   * those, so a fact already stated is never asked for again.
+   *
+   * Required rather than optional because there is no decline without one: the
+   * note on `Rule.declines` says a decline exists for exactly one case, the
+   * label not stating something its author could. `rules.test.ts` holds every
+   * rule to the promise `reason` makes, by stating what is wanted and checking
+   * the rule then runs — or asks for something it had not asked for before.
+   */
+  wants: readonly DeclinedFact[]
 }
 
 /** A check that did not run, as a reader sees it. */
@@ -177,6 +207,8 @@ export interface DeclinedCheck {
   /** The provision that went unjudged. */
   citation: Citation
   reason: string
+  /** What the label would have to state for it to run. See `Decline.wants`. */
+  wants: readonly DeclinedFact[]
 }
 
 export type Gs1RetailRule = Rule<Gs1RetailContext>

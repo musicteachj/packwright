@@ -159,6 +159,23 @@ test('each pane scrolls on its own at every width', async ({ page }) => {
  * present, and a tab panel with no tab still renders.
  */
 test.describe('the collapse and assistive technology', () => {
+  test('follows a check that did not run to its field, from the Checks pane', async ({ page }) => {
+    // Below `lg` the form is a pane of its own. A link that focused a field in
+    // a `display: none` pane would be dropped by the browser and land nowhere —
+    // the failure `selectFromFindings` already documents for the canvas — so
+    // the form is shown first, and this asserts it was, with the field focused.
+    await openEditor(page, 375)
+    await page.locator('#field-label-type').selectOption('us-food')
+    await page.locator('#tab-checks').click()
+    await expect(page.locator(CHECKS)).toBeVisible()
+
+    await page.locator(CHECKS).getByRole('button', { name: 'Reference amount' }).click()
+
+    await expect(page.locator(FORM), 'the form is the pane on screen').toBeVisible()
+    await expect(page.locator(CHECKS)).toBeHidden()
+    await expect(page.locator('#field-food-nf-racc'), 'and the field has focus').toBeFocused()
+  })
+
   test('says a refused scan once, on the narrow Form pane where it is made', async ({ page }) => {
     // The GTIN's scan note was a live region of its own, switched on by the
     // scan and created full in the same render — usually not announced — and,

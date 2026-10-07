@@ -37,7 +37,8 @@ import EditorFormRail from '../components/EditorFormRail.vue'
 import FindingsRail from '../components/FindingsRail.vue'
 import LabelCanvas from '../components/LabelCanvas.vue'
 import LabelTextView from '../components/LabelTextView.vue'
-import { blockingOmissions, labelFilename } from '@packwright/label-core'
+import { blockingOmissions, labelFilename, type DeclinedFact } from '@packwright/label-core'
+import { DECLINED_FACT_FIELDS } from '../declinedFacts'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import { BUTTON } from '../components/chrome'
 import PaneSwitcher from '../components/PaneSwitcher.vue'
@@ -95,6 +96,38 @@ async function selectFromFindings(elementId: string | undefined) {
   // silent nothing this function exists to prevent, one step further on.
   await nextTick()
   previewPane.value?.focus()
+}
+
+/**
+ * A check that did not run, followed to the field that would let it run.
+ *
+ * The rail hands back the fact — it is shared with the audit view and knows
+ * nothing of this form — and `DECLINED_FACT_FIELDS` says where it is stated.
+ * Below `lg` the form is a pane of its own and may not be the one on screen,
+ * so it is shown first: a focus moved into a `display: none` pane is dropped by
+ * the browser, which is the silent nothing `selectFromFindings` documents.
+ *
+ * Focus goes to the control, or to the first control of a group — the GHS
+ * classification is forty-four checkboxes, and the one to start from is the
+ * first — and the field is brought into view around it.
+ */
+async function stateFact(fact: DeclinedFact) {
+  const { fieldId } = DECLINED_FACT_FIELDS[fact]
+  // Found before the pane changes, not after. The panes are hidden by CSS and
+  // never unmounted, so the field is in the document whichever is showing. The
+  // first version switched first and looked second, so a field that was not
+  // there — renamed, or rendered under a condition the decline did not share —
+  // hid the Checks pane, dropped focus with it, and left the user on an empty
+  // form. Found by `/code-review high` on PR #60.
+  const field = document.getElementById(fieldId)
+  if (field === null) return
+  if (narrow.value) pane.value = 'form'
+  await nextTick()
+  const control = field.matches('input, select, textarea, button')
+    ? field
+    : field.querySelector<HTMLElement>('input, select, textarea, button')
+  field.scrollIntoView({ block: 'center' })
+  control?.focus({ preventScroll: true })
 }
 
 const exporting = ref(false)
@@ -585,6 +618,7 @@ async function exportPdf() {
           :selected-element-id="store.selectedElementId"
           :pending="opening !== null"
           @select="selectFromFindings($event)"
+          @state="stateFact($event)"
         />
       </div>
     </div>

@@ -75,6 +75,7 @@ export const ghsPictogramPrecedenceRule: GhsChemicalRule = {
         'This label declares no hazard classification, so nothing here can tell you ' +
         'whether the precedence rules for pictograms have been applied. A classification cannot be worked out from the H-codes a label ' +
         'prints — classify the substance and this check will run.',
+      wants: ['hazards'],
     }
   },
 

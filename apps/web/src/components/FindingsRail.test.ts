@@ -1,7 +1,7 @@
 import type { Finding, Severity } from '@packwright/label-core'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FindingsRail from './FindingsRail.vue'
 import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
 import { useAnnouncerStore } from '../stores/announcer'
@@ -29,12 +29,13 @@ const mountRail = (over: Record<string, unknown> = {}) =>
       ] as ReadonlyArray<[Severity, Finding[]]>,
       failures: [finding('violation', 'A'), finding('violation', 'B')],
       passes: [finding('pass', 'P')],
-      uncertifiable: [{ elementId: 'ghs02', reasons: ['No verified vector.'] }],
+      uncertifiable: [{ elementId: 'ghs02', reasons: [{ text: 'No verified vector.' }] }],
       declined: [
         {
           ruleId: 'ghs/pictograms',
           reason: 'State a classification.',
           citation: { reference: '1.2' },
+          wants: ['hazards'],
         },
       ],
       selectedElementId: null,
@@ -227,5 +228,142 @@ describe('the rail’s summary, said aloud', () => {
     // to be heard beside.
     mountRail().unmount()
     expect(heard()).toEqual([])
+  })
+})
+
+describe('an explanation the engine shares is said once', () => {
+  const pictogram = (code: string, name: string) => ({
+    elementId: `ghs-pictograms-${code}`,
+    reasons: [
+      {
+        text: `The ${code} symbol (${name}) is not drawn. CLP Annex V requires the specimen.`,
+        explanation: {
+          what: `The ${code} symbol (${name}) is not drawn.`,
+          why: 'CLP Annex V requires the specimen.',
+        },
+      },
+    ],
+  })
+
+  it('prints each element’s own part, and the shared part once', () => {
+    // Two pictograms printed the same explanation twice; five would print it
+    // five times. The engine now says which half is shared, so the rail groups
+    // on that whole string — it does not take the sentence apart itself.
+    const rail = mountRail({
+      uncertifiable: [pictogram('GHS02', 'flame'), pictogram('GHS07', 'exclamation mark')],
+    })
+    const block = blockNamed(rail, 'Cannot be checked')
+    const text = block.text()
+    expect(text).toContain('The GHS02 symbol (flame) is not drawn.')
+    expect(text).toContain('The GHS07 symbol (exclamation mark) is not drawn.')
+    expect(text.split('CLP Annex V requires the specimen.').length - 1, 'said once').toBe(1)
+  })
+
+  it('still prints an explanation of an element’s own in full', () => {
+    const rail = mountRail({
+      uncertifiable: [
+        pictogram('GHS02', 'flame'),
+        { elementId: 'symbol', reasons: [{ text: 'Artwork is printed over the UPC-A symbol.' }] },
+      ],
+    })
+    expect(blockNamed(rail, 'Cannot be checked').text()).toContain(
+      'Artwork is printed over the UPC-A symbol.',
+    )
+  })
+
+  it('puts an element’s own reasons before the shared ones, so none reads as part of them', () => {
+    // GHS02 lacks its glyph and runs off the edge; GHS07 lacks its glyph.
+    // Interleaved in arrival order, GHS07's line sat between GHS02's two, and
+    // the overrun sat under the shared explanation as if continuing it.
+    const overrun = 'The GHS02 pictogram runs past the right edge of the label.'
+    const gh02 = pictogram('GHS02', 'flame')
+    const rail = mountRail({
+      uncertifiable: [
+        { ...gh02, reasons: [...gh02.reasons, { text: overrun }] },
+        pictogram('GHS07', 'exclamation mark'),
+      ],
+    })
+    const order = blockNamed(rail, 'Cannot be checked')
+      .findAll('p')
+      .map((p) => p.text())
+    expect(order.indexOf(overrun), 'the overrun before the group').toBeLessThan(
+      order.indexOf('The GHS02 symbol (flame) is not drawn.'),
+    )
+    expect(order.at(-1), 'the shared explanation last').toBe('CLP Annex V requires the specimen.')
+  })
+
+  it('keys each line apart even when two elements say the same thing', async () => {
+    // A code listed twice gives two identical lines. Keyed on the text alone,
+    // Vue saw a duplicate key and could drop or mis-patch a row.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const rail = mountRail({
+      uncertifiable: [pictogram('GHS05', 'corrosion'), pictogram('GHS07', 'exclamation mark')],
+    })
+    // Vue checks keys while patching an update, not on first render, and only
+    // among the ones it could not match at either end — so the update shares
+    // neither end with what was there, and both duplicates land in that middle.
+    await rail.setProps({
+      uncertifiable: [pictogram('GHS02', 'flame'), pictogram('GHS02', 'flame')],
+    })
+    const lines = blockNamed(rail, 'Cannot be checked')
+      .findAll('p')
+      .filter((p) => p.text() === 'The GHS02 symbol (flame) is not drawn.')
+    expect(lines).toHaveLength(2)
+    expect(warn.mock.calls.flat().join(' ')).not.toMatch(/Duplicate keys/)
+    warn.mockRestore()
+  })
+
+  it('counts elements, not sentences, so grouping moves no number', () => {
+    // The strip and the summary say how many elements could not be checked.
+    // Saying an explanation once must not change that count.
+    mountRail({
+      uncertifiable: [pictogram('GHS02', 'flame'), pictogram('GHS07', 'exclamation mark')],
+    })
+    expect(heard()[0]).toContain('2 elements could not be checked')
+  })
+})
+
+describe('a check that did not run links to what would let it run', () => {
+  const foodDecline = {
+    ruleId: 'us-food/dual-column-required',
+    reason: 'This label has not stated everything 101.9(b)(12)(i) turns on.',
+    citation: { reference: '21 CFR 101.9(b)(12)(i)' },
+    wants: ['nutritionFacts.referenceAmount', 'nutritionFacts.packagedAndSoldIndividually'],
+  }
+
+  it('offers one control per fact, named as the field is', () => {
+    // The reason names the facts in prose and the user had to go and find
+    // them. Each one is a control now, carrying the name the form gives it.
+    const block = blockNamed(mountRail({ declined: [foodDecline] }), 'Checks that did not run')
+    const controls = block.findAll('button')
+    expect(controls.map((c) => c.text())).toEqual([
+      'Reference amount',
+      'Packaged and sold individually',
+    ])
+  })
+
+  it('says which fact was asked for, not which element of the form holds it', async () => {
+    // The rail is shared with the audit view and knows nothing of the editor's
+    // form; it hands back the fact, and whoever owns the form finds the field.
+    const rail = mountRail({ declined: [foodDecline] })
+    await blockNamed(rail, 'Checks that did not run').findAll('button')[1]!.trigger('click')
+    expect(rail.emitted('state')).toEqual([['nutritionFacts.packagedAndSoldIndividually']])
+  })
+
+  it('offers nothing to follow where there is no form to follow it to', () => {
+    // The audit view: a photograph, confirmed field by field, and no rail of
+    // inputs. A control that went nowhere would be worse than the prose alone.
+    const block = blockNamed(
+      mountRail({ declined: [foodDecline], stateable: false }),
+      'Checks that did not run',
+    )
+    expect(block.findAll('button')).toHaveLength(0)
+  })
+
+  it('takes no severity colour, because nothing here is a verdict', () => {
+    const block = blockNamed(mountRail({ declined: [foodDecline] }), 'Checks that did not run')
+    for (const control of block.findAll('button')) {
+      expect(control.classes().join(' ')).not.toMatch(/text-(danger|warning|caution|notice|pass)\b/)
+    }
   })
 })

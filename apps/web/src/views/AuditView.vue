@@ -728,6 +728,7 @@ const canRead = computed(() => camera.photo.value !== null && regime.value !== '
                 title="What the rules say about it"
                 :announce="false"
                 :selectable="false"
+                :stateable="false"
               />
             </div>
 

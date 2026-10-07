@@ -32,7 +32,7 @@ import type { Decline, UsFoodContext, UsFoodRule } from '../types'
 import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
 import type { DualColumnBasis } from '../../fda/nutritionFormats'
-import { dualColumnDutyFor } from './mandatoryColumns'
+import { asDeclinedFacts, dualColumnDutyFor, PROVISION_FOR, stateThese } from './mandatoryColumns'
 import { smallestOf } from './printedText'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
@@ -111,6 +111,7 @@ export const usFoodProteinPercentRule: UsFoodRule = {
           'with a protein amount. Whether that column owes a protein percentage of its own ' +
           'turns on which paragraph of 101.9(e) governs it, and the label does not say what the ' +
           'column counts. State what the second column counts and this check will run.',
+        wants: ['nutritionFacts.columns.basis'],
       }
     }
 
@@ -118,14 +119,17 @@ export const usFoodProteinPercentRule: UsFoodRule = {
     // be determined is a question nobody answered, not a provision that does not
     // apply, and only the second deserves silence.
     if (basis !== 'per-container' && basis !== 'per-unit') return undefined
-    if (dualColumnDutyFor(data, stock).standing[basis] !== 'undetermined') return undefined
+    const { standing, unstated } = dualColumnDutyFor(data, stock)
+    if (standing[basis] !== 'undetermined') return undefined
+    // Asked of the provision this column's basis answers to — see the same
+    // branch in `us-food/dual-column-form`, which had the same defect.
     return {
       reason:
         'This food is declared for children 1 through 3 and its panel carries a second column ' +
         'with a protein amount. Whether 101.9(e)(6) asks that column for a percentage of its own ' +
-        'turns on whether (b)(12)(i) or (b)(2)(i)(D) requires the column, which cannot be told ' +
-        'from what the label states. State the reference amount, what the package holds and ' +
-        'whether it is packaged and sold individually.',
+        `turns on whether ${PROVISION_FOR(basis)} requires the column, which cannot be told ` +
+        `from what the label states. ${stateThese(unstated[basis])} and this check will run.`,
+      wants: asDeclinedFacts(unstated[basis]),
     }
   },
 

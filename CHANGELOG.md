@@ -10,6 +10,57 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **A check that did not run names the facts it is waiting for, and links to each.** `Decline` gains `wants`:
+  the facts the label has not stated, as paths into its own data from a closed `DeclinedFact` union, so
+  `label-core` names `nutritionFacts.referenceAmount` and never a form's markup. The web app maps each fact
+  to the field that states it in a `Record` over that union — a fact with no field is a compile error — and a
+  test renders every declining state and checks the field asked for is on the page. Under each check that did
+  not run the rail offers a control per fact, neutral and underlined rather than in any severity's colour;
+  following one shows the Form pane on a narrow screen first, and focuses the field. The audit view, which has
+  no form, offers none.
+
+  **Holding a decline to its own promise found it broken.** `Decline.reason` says doing what it asks makes
+  the check run, and nothing checked. `rules.test.ts` now states what every decline wants, repeatedly, and
+  asserts the rule runs. For a second column counting the individual unit, `us-food/dual-column-form` and
+  `us-food/protein-percent` told the user to state the reference amount, the package content and whether it
+  is sold individually — but (b)(2)(i)(D) reads the reference amount and the unit content and nothing of the
+  package, so following the instruction left the check standing down. An existing fixture reached it with all
+  three package facts already stated. The duty computation now reports what each provision is still missing,
+  from the same `stated` test it decides with; each rule asks for its own provision's facts and names that
+  provision alone; and the "State …" sentence is generated from the same list, so the words and the controls
+  beneath them cannot disagree. The first draft of the test passed the defect too — a decline that asked for
+  nothing never entered its loop — and it now asserts the rule stopped standing down, not that the asks ran
+  out.
+
+  The `/code-review high` on the pull request tightened the interface half. A link's name and the field it
+  lands on were written separately and disagreed — "What the whole package holds" for a field labelled "The
+  whole package holds (g)" — so the form now takes those labels from the same map, and a test reads each
+  label off the page against its link. Following a fact switched panes before looking the field up, so a
+  field that was not there hid the Checks pane and dropped focus with it; it now looks first. The rail's
+  `declined` prop is typed from the engine's `DeclinedCheck`, so a decline handed over without `wants` fails
+  to compile rather than rendering no controls. The GHS section the hazard classification lives in is
+  titled "Hazard classification" now, the name the engine and the link already used.
+
+- **A shared explanation is said once, because the engine now says which part of its sentence is shared.**
+  On a GHS label the "cannot be checked" block printed the same forty-word explanation once per pictogram,
+  differing only in the code and the symbol's name; five pictograms would have printed it five times.
+  Shortening that in the rail meant the interface taking the engine's sentences apart and recomposing them,
+  which this project does not do to any text it reports. So `LayoutOmission` gains an optional
+  `explanation` — what is missing here, and why — and the only way to build one, `explainedOmission`,
+  assembles `reason` from the two halves so they cannot disagree. The rail groups on `why` as a whole string
+  and prints each element's own half above it; every word the engine wrote is still printed. No rule reads an
+  omission's text, so no verdict can move.
+
+  The "cannot be checked" list was assembled twice, in the editor's store and in the audit report, and both
+  had to change the same way, so they share one builder now. The audit's copy had left out the
+  overprinted-symbol half deliberately — an audit layout is GHS and has no symbols — and on one it still finds
+  nothing.
+
+  The rail lists each element's own reasons before the shared groups, because interleaved in arrival order a
+  second element's line could land between the first's two reasons, and an element's own reason that followed
+  a group sat beneath the shared explanation as though it continued it. Found by the review of the pull
+  request, with a duplicate list key on repeated codes.
+
 - **The application says what it has to say about a label once, through one announcer.** A screen reader
   announces a *change* to a live region it is already observing, and a region created with its text already
   in it usually says nothing. Four recorded defects were that shape or its opposite, and the last of them was
@@ -221,6 +272,21 @@ into a version only when there is a reason to.
   slot changes how the name is set, never what it is.
 
 ### Fixed
+
+- **A US label's missing pictogram symbols were explained as a requirement of CLP, an EU regulation that does
+  not reach it.** The engine's omission said "CLP Annex V requires each pictogram to conform to the specimen
+  artwork…" whatever the label's regime. On an OSHA label it now cites the provision that governs it, 29 CFR
+  1910.1200 Appendix C.2.3.2 — which reads "One of eight standard hazard symbols shall be used in each
+  pictogram. The eight hazard symbols are depicted in Figure C.1.", read from the eCFR on 2026-10-07 and
+  quoted verbatim in the code beside it — and the EU wording is unchanged. Found by `/code-review high` on PR #60; it
+  predates that pull request, which only made the sentence shared and so the one place in the "cannot be
+  checked" block a reader met it. The omission still says nothing of what an empty frame *is* under either
+  regime — C.2.3.1 forbids one on a US label — because that is a verdict and belongs to `rules/`.
+
+  No rule reads an omission's wording, so no verdict moved. Two test helpers did: each picked out the
+  missing-glyph omission by searching its sentence for "Annex V", and on a US label stopped finding it, which
+  failed four tests loudly. They now compare the omission's `explanation` with the engine's own exported
+  constant, exactly.
 
 - **The canvas's dimension callout no longer sits on the barcode's digits, and its overlay toggles are the
   component layer's checkboxes.** Both were recorded in the canvas stage and both were found by looking.

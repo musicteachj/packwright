@@ -10,6 +10,18 @@ import {
   GHS_SMALL_CONTAINER_COMPLETE,
   GHS_SMALL_CONTAINER_INCOMPLETE,
 } from './smallContainer'
+import { SYMBOL_NOT_DRAWN_BECAUSE } from '../../layout/ghsEngine'
+import type { LayoutOmission } from '../../layout/types'
+
+/**
+ * The missing-glyph omission every pictogram carries, recognised by its
+ * explanation rather than by searching its sentence. This matched `reason`
+ * against "Annex V", and stopped matching on US labels the day their wording
+ * stopped wrongly citing CLP — the tests failed, which is how it was found.
+ */
+const isMissingGlyph = (omission: LayoutOmission): boolean =>
+  omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`) &&
+  Object.values(SYMBOL_NOT_DRAWN_BECAUSE).includes(omission.explanation?.why ?? '')
 
 const STOCK: LabelStock = { widthMm: 74, heightMm: 105, marginMm: 4 }
 const FLAMMABLE = '2.6/flammable-liquids-1-2-3'
@@ -26,13 +38,7 @@ const FLAMMABLE = '2.6/flammable-liquids-1-2-3'
  */
 const withGlyphsDrawn = (layout: ResolvedLayout): ResolvedLayout => ({
   ...layout,
-  omissions: layout.omissions.filter(
-    (omission) =>
-      !(
-        omission.elementId.startsWith(`${GHS_ELEMENTS.pictograms}-`) &&
-        omission.reason.includes('Annex V')
-      ),
-  ),
+  omissions: layout.omissions.filter((omission) => !isMissingGlyph(omission)),
 })
 
 const findingsFor = (data: GhsLabelData) =>

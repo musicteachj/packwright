@@ -40,6 +40,7 @@ import {
 import * as bwip from 'bwip-js/generic'
 import { defineStore } from 'pinia'
 import { sameDocument, type DocumentSnapshot } from './documentIdentity'
+import { uncheckableIn } from '../uncheckable'
 import { computed, reactive, ref, watch } from 'vue'
 
 /** A real GTIN-12, so the editor opens on something that resolves. */
@@ -286,36 +287,9 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    * off the label, with nothing saying why. A check that was declined has to read
    * as declined, or it is indistinguishable from a check that was never written.
    */
-  const uncertifiable = computed(() => {
-    const byElement = new Map<string, string[]>()
-    const add = (elementId: string, reason: string) => {
-      const existing = byElement.get(elementId)
-      if (existing === undefined) byElement.set(elementId, [reason])
-      else existing.push(reason)
-    }
-
-    for (const symbol of layout.value?.symbols ?? []) {
-      if (symbol.overprintedBy.length > 0) {
-        add(
-          symbol.elementId,
-          `Artwork is printed over the ${symbol.symbology} symbol. A symbol with ink through ` +
-            'it will not scan whatever its margins measure.',
-        )
-      }
-      // A symbol drawn off the stock is not stated here. It used to be, before the
-      // engine recorded an omission for it; now the omission below says so, for
-      // every edge rather than only the top and bottom, and stating it here too
-      // listed one overrun twice — as "part of it" beside "none of it" when the
-      // whole symbol lay off the label.
-    }
-
-    // The engine's reasons are already written as sentences for a reader — the
-    // omission type exists so that nothing is ever dropped silently — so they are
-    // passed through rather than restated here.
-    for (const omission of layout.value?.omissions ?? []) add(omission.elementId, omission.reason)
-
-    return [...byElement.entries()].map(([elementId, reasons]) => ({ elementId, reasons }))
-  })
+  // Assembled in `uncheckable.ts`, which the audit report shares — two copies
+  // of this had already drifted apart.
+  const uncertifiable = computed(() => uncheckableIn(layout.value))
 
   const elementLabels = computed(() => {
     const labels = new Map<ElementId, string>()

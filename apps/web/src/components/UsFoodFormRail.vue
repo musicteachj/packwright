@@ -65,6 +65,7 @@ import {
 import { computed, ref } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import { useAnnouncement } from '../stores/announcer'
+import { DECLINED_FACT_FIELDS } from '../declinedFacts'
 import EditorSection from './EditorSection.vue'
 import { CHIP, CHIP_REMOVE } from './formStyles'
 import TextField from './ui/TextField.vue'
@@ -1117,10 +1118,21 @@ const { field: unitContentField, refused: unitContentRefused } = refusableNumber
   () => data.nutritionFacts,
 )
 
-/** Written once, because the field shows them and the announcer has to name them. */
-const REFERENCE_AMOUNT_LABEL = 'Reference amount'
-const packageContentLabel = computed(() => `The whole package holds (${referenceAmountUnit.value})`)
-const unitContentLabel = computed(() => `One individual unit holds (${referenceAmountUnit.value})`)
+/**
+ * Written once, in `declinedFacts.ts`, because the field shows them, the announcer
+ * names them and a check that did not run links to them by the same name.
+ */
+const REFERENCE_AMOUNT_LABEL = DECLINED_FACT_FIELDS['nutritionFacts.referenceAmount'].name
+const packageContentLabel = computed(
+  () =>
+    `${DECLINED_FACT_FIELDS['nutritionFacts.packageContent'].name} (${referenceAmountUnit.value})`,
+)
+const unitContentLabel = computed(
+  () => `${DECLINED_FACT_FIELDS['nutritionFacts.unitContent'].name} (${referenceAmountUnit.value})`,
+)
+const SOLD_INDIVIDUALLY_LABEL =
+  DECLINED_FACT_FIELDS['nutritionFacts.packagedAndSoldIndividually'].name
+const COLUMN_BASIS_LABEL = DECLINED_FACT_FIELDS['nutritionFacts.columns.basis'].name
 
 /**
  * Each refusal said aloud, with the field it belongs to named.
@@ -1969,7 +1981,7 @@ const packaging = computed({
       <SelectField
         id="field-food-nf-sold-individually"
         v-model="packagedAndSoldIndividually"
-        label="Packaged and sold individually"
+        :label="SOLD_INDIVIDUALLY_LABEL"
       >
         <option v-for="value in SOLD_INDIVIDUALLY" :key="value" :value="value">
           {{ SOLD_INDIVIDUALLY_NAMES[value] }}
@@ -1995,11 +2007,7 @@ const packaging = computed({
       />
 
       <template v-if="data.nutritionFacts.columns">
-        <SelectField
-          id="field-food-nf-basis"
-          v-model="columnBasis"
-          label="What the second column counts"
-        >
+        <SelectField id="field-food-nf-basis" v-model="columnBasis" :label="COLUMN_BASIS_LABEL">
           <option v-for="value in DUAL_COLUMN_BASES" :key="value" :value="value">
             {{ BASIS_NAMES[value] }}
           </option>

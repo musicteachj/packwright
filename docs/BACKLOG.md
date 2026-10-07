@@ -791,32 +791,37 @@ decision about the markup: one pair whose value states both figures, or a differ
 
 ## From stage 2, the report surface
 
-**The rail repeats a forty-word explanation once per element, and the fix belongs in the engine.** On a GHS
-label the "cannot be checked" block prints the same sentence twice — once for GHS02, once for GHS07 —
-differing only in the code and the symbol's name. Five pictograms would print it five times.
+**~~The rail repeats a forty-word explanation once per element, and the fix belongs in the engine.~~ Fixed
+in the engine, as this entry said it should be.** `LayoutOmission` carries an optional `explanation` — what is
+missing here, and why — built only through `explainedOmission`, which assembles `reason` from the two halves
+so the sentence and its parts cannot disagree. The GHS pictogram and statement omissions use it; the rail
+groups on `why` as a whole string it was handed and prints each element's own half above it. Every word the
+engine wrote is still printed. The statement omission's single sentence with a colon became two sentences,
+so its shared half reads as a sentence when said once; nothing quoted the old wording, and no rule reads an
+omission's text — rules ask whether an element has omissions at all.
 
-Deduplicating it in the rail means the interface splitting sentences the engine wrote, detecting that two
-share an identical tail, and recomposing them. `LayoutOmission` is `{ elementId, reason: string }`: prose and
-nothing else, so there is no structure to group on and the only lever is string surgery on the report's own
-words. This project does not paraphrase a regulated statement by a single character, and an interface taking
-the engine's prose apart to shorten it is the same move wearing a different hat. The engine should emit the
-shared explanation once and the per-element part separately; the rail then renders what it is given.
+The editor's store and the audit report each assembled the "cannot be checked" list, and both had to change
+the same way, so they call one builder now. The audit's copy had left out the overprinted-symbol half on
+purpose, since an audit layout has no symbols — an earlier draft of this entry called that drift, which a
+review corrected by quoting the comment that said why.
 
-**"Checks that did not run" names facts a user could state and cannot link to any of them.** The US food
-decline says the label has not stated "a reference amount, what the whole package holds, and whether it is
-packaged and sold individually" — three fields that exist, with ids, a few hundred pixels away in the form
-rail. Turning that into a list that links to each is this application's own best idea, the finding → canvas
-→ form link, applied where it would pay most.
+**~~"Checks that did not run" names facts a user could state and cannot link to any of them.~~ Fixed.**
+`Decline` carries `wants`: the facts the label has not stated, named as paths into its own data
+(`nutritionFacts.referenceAmount`) rather than as anything of the interface's, from a closed union. The web
+app maps each to the field that states it in a `Record` over that union, so a fact without a field is a
+compile error; a test renders each declining state and checks every field asked for is on the page. Each
+check that did not run now offers a control per fact, and following one shows the Form pane on a narrow
+screen and focuses the field.
 
-It is not possible today. `Decline` is `{ reason: string, citation?: Citation }` — there is nothing saying
-which fields a check is waiting on, and the rail cannot infer them from prose without guessing. Closing it
-means extending `Decline` to carry the field ids a check wants, which is a change in
-`packages/label-core/src/rules/types.ts` and therefore a change in `rules/`.
-
-**Both are deferred for the same reason, and it is about the review rung rather than the effort.** A pull
-request touching `rules/` takes `/code-review high` under the ladder. Stage 2 was a UI change reviewed at
-`medium`; folding an engine change into it would carry `rules/` past the rung that exists for it. They are
-one stage of their own, scoped as `label-core` work from the start.
+**Writing the test that holds a decline to its word found the word broken.** `Decline.reason` promises that
+doing what it says makes the check run. For a second column counting the individual unit, two rules told
+the user to state the reference amount, what the package holds and whether it is packaged and sold
+individually — and (b)(2)(i)(D) reads the reference amount and the *unit* content, nothing of the package. An
+existing fixture reached it: a label that had stated all three package facts was asked for all three again,
+and could never make the check run. The duty computation now reports what each provision is still missing
+from the same `stated` test it decides with, each rule names its own provision's facts, and the "State …"
+sentence is built from that list, so the instruction and the links cannot disagree. `rules.test.ts` follows
+every decline's ask until the rule runs.
 
 ## From the stage 1 rail migrations
 

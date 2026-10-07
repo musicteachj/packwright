@@ -17,10 +17,12 @@
  * showing Checks it sat beside the editor's own copy of the same counts, worded
  * differently — the reader heard both. See `stores/announcer.ts`.
  */
-import type { Finding, Severity } from '@packwright/label-core'
+import type { DeclinedCheck, DeclinedFact, Finding, Severity } from '@packwright/label-core'
 import { computed } from 'vue'
 import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
 import { useAnnouncement } from '../stores/announcer'
+import type { Uncheckable } from '../uncheckable'
+import { DECLINED_FACT_FIELDS } from '../declinedFacts'
 import FindingItem from './FindingItem.vue'
 
 const props = withDefaults(
@@ -29,7 +31,7 @@ const props = withDefaults(
     failures: Finding[]
     passes: Finding[]
     /** Symbols that could not be certified — reported, but deliberately not judged. */
-    uncertifiable: ReadonlyArray<{ elementId: string; reasons: string[] }>
+    uncertifiable: ReadonlyArray<Uncheckable>
     /**
      * Checks that stood down for want of a fact the label never stated.
      *
@@ -37,7 +39,11 @@ const props = withDefaults(
      * not draw. These are questions nobody answered, and each reason ends by
      * naming what to state.
      */
-    declined?: ReadonlyArray<{ ruleId: string; reason: string; citation: { reference: string } }>
+    declined?: ReadonlyArray<
+      Pick<DeclinedCheck, 'ruleId' | 'reason' | 'wants'> & {
+        citation: Pick<DeclinedCheck['citation'], 'reference'>
+      }
+    >
     selectedElementId: string | null
     /**
      * The id this rail's heading takes, so two of them can share a page.
@@ -61,6 +67,11 @@ const props = withDefaults(
     /** Passed through: false where there is no canvas for a selection to reach. */
     selectable?: boolean
     /**
+     * Whether a check that did not run links to the fields that would let it.
+     * Off where there is no form to link to — the audit view.
+     */
+    stateable?: boolean
+    /**
      * The label is still being fetched, so nothing here is about it yet.
      *
      * A prop rather than the caller unmounting the rail. The editor's first wait
@@ -80,6 +91,7 @@ const props = withDefaults(
     // said so immediately. A flag whose safe value is "on" has to say so here.
     announce: true,
     selectable: true,
+    stateable: true,
     pending: false,
   },
 )
@@ -101,7 +113,11 @@ const notRunHeadingId = computed(() =>
   props.headingId === 'findings-heading' ? 'not-run-heading' : `${props.headingId}-not-run`,
 )
 
-defineEmits<{ select: [elementId: string | undefined] }>()
+defineEmits<{
+  select: [elementId: string | undefined]
+  /** A fact a check that did not run is waiting for. The owner of the form finds its field. */
+  state: [fact: DeclinedFact]
+}>()
 
 const failureGroups = computed(() => props.groups.filter(([severity]) => severity !== 'pass'))
 
@@ -157,6 +173,47 @@ const counts = computed(() => {
   }
 
   return entries
+})
+
+/**
+ * The "cannot be checked" block, with each shared explanation said once.
+ *
+ * Two GHS pictograms printed the same forty-word explanation twice, and five
+ * would print it five times. The engine now marks which half of an omission's
+ * sentence is shared (`LayoutOmission.explanation`), so this groups on that
+ * whole string — `why`, exactly as handed over — and prints each element's own
+ * half above it. Nothing here takes a sentence apart or rewrites one; an
+ * explanation the engine did not mark as shared is printed whole, as before.
+ */
+type Said =
+  | { kind: 'own'; key: string; text: string }
+  | { kind: 'shared'; key: string; whats: string[]; why: string }
+
+const uncheckableSaid = computed(() => {
+  const own: Said[] = []
+  const shared: Array<Extract<Said, { kind: 'shared' }>> = []
+  const byWhy = new Map<string, Extract<Said, { kind: 'shared' }>>()
+  for (const item of props.uncertifiable) {
+    for (const reason of item.reasons) {
+      if (reason.explanation === undefined) {
+        own.push({ kind: 'own', key: `${item.elementId}:${reason.text}`, text: reason.text })
+        continue
+      }
+      const { what, why } = reason.explanation
+      const group = byWhy.get(why)
+      if (group !== undefined) group.whats.push(what)
+      else {
+        const entry = { kind: 'shared' as const, key: `shared:${why}`, whats: [what], why }
+        byWhy.set(why, entry)
+        shared.push(entry)
+      }
+    }
+  }
+  // Each element's own reasons first, then the groups. Interleaved in arrival
+  // order, a second pictogram's line landed between the first one's two
+  // reasons, and a reason of its own that followed a group sat under the shared
+  // explanation where it read as part of it. Found by review.
+  return [...own, ...shared]
 })
 
 const summary = computed(() => {
@@ -298,14 +355,24 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
           <span aria-hidden="true">{{ NOT_A_VERDICT.uncertifiable }}</span>
           Cannot be checked
         </h3>
-        <template v-for="item in uncertifiable" :key="item.elementId">
-          <p
-            v-for="reason in item.reasons"
-            :key="reason"
-            class="text-chrome-200 mt-2 text-sm leading-snug"
-          >
-            {{ reason }}
+        <template v-for="entry in uncheckableSaid" :key="entry.key">
+          <p v-if="entry.kind === 'own'" class="text-chrome-200 mt-2 text-sm leading-snug">
+            {{ entry.text }}
           </p>
+          <!--
+            Each element's own half, then the half they share, once. Every word
+            the engine wrote is still printed; only the repetition is gone.
+          -->
+          <div v-else class="mt-2">
+            <p
+              v-for="(what, index) in entry.whats"
+              :key="`${index}:${what}`"
+              class="text-chrome-200 text-sm leading-snug"
+            >
+              {{ what }}
+            </p>
+            <p class="text-chrome-300 mt-1 text-sm leading-snug">{{ entry.why }}</p>
+          </div>
         </template>
       </section>
 
@@ -337,6 +404,27 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
           <p class="text-chrome-200 text-sm leading-snug">{{ item.reason }}</p>
           <p class="numeric text-chrome-400 mt-1 text-xs">
             {{ item.citation.reference }}
+          </p>
+          <!--
+            What would let it run, each a control. The reason names these in
+            prose; the controls take a user to them. Neutral like everything else
+            in this block — underlined for a link, never a severity's colour,
+            because nothing here is a verdict.
+          -->
+          <p
+            v-if="stateable && item.wants.length"
+            class="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs"
+          >
+            <span class="text-chrome-400">State</span>
+            <button
+              v-for="fact in item.wants"
+              :key="fact"
+              type="button"
+              class="text-chrome-200 decoration-chrome-400 hover:text-chrome-100 focus-visible:outline-notice underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              @click="$emit('state', fact)"
+            >
+              {{ DECLINED_FACT_FIELDS[fact].name }}
+            </button>
           </p>
         </div>
       </section>

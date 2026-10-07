@@ -76,10 +76,14 @@ test('a declined check states its citation in the numeric face', async ({ page }
   // on the starting food document — one today — and the day a second one did,
   // `nth(1)` would quietly become a reason rather than a citation.
   const entry = block.locator('div').first()
-  const paragraphs = entry.locator('p')
-  await expect(paragraphs, 'a declined check: its reason, then its citation').toHaveCount(2)
 
-  const citation = paragraphs.nth(1)
+  // Found by what it says rather than by position. This took the second of
+  // exactly two paragraphs, and the entry has grown a third — the controls
+  // naming the facts the check is waiting for — so position was a guess about
+  // the markup that stopped holding. A citation is the one paragraph that
+  // states a provision of 21 CFR, and there must be exactly one.
+  const citation = entry.locator('p').filter({ hasText: /^\s*21 CFR / })
+  await expect(citation, 'one citation in the entry').toHaveCount(1)
   await expect(citation).toBeVisible()
   await expectNumeric(citation, "a declined check's citation")
 })
