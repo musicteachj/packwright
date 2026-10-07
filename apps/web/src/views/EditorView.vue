@@ -502,34 +502,23 @@ async function exportPdf() {
     <PaneSwitcher v-if="narrow" :current="pane" @select="pane = $event" />
 
     <!--
-      The findings rail carries the only `aria-live` region in the application,
-      and below `lg` that rail is `display: none` unless Checks is the pane on
-      screen — so a screen-reader user got no compliance announcements at all on a
-      narrow window. Measured: one live region in the document, zero client rects.
-      This one exists only while that is true, so exactly one is ever live.
-
-      It says the wait rather than disappearing for it, for the reason the rail
-      takes `pending`: a region that is already being observed is heard when its
-      words change, and one rebuilt full usually is not.
+      There used to be a second live region here, below `lg`, because the findings
+      rail is `display: none` there unless Checks is showing and its own region
+      went silent with it. It was gated on the width alone, so on Checks both
+      were perceivable and said the same counts in two wordings — measured. The
+      application now says the summary once, through the announcer mounted at its
+      root, at every width and on every pane. See `stores/announcer.ts`.
     -->
-    <p v-if="narrow" class="sr-only" role="status" aria-live="polite">
-      {{
-        opening !== null
-          ? 'Opening this label…'
-          : `${store.failures.length} findings, ${store.passes.length} checks passed.`
-      }}
-    </p>
 
     <!--
       Nothing of the document while the route is still being answered — but the
-      panes stay, and so do the live regions in them.
+      panes stay, and each withholds its own content.
 
       The first version swapped this whole grid for a waiting panel with a live
-      region of its own. That kept the count of regions at one and destroyed the
-      one that mattered: the findings rail's was unmounted for the wait and
-      rebuilt already full, so a screen-reader user opening a saved label heard
-      nothing about it. Found by the phase's whole-branch review. Each pane now
-      withholds its own content instead, and the regions say the wait in words.
+      region of its own, which unmounted the findings rail's region and rebuilt it
+      full on arrival, so opening a saved label was silent. The rail's summary now
+      goes through the announcer, which nothing here can unmount; it says the wait
+      and then the counts as two changes to one line.
     -->
     <div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[380px_1fr_340px]">
       <div

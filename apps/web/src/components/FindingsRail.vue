@@ -7,14 +7,20 @@
  * reassuring and evidence of thoroughness — and it is only honest because a rule
  * that could not run returns nothing rather than a pass.
  *
- * Changes announce through a polite live region rather than `role="alert"` on
+ * Changes announce politely, as one summary line, rather than `role="alert"` on
  * every item. The findings recompute on each keystroke, and an assertive region
  * per finding would interrupt a screen-reader user continuously while they typed
  * a GTIN. The summary is what changed; the detail is there to navigate to.
+ *
+ * The line is said through the application's announcer, not a region of this
+ * rail's own. A region here came and went with the rail, and on a narrow screen
+ * showing Checks it sat beside the editor's own copy of the same counts, worded
+ * differently — the reader heard both. See `stores/announcer.ts`.
  */
 import type { Finding, Severity } from '@packwright/label-core'
 import { computed } from 'vue'
 import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
+import { useAnnouncement } from '../stores/announcer'
 import FindingItem from './FindingItem.vue'
 
 const props = withDefaults(
@@ -45,12 +51,11 @@ const props = withDefaults(
     /** Overridden where "Compliance" is not what the section is. */
     title?: string
     /**
-     * Whether this rail owns an `aria-live` region.
+     * Whether this rail says its summary aloud, through the announcer.
      *
-     * It has been the only one in the application, and `EditorView.vue` documents
-     * the care taken to keep exactly one live at a time. A page that already has
-     * one turns this off rather than adding a second — two regions announcing
-     * over each other is worse than one that says less.
+     * Off where the page has something else to say about the same moment — the
+     * audit view, whose camera is talking while its report is built — because
+     * two things announced over each other is worse than one that says less.
      */
     announce?: boolean
     /** Passed through: false where there is no canvas for a selection to reach. */
@@ -58,12 +63,11 @@ const props = withDefaults(
     /**
      * The label is still being fetched, so nothing here is about it yet.
      *
-     * A prop rather than the caller unmounting the rail, and that is the whole
-     * reason it exists. A screen reader announces a *change* to a live region it
-     * is already observing; a region created with its text already in it usually
-     * says nothing. The editor's first wait swapped this rail out for a panel of
-     * its own, so opening a saved label rebuilt the region full and its findings
-     * went unannounced. Pending keeps the region and changes its words.
+     * A prop rather than the caller unmounting the rail. The editor's first wait
+     * swapped this rail out for a panel of its own, and its summary went with it,
+     * so opening a saved label was silent. Pending keeps the rail and changes
+     * what it says: "Opening this label…", then the label's counts, both heard
+     * as changes to one line.
      */
     pending?: boolean
   }>(),
@@ -188,6 +192,10 @@ const summary = computed(() => {
   if (failed === 0) return `${checks}.${unjudged}`
   return `${failed} ${failed === 1 ? 'finding' : 'findings'}, ${checks}.${unjudged}`
 })
+
+// Keyed by the heading so two rails on one page would be two concerns rather
+// than one line fought over.
+if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary.value)
 </script>
 
 <template>
@@ -199,25 +207,21 @@ const summary = computed(() => {
       {{ title }}
     </h2>
 
-    <p v-if="announce" class="sr-only" role="status" aria-live="polite">
-      {{ summary }}
-    </p>
-
     <!--
       Everything below is about a label, so none of it renders while the label
-      is still on its way. The region above stays, which is what lets its next
-      words be heard.
+      is still on its way. The summary goes on being said, which is what lets
+      the wait and then the arrival be heard.
     -->
     <template v-if="!pending">
       <!--
-      The same counts the live region announces, made visible.
+      The same counts the announcer says, made visible.
 
       `summary` was `sr-only` and nothing else stated a total, so a sighted
       reader got a heading and then a scroll: on a GHS label the first thing on
       screen is a violation, and how many there are in total, how many passed, or
       whether anything below could not be checked at all is four hundred pixels
-      further down. This is `aria-hidden` on purpose — the region above says it
-      in prose already, and a screen reader hearing both would hear it twice.
+      further down. This is `aria-hidden` on purpose — the announcer says it in
+      prose already, and a screen reader hearing both would hear it twice.
     -->
       <p
         v-if="counts.length"

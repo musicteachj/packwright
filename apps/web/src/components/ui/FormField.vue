@@ -7,10 +7,10 @@
  * `LABEL`/`INPUT` strings, and a survey of the hardest of them turned up six
  * things a plain `<label>{{ text }}<input /></label>` cannot say:
  *
- * 1. A description can be a live region. `UpcAFormRail.vue`'s GTIN field has
- *    `aria-invalid`, a conditional `aria-describedby`, and two mutually
- *    exclusive `<p>`s sharing one id, both `role="status" aria-live="polite"`.
- *    That is markup, not a string, so `description` is also a slot.
+ * 1. A description can be markup. `UpcAFormRail.vue`'s GTIN field has
+ *    `aria-invalid`, a conditional `aria-describedby`, and mutually exclusive
+ *    `<p>`s with their own tone. That is markup, not a string, so `description`
+ *    is also a slot. It is never a live region: see the note on the template.
  *
  * 2. Help is a SIBLING of the label with an id, wired by `aria-describedby` —
  *    never a child of the `<label>`. `UsFoodFormRail.vue` (around line 1801)
@@ -59,14 +59,11 @@ const props = withDefaults(
     labelHidden?: boolean
     /** Static help under the control. For anything conditional or richer, use the `description` slot instead. */
     description?: string
-    /** Marks the description as `role="status" aria-live="polite"`, for the one field that validates as you type. */
-    live?: boolean
     invalid?: boolean
   }>(),
   {
     labelHidden: false,
     description: '',
-    live: false,
     invalid: false,
   },
 )
@@ -83,7 +80,7 @@ const slots = useSlots()
  * nothing, and one that removed it left an empty `<div>` behind with the
  * control's `aria-describedby` still pointing at it — the dangling reference
  * this component's own notes promise it prevents, in exactly the conditional
- * live-note shape it was built for. Called during render instead, so each pass
+ * conditional-note shape it was built for. Called during render instead, so each pass
  * reads the slots that pass actually has.
  */
 const hasDescription = () => !!props.description || !!slots.description
@@ -147,24 +144,25 @@ watch(() => props.invalid, warnIfUnexplained)
     <!--
       A `div`, and neutral, on purpose.
 
-      `live` says the description is announced when it changes. It says nothing
-      about severity, and the two must not be welded together: the GTIN field
-      carries two live notes, one where a pasted symbol was refused and one where
-      it was taken with a caveat, and painting both `text-caution` would report a
-      successful scan as a warning. Tone travels with the slotted content.
+      **Never a live region.** It used to be one on request, through a `live`
+      prop, for the GTIN field's scan note — and that shape cannot work: the
+      description is created in the same render as the text it carries, and a
+      screen reader announces a *change* to a region it is already observing, not
+      one that arrives full. So the prop is gone and the shape is unrepresentable.
+      A field that has something to say aloud says it through
+      `stores/announcer.ts`, which was listening before the field had anything
+      to say; this element only describes.
 
-      A `div` rather than a `p` because the slotted content is itself a `p` in
-      the case this exists for — two mutually exclusive paragraphs sharing one
-      id — and a `p` inside a `p` is not valid HTML and does not nest in the DOM
+      Neutral because tone travels with the slotted content. The GTIN carries a
+      note where a pasted symbol was refused and one where it was taken with a
+      caveat, and painting both `text-caution` would report a successful scan as
+      a warning.
+
+      A `div` rather than a `p` because the slotted content is often itself a
+      `p`, and a `p` inside a `p` is not valid HTML and does not nest in the DOM
       the way the markup reads.
     -->
-    <div
-      v-if="hasDescription()"
-      :id="describedBy()"
-      class="text-chrome-400 text-xs"
-      :role="live ? 'status' : undefined"
-      :aria-live="live ? 'polite' : undefined"
-    >
+    <div v-if="hasDescription()" :id="describedBy()" class="text-chrome-400 text-xs">
       <slot name="description">{{ description }}</slot>
     </div>
   </div>

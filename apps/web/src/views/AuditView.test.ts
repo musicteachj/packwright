@@ -458,9 +458,10 @@ describe('what the rules say', () => {
   })
 
   it('leaves exactly one live region on the page', async () => {
-    // `FindingsRail` has been the only one in the application, and
-    // `EditorView.vue` documents the care taken to keep exactly one live at a
-    // time. A second announcing over the capture status would undo it.
+    // The capture status is the page's own region — a status line for a widget
+    // the user opened, which is the one kind `stores/announcer.ts` leaves in
+    // place. The report's rail is told not to speak, so nothing announces over
+    // the camera while the report is built.
     const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
     expect(wrapper.findAll('[aria-live]').length).toBe(1)
   })

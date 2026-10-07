@@ -472,6 +472,12 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     savedId.value = saved.id
     savedName.value = saved.name
     baseline.value = detachedSnapshot()
+    // A scan is a fact about the document it was made on, and this is a
+    // different document. Left standing, a refusal from the last label was
+    // shown on this one — and, once scans were said aloud, read out beside its
+    // findings as though it were about them. `loadUnsaved` comes through here
+    // too, so the audit hand-off is covered by the same line.
+    lastScan.value = null
   }
 
   /**

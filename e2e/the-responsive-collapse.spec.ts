@@ -159,29 +159,82 @@ test('each pane scrolls on its own at every width', async ({ page }) => {
  * present, and a tab panel with no tab still renders.
  */
 test.describe('the collapse and assistive technology', () => {
-  test('keeps exactly one live region perceivable at each width', async ({ page }) => {
-    // The findings rail carries the application's only `aria-live` region, and
-    // below `lg` that rail is `display: none` unless Checks is on screen — so a
-    // screen-reader user got no compliance announcements at all on a narrow
-    // window. Measured: one region in the document, zero client rects.
-    const perceivable = () =>
-      page.evaluate(
-        () =>
-          [...document.querySelectorAll('[aria-live]')].filter(
-            (el) => (el as HTMLElement).checkVisibility?.() ?? true,
-          ).length,
+  test('says a refused scan once, on the narrow Form pane where it is made', async ({ page }) => {
+    // The GTIN's scan note was a live region of its own, switched on by the
+    // scan and created full in the same render — usually not announced — and,
+    // once a scan had run, perceivable beside whichever region was saying the
+    // findings. Raised by review when the announcer arrived. The note now only
+    // describes, and the refusal is said through the announcer.
+    await openEditor(page, 375)
+    await page.locator('#tab-form').click()
+    await expect(page.locator(FORM)).toBeVisible()
+
+    // A thirteen-digit read, which the field refuses rather than truncating.
+    await page.locator('#field-gtin').evaluate((field, text) => {
+      const data = new DataTransfer()
+      data.setData('text', text)
+      field.dispatchEvent(
+        new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
       )
+    }, '4006381333931')
+
+    const heard = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll('[aria-live]')]
+          .filter((el) => (el as HTMLElement).checkVisibility?.() ?? true)
+          .map((el) => el.textContent ?? ''),
+      )
+    await expect.poll(heard).toHaveLength(1)
+    const [region] = await heard()
+    expect(region, 'the refusal is said').toContain('4006381333931 was not taken')
+    expect(region!.match(/checks? passed/g) ?? [], 'beside the summary, said once').toHaveLength(1)
+  })
+
+  test('says the findings summary exactly once, at every width and on every pane', async ({
+    page,
+  }) => {
+    // Measured before this was written. The findings rail had a live region of
+    // its own, and below `lg` it is `display: none` unless Checks is showing — so
+    // the editor carried a second, narrow-only region to say the same counts.
+    // It was gated on the width alone. On Checks both were perceivable at once,
+    // worded differently: "0 findings, 6 checks passed." and "All 6 checks
+    // passed.". The old version of this test only ever looked at the default
+    // pane, which is why it passed throughout.
+    //
+    // Now the application says the summary once, through the announcer mounted
+    // at its root. What is asserted is what is heard: one perceivable region,
+    // and the summary in it once.
+    const heard = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll('[aria-live]')]
+          .filter((el) => (el as HTMLElement).checkVisibility?.() ?? true)
+          .map((el) => el.textContent ?? ''),
+      )
+    const expectHeardOnce = async (where: string) => {
+      const regions = await heard()
+      expect(regions, `${where}: one region a reader can hear`).toHaveLength(1)
+      expect(
+        regions[0]!.match(/checks? passed/g) ?? [],
+        `${where}: the summary said once, not twice`,
+      ).toHaveLength(1)
+    }
 
     await openEditor(page, 375)
     await expect(page.locator(PREVIEW)).toBeVisible()
-    expect(await perceivable(), 'narrow: one region, and not the hidden one').toBe(1)
+    await expectHeardOnce('narrow, Preview')
+
+    for (const [tab, pane] of [
+      ['#tab-checks', CHECKS],
+      ['#tab-form', FORM],
+    ] as const) {
+      await page.locator(tab).click()
+      await expect(page.locator(pane)).toBeVisible()
+      await expectHeardOnce(`narrow, ${tab.replace('#tab-', '')}`)
+    }
 
     await page.setViewportSize({ width: 1440, height: 900 })
-    // Wait on the switcher, not on a pane. The panes change with the CSS the
-    // moment the viewport does; the shell's live region is removed by a
-    // `matchMedia` listener a tick later, so waiting for a pane races it.
     await expect(page.locator(SWITCHER)).toHaveCount(0)
-    expect(await perceivable(), 'wide: the rail speaks for itself').toBe(1)
+    await expectHeardOnce('wide')
   })
 
   test('leaves no tab panel without a tab to own it', async ({ page }) => {

@@ -64,6 +64,7 @@ import {
 } from '@packwright/label-core'
 import { computed, ref } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
+import { useAnnouncement } from '../stores/announcer'
 import EditorSection from './EditorSection.vue'
 import { CHIP, CHIP_REMOVE } from './formStyles'
 import TextField from './ui/TextField.vue'
@@ -1116,6 +1117,31 @@ const { field: unitContentField, refused: unitContentRefused } = refusableNumber
   () => data.nutritionFacts,
 )
 
+/** Written once, because the field shows them and the announcer has to name them. */
+const REFERENCE_AMOUNT_LABEL = 'Reference amount'
+const packageContentLabel = computed(() => `The whole package holds (${referenceAmountUnit.value})`)
+const unitContentLabel = computed(() => `One individual unit holds (${referenceAmountUnit.value})`)
+
+/**
+ * Each refusal said aloud, with the field it belongs to named.
+ *
+ * Until interface stage 5 a refused figure was shown and never heard: the
+ * description beside the field is a plain description, and making it a live
+ * region would have created it already full, which is usually not announced.
+ * Said through the announcer instead, under one line per field, so two refused
+ * at once are two lines rather than one fighting itself. The field is named
+ * because this is heard away from the box it is about — the visible sentence
+ * sits right beside its field and does not need to.
+ */
+const sayRefusal = (id: string, label: () => string, refused: { value: boolean }) =>
+  useAnnouncement(`refused:${id}`, () =>
+    refused.value ? `${label()}: ${REFUSED_MEASUREMENT}` : '',
+  )
+
+sayRefusal('field-food-nf-racc', () => REFERENCE_AMOUNT_LABEL, referenceAmountRefused)
+sayRefusal('field-food-nf-package-content', () => packageContentLabel.value, packageContentRefused)
+sayRefusal('field-food-nf-unit-content', () => unitContentLabel.value, unitContentRefused)
+
 /**
  * Three states, not two, and the third is the point.
  *
@@ -1897,7 +1923,7 @@ const packaging = computed({
           id="field-food-nf-racc"
           v-model.number="referenceAmountField"
           class="flex-1"
-          label="Reference amount"
+          :label="REFERENCE_AMOUNT_LABEL"
           :invalid="referenceAmountRefused"
           :description="referenceAmountRefused ? REFUSED_MEASUREMENT : ''"
           min="0"
@@ -1922,7 +1948,7 @@ const packaging = computed({
           id="field-food-nf-package-content"
           v-model.number="packageContentField"
           class="flex-1"
-          :label="`The whole package holds (${referenceAmountUnit})`"
+          :label="packageContentLabel"
           :invalid="packageContentRefused"
           :description="packageContentRefused ? REFUSED_MEASUREMENT : ''"
           min="0"
@@ -1932,7 +1958,7 @@ const packaging = computed({
           id="field-food-nf-unit-content"
           v-model.number="unitContentField"
           class="flex-1"
-          :label="`One individual unit holds (${referenceAmountUnit})`"
+          :label="unitContentLabel"
           :invalid="unitContentRefused"
           :description="unitContentRefused ? REFUSED_MEASUREMENT : ''"
           min="0"

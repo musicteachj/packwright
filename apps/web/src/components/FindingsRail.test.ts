@@ -1,8 +1,17 @@
 import type { Finding, Severity } from '@packwright/label-core'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
 import FindingsRail from './FindingsRail.vue'
 import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
+import { useAnnouncerStore } from '../stores/announcer'
+
+// The rail says its summary through the announcer, which is a store, so each
+// test gets a fresh one and nothing said in one is heard in the next.
+beforeEach(() => setActivePinia(createPinia()))
+
+/** What the rail is saying aloud, as the announcer holds it. */
+const heard = () => useAnnouncerStore().lines.map((line) => line.text)
 
 const finding = (severity: Severity, code: string): Finding =>
   ({
@@ -116,8 +125,8 @@ describe('the rail states its totals where they can be seen', () => {
   })
 
   it('hides the strip from assistive technology, which already hears the summary', () => {
-    // The live region below says the same thing in prose. Announcing both reads
-    // it twice.
+    // The announcer says the same thing in prose. Announcing both reads it
+    // twice.
     expect(mountRail().get('.numeric').attributes('aria-hidden')).toBe('true')
   })
 
@@ -158,15 +167,13 @@ describe('a citation is an identifier wherever it appears', () => {
 })
 
 describe('a rail waiting for its label', () => {
-  it('says so in its own live region, and reports nothing about any label', () => {
+  it('says so aloud, and reports nothing about any label', () => {
     // The editor is fetching a label, and the findings it holds belong to
     // whichever document was there before. Reporting them would be the rail
-    // certifying a label nobody asked for — so it reports none, and says why
-    // through the region a screen reader is already observing.
+    // certifying a label nobody asked for — so it reports none, and says why.
     const rail = mountRail({ pending: true })
 
-    const region = rail.get('[aria-live]')
-    expect(region.text()).toBe('Opening this label…')
+    expect(heard()).toEqual(['Opening this label…'])
 
     expect(rail.text(), 'no finding from the document being replaced').not.toContain(
       'says something',
@@ -176,20 +183,49 @@ describe('a rail waiting for its label', () => {
   })
 
   it('says it where it can be seen too, without saying it twice to a screen reader', () => {
-    // Below \`lg\` this rail is a pane of its own, and someone on it during a
-    // wait saw a heading over nothing — the region is \`sr-only\`. The visible
-    // line is \`aria-hidden\` for the reason the count strip is: the region beside
-    // it already says the same words, and hearing both is hearing it twice.
+    // Below `lg` this rail is a pane of its own, and someone on it during a
+    // wait saw a heading over nothing — what is said aloud is not on screen.
+    // The visible line is `aria-hidden` for the reason the count strip is: the
+    // announcer already says these words, and hearing both is hearing it twice.
     const rail = mountRail({ pending: true })
-    const shown = rail.findAll('p').filter((p) => p.attributes('aria-live') === undefined)
-    const line = shown.find((p) => p.text() === 'Opening this label…')
+    const line = rail.findAll('p').find((p) => p.text() === 'Opening this label…')
     expect(line, 'a visible line saying the wait').toBeDefined()
     expect(line!.attributes('aria-hidden')).toBe('true')
   })
 
-  it('keeps its region even while it says nothing else', () => {
-    // The point of `pending` rather than unmounting: the region outlives the
-    // wait, so the counts that replace this line arrive as a change.
-    expect(mountRail({ pending: true }).findAll('[aria-live]')).toHaveLength(1)
+  it('turns the wait into the counts on one line, so the arrival is heard as a change', async () => {
+    // Why `pending` and not unmounting. A line that went away for the wait and
+    // came back would be a new line; this one changes its words.
+    const rail = mountRail({ pending: true })
+    expect(heard()).toEqual(['Opening this label…'])
+
+    await rail.setProps({ pending: false })
+    expect(heard()).toHaveLength(1)
+    expect(heard()[0]).toContain('2 findings')
+  })
+})
+
+describe('the rail’s summary, said aloud', () => {
+  it('is said once, through the announcer, and not by a region of the rail’s own', () => {
+    // The rail had its own region, and on a narrow screen showing Checks it sat
+    // beside the editor's copy of the same counts, worded differently, both
+    // perceivable — measured. The rail now has no region at all.
+    const rail = mountRail()
+    expect(rail.findAll('[aria-live]')).toHaveLength(0)
+    expect(heard()).toHaveLength(1)
+    expect(heard()[0]).toContain('2 findings')
+  })
+
+  it('says nothing where the page has turned it off', () => {
+    // The audit view, whose camera is talking while its report is built.
+    mountRail({ announce: false })
+    expect(heard()).toEqual([])
+  })
+
+  it('stops saying it when the rail is gone', () => {
+    // Leaving the editor must not leave its counts standing for the next page
+    // to be heard beside.
+    mountRail().unmount()
+    expect(heard()).toEqual([])
   })
 })

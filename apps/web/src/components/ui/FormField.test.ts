@@ -38,25 +38,29 @@ describe('FormField', () => {
     expect(mountField({ description: 'x' }).find('#f-description').exists()).toBe(true)
   })
 
-  it('announces a live description, for the one field that validates', () => {
-    // UpcAFormRail's GTIN: two mutually exclusive paragraphs sharing one id,
-    // both role=status, plus aria-invalid. A string prop cannot express it.
+  it('never makes its description a live region, even for a field that validates', () => {
+    // It could, through a `live` prop, for the GTIN's scan note — and the note
+    // was created in the same render as its text, which a screen reader does
+    // not announce. The prop is gone; what a field has to say aloud goes
+    // through the application's announcer, which was already listening. This
+    // pins that the description stays a description whatever it is handed.
     const wrapper = mountField(
-      { live: true, invalid: true },
+      { invalid: true },
       { description: '<p>036000291453 was not taken</p>' },
     )
     const note = wrapper.get('#f-description')
-    expect(note.attributes('role')).toBe('status')
-    expect(note.attributes('aria-live')).toBe('polite')
     expect(note.text()).toContain('was not taken')
+    expect(note.attributes('role')).toBeUndefined()
+    expect(note.attributes('aria-live')).toBeUndefined()
+    expect(wrapper.findAll('[aria-live]')).toHaveLength(0)
   })
 
-  it('does not let a live description imply a severity', () => {
-    // `live` means announced, not alarming. The GTIN carries two live notes —
-    // one where a pasted symbol was refused, one where it was taken with a
-    // caveat — and a component that painted both `text-caution` would report a
-    // successful scan as a warning. Tone travels with the slotted content.
-    const wrapper = mountField({ live: true }, { description: '<p>036000291452 was taken</p>' })
+  it('does not let a description imply a severity', () => {
+    // The GTIN carries two notes — one where a pasted symbol was refused, one
+    // where it was taken with a caveat — and a component that painted both
+    // `text-caution` would report a successful scan as a warning. Tone travels
+    // with the slotted content.
+    const wrapper = mountField({}, { description: '<p>036000291452 was taken</p>' })
     const note = wrapper.get('#f-description')
     expect(note.classes()).not.toContain('text-caution')
     expect(note.classes()).toContain('text-chrome-400')
