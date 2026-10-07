@@ -183,6 +183,51 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The editor presented one label while it was fetching another, and discarded anything typed into it.**
+  `openFromRoute` awaited `readLabel` having set nothing but `loadError`, and the document store is a
+  singleton seeded at construction — so `store.layout` was non-null from the first frame. Under a URL
+  naming somebody else's label the canvas drew the seeded document, the form rail offered its fields for
+  editing, and the findings rail reported "All 6 checks passed" about it. Then `loadSaved` called
+  `replaceReactive`, which deletes every key before assigning, so an edit made in that window went with no
+  warning and no way back.
+
+  The editor now says it is opening the label and shows nothing of the document until it has the one the
+  route asked for, with the header's type, name, save and export controls disabled meanwhile. A failed
+  open falls through to the document already held, which is what `loadError` is there to explain.
+
+  **It is one live region, not a second.** `docs/BACKLOG.md` records why that matters — the findings rail
+  carries the application's only one and `e2e/the-responsive-collapse.spec.ts` asserts exactly one is
+  perceivable at every width — so the wait replaces the rail rather than joining it, and a test pins the
+  count in the state where it could have gone wrong.
+
+  **The wait is keyed to the label it is waiting for**, because two route changes can overlap. A `finally`
+  clearing a boolean lets the first read to land declare the second finished: mutating the id back to a
+  flag puts `012000161155` on screen under a URL for another label, with six passes beside it and nothing
+  outstanding to correct it.
+
+  **Keying it was not enough, and each weaker key let a different wrong read win.** Guarding only the
+  `finally` left a stale read calling `loadSaved` anyway, so landing `def456` first and `abc123` second
+  put `abc123` at `/labels/def456` with no wait and no error — the same defect by the other ordering. The
+  watcher's `/labels/new` branch never cleared the wait, so the header's own "Editor" link left the editor
+  on "Opening this label…" at a URL with nothing to open, and the abandoned read then attached the new
+  document to the old record, reintroducing the "Save PUTs over the label you navigated away from" bug
+  that watcher exists to prevent. And an id still cannot tell two reads of the *same* label apart:
+  `/labels/abc123` to `/labels/new` and back leaves two outstanding, and the abandoned one, failing, put
+  "That label no longer exists" in front of a label that was loading perfectly well.
+
+  So the wait holds the request itself, and object identity is the per-request token — the same trick the
+  refused measurements use to tell one document from another. It is a `shallowRef` and that is not a
+  performance choice: a plain `ref` wraps an object in a reactive proxy on the way in, so `opening.value`
+  hands back the proxy, never equals what was put there, and the wait never lifts. Five tests said so at
+  once.
+
+  A fourth ordering survived all of that: back at a label the store already holds, the watcher returns
+  early without starting a read, and left the wait standing — so the editor sat on "Opening this label…"
+  indefinitely while the read for the label it had navigated away from still passed the identity guard and
+  attached itself to this URL. Four orderings, one per review round, each mutation-tested. This entry said
+  "all three" before the fourth arrived, which is worth leaving visible: the mechanism was not hard, and
+  every version of it that looked finished was wrong about a route somebody takes.
+
 - **Two figures were set in a face the design system does not have, and no test could see either.**
   `main.css` declares one utility for identifiers and measurements, and it is three declarations:
   the mono family, `font-variant-numeric: tabular-nums`, and `font-feature-settings: 'tnum' 1`. The

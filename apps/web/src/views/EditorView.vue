@@ -15,7 +15,16 @@
  * control. Shrinking them would have produced three unusable columns instead of
  * one usable one.
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import {
   SavedLabelError,
@@ -174,10 +183,45 @@ async function persist(mode: 'replace' | 'create') {
   }
 }
 
+/**
+ * The label the editor is currently fetching, or `null` when it holds what the
+ * route asked for.
+ *
+ * **The editor used to present a different label while this was in flight**, and
+ * there was nothing to say so. The store is a singleton seeded at construction,
+ * so `store.layout` is non-null from the first frame: under a URL naming
+ * somebody else's label, the canvas drew the seeded document, the rail offered
+ * its fields for editing, and the findings rail reported "All 6 checks passed"
+ * about it. Then `loadSaved` called `replaceReactive`, which deletes every key
+ * before assigning — so anything typed in that window went, with no warning.
+ *
+ * Holding the request rather than a flag or an id, because two route changes
+ * can overlap and every weaker key has let the wrong read win. A boolean lets
+ * the first arrival declare the second finished. An id cannot tell two reads of
+ * the *same* label apart — `/labels/abc123` to `/labels/new` and back leaves
+ * two outstanding, and the abandoned one, failing, put "That label no longer
+ * exists" in front of a label that was loading perfectly well. Object identity
+ * is a per-request token by construction, which is the same trick
+ * `UsFoodFormRail`'s refusals use to tell one document from another.
+ *
+ * `shallowRef`, and not for performance. A plain `ref` wraps an object in a
+ * reactive proxy on the way in, so `opening.value` hands back the proxy and
+ * never equals the request that was put there — every guard below fails, the
+ * wait never lifts, and five tests said so at once.
+ */
+const opening = shallowRef<{ id: string } | null>(null)
+
 async function openFromRoute(id: string) {
+  const request = { id }
   loadError.value = null
+  opening.value = request
   try {
     const saved = await readLabel(id)
+    // Nobody is waiting for this one any more. Guarding only in the `finally`
+    // left a stale read writing the document anyway, so landing `def456` first
+    // and `abc123` second put `abc123` on screen at `/labels/def456` with no
+    // wait and no error — this change's own defect, by the other ordering.
+    if (opening.value !== request) return
     store.loadSaved({
       id: saved.id,
       name: saved.name,
@@ -186,12 +230,20 @@ async function openFromRoute(id: string) {
       data: saved.data,
     })
   } catch (caught) {
+    // Same test, same reason: a failure nobody is waiting for is not an error
+    // to put in front of the label that replaced it.
+    if (opening.value !== request) return
     loadError.value =
       caught instanceof SavedLabelError && caught.isMissing
         ? 'That label no longer exists. The editor is showing a new document.'
         : caught instanceof Error
           ? caught.message
           : 'The label could not be opened.'
+  } finally {
+    // Only if this read is still the one the editor is waiting on. A failed
+    // open falls through to the document already held, which is what
+    // `loadError` is there to explain.
+    if (opening.value === request) opening.value = null
   }
 }
 
@@ -212,11 +264,22 @@ watch(
     saveError.value = null
     if (typeof id === 'string' && id.length > 0) {
       if (id !== store.savedId) void openFromRoute(id)
+      // Already holding it, so there is nothing to wait for — and anything
+      // still in flight belongs to a label this route has left. Without this,
+      // going to another label and straight back stranded the editor on the
+      // wait, and the abandoned read then attached *its* label to this URL.
+      else opening.value = null
       return
     }
     // `/labels/new` is a new document. The fields are left as they are, so
     // "start from this one" still works, but nothing is attached and the name
     // does not carry over — a name belongs to the record it was given to.
+    //
+    // Abandoning the read first, which is not bookkeeping. Leaving it set left
+    // the editor on "Opening this label…" at a URL with nothing to open, and
+    // let the abandoned read attach this new document to the old record when it
+    // landed — the bug the comment above is about, reached from the other side.
+    opening.value = null
     store.detach()
     store.savedName = ''
   },
@@ -353,6 +416,7 @@ async function exportPdf() {
           <select
             id="field-label-type"
             v-model="store.labelType"
+            :disabled="opening !== null"
             class="border-chrome-700 bg-chrome-900 text-chrome-300 numeric min-w-0 border px-2 py-0.5 text-xs"
           >
             <option value="gs1-retail">GS1 retail label</option>
@@ -373,6 +437,7 @@ async function exportPdf() {
           id="field-label-name"
           v-model="store.savedName"
           type="text"
+          :disabled="opening !== null"
           maxlength="120"
           placeholder="Name this label to save it"
           class="border-chrome-700 bg-chrome-900 text-chrome-200 min-w-0 grow border px-2 py-0.5 text-xs"
@@ -389,7 +454,9 @@ async function exportPdf() {
         <button
           type="button"
           :class="[BUTTON, 'shrink-0 px-3 py-1 text-xs']"
-          :disabled="saving || !canSave || (store.savedId !== null && !store.isDirty)"
+          :disabled="
+            opening !== null || saving || !canSave || (store.savedId !== null && !store.isDirty)
+          "
           data-save
           @click="persist('replace')"
         >
@@ -399,7 +466,7 @@ async function exportPdf() {
           v-if="store.savedId !== null"
           type="button"
           :class="[BUTTON, 'shrink-0 px-3 py-1 text-xs']"
-          :disabled="saving || !canSave"
+          :disabled="opening !== null || saving || !canSave"
           data-save-as
           @click="persist('create')"
         >
@@ -423,7 +490,7 @@ async function exportPdf() {
         <button
           type="button"
           :class="[BUTTON, 'px-3 py-1.5 text-xs']"
-          :disabled="exporting || !store.layout || cannotExport"
+          :disabled="opening !== null || exporting || !store.layout || cannotExport"
           :title="cannotExport ? exportBlockedReason : undefined"
           @click="exportPdf"
         >
@@ -432,7 +499,7 @@ async function exportPdf() {
       </div>
     </header>
 
-    <PaneSwitcher v-if="narrow" :current="pane" @select="pane = $event" />
+    <PaneSwitcher v-if="narrow && opening === null" :current="pane" @select="pane = $event" />
 
     <!--
       The findings rail carries the only `aria-live` region in the application,
@@ -441,11 +508,29 @@ async function exportPdf() {
       narrow window. Measured: one live region in the document, zero client rects.
       This one exists only while that is true, so exactly one is ever live.
     -->
-    <p v-if="narrow" class="sr-only" role="status" aria-live="polite">
+    <p v-if="narrow && opening === null" class="sr-only" role="status" aria-live="polite">
       {{ store.failures.length }} findings, {{ store.passes.length }} checks passed.
     </p>
 
-    <div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[380px_1fr_340px]">
+    <!--
+      Nothing of the document while the route is still being answered.
+      `docs/BACKLOG.md` records why this is not a second `aria-live` region
+      bolted beside the rest: the findings rail carries the application's only
+      one, `e2e/the-responsive-collapse.spec.ts` asserts exactly one is
+      perceivable at every width, and this replaces the rail rather than joining
+      it — so the count is unchanged and the one region speaking is the one with
+      something to say.
+    -->
+    <div
+      v-if="opening !== null"
+      class="flex min-h-0 flex-1 items-center justify-center p-8"
+      role="status"
+      aria-live="polite"
+    >
+      <p class="text-chrome-300 text-sm">Opening this label…</p>
+    </div>
+
+    <div v-else class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[380px_1fr_340px]">
       <div
         id="pane-form"
         :role="narrow ? 'tabpanel' : undefined"

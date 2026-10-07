@@ -1,7 +1,7 @@
 import { UPC_A_ELEMENTS } from '@packwright/label-core'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
@@ -368,5 +368,304 @@ describe('a label handed over from an audit', () => {
     mountEditor()
     expect(store.isDirty).toBe(true)
     expect(store.savedId).toBeNull()
+  })
+})
+
+/**
+ * The window between asking for a label and having it.
+ *
+ * `openFromRoute` awaits `readLabel` having set nothing but `loadError`, and the
+ * store is a singleton seeded at construction — so `store.layout` is non-null
+ * immediately and the editor draws the *seeded* document, offers its fields for
+ * editing, and reports compliance findings about it, all under a URL naming
+ * somebody else's label. When the read lands, `loadSaved` calls
+ * `replaceReactive`, which deletes every key before assigning: anything typed in
+ * that window is gone, with no warning and no way to get it back.
+ *
+ * Deferred rather than mocked away. The whole claim is about a state that only
+ * exists while a promise is outstanding, so the test has to hold one open.
+ */
+describe('opening a saved label from the route', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+  afterEach(() => vi.unstubAllGlobals())
+
+  const SAVED = {
+    id: 'abc123',
+    name: 'Granola 340g',
+    labelType: 'gs1-retail',
+    stock: { widthMm: 90, heightMm: 50, marginMm: 3 },
+    data: { gtin: '012000161155' },
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-10T00:00:00.000Z',
+  }
+
+  const openDeferred = async () => {
+    let land: () => void = () => {}
+    const arrival = new Promise<void>((resolve) => {
+      land = resolve
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        await arrival
+        return { ok: true, status: 200, json: async () => SAVED } as unknown as Response
+      }),
+    )
+
+    const router = testRouter('/labels/abc123')
+    await router.isReady()
+    const wrapper = mount(EditorView, {
+      global: { plugins: [router], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+    return { wrapper, land }
+  }
+
+  it('does not offer the document it happens to be holding for editing', async () => {
+    const { wrapper, land } = await openDeferred()
+
+    expect(
+      wrapper.find('form[aria-label="Label details"]').exists(),
+      'the rail must not present a different label as this one',
+    ).toBe(false)
+    expect(wrapper.find('svg[role="img"]').exists(), 'and the canvas must not draw it either').toBe(
+      false,
+    )
+
+    land()
+    await flushPromises()
+
+    expect(wrapper.find('form[aria-label="Label details"]').exists()).toBe(true)
+    expect(useLabelDocumentStore().savedId).toBe('abc123')
+  })
+
+  it('says what it is doing rather than showing an empty frame', async () => {
+    const { wrapper, land } = await openDeferred()
+
+    const status = wrapper.find('[role="status"]')
+    expect(status.exists(), 'a wait a user can read').toBe(true)
+    expect(status.text()).toContain('Opening')
+
+    land()
+    await flushPromises()
+
+    // Not `[role="status"]` absent — the findings rail carries one of its own
+    // and is back on screen by now. The claim is that the wait is over.
+    expect(wrapper.text()).not.toContain('Opening this label')
+  })
+
+  it('waits for the label it was last asked for, not the first one to arrive', async () => {
+    // Why `opening` holds an id rather than a boolean. Two route changes can
+    // overlap — the saved-labels list makes that a double click — and a
+    // `finally` clearing a flag would let the first read to land declare the
+    // second one finished, putting the wrong label on screen under the right
+    // URL with nothing outstanding to correct it.
+    const landings = new Map<string, () => void>()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        const id = url.split('/').pop()!
+        await new Promise<void>((resolve) => landings.set(id, resolve))
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ...SAVED, id, name: `Label ${id}` }),
+        } as unknown as Response
+      }),
+    )
+
+    const router = testRouter('/labels/abc123')
+    await router.isReady()
+    const wrapper = mount(EditorView, {
+      global: { plugins: [router], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+
+    await router.push('/labels/def456')
+    await nextTick()
+    expect(landings.has('def456'), 'the second read must have been started').toBe(true)
+
+    landings.get('abc123')!()
+    await flushPromises()
+    expect(wrapper.text(), 'the first arrival must not end a wait it no longer owns').toContain(
+      'Opening this label',
+    )
+
+    landings.get('def456')!()
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Opening this label')
+    expect(useLabelDocumentStore().savedId).toBe('def456')
+  })
+
+  /** A fetch that hands back a label per id, each landing only when told to. */
+  const deferredByLabel = () => {
+    const landings = new Map<string, () => void>()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        const id = url.split('/').pop()!
+        await new Promise<void>((resolve) => landings.set(id, resolve))
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ...SAVED, id, name: `Label ${id}` }),
+        } as unknown as Response
+      }),
+    )
+    return landings
+  }
+
+  it('ignores a read that lands after the one that replaced it', async () => {
+    // The other ordering, and the `finally` guard alone does not cover it: a
+    // stale read still called `loadSaved`, so `/labels/def456` ended up holding
+    // `abc123` with no wait on screen and no error — the defect this change
+    // exists to fix, arriving by the back door. Found by review.
+    const landings = deferredByLabel()
+    const router = testRouter('/labels/abc123')
+    await router.isReady()
+    const wrapper = mount(EditorView, {
+      global: { plugins: [router], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+    await router.push('/labels/def456')
+    await nextTick()
+
+    landings.get('def456')!()
+    await flushPromises()
+    expect(useLabelDocumentStore().savedId).toBe('def456')
+
+    landings.get('abc123')!()
+    await flushPromises()
+
+    expect(
+      useLabelDocumentStore().savedId,
+      'a read nobody is waiting for may not write the document',
+    ).toBe('def456')
+    expect(wrapper.text()).not.toContain('Opening this label')
+  })
+
+  it('abandons the read when the route leaves for a new document', async () => {
+    // `/labels/new` is the header's own "Editor" link. Without clearing the
+    // wait, the editor sat on "Opening this label…" at a URL with nothing to
+    // open — and when the abandoned read landed it attached the new document to
+    // the old record, which is exactly the "Save PUTs over the label you
+    // navigated away from" bug the watcher's own comment documents.
+    const landings = deferredByLabel()
+    const router = testRouter('/labels/abc123')
+    await router.isReady()
+    const wrapper = mount(EditorView, {
+      global: { plugins: [router], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+
+    await router.push('/labels/new')
+    await nextTick()
+    expect(wrapper.text(), 'nothing is being opened any more').not.toContain('Opening this label')
+
+    landings.get('abc123')!()
+    await flushPromises()
+
+    const store = useLabelDocumentStore()
+    expect(store.savedId, 'a new document is attached to no record').toBeNull()
+    expect(store.savedName).toBe('')
+  })
+
+  it('tells two reads of the same label apart', async () => {
+    // `/labels/abc123` → `/labels/new` → `/labels/abc123`, with the first read
+    // still outstanding. Keyed by id alone the two are indistinguishable: the
+    // abandoned read passes the guard, writes, and clears the wait, and the
+    // response for the URL the user is actually on is thrown away. Sharpest
+    // when the abandoned one is the one that failed — the user is left reading
+    // an error about a label that loaded perfectly well. Found by review.
+    const answers: Array<(value: { ok: boolean; status: number; body: unknown }) => void> = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        const answer = await new Promise<{ ok: boolean; status: number; body: unknown }>(
+          (resolve) => answers.push(resolve),
+        )
+        return {
+          ok: answer.ok,
+          status: answer.status,
+          json: async () => answer.body,
+        } as unknown as Response
+      }),
+    )
+
+    const router = testRouter('/labels/abc123')
+    await router.isReady()
+    const wrapper = mount(EditorView, {
+      global: { plugins: [router], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+    await router.push('/labels/new')
+    await nextTick()
+    await router.push('/labels/abc123')
+    await nextTick()
+    expect(answers, 'two reads of the same label are outstanding').toHaveLength(2)
+
+    // The abandoned one, and it failed.
+    answers[0]!({ ok: false, status: 404, body: { error: 'Not found' } })
+    await flushPromises()
+    expect(wrapper.text(), 'the read still outstanding still owns the wait').toContain(
+      'Opening this label',
+    )
+    expect(wrapper.find('[role="alert"]').exists(), 'and nobody is told about it').toBe(false)
+
+    answers[1]!({ ok: true, status: 200, body: SAVED })
+    await flushPromises()
+
+    expect(useLabelDocumentStore().savedId).toBe('abc123')
+    expect(wrapper.text()).not.toContain('Opening this label')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('stops waiting when the route returns to the label already held', async () => {
+    // The one route branch the first three fixes did not cover. Back at a label
+    // the store already holds, the watcher returns early without starting a
+    // read — and left the wait standing, so the editor sat on "Opening this
+    // label…" forever and the outstanding read for the label that was navigated
+    // away from still passed the identity guard and loaded itself under this
+    // URL. A Save then wrote over it. Found by review.
+    const landings = deferredByLabel()
+    const router = testRouter('/labels/abc123')
+    await router.isReady()
+    const wrapper = mount(EditorView, {
+      global: { plugins: [router], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+    landings.get('abc123')!()
+    await flushPromises()
+    expect(useLabelDocumentStore().savedId).toBe('abc123')
+
+    await router.push('/labels/def456')
+    await nextTick()
+    expect(wrapper.text()).toContain('Opening this label')
+
+    await router.push('/labels/abc123')
+    await nextTick()
+    expect(
+      wrapper.text(),
+      'the label is already here, so there is nothing to wait for',
+    ).not.toContain('Opening this label')
+
+    landings.get('def456')!()
+    await flushPromises()
+    expect(
+      useLabelDocumentStore().savedId,
+      'a read nobody is waiting for may not attach its label to this URL',
+    ).toBe('abc123')
+  })
+
+  it('keeps exactly one live region while it waits', async () => {
+    // The findings rail carries the only `aria-live` region in the application
+    // and `e2e/the-responsive-collapse.spec.ts` asserts exactly one is
+    // perceivable at every width. A wait that adds a second would break that in
+    // a state no test visits — which is the worst way for an invariant to go.
+    const { wrapper, land } = await openDeferred()
+    expect(wrapper.findAll('[aria-live]')).toHaveLength(1)
+
+    land()
+    await flushPromises()
   })
 })

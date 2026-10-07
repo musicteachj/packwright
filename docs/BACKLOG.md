@@ -737,6 +737,30 @@ Both of these were found by taking a screenshot and looking at it, which is the 
 finding that mattered in this phase. Neither is a regression: both predate the stage, and the typography
 fix that was in scope does not move either of them.
 
+**A failed open says the editor is showing a new document, and it is not.** `openFromRoute`'s catch writes
+"That label no longer exists. The editor is showing a new document." for a 404, but nothing detaches — so
+at `/labels/zzz999` the store still holds the previously opened label's `savedId` and `savedName`, and a
+Save from there issues a `PUT` over the record the user believes they navigated away from. That is the
+same bug the route watcher's own comment documents, reached through the error path rather than through
+the URL. Pre-existing and untouched by stage 4, which only changed when the panes are shown. Closing it
+is either `store.detach()` on a missing label or a sentence that is true, and the two are different
+products: one discards the document on screen, the other keeps it and says so.
+
+**The wait's live region is created with its text already in it**, which is the third instance of one
+recorded question rather than a new defect. A screen reader announces a *change* to a region it is already
+observing; a region that appears already full has nothing to compare against. The GTIN scan note has this
+shape, the refused-measurement description above has it, and now so does "Opening this label…". The test
+beside it counts live regions and cannot see it. The fix is the same one the stage 1 entry describes and
+the same reason it has not been taken: an always-present region is a second always-present region, against
+an invariant `e2e/the-responsive-collapse.spec.ts` asserts at every width.
+
+**The editor's header keeps naming the previous label while the next one is being opened.** The panes go,
+but the name field still reads "Granola 340g" and the chip beside it still reads "Saved" — a document
+identity asserted about something not on screen. Everything there is disabled, so nothing can be edited or
+lost, which is why this is an entry rather than part of the fix: the harm the stage closed was a document
+that could be edited and then silently discarded, and this is the cosmetic remainder. Worth doing with the
+shell work, where the header is being looked at anyway.
+
 **The dimension callout's figure is drawn over the barcode's own digits.** `LabelCanvas.vue`'s
 `symbolCallouts` puts the rule at `yMm + drawnHeightMm + 2` — cleanly below the symbol — and then the
 label at `callout.yMm - 1.2`, which is *above* the rule. An SVG `<text>` `y` is its baseline, and at
