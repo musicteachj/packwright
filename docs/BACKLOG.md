@@ -667,6 +667,12 @@ below.
   Regular widths, which is this entry. `usFoodEngine`'s right-edge check measures the bold statement of
   identity the same way, and the resolution is one function, `measuredFamilyFor`, rather than a copy in each
   engine.
+
+  **It reaches the linear display's word flow too.** Found by the review of PR #64's follow-up: the linear
+  display places each word at the advance of the one before, measured in Regular, while its bold words print
+  SemiBold — so a bold word can overprint the start of the word after it on any line. The panel-border check
+  now measures ink in the printing face and reports the cases that cross the border; the overlap inside a line
+  is this entry's, and closes with it.
 - ~~**The Calories word and numeral sit on different baselines on the vertical display.**~~ **Fixed.**
   Measured: the 16 point word's baseline at 47.33 mm, the 22 point figure's at 49.45 mm — 2.12 mm, six points
   apart. `text()` in `nutritionPanel.ts` takes a `lineSizePt`, and every run on a line sits on the baseline the
