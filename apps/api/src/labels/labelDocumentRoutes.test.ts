@@ -4,6 +4,7 @@ import supertest from 'supertest'
 import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app'
 import { LabelDocument } from './labelDocument'
+import { LABEL_CAP } from './labelDocumentRoutes'
 import { withDatabase } from '../testing/withDatabase'
 
 const app = () => createApp({ enableLogging: false })
@@ -31,6 +32,91 @@ describe('/api/labels', () => {
       .send({ ...A_LABEL, labelType: 'us-food' })
     expect(response.status).toBe(400)
     expect(response.body.detail).toBeInstanceOf(Array)
+  })
+
+  describe('the cap', () => {
+    // Stored straight through the model, which is the one way past the route's
+    // count — so these can stand a collection at any size, including above the
+    // cap, the way a development database from before it can.
+    const store = (count: number) =>
+      LabelDocument.insertMany(
+        Array.from({ length: count }, (_, index) => ({ ...A_LABEL, name: `Stored ${index}` })),
+      )
+
+    it('is twenty', () => {
+      expect(LABEL_CAP).toBe(20)
+    })
+
+    it('takes the twentieth label', async () => {
+      await store(19)
+      expect((await supertest(app()).post('/api/labels').send(A_LABEL)).status).toBe(201)
+      expect(await LabelDocument.countDocuments({})).toBe(20)
+    })
+
+    it('refuses the twenty-first, saying what to do about it', async () => {
+      await store(20)
+      // Refused before the insert, not only undone after it. The recount below
+      // would also catch this, but by then a twenty-first label has existed —
+      // listed, counted and openable by anyone who asked in that moment.
+      const create = vi.spyOn(LabelDocument, 'create')
+      let response
+      let inserts
+      try {
+        response = await supertest(app()).post('/api/labels').send(A_LABEL)
+        // Read before the restore: Vitest's `mockRestore` clears the calls it
+        // recorded, so asserting afterwards passed whatever the route did.
+        inserts = create.mock.calls.length
+      } finally {
+        create.mockRestore()
+      }
+      expect(inserts, 'nothing was inserted').toBe(0)
+      expect(response.status).toBe(409)
+      expect(response.body.error).toBe(
+        'There are already 20 saved labels, which is as many as this app keeps. Delete one from Saved labels before saving another.',
+      )
+      expect(await LabelDocument.countDocuments({})).toBe(20)
+    })
+
+    it('takes its own label back out when the count it read had gone stale', async () => {
+      // The race, made deterministic: another save landed between this one's
+      // count and its insert, so the count says nineteen with twenty stored.
+      await store(20)
+      const spy = vi.spyOn(LabelDocument, 'countDocuments').mockResolvedValueOnce(19 as never)
+      try {
+        const response = await supertest(app()).post('/api/labels').send(A_LABEL)
+        expect(response.status).toBe(409)
+      } finally {
+        spy.mockRestore()
+      }
+      expect(await LabelDocument.countDocuments({}), 'not twenty-one').toBe(20)
+    })
+
+    it('still replaces a label at the cap', async () => {
+      // Replacing adds nothing, and refusing it would leave every label at the
+      // cap uneditable — the user's way out would be to delete their own work.
+      await store(19)
+      const last = await LabelDocument.create(A_LABEL)
+      const response = await supertest(app())
+        .put(`/api/labels/${last._id}`)
+        .send({ ...A_LABEL, name: 'Renamed' })
+      expect(response.status).toBe(200)
+      expect(response.body.name).toBe('Renamed')
+    })
+
+    it('reports the cap and the whole collection’s count with every list', async () => {
+      await store(3)
+      const response = await supertest(app()).get('/api/labels?limit=1')
+      expect(response.body.cap).toBe(20)
+      expect(response.body.count, 'the collection, not the page').toBe(3)
+    })
+
+    it('counts honestly above the cap, where a database predates it', async () => {
+      await store(25)
+      const response = await supertest(app()).get('/api/labels?limit=20')
+      expect(response.body.count).toBe(25)
+      expect(response.body.labels).toHaveLength(20)
+      expect(response.body.nextBefore, 'and says the page is not everything').toBeTruthy()
+    })
   })
 
   it('lists labels newest first, without their data', async () => {

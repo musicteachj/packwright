@@ -35,7 +35,9 @@ async function mountAt(path: string) {
     vi.fn(async (url: string) => ({
       ok: true,
       status: 200,
-      json: async () => (url === '/api/labels' ? { labels: [] } : SAVED),
+      // Any list request, the editor's one-row count read included.
+      json: async () =>
+        url.startsWith('/api/labels?') ? { labels: [], cap: 20, count: 0 } : SAVED,
     })),
   )
   const router = createAppRouter(createMemoryHistory())

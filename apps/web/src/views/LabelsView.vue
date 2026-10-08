@@ -7,15 +7,22 @@
  * cannot show a preview without fetching every document — and a list whose cost
  * grows with the size of the labels in it is a list that gets slower the more
  * useful it becomes.
+ *
+ * **What happens here is said through the announcer**, not through a region of
+ * this page's own: loading, what loaded, a failure, a deletion. The error line
+ * below is visible and nothing more. It was `role="alert"`, which beside the
+ * announcer would have said every failure twice.
  */
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   SavedLabelError,
   deleteLabel,
   listLabels,
+  type LabelCount,
   type SavedLabelSummary,
 } from '../api/savedLabels'
 import { BUTTON } from '../components/chrome'
+import { useAnnouncement } from '../stores/announcer'
 
 const TYPE_NAMES: Record<string, string> = {
   'gs1-retail': 'GS1 retail',
@@ -24,16 +31,42 @@ const TYPE_NAMES: Record<string, string> = {
 }
 
 const labels = ref<SavedLabelSummary[]>([])
+/** The server's cap and count, or `null` where it gave none — then no figure is shown. */
+const counted = ref<LabelCount | null>(null)
+/** The server had more than the one page asked for. Only a database from before the cap can. */
+const truncated = ref(false)
 const loading = ref(true)
 const error = ref<string | null>(null)
 /** Which row is awaiting confirmation, so the question is asked in place. */
 const confirming = ref<string | null>(null)
+/** The name of the label just deleted, until anything else happens. */
+const deleted = ref<string | null>(null)
+
+const atCap = computed(() => counted.value !== null && counted.value.count >= counted.value.cap)
+
+/** "3 of 20 labels saved.", or the plainest true sentence where there is no figure to give. */
+const tally = computed(() => {
+  if (counted.value === null) return labels.value.length === 0 ? 'No labels saved yet.' : ''
+  const { count, cap } = counted.value
+  return count === 0 ? 'No labels saved yet.' : `${count} of ${cap} labels saved.`
+})
+
+useAnnouncement('saved-labels', () => {
+  if (loading.value) return 'Loading saved labels…'
+  if (error.value !== null) return error.value
+  if (deleted.value !== null) return `Deleted “${deleted.value}”. ${tally.value}`.trim()
+  return tally.value
+})
 
 async function load() {
   loading.value = true
   error.value = null
+  deleted.value = null
   try {
-    labels.value = await listLabels()
+    const list = await listLabels()
+    labels.value = list.labels
+    counted.value = list.counted
+    truncated.value = list.truncated
   } catch (caught) {
     // The server's own sentence where there is one. A list that fails silently
     // reads as a list with nothing in it, which is the one wrong answer.
@@ -43,17 +76,55 @@ async function load() {
   }
 }
 
+/**
+ * The list again, where it was cut short, so a deleted row makes room for one
+ * that was not listed. Without it, deleting every row of a cut-short list
+ * read "Nothing saved yet" beside "5 of 20 saved", with those five unreachable
+ * until a reload — found by review. Quiet: the deletion stays what is said, and
+ * a failure here leaves the list as it stood rather than reporting the delete,
+ * which succeeded, as failed.
+ */
+let refillRead = 0
+async function refill() {
+  // Numbered, and only the latest kept: two quick deletes start two reads, and
+  // the older answering last put the second deleted row back. Found by review.
+  const read = ++refillRead
+  if (!truncated.value) return
+  try {
+    const list = await listLabels()
+    if (read !== refillRead) return
+    labels.value = list.labels
+    counted.value = list.counted
+    truncated.value = list.truncated
+  } catch {
+    // The list as it stood, and the next load corrects it.
+  }
+}
+
 async function remove(id: string) {
   confirming.value = null
+  error.value = null
+  deleted.value = null
+  const name = labels.value.find((label) => label.id === id)?.name ?? 'the label'
+  /** Gone from the list and from the count, which the server's own count no longer includes. */
+  const forget = () => {
+    labels.value = labels.value.filter((label) => label.id !== id)
+    if (counted.value !== null) {
+      counted.value = { ...counted.value, count: Math.max(0, counted.value.count - 1) }
+    }
+    deleted.value = name
+  }
   try {
     await deleteLabel(id)
-    labels.value = labels.value.filter((label) => label.id !== id)
+    forget()
+    await refill()
   } catch (caught) {
     // A label that is already gone is a delete that got what it wanted. Treating
     // 404 as a failure leaves a row for a record that no longer exists, and no
     // amount of retrying can clear it.
     if (caught instanceof SavedLabelError && caught.isMissing) {
-      labels.value = labels.value.filter((label) => label.id !== id)
+      forget()
+      await refill()
       return
     }
     error.value = caught instanceof Error ? caught.message : 'The label could not be deleted.'
@@ -75,9 +146,20 @@ onMounted(load)
         Every label is stored with the stock it was designed at, so opening one gives you back the
         dimensions it was drawn to rather than a default.
       </p>
+      <!--
+        A count of labels, not a measurement, so it is set in the sentence's own
+        face. Shown once the server has said; a page that does not know the
+        figure does not print one.
+      -->
+      <p v-if="!loading && counted !== null" class="text-chrome-300 text-sm" data-label-count>
+        {{ counted.count }} of {{ counted.cap }} saved<template v-if="atCap">
+          — as many as this app keeps. Delete one before saving another.</template
+        >
+      </p>
     </header>
 
-    <p v-if="error" class="border-danger text-danger border-l-2 pl-4 text-sm" role="alert">
+    <!-- Visible only. The announcer says it; a role here would say it twice. -->
+    <p v-if="error" class="border-danger text-danger border-l-2 pl-4 text-sm" data-labels-error>
       <span class="font-semibold">Error</span> — {{ error }}
     </p>
 
@@ -148,5 +230,16 @@ onMounted(load)
         </button>
       </li>
     </ul>
+
+    <!--
+      The list is one page, and the cap keeps it one. A database from before the
+      cap can hold more than a page, and the rest are then unreachable from here —
+      which is said, rather than left to look like everything.
+    -->
+    <p v-if="truncated" class="text-chrome-300 text-sm leading-relaxed" data-labels-truncated>
+      Showing the {{ labels.length }} most recently changed<template v-if="counted !== null">
+        of {{ counted.count }}</template
+      >. The rest are stored but not listed here.
+    </p>
   </div>
 </template>

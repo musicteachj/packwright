@@ -754,7 +754,10 @@ one runs the whole suite and boots the server. Only `/api/audit` notices, and it
 ## Open items (non-blocking)
 
 - Whether the old `barcode-crud` README should link across to `packwright` as a spiritual successor
-- Saved-label cap: the old app capped at 20; 50 is more realistic and still free-tier safe
+- ~~Saved-label cap: the old app capped at 20; 50 is more realistic and still free-tier safe~~ **Decided
+  2026-10-08: 20, across the whole collection.** The API has no owner concept, so the cap is global; `POST`
+  refuses the twenty-first with a 409 and `PUT` still works at the cap. Twenty fits one page, so the list can be
+  fetched once, without "load more".
 - `barcode-crud`'s README still cites Railway under Deployment while the workflow deploys to AWS ECS — stale on
   a portfolio-facing doc, worth a one-line fix next time you're in that repo
 

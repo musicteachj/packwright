@@ -188,8 +188,11 @@ saved inside one of them tie, and a cursor of `updatedAt < boundary` steps over 
 boundary. Four labels sharing a timestamp returned two and reported the list finished. Caught by review, and
 the test written for it now creates its labels with a shared timestamp rather than sleeping to avoid one.
 
-**A label saved while the client walks the pages is missed.** Raised by the review of the paging change and
-left. `listLabels` follows the cursor page by page, and a label created between two of those requests sorts
+**~~A label saved while the client walks the pages is missed.~~ Closed 2026-10-08** with the twenty-label cap.
+The client no longer walks: `listLabels` makes one request for a page as large as the cap, so there is no second
+fetch for a label to fall between. The entry as it was:
+
+Raised by the review of the paging change and left. `listLabels` follows the cursor page by page, and a label created between two of those requests sorts
 above the cursor and appears on neither — so the list omits it until the next refresh. The single unbounded
 query it replaced could not miss a row, which makes this a real if small regression. It is inherent to
 cursoring on a mutable sort key rather than a fix anybody forgot: `updatedAt` is what "newest first" means
@@ -198,8 +201,12 @@ list that is not live is the ordinary case, and the label appears on the next lo
 explicitly incremental, which is the "load more" decision below. Worth deciding with that one rather than
 separately.
 
-**What is not done is the list view.** `listLabels` follows the cursor to the end, so the client behaves as it
-always did and every individual query is bounded — but a "load more" control, or any indication that a list
+**~~What is not done is the list view.~~ Closed 2026-10-08.** The cap decided it: twenty fits one page, so
+"load more" was dropped rather than built. `/labels` says "n of 20 saved", and if the server ever has a second
+page to give — only a database from before the cap can — a visible line says the list shows the twenty most
+recently changed of however many there are. The entry as it was:
+
+`listLabels` follows the cursor to the end, so the client behaves as it always did and every individual query is bounded — but a "load more" control, or any indication that a list
 has been cut short, is a design decision for the view rather than the client. Until one exists, an account
 with more than two thousand labels would silently stop at that many.
 

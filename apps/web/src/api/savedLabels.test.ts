@@ -5,6 +5,7 @@ import {
   deleteLabel,
   listLabels,
   readLabel,
+  readLabelCount,
   replaceLabel,
 } from './savedLabels'
 
@@ -37,35 +38,70 @@ const rejection = (promise: Promise<unknown>): Promise<SavedLabelError> =>
 afterEach(() => vi.unstubAllGlobals())
 
 describe('the saved-labels client', () => {
-  it('follows the cursor to the end rather than stopping at the first page', async () => {
-    // The list view is the only way to open a saved label, so stopping at the
-    // first page would make the fifty-first unreachable with nothing on screen
-    // to say the list had been cut short.
-    const second = { ...A_LABEL, id: 'second' }
-    const pages = [
-      { labels: [A_LABEL], nextBefore: '2026-09-18T00:00:00.000Z_abc' },
-      { labels: [second] },
-    ]
-    const fetchMock = vi.fn(
-      async (input: RequestInfo | URL) =>
-        ({
-          ok: true,
-          status: 200,
-          url: String(input),
-          json: async () => pages.shift(),
-        }) as unknown as Response,
-    )
+  it('fetches the list once, a page as large as the cap', async () => {
+    // It used to follow the cursor to the end, up to forty serial requests. The
+    // application keeps at most twenty labels now, so one page is all of them.
+    const fetchMock = respond(200, { labels: [A_LABEL], cap: 20, count: 1 })
     vi.stubGlobal('fetch', fetchMock)
 
-    expect(await listLabels()).toEqual([A_LABEL, second])
-    expect(fetchMock.mock.calls).toHaveLength(2)
-    // The cursor goes back as `before`, encoded, on the second call only.
-    expect(String(fetchMock.mock.calls.at(1)?.[0])).toContain('before=')
+    expect(await listLabels()).toEqual({
+      labels: [A_LABEL],
+      counted: { cap: 20, count: 1 },
+      truncated: false,
+    })
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['/api/labels?limit=20'])
+  })
+
+  it('says the list was cut short when the server had another page', async () => {
+    // Only a database from before the cap can hold more than a page. The walk
+    // would have fetched it; one request reports it instead, and does not follow.
+    const fetchMock = respond(200, {
+      labels: [A_LABEL],
+      cap: 20,
+      count: 25,
+      nextBefore: '2026-09-18T00:00:00.000Z_abc',
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const list = await listLabels()
+    expect(list.truncated).toBe(true)
+    expect(list.counted).toEqual({ cap: 20, count: 25 })
+    expect(fetchMock.mock.calls, 'and does not go after the rest').toHaveLength(1)
   })
 
   it('treats a page with no labels as an empty list rather than as a failure', async () => {
     vi.stubGlobal('fetch', respond(200, {}))
-    expect(await listLabels()).toEqual([])
+    // And invents no figures the server did not give.
+    expect(await listLabels()).toEqual({ labels: [], counted: null, truncated: false })
+  })
+
+  it('reads the cap and the count from a one-row page', async () => {
+    const fetchMock = respond(200, { labels: [A_LABEL], cap: 20, count: 20 })
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await readLabelCount()).toEqual({ cap: 20, count: 20 })
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/labels?limit=1')
+  })
+
+  it('has no count to give where the server did not send one', async () => {
+    vi.stubGlobal('fetch', respond(200, { labels: [] }))
+    expect(await readLabelCount()).toBeNull()
+  })
+
+  it('tells a refusal at the cap from any other', async () => {
+    vi.stubGlobal('fetch', respond(409, { error: 'There are already 20 saved labels.' }))
+    const error = await rejection(
+      createLabel({
+        name: 'X',
+        labelType: 'gs1-retail',
+        stock: { widthMm: 1, heightMm: 1, marginMm: 0 },
+        data: {},
+      }),
+    )
+    expect(error.isAtCap).toBe(true)
+    expect(error.message, 'the server’s sentence, as written').toBe(
+      'There are already 20 saved labels.',
+    )
+    expect(new SavedLabelError('x', 400).isAtCap).toBe(false)
   })
 
   it('lists, reads, creates, replaces and deletes against the right method and path', async () => {
@@ -89,7 +125,12 @@ describe('the saved-labels client', () => {
 
     expect(
       fetchMock.mock.calls.map(([url, init]) => `${(init as RequestInit)?.method ?? 'GET'} ${url}`),
-    ).toEqual(['GET /api/labels', 'GET /api/labels/abc', 'POST /api/labels', 'PUT /api/labels/abc'])
+    ).toEqual([
+      'GET /api/labels?limit=20',
+      'GET /api/labels/abc',
+      'POST /api/labels',
+      'PUT /api/labels/abc',
+    ])
   })
 
   it('surfaces what the server said about a refusal', async () => {

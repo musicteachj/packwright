@@ -218,6 +218,10 @@ report wants light. `theme.test.ts` already parses `main.css` for contrast — i
 decided together. `listLabels` currently walks up to forty serial round trips behind a `Loading…` with no
 `role="status"`.
 
+**Resolved 2026-10-08, by a cap of twenty.** One page covers the whole list, so "load more" was dropped, the
+missed label has no second fetch to fall between, and a visible line covers the one case that can still be cut
+short. Loading, what loaded, a failure and a deletion are said through the announcer.
+
 **7 · bwip-js.** 934,645 bytes raw, 250,944 gzipped, on the landing critical path — and on `/labels/new` and
 `/audit` too, because `stores/labelDocument.ts:40` imports it as well. The placeholder must hold the same box:
 at 1440×900 the barcode is above the fold, so a smaller stand-in reflows the page under the reader.

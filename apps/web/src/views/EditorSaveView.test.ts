@@ -93,8 +93,11 @@ describe('the Save control', () => {
     await wrapper.get('[data-save]').trigger('click')
     await flushPromises()
 
-    const [url, init] = fetchMock.mock.calls[1] ?? []
-    expect(`${(init as RequestInit)?.method} ${url}`).toBe('PUT /api/labels/abc123')
+    // The writes alone: opening a label also reads the label count.
+    const writes = fetchMock.mock.calls
+      .map(([url, init]) => `${(init as RequestInit | undefined)?.method ?? 'GET'} ${url}`)
+      .filter((call) => !call.startsWith('GET '))
+    expect(writes).toEqual(['PUT /api/labels/abc123'])
   })
 
   it('offers Save as new only once there is something to save as', async () => {
@@ -198,6 +201,100 @@ describe('the Save control', () => {
     await wrapper.get('[data-save]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[role="alert"]').text()).toContain('data.gtin')
+  })
+})
+
+describe('at the cap', () => {
+  /** Answers by method and path, so the count read and the label read each get their own. */
+  const serve = (count: number, post: { status: number; body: unknown }) => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET'
+      const answer =
+        method === 'GET' && url === '/api/labels?limit=1'
+          ? { status: 200, body: { labels: [], cap: 20, count } }
+          : method === 'POST'
+            ? post
+            : { status: 200, body: SAVED }
+      return {
+        ok: answer.status < 400,
+        status: answer.status,
+        json: async () => answer.body,
+      } as unknown as Response
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+  const FULL = {
+    status: 409,
+    body: {
+      error:
+        'There are already 20 saved labels, which is as many as this app keeps. Delete one from Saved labels before saving another.',
+    },
+  }
+
+  it('holds back Save as new, and says why beside it', async () => {
+    serve(20, FULL)
+    const wrapper = await mountAt('/labels/abc123')
+    const saveAs = wrapper.get('[data-save-as]')
+    expect(saveAs.attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-save-as-reason]').text()).toBe(
+      '20 of 20 saved. Delete one to save as new.',
+    )
+    expect(saveAs.attributes('title')).toBe(wrapper.get('[data-save-as-reason]').text())
+  })
+
+  it('offers Save as new again once a label is deleted elsewhere', async () => {
+    // The twenty are shared by every tab. Read only on attach and after a
+    // refusal, a button held back at 20 of 20 had nothing left that could make
+    // it read again — the refusal it waited for could not be asked for.
+    let count = 20
+    const fetchMock = vi.fn(async (url: string) => {
+      const body = url === '/api/labels?limit=1' ? { labels: [], cap: 20, count } : SAVED
+      return { ok: true, status: 200, json: async () => body } as unknown as Response
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const wrapper = await mountAt('/labels/abc123')
+    expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeDefined()
+
+    count = 19
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('offers Save as new with a place left', async () => {
+    serve(19, { status: 201, body: SAVED })
+    const wrapper = await mountAt('/labels/abc123')
+    expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-save-as-reason]').exists()).toBe(false)
+  })
+
+  it('offers it where the count could not be read, and leaves the refusal to the server', async () => {
+    // A guess cannot be allowed to disable a save that would have worked.
+    vi.stubGlobal('fetch', respond(SAVED))
+    const wrapper = await mountAt('/labels/abc123')
+    expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('shows the server’s own sentence when a new label is refused', async () => {
+    serve(20, FULL)
+    const wrapper = await mountAt('/labels/new')
+    useLabelDocumentStore().savedName = 'Granola 340g'
+    await flushPromises()
+    await wrapper.get('[data-save]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain(FULL.body.error)
+  })
+
+  it('reads the count again after a refusal, for the next Save as new', async () => {
+    const fetchMock = serve(20, FULL)
+    const wrapper = await mountAt('/labels/new')
+    useLabelDocumentStore().savedName = 'Granola 340g'
+    await flushPromises()
+    await wrapper.get('[data-save]').trigger('click')
+    await flushPromises()
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain('/api/labels?limit=1')
   })
 })
 

@@ -10,6 +10,36 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The application keeps at most twenty saved labels.** The API had no cap, and `docs/DESIGN.md` had left
+  the figure open. It is twenty across the whole collection, because the API has no owner concept. `POST
+  /api/labels` refuses the twenty-first with a 409 and a sentence saying to delete a label first. It counts
+  before inserting, and counts again after, so two saves racing for the last place cannot both land: whoever
+  finds twenty-one takes their own label back out. Both can withdraw, which is a refusal the user can retry
+  rather than an overshoot. `PUT` is not counted, since replacing a label adds nothing. `GET` now reports
+  `cap` and the whole collection's `count` beside each page.
+
+  **The browser specs now delete the labels they save.** Playwright reuses a server already listening on its
+  port, database and all. Three specs left about three labels behind per run, and with the cap that becomes a
+  suite failing on its own premises. Measured against a long-lived server: on the sixth run, two specs failed
+  with "the label has to save". Review caught it.
+
+- **`/labels` fetches once and says how many are saved out of how many the app keeps.** `listLabels` used to
+  follow the cursor to the end, up to forty serial requests, behind a `Loading…` that nothing announced. A
+  label saved between two of those fetches appeared on neither. With the cap, one page of twenty is the whole
+  list. The page says "n of 20 saved", and at twenty it says to delete one before saving another. If the server
+  ever has a second page, which only a database from before the cap can, a visible line says how many are not
+  listed, and a delete from that list fetches it again so the row makes room for one that was not shown.
+  Loading, what loaded, a failure and a deletion are said through the announcer. The error line's
+  `role="alert"` is gone, because beside the announcer it said every failure twice.
+
+  **The editor holds back Save as new at the cap and says why beside it.** It reads the count whenever it
+  attaches to a different record, after a refusal, and when the page comes back into view. Without that last
+  read, a label deleted in another tab left the button held back with nothing able to re-read the count. Review
+  caught it. Where the count cannot be read, the button stays
+  offered and the server refuses, because a guess must not disable a save that would have worked. Save on a
+  new label is not held back: the server refuses it, and its sentence is shown as written. The header's button
+  group now wraps. Before that, the reason ran past the right edge at 375 px and took Export PDF with it.
+
 - **The barcode encoder loads when a barcode is first drawn, not with the page.** bwip-js is 934,645 bytes raw
   and 250,944 gzipped. The landing page and the editor's store imported it statically, so `/`, `/audit` and
   every editor route fetched it before rendering, including an editor opened on a GHS or food label. It now
