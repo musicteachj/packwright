@@ -68,6 +68,16 @@ const { nutritionFacts: _panel, ...WITHOUT_A_PANEL } = US_FOOD_CONFORMANT.data
  */
 export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument; stock?: LabelStock }> =
   [
+    // `us-food/net-quantity-dual-declaration` excuses a random package from the SI
+    // declaration under 15 U.S.C. 1453(a)(3)(A)(ii). `certification.test.ts` drove
+    // this from its own document, so the sweep never saw the pass it issues.
+    {
+      label: 'SI declaration excused for a random package',
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        netQuantity: { ...US_FOOD_CONFORMANT.data.netQuantity, packaging: 'random' },
+      },
+    },
     // `us-food/ingredient-list` clears an exempt label with no list.
     {
       label: 'ingredients exempt',

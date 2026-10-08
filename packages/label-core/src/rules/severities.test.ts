@@ -17,7 +17,7 @@
  * **Both directions**, unlike the citation check. Every emitted severity must be
  * declared, and every declared severity must be emitted somewhere in the sweep —
  * apart from the codes listed below, which no fixture reaches yet, each read from
- * its call site instead. An over-declared severity is a catalogue entry for a
+ * its call site instead and held to its declaration. An over-declared severity is a catalogue entry for a
  * verdict the rule never gives.
  */
 
@@ -25,23 +25,33 @@ import * as bwip from 'bwip-js/generic'
 import { describe, expect, it } from 'vitest'
 import { sweepEveryRule } from './fixtures/sweep'
 import { listRules } from './registry'
-import { codesOf, severitiesOf } from './types'
+import { codesOf, compareSeverity, severitiesOf } from './types'
+import type { Severity } from '../types/index'
 
 /**
  * Codes the sweep does not reach, so their declarations rest on reading the call
  * site rather than on observing it. Read on 2026-10-08; each is emitted at one severity only.
- * `docs/BACKLOG.md` records why the four pass codes are out of reach, and the
+ * `docs/BACKLOG.md` records why the three pass codes are out of reach, and the
  * two guidance codes under "The rule catalogue's severities".
  */
-const UNREACHED: Readonly<Record<string, string>> = {
-  GHS_PICTOGRAM_COMPLETE: "passedOnArtwork in ghs/pictogramIntegrity.ts — 'pass'",
-  GHS_PICTOGRAM_SET_MATCHES: "passedOnArtwork in ghs/pictogramSet.ts — 'pass'",
-  GHS_PICTOGRAM_PRECEDENCE_OPTIONAL:
-    "ghs/pictogramPrecedence.ts — 'guidance' on the non-mandatory branch",
-  GHS_SMALL_CONTAINER_AVAILABLE: "ghs/smallContainer.ts — severity: 'guidance'",
-  GHS_SMALL_CONTAINER_COMPLETE: "passedOnArtwork in ghs/smallContainer.ts — 'pass'",
-  FDA_NET_QUANTITY_METRIC_NOT_REQUIRED:
-    "passedOnDocument in usFood/netQuantityDualDeclaration.ts — 'pass'",
+const UNREACHED: Readonly<Record<string, { severities: readonly Severity[]; site: string }>> = {
+  GHS_PICTOGRAM_COMPLETE: {
+    severities: ['pass'],
+    site: 'passedOnArtwork, ghs/pictogramIntegrity.ts',
+  },
+  GHS_PICTOGRAM_SET_MATCHES: { severities: ['pass'], site: 'passedOnArtwork, ghs/pictogramSet.ts' },
+  GHS_PICTOGRAM_PRECEDENCE_OPTIONAL: {
+    severities: ['guidance'],
+    site: 'ghs/pictogramPrecedence.ts, the branch whose condition also chooses this code',
+  },
+  GHS_SMALL_CONTAINER_AVAILABLE: {
+    severities: ['guidance'],
+    site: 'ghs/smallContainer.ts, a literal',
+  },
+  GHS_SMALL_CONTAINER_COMPLETE: {
+    severities: ['pass'],
+    site: 'passedOnArtwork, ghs/smallContainer.ts',
+  },
 }
 
 const swept = sweepEveryRule(bwip)
@@ -66,6 +76,28 @@ describe('the severities a rule declares', () => {
         ),
     )
     expect(neverSeen).toEqual([])
+  })
+
+  it('declares, for a code no fixture reaches, what its call site was read to emit', () => {
+    // The list is an exemption from the checks above, so what it says the call
+    // site emits is held to the declaration — or it would excuse any change to it.
+    for (const [code, { severities }] of Object.entries(UNREACHED)) {
+      const rule = listRules().find((one) => codesOf(one).includes(code))
+      expect(rule, `${code} is not declared by any rule`).toBeDefined()
+      expect(severitiesOf(rule!, code), code).toEqual(severities)
+    }
+  })
+
+  it('lists a code’s severities most severe first, so the catalogue reads them in order', () => {
+    const unordered = listRules().flatMap((rule) =>
+      codesOf(rule)
+        .filter((code) => {
+          const declared = severitiesOf(rule, code)
+          return declared.join() !== [...declared].sort(compareSeverity).join()
+        })
+        .map((code) => `${rule.id} ${code}`),
+    )
+    expect(unordered).toEqual([])
   })
 
   it('lists as unreached only codes that really are', () => {

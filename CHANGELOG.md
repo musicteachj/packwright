@@ -26,10 +26,15 @@ into a version only when there is a reason to.
   `violation`, and a small bottle with a small label would have thrown in the editor. `severities.test.ts`
   now checks both directions:
   - every emitted severity is declared;
-  - every declared severity is emitted somewhere, apart from six codes no fixture reaches, which are listed
-    with their call sites.
+  - every declared severity is emitted somewhere, apart from five codes no fixture reaches, which are listed
+    with their call sites and held to the declaration;
+  - each code lists its severities most severe first.
 
-  A new fixture reaches the advisory band. No verdict changed.
+  A new fixture reaches the advisory band, and a new sweep document reaches the SI exemption for a random
+  package. `certification.test.ts` already reached that exemption from a document of its own, so the sweep
+  never saw it. A code that can carry either of two severities reads "DANGER or WARNING" in the catalogue,
+  with real spaces between the words: the flex gap had left "DANGERor▲WARNING" in the text a screen reader
+  is given. No verdict changed.
 
 - **The application has a shell.** Every reading route — `/`, `/labels`, `/audit`, `/rules`, `/design` — is
   now a child of one `AppShell` route, which mounts the masthead once and declares the page's single

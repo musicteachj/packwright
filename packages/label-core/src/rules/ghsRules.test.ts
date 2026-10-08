@@ -27,7 +27,8 @@ describe('every GHS rule ships with a label that provokes it', () => {
     const uncovered = GHS_RULES.flatMap((rule) => codesOf(rule)).filter(
       (code) =>
         !covered.has(code) &&
-        // Pass codes and the advisory-only precedence code are not failures.
+        // Pass codes, and the two guidance codes, are not failures. Matched by name;
+        // see BACKLOG.md, "The rule catalogue's severities".
         !/_MET$|_SINGLE$|_COMPLETE$|_OPTIONAL$|_MATCHES$|_AVAILABLE$/.test(code),
     )
     expect(uncovered, 'these failure codes have no known-bad fixture').toEqual([])

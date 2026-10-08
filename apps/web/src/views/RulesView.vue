@@ -144,8 +144,10 @@ const provisionCount = computed(
           Each code with what it is. A pass and a violation were identical grey
           chips, so the page could not say which codes are verdicts. Icon and word
           on every one, never the colour alone; the code itself stays mono, the
-          words do not. A code reported differently by regime carries both of its
-          severities.
+          words do not. A code that can be either of two — by regime, or by
+          capacity band — says "or" between them: side by side they read as a
+          contradiction. Most severe first, which `severities.test.ts` requires of
+          the declaration itself.
         -->
         <ul class="flex flex-wrap gap-1.5">
           <li
@@ -154,16 +156,23 @@ const provisionCount = computed(
             :data-code="code"
             class="border-chrome-800 flex flex-wrap items-baseline gap-x-2 border px-1.5 py-0.5 text-[11px]"
           >
-            <span
-              v-for="severity in severitiesOf(rule, code)"
-              :key="severity"
-              :class="SEVERITY_STYLES[severity].text"
-              class="flex items-baseline gap-1 font-semibold"
-            >
-              <span aria-hidden="true">{{ SEVERITY_STYLES[severity].icon }}</span>
-              <span>{{ SEVERITY_STYLES[severity].word }}</span>
-            </span>
-            <span class="numeric text-chrome-300">{{ code }}</span>
+            <template v-for="(severity, index) in severitiesOf(rule, code)" :key="severity">
+              <!--
+                Real spaces, not only the flex gap: the gap separates the words
+                for the eye and leaves "DANGERor▲WARNING" in the text a screen
+                reader is given. Whitespace-only text makes no flex item, so
+                nothing moves.
+              -->
+              {{ ' ' }}<span v-if="index > 0" class="text-chrome-400">or</span>{{ ' ' }}
+              <span
+                :class="SEVERITY_STYLES[severity].text"
+                class="flex items-baseline gap-1 font-semibold"
+              >
+                <span aria-hidden="true">{{ SEVERITY_STYLES[severity].icon }}</span>
+                <span>{{ SEVERITY_STYLES[severity].word }}</span>
+              </span>
+            </template>
+            {{ ' ' }}<span class="numeric text-chrome-300">{{ code }}</span>
           </li>
         </ul>
       </article>
