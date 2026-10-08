@@ -17,7 +17,13 @@ import {
   listRules,
   runRules,
 } from './registry'
-import { codesOf, compareSeverity, type DeclinedFact, type RuleContext } from './types'
+import {
+  codesOf,
+  compareSeverity,
+  type Decline,
+  type DeclinedFact,
+  type RuleContext,
+} from './types'
 import type { GhsLabelData } from '../templates/ghs'
 import type { UsFoodLabelData } from '../templates/usFood'
 
@@ -574,6 +580,16 @@ describe('a rule that stands down says so, and only then', () => {
     expect(declined, 'the conformant label states no reference amount').toBeDefined()
     expect(declined!.reason).toContain('reference amount')
     expect(declined!.citation.reference).toBe('21 CFR 101.9(b)(12)(i)')
+  })
+})
+
+describe('a decline that is a limit of the tool', () => {
+  it('cannot name a fact to state, by its type', () => {
+    // Held by the compiler, not by a fixture reaching it: if a limit naming a fact
+    // ever compiles, this directive goes unused and the typecheck fails.
+    // @ts-expect-error — a limit has nothing for the user to state
+    const wrong: Decline = { reason: 'A limit.', wants: ['hazards'], limit: true }
+    expect(wrong.limit).toBe(true)
   })
 })
 

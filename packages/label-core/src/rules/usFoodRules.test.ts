@@ -3416,7 +3416,7 @@ describe('which column a package is told it is missing', () => {
   it.each([
     ['per-container', '21 CFR 101.9(b)(2)(i)(D)', 'the individual unit'],
     ['per-unit', '21 CFR 101.9(b)(12)(i)', 'the entire package'],
-    [undefined, '21 CFR 101.9(b)(12)(i)', 'cannot carry both sets of figures'],
+    [undefined, '21 CFR 101.9(b)(12)(i)', 'it does not say what it counts'],
   ] as const)(
     'reports a column counting %s where the package and its unit differ',
     (basis, reference, says) => {
@@ -3427,11 +3427,30 @@ describe('which column a package is told it is missing', () => {
       const found = missingIn(data)
       expect(found?.citation.reference).toBe(reference)
       expect(found?.message).toContain(says)
+      // And it says why: the figures are the cause, so it names them, rather than
+      // leaving a user to find that 100 and 90 were meant to be one unit.
+      expect(found?.message).toContain(
+        'The package (100 g) and its unit (90 g) are stated differently',
+      )
       expect(
         declinedChecks(contextOf(data)).find((d) => d.ruleId === 'us-food/dual-column-required'),
       ).toBeUndefined()
     },
   )
+
+  it('reports a panel beneath a (j)(14) lid whose unit differs and whose column says nothing', () => {
+    // Off the label, a second column of unstated basis was passed over in silence
+    // whatever was owed — no finding, and no decline, since the duty was answered.
+    // With two owed and the figures different, a column is provably absent. Found by
+    // `/code-review high` on PR #66.
+    const data = {
+      ...bothOwed(undefined, 90),
+      nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+    } as UsFoodLabelData
+    const found = missingIn(data)
+    expect(found?.message).toContain('without saying what it counts')
+    expect(found?.message).toContain('stated differently')
+  })
 
   it('says the same of a panel printed beneath a (j)(14) lid that declares two columns', () => {
     // The same question, asked of information presented off this label: declared with a

@@ -37,10 +37,11 @@ const props = withDefaults(
      *
      * Not the same as `uncertifiable`, which is about elements the engine could
      * not draw. These are questions nobody answered, and each reason ends by
-     * naming what to state.
+     * naming what to state — except one marked `limit`, which stood down at a
+     * limit of this tool and names nothing, and is marked as such on screen.
      */
     declined?: ReadonlyArray<
-      Pick<DeclinedCheck, 'ruleId' | 'reason' | 'wants'> & {
+      Pick<DeclinedCheck, 'ruleId' | 'reason' | 'wants' | 'limit'> & {
         citation: Pick<DeclinedCheck['citation'], 'reference'>
       }
     >
@@ -401,6 +402,19 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
           Checks that did not run
         </h3>
         <div v-for="item in declined ?? []" :key="item.ruleId" class="mt-2">
+          <!--
+            Marked, not left to the prose. "Checks that did not run" otherwise lists
+            questions a user can answer, and this one they cannot: a reader skimming
+            the list, or hearing it, learns which kind it is before the sentence.
+            Neutral like the rest of the block, because it is not a verdict.
+          -->
+          <p
+            v-if="item.limit"
+            class="text-chrome-400 text-xs font-semibold tracking-wide uppercase"
+            data-test="tool-limit"
+          >
+            A limit of this tool
+          </p>
           <p class="text-chrome-200 text-sm leading-snug">{{ item.reason }}</p>
           <p class="numeric text-chrome-400 mt-1 text-xs">
             {{ item.citation.reference }}

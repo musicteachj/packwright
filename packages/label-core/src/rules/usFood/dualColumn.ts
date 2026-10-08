@@ -109,8 +109,9 @@ const limitApplies = (
   duty: ReturnType<typeof dualColumnDutyFor>,
   facts: NonNullable<UsFoodContext['data']['nutritionFacts']>,
 ): boolean =>
+  // Both owed means both contents are stated — the duty reads them — so this compares
+  // two figures, never two absences.
   bothOwed(duty) &&
-  facts.packageContent !== undefined &&
   facts.packageContent === facts.unitContent &&
   couldBeEitherOwed(facts.columns?.basis)
 
@@ -333,13 +334,32 @@ export const usFoodDualColumnRule: UsFoodRule = {
           ? reference
           : CITATION.reference
 
+    // **The limit, in one place, by the same test `declines` uses**, so the two cannot
+    // drift: a `check` that judged here would suppress the decline, and one that fell
+    // silent where `declines` did not would be a pass nobody issued. It was three
+    // tests in three branches until review.
+    if (limitApplies(duty, panel) && secondColumnShown(panel, layout)) return []
+
+    // Where both are owed and the package and its unit are stated differently, the two
+    // columns would carry different figures — so the cause of the shortfall is the
+    // figures, and the message says so rather than leaving a user to find a half-gram.
+    const unit = panel.referenceAmount?.unit ?? 'g'
+    const statedApart =
+      bothOwed(duty) && panel.packageContent !== panel.unitContent
+        ? ` The package (${panel.packageContent} ${unit}) and its unit (${panel.unitContent} ` +
+          `${unit}) are stated differently, so the two columns would carry different figures ` +
+          'and one second column cannot carry both.'
+        : ''
+
     if (!layout.elements.some((element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel)) {
-      // Both owed and two columns declared: the limit `declines` explains.
-      if (willDrawSecondColumn(panel) && limitApplies(duty, panel)) return []
       if (willDrawSecondColumn(panel) && declared !== undefined && owedButNotDrawn.length === 0) {
         return []
       }
-      if (willDrawSecondColumn(panel) && declared === undefined) return []
+      // Unstated, and one column owed: the form rule's question. Two owed with figures
+      // that differ is a column provably absent, which this branch fell silent on.
+      if (willDrawSecondColumn(panel) && declared === undefined && owedButNotDrawn.length <= 1) {
+        return []
+      }
 
       // Two shapes of shortfall and they are not the same fact. A carton
       // declaring one column is short a column; one declaring two where the
@@ -355,17 +375,23 @@ export const usFoodDualColumnRule: UsFoodRule = {
             `This package holds ${percent} percent of its reference amount, so its nutrition ` +
             `information must carry a second column for ${missingNames} beside the one per ` +
             'serving. ' +
-            (declaresTwo && declared !== undefined
-              ? `The information declared for presentation off this label carries a second ` +
-                `column, but says it counts ${DECLARED_NAME[declared]} — which is not the ` +
-                `column ${missingReference} asks for.`
-              : 'The information declared for presentation off this label carries one ' +
-                `column${panel.columns?.mode === 'dual' ? ', though the label asks for two' : ''}.`),
+            (!declaresTwo
+              ? 'The information declared for presentation off this label carries one ' +
+                `column${panel.columns?.mode === 'dual' ? ', though the label asks for two' : ''}.`
+              : declared === undefined
+                ? 'The information declared for presentation off this label carries a second ' +
+                  'column without saying what it counts.' +
+                  statedApart
+                : `The information declared for presentation off this label carries a second ` +
+                  `column, but says it counts ${DECLARED_NAME[declared]} — which is not the ` +
+                  `column ${missingReference} asks for.` +
+                  statedApart),
           measurement: {
-            actual:
-              declaresTwo && declared !== undefined
-                ? `a second column for ${DECLARED_NAME[declared]}`
-                : 'one column declared',
+            actual: !declaresTwo
+              ? 'one column declared'
+              : declared === undefined
+                ? 'one second column of unstated basis'
+                : `a second column for ${DECLARED_NAME[declared]}`,
             required: `a second column for ${missingNames}`,
           },
           elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
@@ -404,12 +430,6 @@ export const usFoodDualColumnRule: UsFoodRule = {
       ]
     }
 
-    // Both owed, and a second column drawn: whether it can serve as both is the limit
-    // `declines` explains, so nothing is judged. This branch used to report a column
-    // provably absent whatever the drawn one counted, which was true of what the tool
-    // can draw and not shown to be true of what the regulation asks.
-    if (limitApplies(duty, panel)) return []
-
     // One second column cannot carry two sets of figures, so where the package and its
     // unit differ and both are owed, a column is provably absent whatever the label says
     // its one counts — including where it says nothing. Without this, omitting the basis
@@ -442,10 +462,13 @@ export const usFoodDualColumnRule: UsFoodRule = {
           message:
             `This package holds ${percent} percent of its reference amount, so it requires a ` +
             `second column for ${missingNames}. The panel draws a second column, but ` +
+            // Unstated, with a column missing, is only reachable where both are owed and
+            // the figures differ, so `statedApart` always follows to say why.
             (declared === undefined
-              ? 'one column cannot carry both sets of figures.'
+              ? 'it does not say what it counts.'
               : `the label says it counts ${DECLARED_NAME[declared]} — which is not the column ` +
-                `${missingReference} asks for.`),
+                `${missingReference} asks for.`) +
+            statedApart,
           measurement: {
             actual:
               declared === undefined

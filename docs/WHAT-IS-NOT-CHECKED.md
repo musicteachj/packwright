@@ -122,10 +122,13 @@ how each two-column presentation looks, says whether one second column can serve
 package needs three. That is our reading of the eCFR text, read on 2026-10-08.
 
 So where both apply and your panel draws a second column that counts the package or the unit, or does not say
-which, the report gives **no verdict** on that column. It
-explains why under "checks that did not run", with nothing to fill in, and says that the limit is this tool's
-and not a fault found in your label. What the column carries, how it is headed and separated, and whether its
-type is as prominent as the first are all still checked.
+which, the report gives **no verdict** on that column. It explains why under "checks that did not run", marked
+as a limit of this tool, with nothing to fill in, and says that the limit is not a fault found in your label.
+
+Where you have said what that column counts and the panel is one this tool draws, its form is still checked:
+what it carries, how it is headed and separated, and whether its type is as prominent as the first. Where you
+have not said, the report asks you to, because the form rules turn on it. A panel presented beneath an egg
+carton's lid is not drawn here, so its form is not checked either way.
 
 Two things to know:
 - **Where your panel draws no second column at all, it is still reported**, because both paragraphs ask for one

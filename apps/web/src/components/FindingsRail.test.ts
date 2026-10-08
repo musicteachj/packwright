@@ -367,3 +367,38 @@ describe('a check that did not run links to what would let it run', () => {
     }
   })
 })
+
+describe('a check that stood down at a limit of this tool', () => {
+  it('is marked as one, apart from the checks waiting on a fact', () => {
+    // The prose said it and the list did not: a limit sat among the questions a user
+    // could answer, with the same mark. Found by `/code-review high` on PR #66.
+    const limit = {
+      ruleId: 'us-food/dual-column-required',
+      reason: 'That is a limit of this tool, not a fault found in your label.',
+      citation: { reference: '21 CFR 101.9(b)(12)(i)' },
+      wants: [],
+      limit: true,
+    }
+    const block = blockNamed(
+      mountRail({
+        declined: [
+          limit,
+          {
+            ruleId: 'ghs/pictograms',
+            reason: 'State a classification.',
+            citation: { reference: '1.2' },
+            wants: ['hazards'],
+          },
+        ],
+      }),
+      'Checks that did not run',
+    )
+    const marks = block.findAll('[data-test="tool-limit"]')
+    expect(marks).toHaveLength(1)
+    expect(marks[0]!.text()).toBe('A limit of this tool')
+    // On the limit's entry, not the other one's.
+    expect(marks[0]!.element.nextElementSibling?.textContent).toContain('a limit of this tool')
+    // And nothing to state beside it.
+    expect(block.findAll('button').map((b) => b.text())).toEqual(['Hazard classification'])
+  })
+})

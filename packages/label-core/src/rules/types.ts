@@ -203,7 +203,43 @@ export type DeclinedFact =
   | 'nutritionFacts.columns.basis'
 
 /** What a rule says when it could not reach an answer. */
-export interface Decline {
+export type Decline = DeclineBase &
+  (
+    | {
+        /**
+         * The facts the label has not stated that this check is waiting for — only
+         * those, so a fact already stated is never asked for again.
+         *
+         * Required rather than optional because there is no decline without one: the
+         * note on `Rule.declines` says a decline exists for exactly one case, the
+         * label not stating something its author could. `rules.test.ts` holds every
+         * rule to the promise `reason` makes, by stating what is wanted and checking
+         * the rule then runs — or asks for something it had not asked for before.
+         *
+         * Empty only beside `limit`, where there is nothing to state — a limit naming a fact
+         * does not compile; a fact-waiting decline naming none is held by `rules.test.ts`.
+         */
+        wants: readonly DeclinedFact[]
+        limit?: never
+      }
+    | {
+        /**
+         * The check stood down at a limit of this tool, not at a fact the label left out.
+         *
+         * The one exception to "a decline names what to state", and a narrow one: where the
+         * regulation reaches a label and this tool cannot represent an answer to it, saying
+         * nothing would read as a pass and reporting it would blame the label for the tool.
+         * The package owing both 101.9(b)(12)(i)'s and (b)(2)(i)(D)'s columns is the case — see
+         * `us-food/dual-column-required`. `wants` is empty, `reason` says plainly that the limit
+         * is the tool's, and `docs/WHAT-IS-NOT-CHECKED.md` lists it.
+         */
+        wants: readonly []
+        limit: true
+      }
+  )
+
+/** What every decline carries, whichever kind it is. */
+interface DeclineBase {
   /**
    * One sentence, in the user's terms, naming what the label has not stated —
    * and phrased so that doing what it says makes the check run.
@@ -211,30 +247,6 @@ export interface Decline {
   reason: string
   /** The provision left unjudged, where it is not the rule's own primary one. */
   citation?: Citation
-  /**
-   * The facts the label has not stated that this check is waiting for — only
-   * those, so a fact already stated is never asked for again.
-   *
-   * Required rather than optional because there is no decline without one: the
-   * note on `Rule.declines` says a decline exists for exactly one case, the
-   * label not stating something its author could. `rules.test.ts` holds every
-   * rule to the promise `reason` makes, by stating what is wanted and checking
-   * the rule then runs — or asks for something it had not asked for before.
-   *
-   * Empty only beside `limit`, where there is nothing to state.
-   */
-  wants: readonly DeclinedFact[]
-  /**
-   * The check stood down at a limit of this tool, not at a fact the label left out.
-   *
-   * The one exception to "a decline names what to state", and a narrow one: where the
-   * regulation reaches a label and this tool cannot represent an answer to it, saying
-   * nothing would read as a pass and reporting it would blame the label for the tool.
-   * The package owing both 101.9(b)(12)(i)'s and (b)(2)(i)(D)'s columns is the case — see
-   * `us-food/dual-column-required`. `wants` is empty, `reason` says plainly that the limit
-   * is the tool's, and `docs/WHAT-IS-NOT-CHECKED.md` lists it.
-   */
-  limit?: true
 }
 
 /** A check that did not run, as a reader sees it. */

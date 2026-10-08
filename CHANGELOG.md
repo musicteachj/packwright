@@ -20,8 +20,8 @@ into a version only when there is a reason to.
   contents equal its unit's), and the drawn second column could be either one (it counts the package or the
   unit, or does not say), `us-food/dual-column-required` now gives no verdict.
   Instead it declines with a new `Decline.limit`, shown under "checks that did not run" with nothing to fill in.
-  That entry says plainly that the limit is the tool's and not a fault found in the label. The column's form is
-  still judged. The violation stands in three cases, because no reading is met by any of them: no second
+  That entry is marked as a limit of this tool, and says plainly that the limit is not a fault found in the
+  label. Where the column's basis is stated and the panel is one this tool draws, its form is still judged. The violation stands in three cases, because no reading is met by any of them: no second
   column drawn at all, a drawn column counting something else such as per 100 g, or package and unit contents
   that differ, where one column would have to carry two sets of figures. Review caught the last two, which the
   first version of the notice covered too. `docs/WHAT-IS-NOT-CHECKED.md` gains the section, and its note on what that list names gains the one

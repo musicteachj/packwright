@@ -173,6 +173,8 @@ test('a package owing both second columns is told the limit is the tool’s, not
   await expect(checks).toContainText(
     'That is a limit of this tool, not a fault found in your label.',
   )
+  // Marked as a limit on screen, not only in the sentence.
+  await expect(checks.locator('[data-test="tool-limit"]')).toHaveText('A limit of this tool')
   for (const basis of ['per-container', 'per-unit'] as const) {
     await page.locator('#field-food-nf-basis').selectOption(basis)
     await expect(checks).toContainText('a limit of this tool')
