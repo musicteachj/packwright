@@ -7,8 +7,7 @@
  * TypeScript source. That is the claim the project makes, so the front door
  * should demonstrate it rather than assert it.
  */
-import { computed } from 'vue'
-import * as bwip from 'bwip-js/generic'
+import { computed, onMounted } from 'vue'
 import {
   DEFAULT_GHS_STOCK,
   DEFAULT_UPC_A_STOCK,
@@ -18,24 +17,48 @@ import {
   layOutUsFoodLabel,
 } from '@packwright/label-core'
 import LabelCanvas from '../components/LabelCanvas.vue'
+import {
+  barcodeEncoder,
+  barcodeEncoderFailed,
+  loadBarcodeEncoder,
+  placeholderUpcALayout,
+} from '../barcodeEncoder'
 import { BUTTON } from '../components/chrome'
 import { FOOD_SAMPLE, GHS_SAMPLE } from './landingSamples'
 
 const GTIN = '036000291452'
 
+const request = { data: { gtin: GTIN }, stock: DEFAULT_UPC_A_STOCK }
+
+/**
+ * The real label once the encoder is here, and the engine's own placeholder until then.
+ *
+ * The encoder loads after the page renders rather than before it — 934 KB the page used
+ * to wait for. The placeholder is the same layout with the bars left out, so the figure
+ * holds its box and nothing below it moves when they arrive. See `barcodeEncoder.ts`.
+ */
 const layout = computed(() =>
-  layOutUpcALabel(bwip as never, {
-    data: { gtin: GTIN },
-    stock: DEFAULT_UPC_A_STOCK,
-  }),
+  barcodeEncoder.value === null
+    ? placeholderUpcALayout(request)
+    : layOutUpcALabel(barcodeEncoder.value, request),
 )
+const barcodeTitle = computed(() =>
+  barcodeEncoder.value !== null
+    ? `UPC-A label for GTIN ${GTIN}`
+    : barcodeEncoderFailed.value
+      ? `UPC-A label for GTIN ${GTIN}, its bars could not be loaded`
+      : `UPC-A label for GTIN ${GTIN}, its bars still loading`,
+)
+
+// A failed load leaves the placeholder, and its title says what happened.
+onMounted(() => void loadBarcodeEncoder().catch(() => {}))
 
 const ghsLayout = computed(() => layOutGhsLabel({ data: GHS_SAMPLE, stock: DEFAULT_GHS_STOCK }))
 const foodLayout = computed(() =>
   layOutUsFoodLabel({ data: FOOD_SAMPLE, stock: DEFAULT_US_FOOD_STOCK }),
 )
 
-const gtin = computed(() => layout.value.symbols[0]?.value ?? '')
+const gtin = GTIN
 </script>
 
 <template>
@@ -69,7 +92,7 @@ const gtin = computed(() => layout.value.symbols[0]?.value ?? '')
           magnification, quiet zones.
           <span class="text-chrome-400">GS1 General Specifications §5.2</span>
         </p>
-        <LabelCanvas :layout="layout" :title="`UPC-A label for GTIN ${gtin}`" />
+        <LabelCanvas :layout="layout" :title="barcodeTitle" />
       </div>
 
       <div class="flex flex-col gap-2">

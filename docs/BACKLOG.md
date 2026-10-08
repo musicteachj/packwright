@@ -1047,6 +1047,13 @@ route, with PDFs excluded by an explicit filter: PDFKit deflates its content str
 export is CPU spent to grow the response by a percent. That takes the JavaScript to roughly a quarter of what
 it was on the wire.
 
+**~~The code-splitting half is deliberately not done~~ — done in interface stage 7, 2026-10-08.** bwip-js loads
+when a barcode is first drawn (`apps/web/src/barcodeEncoder.ts`). Until it arrives, the landing page and the editor
+draw the engine's own placeholder: the real layout with the symbol's ink left out, so the figure holds the same box
+at every width, by construction. `/audit`, `/rules`, `/labels` and an editor never drawing a barcode no longer
+fetch it. Nothing is judged while it loads, and a failed load says so rather than waiting. What follows is the
+entry as it stood.
+
 **The code-splitting half is deliberately not done, and it is a UI decision rather than a build one.** The
 chunk is large because the landing page draws a *real* barcode through bwip-js, synchronously, in a
 `computed` — so the only way to take it off the critical path is to load it after the page renders and show

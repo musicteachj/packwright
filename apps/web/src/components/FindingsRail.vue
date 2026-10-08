@@ -82,6 +82,8 @@ const props = withDefaults(
      * as changes to one line.
      */
     pending?: boolean
+    /** What the rail says while pending, where it is waiting for something else. */
+    pendingText?: string
   }>(),
   {
     headingId: 'findings-heading',
@@ -94,6 +96,7 @@ const props = withDefaults(
     selectable: true,
     stateable: true,
     pending: false,
+    pendingText: 'Opening this label…',
   },
 )
 
@@ -221,7 +224,7 @@ const summary = computed(() => {
   // The findings the store holds during a wait belong to the document being
   // replaced. Counting them here would announce a verdict about a label the
   // route did not ask for — the defect the wait exists to remove, spoken aloud.
-  if (props.pending) return 'Opening this label…'
+  if (props.pending) return props.pendingText
   const failed = props.failures.length
   const passed = props.passes.length
   // "All checks passed" has to account for the checks that were declined, or the
@@ -500,7 +503,7 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
       class="text-chrome-300 px-4 py-6 text-sm"
       :aria-hidden="announce ? 'true' : undefined"
     >
-      Opening this label…
+      {{ pendingText }}
     </p>
   </section>
 </template>

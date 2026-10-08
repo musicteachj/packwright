@@ -81,9 +81,9 @@ for (const width of [375, 1440] as const) {
     const region = await theRegionSpeaking(page)
 
     release()
-    await expect
-      .poll(() => region.evaluate((el) => el.textContent))
-      .not.toContain('Opening this label')
+    // Polled until it says the result, not merely until the wait is over: a GS1 label's
+    // counts follow the barcode encoder, so "Loading the barcode encoder…" can come between.
+    await expect.poll(() => region.evaluate((el) => el.textContent)).toContain('checks passed')
 
     const after = await region.evaluate((el) => ({
       connected: el.isConnected,

@@ -13,5 +13,7 @@ export default defineConfig({
     name: 'web',
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
+    // bwip-js is loaded on demand in the app; the tests start with it loaded.
+    setupFiles: ['src/testing/loadBarcodeEncoder.ts'],
   },
 })

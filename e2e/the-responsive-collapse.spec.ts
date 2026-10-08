@@ -243,6 +243,9 @@ test.describe('the collapse and assistive technology', () => {
 
     await openEditor(page, 375)
     await expect(page.locator(PREVIEW)).toBeVisible()
+    // The counts arrive with the barcode encoder, which loads after the editor renders
+    // and says "Loading the barcode encoder…" until then. Waited for, then counted.
+    await expect(page.locator('[aria-live]')).toContainText('checks passed')
     await expectHeardOnce('narrow, Preview')
 
     for (const [tab, pane] of [
