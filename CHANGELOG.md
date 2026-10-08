@@ -22,7 +22,10 @@ into a version only when there is a reason to.
   The shell adds four things the spec's stage 3 asked for:
   - **A 404 inside the shell.** It names the address, so there is a masthead to leave by.
   - **A title per route.** The editor names the window after the open label, through `useDocumentTitle`, so
-    the route and the page never race to write `document.title`.
+    the route and the page never race to write `document.title`. With nothing attached it says "New label"
+    rather than deferring to the route. At `/labels/:id` the route's title is "Saved label", and an open that
+    failed has detached, so the window was saying the opposite of the message beneath it. Found by the
+    `medium` review on the pull request.
   - **A skip link.** It is first in the tab order and is visible only once focused. It moves focus with a
     click handler rather than a fragment, which the router would have read as a navigation. The link is fixed
     in place, so it can be used from far down a page. It therefore scrolls the page's top into view

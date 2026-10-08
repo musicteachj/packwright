@@ -169,6 +169,16 @@ describe('the Save control', () => {
     expect(wrapper.find('[role="alert"]').text()).toContain('no longer exists')
   })
 
+  it('names the window after what is on screen when a label fails to open', async () => {
+    // The failed open detaches, so the editor holds a new document — and the
+    // window went on saying "Saved label", the route's own title, beside a
+    // message saying the opposite.
+    vi.stubGlobal('fetch', respond({ error: 'Not found' }, false, 404))
+    await mountAt('/labels/gone')
+    expect(useLabelDocumentStore().savedId, 'the premise: nothing is attached').toBeNull()
+    expect(titleOverride()).toBe('New label')
+  })
+
   it('reports why the server refused a save, field by field', async () => {
     vi.stubGlobal(
       'fetch',

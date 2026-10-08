@@ -290,7 +290,9 @@ const nameField = computed({
 
 useDocumentTitle(() => {
   if (opening.value !== null) return 'Opening a label'
-  if (store.savedId === null) return undefined
+  // Not the route's own title: at `/labels/:id` that says "Saved label", and an
+  // open that failed has detached — the editor holds a new document there.
+  if (store.savedId === null) return 'New label'
   return store.savedName.trim() === '' ? 'Unnamed label' : store.savedName
 })
 
