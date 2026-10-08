@@ -41,6 +41,7 @@ import { blockingOmissions, labelFilename, type DeclinedFact } from '@packwright
 import { DECLINED_FACT_FIELDS } from '../declinedFacts'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import { BUTTON } from '../components/chrome'
+import { useDocumentTitle } from '../documentTitle'
 import PaneSwitcher from '../components/PaneSwitcher.vue'
 import { DEFAULT_EDITOR_PANE, useNarrowEditor, type EditorPane } from '../panes'
 
@@ -271,6 +272,28 @@ async function persist(mode: 'replace' | 'create') {
  */
 const opening = shallowRef<{ id: string } | null>(null)
 
+/**
+ * The header names the label on screen, and during an open there is none.
+ *
+ * The panes withhold the document while the next label is read, and the header
+ * used to go on naming the one being left — its name in the field, "Saved"
+ * beside it — which asserted an identity about something no longer shown. The
+ * field reads empty instead, with a placeholder saying why; it is disabled for
+ * the wait, so the setter is never reached through it then.
+ */
+const nameField = computed({
+  get: () => (opening.value !== null ? '' : store.savedName),
+  set: (name: string) => {
+    store.savedName = name
+  },
+})
+
+useDocumentTitle(() => {
+  if (opening.value !== null) return 'Opening a label'
+  if (store.savedId === null) return undefined
+  return store.savedName.trim() === '' ? 'Unnamed label' : store.savedName
+})
+
 async function openFromRoute(id: string) {
   const request = { id }
   loadError.value = null
@@ -485,13 +508,27 @@ async function exportPdf() {
 </script>
 
 <template>
-  <main class="bg-chrome-950 text-chrome-100 flex h-screen flex-col">
+  <!-- `#main` and `tabindex` for the skip link; see `AppShell.vue`. -->
+  <main
+    id="main"
+    tabindex="-1"
+    class="bg-chrome-950 text-chrome-100 flex h-screen flex-col focus:outline-none"
+  >
     <header
       class="border-chrome-800 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-3 py-3 lg:gap-6 lg:px-6"
     >
       <div class="flex min-w-0 items-baseline gap-3">
-        <span class="text-notice text-lg" aria-hidden="true">⊕</span>
-        <h1 class="text-sm font-semibold tracking-tight">packwright</h1>
+        <!--
+          A way out. The editor has no masthead, and its wordmark was the only
+          one in the application that went nowhere.
+        -->
+        <RouterLink
+          to="/"
+          class="focus-visible:outline-notice flex items-baseline gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          <span class="text-notice text-lg" aria-hidden="true">⊕</span>
+          <h1 class="text-sm font-semibold tracking-tight">packwright</h1>
+        </RouterLink>
         <label
           for="field-label-type"
           class="text-chrome-400 flex min-w-0 items-baseline gap-2 text-xs"
@@ -519,18 +556,18 @@ async function exportPdf() {
         <span class="sr-only">Label name</span>
         <input
           id="field-label-name"
-          v-model="store.savedName"
+          v-model="nameField"
           type="text"
           :disabled="opening !== null"
           maxlength="120"
-          placeholder="Name this label to save it"
+          :placeholder="opening !== null ? 'Opening a label…' : 'Name this label to save it'"
           class="border-chrome-700 bg-chrome-900 text-chrome-200 min-w-0 grow border px-2 py-0.5 text-xs"
         />
       </label>
 
       <div class="flex min-w-0 shrink-0 items-center gap-4">
         <span
-          v-if="store.savedId !== null"
+          v-if="store.savedId !== null && opening === null"
           class="text-chrome-400 shrink-0 text-xs"
           data-save-state
           >{{ store.isDirty ? 'Unsaved changes' : 'Saved' }}</span
@@ -544,7 +581,13 @@ async function exportPdf() {
           data-save
           @click="persist('replace')"
         >
-          {{ saving ? 'Saving…' : store.savedId !== null && !store.isDirty ? 'Saved' : 'Save' }}
+          {{
+            saving
+              ? 'Saving…'
+              : opening === null && store.savedId !== null && !store.isDirty
+                ? 'Saved'
+                : 'Save'
+          }}
         </button>
         <button
           v-if="store.savedId !== null"

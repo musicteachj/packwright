@@ -15,8 +15,7 @@ import {
   listLabels,
   type SavedLabelSummary,
 } from '../api/savedLabels'
-import SiteHeader from '../components/SiteHeader.vue'
-import { BUTTON, PAGE, PAGE_INNER } from '../components/chrome'
+import { BUTTON } from '../components/chrome'
 
 const TYPE_NAMES: Record<string, string> = {
   'gs1-retail': 'GS1 retail',
@@ -69,93 +68,85 @@ onMounted(load)
 </script>
 
 <template>
-  <div :class="PAGE">
-    <div :class="PAGE_INNER">
-      <SiteHeader current="labels" />
+  <div class="flex flex-col gap-6">
+    <header class="flex flex-col gap-2">
+      <h1 class="text-2xl font-semibold tracking-tight">Saved labels</h1>
+      <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
+        Every label is stored with the stock it was designed at, so opening one gives you back the
+        dimensions it was drawn to rather than a default.
+      </p>
+    </header>
 
-      <main class="flex flex-col gap-6">
-        <header class="flex flex-col gap-2">
-          <h1 class="text-2xl font-semibold tracking-tight">Saved labels</h1>
-          <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
-            Every label is stored with the stock it was designed at, so opening one gives you back
-            the dimensions it was drawn to rather than a default.
-          </p>
-        </header>
+    <p v-if="error" class="border-danger text-danger border-l-2 pl-4 text-sm" role="alert">
+      <span class="font-semibold">Error</span> — {{ error }}
+    </p>
 
-        <p v-if="error" class="border-danger text-danger border-l-2 pl-4 text-sm" role="alert">
-          <span class="font-semibold">Error</span> — {{ error }}
-        </p>
+    <p v-if="loading" class="text-chrome-400 text-sm">Loading…</p>
 
-        <p v-if="loading" class="text-chrome-400 text-sm">Loading…</p>
-
-        <!--
+    <!--
           Gated on `error` as well as on the count. A failed request leaves the
           list empty too, and "nothing saved yet" is the wrong answer to "the
           request failed" — it tells a reader their work is gone.
         -->
-        <p
-          v-else-if="labels.length === 0 && error === null"
-          class="text-chrome-400 text-sm leading-relaxed"
+    <p
+      v-else-if="labels.length === 0 && error === null"
+      class="text-chrome-400 text-sm leading-relaxed"
+    >
+      Nothing saved yet.
+      <RouterLink class="text-chrome-100 underline" to="/labels/new">Open the editor</RouterLink>
+      and save a label to see it here.
+    </p>
+
+    <ul v-else class="flex flex-col">
+      <li
+        v-for="label in labels"
+        :key="label.id"
+        class="border-chrome-800 flex flex-wrap items-center gap-x-6 gap-y-2 border-b py-4"
+      >
+        <RouterLink
+          :to="`/labels/${label.id}`"
+          class="text-chrome-100 grow font-medium hover:underline"
         >
-          Nothing saved yet.
-          <RouterLink class="text-chrome-100 underline" to="/labels/new"
-            >Open the editor</RouterLink
-          >
-          and save a label to see it here.
-        </p>
+          {{ label.name }}
+        </RouterLink>
 
-        <ul v-else class="flex flex-col">
-          <li
-            v-for="label in labels"
-            :key="label.id"
-            class="border-chrome-800 flex flex-wrap items-center gap-x-6 gap-y-2 border-b py-4"
-          >
-            <RouterLink
-              :to="`/labels/${label.id}`"
-              class="text-chrome-100 grow font-medium hover:underline"
-            >
-              {{ label.name }}
-            </RouterLink>
+        <span class="text-chrome-400 text-xs">{{
+          TYPE_NAMES[label.labelType] ?? label.labelType
+        }}</span>
 
-            <span class="text-chrome-400 text-xs">{{
-              TYPE_NAMES[label.labelType] ?? label.labelType
-            }}</span>
+        <time :datetime="label.updatedAt" class="numeric text-chrome-400 text-xs">
+          {{ when(label.updatedAt) }}
+        </time>
 
-            <time :datetime="label.updatedAt" class="numeric text-chrome-400 text-xs">
-              {{ when(label.updatedAt) }}
-            </time>
-
-            <!--
+        <!--
               Asked in place rather than through a browser `confirm`, which cannot
               be styled, cannot be tested without dismissing a dialog, and blocks
               the page while it waits.
             -->
-            <span v-if="confirming === label.id" class="flex items-center gap-3 text-xs">
-              <span class="text-chrome-300">Delete “{{ label.name }}”?</span>
-              <button
-                type="button"
-                class="text-danger underline"
-                data-confirm-delete
-                @click="remove(label.id)"
-              >
-                Delete
-              </button>
-              <button type="button" class="text-chrome-400 underline" @click="confirming = null">
-                Keep
-              </button>
-            </span>
-            <button
-              v-else
-              type="button"
-              :class="[BUTTON, 'px-3 py-1 text-xs']"
-              :aria-label="`Delete ${label.name}`"
-              @click="confirming = label.id"
-            >
-              Delete
-            </button>
-          </li>
-        </ul>
-      </main>
-    </div>
+        <span v-if="confirming === label.id" class="flex items-center gap-3 text-xs">
+          <span class="text-chrome-300">Delete “{{ label.name }}”?</span>
+          <button
+            type="button"
+            class="text-danger underline"
+            data-confirm-delete
+            @click="remove(label.id)"
+          >
+            Delete
+          </button>
+          <button type="button" class="text-chrome-400 underline" @click="confirming = null">
+            Keep
+          </button>
+        </span>
+        <button
+          v-else
+          type="button"
+          :class="[BUTTON, 'px-3 py-1 text-xs']"
+          :aria-label="`Delete ${label.name}`"
+          @click="confirming = label.id"
+        >
+          Delete
+        </button>
+      </li>
+    </ul>
   </div>
 </template>

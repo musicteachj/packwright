@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import EditorView from './EditorView.vue'
 import { testRouter } from './editorTestRouter'
 import { useLabelDocumentStore } from '../stores/labelDocument'
+import { titleOverride } from '../documentTitle'
 
 const SAVED = {
   id: 'abc123',
@@ -585,5 +586,38 @@ describe('a Save writes only to the label on screen', () => {
       '“Granola 340g, renamed” was not saved: Internal server error. Its changes were not written.',
     )
     expect(useLabelDocumentStore().savedId, 'and Oat bar is untouched').toBe('def456')
+  })
+
+  it('does not name the previous label while the next one is opening', async () => {
+    // The panes went during the wait, but the header went on reading
+    // "Granola 340g" and "Saved" — a document identity asserted about something
+    // no longer on screen. Disabled, so nothing could be lost; still untrue.
+    const fetches = scripted()
+    const { router, wrapper } = await openAt('/labels/abc123')
+    ;(await fetches.next('GET', '/api/labels/abc123')).release({
+      status: 200,
+      body: label('abc123', 'Granola 340g'),
+    })
+    await flushPromises()
+    // The premise: the opened label is named, and says it is saved.
+    const name = () => (wrapper.get('#field-label-name').element as HTMLInputElement).value
+    expect(name()).toBe('Granola 340g')
+    expect(wrapper.find('[data-save-state]').text()).toBe('Saved')
+    expect(titleOverride()).toBe('Granola 340g')
+
+    await router.push('/labels/def456')
+    await flushPromises()
+    expect(name(), 'the name field names nothing while def456 is read').toBe('')
+    expect(wrapper.find('[data-save-state]').exists()).toBe(false)
+    expect(wrapper.get('[data-save]').text()).toBe('Save')
+    expect(titleOverride()).toBe('Opening a label')
+
+    ;(await fetches.next('GET', '/api/labels/def456')).release({
+      status: 200,
+      body: label('def456', 'Oat bar'),
+    })
+    await flushPromises()
+    expect(name()).toBe('Oat bar')
+    expect(titleOverride()).toBe('Oat bar')
   })
 })

@@ -16,8 +16,6 @@
  */
 import { computed } from 'vue'
 import { LABEL_TYPES, citationsOf, listRules, type LabelType } from '@packwright/label-core'
-import SiteHeader from '../components/SiteHeader.vue'
-import { PAGE, PAGE_INNER } from '../components/chrome'
 
 /** The label types in the order the registry lists them, with a name to print. */
 const SECTIONS: Record<LabelType, { name: string; blurb: string }> = {
@@ -65,91 +63,85 @@ const provisionCount = computed(
 </script>
 
 <template>
-  <div :class="PAGE">
-    <div :class="PAGE_INNER">
-      <SiteHeader current="rules" />
+  <div class="flex flex-col gap-12">
+    <section class="flex flex-col gap-4">
+      <h1 class="text-2xl font-semibold tracking-tight">The rules this tool encodes</h1>
+      <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
+        <span class="numeric text-chrome-200">{{ total }}</span> rules, citing
+        <span class="numeric text-chrome-200">{{ provisionCount }}</span> distinct provisions. This
+        page is generated from the rule registry rather than written alongside it, so it cannot
+        describe a check the engine does not run. Every finding a label receives originates in one
+        of these, and carries the reference listed beside it.
+      </p>
+    </section>
 
-      <main class="flex flex-col gap-12">
-        <section class="flex flex-col gap-4">
-          <h1 class="text-2xl font-semibold tracking-tight">The rules this tool encodes</h1>
-          <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
-            <span class="numeric text-chrome-200">{{ total }}</span> rules, citing
-            <span class="numeric text-chrome-200">{{ provisionCount }}</span> distinct provisions.
-            This page is generated from the rule registry rather than written alongside it, so it
-            cannot describe a check the engine does not run. Every finding a label receives
-            originates in one of these, and carries the reference listed beside it.
-          </p>
-        </section>
-
-        <section
-          v-for="section in sections"
-          :key="section.labelType"
-          class="flex flex-col gap-5"
-          :aria-labelledby="`section-${section.labelType}`"
+    <section
+      v-for="section in sections"
+      :key="section.labelType"
+      class="flex flex-col gap-5"
+      :aria-labelledby="`section-${section.labelType}`"
+    >
+      <div class="border-chrome-800 flex flex-col gap-2 border-b pb-3">
+        <h2
+          :id="`section-${section.labelType}`"
+          class="flex items-baseline gap-3 text-sm font-semibold tracking-wide uppercase"
         >
-          <div class="border-chrome-800 flex flex-col gap-2 border-b pb-3">
-            <h2
-              :id="`section-${section.labelType}`"
-              class="flex items-baseline gap-3 text-sm font-semibold tracking-wide uppercase"
-            >
-              {{ section.name }}
-              <span class="text-chrome-400 numeric text-xs normal-case">
-                {{ section.rules.length }} rules
-              </span>
-            </h2>
-            <p class="text-chrome-400 max-w-2xl text-xs leading-relaxed">{{ section.blurb }}</p>
-          </div>
+          {{ section.name }}
+          <span class="text-chrome-400 numeric text-xs normal-case">
+            {{ section.rules.length }} rules
+          </span>
+        </h2>
+        <p class="text-chrome-400 max-w-2xl text-xs leading-relaxed">{{ section.blurb }}</p>
+      </div>
 
-          <article
-            v-for="rule in section.rules"
-            :key="rule.id"
-            class="border-chrome-800 flex flex-col gap-3 border-l-2 pl-4"
-          >
-            <div class="flex flex-col gap-1">
-              <p class="numeric text-chrome-400 text-xs">{{ rule.id }}</p>
-              <h3 class="text-chrome-100 text-sm leading-snug font-semibold">{{ rule.title }}</h3>
-            </div>
+      <article
+        v-for="rule in section.rules"
+        :key="rule.id"
+        class="border-chrome-800 flex flex-col gap-3 border-l-2 pl-4"
+      >
+        <div class="flex flex-col gap-1">
+          <p class="numeric text-chrome-400 text-xs">{{ rule.id }}</p>
+          <h3 class="text-chrome-100 text-sm leading-snug font-semibold">{{ rule.title }}</h3>
+        </div>
 
-            <!--
+        <!--
             Every provision, not just the primary. Sixteen of the thirty-four
             rules report under more than one paragraph, and a catalogue showing
             `citation` alone would answer under half the question this page
             exists to answer — and would tell a US chemical labeller that their
             signal-word rule comes from an EU regulation.
           -->
-            <dl class="flex flex-col gap-1">
-              <div
-                v-for="citation in citationsOf(rule)"
-                :key="citation.reference"
-                class="flex items-baseline gap-3 text-xs"
-              >
-                <dt class="text-chrome-400 w-12 shrink-0 uppercase">{{ citation.authority }}</dt>
-                <dd class="flex flex-wrap items-baseline gap-x-2">
-                  <span class="numeric text-chrome-200">{{ citation.reference }}</span>
-                  <!--
+        <dl class="flex flex-col gap-1">
+          <div
+            v-for="citation in citationsOf(rule)"
+            :key="citation.reference"
+            class="flex items-baseline gap-3 text-xs"
+          >
+            <dt class="text-chrome-400 w-12 shrink-0 uppercase">{{ citation.authority }}</dt>
+            <dd class="flex flex-wrap items-baseline gap-x-2">
+              <span class="numeric text-chrome-200">{{ citation.reference }}</span>
+              <!--
                   A citation may carry a reference and no title, and that is a
                   legitimate state rather than missing data: a provision reached
                   by overriding a primary has no title, because composing one
                   here would be this project authoring a description of a
                   regulated paragraph. The reference alone is what is known.
                 -->
-                  <span v-if="citation.title" class="text-chrome-400">{{ citation.title }}</span>
-                </dd>
-              </div>
-            </dl>
+              <span v-if="citation.title" class="text-chrome-400">{{ citation.title }}</span>
+            </dd>
+          </div>
+        </dl>
 
-            <ul class="flex flex-wrap gap-1.5">
-              <li
-                v-for="code in rule.codes"
-                :key="code"
-                class="border-chrome-800 text-chrome-400 numeric border px-1.5 py-0.5 text-[11px]"
-              >
-                {{ code }}
-              </li>
-            </ul>
-          </article>
-        </section>
-      </main>
-    </div>
+        <ul class="flex flex-wrap gap-1.5">
+          <li
+            v-for="code in rule.codes"
+            :key="code"
+            class="border-chrome-800 text-chrome-400 numeric border px-1.5 py-0.5 text-[11px]"
+          >
+            {{ code }}
+          </li>
+        </ul>
+      </article>
+    </section>
   </div>
 </template>

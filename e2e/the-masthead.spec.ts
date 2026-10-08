@@ -49,10 +49,29 @@ for (const width of [375, 1440] as const) {
         'the wordmark must start where the page content starts',
       ).toBeLessThanOrEqual(1)
 
+      // Inside the column at every width — which is what clipping broke.
+      expect(nav!.x, 'the nav must not start left of the column').toBeGreaterThanOrEqual(gutter - 1)
       expect(
-        Math.abs(laidOut - (nav!.x + nav!.width) - gutter),
-        'the nav must end as far from the right edge as the content is from the left',
-      ).toBeLessThanOrEqual(1)
+        nav!.x + nav!.width,
+        'the nav must not run past the right edge of the column',
+      ).toBeLessThanOrEqual(laidOut - gutter + 1)
+
+      // And aligned to one of the column's edges: beside the wordmark it ends at
+      // the right gutter; where the width is too narrow for that it takes a row
+      // of its own and starts at the left one, under the wordmark. Either way
+      // it lines up with something on the page rather than floating.
+      const besideTheWordmark = Math.abs(nav!.y - wordmark!.y) < wordmark!.height
+      if (besideTheWordmark) {
+        expect(
+          Math.abs(laidOut - (nav!.x + nav!.width) - gutter),
+          'beside the wordmark, the nav must end as far from the right edge as the content is from the left',
+        ).toBeLessThanOrEqual(1)
+      } else {
+        expect(
+          Math.abs(nav!.x - gutter),
+          'on a row of its own, the nav must start where the content starts',
+        ).toBeLessThanOrEqual(1)
+      }
     })
   }
 }

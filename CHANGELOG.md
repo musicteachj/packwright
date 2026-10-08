@@ -8,6 +8,51 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **The application has a shell.** Every reading route — `/`, `/labels`, `/audit`, `/rules`, `/design` — is
+  now a child of one `AppShell` route, which mounts the masthead once and declares the page's single
+  `<main id="main">`. The masthead used to be placed by each view inside its own column — a copy per route,
+  and the copy on `/audit` had sat outside the column. Now it outlives navigation between the reading routes.
+  It takes the editor's header geometry — a full-bleed band, the same hairline, the same height — so the two
+  frames read as one application. Its entries are at least 24 px tall, against the 16 px line box of the old
+  12 px text links. "Editor" becomes **New label**, styled as the action it is. The editor keeps its own
+  `h-screen` frame, and its wordmark, the only one in the application that went nowhere, now links home.
+
+  The shell adds four things the spec's stage 3 asked for:
+  - **A 404 inside the shell.** It names the address, so there is a masthead to leave by.
+  - **A title per route.** The editor names the window after the open label, through `useDocumentTitle`, so
+    the route and the page never race to write `document.title`.
+  - **A skip link.** It is first in the tab order and is visible only once focused. It moves focus with a
+    click handler rather than a fragment, which the router would have read as a navigation. The link is fixed
+    in place, so it can be used from far down a page. It therefore scrolls the page's top into view
+    explicitly: `focus()` scrolls only an element that is out of view, `main` spans the whole page and is
+    never out of view, and the first version sent focus 1,947 px above the window.
+  - **Scroll restoration.** Back returns to where the reader was; a new page starts at the top. Arriving on a
+    different page also moves focus to it, so a keyboard or screen-reader user is not left on a link to a page
+    that has gone. That move is skipped between the editor's two addresses, which are one page, because a
+    first Save that replaces `/labels/new` with `/labels/:id` must leave focus on the Save button.
+
+  `App.test.ts` mounts the real route table over a memory history, and `e2e/the-shell.spec.ts` covers what
+  only a browser can show. Every behaviour was mutation-tested and its named test failed.
+
+### Fixed
+
+- **Colour on the audit screen means severity, and severity is never colour alone.** Six places wore
+  `danger` or `caution` with nothing else saying so. Two are errors — a reading that failed and a label the
+  engine refused to draw — and they now carry the word **Error**, as `LabelsView` does. The other four are
+  not verdicts at all: a code this build cannot carry, a field with nothing to accept, the reconstruction
+  notice and the unconfirmed fields had borrowed CAUTION's colour. They now take the rail's neutral dashed
+  treatment for things that are not verdicts. The test visits every state that renders one and fails on any
+  element whose severity colour is not accompanied by a severity's word.
+- **While the next label opens, the editor's header no longer names the one being left.** The panes were
+  withheld during the wait, but the name field went on reading the previous label's name, with "Saved"
+  beside it. The field is now empty with an "Opening a label…" placeholder, the chip goes and Save stops
+  reading "Saved".
+- **`the-responsive-collapse`'s narrow-masthead test measured one control of the two it named.** It asked
+  for "Label type" as a button, found none since it is a select, and skipped it. Each control is now queried
+  by its own role and a missing one fails. The new wordmark link is measured too.
+
 ### Changed
 
 - **A check that did not run names the facts it is waiting for, and links to each.** `Decline` gains `wants`:
