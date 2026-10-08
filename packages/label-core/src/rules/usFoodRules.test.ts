@@ -24,6 +24,7 @@ import type { DualColumnBasis } from '../fda/nutritionFormats'
 import { UNIT_CONTAINER_STATEMENTS, UNIT_CONTAINER_WORDINGS } from '../fda/unitContainerStatement'
 import { nutritionDisplayFor, nutritionTypeForDisplay } from '../fda/nutritionPanel'
 import { MM_PER_POINT } from '../geometry/units'
+import { measureTextMm, measuredFamilyFor } from '../text/measure'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_NUTRITION_PERCENT_DV_WRONG,
@@ -1397,6 +1398,25 @@ describe('rounding, judged on the figures the panel printed', () => {
     expect(rounding[0]!.elementId).toBeUndefined()
   })
 
+  it('judges the percentages on that panel too, by the same policy', () => {
+    // Rounding judged a panel printed beneath a (j)(14) lid while the percentages rule,
+    // finding no cell or run, judged nothing: one panel, two policies, and a wrong
+    // percentage silenced. Found by `/code-review high` on PR #64.
+    const data = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+      nutritionFacts: {
+        ...panel,
+        declaredPercentDv: { ...panel.declaredPercentDv, 'total-fat': 99 },
+      },
+    } as UsFoodLabelData
+    const wrong = findingsFor(data, stock).filter(
+      (f) => f.code === 'FDA_NUTRITION_PERCENT_DV_WRONG',
+    )
+    expect(wrong).toHaveLength(1)
+    expect(wrong[0]!.elementId).toBeUndefined()
+  })
+
   it('does not count a figure that never printed into its pass', () => {
     // The pass is on the artwork — each amount "expressed" to its increment on the
     // panel — and it counted sodium's 0 whether or not sodium's row was drawn.
@@ -1518,6 +1538,21 @@ describe('the drawn Nutrition Facts panel', () => {
         p.yMm < rows[0]!.box.yMm,
     )
     expect(thick).toEqual([])
+
+    // And the bar is still drawn where it belongs: before the vitamins and minerals
+    // that follow the nutrients above them. Stopping it at the first vitamin's index
+    // left none at all. Found by `/code-review high` on PR #64.
+    const box = (id: string) =>
+      drawn.elements.find((e) => e.elementId === nutritionRowElementId(id))!.box
+    const between = drawn.primitives.filter(
+      (p): p is Extract<typeof p, { kind: 'rect' }> =>
+        p.kind === 'rect' &&
+        p.elementId === US_FOOD_ELEMENTS.nutritionPanel &&
+        Math.abs(p.heightMm - 7 * MM_PER_POINT) < 0.001 &&
+        p.yMm >= box('protein').yMm + box('protein').heightMm - 0.001 &&
+        p.yMm < box('calcium').yMm,
+    )
+    expect(between).toHaveLength(1)
   })
 
   it('gives every nutrient its own element, so a finding can point at the row', () => {
@@ -3730,6 +3765,69 @@ describe('the linear display', () => {
     // Including the numeral, which is the figure the single-size run got wrong
     // even at full scale.
     expect(undersized.map((f) => f.citation.reference)).toContain('21 CFR 101.9(d)(1)(iii)')
+  })
+})
+
+describe('a tabular panel whose bold ink crosses its border while its boxes do not', () => {
+  // The border check compared element boxes, and a tabular row's box is measured in
+  // Regular widths while its non-indented rows print SemiBold, 3–5% wider. So a
+  // panel could be judged to fit while the box was ruled through the bold figures.
+  // Found by `/code-review high` on PR #64; the stock is found rather than assumed.
+  it('is recorded, measured in the face that prints', () => {
+    const at = (widthMm: number) => {
+      const stock: LabelStock = { widthMm, heightMm: 400, marginMm: 12 }
+      const data: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        container: { shape: 'rectangular', widthMm, heightMm: 400 },
+        nutritionFacts: {
+          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+          format: 'tabular',
+          availableSurfaceSqInches: 80,
+          continuousVerticalSpaceInches: 2,
+        },
+      }
+      const layout = layOutUsFoodLabel({ data, stock })
+      const panel = layout.elements.find((e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel)!
+      const panelRight = panel.box.xMm + panel.box.widthMm
+      // Every element the panel draws, not only its rows: the serving lines have boxes
+      // of their own, and a stock where one of those crosses the border is a case the
+      // box check already catches.
+      const boxRight = Math.max(
+        ...layout.elements
+          .filter(
+            (e) =>
+              e.elementId.startsWith(NUTRITION_ELEMENT_PREFIX) &&
+              e.elementId !== US_FOOD_ELEMENTS.nutritionPanel,
+          )
+          .map((e) => e.box.xMm + e.box.widthMm),
+      )
+      const inkRight = Math.max(
+        ...layout.primitives
+          .filter(
+            (p): p is TextPrimitive =>
+              p.kind === 'text' &&
+              p.anchor === 'start' &&
+              (p.elementId ?? '').startsWith(NUTRITION_ELEMENT_PREFIX),
+          )
+          .map(
+            (p) =>
+              p.xMm +
+              measureTextMm(p.text, p.fontSizeMm, measuredFamilyFor(p.fontFamily, p.fontWeight)),
+          ),
+      )
+      return { layout, panelRight, boxRight, inkRight }
+    }
+    let found: ReturnType<typeof at> | undefined
+    for (let widthMm = 56; widthMm <= 90 && found === undefined; widthMm += 0.25) {
+      const candidate = at(widthMm)
+      if (candidate.boxRight <= candidate.panelRight && candidate.inkRight > candidate.panelRight)
+        found = candidate
+    }
+    // The premise: a label where the Regular boxes fit and the SemiBold ink does not.
+    expect(found, 'no stock between 56 and 90 mm puts the border between box and ink').toBeDefined()
+    expect(
+      found!.layout.omissions.find((o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel)?.reason,
+    ).toMatch(/past the panel's own border/)
   })
 })
 

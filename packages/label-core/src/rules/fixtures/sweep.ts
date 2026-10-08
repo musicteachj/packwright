@@ -173,8 +173,9 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument; stoc
     },
     // A tabular small package used to stand here, for the (j)(13)(ii)(A) entitlement
     // `us-food/nutrition-format` clears. The known-bad fixtures reach that pass now, at
-    // the same citation — the linear display's percentage fixture is a small package — so
-    // it was removed rather than left looking like coverage.
+    // the same citation, so it moved to the fixture documents below: it is still the only
+    // document that draws the (j)(13)(ii)(A)(1) display, which every sweep-wide check
+    // needs to see.
     // `us-food/dual-column-required` reports a second column excused. It is built
     // with `passedOnDocument`, and without it the sweep observes only one of the
     // two answers `certifies` can take.
@@ -229,6 +230,21 @@ export function sweepEveryRule(bwip: unknown): SweptFinding[] {
     ...US_FOOD_FIXTURES.map((f) => ({ ...f, source: 'fixtures' })),
     { ...US_FOOD_CONFORMANT, source: 'fixtures' },
     { ...US_FOOD_SMALL_PANEL, source: 'fixtures' },
+    // The (j)(13)(ii)(A)(1) tabular display for a small package: a label and panel under
+    // 12 in², so the declared 5 in² is not contradicted by the label it is on.
+    {
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        container: { shape: 'rectangular' as const, widthMm: 50, heightMm: 60 },
+        nutritionFacts: {
+          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+          format: 'tabular' as const,
+          availableSurfaceSqInches: 5,
+        },
+      },
+      stock: { widthMm: 60, heightMm: 70, marginMm: 3 },
+      source: 'fixtures',
+    },
     ...PERMISSION_PATHS.map(({ label, data, stock }) => ({
       data,
       stock: stock ?? US_FOOD_CONFORMANT.stock,

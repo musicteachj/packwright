@@ -854,6 +854,12 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     const bandDrawn = layout.elements.some(
       (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
     )
+    // **A panel drawn somewhere else is judged as declared**, as the rounding rule judges
+    // it. The (j)(14) carton prints its panel beneath the lid, so no cell or run exists
+    // on this label to read — and without this the percentages went unjudged while the
+    // rounding beside them was reported. Found by `/code-review high` on PR #64.
+    const drawnIds = new Set(layout.elements.map((element) => element.elementId))
+    const panelDrawn = drawnIds.has(US_FOOD_ELEMENTS.nutritionPanel)
     const cellsDrawn = (id: NutrientId): number =>
       layout.primitives.filter(
         (primitive): primitive is TextPrimitive =>
@@ -883,9 +889,12 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
         .join('')
       return new RegExp(`(?:^|\\s)${stated}%`).test(printed)
     }
-    const firstColumnDrawn = (id: NutrientId): boolean => cellsDrawn(id) > 0 || printedInRun(id)
+    const firstColumnDrawn = (id: NutrientId): boolean =>
+      !panelDrawn || cellsDrawn(id) > 0 || printedInRun(id)
     const secondColumnDrawn = (id: NutrientId): boolean => {
-      if (!bandDrawn || panel.columns?.secondAmounts?.[id] === undefined) return false
+      if (panel.columns?.secondAmounts?.[id] === undefined) return false
+      if (!panelDrawn) return panel.columns.mode === 'dual'
+      if (!bandDrawn) return false
       return cellsDrawn(id) >= (declaredAmount(panel, id) === undefined ? 1 : 2)
     }
 
@@ -989,7 +998,9 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
           },
           // The row, not the whole panel. Stage 5 gave every nutrient an element
           // for exactly this; a defect on one line should outline that line.
-          elementId: nutritionRowElementId(entry.id),
+          ...(drawnIds.has(nutritionRowElementId(entry.id))
+            ? { elementId: nutritionRowElementId(entry.id) }
+            : {}),
           citation: entry.dailyValue!.kind === 'rdi' ? VITAMIN_PERCENT : PERCENT,
         }),
       )

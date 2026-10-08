@@ -31,9 +31,23 @@ const KEYED_NOT_DRAWN: Readonly<Record<string, string>> = {
   FDA_INGREDIENTS_EXEMPT: 'the key its withholding reads',
 }
 
+const swept = sweepEveryRule(bwip)
+
+describe('the sweep these checks rest on', () => {
+  it('draws the small-package tabular display', () => {
+    // Its only document was removed once, as redundant, and every sweep-wide check
+    // stopped seeing the (j)(13)(ii)(A)(1) layout. Found by `/code-review high` on PR #64.
+    expect(
+      swept.some(({ layout }) =>
+        layout.primitives.some((p) => p.kind === 'text' && p.text === '*% DV = % Daily Value'),
+      ),
+    ).toBe(true)
+  })
+})
+
 describe('the element a finding names', () => {
   it('is one the engine drew', () => {
-    const dangling = sweepEveryRule(bwip)
+    const dangling = swept
       .filter(({ finding }) => finding.elementId !== undefined)
       // What a user is shown. The sweep runs rule by rule, ahead of the withholding,
       // and an artwork pass it withholds is never on screen to be selected.
@@ -53,7 +67,7 @@ describe('the element a finding names', () => {
   it('excuses only findings that really do name an undrawn element', () => {
     // Otherwise the list outlives the reason, and excuses the code for good.
     const excused = new Set(
-      sweepEveryRule(bwip)
+      swept
         .filter(
           ({ finding, layout }) =>
             finding.elementId !== undefined &&

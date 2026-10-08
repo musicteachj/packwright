@@ -24,7 +24,7 @@
  */
 import * as fontkit from 'fontkit'
 import { writeFileSync } from 'node:fs'
-import { heightOf as heightIn, widthsOf } from './fontMetrics.mjs'
+import { heightOf as heightIn, round, widthsOf } from './fontMetrics.mjs'
 
 const FACES = {
   'IBM Plex Sans': 'assets/fonts/ttf/IBMPlexSans-Regular.ttf',
@@ -44,14 +44,16 @@ const CHARS = [
   ...'…—–‘’“”×²³°µ',
 ]
 
-const round = (value) => Math.round(value * 10000) / 10000
-
 const table = {}
 for (const [name, path] of Object.entries(FACES)) {
   const font = fontkit.openSync(path)
   const em = font.unitsPerEm
   // A character the face lacks is left out, not measured: see `fontMetrics.mjs`.
   const widths = widthsOf(font, CHARS)
+  // The fallback every unlisted character is measured at. A face without it would
+  // write `fallback: undefined` — now that a missing glyph is left out rather than
+  // recorded as `.notdef` — so it is an error, as a missing "o" or "H" is.
+  if (widths['n'] === undefined) throw new Error(`${name} has no glyph for "n"`)
 
   // The printed height of a glyph is its outline's bounding box, not a table
   // entry. For a round letter the two differ: `o` overshoots the x-height line

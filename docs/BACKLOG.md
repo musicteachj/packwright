@@ -676,7 +676,8 @@ below.
   as tall as its largest run.
 - ~~**The (c)(8) thick bar can be drawn above the first nutrient row.**~~ **Fixed.** Reproduced with `order`
   beginning at vitamin D: a 7 point bar at 55.52 mm, between the heading and the first row at 57.99. It now
-  waits for a drawn row, as the hairline beside it did.
+  goes before the first vitamin or mineral that follows a drawn nutrient — the first version of the fix only
+  waited for a drawn row, which on that panel drew no bar anywhere; `/code-review high` on PR #64 found it.
 - ~~**A finding can carry an element id nothing resolves.**~~ **Fixed, and wider than reported.** As claimed,
   `us-food/nutrition-rounding` judged every declared amount, so a nutrient left out of `order` was reported
   against a row never drawn. Its pass was the worse half: an artwork pass, saying the printed amounts round
@@ -690,7 +691,8 @@ below.
 - ~~**A tabular nutrient column wider than its panel is drawn outside it.**~~ **Fixed.** On a 60 mm label with a
   12 mm margin the columns ended 1.64 mm past the panel's border, inside the margin, with no omission recorded
   and six passes keyed to the panel standing. The engine now records one at the panel's own right edge, so those
-  passes are withheld; the format entitlement, a fact about the document, survives.
+  passes are withheld; the format entitlement, a fact about the document, survives. It measures the printed
+  ink in the face each run is set in, since a row's box is measured in Regular and its bold text is wider.
 - **Editor rail, five items.** The type-size override input unmounts itself mid-edit when the box is emptied
   (its `v-if` reads the same key its setter deletes), so the only route to an undersized declaration is
   overtyping without ever clearing; a blank ingredient percent is written as `0` rather than unset, so

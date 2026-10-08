@@ -36,6 +36,16 @@ into a version only when there is a reason to.
     heading its asterisk and (d)(9) puts one before the footnote, while the linear display has no heading and
     its full stop ends the run. Their tests now pin the exact strings.
 
+  The `/code-review high` on the pull request found four gaps of the same kind, now closed:
+  - **The new border check measured boxes in Regular widths.** Bold rows print SemiBold, 3–5% wider. It now
+    measures each run's ink in the face it prints in, and a test finds a stock where only the bold ink
+    crosses the border.
+  - **A panel printed beneath a (j)(14) lid had its rounding judged and its percentages not.** Both are now
+    judged as declared, naming no element.
+  - **Stopping the (c)(8) bar above a vitamin-first panel's first row left that panel with no bar at all.** It
+    is now drawn before the first vitamin or mineral that follows a drawn nutrient.
+  - **No sweep document drew the small-package tabular display.** One does again, and a test asserts it.
+
   A new sweep, `elementIds.test.ts`, checks that every finding names an element the engine drew. It found two
   more pointing at nothing, now fixed: a wrong check digit, which names the symbol it prevents, and an
   unstated ingredient exemption. It also found one that names an undrawn element on purpose, recorded in the
