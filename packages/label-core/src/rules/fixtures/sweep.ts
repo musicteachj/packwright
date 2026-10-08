@@ -24,6 +24,7 @@
 import { layOutUpcALabel } from '../../layout/engine'
 import { layOutGhsLabel } from '../../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../../layout/usFoodEngine'
+import type { ResolvedLayout } from '../../layout/types'
 import type { LabelStock } from '../../templates/stock'
 import type { Finding } from '../../types/index'
 import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES } from '../registry'
@@ -37,6 +38,8 @@ export interface SweptFinding {
   finding: Finding
   /** `'fixtures'` for the known-bad and conformant labels, or a permission path's label. */
   source: string
+  /** What the engine drew for the label the finding is about. */
+  layout: ResolvedLayout
 }
 
 /**
@@ -168,24 +171,11 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument; stoc
         container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
       },
     },
-    // `us-food/nutrition-format` clears a small package on the tabular display.
-    // It declines outright for the vertical display, which needs no entitlement.
-    {
-      label: 'tabular display, small package',
-      data: {
-        ...US_FOOD_CONFORMANT.data,
-        container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
-        nutritionFacts: {
-          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
-          format: 'tabular',
-          availableSurfaceSqInches: 5,
-        },
-      },
-      // A label and panel under 12 in², so the declared 5 in² is not ruled out. Built on
-      // the conformant 44.64 in² label, this document reached the pass it existed for
-      // by trusting a figure the label contradicted.
-      stock: { widthMm: 60, heightMm: 70, marginMm: 3 },
-    },
+    // A tabular small package used to stand here, for the (j)(13)(ii)(A) entitlement
+    // `us-food/nutrition-format` clears. The known-bad fixtures reach that pass now, at
+    // the same citation, so it moved to the fixture documents below: it is still the only
+    // document that draws the (j)(13)(ii)(A)(1) display, which every sweep-wide check
+    // needs to see.
     // `us-food/dual-column-required` reports a second column excused. It is built
     // with `passedOnDocument`, and without it the sweep observes only one of the
     // two answers `certifies` can take.
@@ -210,8 +200,8 @@ export function sweepEveryRule(bwip: unknown): SweptFinding[] {
   // `source` has no default. Only the US-food loop used to pass one, so a GHS
   // permission document added later would have been labelled a fixture and
   // escaped the check that every permission document reaches something.
-  const collect = (rule: Rule, findings: Finding[], source: string) => {
-    for (const finding of findings) swept.push({ rule, finding, source })
+  const collect = (rule: Rule, findings: Finding[], source: string, layout: ResolvedLayout) => {
+    for (const finding of findings) swept.push({ rule, finding, source, layout })
   }
 
   for (const fixture of [...GS1_RETAIL_FIXTURES, CONFORMANT_FIXTURE]) {
@@ -222,7 +212,7 @@ export function sweepEveryRule(bwip: unknown): SweptFinding[] {
       stock: fixture.stock,
       layout,
     } as const
-    for (const rule of GS1_RETAIL_RULES) collect(rule, rule.check(context), 'fixtures')
+    for (const rule of GS1_RETAIL_RULES) collect(rule, rule.check(context), 'fixtures', layout)
   }
 
   for (const fixture of [...GHS_FIXTURES, GHS_CONFORMANT]) {
@@ -233,13 +223,28 @@ export function sweepEveryRule(bwip: unknown): SweptFinding[] {
       stock: fixture.stock,
       layout,
     } as const
-    for (const rule of GHS_RULES) collect(rule, rule.check(context), 'fixtures')
+    for (const rule of GHS_RULES) collect(rule, rule.check(context), 'fixtures', layout)
   }
 
   for (const fixture of [
     ...US_FOOD_FIXTURES.map((f) => ({ ...f, source: 'fixtures' })),
     { ...US_FOOD_CONFORMANT, source: 'fixtures' },
     { ...US_FOOD_SMALL_PANEL, source: 'fixtures' },
+    // The (j)(13)(ii)(A)(1) tabular display for a small package: a label and panel under
+    // 12 in², so the declared 5 in² is not contradicted by the label it is on.
+    {
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        container: { shape: 'rectangular' as const, widthMm: 50, heightMm: 60 },
+        nutritionFacts: {
+          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+          format: 'tabular' as const,
+          availableSurfaceSqInches: 5,
+        },
+      },
+      stock: { widthMm: 60, heightMm: 70, marginMm: 3 },
+      source: 'fixtures',
+    },
     ...PERMISSION_PATHS.map(({ label, data, stock }) => ({
       data,
       stock: stock ?? US_FOOD_CONFORMANT.stock,
@@ -253,7 +258,7 @@ export function sweepEveryRule(bwip: unknown): SweptFinding[] {
       stock: fixture.stock,
       layout,
     } as const
-    for (const rule of US_FOOD_RULES) collect(rule, rule.check(context), fixture.source)
+    for (const rule of US_FOOD_RULES) collect(rule, rule.check(context), fixture.source, layout)
   }
 
   return swept

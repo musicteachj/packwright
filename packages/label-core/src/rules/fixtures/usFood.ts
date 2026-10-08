@@ -1297,6 +1297,57 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
       citation: '21 CFR 101.9(c)(8)(iii)',
     },
   },
+  // The two displays below print a nutrient's percentage inside the run of text that
+  // names it, not in a cell of its own. The rule counted only separate cells as drawn,
+  // so on either display it judged nothing: a wrong figure printed in full drew no
+  // finding and no pass, and the report was silent exactly as it is where no provision
+  // governs. Verified 2026-10-08 by laying both out with 99 percent stated for fat.
+  {
+    name: 'a percent Daily Value miscomputed on a tabular display',
+    defect:
+      '3 g of total fat against the 78 g Daily Value is 3.8 percent, which 101.9(d)(7)(ii) ' +
+      'rounds to 4. The tabular display prints 6, in the line that reads "Total Fat 3g 6%".',
+    data: {
+      ...BASE,
+      container: { shape: 'rectangular', widthMm: 200, heightMm: 240 },
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        format: 'tabular',
+        availableSurfaceSqInches: 80,
+        continuousVerticalSpaceInches: 2,
+        declaredPercentDv: { ...BASE_NUTRITION.declaredPercentDv, 'total-fat': 6 },
+      },
+    },
+    stock: { widthMm: 200, heightMm: 240, marginMm: 6 },
+    expected: {
+      code: FDA_NUTRITION_PERCENT_DV_WRONG,
+      severity: 'violation',
+      citation: '21 CFR 101.9(d)(7)(ii)',
+    },
+  },
+  {
+    name: 'a percent Daily Value miscomputed on a linear display',
+    defect:
+      'The same 3 g of total fat, which rounds to 4 percent, printed as 6 percent in the run ' +
+      "of a small package's linear display.",
+    data: {
+      ...BASE,
+      container: { shape: 'rectangular', widthMm: 50, heightMm: 60 },
+      nutritionFacts: {
+        ...BASE_NUTRITION,
+        format: 'linear',
+        availableSurfaceSqInches: 9,
+        cannotAccommodateTabular: true,
+        declaredPercentDv: { ...BASE_NUTRITION.declaredPercentDv, 'total-fat': 6 },
+      },
+    },
+    stock: { widthMm: 50, heightMm: 60, marginMm: 3 },
+    expected: {
+      code: FDA_NUTRITION_PERCENT_DV_WRONG,
+      severity: 'violation',
+      citation: '21 CFR 101.9(d)(7)(ii)',
+    },
+  },
   {
     name: 'a Nutrition Facts panel shrunk to fit',
     defect:

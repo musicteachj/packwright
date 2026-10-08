@@ -24,6 +24,7 @@
  */
 import * as fontkit from 'fontkit'
 import { writeFileSync } from 'node:fs'
+import { heightOf as heightIn, round, widthsOf } from './fontMetrics.mjs'
 
 const FACES = {
   'IBM Plex Sans': 'assets/fonts/ttf/IBMPlexSans-Regular.ttf',
@@ -43,18 +44,16 @@ const CHARS = [
   ...'…—–‘’“”×²³°µ',
 ]
 
-const round = (value) => Math.round(value * 10000) / 10000
-
 const table = {}
 for (const [name, path] of Object.entries(FACES)) {
   const font = fontkit.openSync(path)
   const em = font.unitsPerEm
-  const widths = {}
-  for (const ch of CHARS) {
-    const [glyph] = font.glyphsForString(ch)
-    if (glyph === undefined) continue
-    widths[ch] = round(glyph.advanceWidth / em)
-  }
+  // A character the face lacks is left out, not measured: see `fontMetrics.mjs`.
+  const widths = widthsOf(font, CHARS)
+  // The fallback every unlisted character is measured at. A face without it would
+  // write `fallback: undefined` — now that a missing glyph is left out rather than
+  // recorded as `.notdef` — so it is an error, as a missing "o" or "H" is.
+  if (widths['n'] === undefined) throw new Error(`${name} has no glyph for "n"`)
 
   // The printed height of a glyph is its outline's bounding box, not a table
   // entry. For a round letter the two differ: `o` overshoots the x-height line
@@ -62,11 +61,7 @@ for (const [name, path] of Object.entries(FACES)) {
   // `OS/2.sxHeight`. The regulation names the letter, so the letter is what is
   // measured. `H` is flat-topped and sits exactly on `OS/2.sCapHeight`, which
   // is the cross-check asserted below.
-  const heightOf = (ch) => {
-    const [glyph] = font.glyphsForString(ch)
-    if (glyph === undefined) throw new Error(`${name} has no glyph for "${ch}"`)
-    return (glyph.bbox.maxY - glyph.bbox.minY) / em
-  }
+  const heightOf = (ch) => heightIn(font, ch, name)
   const lowercaseOHeightEm = heightOf('o')
   const capHeightEm = heightOf('H')
 

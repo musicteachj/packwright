@@ -165,16 +165,31 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   const rightMm = xMm + widthMm - insetMm
   let yMm = request.yMm + insetMm
 
+  /**
+   * One run of text, set from the current `yMm`.
+   *
+   * `lineSizePt` is the size of the line the run sits on, where that is larger than
+   * the run: every run on a line shares the line's baseline. Each run used to take
+   * its baseline from its own size, so a 16 point "Calories" sat 2.12 mm above the
+   * 22 point figure beside it, and a second column set smaller than the first
+   * floated above the row.
+   */
   const text = (
     value: string,
     sizePt: number,
-    options: { bold?: boolean; anchor?: 'start' | 'end'; x?: number; elementId?: string } = {},
+    options: {
+      bold?: boolean
+      anchor?: 'start' | 'end'
+      x?: number
+      elementId?: string
+      lineSizePt?: number
+    } = {},
   ): void => {
     primitives.push({
       kind: 'text',
       ...(options.elementId === undefined ? {} : { elementId: options.elementId }),
       xMm: options.x ?? leftMm,
-      baselineYMm: yMm + mm(sizePt),
+      baselineYMm: yMm + mm(options.lineSizePt ?? sizePt),
       text: value,
       fontSizeMm: mm(sizePt),
       fontFamily,
@@ -788,9 +803,12 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
 
   const caloriesStart = yMm
   const calories = amountOf(facts, 'calories')
+  // The line is sized for the figure whether or not one is printed, so the word sits
+  // on the figure's baseline either way.
   text('Calories', NUTRITION_PANEL_TYPE.caloriesWordPt, {
     bold: true,
     elementId: US_FOOD_ELEMENTS.nutritionCalories,
+    lineSizePt: NUTRITION_PANEL_TYPE.caloriesFigurePt,
   })
   if (calories !== undefined) {
     text(String(calories), NUTRITION_PANEL_TYPE.caloriesFigurePt, {
@@ -886,12 +904,17 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   // 101.9(c) sets. Drawn in the stated order rather than sorted, because a panel
   // listing them wrongly is what the order rule exists to report.
   const listed = listedIds(facts)
-  const vitaminsStart = listed.findIndex((id) => nutrient(id)?.dailyValue?.kind === 'rdi')
-
   let drawnRows = 0
-  listed.forEach((id, index) => {
+  // Whether a nutrient that is not a vitamin or mineral has been drawn, and whether the
+  // (c)(8) bar has. The bar went at the first vitamin's index, so a panel listing one first
+  // drew it under the heading — and, once that was stopped, drew it nowhere at all, leaving
+  // the vitamins further down unseparated. Found by `/code-review high` on PR #64.
+  let drawnAboveVitamins = false
+  let vitaminsBarDrawn = false
+  listed.forEach((id) => {
     const entry = nutrient(id)
     if (entry === undefined || entry.id === 'calories') return
+    const isVitaminOrMineral = entry.dailyValue?.kind === 'rdi'
 
     // 101.9(c)(8) separates the vitamins and minerals from the rest by a bar.
     //
@@ -900,8 +923,16 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     // put one under the "% Daily Value" heading, because Calories occupies index
     // 0 and is drawn in its own block further up — a rule where no printed
     // Nutrition Facts label has one.
-    if (index === vitaminsStart) bar(NUTRITION_PANEL_RULES.thickMm)
-    else if (drawnRows > 0) {
+    //
+    // The (c)(8) bar waits for a drawn row too. It separates the vitamins and minerals
+    // from the nutrients above them, and on a panel whose order begins with one there
+    // are none: it drew a 7 point bar between the heading and the first row.
+    if (drawnRows === 0) {
+      // Nothing above the first row to separate it from.
+    } else if (isVitaminOrMineral && drawnAboveVitamins && !vitaminsBarDrawn) {
+      bar(NUTRITION_PANEL_RULES.thickMm)
+      vitaminsBarDrawn = true
+    } else {
       // "¼ pt rule centered between nutrients (2 pt leading above and below)".
       yMm += NUTRITION_PANEL_RULES.hairlineLeadingMm
       primitives.push({
@@ -924,6 +955,19 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       ? measureTextMm('  ', mm(NUTRITION_PANEL_TYPE.nutrientPt), fontFamily)
       : 0
 
+    // (e)'s "equal prominence" is a requirement, so the second column is set at the
+    // first's size unless the label asks for something else.
+    const second = dual ? facts.columns?.secondAmounts?.[id] : undefined
+    const secondColumnPt =
+      NUTRITION_PANEL_TYPE.nutrientPt * (facts.columns?.secondColumnTypeScale ?? 1)
+    // The row is as tall as its largest run, and every run sits on its baseline. It
+    // advanced by the first column's size alone, so a second column set larger ran
+    // into the row beneath it.
+    const rowPt = Math.max(
+      NUTRITION_PANEL_TYPE.nutrientPt,
+      second === undefined ? 0 : secondColumnPt,
+    )
+
     // In a dual column the weight belongs *in* the column beside the percentage,
     // not appended to the name — (e)(3) presents "the quantitative information by
     // weight and the percent Daily Value" together, per column.
@@ -931,9 +975,9 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       bold: !entry.indented,
       x: leftMm + indentMm,
       elementId,
+      lineSizePt: rowPt,
     })
     if (dual) {
-      const second = facts.columns?.secondAmounts?.[id]
       const declared = [amount, second === undefined ? undefined : roundNutrientAmount(id, second)]
       declared.forEach((value, column) => {
         if (value === undefined) return
@@ -959,17 +1003,13 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
             ? percentOf(facts, id)
             : (facts.columns?.secondPercentDv?.[id] ??
               printedPercentDailyValue(id, value, dailyValuePopulationOf(facts)))
-        // (e)'s "equal prominence" is a requirement, so the second column is set
-        // at the first's size unless the label asks for something else.
-        const columnPt =
-          column === 1
-            ? NUTRITION_PANEL_TYPE.nutrientPt * (facts.columns?.secondColumnTypeScale ?? 1)
-            : NUTRITION_PANEL_TYPE.nutrientPt
+        const columnPt = column === 1 ? secondColumnPt : NUTRITION_PANEL_TYPE.nutrientPt
         text(`${value}${entry.unit}${percent === undefined ? '' : ` ${percent}%`}`, columnPt, {
           bold: true,
           anchor: 'end',
           x: columnRightMm[column]!,
           elementId,
+          lineSizePt: rowPt,
         })
       })
     } else {
@@ -983,9 +1023,10 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
         })
       }
     }
-    yMm += mm(NUTRITION_PANEL_TYPE.nutrientPt + NUTRITION_PANEL_TYPE.nutrientLeadingPt)
+    yMm += mm(rowPt + NUTRITION_PANEL_TYPE.nutrientLeadingPt)
     row(elementId, entry.name, start, yMm - start)
     drawnRows += 1
+    if (!isVitaminOrMineral) drawnAboveVitamins = true
   })
 
   // **Emitted for a column that was drawn, not for one that was asked for.**

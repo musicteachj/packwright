@@ -24,6 +24,7 @@ import type { DualColumnBasis } from '../fda/nutritionFormats'
 import { UNIT_CONTAINER_STATEMENTS, UNIT_CONTAINER_WORDINGS } from '../fda/unitContainerStatement'
 import { nutritionDisplayFor, nutritionTypeForDisplay } from '../fda/nutritionPanel'
 import { MM_PER_POINT } from '../geometry/units'
+import { measureTextMm, measuredFamilyFor } from '../text/measure'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_NUTRITION_PERCENT_DV_WRONG,
@@ -1357,6 +1358,78 @@ describe('findings from the stage 4 review', () => {
   })
 })
 
+describe('rounding, judged on the figures the panel printed', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+  // Every row of the conformant panel except sodium's.
+  const withoutSodium = (panel.order ?? []).filter((id) => id !== 'sodium')
+
+  it('says nothing about a nutrient whose row was not drawn', () => {
+    // It reported the figure wrongly rounded and pointed at
+    // `food-nutrition-row-sodium` — an element nothing drew, so selecting the
+    // finding outlined nothing. Leaving the nutrient off the panel is reported,
+    // by the completeness rule; a figure that never printed has no rounding.
+    const data = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: {
+        ...panel,
+        order: withoutSodium,
+        amounts: { ...panel.amounts, sodium: 163 },
+        declaredAmounts: { ...panel.declaredAmounts, sodium: 165 },
+      },
+    } as UsFoodLabelData
+    const findings = findingsFor(data, stock)
+    // The premise: the omission itself is still reported.
+    expect(findings.map((f) => f.code)).toContain('FDA_NUTRITION_NUTRIENT_MISSING')
+    expect(findings.filter((f) => f.code === FDA_NUTRITION_ROUNDING_WRONG)).toEqual([])
+  })
+
+  it('still judges a panel printed beneath a lid, naming nothing on this label to outline', () => {
+    // (j)(14) moves the panel off the outer carton, so no row is drawn here — but the
+    // figures are still printed, and still wrong if wrong. The finding stays; the
+    // element it names goes, because nothing on this label could be outlined.
+    const wrong = fixture('sodium rounded in the wrong band').data
+    const data = {
+      ...wrong,
+      nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+    } as UsFoodLabelData
+    const rounding = findingsFor(data, stock).filter((f) => f.code === FDA_NUTRITION_ROUNDING_WRONG)
+    expect(rounding).toHaveLength(1)
+    expect(rounding[0]!.elementId).toBeUndefined()
+  })
+
+  it('judges the percentages on that panel too, by the same policy', () => {
+    // Rounding judged a panel printed beneath a (j)(14) lid while the percentages rule,
+    // finding no cell or run, judged nothing: one panel, two policies, and a wrong
+    // percentage silenced. Found by `/code-review high` on PR #64.
+    const data = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+      nutritionFacts: {
+        ...panel,
+        declaredPercentDv: { ...panel.declaredPercentDv, 'total-fat': 99 },
+      },
+    } as UsFoodLabelData
+    const wrong = findingsFor(data, stock).filter(
+      (f) => f.code === 'FDA_NUTRITION_PERCENT_DV_WRONG',
+    )
+    expect(wrong).toHaveLength(1)
+    expect(wrong[0]!.elementId).toBeUndefined()
+  })
+
+  it('does not count a figure that never printed into its pass', () => {
+    // The pass is on the artwork — each amount "expressed" to its increment on the
+    // panel — and it counted sodium's 0 whether or not sodium's row was drawn.
+    const count = (order: readonly string[] | undefined) =>
+      findingsFor(
+        { ...US_FOOD_CONFORMANT.data, nutritionFacts: { ...panel, order } } as UsFoodLabelData,
+        stock,
+      ).find((f) => f.code === 'FDA_NUTRITION_ROUNDING_MET')!.message
+    expect(count(panel.order)).toMatch(/^11 declared amounts/)
+    expect(count(withoutSodium)).toMatch(/^10 declared amounts/)
+  })
+})
+
 describe('the drawn Nutrition Facts panel', () => {
   const stock = US_FOOD_CONFORMANT.stock
   const layout = layOutUsFoodLabel(US_FOOD_CONFORMANT)
@@ -1414,6 +1487,72 @@ describe('the drawn Nutrition Facts panel', () => {
         b.yMm < firstRow.box.yMm,
     )
     expect(hairlines).toEqual([])
+  })
+
+  it('sets the Calories word and its numeral on one baseline', () => {
+    // A 16 point word and a 22 point figure shared a top, and each took its baseline
+    // from its own size, so the word sat 2.12 mm (6 point) above the figure beside
+    // it. The tabular display already set the pair on the larger of the two.
+    const text = (id: string) =>
+      layout.primitives.find((p): p is TextPrimitive => p.kind === 'text' && p.elementId === id)!
+    const word = text(US_FOOD_ELEMENTS.nutritionCalories)
+    const figure = text(US_FOOD_ELEMENTS.nutritionCaloriesFigure)
+    // The premise: the two really are different sizes.
+    expect(figure.fontSizeMm).toBeGreaterThan(word.fontSizeMm)
+    expect(word.baselineYMm).toBeCloseTo(figure.baselineYMm, 6)
+  })
+
+  it('draws no (c)(8) bar above the first row, even when a vitamin is listed first', () => {
+    // The bar separates the vitamins and minerals from the nutrients above them. The
+    // hairline beside it already waited for a row to have been drawn; the bar did
+    // not, so a panel whose order began with vitamin D drew a 7 point bar between
+    // the heading and the first row, with nothing above it to separate.
+    const order = [
+      'vitamin-d',
+      'calories',
+      'total-fat',
+      'sodium',
+      'total-carbohydrate',
+      'protein',
+      'calcium',
+      'iron',
+      'potassium',
+    ]
+    const data = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!, order },
+    } as UsFoodLabelData
+    const drawn = layOutUsFoodLabel({ data, stock })
+    const rows = drawn.elements
+      .filter((e) => e.elementId.startsWith(`${NUTRITION_ELEMENT_PREFIX}row-`))
+      .sort((a, b) => a.box.yMm - b.box.yMm)
+    // The premise: vitamin D really is the first row drawn.
+    expect(rows[0]!.elementId).toBe(nutritionRowElementId('vitamin-d'))
+    const calories = drawn.elements.find((e) => e.elementId === US_FOOD_ELEMENTS.nutritionCalories)!
+    const thick = drawn.primitives.filter(
+      (p): p is Extract<typeof p, { kind: 'rect' }> =>
+        p.kind === 'rect' &&
+        p.elementId === US_FOOD_ELEMENTS.nutritionPanel &&
+        Math.abs(p.heightMm - 7 * MM_PER_POINT) < 0.001 &&
+        p.yMm > calories.box.yMm + calories.box.heightMm &&
+        p.yMm < rows[0]!.box.yMm,
+    )
+    expect(thick).toEqual([])
+
+    // And the bar is still drawn where it belongs: before the vitamins and minerals
+    // that follow the nutrients above them. Stopping it at the first vitamin's index
+    // left none at all. Found by `/code-review high` on PR #64.
+    const box = (id: string) =>
+      drawn.elements.find((e) => e.elementId === nutritionRowElementId(id))!.box
+    const between = drawn.primitives.filter(
+      (p): p is Extract<typeof p, { kind: 'rect' }> =>
+        p.kind === 'rect' &&
+        p.elementId === US_FOOD_ELEMENTS.nutritionPanel &&
+        Math.abs(p.heightMm - 7 * MM_PER_POINT) < 0.001 &&
+        p.yMm >= box('protein').yMm + box('protein').heightMm - 0.001 &&
+        p.yMm < box('calcium').yMm,
+    )
+    expect(between).toHaveLength(1)
   })
 
   it('gives every nutrient its own element, so a finding can point at the row', () => {
@@ -3566,7 +3705,18 @@ describe('the linear display', () => {
       .filter((p): p is TextPrimitive => p.kind === 'text')
       .map((p) => p.text)
       .join('')
-    expect(text).toContain('% DV = % Daily Value')
+    const footnote = layout.primitives
+      .filter(
+        (p): p is TextPrimitive =>
+          p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionFootnote,
+      )
+      .map((p) => p.text)
+      .join('')
+    // Exactly, and with no asterisk. The linear display has no column heading for
+    // an asterisk to refer to — (d)(7) excepts it — and the full stop closes the run
+    // the way the commas separate it. Reported as a possible defect and read on
+    // 2026-10-08 against (j)(13)(i), (d)(6), (d)(9) and (f)(5): it is not one.
+    expect(footnote).toBe('% DV = % Daily Value.')
     expect(text).not.toContain('2,000 calories a day')
   })
 
@@ -3615,6 +3765,108 @@ describe('the linear display', () => {
     // Including the numeral, which is the figure the single-size run got wrong
     // even at full scale.
     expect(undersized.map((f) => f.citation.reference)).toContain('21 CFR 101.9(d)(1)(iii)')
+  })
+})
+
+describe('a tabular panel whose bold ink crosses its border while its boxes do not', () => {
+  // The border check compared element boxes, and a tabular row's box is measured in
+  // Regular widths while its non-indented rows print SemiBold, 3–5% wider. So a
+  // panel could be judged to fit while the box was ruled through the bold figures.
+  // Found by `/code-review high` on PR #64; the stock is found rather than assumed.
+  it('is recorded, measured in the face that prints', () => {
+    const at = (widthMm: number) => {
+      const stock: LabelStock = { widthMm, heightMm: 400, marginMm: 12 }
+      const data: UsFoodLabelData = {
+        ...US_FOOD_CONFORMANT.data,
+        container: { shape: 'rectangular', widthMm, heightMm: 400 },
+        nutritionFacts: {
+          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+          format: 'tabular',
+          availableSurfaceSqInches: 80,
+          continuousVerticalSpaceInches: 2,
+        },
+      }
+      const layout = layOutUsFoodLabel({ data, stock })
+      const panel = layout.elements.find((e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel)!
+      const panelRight = panel.box.xMm + panel.box.widthMm
+      // Every element the panel draws, not only its rows: the serving lines have boxes
+      // of their own, and a stock where one of those crosses the border is a case the
+      // box check already catches.
+      const boxRight = Math.max(
+        ...layout.elements
+          .filter(
+            (e) =>
+              e.elementId.startsWith(NUTRITION_ELEMENT_PREFIX) &&
+              e.elementId !== US_FOOD_ELEMENTS.nutritionPanel,
+          )
+          .map((e) => e.box.xMm + e.box.widthMm),
+      )
+      const inkRight = Math.max(
+        ...layout.primitives
+          .filter(
+            (p): p is TextPrimitive =>
+              p.kind === 'text' &&
+              p.anchor === 'start' &&
+              (p.elementId ?? '').startsWith(NUTRITION_ELEMENT_PREFIX),
+          )
+          .map(
+            (p) =>
+              p.xMm +
+              measureTextMm(p.text, p.fontSizeMm, measuredFamilyFor(p.fontFamily, p.fontWeight)),
+          ),
+      )
+      return { layout, panelRight, boxRight, inkRight }
+    }
+    let found: ReturnType<typeof at> | undefined
+    for (let widthMm = 56; widthMm <= 90 && found === undefined; widthMm += 0.25) {
+      const candidate = at(widthMm)
+      if (candidate.boxRight <= candidate.panelRight && candidate.inkRight > candidate.panelRight)
+        found = candidate
+    }
+    // The premise: a label where the Regular boxes fit and the SemiBold ink does not.
+    expect(found, 'no stock between 56 and 90 mm puts the border between box and ink').toBeDefined()
+    expect(
+      found!.layout.omissions.find((o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel)?.reason,
+    ).toMatch(/past the panel's own border/)
+  })
+})
+
+describe('a tabular panel wider than its own box', () => {
+  // The nutrient columns are as wide as their widest line, and the engine checked
+  // only whether they ran off the label. Here they end 1.64 mm past the panel's
+  // right border, inside the 12 mm margin: printed, with the box ruled through
+  // them, and every pass keyed to the panel standing. Measured 2026-10-08.
+  const stock: LabelStock = { widthMm: 60, heightMm: 400, marginMm: 12 }
+  const data: UsFoodLabelData = {
+    ...US_FOOD_CONFORMANT.data,
+    container: { shape: 'rectangular', widthMm: 60, heightMm: 400 },
+    nutritionFacts: {
+      ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+      format: 'tabular',
+      availableSurfaceSqInches: 80,
+      continuousVerticalSpaceInches: 2,
+    },
+  }
+  const layout = layOutUsFoodLabel({ data, stock })
+
+  it('is recorded, so nothing certifies the panel', () => {
+    const panel = layout.elements.find((e) => e.elementId === US_FOOD_ELEMENTS.nutritionPanel)!
+    const rowsRightMm = Math.max(
+      ...layout.elements
+        .filter((e) => e.elementId.startsWith(`${NUTRITION_ELEMENT_PREFIX}row-`))
+        .map((e) => e.box.xMm + e.box.widthMm),
+    )
+    // The premises: past the panel's border, and still on the label.
+    expect(rowsRightMm).toBeGreaterThan(panel.box.xMm + panel.box.widthMm)
+    expect(rowsRightMm).toBeLessThanOrEqual(stock.widthMm)
+
+    const omission = layout.omissions.find((o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel)
+    expect(omission?.reason).toMatch(/past the panel's own border/)
+
+    const codes = runRules({ labelType: 'us-food', data, stock, layout }).map((f) => f.code)
+    expect(codes).not.toContain('FDA_NUTRITION_TYPE_SIZE_MET')
+    // A fact about the document, not the artwork, so the entitlement survives.
+    expect(codes).toContain('FDA_NUTRITION_FORMAT_MET')
   })
 })
 
@@ -3802,6 +4054,18 @@ describe('the tabular display', () => {
   it('keeps the abbreviation for the small-package display that may use it', () => {
     const text = textOf(smallTabular(), smallStock).join(' ')
     expect(text).toContain('% DV = % Daily Value')
+    // Preceded by an asterisk, exactly. (d)(6) says the "% Daily Value" heading
+    // "shall" be followed by one, this display prints that heading, and (d)(9)'s
+    // footnote is "preceded by an asterisk" — which (j)(13)(i) relaxes the wording
+    // of, not the mark the heading points to. Read on 2026-10-08.
+    const footnote = layOutUsFoodLabel({ data: smallTabular(), stock: smallStock })
+      .primitives.filter(
+        (p): p is TextPrimitive =>
+          p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionFootnote,
+      )
+      .map((p) => p.text)
+    expect(footnote).toEqual(['*% DV = % Daily Value'])
+    expect(text).toContain('% Daily Value*')
     expect(text).not.toContain('2,000 calories a day')
   })
 

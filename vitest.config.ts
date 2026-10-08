@@ -2,7 +2,9 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    projects: ['packages/*', 'apps/*'],
+    // `scripts` for the font-metrics generator's measurements, which the table every
+    // line break reads is produced by.
+    projects: ['packages/*', 'apps/*', 'scripts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

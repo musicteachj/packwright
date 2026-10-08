@@ -17,6 +17,7 @@
  */
 
 import { calculateCheckDigit, isValidCheckDigit } from '../../gs1/checkDigit'
+import { UPC_A_ELEMENTS } from '../../templates/upcA'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnDocument } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
@@ -47,7 +48,12 @@ export const gtinCheckDigitRule: Gs1RetailRule = {
     // Reporting it as non-compliant would fire on every keystroke.
     if (!GTIN_12.test(data.gtin)) return []
 
-    const elementId = layout.omissions[0]?.elementId ?? layout.symbols[0]?.elementId
+    // The symbol, where one was drawn. A GTIN with a wrong check digit encodes no
+    // symbol, and the omission's id named an element the layout does not contain, so
+    // selecting the finding outlined nothing.
+    const elementId = layout.elements.some((element) => element.elementId === UPC_A_ELEMENTS.symbol)
+      ? UPC_A_ELEMENTS.symbol
+      : undefined
 
     if (isValidCheckDigit(data.gtin)) {
       return [

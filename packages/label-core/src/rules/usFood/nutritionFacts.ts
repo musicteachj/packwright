@@ -745,15 +745,34 @@ export const usFoodNutritionRoundingRule: UsFoodRule = {
   },
   appliesTo: 'us-food',
 
-  check({ data }: UsFoodContext): Finding[] {
+  check({ data, layout }: UsFoodContext): Finding[] {
     const panel = panelOf(data)
     if (panel === undefined) return []
+
+    // **Only rows the panel drew, where it drew a panel at all.** This read the document
+    // alone, so a nutrient left out of `order` — no row, no figure on the label — was
+    // still judged: a wrong one was reported against an element nothing drew, and a right
+    // one was counted into a pass that says the amounts printed round correctly. The
+    // omission is the completeness rule's to report; an unprinted figure has no rounding.
+    //
+    // Calories is no row: its line is an element of its own, and the finding pointed at
+    // `food-nutrition-row-calories`, which no display has ever drawn.
+    //
+    // Where no panel is drawn on this label — the (j)(14) carton's information is beneath
+    // its lid — the declared figures are still judged, because they are still printed
+    // somewhere and still wrong if wrong. Such a finding names no element, since nothing
+    // here could outline it, and the artwork pass below is withheld with the panel.
+    const drawn = new Set(layout.elements.map((element) => element.elementId))
+    const panelDrawn = drawn.has(US_FOOD_ELEMENTS.nutritionPanel)
+    const elementOf = (id: NutrientId): string =>
+      id === 'calories' ? US_FOOD_ELEMENTS.nutritionCalories : nutritionRowElementId(id)
 
     // Only where an analysed amount exists to round. A declared figure with no
     // analysis behind it cannot be checked, and guessing that it was meant to be
     // its own unrounded value would clear every one of them.
     const checked = NUTRIENTS.filter(
       (entry) =>
+        (!panelDrawn || drawn.has(elementOf(entry.id))) &&
         panel.amounts[entry.id] !== undefined &&
         panel.declaredAmounts?.[entry.id] !== undefined &&
         // 101.9(c)(8)(ii) permits "additional levels of significance" for the
@@ -785,7 +804,7 @@ export const usFoodNutritionRoundingRule: UsFoodRule = {
           measurement: { actual: String(declared), required: permitted.join(' or ') },
           // The row, not the whole panel. Stage 5 gave every nutrient an element
           // for exactly this; a defect on one line should outline that line.
-          elementId: nutritionRowElementId(entry.id),
+          ...(drawn.has(elementOf(entry.id)) ? { elementId: elementOf(entry.id) } : {}),
           citation: { ...CONTENT, reference: entry.reference },
         }),
       )
@@ -835,6 +854,12 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     const bandDrawn = layout.elements.some(
       (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
     )
+    // **A panel drawn somewhere else is judged as declared**, as the rounding rule judges
+    // it. The (j)(14) carton prints its panel beneath the lid, so no cell or run exists
+    // on this label to read — and without this the percentages went unjudged while the
+    // rounding beside them was reported. Found by `/code-review high` on PR #64.
+    const drawnIds = new Set(layout.elements.map((element) => element.elementId))
+    const panelDrawn = drawnIds.has(US_FOOD_ELEMENTS.nutritionPanel)
     const cellsDrawn = (id: NutrientId): number =>
       layout.primitives.filter(
         (primitive): primitive is TextPrimitive =>
@@ -846,9 +871,30 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     // and in the first of two on a dual one, so a row with no cell drew neither. This was
     // hard-coded true while the second column was being gated, which left a nutrient the
     // panel's `order` leaves out counted into the pass — the same defect, a column over.
-    const firstColumnDrawn = (id: NutrientId): boolean => cellsDrawn(id) > 0
+    //
+    // **Or in the row's own run of text**, on the two displays that have no cells. The tabular
+    // and linear displays print "Total Fat 3g 4%" as one run, start-anchored, so counting
+    // cells alone found none and the rule judged nothing on either: a wrong percentage
+    // printed in full drew no finding and no pass. The stated figure is looked for as a whole
+    // token in what the row printed, so "4%" is not found inside "14%".
+    const printedInRun = (id: NutrientId): boolean => {
+      const stated = panel.declaredPercentDv?.[id]
+      if (stated === undefined) return false
+      const printed = layout.primitives
+        .filter(
+          (primitive): primitive is TextPrimitive =>
+            primitive.kind === 'text' && primitive.elementId === nutritionRowElementId(id),
+        )
+        .map((primitive) => primitive.text)
+        .join('')
+      return new RegExp(`(?:^|\\s)${stated}%`).test(printed)
+    }
+    const firstColumnDrawn = (id: NutrientId): boolean =>
+      !panelDrawn || cellsDrawn(id) > 0 || printedInRun(id)
     const secondColumnDrawn = (id: NutrientId): boolean => {
-      if (!bandDrawn || panel.columns?.secondAmounts?.[id] === undefined) return false
+      if (panel.columns?.secondAmounts?.[id] === undefined) return false
+      if (!panelDrawn) return panel.columns.mode === 'dual'
+      if (!bandDrawn) return false
       return cellsDrawn(id) >= (declaredAmount(panel, id) === undefined ? 1 : 2)
     }
 
@@ -952,7 +998,9 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
           },
           // The row, not the whole panel. Stage 5 gave every nutrient an element
           // for exactly this; a defect on one line should outline that line.
-          elementId: nutritionRowElementId(entry.id),
+          ...(drawnIds.has(nutritionRowElementId(entry.id))
+            ? { elementId: nutritionRowElementId(entry.id) }
+            : {}),
           citation: entry.dailyValue!.kind === 'rdi' ? VITAMIN_PERCENT : PERCENT,
         }),
       )

@@ -48,7 +48,13 @@ import {
 import type { LabelStock } from '../templates/stock'
 import { anchorBox, panelFor } from '../templates/stock'
 import { LayoutError, assertMarginLeavesPanel } from './engine'
-import type { LayoutOmission, LayoutPrimitive, ResolvedElement, ResolvedLayout } from './types'
+import type {
+  LayoutOmission,
+  LayoutPrimitive,
+  ResolvedElement,
+  ResolvedLayout,
+  TextPrimitive,
+} from './types'
 import { UNIT_CONTAINER_STATEMENTS } from '../fda/unitContainerStatement'
 
 /** Millimetres for an omission's prose. `rules/finding` owns the same format for
@@ -580,15 +586,53 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     // right-hand edge, and nothing said so, because overflow was only ever
     // measured downward. Taken from the elements rather than the primitives so it
     // reads the space the panel claimed, in the units the boxes are already in.
+    //
+    // **And from the ink, in the face it prints in.** A tabular row's box is as wide as
+    // its line measured in Regular, and every row not indented prints SemiBold — 3 to 5
+    // percent wider — so the boxes could fit while the bold figures crossed the border.
+    // Each run that starts at its `xMm` is measured as `renderPdf` will set it. Found by
+    // `/code-review high` on PR #64.
+    const inkRightMm = Math.max(
+      0,
+      ...drawn.primitives
+        .filter(
+          (primitive): primitive is TextPrimitive =>
+            primitive.kind === 'text' && primitive.anchor === 'start',
+        )
+        .map(
+          (run) =>
+            run.xMm +
+            measureTextMm(
+              run.text,
+              run.fontSizeMm,
+              measuredFamilyFor(run.fontFamily, run.fontWeight),
+            ),
+        ),
+    )
     const rightEdgeMm = Math.max(
+      inkRightMm,
       ...drawn.elements.map((element) => element.box.xMm + element.box.widthMm),
     )
+    // **And against the panel's own border**, which sits inside the label by the margin.
+    // A tabular column wider than the panel ran past its right border and stayed on the
+    // stock, so neither check above saw it: the box was ruled through the figures and
+    // every pass keyed to the panel stood. Measured at 1.64 mm on a 60 mm label with a
+    // 12 mm margin.
+    const panelRightMm = panel.xMm + panelWidthMm
     if (rightEdgeMm > stock.widthMm) {
       omissions.push({
         elementId: US_FOOD_ELEMENTS.nutritionPanel,
         reason:
           `The Nutrition Facts panel runs ${mmText(rightEdgeMm - stock.widthMm)} past the right ` +
           `edge of a ${mmText(stock.widthMm)} label, so part of it is not printed.`,
+        scope: 'detail',
+      })
+    } else if (rightEdgeMm > panelRightMm) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        reason:
+          `The Nutrition Facts panel's figures run ${mmText(rightEdgeMm - panelRightMm)} past ` +
+          "the panel's own border, so the box is drawn through them.",
         scope: 'detail',
       })
     }

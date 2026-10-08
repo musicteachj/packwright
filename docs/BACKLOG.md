@@ -619,17 +619,21 @@ unlikely and the declared second column has no percentage field to ask about any
 
 ### Reported, not yet verified
 
-Recorded as reviewer claims rather than as facts. Each is checked before it is picked up.
+Recorded as reviewer claims rather than as facts. Each is checked before it is picked up. Six of the seven
+open here were reproduced and settled on 2026-10-08, on `fix/reported-not-verified`: four were real and are
+fixed, one was real and latent and is fixed, and one was not a defect. The seventh, the editor rail, is
+below.
 
-- **The two small-package displays abbreviate the footnote in two ways, and neither matches the regulation's
-  string.** 101.9(j)(13)(i), read from the eCFR on 2026-09-17, permits "the abbreviated footnote statement '% DV =
-  % Daily Value'". Reproduced on `feat/childrens-footnote`: the tabular display prints `*% DV = % Daily Value`,
-  with an asterisk, and the linear display prints `% DV = % Daily Value.`, with a full stop. What is not verified
-  is whether either mark is wrong — an asterisk may be what ties the statement to "% DV*" in the heading, and FDA's
-  sample small-package labels were not read. No rule judges the footnote, so nothing reports either. One point
-  toward the asterisk: (f)(5), read the same day, has the simplified format carry "an asterisk ... at the bottom of
-  the label followed by the statement '% DV = % Daily Value'". That is a different paragraph from (j)(13)(i), so it
-  suggests the mark rather than settling it.
+- ~~**The two small-package displays abbreviate the footnote in two ways, and neither matches the regulation's
+  string.**~~ **Struck — reproduced, and not a defect.** The tabular display prints `*% DV = % Daily Value` and
+  the linear `% DV = % Daily Value.`, as reported. Read from the eCFR on 2026-10-08: (j)(13)(i) relieves these
+  packages of "the information in paragraphs (d)(9) and (f)(5) related to the footnote" and permits "the
+  abbreviated footnote statement '% DV = % Daily Value'". (d)(6) says the "% Daily Value" column heading
+  "shall" be "followed by an asterisk", and the tabular display prints that heading; (d)(9)'s footnote is
+  "preceded by an asterisk". So the tabular asterisk is the heading's referent, which (j)(13)(i) relaxes the
+  wording around and not the mark. The linear display has no column heading — (d)(7) excepts it — so nothing
+  wants an asterisk, and its full stop closes the run the way its commas separate it. Both tests that only
+  asked `toContain` now pin each display's exact string, with this reading beside them.
 
 - ~~**Bold text is measured with Regular metrics.**~~ **Verified, and narrower than reported.** The
   mechanism is real: `measureTextMm` and `glyphHeightMm` take only `fontFamily`, while `TextPrimitive`
@@ -663,20 +667,38 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
   Regular widths, which is this entry. `usFoodEngine`'s right-edge check measures the bold statement of
   identity the same way, and the resolution is one function, `measuredFamilyFor`, rather than a copy in each
   engine.
-- **The Calories word and numeral sit on different baselines on the vertical display.** Claimed: `text()`
-  derives the baseline from each run's own size, so a 16 pt word and a 22 pt figure sharing a `yMm` are
-  ~2.1 mm apart. The tabular branch already takes the max of the pair; the vertical branch is said not to.
-- **The (c)(8) thick bar can be drawn above the first nutrient row.** If `facts.order` begins with a vitamin,
-  `vitaminsStart` is 0 and the bar is drawn with no rows above it. The adjacent hairline has a `drawnRows > 0`
-  guard for exactly this reason and the thick bar does not. Spot-read and looks right; reachable only on a
-  deliberately mis-ordered panel, which is a panel `us-food/nutrition-order` exists to report.
-- **A finding can carry an element id nothing resolves.** `listedIds` returns `facts.order` verbatim while the
-  rounding and %DV rules iterate all of `NUTRIENTS`, so a nutrient absent from `order` gets a finding
-  pointing at a row that was never emitted — the dangling-selection failure `nutritionPanel.ts` records
-  learning once already.
-- **A tabular nutrient column wider than its panel is drawn outside it** and is only reported when it also
-  leaves the stock, so a column overflowing the panel box but landing inside the margin prints through the
-  border unremarked.
+
+  **It reaches the linear display's word flow too.** Found by the review of PR #64's follow-up: the linear
+  display places each word at the advance of the one before, measured in Regular, while its bold words print
+  SemiBold — so a bold word can overprint the start of the word after it on any line. The panel-border check
+  now measures ink in the printing face and reports the cases that cross the border; the overlap inside a line
+  is this entry's, and closes with it.
+- ~~**The Calories word and numeral sit on different baselines on the vertical display.**~~ **Fixed.**
+  Measured: the 16 point word's baseline at 47.33 mm, the 22 point figure's at 49.45 mm — 2.12 mm, six points
+  apart. `text()` in `nutritionPanel.ts` takes a `lineSizePt`, and every run on a line sits on the baseline the
+  line is sized for. The same mechanism had a second victim: a second column set at a different
+  `secondColumnTypeScale` floated above its row when smaller, and when larger fell out of the bottom of its own
+  row box, where the hairline to the next row is ruled — 5.64 mm deep in a 4.23 mm row at 2×. Each row is now
+  as tall as its largest run.
+- ~~**The (c)(8) thick bar can be drawn above the first nutrient row.**~~ **Fixed.** Reproduced with `order`
+  beginning at vitamin D: a 7 point bar at 55.52 mm, between the heading and the first row at 57.99. It now
+  goes before the first vitamin or mineral that follows a drawn nutrient — the first version of the fix only
+  waited for a drawn row, which on that panel drew no bar anywhere; `/code-review high` on PR #64 found it.
+- ~~**A finding can carry an element id nothing resolves.**~~ **Fixed, and wider than reported.** As claimed,
+  `us-food/nutrition-rounding` judged every declared amount, so a nutrient left out of `order` was reported
+  against a row never drawn. Its pass was the worse half: an artwork pass, saying the printed amounts round
+  correctly, that counted that unprinted figure — 11 amounts with or without sodium's row. It now judges only
+  rows the panel drew, where it drew a panel; a panel printed beneath a (j)(14) lid is still judged, and its
+  finding names no element. And Calories was never a row: its findings pointed at `food-nutrition-row-calories`,
+  which no display has ever drawn. A new sweep, `elementIds.test.ts`, asks every finding in every fixture
+  whether the engine drew the element it names, and found three more — a wrong check digit naming the symbol it
+  prevents, an unstated ingredient exemption naming the statement an exempt label lacks, and the exemption's
+  own pass. The first two are fixed; the third is the entry below.
+- ~~**A tabular nutrient column wider than its panel is drawn outside it.**~~ **Fixed.** On a 60 mm label with a
+  12 mm margin the columns ended 1.64 mm past the panel's border, inside the margin, with no omission recorded
+  and six passes keyed to the panel standing. The engine now records one at the panel's own right edge, so those
+  passes are withheld; the format entitlement, a fact about the document, survives. It measures the printed
+  ink in the face each run is set in, since a row's box is measured in Regular and its bold text is wider.
 - **Editor rail, five items.** The type-size override input unmounts itself mid-edit when the box is emptied
   (its `v-if` reads the same key its setter deletes), so the only route to an undersized declaration is
   overtyping without ever clearing; a blank ingredient percent is written as `0` rather than unset, so
@@ -684,9 +706,35 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
   enforced on typed input, so out-of-range values reach the API as a raw 400; `setAllergen` re-asserts
   `declareInline: true` on every allergen change, silently restoring a parenthetical the user turned off; and
   toggling the second-column checkbox off `delete`s `facts.columns`, discarding every figure typed into it.
-- **`generate-font-metrics.mjs`'s missing-glyph guards are dead.** fontkit returns `.notdef` rather than
-  `undefined`, so a face lacking a character would record `.notdef`'s advance as that character's real width.
-  Tooling rather than shipped code, but it is the generator the measurement tables come from.
+- ~~**`generate-font-metrics.mjs`'s missing-glyph guards are dead.**~~ **Fixed.** Reproduced: fontkit maps an
+  unmapped code point to glyph 0, `.notdef`, advance 472 units in Plex Sans. The measurements moved into
+  `scripts/fontMetrics.mjs`, which asks `hasGlyphForCodePoint`, and a `scripts` vitest project holds them to it.
+  Regenerating the table afterwards produced a byte-identical `metrics.ts`, so nothing shipped was affected.
+
+**Found while verifying the entries above.** One fixed:
+
+- ~~**`us-food/nutrition-percent-dv` judged nothing on the tabular and linear displays.**~~ **Fixed.** It counted
+  a column as drawn only where a row had a separate end-anchored cell, and those two displays print the
+  percentage inside the row's own run — "Total Fat 3g 4%" — so the count was always zero. A declared 99 percent
+  for fat was reported on the vertical display and drew nothing at all, finding or pass, on the other two: the
+  same silence the report keeps where no provision governs. The first column now also counts as drawn where the
+  stated figure appears as a whole token in what the row printed. Two fixtures, one per display.
+
+And two recorded rather than fixed:
+
+- **A finding's element is both where to look and what withholds it.** `FDA_INGREDIENTS_EXEMPT` names
+  `food-ingredients`, which an exempt label never draws, so selecting the pass outlines nothing. The id is not
+  a mistake: it is the key `withholdUncertifiablePasses` reads, so the exemption falls if the statement's
+  element is ever omitted, and `certification.test.ts` holds that on purpose. One field doing two jobs is the
+  defect — a separate `withheldWith` beside `elementId`, or the rail declining to offer a selection for an
+  element the layout lacks, would each close it. `elementIds.test.ts` excuses this code by name and checks the
+  excuse still applies.
+- **The withholding returns early when a layout records no omissions.** `withholdUncertifiablePasses` checks
+  `layout.omissions.length === 0` first, so an artwork pass naming an element that was never drawn — rather than
+  drawn and omitted — survives on a layout with no omissions at all. Not reachable in the sweep today: the
+  (j)(14) carton, whose passes name an undrawn panel, records an omission and is withheld. It would be reached
+  by the next element drawn conditionally without an omission recorded for its absence.
+
 
 ---
 
