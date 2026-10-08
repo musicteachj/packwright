@@ -47,7 +47,13 @@ export const gtinCheckDigitRule: Gs1RetailRule = {
     // Reporting it as non-compliant would fire on every keystroke.
     if (!GTIN_12.test(data.gtin)) return []
 
-    const elementId = layout.omissions[0]?.elementId ?? layout.symbols[0]?.elementId
+    // The symbol, where one was drawn. A GTIN with a wrong check digit encodes no
+    // symbol, so the omission's id named an element the layout does not contain and
+    // selecting the finding outlined nothing.
+    const candidate = layout.omissions[0]?.elementId ?? layout.symbols[0]?.elementId
+    const elementId = layout.elements.some((element) => element.elementId === candidate)
+      ? candidate
+      : undefined
 
     if (isValidCheckDigit(data.gtin)) {
       return [

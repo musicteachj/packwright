@@ -8,6 +8,39 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Six reported defects verified: four real, one real and latent, one not a defect.** The "Reported, not yet
+  verified" entries in `docs/BACKLOG.md` were each reproduced by measurement before anything was believed.
+  - **The percentages were not judged at all on the tabular and linear displays.** Found on the way, and the
+    worst of these. `us-food/nutrition-percent-dv` counted a column as drawn only where a row had a cell of its
+    own, and those displays print "Total Fat 3g 4%" as one run. So a wrong percentage drew no finding and no
+    pass, which is the silence the report keeps where no provision governs. The rule now also reads the stated
+    figure as a whole token in what the row printed. Two new fixtures cover it.
+  - **Rounding judged figures that never printed.** A nutrient left out of the panel's order was reported
+    against a row nothing drew. Its artwork pass counted that figure too, so it certified an unprinted amount.
+    The rule now judges the rows the panel drew. A panel printed beneath a (j)(14) lid is still judged, naming
+    no element. Calories findings had always pointed at `food-nutrition-row-calories`, which no display draws.
+  - **A tabular panel's figures ran past its own border unrecorded.** The engine checked the label's edge, not
+    the panel's, so on a 60 mm label with a 12 mm margin the box was ruled 1.64 mm through the figures with
+    every panel pass standing. That is now an omission, and the artwork passes are withheld.
+  - **The vertical display set "Calories" 2.12 mm above its figure**, because each run took its baseline from
+    its own size. Runs on a line now share one baseline. A second column set at a different scale had the same
+    fault, and when larger also fell out of its own row, under the hairline to the next.
+  - **A panel listing a vitamin first drew the (c)(8) bar above its first row**, with nothing above it to
+    separate.
+  - **The font-metrics generator's missing-glyph guards could never fire.** fontkit answers with `.notdef`,
+    not `undefined`. The generator's measurements are now tested in a new `scripts` vitest project, and
+    regenerating produced an identical table.
+  - **The small-package footnotes were not wrong.** Read from the eCFR on 2026-10-08: (d)(6) gives the tabular
+    heading its asterisk and (d)(9) puts one before the footnote, while the linear display has no heading and
+    its full stop ends the run. Their tests now pin the exact strings.
+
+  A new sweep, `elementIds.test.ts`, checks that every finding names an element the engine drew. It found two
+  more pointing at nothing, now fixed: a wrong check digit, which names the symbol it prevents, and an
+  unstated ingredient exemption. It also found one that names an undrawn element on purpose, recorded in the
+  backlog: the exemption pass, whose element is also the key it is withheld by.
+
 ### Added
 
 - **The rule catalogue says what each code is.** `/rules` drew every code as an identical grey chip, so a

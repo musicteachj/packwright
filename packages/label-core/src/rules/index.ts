@@ -5,6 +5,7 @@ export {
   declinedChecks,
   listRules,
   runRules,
+  withholdUncertifiablePasses,
 } from './registry'
 
 export {

@@ -198,3 +198,48 @@ describe('figures the dual panel cannot draw', () => {
     )
   })
 })
+
+describe('a second column set at a different size', () => {
+  // `secondColumnTypeScale` sizes the second column against the first. Every run
+  // took its baseline from its own size, so a smaller second column floated above
+  // the first's baseline, and a larger one ran out of its own row — the row
+  // advanced by the first column's size whatever the second's.
+  const runs = (layout: ReturnType<typeof layOut>, id: string) =>
+    layout.primitives.filter(
+      (primitive): primitive is TextPrimitive =>
+        primitive.kind === 'text' && primitive.elementId === nutritionRowElementId(id as never),
+    )
+
+  // 2× rather than a near miss: a second column a point or two larger can sit inside
+  // the row's leading, so 1.25× passed with the row still advancing by the first
+  // column's size alone. A 16 point cell in an 8 point row does not fit.
+  for (const scale of [0.8, 2]) {
+    it(`keeps one baseline across the row at ${scale}×, inside the row's own box`, () => {
+      const layout = layOut(
+        withColumns({
+          mode: 'dual',
+          basis: 'per-container',
+          headings: [...HEADINGS],
+          secondAmounts: { calcium: 520, iron: 16 },
+          secondColumnTypeScale: scale,
+        }),
+      )
+      const calcium = runs(layout, 'calcium')
+      // The premise: the row draws its name and both columns, at two sizes.
+      expect(calcium).toHaveLength(3)
+      expect(new Set(calcium.map((run) => run.fontSizeMm)).size).toBe(2)
+      expect(new Set(calcium.map((run) => run.baselineYMm.toFixed(6))).size).toBe(1)
+
+      // Every run inside its row's box. The row used to advance by the first
+      // column's size alone, so a larger second cell's baseline fell below the
+      // bottom of its own row — where the hairline to the next row is ruled,
+      // through the figures. Measured at 2×: 5.64 mm deep in a 4.23 mm row.
+      const row = layout.elements.find(
+        (element) => element.elementId === nutritionRowElementId('calcium'),
+      )!
+      for (const run of calcium) {
+        expect(run.baselineYMm, run.text).toBeLessThanOrEqual(row.box.yMm + row.box.heightMm)
+      }
+    })
+  }
+})

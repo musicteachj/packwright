@@ -583,12 +583,26 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     const rightEdgeMm = Math.max(
       ...drawn.elements.map((element) => element.box.xMm + element.box.widthMm),
     )
+    // **And against the panel's own border**, which sits inside the label by the margin.
+    // A tabular column wider than the panel ran past its right border and stayed on the
+    // stock, so neither check above saw it: the box was ruled through the figures and
+    // every pass keyed to the panel stood. Measured at 1.64 mm on a 60 mm label with a
+    // 12 mm margin.
+    const panelRightMm = panel.xMm + panelWidthMm
     if (rightEdgeMm > stock.widthMm) {
       omissions.push({
         elementId: US_FOOD_ELEMENTS.nutritionPanel,
         reason:
           `The Nutrition Facts panel runs ${mmText(rightEdgeMm - stock.widthMm)} past the right ` +
           `edge of a ${mmText(stock.widthMm)} label, so part of it is not printed.`,
+        scope: 'detail',
+      })
+    } else if (rightEdgeMm > panelRightMm) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        reason:
+          `The Nutrition Facts panel's figures run ${mmText(rightEdgeMm - panelRightMm)} past ` +
+          "the panel's own border, so the box is drawn through them.",
         scope: 'detail',
       })
     }

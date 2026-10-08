@@ -188,7 +188,10 @@ export function listRules(labelType?: LabelType): readonly Rule[] {
  * forbidden appears, which ink not laid down cannot falsify, and the small
  * container rule checks for itself that everything it lists printed.
  */
-function withholdUncertifiablePasses(findings: Finding[], layout: ResolvedLayout): Finding[] {
+export function withholdUncertifiablePasses(
+  findings: Finding[],
+  layout: ResolvedLayout,
+): Finding[] {
   if (layout.omissions.length === 0) return findings
   return findings.filter(
     (result) =>

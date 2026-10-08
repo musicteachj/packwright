@@ -164,7 +164,10 @@ export const usFoodIngredientListRule: UsFoodRule = {
             actual: 'exempt, paragraph not stated',
             required: 'the paragraph claimed',
           },
-          elementId: US_FOOD_ELEMENTS.ingredients,
+          // No element. An exempt label draws no statement, so `food-ingredients` named
+          // nothing to outline. The pass above keeps that id, because it is also the key
+          // the pass is withheld by if the statement's element is ever omitted; this is a
+          // finding, and nothing is withheld by it.
           citation: EXEMPTION,
         }),
       ]
