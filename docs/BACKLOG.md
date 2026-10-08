@@ -667,6 +667,12 @@ items, were all real and are fixed on `fix/editor-rail-reported`.
   Regular widths, which is this entry. `usFoodEngine`'s right-edge check measures the bold statement of
   identity the same way, and the resolution is one function, `measuredFamilyFor`, rather than a copy in each
   engine.
+
+  **It reaches the linear display's word flow too.** Found by the review of PR #64's follow-up: the linear
+  display places each word at the advance of the one before, measured in Regular, while its bold words print
+  SemiBold — so a bold word can overprint the start of the word after it on any line. The panel-border check
+  now measures ink in the printing face and reports the cases that cross the border; the overlap inside a line
+  is this entry's, and closes with it.
 - ~~**The Calories word and numeral sit on different baselines on the vertical display.**~~ **Fixed.**
   Measured: the 16 point word's baseline at 47.33 mm, the 22 point figure's at 49.45 mm — 2.12 mm, six points
   apart. `text()` in `nutritionPanel.ts` takes a `lineSizePt`, and every run on a line sits on the baseline the
@@ -676,7 +682,8 @@ items, were all real and are fixed on `fix/editor-rail-reported`.
   as tall as its largest run.
 - ~~**The (c)(8) thick bar can be drawn above the first nutrient row.**~~ **Fixed.** Reproduced with `order`
   beginning at vitamin D: a 7 point bar at 55.52 mm, between the heading and the first row at 57.99. It now
-  waits for a drawn row, as the hairline beside it did.
+  goes before the first vitamin or mineral that follows a drawn nutrient — the first version of the fix only
+  waited for a drawn row, which on that panel drew no bar anywhere; `/code-review high` on PR #64 found it.
 - ~~**A finding can carry an element id nothing resolves.**~~ **Fixed, and wider than reported.** As claimed,
   `us-food/nutrition-rounding` judged every declared amount, so a nutrient left out of `order` was reported
   against a row never drawn. Its pass was the worse half: an artwork pass, saying the printed amounts round
@@ -690,7 +697,8 @@ items, were all real and are fixed on `fix/editor-rail-reported`.
 - ~~**A tabular nutrient column wider than its panel is drawn outside it.**~~ **Fixed.** On a 60 mm label with a
   12 mm margin the columns ended 1.64 mm past the panel's border, inside the margin, with no omission recorded
   and six passes keyed to the panel standing. The engine now records one at the panel's own right edge, so those
-  passes are withheld; the format entitlement, a fact about the document, survives.
+  passes are withheld; the format entitlement, a fact about the document, survives. It measures the printed
+  ink in the face each run is set in, since a row's box is measured in Regular and its bold text is wider.
 - ~~**Editor rail, five items.**~~ **All five reproduced in the browser on 2026-10-08, and fixed** on
   `fix/editor-rail-reported`; `e2e/the-food-rail.spec.ts` carries one test each.
   - **The type-size override unmounted itself when its box was emptied** — measured: the box gone and the

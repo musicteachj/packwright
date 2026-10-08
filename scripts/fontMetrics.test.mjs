@@ -1,9 +1,12 @@
+import { fileURLToPath } from 'node:url'
 import * as fontkit from 'fontkit'
 import { describe, expect, it } from 'vitest'
 import { heightOf, widthsOf } from './fontMetrics.mjs'
 
-// Run from the repository root, as the generator is.
-const sans = fontkit.openSync('assets/fonts/ttf/IBMPlexSans-Regular.ttf')
+// Resolved from this file, so the test does not depend on where it is run from.
+const sans = fontkit.openSync(
+  fileURLToPath(new URL('../assets/fonts/ttf/IBMPlexSans-Regular.ttf', import.meta.url)),
+)
 
 // Two characters Plex Sans does not carry. The premise is checked rather than
 // assumed: fontkit hands back glyph 0 for each, a box with a real advance.

@@ -10,6 +10,9 @@
  * or "H" would have been measured from the box `.notdef` draws.
  */
 
+/** Four decimal places of an em — the precision `metrics.ts` is written to. */
+export const round = (value) => Math.round(value * 10000) / 10000
+
 /** Whether the face really draws this character, rather than its `.notdef` box. */
 export const hasGlyph = (font, ch) => font.hasGlyphForCodePoint(ch.codePointAt(0))
 
@@ -19,7 +22,7 @@ export function widthsOf(font, chars) {
   for (const ch of chars) {
     if (!hasGlyph(font, ch)) continue
     const [glyph] = font.glyphsForString(ch)
-    widths[ch] = Math.round((glyph.advanceWidth / font.unitsPerEm) * 10000) / 10000
+    widths[ch] = round(glyph.advanceWidth / font.unitsPerEm)
   }
   return widths
 }

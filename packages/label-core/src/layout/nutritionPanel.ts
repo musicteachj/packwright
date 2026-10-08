@@ -904,12 +904,17 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   // 101.9(c) sets. Drawn in the stated order rather than sorted, because a panel
   // listing them wrongly is what the order rule exists to report.
   const listed = listedIds(facts)
-  const vitaminsStart = listed.findIndex((id) => nutrient(id)?.dailyValue?.kind === 'rdi')
-
   let drawnRows = 0
-  listed.forEach((id, index) => {
+  // Whether a nutrient that is not a vitamin or mineral has been drawn, and whether the
+  // (c)(8) bar has. The bar went at the first vitamin's index, so a panel listing one first
+  // drew it under the heading — and, once that was stopped, drew it nowhere at all, leaving
+  // the vitamins further down unseparated. Found by `/code-review high` on PR #64.
+  let drawnAboveVitamins = false
+  let vitaminsBarDrawn = false
+  listed.forEach((id) => {
     const entry = nutrient(id)
     if (entry === undefined || entry.id === 'calories') return
+    const isVitaminOrMineral = entry.dailyValue?.kind === 'rdi'
 
     // 101.9(c)(8) separates the vitamins and minerals from the rest by a bar.
     //
@@ -924,8 +929,10 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     // are none: it drew a 7 point bar between the heading and the first row.
     if (drawnRows === 0) {
       // Nothing above the first row to separate it from.
-    } else if (index === vitaminsStart) bar(NUTRITION_PANEL_RULES.thickMm)
-    else {
+    } else if (isVitaminOrMineral && drawnAboveVitamins && !vitaminsBarDrawn) {
+      bar(NUTRITION_PANEL_RULES.thickMm)
+      vitaminsBarDrawn = true
+    } else {
       // "¼ pt rule centered between nutrients (2 pt leading above and below)".
       yMm += NUTRITION_PANEL_RULES.hairlineLeadingMm
       primitives.push({
@@ -1019,6 +1026,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     yMm += mm(rowPt + NUTRITION_PANEL_TYPE.nutrientLeadingPt)
     row(elementId, entry.name, start, yMm - start)
     drawnRows += 1
+    if (!isVitaminOrMineral) drawnAboveVitamins = true
   })
 
   // **Emitted for a column that was drawn, not for one that was asked for.**
