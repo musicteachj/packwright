@@ -78,7 +78,10 @@ export const usFoodProteinPercentRule: UsFoodRule = {
   title: 'A food for children 1 through 3 gives its protein as a percentage of the Daily Value.',
   citation: CITATION,
   citations: [CITATION, ...Object.values(EACH_COLUMN_PARAGRAPHS)],
-  codes: [FDA_PROTEIN_PERCENT_MISSING, FDA_PROTEIN_PERCENT_MET],
+  codes: {
+    [FDA_PROTEIN_PERCENT_MISSING]: ['violation'],
+    [FDA_PROTEIN_PERCENT_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   /**

@@ -37,7 +37,10 @@ export const ghsSignalWordRule: GhsChemicalRule = {
   title: 'Where “Danger” is used, “Warning” does not appear.',
   citation: EU,
   citations: [EU, US],
-  codes: [GHS_SIGNAL_WORD_CONFLICT, GHS_SIGNAL_WORD_SINGLE],
+  codes: {
+    [GHS_SIGNAL_WORD_CONFLICT]: ['violation'],
+    [GHS_SIGNAL_WORD_SINGLE]: ['pass'],
+  },
   appliesTo: 'ghs-chemical',
 
   check({ data }: GhsChemicalContext): Finding[] {

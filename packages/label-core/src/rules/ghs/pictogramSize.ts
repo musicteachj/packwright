@@ -48,7 +48,10 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
   id: 'ghs/pictogram-size',
   title: 'Each pictogram meets CLP’s minimum dimension, area and share of the label.',
   citation: CITATION,
-  codes: [GHS_PICTOGRAM_BELOW_MINIMUM_SIZE, GHS_PICTOGRAM_SIZE_MET],
+  codes: {
+    [GHS_PICTOGRAM_BELOW_MINIMUM_SIZE]: ['violation'],
+    [GHS_PICTOGRAM_SIZE_MET]: ['pass'],
+  },
   appliesTo: 'ghs-chemical',
 
   check({ data, layout }: GhsChemicalContext): Finding[] {

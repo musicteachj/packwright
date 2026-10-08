@@ -67,12 +67,12 @@ export const ghsSmallContainerRule: GhsChemicalRule = {
   title: 'A label relying on the small-container provision carries what that provision requires.',
   citation: US,
   citations: [US, EU],
-  codes: [
-    GHS_SMALL_CONTAINER_INCOMPLETE,
-    GHS_SMALL_CONTAINER_NOT_ELIGIBLE,
-    GHS_SMALL_CONTAINER_AVAILABLE,
-    GHS_SMALL_CONTAINER_COMPLETE,
-  ],
+  codes: {
+    [GHS_SMALL_CONTAINER_INCOMPLETE]: ['violation'],
+    [GHS_SMALL_CONTAINER_NOT_ELIGIBLE]: ['violation'],
+    [GHS_SMALL_CONTAINER_AVAILABLE]: ['guidance'],
+    [GHS_SMALL_CONTAINER_COMPLETE]: ['pass'],
+  },
   appliesTo: 'ghs-chemical',
 
   check({ data, layout }: GhsChemicalContext): Finding[] {

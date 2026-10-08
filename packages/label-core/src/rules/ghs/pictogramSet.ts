@@ -42,7 +42,11 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
   id: 'ghs/pictogram-set',
   title: 'Every pictogram on the label is one the classification requires.',
   citation: CITATION,
-  codes: [GHS_PICTOGRAM_NOT_REQUIRED, GHS_PICTOGRAM_MISSING, GHS_PICTOGRAM_SET_MATCHES],
+  codes: {
+    [GHS_PICTOGRAM_NOT_REQUIRED]: ['violation'],
+    [GHS_PICTOGRAM_MISSING]: ['advisory'],
+    [GHS_PICTOGRAM_SET_MATCHES]: ['pass'],
+  },
   appliesTo: 'ghs-chemical',
 
   /**

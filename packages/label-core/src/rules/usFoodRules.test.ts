@@ -57,6 +57,7 @@ import {
   usFoodIngredientListRule,
 } from './index'
 import { US_FOOD_RULES, declinedChecks, runRules } from './registry'
+import { codesOf } from './types'
 
 /**
  * Fixtures by name, never by index.
@@ -90,7 +91,7 @@ describe('every US food rule ships with a label that provokes it', () => {
 
   it('declares a fixture for every code a rule can emit as a failure', () => {
     const covered = new Set(US_FOOD_FIXTURES.map((f) => f.expected.code))
-    const uncovered = US_FOOD_RULES.flatMap((rule) => rule.codes).filter(
+    const uncovered = US_FOOD_RULES.flatMap((rule) => codesOf(rule)).filter(
       (code) => !covered.has(code) && !/_MET$|_NOT_REQUIRED$|_EXEMPT$|_COMPLETE$/.test(code),
     )
     expect(uncovered, 'these failure codes have no known-bad fixture').toEqual([])

@@ -130,12 +130,12 @@ export const usFoodDualColumnRule: UsFoodRule = {
       .sort()
       .map((reference) => untitled(CITATION, reference)),
   ],
-  codes: [
-    FDA_DUAL_COLUMN_MISSING,
-    FDA_DUAL_COLUMN_MET,
-    FDA_DUAL_COLUMN_EXEMPT,
-    FDA_DUAL_COLUMN_BASIS_UNCONFIRMED,
-  ],
+  codes: {
+    [FDA_DUAL_COLUMN_MISSING]: ['violation'],
+    [FDA_DUAL_COLUMN_MET]: ['pass'],
+    [FDA_DUAL_COLUMN_EXEMPT]: ['pass'],
+    [FDA_DUAL_COLUMN_BASIS_UNCONFIRMED]: ['advisory'],
+  },
   appliesTo: 'us-food',
 
   /**

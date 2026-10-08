@@ -27,7 +27,10 @@ export const barHeightRule: Gs1RetailRule = {
   id: 'gs1/bar-height',
   title: 'Bar height meets the specification’s minimum for the symbol’s X-dimension.',
   citation: CITATION,
-  codes: [GS1_BAR_HEIGHT_BELOW_MINIMUM, GS1_BAR_HEIGHT_SUFFICIENT],
+  codes: {
+    [GS1_BAR_HEIGHT_BELOW_MINIMUM]: ['violation'],
+    [GS1_BAR_HEIGHT_SUFFICIENT]: ['pass'],
+  },
   appliesTo: 'gs1-retail',
 
   check({ layout }: Gs1RetailContext): Finding[] {

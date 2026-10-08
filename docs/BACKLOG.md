@@ -690,6 +690,23 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
 
 ---
 
+## The rule catalogue's severities
+
+**Two guidance codes are declared from reading, not from observation.** `GHS_PICTOGRAM_PRECEDENCE_OPTIONAL`
+and `GHS_SMALL_CONTAINER_AVAILABLE` are reached by no fixture and no sweep document, so `severities.test.ts`
+lists them as unreached alongside the four pass codes above. Each is emitted only as `'guidance'`, which is
+what it declares: `GHS_SMALL_CONTAINER_AVAILABLE` as a literal, and `GHS_PICTOGRAM_PRECEDENCE_OPTIONAL` from
+a ternary whose condition also chooses the code, so its other branch is a different code. A sweep document for each would move them from read to observed.
+Neither has a fixture, because the coverage checks treat them as non-failures — see the next entry.
+
+**The fixture-coverage checks still guess what a failure is from a code's name.** `ghsRules.test.ts`,
+`usFoodRules.test.ts` and `rules.test.ts` decide which codes need a known-bad fixture with a suffix pattern
+— `_MET`, `_COMPLETE`, `_OPTIONAL`, `_AVAILABLE` and so on. Now that every code declares its severities,
+that question has a real answer: a code needs a fixture if it declares anything but `pass` (and, by the
+current convention, `guidance`). A failure code that happened to end in `_COMPLETE` would be excused from
+fixtures today without anyone deciding so. Not changed with the declarations, because it alters which codes
+the suite demands fixtures for, and that wants its own look at whether `guidance` should be exempt at all.
+
 ## From the stage 1 migration
 
 **No field in any rail is marked required, and the migration is not the place to change that.** There is no

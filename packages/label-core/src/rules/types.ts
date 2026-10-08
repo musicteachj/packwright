@@ -73,6 +73,19 @@ export interface UsFoodContext extends RuleContextBase {
  */
 export type RuleContext = Gs1RetailContext | GhsChemicalContext | UsFoodContext
 
+/** A code's severities: at least one, and in practice almost always exactly one. */
+export type DeclaredCodes = Readonly<Record<string, readonly [Severity, ...Severity[]]>>
+
+/** The codes a rule declares, in declaration order. */
+export function codesOf(rule: Pick<Rule, 'codes'>): readonly string[] {
+  return Object.keys(rule.codes)
+}
+
+/** What a declared code can be emitted at; empty for a code the rule does not declare. */
+export function severitiesOf(rule: Pick<Rule, 'codes'>, code: string): readonly Severity[] {
+  return Object.hasOwn(rule.codes, code) ? rule.codes[code]! : []
+}
+
 export interface Rule<TContext extends RuleContext = RuleContext> {
   /** Stable identifier for the rule itself, e.g. `gs1/quiet-zone`. */
   id: string
@@ -108,8 +121,20 @@ export interface Rule<TContext extends RuleContext = RuleContext> {
    * build.
    */
   citations?: readonly Citation[]
-  /** Every code this rule can emit. The catalogue is generated from these. */
-  codes: readonly string[]
+  /**
+   * Every code this rule can emit, and the severities it emits each at. The
+   * catalogue is generated from these.
+   *
+   * A severity per code rather than a list of codes, so `/rules` can say which
+   * codes are verdicts and which are passes — it rendered all of them as
+   * identical grey chips. Almost every code carries one. A code may declare more
+   * where the regulation it reports under differs by regime:
+   * `GHS_PICTOGRAM_SYMBOL_MISSING` is DANGER under OSHA, which forbids a bare
+   * frame outright, and WARNING under CLP, which requires the symbol without
+   * saying so. `severities.test.ts` holds each declaration to what the rule
+   * emits, in both directions.
+   */
+  codes: DeclaredCodes
   /**
    * Which label type this rule judges.
    *

@@ -17,7 +17,7 @@ import {
   listRules,
   runRules,
 } from './registry'
-import { compareSeverity, type DeclinedFact, type RuleContext } from './types'
+import { codesOf, compareSeverity, type DeclinedFact, type RuleContext } from './types'
 import type { GhsLabelData } from '../templates/ghs'
 import type { UsFoodLabelData } from '../templates/usFood'
 
@@ -46,7 +46,7 @@ describe('the rule registry', () => {
     // Enforced at runtime by `finding()` too; asserted here so a rule that emits
     // an undeclared code fails in the suite rather than in front of a user.
     const all = findingsFor(CONFORMANT_FIXTURE.data, CONFORMANT_FIXTURE.stock)
-    const declared = new Set(GS1_RETAIL_RULES.flatMap((rule) => rule.codes))
+    const declared = new Set(GS1_RETAIL_RULES.flatMap((rule) => codesOf(rule)))
     for (const finding of all) expect(declared).toContain(finding.code)
   })
 })
@@ -84,7 +84,7 @@ describe('a conformant label', () => {
     const codes = new Set(findings.map((f) => f.code))
     for (const rule of GS1_RETAIL_RULES) {
       expect(
-        rule.codes.some((code) => codes.has(code)),
+        codesOf(rule).some((code) => codes.has(code)),
         `${rule.id} did not run`,
       ).toBe(true)
     }
@@ -458,7 +458,7 @@ describe('the registry runs the rules for the document’s own label type', () =
 
     // Every finding came from a GHS rule; no GS1 rule quietly no-opped its way
     // into reporting on a chemical label.
-    const gs1Codes = new Set(GS1_RETAIL_RULES.flatMap((rule) => rule.codes))
+    const gs1Codes = new Set(GS1_RETAIL_RULES.flatMap((rule) => codesOf(rule)))
     expect(findings.filter((f) => gs1Codes.has(f.code))).toEqual([])
   })
 

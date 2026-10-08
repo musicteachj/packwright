@@ -11,7 +11,7 @@
 
 import { roundTo } from '../geometry/units'
 import type { Certifies, Citation, Finding, Measurement, Severity } from '../types/index'
-import type { Rule } from './types'
+import { severitiesOf, type Rule } from './types'
 
 interface FindingInputBase {
   code: string
@@ -34,7 +34,10 @@ type FindingInput =
   | (FindingInputBase & { severity: Exclude<Severity, 'pass'>; certifies?: never })
 
 export function finding(rule: Rule, input: FindingInput): Finding {
-  if (!rule.codes.includes(input.code)) {
+  // The code, and not its severity: a code is a literal at every call site, while
+  // a severity is often computed — see `severities.test.ts` for why that one is
+  // enforced by the suite rather than here.
+  if (severitiesOf(rule, input.code).length === 0) {
     throw new Error(
       `Rule "${rule.id}" emitted the code "${input.code}", which it does not declare. ` +
         'The rule catalogue is generated from `codes`, so an undeclared code would be ' +

@@ -79,7 +79,10 @@ export const usFoodNetQuantitySeparationRule: UsFoodRule = {
   id: 'us-food/net-quantity-separation',
   title: 'The net quantity declaration is separated from other printed label information.',
   citation: CITATION,
-  codes: [FDA_NET_QUANTITY_CROWDED, FDA_NET_QUANTITY_SEPARATION_MET],
+  codes: {
+    [FDA_NET_QUANTITY_CROWDED]: ['violation'],
+    [FDA_NET_QUANTITY_SEPARATION_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ layout }: UsFoodContext): Finding[] {

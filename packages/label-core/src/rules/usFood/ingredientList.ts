@@ -96,16 +96,16 @@ export const usFoodIngredientListRule: UsFoodRule = {
     ...Object.values(EXEMPTIONS).map((exemption) => exemption.citation),
     ASSORTMENT,
   ],
-  codes: [
-    FDA_INGREDIENTS_MISSING,
-    FDA_INGREDIENT_NAME_MISSING,
-    FDA_INGREDIENTS_OUT_OF_ORDER,
-    FDA_INGREDIENTS_ORDER_MET,
-    FDA_INGREDIENTS_EXEMPT,
-    FDA_INGREDIENTS_EXEMPTION_UNSTATED,
-    FDA_ASSORTMENT_STATEMENT_MISSING,
-    FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
-  ],
+  codes: {
+    [FDA_INGREDIENTS_MISSING]: ['blocking'],
+    [FDA_INGREDIENT_NAME_MISSING]: ['violation'],
+    [FDA_INGREDIENTS_OUT_OF_ORDER]: ['violation'],
+    [FDA_INGREDIENTS_ORDER_MET]: ['pass'],
+    [FDA_INGREDIENTS_EXEMPT]: ['pass'],
+    [FDA_INGREDIENTS_EXEMPTION_UNSTATED]: ['advisory'],
+    [FDA_ASSORTMENT_STATEMENT_MISSING]: ['blocking'],
+    [FDA_ASSORTMENT_STATEMENT_INCOMPLETE]: ['violation'],
+  },
   appliesTo: 'us-food',
 
   check(context: UsFoodContext): Finding[] {
@@ -376,11 +376,11 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
   id: 'us-food/ingredient-threshold',
   title: 'Ingredients grouped behind a quantifying statement are within the threshold it states.',
   citation: THRESHOLD_CITATION,
-  codes: [
-    FDA_INGREDIENT_THRESHOLD_EXCEEDED,
-    FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED,
-    FDA_INGREDIENT_THRESHOLD_MET,
-  ],
+  codes: {
+    [FDA_INGREDIENT_THRESHOLD_EXCEEDED]: ['violation'],
+    [FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED]: ['violation'],
+    [FDA_INGREDIENT_THRESHOLD_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data }: UsFoodContext): Finding[] {

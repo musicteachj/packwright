@@ -36,7 +36,10 @@ export const gtinCheckDigitRule: Gs1RetailRule = {
   id: 'gs1/gtin-check-digit',
   title: 'A GTIN-12 ends in the check digit computed from its first eleven digits.',
   citation: CITATION,
-  codes: [GS1_GTIN_CHECK_DIGIT_INVALID, GS1_GTIN_CHECK_DIGIT_VALID],
+  codes: {
+    [GS1_GTIN_CHECK_DIGIT_INVALID]: ['blocking'],
+    [GS1_GTIN_CHECK_DIGIT_VALID]: ['pass'],
+  },
   appliesTo: 'gs1-retail',
 
   check({ data, layout }: Gs1RetailContext): Finding[] {

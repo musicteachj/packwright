@@ -67,7 +67,11 @@ export const usFoodContainsStatementTypeRule: UsFoodRule = {
   id: 'us-food/contains-statement-type',
   title: 'The "Contains" statement is adjacent to the ingredient list and no smaller than it.',
   citation: CITATION,
-  codes: [FDA_CONTAINS_TYPE_TOO_SMALL, FDA_CONTAINS_NOT_ADJACENT, FDA_CONTAINS_TYPE_MET],
+  codes: {
+    [FDA_CONTAINS_TYPE_TOO_SMALL]: ['violation'],
+    [FDA_CONTAINS_NOT_ADJACENT]: ['violation'],
+    [FDA_CONTAINS_TYPE_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ layout }: UsFoodContext): Finding[] {

@@ -72,7 +72,11 @@ export const digitalLinkRule: Gs1RetailRule = {
   title: 'A configured GS1 Digital Link resolves to a conformant URI.',
   citation: CITATION,
   citations: [CITATION, ALPHAS_CITATION],
-  codes: [GS1_DIGITAL_LINK_INVALID, GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS, GS1_DIGITAL_LINK_VALID],
+  codes: {
+    [GS1_DIGITAL_LINK_INVALID]: ['violation'],
+    [GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS]: ['advisory'],
+    [GS1_DIGITAL_LINK_VALID]: ['pass'],
+  },
   appliesTo: 'gs1-retail',
 
   check({ data }: Gs1RetailContext): Finding[] {

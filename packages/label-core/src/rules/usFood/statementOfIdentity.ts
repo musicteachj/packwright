@@ -53,7 +53,10 @@ export const usFoodStatementOfIdentityRule: UsFoodRule = {
   id: 'us-food/statement-of-identity',
   title: 'The principal display panel states what the food is.',
   citation: CITATION,
-  codes: [FDA_STATEMENT_OF_IDENTITY_MISSING, FDA_STATEMENT_OF_IDENTITY_MET],
+  codes: {
+    [FDA_STATEMENT_OF_IDENTITY_MISSING]: ['blocking'],
+    [FDA_STATEMENT_OF_IDENTITY_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data }: UsFoodContext): Finding[] {

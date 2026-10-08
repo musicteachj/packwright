@@ -31,7 +31,11 @@ export const ghsLabelDimensionsRule: GhsChemicalRule = {
   id: 'ghs/label-dimensions',
   title: 'The label is at least the minimum size CLP sets for the package capacity.',
   citation: CITATION,
-  codes: [GHS_LABEL_BELOW_MINIMUM_SIZE, GHS_LABEL_SIZE_MET],
+  codes: {
+    // Advisory in the first band only, whose size Table 1.3 qualifies "if possible".
+    [GHS_LABEL_BELOW_MINIMUM_SIZE]: ['violation', 'advisory'],
+    [GHS_LABEL_SIZE_MET]: ['pass'],
+  },
   appliesTo: 'ghs-chemical',
 
   check({ data, layout }: GhsChemicalContext): Finding[] {

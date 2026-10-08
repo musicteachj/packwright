@@ -15,7 +15,8 @@
 
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { LABEL_TYPES, citationsOf, listRules } from '@packwright/label-core'
+import { LABEL_TYPES, citationsOf, codesOf, listRules, severitiesOf } from '@packwright/label-core'
+import { SEVERITY_STYLES } from '../severity'
 import RulesView from './RulesView.vue'
 
 const mountCatalogue = () =>
@@ -84,10 +85,33 @@ describe('the rule catalogue', () => {
   it('lists every code a rule can emit', () => {
     const text = mountCatalogue().text()
     for (const rule of listRules()) {
-      for (const code of rule.codes) {
+      for (const code of codesOf(rule)) {
         expect(text, `${rule.id} is missing ${code}`).toContain(code)
       }
     }
+  })
+
+  it('says what each code is, in words and an icon, never by colour alone', () => {
+    // The chips were identical grey for a pass and a violation, so the page could
+    // not answer which codes are verdicts. Each now carries every severity its
+    // code declares — one code declares two, by regime.
+    const wrapper = mountCatalogue()
+    let twoSeverities = 0
+    for (const rule of listRules()) {
+      for (const code of codesOf(rule)) {
+        const chip = wrapper.get(`[data-code="${code}"]`)
+        const severities = severitiesOf(rule, code)
+        if (severities.length > 1) twoSeverities += 1
+        for (const severity of severities) {
+          expect(chip.text(), `${code} must say it is ${severity}`).toContain(
+            SEVERITY_STYLES[severity].word,
+          )
+          expect(chip.text()).toContain(SEVERITY_STYLES[severity].icon)
+        }
+      }
+    }
+    // The premise of the sentence above: the loop met a code with two.
+    expect(twoSeverities).toBeGreaterThan(0)
   })
 
   it('renders a citation that has a reference and no title', () => {

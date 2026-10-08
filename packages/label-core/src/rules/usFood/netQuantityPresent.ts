@@ -38,7 +38,10 @@ export const usFoodNetQuantityPresentRule: UsFoodRule = {
   id: 'us-food/net-quantity-present',
   title: 'The principal display panel bears a net quantity of contents declaration.',
   citation: CITATION,
-  codes: [FDA_NET_QUANTITY_MISSING, FDA_NET_QUANTITY_DECLARED_MET],
+  codes: {
+    [FDA_NET_QUANTITY_MISSING]: ['blocking'],
+    [FDA_NET_QUANTITY_DECLARED_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data }: UsFoodContext): Finding[] {

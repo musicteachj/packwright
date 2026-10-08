@@ -7,8 +7,16 @@ export {
   runRules,
 } from './registry'
 
-export { LABEL_TYPES, SEVERITY_ORDER, citationsOf, compareSeverity } from './types'
+export {
+  LABEL_TYPES,
+  SEVERITY_ORDER,
+  citationsOf,
+  codesOf,
+  compareSeverity,
+  severitiesOf,
+} from './types'
 export type {
+  DeclaredCodes,
   Decline,
   DeclinedCheck,
   DeclinedFact,
