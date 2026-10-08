@@ -54,7 +54,7 @@ describe('attaching to a saved label', () => {
     store.data.gtin = '036000291452'
     expect(store.isDirty).toBe(true)
 
-    store.markSaved('abc123', 'Granola 340g')
+    store.markSaved('abc123', 'Granola 340g', store.snapshot)
     expect(store.isDirty).toBe(false)
   })
 

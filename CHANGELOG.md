@@ -273,6 +273,46 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **Two ways a Save could write over a label the user was not looking at.** Both turned on one rule the route
+  watcher already kept for `/labels/new` — a Save writes to the record the URL names and no other — and both
+  were recorded during the interface phase.
+
+  A failed open said "the editor is showing a new document" and left the previous label attached, so the next
+  Save issued a `PUT` over the record the user believed they had left. It now detaches exactly as
+  `/labels/new` does — fields kept, nothing attached — for any failure, since a 500 leaves the URL naming a
+  label the editor does not hold just as a 404 does; and a non-404 failure is framed as a sentence, because
+  the server's own text may not end in one.
+
+  A Save still in flight when the user moved to another label resolved onto it: the label now on screen was
+  attached to the record just written and the URL moved back, so the next Save wrote one label over another.
+  A Save now records which document it was made about — a generation the store moves whenever a label is
+  opened or let go of — and does not apply its success to any other. A failure is still said, naming the
+  label it was for ("“Granola” was not saved: … Its changes were not written."), because dropping it — as
+  the first version of this fix did — hid unwritten edits beside a header reading "Saved" for the next label.
+  The record is still written as asked. The first version of this compared the route, and review found the hole: a route can be
+  returned to, so saving at `/labels/new`, opening another label and coming back let the late answer attach
+  that label's content to the new record. A counter in the editor would not do either, because the audit
+  hand-off remounts it. Tests now take both round trips.
+
+  A second review found two more ways the generation stood still while the document changed. Switching label
+  type on a new, unattached label did not detach it, so did not move the generation, and a late answer
+  attached the GHS document to the GS1 record just created. And the generation moved only once the next
+  label *arrived*, so a Save answering during the wait passed, and its redirect sent the user back to the
+  label they had left, abandoning the one they asked for. The generation now moves on every type change and
+  the moment an open starts, through a `supersede` that marks the held document as being left without
+  detaching it.
+
+  And leaving the editor altogether moved nothing, because the store still holds the same document — so a
+  Save answering after the user had gone to the audit view redirected them back into the editor. The answer
+  is still recorded; the redirect now happens only while the editor is still the page.
+
+  **And a third, found while fixing those: an edit made while a Save was out was marked saved.** `markSaved`
+  took its baseline when the answer arrived, so "Saved" showed and the leave guards stood down over an edit
+  the server never received — measured as `isDirty` false. The baseline is now the payload the Save sent,
+  and `markSaved` requires it, so no caller can fall back to the screen. The name had the same defect by
+  another route — the server's name was written back into the field, reverting a rename typed during the
+  Save — and is now adopted only if the field still holds what was sent.
+
 - **A US label's missing pictogram symbols were explained as a requirement of CLP, an EU regulation that does
   not reach it.** The engine's omission said "CLP Annex V requires each pictogram to conform to the specimen
   artwork…" whatever the label's regime. On an OSHA label it now cites the provision that governs it, 29 CFR

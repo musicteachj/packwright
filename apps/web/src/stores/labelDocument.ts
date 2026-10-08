@@ -339,6 +339,20 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    * export a saved label at its own stock rather than at a default.
    */
   const savedId = ref<string | null>(null)
+
+  /**
+   * Which document the editor is holding, as a count that moves whenever it
+   * stops holding the one it held — a label opened, or a label let go of.
+   *
+   * For a request that answers late, to ask whether the document it was made
+   * about is still here. A Save compared the route instead, and a route can be
+   * returned to: save at `/labels/new`, open another label, come back, and the
+   * late answer found the same path and attached the label now on screen to
+   * the record just created. Found by review. The editor component cannot hold
+   * this either — the audit hand-off remounts it, and a counter in the old
+   * instance would never move again.
+   */
+  const documentGeneration = ref(0)
   const savedName = ref('')
   /** What was last written, for telling an edited document from an opened one. */
   const baseline = ref<DocumentSnapshot | null>(null)
@@ -445,6 +459,7 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
 
     savedId.value = saved.id
     savedName.value = saved.name
+    documentGeneration.value += 1
     baseline.value = detachedSnapshot()
     // A scan is a fact about the document it was made on, and this is a
     // different document. Left standing, a refusal from the last label was
@@ -486,10 +501,21 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   }
 
   /** Records that the current document is now what the server holds. */
-  function markSaved(id: string, name: string): void {
+  function markSaved(id: string, name: string, written: DocumentSnapshot): void {
     savedId.value = id
-    savedName.value = name
-    baseline.value = detachedSnapshot()
+    // The server's name only if the field still holds what was sent. Written
+    // back unconditionally, it reverted a rename typed while the Save was out —
+    // and then, matching the baseline, read as saved. A newer name stays, and
+    // stays unsaved, because the baseline below records the name the server
+    // holds. Found by review.
+    if (savedName.value.trim() === written.name) savedName.value = name
+    // **What was written, not what is on screen now.** The baseline was taken
+    // when the Save answered, so an edit typed while it was out was marked
+    // saved — "Saved" in the header, nothing for the leave guards to defend —
+    // though the server held the document from before it. Measured before the
+    // fix: `isDirty` false after exactly that. Required, so a caller has to say
+    // what it wrote rather than inherit the old default.
+    baseline.value = { ...(JSON.parse(JSON.stringify(written)) as DocumentSnapshot), name }
   }
 
   /**
@@ -536,6 +562,22 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    */
   function detach(): void {
     savedId.value = null
+    documentGeneration.value += 1
+  }
+
+  /**
+   * The editor has been asked for a different document; anything still in
+   * flight about the one it holds is about a document it is leaving.
+   *
+   * Moved when an open *starts*, not when the next label arrives. A Save that
+   * answered during the wait found the generation unmoved, applied itself, and
+   * its redirect sent the user back to the label they had just left —
+   * abandoning the one they asked for, with no message. Found by review.
+   * Not a detach: the label stays attached until another replaces it, so going
+   * back to it during the wait needs no second read.
+   */
+  function supersede(): void {
+    documentGeneration.value += 1
   }
 
   // The seeded document is the baseline until something is written, so an
@@ -554,6 +596,12 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   watch(
     labelType,
     (_next, previous) => {
+      // Before anything else, attached or not: the document on screen is now a
+      // different one. A new label is not attached, so the early return below
+      // left this unmoved, and a Save still out on the GS1 document attached the
+      // GHS one to the record it created. Found by review.
+      documentGeneration.value += 1
+
       // **Attached documents only, and that restriction is load-bearing.** A
       // detached one may be an audit hand-off, whose baseline `loadUnsaved`
       // deliberately leaves describing a different type — that mismatch is what
@@ -588,6 +636,7 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
 
   return {
     savedId,
+    documentGeneration,
     savedName,
     isDirty,
     snapshot,
@@ -595,6 +644,7 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     loadUnsaved,
     markSaved,
     detach,
+    supersede,
     labelType,
     data,
     stock,
