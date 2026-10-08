@@ -244,4 +244,10 @@ question rather than an interface one, and probing it turned up a smaller interf
 separately: switching "What the second column counts" between the two mandatory provisions changes nothing
 visible in the rail.
 
+**Resolved 2026-10-08, as a documented limit.** Between the audit and that date the two choices came to draw
+different violations, each citing the other paragraph. That gave the user a visible change and still no setting
+the report accepted. The dead end now gets a notice and no verdict, so switching the basis again changes nothing
+about the verdict, and this time on purpose. See `docs/WHAT-IS-NOT-CHECKED.md`, "A package that owes both second
+columns".
+
 Phase numbering. This work runs ahead of phase 8 and has not been given a number.

@@ -220,8 +220,21 @@ export interface Decline {
    * label not stating something its author could. `rules.test.ts` holds every
    * rule to the promise `reason` makes, by stating what is wanted and checking
    * the rule then runs — or asks for something it had not asked for before.
+   *
+   * Empty only beside `limit`, where there is nothing to state.
    */
   wants: readonly DeclinedFact[]
+  /**
+   * The check stood down at a limit of this tool, not at a fact the label left out.
+   *
+   * The one exception to "a decline names what to state", and a narrow one: where the
+   * regulation reaches a label and this tool cannot represent an answer to it, saying
+   * nothing would read as a pass and reporting it would blame the label for the tool.
+   * The package owing both 101.9(b)(12)(i)'s and (b)(2)(i)(D)'s columns is the case — see
+   * `us-food/dual-column-required`. `wants` is empty, `reason` says plainly that the limit
+   * is the tool's, and `docs/WHAT-IS-NOT-CHECKED.md` lists it.
+   */
+  limit?: true
 }
 
 /** A check that did not run, as a reader sees it. */
@@ -235,6 +248,8 @@ export interface DeclinedCheck {
   reason: string
   /** What the label would have to state for it to run. See `Decline.wants`. */
   wants: readonly DeclinedFact[]
+  /** Set where the check stood down at a limit of this tool. See `Decline.limit`. */
+  limit?: true
 }
 
 export type Gs1RetailRule = Rule<Gs1RetailContext>

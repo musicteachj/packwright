@@ -3336,51 +3336,126 @@ describe('which column a package is told it is missing', () => {
   const missingIn = (data: UsFoodLabelData) =>
     findingsFor(data, stock).find((f) => f.code === 'FDA_DUAL_COLUMN_MISSING')
 
-  it('cites the paragraph that asks for the column that is absent', () => {
-    // `reference` is taken from the duty, where the package provision always
-    // wins — so a finding about an absent per-unit column carried (b)(12)(i),
-    // which is the other paragraph. A citation that does not govern the sentence
-    // beside it is the defect this project treats most seriously. Found by review.
-    // Both provisions required, so the duty reports the package one — which is
-    // the divergence: without `packageContent` the duty *is* the per-unit one and
-    // the two references agree by accident, which is how the first version of
-    // this test passed against the unfixed citation.
-    const found = missingIn(
-      owing({
-        packageContent: 100,
-        packagedAndSoldIndividually: true,
-        unitContent: 90,
-        columns: {
-          mode: 'dual',
-          basis: 'per-container',
-          headings: ['Per serving', 'Per container'],
-          secondAmounts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!.amounts },
-        },
-      }),
-    )
-    expect(found, 'the per-unit column is owed and not drawn').toBeDefined()
-    expect(found!.message).toContain('the individual unit')
-    expect(found!.citation.reference).toBe('21 CFR 101.9(b)(2)(i)(D)')
-  })
-
-  it('reports rather than defers where two are owed and the basis is unstated', () => {
-    // One second column cannot be two, so a column is provably absent whatever
-    // the unstated one counts. Without this, omitting the field bought a
-    // downgrade from violation to advisory on a label that is certainly short.
-    const data = owing({
+  /**
+   * **A package owing both columns, with one drawn, gets a notice and no verdict.**
+   *
+   * (b)(12)(i) asks for a column for the entire package and (b)(2)(i)(D) for one per
+   * individual unit, and a package where both apply — a single unit at 250 percent here
+   * — gets a second column of one basis from this tool. Each basis drew a
+   * violation citing the other paragraph, so there was no setting the user could find
+   * that the report accepted: blame for the tool's limit, laid on the label. Read from
+   * the eCFR on 2026-10-08: neither paragraph, nor (e)(6), says whether one second column
+   * can serve as both. So the rule says that plainly and judges nothing.
+   */
+  // A package that is a single unit: package and unit contents equal, so the two owed
+  // columns would carry the same figures. Only there is the question open.
+  const bothOwed = (basis: 'per-container' | 'per-unit' | undefined, unitContent = 100) =>
+    owing({
       packageContent: 100,
       packagedAndSoldIndividually: true,
-      unitContent: 90,
+      unitContent,
       columns: {
         mode: 'dual',
+        ...(basis === undefined ? {} : { basis }),
         headings: ['Per serving', 'Per container'],
         secondAmounts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!.amounts },
       },
     })
-    expect(missingIn(data), 'a column is absent either way').toBeDefined()
-    expect(findingsFor(data, stock).map((f) => f.code)).not.toContain(
-      'FDA_DUAL_COLUMN_BASIS_UNCONFIRMED',
-    )
+  const contextOf = (data: UsFoodLabelData) => ({
+    labelType: 'us-food' as const,
+    data,
+    stock,
+    layout: layOutUsFoodLabel({ data, stock }),
+  })
+
+  it.each([['per-container'], ['per-unit'], [undefined]] as const)(
+    'gives no verdict on a second column counting %s where both are owed, and says why',
+    (basis) => {
+      const data = bothOwed(basis)
+      const codes = findingsFor(data, stock).map((f) => f.code)
+      // Neither a violation blaming the label nor a pass certifying it.
+      for (const code of [
+        'FDA_DUAL_COLUMN_MISSING',
+        'FDA_DUAL_COLUMN_MET',
+        'FDA_DUAL_COLUMN_BASIS_UNCONFIRMED',
+      ])
+        expect(codes, code).not.toContain(code)
+
+      const declined = declinedChecks(contextOf(data)).find(
+        (d) => d.ruleId === 'us-food/dual-column-required',
+      )
+      expect(declined?.limit).toBe(true)
+      expect(declined?.wants).toEqual([])
+      expect(declined?.reason).toContain('101.9(b)(12)(i)')
+      expect(declined?.reason).toContain('101.9(b)(2)(i)(D)')
+      expect(declined?.reason).toContain('a limit of this tool, not a fault found in your label')
+    },
+  )
+
+  it('still reports a second column that counts something neither paragraph asks for', () => {
+    // The notice is for a column that could be one of the two owed. A per 100 g column
+    // is neither, on any reading, so it is still short a column. The first version of the
+    // notice fired whatever the column counted, and review caught it.
+    const data = owing({
+      packageContent: 100,
+      packagedAndSoldIndividually: true,
+      unitContent: 100,
+      columns: {
+        mode: 'dual',
+        basis: 'per-unit-measure',
+        headings: ['Per serving', 'Per 100 g'],
+        secondAmounts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!.amounts },
+      },
+    })
+    expect(missingIn(data)).toBeDefined()
+    expect(
+      declinedChecks(contextOf(data)).find((d) => d.ruleId === 'us-food/dual-column-required'),
+    ).toBeUndefined()
+  })
+
+  it.each([
+    ['per-container', '21 CFR 101.9(b)(2)(i)(D)', 'the individual unit'],
+    ['per-unit', '21 CFR 101.9(b)(12)(i)', 'the entire package'],
+    [undefined, '21 CFR 101.9(b)(12)(i)', 'cannot carry both sets of figures'],
+  ] as const)(
+    'reports a column counting %s where the package and its unit differ',
+    (basis, reference, says) => {
+      // 100 g against a 90 g unit: the two columns would carry different figures, and one
+      // column cannot carry both on any reading, so a column is provably absent. The first
+      // version of the notice fired here too, and review caught it.
+      const data = bothOwed(basis, 90)
+      const found = missingIn(data)
+      expect(found?.citation.reference).toBe(reference)
+      expect(found?.message).toContain(says)
+      expect(
+        declinedChecks(contextOf(data)).find((d) => d.ruleId === 'us-food/dual-column-required'),
+      ).toBeUndefined()
+    },
+  )
+
+  it('says the same of a panel printed beneath a (j)(14) lid that declares two columns', () => {
+    // The same question, asked of information presented off this label: declared with a
+    // second column, so whether one serves as both is the limit again.
+    const data = {
+      ...bothOwed('per-container'),
+      nutritionExemption: { kind: 'egg-carton', presentedIn: 'beneath-lid' },
+    } as UsFoodLabelData
+    expect(missingIn(data)).toBeUndefined()
+    expect(
+      declinedChecks(contextOf(data)).find((d) => d.ruleId === 'us-food/dual-column-required')
+        ?.limit,
+    ).toBe(true)
+  })
+
+  it('still reports a package owing both columns that draws neither', () => {
+    // Both provisions ask for a second column, so drawing none fails whichever reading
+    // is right; only once one is drawn does the question become the tool's.
+    const { columns: _none, ...facts } = bothOwed('per-unit').nutritionFacts!
+    const data = { ...US_FOOD_CONFORMANT.data, nutritionFacts: facts } as UsFoodLabelData
+    expect(missingIn(data)?.citation.reference).toBe('21 CFR 101.9(b)(12)(i)')
+    expect(
+      declinedChecks(contextOf(data)).find((d) => d.ruleId === 'us-food/dual-column-required'),
+    ).toBeUndefined()
   })
 })
 

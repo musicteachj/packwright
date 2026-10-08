@@ -27,6 +27,12 @@ about it. Where the limit is this tool's own — a barcode symbology whose quiet
 confirmed against a specification, below — the check is silent, because naming it would send you looking for a
 control that does not exist. Those limits are in this document instead, which is the reason to read it.
 
+There is one exception, and the report marks it as one. Where a regulation plainly reaches your label and this
+tool cannot represent an answer to it, staying silent would read as a pass and reporting a violation would blame
+your label for the tool's limit. That entry appears under "checks that did not run" with nothing to fill in, and
+says in so many words that the limit is this tool's. Today there is exactly one: the package owing both second
+columns, below.
+
 ---
 
 ## Nutrition Facts and US food labels
@@ -102,6 +108,32 @@ left alone on purpose:
   a label this tool produced. It becomes worth writing only if the weight ever becomes yours to choose.
 - **(d), "lines generally parallel to the base".** This engine draws no rotated text, so there is nothing to
   catch.
+
+### A package that owes both second columns
+
+Two paragraphs of 21 CFR 101.9 can each require a second column of nutrition information. 101.9(b)(12)(i)
+requires one for the **entire package** where a package sold individually holds 200 to 300 percent of its
+reference amount. 101.9(b)(2)(i)(D) requires one **per individual unit** where a unit weighs 200 to 300 percent of
+it. A package can owe both at once only when the package is itself one such unit, so the two columns would carry
+the same figures.
+
+This tool draws one second column, and you say what it counts. Neither paragraph, nor 101.9(e)(6), which sets out
+how each two-column presentation looks, says whether one second column can serve as both, or whether such a
+package needs three. That is our reading of the eCFR text, read on 2026-10-08.
+
+So where both apply and your panel draws a second column that counts the package or the unit, or does not say
+which, the report gives **no verdict** on that column. It
+explains why under "checks that did not run", with nothing to fill in, and says that the limit is this tool's
+and not a fault found in your label. What the column carries, how it is headed and separated, and whether its
+type is as prominent as the first are all still checked.
+
+Two things to know:
+- **Where your panel draws no second column at all, it is still reported**, because both paragraphs ask for one
+  and no reading is satisfied by none. The same goes for a second column that counts something else, such as
+  per 100 g, which is neither column on any reading. It also goes for a package whose contents differ from its
+  unit's: the two columns would then carry different figures, and one column cannot carry both.
+- **How such a package should be labelled is a question for the regulation's own guidance**, not for this tool.
+  Treat the notice as a reason to check that before you print, not as clearance.
 
 ### A second column you are not required to carry
 
