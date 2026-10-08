@@ -3,6 +3,7 @@ import { layOutGhsLabel } from '../layout/ghsEngine'
 import { GHS_CONFORMANT, GHS_FIXTURES, HAZARDS } from './fixtures/ghs'
 import { GHS_PICTOGRAM_PRECEDENCE_OPTIONAL, GHS_PICTOGRAM_SYMBOL_MISSING } from './index'
 import { GHS_RULES, runRules } from './registry'
+import { codesOf } from './types'
 import type { GhsLabelData } from '../templates/ghs'
 import type { LabelStock } from '../templates/stock'
 
@@ -23,10 +24,11 @@ describe('every GHS rule ships with a label that provokes it', () => {
 
   it('declares a fixture for every code a rule can emit as a failure', () => {
     const covered = new Set(GHS_FIXTURES.map((f) => f.expected.code))
-    const uncovered = GHS_RULES.flatMap((rule) => rule.codes).filter(
+    const uncovered = GHS_RULES.flatMap((rule) => codesOf(rule)).filter(
       (code) =>
         !covered.has(code) &&
-        // Pass codes and the advisory-only precedence code are not failures.
+        // Pass codes, and the two guidance codes, are not failures. Matched by name;
+        // see BACKLOG.md, "The rule catalogue's severities".
         !/_MET$|_SINGLE$|_COMPLETE$|_OPTIONAL$|_MATCHES$|_AVAILABLE$/.test(code),
     )
     expect(uncovered, 'these failure codes have no known-bad fixture').toEqual([])

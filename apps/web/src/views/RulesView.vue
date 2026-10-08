@@ -15,7 +15,15 @@
  * read.
  */
 import { computed } from 'vue'
-import { LABEL_TYPES, citationsOf, listRules, type LabelType } from '@packwright/label-core'
+import {
+  LABEL_TYPES,
+  citationsOf,
+  codesOf,
+  listRules,
+  severitiesOf,
+  type LabelType,
+} from '@packwright/label-core'
+import { SEVERITY_STYLES } from '../severity'
 
 /** The label types in the order the registry lists them, with a name to print. */
 const SECTIONS: Record<LabelType, { name: string; blurb: string }> = {
@@ -132,13 +140,39 @@ const provisionCount = computed(
           </div>
         </dl>
 
+        <!--
+          Each code with what it is. A pass and a violation were identical grey
+          chips, so the page could not say which codes are verdicts. Icon and word
+          on every one, never the colour alone; the code itself stays mono, the
+          words do not. A code that can be either of two — by regime, or by
+          capacity band — says "or" between them: side by side they read as a
+          contradiction. Most severe first, which `severities.test.ts` requires of
+          the declaration itself.
+        -->
         <ul class="flex flex-wrap gap-1.5">
           <li
-            v-for="code in rule.codes"
+            v-for="code in codesOf(rule)"
             :key="code"
-            class="border-chrome-800 text-chrome-400 numeric border px-1.5 py-0.5 text-[11px]"
+            :data-code="code"
+            class="border-chrome-800 flex flex-wrap items-baseline gap-x-2 border px-1.5 py-0.5 text-[11px]"
           >
-            {{ code }}
+            <template v-for="(severity, index) in severitiesOf(rule, code)" :key="severity">
+              <!--
+                Real spaces, not only the flex gap: the gap separates the words
+                for the eye and leaves "DANGERor▲WARNING" in the text a screen
+                reader is given. Whitespace-only text makes no flex item, so
+                nothing moves.
+              -->
+              {{ ' ' }}<span v-if="index > 0" class="text-chrome-400">or</span>{{ ' ' }}
+              <span
+                :class="SEVERITY_STYLES[severity].text"
+                class="flex items-baseline gap-1 font-semibold"
+              >
+                <span aria-hidden="true">{{ SEVERITY_STYLES[severity].icon }}</span>
+                <span>{{ SEVERITY_STYLES[severity].word }}</span>
+              </span>
+            </template>
+            {{ ' ' }}<span class="numeric text-chrome-300">{{ code }}</span>
           </li>
         </ul>
       </article>

@@ -101,7 +101,10 @@ export const usFoodInformationPanelTypeSizeRule: UsFoodRule = {
   id: 'us-food/information-panel-type-size',
   title: 'Every letter on the panel is at least one-sixteenth of an inch high.',
   citation: CITATION,
-  codes: [FDA_PANEL_TYPE_TOO_SMALL, FDA_PANEL_TYPE_SIZE_MET],
+  codes: {
+    [FDA_PANEL_TYPE_TOO_SMALL]: ['violation'],
+    [FDA_PANEL_TYPE_SIZE_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ layout }: UsFoodContext): Finding[] {

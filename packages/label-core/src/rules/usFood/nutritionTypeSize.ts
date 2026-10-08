@@ -143,7 +143,10 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
   title: 'The Nutrition Facts panel meets the minimum type sizes 21 CFR 101.9 sets.',
   citation: CITATION,
   citations: TYPE_SIZE_CITATIONS,
-  codes: [FDA_NUTRITION_TYPE_TOO_SMALL, FDA_NUTRITION_TYPE_SIZE_MET],
+  codes: {
+    [FDA_NUTRITION_TYPE_TOO_SMALL]: ['violation'],
+    [FDA_NUTRITION_TYPE_SIZE_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data, layout, stock }: UsFoodContext): Finding[] {

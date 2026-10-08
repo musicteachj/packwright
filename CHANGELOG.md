@@ -10,6 +10,32 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The rule catalogue says what each code is.** `/rules` drew every code as an identical grey chip, so a
+  pass and a violation could not be told apart, and the page could not answer which codes are verdicts. A
+  rule's `codes` is now a record from each code to the severities it is emitted at. Each chip carries that
+  severity's icon and word from `severity.ts`, never colour alone, with the code still set in mono.
+  `codesOf` and `severitiesOf` read the record, and `finding()` still throws on an undeclared code.
+
+  One code declares two severities on purpose. `GHS_PICTOGRAM_SYMBOL_MISSING` is DANGER under OSHA, which
+  forbids a bare frame outright, and WARNING under CLP, which requires the symbol without saying so.
+
+  **Severity is held to the rule by the suite, not by a throw.** The first version measured each code's
+  severity from the fixture sweep and had `finding()` refuse any other. Reading every computed severity
+  showed that would crash: `GHS_LABEL_BELOW_MINIMUM_SIZE` is advisory in the first capacity band, whose size
+  Table 1.3 qualifies "if possible", and no fixture reached that band. The sweep therefore saw only
+  `violation`, and a small bottle with a small label would have thrown in the editor. `severities.test.ts`
+  now checks both directions:
+  - every emitted severity is declared;
+  - every declared severity is emitted somewhere, apart from five codes no fixture reaches, which are listed
+    with their call sites and held to the declaration;
+  - each code lists its severities most severe first.
+
+  A new fixture reaches the advisory band, and a new sweep document reaches the SI exemption for a random
+  package. `certification.test.ts` already reached that exemption from a document of its own, so the sweep
+  never saw it. A code that can carry either of two severities reads "DANGER or WARNING" in the catalogue,
+  with real spaces between the words: the flex gap had left "DANGERor▲WARNING" in the text a screen reader
+  is given. No verdict changed.
+
 - **The application has a shell.** Every reading route — `/`, `/labels`, `/audit`, `/rules`, `/design` — is
   now a child of one `AppShell` route, which mounts the masthead once and declares the page's single
   `<main id="main">`. The masthead used to be placed by each view inside its own column — a copy per route,

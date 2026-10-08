@@ -53,7 +53,10 @@ export const usFoodNetQuantityTypeSizeRule: UsFoodRule = {
   id: 'us-food/net-quantity-type-size',
   title: 'The net quantity declaration meets the minimum type size for the panel area.',
   citation: CITATION,
-  codes: [FDA_NET_QUANTITY_TYPE_TOO_SMALL, FDA_NET_QUANTITY_TYPE_SIZE_MET],
+  codes: {
+    [FDA_NET_QUANTITY_TYPE_TOO_SMALL]: ['violation'],
+    [FDA_NET_QUANTITY_TYPE_SIZE_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data, layout }: UsFoodContext): Finding[] {

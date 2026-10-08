@@ -63,12 +63,12 @@ export const usFoodResponsibleFirmRule: UsFoodRule = {
   title: 'The label names a manufacturer, packer or distributor and gives its place of business.',
   citation: CITATION,
   citations: [CITATION, QUALIFIER, PLACE],
-  codes: [
-    FDA_RESPONSIBLE_FIRM_MISSING,
-    FDA_RESPONSIBLE_FIRM_UNQUALIFIED,
-    FDA_RESPONSIBLE_FIRM_ADDRESS_INCOMPLETE,
-    FDA_RESPONSIBLE_FIRM_MET,
-  ],
+  codes: {
+    [FDA_RESPONSIBLE_FIRM_MISSING]: ['blocking'],
+    [FDA_RESPONSIBLE_FIRM_UNQUALIFIED]: ['violation'],
+    [FDA_RESPONSIBLE_FIRM_ADDRESS_INCOMPLETE]: ['violation'],
+    [FDA_RESPONSIBLE_FIRM_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data }: UsFoodContext): Finding[] {

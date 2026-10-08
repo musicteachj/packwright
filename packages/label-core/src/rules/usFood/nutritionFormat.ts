@@ -55,7 +55,10 @@ export const usFoodNutritionFormatRule: UsFoodRule = {
     untitled(CITATION, '21 CFR 101.9(d)'),
     untitled(CITATION, '21 CFR 101.9(d)(11)(iii)'),
   ],
-  codes: [FDA_NUTRITION_FORMAT_NOT_PERMITTED, FDA_NUTRITION_FORMAT_MET],
+  codes: {
+    [FDA_NUTRITION_FORMAT_NOT_PERMITTED]: ['violation'],
+    [FDA_NUTRITION_FORMAT_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data, stock }: UsFoodContext): Finding[] {

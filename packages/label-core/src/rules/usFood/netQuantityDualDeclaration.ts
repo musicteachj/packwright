@@ -73,11 +73,11 @@ export const usFoodNetQuantityDualDeclarationRule: UsFoodRule = {
   // The two exemptions live in the table above, so the list is built from it
   // rather than restated beside it.
   citations: [CITATION, ...Object.values(EXEMPTION).map((entry) => entry.citation)],
-  codes: [
-    FDA_NET_QUANTITY_METRIC_MISSING,
-    FDA_NET_QUANTITY_DUAL_MET,
-    FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
-  ],
+  codes: {
+    [FDA_NET_QUANTITY_METRIC_MISSING]: ['violation'],
+    [FDA_NET_QUANTITY_DUAL_MET]: ['pass'],
+    [FDA_NET_QUANTITY_METRIC_NOT_REQUIRED]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data }: UsFoodContext): Finding[] {

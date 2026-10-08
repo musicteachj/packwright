@@ -73,11 +73,11 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
   id: 'us-food/net-quantity-placement',
   title: 'The net quantity declaration sits within the bottom 30 percent of the panel.',
   citation: CITATION,
-  codes: [
-    FDA_NET_QUANTITY_OUTSIDE_ZONE,
-    FDA_NET_QUANTITY_PLACEMENT_MET,
-    FDA_NET_QUANTITY_ZONE_NOT_REQUIRED,
-  ],
+  codes: {
+    [FDA_NET_QUANTITY_OUTSIDE_ZONE]: ['violation'],
+    [FDA_NET_QUANTITY_PLACEMENT_MET]: ['pass'],
+    [FDA_NET_QUANTITY_ZONE_NOT_REQUIRED]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check(context: UsFoodContext): Finding[] {

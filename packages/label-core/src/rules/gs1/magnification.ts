@@ -32,7 +32,10 @@ export const magnificationRule: Gs1RetailRule = {
   id: 'gs1/magnification',
   title: `An EAN/UPC symbol is drawn between ${RANGE} of its nominal size.`,
   citation: CITATION,
-  codes: [GS1_MAGNIFICATION_OUT_OF_RANGE, GS1_MAGNIFICATION_IN_RANGE],
+  codes: {
+    [GS1_MAGNIFICATION_OUT_OF_RANGE]: ['violation'],
+    [GS1_MAGNIFICATION_IN_RANGE]: ['pass'],
+  },
   appliesTo: 'gs1-retail',
 
   check({ layout }: Gs1RetailContext): Finding[] {

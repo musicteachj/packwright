@@ -30,7 +30,10 @@ export const quietZoneRule: Gs1RetailRule = {
   id: 'gs1/quiet-zone',
   title: 'Each side of a symbol keeps its minimum quiet zone clear of other artwork.',
   citation: CITATION,
-  codes: [GS1_QUIET_ZONE_TOO_NARROW, GS1_QUIET_ZONE_CLEAR],
+  codes: {
+    [GS1_QUIET_ZONE_TOO_NARROW]: ['violation'],
+    [GS1_QUIET_ZONE_CLEAR]: ['pass'],
+  },
   appliesTo: 'gs1-retail',
 
   check({ layout }: Gs1RetailContext): Finding[] {

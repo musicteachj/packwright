@@ -35,7 +35,10 @@ export const humanReadableRule: Gs1RetailRule = {
   id: 'gs1/human-readable',
   title: 'An EAN/UPC symbol prints its GTIN in human-readable digits below the bars.',
   citation: CITATION,
-  codes: [GS1_HRI_MISSING, GS1_HRI_PRESENT],
+  codes: {
+    [GS1_HRI_MISSING]: ['violation'],
+    [GS1_HRI_PRESENT]: ['pass'],
+  },
   appliesTo: 'gs1-retail',
 
   check({ layout }: Gs1RetailContext): Finding[] {

@@ -266,15 +266,15 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     UNIT_CONTAINER_STATEMENT,
     EGG_CARTON,
   ],
-  codes: [
-    FDA_NUTRITION_MISSING,
-    FDA_NUTRITION_NUTRIENT_MISSING,
-    FDA_NUTRITION_COMPLETE,
-    FDA_NUTRITION_EXEMPT,
-    FDA_NUTRITION_EXEMPTION_UNSTATED,
-    FDA_NUTRITION_CONTACT_MISSING,
-    FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL,
-  ],
+  codes: {
+    [FDA_NUTRITION_MISSING]: ['blocking'],
+    [FDA_NUTRITION_NUTRIENT_MISSING]: ['violation'],
+    [FDA_NUTRITION_COMPLETE]: ['pass'],
+    [FDA_NUTRITION_EXEMPT]: ['pass'],
+    [FDA_NUTRITION_EXEMPTION_UNSTATED]: ['advisory'],
+    [FDA_NUTRITION_CONTACT_MISSING]: ['blocking'],
+    [FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL]: ['blocking'],
+  },
   appliesTo: 'us-food',
 
   check(context: UsFoodContext): Finding[] {
@@ -655,7 +655,10 @@ export const usFoodNutritionOrderRule: UsFoodRule = {
   id: 'us-food/nutrition-order',
   title: 'The nutrition label lists its nutrients in the order 21 CFR 101.9(c) sets.',
   citation: CONTENT,
-  codes: [FDA_NUTRITION_OUT_OF_ORDER, FDA_NUTRITION_ORDER_MET],
+  codes: {
+    [FDA_NUTRITION_OUT_OF_ORDER]: ['violation'],
+    [FDA_NUTRITION_ORDER_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data }: UsFoodContext): Finding[] {
@@ -736,7 +739,10 @@ export const usFoodNutritionRoundingRule: UsFoodRule = {
   title: 'Declared amounts are rounded as 21 CFR 101.9(c) requires.',
   citation: CONTENT,
   citations: ROUNDING_CITATIONS,
-  codes: [FDA_NUTRITION_ROUNDING_WRONG, FDA_NUTRITION_ROUNDING_MET],
+  codes: {
+    [FDA_NUTRITION_ROUNDING_WRONG]: ['violation'],
+    [FDA_NUTRITION_ROUNDING_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data }: UsFoodContext): Finding[] {
@@ -803,7 +809,10 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
   title: 'The percent Daily Value column is computed and rounded as 21 CFR 101.9 requires.',
   citation: PERCENT,
   citations: [PERCENT, VITAMIN_PERCENT],
-  codes: [FDA_NUTRITION_PERCENT_DV_WRONG, FDA_NUTRITION_PERCENT_DV_MET],
+  codes: {
+    [FDA_NUTRITION_PERCENT_DV_WRONG]: ['violation'],
+    [FDA_NUTRITION_PERCENT_DV_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data, layout }: UsFoodContext): Finding[] {
@@ -991,7 +1000,10 @@ export const usFoodServingSizeRule: UsFoodRule = {
   id: 'us-food/serving-size',
   title: 'The nutrition label declares a serving size.',
   citation: SERVING_SIZE,
-  codes: [FDA_SERVING_SIZE_MISSING, FDA_SERVING_SIZE_MET],
+  codes: {
+    [FDA_SERVING_SIZE_MISSING]: ['violation'],
+    [FDA_SERVING_SIZE_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data, layout }: UsFoodContext): Finding[] {

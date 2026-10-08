@@ -103,13 +103,13 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     'A dual-column panel declares both forms, heads its columns, separates them and gives both equal prominence.',
   citation: CITATION,
   citations: [CITATION, HEADINGS, ...Object.values(COLUMN_PARAGRAPHS)],
-  codes: [
-    FDA_DUAL_COLUMN_HEADINGS_MISSING,
-    FDA_DUAL_COLUMN_NOT_SEPARATED,
-    FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE,
-    FDA_DUAL_COLUMN_INCOMPLETE,
-    FDA_DUAL_COLUMN_FORM_MET,
-  ],
+  codes: {
+    [FDA_DUAL_COLUMN_HEADINGS_MISSING]: ['violation'],
+    [FDA_DUAL_COLUMN_NOT_SEPARATED]: ['violation'],
+    [FDA_DUAL_COLUMN_UNEQUAL_PROMINENCE]: ['violation'],
+    [FDA_DUAL_COLUMN_INCOMPLETE]: ['violation'],
+    [FDA_DUAL_COLUMN_FORM_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   /**

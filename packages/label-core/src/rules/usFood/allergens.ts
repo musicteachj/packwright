@@ -141,12 +141,12 @@ export const usFoodAllergenRule: UsFoodRule = {
   title: 'Every major food allergen is declared, naming the food source the Act requires.',
   citation: CITATION,
   citations: [CITATION, SPECIFIC],
-  codes: [
-    FDA_ALLERGEN_NOT_DECLARED,
-    FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
-    FDA_ALLERGEN_DECLARATION_UNCONFIRMED,
-    FDA_ALLERGEN_DECLARED_MET,
-  ],
+  codes: {
+    [FDA_ALLERGEN_NOT_DECLARED]: ['violation'],
+    [FDA_ALLERGEN_SOURCE_NOT_SPECIFIC]: ['violation'],
+    [FDA_ALLERGEN_DECLARATION_UNCONFIRMED]: ['advisory'],
+    [FDA_ALLERGEN_DECLARED_MET]: ['pass'],
+  },
   appliesTo: 'us-food',
 
   check({ data, layout }: UsFoodContext): Finding[] {

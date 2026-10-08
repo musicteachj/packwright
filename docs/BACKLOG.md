@@ -690,6 +690,41 @@ Recorded as reviewer claims rather than as facts. Each is checked before it is p
 
 ---
 
+## The rule catalogue's severities
+
+**Two guidance codes are declared from reading, not from observation.** `GHS_PICTOGRAM_PRECEDENCE_OPTIONAL`
+and `GHS_SMALL_CONTAINER_AVAILABLE` are reached by no fixture and no sweep document, so `severities.test.ts`
+lists them as unreached alongside the three pass codes in "Four pass codes are reached by no fixture",
+under the phase 7 review. Each is emitted only as `'guidance'`, which is
+what it declares: `GHS_SMALL_CONTAINER_AVAILABLE` as a literal, and `GHS_PICTOGRAM_PRECEDENCE_OPTIONAL` from
+a ternary whose condition also chooses the code, so its other branch is a different code. A sweep document for each would move them from read to observed.
+Neither has a fixture, because the coverage checks treat them as non-failures — see the next entry.
+
+**The fixture-coverage checks still guess what a failure is from a code's name.** `ghsRules.test.ts`,
+`usFoodRules.test.ts` and `rules.test.ts` decide which codes need a known-bad fixture with a suffix pattern
+— `_MET`, `_COMPLETE`, `_OPTIONAL`, `_AVAILABLE` and so on. Now that every code declares its severities,
+that question has a real answer: a code needs a fixture if it declares anything but `pass` (and, by the
+current convention, `guidance`). A failure code that happened to end in `_COMPLETE` would be excused from
+fixtures today without anyone deciding so. Not changed with the declarations, because it alters which codes
+the suite demands fixtures for, and that wants its own look at whether `guidance` should be exempt at all.
+
+**The type system could check every severity, and does not.** Raised by `/code-review high` on PR #63.
+`DeclaredCodes` is a `Record<string, …>` and `finding()` takes any code and severity, so a declaration is held
+to the rule only on the branches the sweep reaches — which is how `GHS_LABEL_BELOW_MINIMUM_SIZE` came to be
+declared `violation` alone. Making `Rule` generic over its codes map would let `finding(rule, { code, severity
+})` compile only for a declared pair, and would check a computed severity such as `isUs ? 'blocking' :
+'violation'` on both branches without a list of unreached codes. Not done here: every rule is an object typed
+by annotation that refers to itself inside `check`, so each would need `satisfies` and a literal codes map,
+and self-reference under inference is where that tends to fall over. It is a change to all 35 rules for its
+own pull request.
+
+**A severity's mark is built by hand in four templates.** `FindingItem.vue`, `FindingsRail.vue`,
+`DesignView.vue` and now `RulesView.vue` each set the icon `aria-hidden` beside the word in the severity's
+colour. A `SeverityMark` component would make a change to that treatment one edit rather than four. Noted by
+the same review.
+
+---
+
 ## From the stage 1 migration
 
 **No field in any rail is marked required, and the migration is not the place to change that.** There is no
@@ -1130,6 +1165,12 @@ mandatory before they could expect an (e)(6) citation, and a stated duty with a 
 certifies. It is worth noticing that it is a pass now issued on three known-bad documents, and correctly — the
 mandate rule asks whether a column is present, the form rules report that it is incomplete, and the two answers
 do not contradict. Four remain.
+
+**`FDA_NET_QUANTITY_METRIC_NOT_REQUIRED` is now reached by the sweep**, from a random-package document in
+`PERMISSION_PATHS`. `/code-review high` on PR #63 noticed that `certification.test.ts` already reached it
+from a document of its own, so the sweep — which the citation, certification and severity checks all read —
+never saw it. Three remain, all unreachable for the `glyphDrawn` reason above: `GHS_PICTOGRAM_COMPLETE`,
+`GHS_PICTOGRAM_SET_MATCHES` and `GHS_SMALL_CONTAINER_COMPLETE`.
 
 **~~`us-food/nutrition-format`'s docblock and its behaviour disagree about (d)(11)(iii).~~ They do not, and
 this entry was wrong.** It recorded a disagreement while declining to read the paragraph, which `CLAUDE.md`

@@ -143,6 +143,22 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
     },
   },
   {
+    // The other severity this code carries. Table 1.3 qualifies only its first
+    // band's label size with "If possible", which is a strong recommendation
+    // rather than a requirement — and no fixture reached it, so a declaration of
+    // `violation` alone passed every test while misdescribing the code.
+    name: 'a label smaller than the best-effort size for a small package',
+    defect:
+      'A 1-litre package should, if possible, carry at least 52 × 74 mm; this label is 40 × 60 mm.',
+    data: { ...BASE, capacityL: 1, hazards: [HAZARDS.flammableLiquid] },
+    stock: { widthMm: 40, heightMm: 60, marginMm: 3 },
+    expected: {
+      code: GHS_LABEL_BELOW_MINIMUM_SIZE,
+      severity: 'advisory',
+      citation: 'Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.4, Table 1.3',
+    },
+  },
+  {
     name: 'a pictogram below the minimum for its band',
     defect: 'A 5-litre package requires 23 mm pictograms; these are drawn at 8 mm.',
     data: { ...BASE, hazards: [HAZARDS.flammableLiquid], pictogramSideMm: 8 },
