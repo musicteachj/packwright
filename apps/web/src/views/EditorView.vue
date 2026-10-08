@@ -163,10 +163,22 @@ const canvasTitle = computed(() => {
   if (store.labelType === 'us-food') {
     return `US food label for ${store.foodData.statementOfIdentity}`
   }
-  return store.layout?.symbols[0]
-    ? `UPC-A label for GTIN ${store.layout.symbols[0].value}`
-    : 'Label with no barcode drawn'
+  if (!store.layout?.symbols[0]) return 'Label with no barcode drawn'
+  const label = `UPC-A label for GTIN ${store.layout.symbols[0].value}`
+  // The placeholder is drawn without its bars; the title says so, as the landing page's does.
+  if (store.encoderFailed && store.encoderPending) return `${label}, its bars could not be loaded`
+  return store.encoderPending ? `${label}, its bars still loading` : label
 })
+
+/**
+ * Export waits for the barcode to be judged.
+ *
+ * Findings are held back until the encoder is here, so `hasBlocking` reads false and the
+ * "non-compliant as drawn" confirm was skipped — while the server, which has its own
+ * encoder, would print the label anyway. A non-compliant PDF downloaded with no warning,
+ * on exactly the label the rail could not judge. Found by review.
+ */
+const exportWaitsForEncoder = computed(() => store.encoderPending)
 
 /**
  * Saving, and what the editor is saving *to*.
@@ -619,8 +631,18 @@ async function exportPdf() {
         <button
           type="button"
           :class="[BUTTON, 'px-3 py-1.5 text-xs']"
-          :disabled="opening !== null || exporting || !store.layout || cannotExport"
-          :title="cannotExport ? exportBlockedReason : undefined"
+          :disabled="
+            opening !== null || exporting || !store.layout || cannotExport || exportWaitsForEncoder
+          "
+          :title="
+            exportWaitsForEncoder
+              ? store.encoderFailed
+                ? 'The barcode encoder could not be loaded, so the label cannot be checked or exported. Reload the page to try again.'
+                : 'The barcode has not been checked yet, so it cannot be exported.'
+              : cannotExport
+                ? exportBlockedReason
+                : undefined
+          "
           @click="exportPdf"
         >
           {{ exporting ? 'Exporting…' : 'Export PDF' }}
@@ -712,7 +734,14 @@ async function exportPdf() {
           :uncertifiable="store.uncertifiable"
           :declined="store.declined"
           :selected-element-id="store.selectedElementId"
-          :pending="opening !== null"
+          :pending="opening !== null || store.encoderPending"
+          :pending-text="
+            opening !== null
+              ? 'Opening this label…'
+              : store.encoderFailed
+                ? 'The barcode encoder could not be loaded. Reload the page to try again.'
+                : 'Loading the barcode encoder…'
+          "
           @select="selectFromFindings($event)"
           @state="stateFact($event)"
         />

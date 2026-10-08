@@ -10,6 +10,30 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The barcode encoder loads when a barcode is first drawn, not with the page.** bwip-js is 934,645 bytes raw
+  and 250,944 gzipped. The landing page and the editor's store imported it statically, so `/`, `/audit` and
+  every editor route fetched it before rendering, including an editor opened on a GHS or food label. It now
+  loads through one dynamic import in `barcodeEncoder.ts`, at most once per page, when a GS1 layout is first
+  asked for. `/rules`, `/labels` and `/audit` never fetch it.
+
+  **The placeholder is drawn by the real engine.** label-core lays the symbol out from its own verified
+  tables: module width, quiet zones, bar heights and digit positions. bwip-js only says which modules are dark.
+  So the placeholder hands the engine a stand-in that reports one span of exactly the verified width, lets it
+  compute every figure as usual, and removes the symbol's ink. The frame, dimensions, X-dimension and clear
+  space are the engine's own, so the figure holds the same box at every width, by construction. A browser test
+  holds the chunk back at 1440×900, where the landing barcode is above the fold, and measures that neither the
+  figure nor the section below it moves when the bars arrive.
+
+  **Nothing is judged while it loads, and nothing is exported.** The editor's rail says "Loading the barcode
+  encoder…" and runs no rule, pass or decline against a symbol with no bars. Export waits too: with findings
+  held back its "non-compliant as drawn" confirm would have been skipped, while the server, which has its own
+  encoder, printed the label anyway. Review caught that.
+
+  **A failed load says so rather than waiting.** A browser keeps a failed module fetch, so asking again in the
+  same page does not help. The first version did ask again, and the editor said "Loading…" indefinitely. Now
+  the rail says "The barcode encoder could not be loaded. Reload the page to try again.", and the landing
+  label's title says its bars could not be loaded.
+
 - **A package owing both second columns is told the limit is the tool's, not blamed for it.** 21 CFR
   101.9(b)(12)(i) asks for a second column for the entire package and (b)(2)(i)(D) for one per individual unit.
   Both can reach the same package, which per 81 FR 34000 happens only where the package is itself one unit in

@@ -37,8 +37,13 @@ import {
   type UpcALabelData,
   type UsFoodLabelData,
 } from '@packwright/label-core'
-import * as bwip from 'bwip-js/generic'
 import { defineStore } from 'pinia'
+import {
+  barcodeEncoder,
+  barcodeEncoderFailed,
+  loadBarcodeEncoder,
+  placeholderUpcALayout,
+} from '../barcodeEncoder'
 import { sameDocument, type DocumentSnapshot } from './documentIdentity'
 import { uncheckableIn } from '../uncheckable'
 import { computed, reactive, ref, watch } from 'vue'
@@ -184,9 +189,20 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    */
   const resolved = computed<{ layout: ResolvedLayout | null; error: string | null }>(() => {
     try {
+      const encoder = barcodeEncoder.value
+      // Asked for here, where a GS1 layout is first needed, rather than when the store is
+      // made: its default type is GS1, and `/audit` makes it for the hand-off to the editor
+      // without ever drawing a barcode — a watch on the type fetched 934 KB there for
+      // nothing. Loading is once per page, so asking again is free; a failed load is
+      // recorded, and the editor says so rather than waiting.
+      if (labelType.value === 'gs1-retail' && encoder === null) {
+        void loadBarcodeEncoder().catch(() => {})
+      }
       const layout =
         labelType.value === 'gs1-retail'
-          ? layOutUpcALabel(bwip as never, { data, stock })
+          ? encoder === null
+            ? placeholderUpcALayout({ data, stock })
+            : layOutUpcALabel(encoder, { data, stock })
           : labelType.value === 'ghs-chemical'
             ? layOutGhsLabel({ data: ghsData, stock: ghsStock })
             : layOutUsFoodLabel({ data: foodData, stock: foodStock })
@@ -201,6 +217,24 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   const layoutError = computed(() => resolved.value.error)
 
   /**
+   * Whether the label on screen is a barcode still waiting for its encoder.
+   *
+   * bwip-js loads when a GS1 label is first drawn rather than with the editor, which
+   * used to fetch it for every label type. Until it arrives the canvas shows the engine's
+   * own placeholder — the real layout with the bars left out — and **nothing is judged**:
+   * no finding, no pass and no check that did not run. A verdict about a symbol with no
+   * bars would be a verdict about something not drawn. (What cannot be checked is read
+   * from the layout's omissions and symbols, which the placeholder shares with the real
+   * layout, so it is true either way; the rail shows none of it while it waits.)
+   */
+  const encoderPending = computed(
+    () => labelType.value === 'gs1-retail' && barcodeEncoder.value === null,
+  )
+
+  /** Whether the encoder failed to load, so the wait will not end without a reload. */
+  const encoderFailed = computed(() => barcodeEncoderFailed.value)
+
+  /**
    * The one context both `findings` and `declined` are answered from.
    *
    * Narrowed on `labelType` rather than cast, matching how `runRules` dispatches.
@@ -211,7 +245,7 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    */
   const ruleContext = computed<RuleContext | undefined>(() => {
     const resolvedLayout = layout.value
-    if (!resolvedLayout) return undefined
+    if (!resolvedLayout || encoderPending.value) return undefined
     switch (labelType.value) {
       case 'gs1-retail':
         return { labelType: 'gs1-retail', data, stock, layout: resolvedLayout }
@@ -637,6 +671,8 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
   return {
     savedId,
     documentGeneration,
+    encoderPending,
+    encoderFailed,
     savedName,
     isDirty,
     snapshot,
