@@ -195,6 +195,7 @@ export interface Rule<TContext extends RuleContext = RuleContext> {
  */
 export type DeclinedFact =
   | 'hazards'
+  | 'ingredients.percentByWeight'
   | 'nutritionFacts.referenceAmount'
   | 'nutritionFacts.packageContent'
   | 'nutritionFacts.unitContent'

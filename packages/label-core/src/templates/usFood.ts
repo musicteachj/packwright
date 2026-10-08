@@ -324,8 +324,18 @@ export interface UsFoodNetQuantity {
 export interface UsFoodIngredient {
   /** Common or usual name, and a specific one — 21 CFR 101.4(b). */
   name: string
-  /** Share of the finished food by weight, as a percentage. */
-  percentByWeight: number
+  /**
+   * Share of the finished food by weight, as a percentage — where the labeller has
+   * stated one.
+   *
+   * Optional because "not stated" is a real answer and had no way to be given. The
+   * field was a required number, so the editor wrote a cleared box as `0` and seeded
+   * every new row with it, and 101.4(a)(1)'s order was then judged against a figure
+   * nobody gave: "almonds is 7% … listed after oats at 0%", reported against a label
+   * whose oats are 90 percent of it. A rule needing the figure stands down where it
+   * is missing, and says so.
+   */
+  percentByWeight?: number
   /**
    * The major food allergen this ingredient is, or contains protein from —
    * FD&C Act §201(qq). A fact about the recipe, which is why it sits on the

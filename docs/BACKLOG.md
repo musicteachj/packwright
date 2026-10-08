@@ -621,8 +621,8 @@ unlikely and the declared second column has no percentage field to ask about any
 
 Recorded as reviewer claims rather than as facts. Each is checked before it is picked up. Six of the seven
 open here were reproduced and settled on 2026-10-08, on `fix/reported-not-verified`: four were real and are
-fixed, one was real and latent and is fixed, and one was not a defect. The seventh, the editor rail, is
-below.
+fixed, one was real and latent and is fixed, and one was not a defect. The seventh, the editor rail's five
+items, were all real and are fixed on `fix/editor-rail-reported`.
 
 - ~~**The two small-package displays abbreviate the footnote in two ways, and neither matches the regulation's
   string.**~~ **Struck — reproduced, and not a defect.** The tabular display prints `*% DV = % Daily Value` and
@@ -699,13 +699,54 @@ below.
   and six passes keyed to the panel standing. The engine now records one at the panel's own right edge, so those
   passes are withheld; the format entitlement, a fact about the document, survives. It measures the printed
   ink in the face each run is set in, since a row's box is measured in Regular and its bold text is wider.
-- **Editor rail, five items.** The type-size override input unmounts itself mid-edit when the box is emptied
-  (its `v-if` reads the same key its setter deletes), so the only route to an undersized declaration is
-  overtyping without ever clearing; a blank ingredient percent is written as `0` rather than unset, so
-  predominance order is judged against a figure the user never stated; `min`/`max` on that percent are not
-  enforced on typed input, so out-of-range values reach the API as a raw 400; `setAllergen` re-asserts
-  `declareInline: true` on every allergen change, silently restoring a parenthetical the user turned off; and
-  toggling the second-column checkbox off `delete`s `facts.columns`, discarding every figure typed into it.
+- ~~**Editor rail, five items.**~~ **All five reproduced in the browser on 2026-10-08, and fixed** on
+  `fix/editor-rail-reported`; `e2e/the-food-rail.spec.ts` carries one test each.
+  - **The type-size override unmounted itself when its box was emptied** — measured: the box gone and the
+    checkbox unticked. A cleared override is now held for the document it was cleared on.
+  - **A blank ingredient percentage was written as 0**, and that was worse than reported: clearing oats on the
+    opening label drew "almonds is 7% … listed after whole grain rolled oats at 0%", a violation from a figure
+    nobody gave, and every new row was seeded at 0. The model had no way to say "not stated", so
+    `percentByWeight` is now optional in `label-core` and the API. The order and threshold rules judge the
+    figures a label states — an inversion between two of them is still reported — and stand down where one is
+    missing, naming the ingredients under "checks that did not run". The threshold rule had counted an unstated
+    figure as within its threshold.
+  - **An out-of-range percentage reached the API as a raw 400** ("Invalid label document: …percentByWeight Too
+    big"). It is refused in the form now, the way stage 4's measurements are: the box keeps what was typed, the
+    document holds nothing, and a sentence under the row and a line through the announcer say so. Per row — the
+    first version held one refusal, and a screenshot showed it vanishing from a box when another row was edited.
+  - **Changing an ingredient's allergen re-ticked "name the source in parentheses".** It now keeps the user's
+    choice when one allergen replaces another, and defaults to on only where an allergen first arrives.
+  - **Unticking the second column discarded every figure typed into it.** The rail now sets them aside for the
+    document and restores them when the column is turned on again. They are not left in the document: a
+    single-column panel's leftover second-column percentage is reported by the engine as unprinted, rightly,
+    which is what the first version of this fix ran into.
+
+  **Found by the review of those fixes, and left: an assortment label's order check can stand down in silence.**
+  `us-food/ingredient-list` judges an assortment claim's statement and then the list under it, in one `check`.
+  A `Rule` may judge or decline, never both — `rules.test.ts` holds that across every fixture — so where the
+  statement is judged and a listed ingredient states no percentage, the order goes unjudged and is not named
+  under "checks that did not run". No pass is issued, so nothing is cleared that should not be. The fix is to
+  give the order check a rule of its own, so it can decline while the statement is judged. This change is what
+  makes the gap reachable — before it, every percentage was a number — which is the strongest reason to do
+  the split before deployment rather than after.
+
+  **And four more from the `/code-review high` on PR #65, recorded rather than fixed:**
+
+  - **Labels saved before this change still carry the zeros the old rail wrote.** A row added and named but
+    never weighed was seeded at 0, and the order rule reads those as stated: oats 90 then two seeded rows passes
+    as "3 ingredients run in descending order". Nothing has been deployed — phase 8 is deployment — so no saved
+    label a user holds carries them; only development databases do. Worth a sentence in the deployment
+    checklist, not a migration.
+  - **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** The same defect this
+    change fixed for percentages, on the field it touched; `optionalNumber` accepts any finite figure. It wants
+    the refusal the measurements have, which is a change to that guard rather than to the override.
+  - **Three pieces of rail state each re-implement "only while `documentGeneration` matches" by hand** — the
+    held override, the refused percentages and the set-aside second column — and each has to be cleared by hand
+    on every in-document reset. A `heldForDocument` helper, or a store-side scratch map cleared when the
+    generation moves, would put the rule in one place.
+  - **The percentage refusal is a second refusal mechanism** beside `refusableNumber`, `REFUSED_MEASUREMENT` and
+    `sayRefusal`, retiring on a different signal. A per-row `refusableNumber` would share one path. Not done
+    here because `refusableNumber` holds one figure per field and the rows are a list.
 - ~~**`generate-font-metrics.mjs`'s missing-glyph guards are dead.**~~ **Fixed.** Reproduced: fontkit maps an
   unmapped code point to glyph 0, `.notdef`, advance 472 units in Plex Sans. The measurements moved into
   `scripts/fontMetrics.mjs`, which asks `hasGlyphForCodePoint`, and a `scripts` vitest project holds them to it.

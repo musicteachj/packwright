@@ -371,7 +371,9 @@ export const NetQuantitySchema = z.object({
 
 export const IngredientSchema = z.object({
   name: NON_COMPLIANT_BUT_WELL_FORMED,
-  percentByWeight: z.number().min(0).max(100),
+  // Optional, as in `UsFoodIngredient`: a percentage the labeller has not stated is
+  // absent, not zero. The bounds still hold where one is given.
+  percentByWeight: z.number().min(0).max(100).optional(),
   // Derived from label-core's own list rather than restated. An allergen id one
   // character off would be discarded silently and the label would declare
   // nothing while reporting a clean allergen check — the exact false clearance
@@ -419,7 +421,9 @@ export function toColumns(
 export function toIngredient(ingredient: z.infer<typeof IngredientSchema>): UsFoodIngredient {
   return {
     name: ingredient.name,
-    percentByWeight: ingredient.percentByWeight,
+    ...(ingredient.percentByWeight === undefined
+      ? {}
+      : { percentByWeight: ingredient.percentByWeight }),
     ...(ingredient.allergen === undefined ? {} : { allergen: ingredient.allergen }),
     ...(ingredient.allergenSpecificType === undefined
       ? {}

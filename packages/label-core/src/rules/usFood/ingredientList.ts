@@ -35,13 +35,15 @@
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type {
   UsFoodAssortmentExemption,
+  UsFoodIngredient,
   UsFoodIngredientsExemptionKind,
+  UsFoodLabelData,
 } from '../../templates/usFood'
 import type { TextPrimitive } from '../../layout/types'
 import { INGREDIENT_THRESHOLD_PERCENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork, untitled } from '../finding'
-import type { UsFoodContext, UsFoodRule } from '../types'
+import type { Decline, UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_INGREDIENTS_MISSING = 'FDA_INGREDIENTS_MISSING'
 export const FDA_INGREDIENT_NAME_MISSING = 'FDA_INGREDIENT_NAME_MISSING'
@@ -86,6 +88,37 @@ const EXEMPTIONS: Record<
 /** § 101.100(a)(1), the one ingredient exemption whose condition is on the label. */
 const ASSORTMENT = untitled(EXEMPTION, '21 CFR 101.100(a)(1)')
 
+/**
+ * How many entries sit behind the quantifying statement, clamped to the list.
+ *
+ * One clamp, read by both rules and both of their declines, so the rows a decline asks
+ * about are the rows its check judged. It was written out four times.
+ */
+const groupedCountOf = (data: UsFoodLabelData): number =>
+  Math.min(Math.max(0, data.ingredientThreshold?.count ?? 0), (data.ingredients ?? []).length)
+
+/** An ingredient whose share of the food by weight the label states. */
+type Weighed = UsFoodIngredient & { percentByWeight: number }
+const isWeighed = (ingredient: UsFoodIngredient): ingredient is Weighed =>
+  ingredient.percentByWeight !== undefined
+
+/** "oats", "oats and salt", "oats, salt and sugar" — or the row's place where it has no name. */
+const namesOf = (unweighed: readonly { ingredient: UsFoodIngredient; index: number }[]): string => {
+  const names = unweighed.map(({ ingredient, index }) =>
+    ingredient.name.trim() === '' ? `ingredient ${index + 1}` : `"${ingredient.name.trim()}"`,
+  )
+  return names.length === 1
+    ? names[0]!
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]!}`
+}
+
+/** The entries in `range` the label states no percentage for, with their place in the list. */
+const unweighedIn = (ingredients: readonly UsFoodIngredient[], from: number, to: number) =>
+  ingredients
+    .map((ingredient, index) => ({ ingredient, index }))
+    .slice(from, to)
+    .filter(({ ingredient }) => !isWeighed(ingredient))
+
 export const usFoodIngredientListRule: UsFoodRule = {
   id: 'us-food/ingredient-list',
   title: 'The ingredient statement is present and in descending order of predominance by weight.',
@@ -107,6 +140,27 @@ export const usFoodIngredientListRule: UsFoodRule = {
     [FDA_ASSORTMENT_STATEMENT_INCOMPLETE]: ['violation'],
   },
   appliesTo: 'us-food',
+
+  /**
+   * The order cannot be judged while an ingredient it covers states no percentage.
+   *
+   * Only where the check found nothing to say: an inversion between two stated
+   * figures is reported whatever the rest are, and every other branch above it —
+   * an exemption, a missing or unnamed statement — has its own answer.
+   */
+  declines(context: UsFoodContext): Decline | undefined {
+    if (usFoodIngredientListRule.check(context).length > 0) return undefined
+    const ingredients = context.data.ingredients ?? []
+    const unweighed = unweighedIn(ingredients, 0, ingredients.length - groupedCountOf(context.data))
+    if (unweighed.length === 0) return undefined
+    return {
+      reason:
+        `Whether the ingredients run in descending order of predominance cannot be told while ` +
+        `${namesOf(unweighed)} ${unweighed.length === 1 ? 'states' : 'state'} no percentage by ` +
+        'weight. State a percentage for each ingredient and this check will run.',
+      wants: ['ingredients.percentByWeight'],
+    }
+  },
 
   check(context: UsFoodContext): Finding[] {
     const { data } = context
@@ -220,7 +274,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // then reported "0 ingredients run in descending order" as a pass, about a
     // list it had not looked at. The count reaches here from a form that never
     // lowered it on removal and an API that set no upper bound.
-    const grouped = Math.min(Math.max(0, data.ingredientThreshold?.count ?? 0), ingredients.length)
+    const grouped = groupedCountOf(data)
     const ordered = ingredients.slice(0, ingredients.length - grouped)
 
     // Every entry released from the ordering requirement leaves nothing for this
@@ -228,8 +282,13 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // rule is the one with something to say about a label like that.
     if (ordered.length === 0) return []
 
-    const inversions = ordered.flatMap((ingredient, index) => {
-      const next = ordered[index + 1]
+    // **Judged on the figures the label states.** An inversion between two stated
+    // figures is a defect whatever the unstated ones are, so it is still reported;
+    // the stated figures in order, with some missing, clear nothing — an unstated
+    // entry could belong anywhere in the run — and `declines` asks for them.
+    const weighed = ordered.filter(isWeighed)
+    const inversions = weighed.flatMap((ingredient, index) => {
+      const next = weighed[index + 1]
       return next !== undefined && next.percentByWeight > ingredient.percentByWeight
         ? [{ ingredient, next }]
         : []
@@ -253,6 +312,10 @@ export const usFoodIngredientListRule: UsFoodRule = {
         }),
       ]
     }
+
+    // A run of one is in order whatever it weighs, so its figure is never needed —
+    // and asking for it would hold up a single-ingredient label for nothing.
+    if (ordered.length > 1 && weighed.length < ordered.length) return []
 
     return [
       // 101.4(a)(1): the ingredients "shall be listed" in that order on the panel: the artwork.
@@ -386,6 +449,27 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
   },
   appliesTo: 'us-food',
 
+  /** As the order rule's: a grouped ingredient with no percentage cannot be held to the threshold. */
+  declines(context: UsFoodContext): Decline | undefined {
+    if (usFoodIngredientThresholdRule.check(context).length > 0) return undefined
+    const threshold = context.data.ingredientThreshold
+    const ingredients = context.data.ingredients ?? []
+    if (threshold === undefined || threshold.count <= 0) return undefined
+    const unweighed = unweighedIn(
+      ingredients,
+      ingredients.length - groupedCountOf(context.data),
+      ingredients.length,
+    )
+    if (unweighed.length === 0) return undefined
+    return {
+      reason:
+        `Whether every ingredient behind the ${threshold.percent} percent statement is within it ` +
+        `cannot be told while ${namesOf(unweighed)} ${unweighed.length === 1 ? 'states' : 'state'} ` +
+        'no percentage by weight. State a percentage for each and this check will run.',
+      wants: ['ingredients.percentByWeight'],
+    }
+  },
+
   check({ data }: UsFoodContext): Finding[] {
     const threshold = data.ingredientThreshold
     const ingredients = data.ingredients ?? []
@@ -410,10 +494,12 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
       ]
     }
 
-    const grouped = ingredients.slice(
-      Math.max(0, ingredients.length - Math.min(threshold.count, ingredients.length)),
-    )
-    const over = grouped.filter((ingredient) => ingredient.percentByWeight > threshold.percent)
+    const grouped = ingredients.slice(ingredients.length - groupedCountOf(data))
+    // An unstated figure is not one under the threshold. It compared as not-over, so
+    // a grouped ingredient with no percentage counted towards "none exceeding it".
+    const over = grouped
+      .filter(isWeighed)
+      .filter((ingredient) => ingredient.percentByWeight > threshold.percent)
 
     if (over.length > 0) {
       return over.map((ingredient) =>
@@ -432,6 +518,8 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
         }),
       )
     }
+
+    if (!grouped.every(isWeighed)) return []
 
     return [
       // (a)(2)'s permission turns on a listing "placed at the end" of the statement: the artwork.

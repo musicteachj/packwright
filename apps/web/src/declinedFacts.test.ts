@@ -61,6 +61,15 @@ const scenarios: Array<[string, (store: Store) => void]> = [
     },
   ],
   [
+    'a food label with an ingredient whose percentage was cleared',
+    (store) => {
+      store.labelType = 'us-food'
+      const [first, ...rest] = store.foodData.ingredients!
+      const { percentByWeight: _cleared, ...unweighed } = first!
+      store.foodData.ingredients = [unweighed, ...rest]
+    },
+  ],
+  [
     'a chemical label with no hazard classification',
     (store) => {
       store.labelType = 'ghs-chemical'

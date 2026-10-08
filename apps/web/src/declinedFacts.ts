@@ -28,6 +28,8 @@ export interface FactField {
 
 export const DECLINED_FACT_FIELDS: Readonly<Record<DeclinedFact, FactField>> = {
   hazards: { fieldId: 'field-ghs-classification', name: 'Hazard classification' },
+  // The first percentage box with nothing in it; the section is what the page calls it.
+  'ingredients.percentByWeight': { fieldId: 'field-food-ingredients', name: 'Ingredients' },
   'nutritionFacts.referenceAmount': { fieldId: 'field-food-nf-racc', name: 'Reference amount' },
   'nutritionFacts.packageContent': {
     fieldId: 'field-food-nf-package-content',
