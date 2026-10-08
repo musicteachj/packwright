@@ -717,24 +717,24 @@ the field named, because it is heard away from the box it is about; the line goe
 answered or left empty. Copying the GTIN's conditional `live` was not done, for the reasons this entry
 gave, and `live` no longer exists to copy.
 
-**A failed open says the editor is showing a new document, and it is not.** `openFromRoute`'s catch writes
-"That label no longer exists. The editor is showing a new document." for a 404, but nothing detaches — so
-at `/labels/zzz999` the store still holds the previously opened label's `savedId` and `savedName`, and a
-Save from there issues a `PUT` over the record the user believes they navigated away from. That is the
-same bug the route watcher's own comment documents, reached through the error path rather than through
-the URL. Pre-existing and untouched by stage 4, which only changed when the panes are shown. Closing it
-is either `store.detach()` on a missing label or a sentence that is true, and the two are different
-products: one discards the document on screen, the other keeps it and says so.
+**~~A failed open says the editor is showing a new document, and it is not.~~ Fixed**, by making the
+sentence true rather than changing it: a failed open now detaches exactly as arriving at `/labels/new` does —
+the fields stay, nothing is attached, the name goes — so a Save creates a record rather than replacing the
+one left behind. For any failure, not only a 404: the label on screen is not the one the URL names, which is
+the only fact a Save needs. A non-404 message is framed as a sentence whatever the server sent.
 
-**A Save still in flight when the user moves to another label lands on that label.** `persist` awaits the
-write and then, unconditionally, calls `store.markSaved(saved.id, saved.name)` and
-`router.replace('/labels/<saved.id>')`. Navigate to another label while it is outstanding and, once that
-label has loaded, the save's resolution attaches it to the *old* record's id and moves the URL back to the
-old label — so the next Save writes the new label's content over the old one. Found by the phase's hedge
-review (`/code-review medium dev`), and pre-existing: stage 4 did not touch `persist`, and disabling Save
-during a pending open does not reach a save that started before the navigation. The fix is the one the
-pending open already uses — hold the request, and act on its result only if the editor is still holding
-the document that was saved — and it wants a deferred-promise test of the same shape.
+**~~A Save still in flight when the user moves to another label lands on that label.~~ Fixed** as the
+entry proposed, with the request-scoped shape the pending open uses: a Save records which document it was
+made about — `documentGeneration`, which the store moves whenever a label is opened or let go of — and if
+that has moved by the time it answers, its success is not applied: the record is still written, as asked,
+but the label now on screen is not told it is that record and the URL is not moved back. A failure is still
+said, naming the label it was for — a version that dropped it hid unwritten edits, and review caught it. A first version keyed on the route, and review
+showed a route can be returned to; a second review showed the generation had to move on every type change
+and when an open starts, not when it lands.
+
+Fixed alongside, unrecorded until found: `markSaved` took its baseline when the Save answered, so an edit
+made while it was out was marked saved, and the server's name was written back over a rename typed in the
+meantime. The baseline is now the payload that was sent, and the name is adopted only if unchanged.
 
 **~~The wait's live region is created with its text already in it.~~ Fixed in the same stage**, by not
 giving the wait a region at all. The panes stay mounted through it, the findings rail takes `pending`, and
@@ -756,6 +756,23 @@ once through the announcer at the application root. The patch this entry warned 
 editor's region on the pane — was not needed and was not taken, for the reason given: it would have moved
 the announcement from node to node as the panes changed. `e2e/the-responsive-collapse.spec.ts` now visits
 every narrow pane, which is how the old version missed this.
+
+**A Save answered after a quick trip away from its label and straight back is set aside.** `supersede`
+moves the generation when an open starts, and returning to the label already held — no second read — does
+not move it back, so a `PUT` on `/labels/abc` that answers after `/labels/def` and back is treated as stale.
+If it succeeded, the label reads "Unsaved changes" though the server holds that content; if it failed, the
+error is not shown. Conservative in the direction that loses nothing — the leave guards still defend every
+edit, and a second Save writes the same content again — which is why it is recorded rather than fixed with
+a generation that can be restored. Found by the review of the change that introduced `supersede`.
+
+**Two late Save answers still go astray, both without overwriting anything.** A new label's first Save,
+answered after a switch of label type and back, creates its record and leaves the editor attached to nothing,
+so a second Save creates an identical second record: the generation moved on the switch, though the document
+on screen is the same one again. Comparing the answer's label type with the type on screen would attach it
+in that order and still not in the other, which is why the mechanism was not reworked for it. And a Save that
+fails after the user has left the editor sets its error on an editor no longer on screen, so it is never
+seen — which was true before this change as well; the leave guards asked first, because the edits were
+still unsaved. Both found by review of the overwrite fixes.
 
 **The editor's header keeps naming the previous label while the next one is being opened.** The panes go,
 but the name field still reads "Granola 340g" and the chip beside it still reads "Saved" — a document

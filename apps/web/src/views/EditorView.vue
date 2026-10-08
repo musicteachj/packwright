@@ -195,22 +195,49 @@ async function persist(mode: 'replace' | 'create') {
   if (!canSave.value) return
   saving.value = true
   saveError.value = null
+  // **Which document this Save was made about, so its answer is only applied
+  // to that one.** A Save still in flight when the user moved to another label
+  // resolved onto that one: `markSaved` attached the label now on screen to the
+  // record just written, and `router.replace` moved the URL back to it — so the
+  // next Save wrote one label's content over another's. The record is still
+  // written, as asked; it is the label now on screen that must not be told it
+  // is that record. Keyed on the store's `documentGeneration`, not on the
+  // route: the first version compared paths, and a path can be returned to.
+  const madeAbout = store.documentGeneration
+  // The payload, kept: it is what the server will hold, so it is what "saved"
+  // means once the answer comes back — not whatever is on screen by then.
+  const sending = savedInput.value
   try {
     const saved =
       mode === 'replace' && store.savedId !== null
-        ? await replaceLabel(store.savedId, savedInput.value)
-        : await createLabel(savedInput.value)
-    store.markSaved(saved.id, saved.name)
+        ? await replaceLabel(store.savedId, sending)
+        : await createLabel(sending)
+    if (store.documentGeneration !== madeAbout) return
+    store.markSaved(saved.id, saved.name, sending)
     // The URL follows the document, so a reload lands on the same label and a
-    // copied link points at it.
-    if (route.params.id !== saved.id) await router.replace(`/labels/${saved.id}`)
+    // copied link points at it — while this editor is still the page. Leaving
+    // it moves no generation, because the store still holds the same document,
+    // so a Save answering after the user had gone to the audit view dragged
+    // them back here. The answer above is still recorded; only the navigation
+    // is no longer the Save's to make. Found by review.
+    if (stillHere && route.params.id !== saved.id) await router.replace(`/labels/${saved.id}`)
   } catch (caught) {
-    saveError.value =
+    const reason =
       caught instanceof SavedLabelError && caught.detail.length > 0
         ? `${caught.message}: ${caught.detail.map((d) => `${d.path} ${d.message}`).join('; ')}`
         : caught instanceof Error
           ? caught.message
           : 'The label could not be saved.'
+    // **A failure is said even once the user has moved on — naming the label
+    // it was for.** Dropped, the edits that were never written vanished without
+    // a word beside a header reading "Saved" for the next label; said plainly,
+    // it would read as that next label failing. A first version of this fix
+    // dropped it, and review found it worse than the defect it replaced.
+    saveError.value =
+      store.documentGeneration === madeAbout
+        ? reason
+        : `“${sending.name}” was not saved: ${reason.trim().replace(/[.!?]$/, '')}. ` +
+          'Its changes were not written.'
   } finally {
     saving.value = false
   }
@@ -248,6 +275,10 @@ async function openFromRoute(id: string) {
   const request = { id }
   loadError.value = null
   opening.value = request
+  // Anything in flight about the label being left is now stale — see
+  // `supersede`. The store's generation moves here rather than when the next
+  // label lands, which is too late for a Save that answers during the wait.
+  store.supersede()
   try {
     const saved = await readLabel(id)
     // Nobody is waiting for this one any more. Guarding only in the `finally`
@@ -266,16 +297,30 @@ async function openFromRoute(id: string) {
     // Same test, same reason: a failure nobody is waiting for is not an error
     // to put in front of the label that replaced it.
     if (opening.value !== request) return
+    // **Let go of whatever was attached, for any failure.** This said "the
+    // editor is showing a new document" and left the previous label attached,
+    // so the next Save issued a `PUT` over a record the user believed they had
+    // left — the bug the route watcher's `/labels/new` branch exists to
+    // prevent, reached through the error path. A 500 is not "no longer
+    // exists", but the label on screen is still not the one the URL names, and
+    // that is the only fact a Save needs. Detached exactly as `/labels/new`
+    // detaches: the fields stay, so nothing typed is lost, and nothing is
+    // attached, so a Save creates.
+    store.detach()
+    store.savedName = ''
+    // Framed the same way whatever arrives. The server's text may or may not
+    // end in a full stop ("Internal server error"), and a network failure is
+    // "Failed to fetch"; appended raw, a second sentence ran into the first.
+    const said = (caught instanceof Error ? caught.message : '').trim().replace(/[.!?]$/, '')
     loadError.value =
       caught instanceof SavedLabelError && caught.isMissing
         ? 'That label no longer exists. The editor is showing a new document.'
-        : caught instanceof Error
-          ? caught.message
-          : 'The label could not be opened.'
+        : `The label could not be opened${said === '' ? '' : `: ${said}`}. ` +
+          'The editor is showing a new document.'
   } finally {
     // Only if this read is still the one the editor is waiting on. A failed
-    // open falls through to the document already held, which is what
-    // `loadError` is there to explain.
+    // open falls through to the document already held, detached, which is
+    // what `loadError` is there to explain.
     if (opening.value === request) opening.value = null
   }
 }
@@ -335,6 +380,12 @@ const warnOnUnload = (event: BeforeUnloadEvent) => {
 
 onMounted(() => window.addEventListener('beforeunload', warnOnUnload))
 onBeforeUnmount(() => window.removeEventListener('beforeunload', warnOnUnload))
+
+/** Whether this editor is still the page — see the redirect at the end of `persist`. */
+let stillHere = true
+onBeforeUnmount(() => {
+  stillHere = false
+})
 
 onBeforeRouteLeave(() => {
   if (!store.isDirty) return true
