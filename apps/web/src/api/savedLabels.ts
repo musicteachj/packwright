@@ -54,6 +54,11 @@ export class SavedLabelError extends Error {
   get isMissing(): boolean {
     return this.status === 404
   }
+
+  /** A new label refused because the application already keeps as many as it will. */
+  get isAtCap(): boolean {
+    return this.status === 409
+  }
 }
 
 const BASE = '/api/labels'
@@ -81,38 +86,71 @@ async function request(path: string, init?: RequestInit): Promise<unknown> {
   throw new SavedLabelError(message, response.status, detail)
 }
 
-/** More pages than any real account has, so a broken cursor cannot spin forever. */
-const MAX_PAGES = 40
+/** How many labels the application keeps, and how many it holds now. */
+export interface LabelCount {
+  readonly cap: number
+  readonly count: number
+}
+
+export interface LabelList {
+  /** Newest first. */
+  readonly labels: SavedLabelSummary[]
+  /** `null` where the server did not say; nothing then shows a figure it lacks. */
+  readonly counted: LabelCount | null
+  /** The server had more than one page to give, so `labels` is not all of them. */
+  readonly truncated: boolean
+}
+
+/** As many as the cap, so one page is the whole list. */
+const LIST_LIMIT = 20
 
 /**
- * Every saved label, newest first, fetched a page at a time.
- *
- * The endpoint pages over a cursor now, because it used to return every label on
- * every call — a collection scan that grows without bound. **Following the cursor
- * rather than taking the first page is the point**: the list view is the only way
- * to open a saved label, so stopping at fifty would make the fifty-first
- * unreachable with nothing on screen to say the list had been cut short. Each
- * query is bounded and indexed; the total is not, which is the same total as
- * before and now costs the database far less to produce.
- *
- * A "load more" control would be better than fetching them all, and it is a
- * design decision rather than a client one — see `docs/BACKLOG.md`.
+ * The cap and count from a list response, or `null` where the body does not
+ * carry them — an older server, or something in front of it answering instead.
  */
-export const listLabels = async (): Promise<SavedLabelSummary[]> => {
-  const all: SavedLabelSummary[] = []
-  let before: string | undefined
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const query = before === undefined ? BASE : `${BASE}?before=${encodeURIComponent(before)}`
-    const answer = (await request(query)) as {
-      labels?: SavedLabelSummary[]
-      nextBefore?: string
-    }
-    all.push(...(answer.labels ?? []))
-    if (answer.nextBefore === undefined) break
-    before = answer.nextBefore
+const countIn = (answer: { cap?: unknown; count?: unknown }): LabelCount | null =>
+  typeof answer.cap === 'number' && typeof answer.count === 'number'
+    ? { cap: answer.cap, count: answer.count }
+    : null
+
+/**
+ * The saved labels, newest first, in **one** request.
+ *
+ * The client used to follow the cursor to the end, up to forty serial round
+ * trips, because stopping at the first page would have made the fifty-first
+ * label unreachable with nothing to say so. The application now keeps at most
+ * twenty, so the first page is everything there is — and if it ever is not,
+ * `truncated` says so and the list view says it aloud, rather than the
+ * walk carrying on in silence. A database from before the cap is the one case
+ * that reaches it.
+ *
+ * One request also closes a hole the walk had: a label saved between two of its
+ * page fetches sorted above the cursor and appeared on neither.
+ */
+export const listLabels = async (): Promise<LabelList> => {
+  const answer = (await request(`${BASE}?limit=${LIST_LIMIT}`)) as {
+    labels?: SavedLabelSummary[]
+    nextBefore?: string
+    cap?: unknown
+    count?: unknown
   }
-  return all
+  return {
+    labels: answer.labels ?? [],
+    counted: countIn(answer),
+    truncated: answer.nextBefore !== undefined,
+  }
 }
+
+/**
+ * The cap and the count alone, for the editor to know before it offers to save
+ * a new label. A one-row page, since the figures come with every page.
+ *
+ * `null` where the server did not say, and the caller then offers the save and
+ * lets the server refuse it: the server is the authority, and a guess here could
+ * only ever disable a button that would have worked.
+ */
+export const readLabelCount = async (): Promise<LabelCount | null> =>
+  countIn((await request(`${BASE}?limit=1`)) as { cap?: unknown; count?: unknown })
 
 export const readLabel = (id: string) => request(`${BASE}/${id}`) as Promise<SavedLabel>
 

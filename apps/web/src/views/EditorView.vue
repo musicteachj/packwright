@@ -30,7 +30,9 @@ import {
   SavedLabelError,
   createLabel,
   readLabel,
+  readLabelCount,
   replaceLabel,
+  type LabelCount,
   type SavedLabelInput,
 } from '../api/savedLabels'
 import EditorFormRail from '../components/EditorFormRail.vue'
@@ -204,6 +206,64 @@ const savedInput = computed(() => ({
 /** A label the schema will refuse for want of a name is refused here first. */
 const canSave = computed(() => savedInput.value.name.length > 0)
 
+/**
+ * How many labels the application holds against how many it keeps.
+ *
+ * Read so that Save as new can say *before* it is pressed that it would be
+ * refused. Save itself is not held back: for a new label it is the one way to
+ * hear the server's own sentence, and for an attached one it replaces, which the
+ * cap does not count. `null` until the server has said, and if it never does the
+ * button stays offered and the server refuses.
+ *
+ * Read again whenever the editor attaches to a different record, which is every
+ * open and every new label saved; after a refusal at the cap; and when the page
+ * comes back into view. **That last is what lets a disabled button recover.**
+ * The twenty are shared by every tab, and a label deleted in another left this
+ * one at "20 of 20" with Save as new held back and nothing able to press it —
+ * found by review. What remains is a label deleted elsewhere while this tab
+ * keeps the focus throughout, which the next return to it corrects. Each read is
+ * numbered and only the latest is kept, so two in flight cannot land in the
+ * wrong order.
+ */
+const labelCount = ref<LabelCount | null>(null)
+let countRead = 0
+async function readCount() {
+  const read = ++countRead
+  let counted: LabelCount | null = null
+  try {
+    counted = await readLabelCount()
+  } catch {
+    // Left unknown, and the server stays the authority.
+  }
+  if (read === countRead) labelCount.value = counted
+}
+watch(
+  () => store.savedId,
+  (id) => {
+    if (id !== null) void readCount()
+  },
+  { immediate: true },
+)
+const readCountOnReturn = () => {
+  if (document.visibilityState === 'visible' && store.savedId !== null) void readCount()
+}
+onMounted(() => {
+  window.addEventListener('focus', readCountOnReturn)
+  document.addEventListener('visibilitychange', readCountOnReturn)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('focus', readCountOnReturn)
+  document.removeEventListener('visibilitychange', readCountOnReturn)
+})
+const atCap = computed(
+  () => labelCount.value !== null && labelCount.value.count >= labelCount.value.cap,
+)
+const atCapReason = computed(() =>
+  labelCount.value === null
+    ? ''
+    : `${labelCount.value.count} of ${labelCount.value.cap} saved. Delete one to save as new.`,
+)
+
 async function persist(mode: 'replace' | 'create') {
   if (!canSave.value) return
   saving.value = true
@@ -235,6 +295,7 @@ async function persist(mode: 'replace' | 'create') {
     // is no longer the Save's to make. Found by review.
     if (stillHere && route.params.id !== saved.id) await router.replace(`/labels/${saved.id}`)
   } catch (caught) {
+    if (caught instanceof SavedLabelError && caught.isAtCap) void readCount()
     const reason =
       caught instanceof SavedLabelError && caught.detail.length > 0
         ? `${caught.message}: ${caught.detail.map((d) => `${d.path} ${d.message}`).join('; ')}`
@@ -579,7 +640,11 @@ async function exportPdf() {
         />
       </label>
 
-      <div class="flex min-w-0 shrink-0 items-center gap-4">
+      <!--
+        Wraps within the header rather than running past it. Unwrapped, the cap's
+        reason pushed Export off a 375 px screen — measured.
+      -->
+      <div class="flex max-w-full min-w-0 shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
         <span
           v-if="store.savedId !== null && opening === null"
           class="text-chrome-400 shrink-0 text-xs"
@@ -607,12 +672,25 @@ async function exportPdf() {
           v-if="store.savedId !== null"
           type="button"
           :class="[BUTTON, 'shrink-0 px-3 py-1 text-xs']"
-          :disabled="opening !== null || saving || !canSave"
+          :disabled="opening !== null || saving || !canSave || atCap"
+          :title="atCap ? atCapReason : undefined"
           data-save-as
           @click="persist('create')"
         >
           Save as new
         </button>
+        <!--
+          Said beside the button and not only in its title, which a disabled
+          button cannot be focused to reveal. Not live: nothing the user did just
+          now changed it.
+        -->
+        <p
+          v-if="store.savedId !== null && atCap"
+          class="text-chrome-300 max-w-xs text-xs"
+          data-save-as-reason
+        >
+          {{ atCapReason }}
+        </p>
         <p v-if="exportError" class="text-danger max-w-md text-xs">{{ exportError }}</p>
         <p v-else-if="cannotExport" class="text-chrome-300 max-w-md text-xs">
           Nothing to export — part of the label could not be drawn.
