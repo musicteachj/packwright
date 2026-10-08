@@ -72,6 +72,30 @@ describe('LabelDocumentInput', () => {
     expect(JSON.stringify(parsed.error?.issues)).toContain('cannot cover more entries')
   })
 
+  it('saves an ingredient whose percentage is not stated, and refuses one out of range', () => {
+    // Not stated is absent, not zero: the editor wrote a cleared box as 0 and the
+    // order rule judged it. An out-of-range figure is still refused here — the
+    // editor refuses it first now, so a user never meets this as a raw 400.
+    const withIngredients = (ingredients: unknown[]) =>
+      LabelDocumentInput.safeParse({
+        name: 'Granola',
+        labelType: 'us-food',
+        stock: STOCK,
+        data: {
+          statementOfIdentity: 'Oat and almond granola',
+          netQuantity: { inchPound: 'NET WT 12 OZ' },
+          container: { shape: 'rectangular', widthMm: 120, heightMm: 240 },
+          ingredients,
+        },
+      })
+    const unstated = withIngredients([{ name: 'oats' }, { name: 'salt', percentByWeight: 1 }])
+    expect(unstated.success).toBe(true)
+    if (unstated.success && unstated.data.labelType === 'us-food') {
+      expect(unstated.data.data.ingredients?.[0]).toEqual({ name: 'oats' })
+    }
+    expect(withIngredients([{ name: 'oats', percentByWeight: 150 }]).success).toBe(false)
+  })
+
   it('names every label type the editor can produce', () => {
     expect([...LABEL_TYPES]).toEqual(['gs1-retail', 'ghs-chemical', 'us-food'])
   })

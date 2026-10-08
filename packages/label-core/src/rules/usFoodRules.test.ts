@@ -1357,6 +1357,81 @@ describe('findings from the stage 4 review', () => {
   })
 })
 
+describe('an ingredient whose percentage is not stated', () => {
+  // The editor wrote a cleared percentage box as 0 and seeded every new row with it,
+  // because the field was a required number. Clearing oats' figure on the opening
+  // label then read: "almonds is 7% of the food and is listed after whole grain
+  // rolled oats at 0%" — a violation from a figure nobody gave. Measured 2026-10-08.
+  const stock = US_FOOD_CONFORMANT.stock
+  const without = (blank: readonly number[], extra: Partial<UsFoodLabelData> = {}) =>
+    ({
+      ...US_FOOD_CONFORMANT.data,
+      ...extra,
+      ingredients: (US_FOOD_CONFORMANT.data.ingredients ?? []).map((ingredient, index) => {
+        if (!blank.includes(index)) return { ...ingredient }
+        const { percentByWeight: _taken, ...rest } = ingredient
+        return rest
+      }),
+    }) as UsFoodLabelData
+  const contextOf = (data: UsFoodLabelData) => ({
+    labelType: 'us-food' as const,
+    data,
+    stock,
+    layout: layOutUsFoodLabel({ data, stock }),
+  })
+
+  it('is not judged as zero, and the order is neither reported nor cleared', () => {
+    const data = without([0])
+    const codes = findingsFor(data, stock).map((f) => f.code)
+    expect(codes).not.toContain(FDA_INGREDIENTS_OUT_OF_ORDER)
+    expect(codes).not.toContain(FDA_INGREDIENTS_ORDER_MET)
+    const declined = declinedChecks(contextOf(data)).find(
+      (d) => d.ruleId === usFoodIngredientListRule.id,
+    )
+    expect(declined?.wants).toEqual(['ingredients.percentByWeight'])
+    expect(declined?.reason).toContain(`"${US_FOOD_CONFORMANT.data.ingredients![0]!.name}"`)
+  })
+
+  it('is not asked for where one ingredient is the whole run', () => {
+    // One entry is in descending order whatever it weighs, so its figure cannot
+    // change the answer — and new rows now start with none. Found by review.
+    const { ingredientThreshold: _grouping, ...data } = US_FOOD_CONFORMANT.data
+    const single = { ...data, ingredients: [{ name: 'almonds' }] } as UsFoodLabelData
+    expect(findingsFor(single, stock).map((f) => f.code)).toContain(FDA_INGREDIENTS_ORDER_MET)
+    expect(
+      declinedChecks(contextOf(single)).find((d) => d.ruleId === usFoodIngredientListRule.id),
+    ).toBeUndefined()
+  })
+
+  it('does not hide an inversion between two figures the label does state', () => {
+    // Whatever the unstated one is, the second stated figure exceeding the first
+    // is out of order.
+    // Without the conformant label's quantifying statement, which would put the last
+    // two outside the ordered run: oats 90, almonds unstated, sugar 2, salt 95.
+    const { ingredientThreshold: _grouping, ...data } = without([1])
+    const ingredients = data.ingredients!.map((ingredient, index) =>
+      index === 3 ? { ...ingredient, percentByWeight: 95 } : ingredient,
+    )
+    const findings = findingsFor({ ...data, ingredients }, stock)
+    const inversion = findings.find((f) => f.code === FDA_INGREDIENTS_OUT_OF_ORDER)
+    expect(inversion?.message).toMatch(
+      /"salt" is 95% of the food and is listed after "sugar" at 2%/,
+    )
+  })
+
+  it('is not counted as within a quantifying statement’s threshold', () => {
+    // It compared as "not over", so a grouped entry with no figure counted towards
+    // the pass that says none exceeds it.
+    const data = without([3], { ingredientThreshold: { count: 2, percent: 2 } })
+    const codes = findingsFor(data, stock).map((f) => f.code)
+    expect(codes).not.toContain('FDA_INGREDIENT_THRESHOLD_MET')
+    expect(
+      declinedChecks(contextOf(data)).find((d) => d.ruleId === 'us-food/ingredient-threshold')
+        ?.wants,
+    ).toEqual(['ingredients.percentByWeight'])
+  })
+})
+
 describe('rounding, judged on the figures the panel printed', () => {
   const stock = US_FOOD_CONFORMANT.stock
   const panel = US_FOOD_CONFORMANT.data.nutritionFacts!

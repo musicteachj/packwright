@@ -55,6 +55,7 @@ import {
   type NutritionFormat,
   type MajorFoodAllergenId,
   type NutrientId,
+  type UsFoodIngredient,
   type UsFoodIngredientsExemptionKind,
   type UsFoodUnitContainerExemption,
   type UsFoodEggCartonExemption,
@@ -214,9 +215,23 @@ const metric = computed({
  * whatever is typed is drawn — which is the only way to produce the undersized
  * declaration the type-size rule exists to report.
  */
+/**
+ * A cleared override, held for the document it was cleared on.
+ *
+ * Emptying the size box deletes the figure — an absent size means the engine derives
+ * the compliant one — and the checkbox read the same key, so the keystroke that
+ * emptied the box also unticked the override and unmounted the box under the cursor.
+ * The only way to type a new size was to overtype the old one without ever clearing
+ * it. Held against the store's `documentGeneration`, so opening another label retires
+ * it rather than showing an empty override on a label that never asked for one.
+ */
+const overrideHeldIn = ref<number | null>(null)
+
 const overrideTypeSize = computed({
-  get: () => data.netQuantityFontSizeMm !== undefined,
+  get: () =>
+    data.netQuantityFontSizeMm !== undefined || overrideHeldIn.value === store.documentGeneration,
   set: (on: boolean) => {
+    overrideHeldIn.value = null
     // Rounded *up*. `toFixed` rounds to nearest, so an all-caps declaration
     // needing 6.823066 mm was seeded at 6.82 and reported too small the instant
     // the box was ticked — the same "taking control of the size breaks a
@@ -241,16 +256,91 @@ const anchor = computed({
  */
 const ingredients = computed(() => data.ingredients ?? [])
 
-function setIngredients(next: { name: string; percentByWeight: number }[]): void {
+function setIngredients(next: UsFoodIngredient[]): void {
   if (next.length === 0) delete data.ingredients
   else data.ingredients = next
 }
 
+/**
+ * What an ingredient's percentage box says when the figure typed is not one.
+ *
+ * Phrased like `REFUSED_MEASUREMENT`, and for the same reason borrows nothing from the
+ * severity vocabulary: this is the rail explaining its guard, not a finding.
+ */
+const REFUSED_PERCENTAGE =
+  'A percentage by weight is between 0 and 100, so this figure is not in this label. State one, or leave the box empty.'
+
+/**
+ * The percentage boxes whose figures were refused, by row, and what was typed in each.
+ *
+ * A percentage is optional: a blank is "not stated", which the order rule asks for
+ * rather than judging as zero. A figure outside 0 to 100 is refused the way stage 4's
+ * measurements are — the document holds nothing, the box keeps what was typed, and a
+ * sentence beside it and a line through the announcer say so — rather than reaching
+ * the API as a raw 400. Held against `documentGeneration`, and dropped when the rows
+ * move, so it cannot attach itself to another label or another row.
+ */
+const percentRefusals = ref<{ generation: number; typed: Readonly<Record<number, string>> }>({
+  generation: -1,
+  typed: {},
+})
+
+/**
+ * **Per row.** The first version held one, so typing in any other row's box retired
+ * it and the refused figure vanished from a box the user had not touched.
+ */
+const refusedTyped = (index: number): string | undefined =>
+  percentRefusals.value.generation === store.documentGeneration
+    ? percentRefusals.value.typed[index]
+    : undefined
+
+function forgetPercentRefusals(): void {
+  percentRefusals.value = { generation: -1, typed: {} }
+}
+
+const percentRefused = (index: number): boolean => refusedTyped(index) !== undefined
+
+/** The first ingredient stating no percentage, which a decline asking for them lands on. */
+const firstUnweighed = computed(() =>
+  ingredients.value.findIndex((ingredient) => ingredient.percentByWeight === undefined),
+)
+
+function setPercent(index: number, typed: string): void {
+  const figure = typed.trim() === '' ? undefined : Number(typed)
+  const accepted = figure !== undefined && Number.isFinite(figure) && figure >= 0 && figure <= 100
+  const current =
+    percentRefusals.value.generation === store.documentGeneration ? percentRefusals.value.typed : {}
+  const { [index]: _previous, ...others } = current
+  percentRefusals.value = {
+    generation: store.documentGeneration,
+    typed: figure !== undefined && !accepted ? { ...others, [index]: typed } : others,
+  }
+  setIngredients(
+    ingredients.value.map((entry, i) => {
+      if (i !== index) return { ...entry }
+      const { percentByWeight: _stated, ...rest } = entry
+      return accepted ? { ...rest, percentByWeight: figure } : rest
+    }),
+  )
+}
+
+// One line for the lot, each refused box named, so two at once read as two.
+useAnnouncement('refused:ingredient-percent', () =>
+  ingredients.value
+    .map((_, index) => index)
+    .filter(percentRefused)
+    .map((index) => `Ingredient ${index + 1} percent by weight: ${REFUSED_PERCENTAGE}`)
+    .join(' '),
+)
+
 function addIngredient(): void {
-  setIngredients([...ingredients.value.map((i) => ({ ...i })), { name: '', percentByWeight: 0 }])
+  // No percentage until one is stated. It was seeded at 0, which the order rule then
+  // judged as a figure the user had given. Refusals are kept: appending moves no row.
+  setIngredients([...ingredients.value.map((i) => ({ ...i })), { name: '' }])
 }
 
 function removeIngredient(index: number): void {
+  forgetPercentRefusals()
   const next = ingredients.value.filter((_, i) => i !== index).map((i) => ({ ...i }))
   setIngredients(next)
   // The grouped count has to come down with the list. Left alone it could cover
@@ -262,6 +352,7 @@ function removeIngredient(index: number): void {
 
 /** Moving an entry is how a compliant list is made non-compliant, deliberately. */
 function moveIngredient(index: number, by: number): void {
+  forgetPercentRefusals()
   const next = ingredients.value.map((i) => ({ ...i }))
   const target = index + by
   if (target < 0 || target >= next.length) return
@@ -439,7 +530,16 @@ function setAllergen(index: number, allergen: string): void {
       // `walnut pieces (cod)` — a fabricated food source name that the rule then
       // accepted, because as far as it could tell the label had declared one.
       const { allergenSpecificType: _stale, ...rest } = entry
-      return { ...rest, allergen: allergen as MajorFoodAllergenId, declareInline: true }
+      // Named inline by default where an allergen first arrives, and as the user left it
+      // when one allergen replaces another. It was set true on every change, so a source
+      // the user had chosen to name only in the Contains statement came back in
+      // parentheses the moment they corrected which allergen it was.
+      return {
+        ...rest,
+        allergen: allergen as MajorFoodAllergenId,
+        // `=== true`, as the checkbox and the engine read it: a missing key is off.
+        declareInline: entry.allergen === undefined ? true : entry.declareInline === true,
+      }
     }),
   )
 }
@@ -904,7 +1004,15 @@ const containerSurfaceAreaSqMmField = numberField(containerSurfaceAreaSqMm)
 const servingsPerContainer = optionalNumber(() => data.nutritionFacts, 'servingsPerContainer')
 const servingsPerContainerField = numberField(servingsPerContainer)
 const netQuantityFontSizeMm = optionalNumber(() => data, 'netQuantityFontSizeMm')
-const netQuantityFontSizeMmField = numberField(netQuantityFontSizeMm)
+const netQuantityFontSizeMmSized = numberField(netQuantityFontSizeMm)
+const netQuantityFontSizeMmField = computed<number | string>({
+  get: () => netQuantityFontSizeMmSized.value,
+  set: (next) => {
+    netQuantityFontSizeMmSized.value = next
+    overrideHeldIn.value =
+      netQuantityFontSizeMm.value === undefined ? store.documentGeneration : null
+  },
+})
 
 const typeScalePercent = computed({
   get: () => Math.round((data.nutritionFacts?.typeScale ?? 1) * 100),
@@ -1212,18 +1320,36 @@ const dualColumnExemption = (key: 'rawCommodityVoluntary' | 'variedWeight') =>
 const rawCommodityVoluntary = dualColumnExemption('rawCommodityVoluntary')
 const variedWeight = dualColumnExemption('variedWeight')
 
+/** A second column turned off, kept for the document it was turned off on. */
+const setAsideColumns = ref<{
+  generation: number
+  columns: NonNullable<NonNullable<typeof data.nutritionFacts>['columns']>
+} | null>(null)
+
 const hasSecondColumn = computed({
   get: () => data.nutritionFacts?.columns?.mode === 'dual',
   set: (on: boolean) => {
     const facts = data.nutritionFacts
     if (facts === undefined) return
-    if (on)
-      facts.columns = {
-        mode: 'dual',
-        basis: 'per-container',
-        headings: ['Per serving', 'Per container'],
+    // Off removes the column from the document and keeps what was typed into it here,
+    // for this document, so turning it on again brings the figures back. It deleted them
+    // outright, so every second-column figure went with one click. Kept by the rail
+    // rather than left in the document as a single-column panel's leftovers, because
+    // the engine rightly says aloud that a stated second-column figure is not printed
+    // — and a saved label should not carry figures nothing on it shows.
+    if (!on) {
+      if (facts.columns !== undefined) {
+        setAsideColumns.value = { generation: store.documentGeneration, columns: facts.columns }
       }
-    else delete facts.columns
+      delete facts.columns
+      return
+    }
+    const setAside = setAsideColumns.value
+    setAsideColumns.value = null
+    facts.columns =
+      setAside !== null && setAside.generation === store.documentGeneration
+        ? { ...setAside.columns, mode: 'dual' }
+        : { mode: 'dual', basis: 'per-container', headings: ['Per serving', 'Per container'] }
   },
 })
 
@@ -1474,7 +1600,7 @@ const packaging = computed({
       <div
         v-for="(ingredient, index) in ingredients"
         :key="index"
-        class="border-chrome-800 flex items-end gap-1 border-b pb-2"
+        class="border-chrome-800 flex flex-wrap items-end gap-1 border-b pb-2"
       >
         <TextField
           :id="`field-food-ing-name-${index}`"
@@ -1493,28 +1619,27 @@ const packaging = computed({
             )
           "
         />
-        <MeasurementField
-          :id="`field-food-ing-pct-${index}`"
-          class="w-20"
-          :label="`Ingredient ${index + 1} percent by weight`"
-          label-hidden
-          :value="ingredient.percentByWeight"
-          min="0"
-          max="100"
-          step="0.1"
-          @input="
-            setIngredients(
-              ingredients.map((entry, i) =>
-                i === index
-                  ? {
-                      ...entry,
-                      percentByWeight: Number(($event.target as HTMLInputElement).value),
-                    }
-                  : { ...entry },
-              ),
-            )
-          "
-        />
+        <!--
+            Where "checks that did not run" lands when it asks for percentages: on the
+            first box with none, so following the link focuses the figure missing. It
+            pointed at the whole ingredient list once, and landed on the first name.
+          -->
+        <div :id="index === firstUnweighed ? 'field-food-ingredients' : undefined" class="w-20">
+          <MeasurementField
+            :id="`field-food-ing-pct-${index}`"
+            :label="`Ingredient ${index + 1} percent by weight`"
+            label-hidden
+            :value="refusedTyped(index) ?? ingredient.percentByWeight ?? ''"
+            :invalid="percentRefused(index)"
+            :aria-describedby="
+              percentRefused(index) ? `field-food-ing-pct-${index}-refused` : undefined
+            "
+            min="0"
+            max="100"
+            step="0.1"
+            @input="setPercent(index, ($event.target as HTMLInputElement).value)"
+          />
+        </div>
         <button
           :class="CHIP_REMOVE"
           type="button"
@@ -1539,6 +1664,18 @@ const packaging = computed({
         >
           ×
         </button>
+        <!--
+            The refusal across the row, under the inputs, and the box's description by
+            id. As the field's own description it wrapped to eight lines inside the
+            80 px percentage column and pushed the row's other controls down.
+          -->
+        <p
+          v-if="percentRefused(index)"
+          :id="`field-food-ing-pct-${index}-refused`"
+          class="text-chrome-300 basis-full text-xs"
+        >
+          {{ REFUSED_PERCENTAGE }}
+        </p>
       </div>
 
       <div v-for="(ingredient, index) in ingredients" :key="`allergen-${index}`">
@@ -1582,7 +1719,6 @@ const packaging = computed({
           "
         />
       </div>
-
       <button id="field-food-ing-add" :class="CHIP" type="button" @click="addIngredient">
         Add an ingredient
       </button>

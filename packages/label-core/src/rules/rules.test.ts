@@ -596,8 +596,26 @@ describe('a check that stood down names what would let it run', () => {
     data: { ...foodBase.data, nutritionFacts: { ...foodPanel, ...panel } } as UsFoodLabelData,
   })
 
+  /** Ingredients with the percentages at `blank` taken away, as a cleared box leaves them. */
+  const unweighed = (name: string, blank: readonly number[], threshold?: number) => ({
+    name,
+    data: {
+      ...foodBase.data,
+      ...(threshold === undefined
+        ? {}
+        : { ingredientThreshold: { count: threshold, percent: 2 as const } }),
+      ingredients: (foodBase.data.ingredients ?? []).map((ingredient, index) => {
+        if (!blank.includes(index)) return { ...ingredient }
+        const { percentByWeight: _taken, ...rest } = ingredient
+        return rest
+      }),
+    } as UsFoodLabelData,
+  })
+
   /** The shapes no fixture reaches, one per declining branch the fixtures miss. */
   const constructed = [
+    unweighed('an ingredient whose percentage was never stated', [1]),
+    unweighed('a grouped ingredient whose percentage was never stated', [3], 2),
     food('a second column that does not say what it counts', {
       columns: {
         mode: 'dual',
@@ -691,6 +709,10 @@ describe('a check that stood down names what would let it run', () => {
     switch (fact) {
       case 'hazards':
         return (ghs.hazards ?? []).length > 0
+      case 'ingredients.percentByWeight':
+        return ((data as UsFoodLabelData).ingredients ?? []).every(
+          (ingredient) => ingredient.percentByWeight !== undefined,
+        )
       case 'nutritionFacts.referenceAmount':
         return figure(panel?.referenceAmount?.amount)
       case 'nutritionFacts.packageContent':
@@ -708,8 +730,21 @@ describe('a check that stood down names what would let it run', () => {
   const state = (data: unknown, fact: DeclinedFact): unknown => {
     if (fact === 'hazards') return { ...(data as GhsLabelData), hazards: [HAZARDS.flammableLiquid] }
     const label = data as UsFoodLabelData
+    if (fact === 'ingredients.percentByWeight') {
+      // Each blank takes the figure above it, so a run the stated figures kept in
+      // order stays in order — the answer a user filling the boxes in would give.
+      let above = 100
+      const ingredients = (label.ingredients ?? []).map((ingredient) => {
+        above = ingredient.percentByWeight ?? above
+        return { ...ingredient, percentByWeight: above }
+      })
+      return { ...label, ingredients }
+    }
     const panel = label.nutritionFacts!
-    const answer: Record<Exclude<DeclinedFact, 'hazards'>, object> = {
+    const answer: Record<
+      Exclude<DeclinedFact, 'hazards' | 'ingredients.percentByWeight'>,
+      object
+    > = {
       'nutritionFacts.referenceAmount': {
         referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
       },

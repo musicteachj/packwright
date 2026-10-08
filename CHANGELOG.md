@@ -10,6 +10,30 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The five reported editor-rail defects were all real, and are fixed.** Each was reproduced in the browser
+  first, and `e2e/the-food-rail.spec.ts` asserts each on what a user sees.
+  - **An ingredient's percentage can be left unstated.** The field was a required number, so the rail wrote a
+    cleared box as 0 and seeded new rows with it. Clearing oats on the opening label then drew "almonds is 7%
+    … listed after whole grain rolled oats at 0%", a violation from a figure nobody gave. `percentByWeight` is
+    now optional in `label-core` and the API. The order rule still reports an inversion between two stated
+    figures. Where a figure it needs is missing, it stands down and names the ingredients under "checks that
+    did not run", with a link to them. A single ingredient needs no figure to be in order, and still passes. The threshold rule had counted an unstated figure as within its
+    threshold, and no longer does.
+  - **A percentage outside 0–100 is refused in the form, not by the server's raw 400.** The box keeps what was
+    typed, the document holds nothing, and a sentence under the row says so, as the box's description and
+    through the announcer. Refusals are per row: the first version held one, so editing another row erased it
+    from a box the user had not touched. A link under "checks that did not run" lands on the first box with no
+    percentage.
+  - **A hand-set type size can be cleared and retyped.** Emptying the box used to untick the override and
+    unmount the box under the cursor.
+  - **Correcting an ingredient's allergen keeps the choice about naming its source.** It used to switch the
+    parenthetical back on every time.
+  - **Turning the second column off and on again brings its figures back.** Turning it off used to delete
+    them. They are now set aside by the rail for that document, not left in it. A single-column panel keeping
+    a second column's figures would have the engine report each one as unprinted, which it rightly does, and
+    a saved label would carry figures nothing on it shows. The first version kept them in the document, and
+    review caught exactly that.
+
 - **Six reported defects verified: four real, one real and latent, one not a defect.** The "Reported, not yet
   verified" entries in `docs/BACKLOG.md` were each reproduced by measurement before anything was believed.
   - **The percentages were not judged at all on the tabular and linear displays.** Found on the way, and the

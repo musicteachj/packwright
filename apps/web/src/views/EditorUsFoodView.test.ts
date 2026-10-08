@@ -1579,3 +1579,24 @@ describe('a required dimension left blank', () => {
     expect(store.failures).toEqual([])
   })
 })
+
+describe('correcting an ingredient’s allergen', () => {
+  it('leaves the source unnamed where the label never asked for it inline', async () => {
+    // A saved label can carry an allergen with no `declareInline` key, which the
+    // checkbox and the engine both read as off. The fix for the parenthetical
+    // reappearing read it as on (`?? true`), so a correction switched it on in just
+    // the case the rail cannot produce itself. Found by review.
+    const { store, wrapper } = await mountFood()
+    const [oats, almonds, ...rest] = store.foodData.ingredients!
+    const { declareInline: _key, ...withoutKey } = almonds!
+    store.foodData.ingredients = [oats!, withoutKey, ...rest]
+    await nextTick()
+    // The premise: the box reads off.
+    expect((wrapper.get('#field-food-ing-inline-1').element as HTMLInputElement).checked).toBe(
+      false,
+    )
+
+    await wrapper.get('#field-food-ing-allergen-1').setValue('peanuts')
+    expect(store.foodData.ingredients![1]!.declareInline).toBe(false)
+  })
+})
