@@ -30,4 +30,12 @@ export const BUTTON =
  */
 export const PAGE = 'bg-chrome-950 text-chrome-100 min-h-screen'
 
-export const PAGE_INNER = 'mx-auto flex max-w-5xl flex-col gap-12 px-8 py-16'
+/**
+ * The reading column: where the masthead's wordmark and nav sit, and where the
+ * page beneath them starts. One constant for both, because `the-masthead.spec.ts`
+ * measures that they line up and two spellings of a gutter drift apart.
+ */
+export const PAGE_COLUMN = 'mx-auto max-w-5xl px-8'
+
+/** The column the routed page is set in, below the masthead. */
+export const PAGE_INNER = `${PAGE_COLUMN} py-16`

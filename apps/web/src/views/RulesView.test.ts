@@ -90,24 +90,6 @@ describe('the rule catalogue', () => {
     }
   })
 
-  it('puts the masthead in a banner landmark, outside the main content', () => {
-    // The header was mounted inside `<main>`, so the page had no `banner` and a
-    // skip-to-content jump landed on the nav rather than past it.
-    const wrapper = mountCatalogue()
-    expect(wrapper.find('main header').exists(), 'the masthead must not be inside main').toBe(false)
-    expect(wrapper.find('header').exists()).toBe(true)
-    expect(wrapper.find('main').exists()).toBe(true)
-  })
-
-  it('marks the catalogue as the current page in the nav', () => {
-    // `current` was accepted and half-ignored: every branch tested for 'rules',
-    // so the landing link could never be marked current either.
-    const links = mountCatalogue().findAll('a')
-    const current = links.filter((link) => link.attributes('aria-current') === 'page')
-    expect(current).toHaveLength(1)
-    expect(current[0]!.text()).toBe('Rules')
-  })
-
   it('renders a citation that has a reference and no title', () => {
     // `untitled()` drops an inherited title rather than composing one, because
     // writing a description of a regulated provision would be this project

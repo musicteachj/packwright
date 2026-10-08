@@ -774,7 +774,10 @@ fails after the user has left the editor sets its error on an editor no longer o
 seen — which was true before this change as well; the leave guards asked first, because the edits were
 still unsaved. Both found by review of the overwrite fixes.
 
-**The editor's header keeps naming the previous label while the next one is being opened.** The panes go,
+**~~The editor's header keeps naming the previous label while the next one is being opened.~~ Fixed with
+the shell.** The name field reads empty under an "Opening a label…" placeholder for the wait, the chip goes,
+and Save stops reading "Saved"; the window title says "Opening a label". What follows is the entry as it
+stood. The panes go,
 but the name field still reads "Granola 340g" and the chip beside it still reads "Saved" — a document
 identity asserted about something not on screen. Everything there is disabled, so nothing can be edited or
 lost, which is why this is an entry rather than part of the fix: the harm the stage closed was a document
@@ -911,6 +914,13 @@ something else meanwhile. That changes what a first-time visitor sees: a barcode
 or a placeholder that has to be designed. Splitting it into its own chunk without that changes nothing a
 visitor would notice, since the landing page still waits for it. It belongs with the UI work, not here, and
 doing it as a `manualChunks` line would have looked like progress while moving nothing.
+
+**An address with no page is answered 200.** The client has a 404 route now, inside the shell, but the server
+cannot know which paths the client routes: `app.ts` hands `index.html` to any GET that is not reserved and has
+no dot, so `/labels/abc/edit` arrives with status 200 and the client says "There is no page here". A crawler
+or a link checker reads a page. The fix is the server knowing the client's route table — a second copy of it,
+or one exported from the web app and read at build time — which is a deployment question for phase 8 rather
+than a shell one. Noted when the 404 route was added.
 
 ---
 

@@ -41,7 +41,7 @@ test('asks before leaving an edited new label', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 
   await page.goto('/labels')
-  await page.getByRole('link', { name: 'Editor', exact: true }).click()
+  await page.getByRole('link', { name: 'New label', exact: true }).click()
   await expect(page).toHaveURL(/\/labels\/new$/)
   await expect(page.locator('#field-gtin')).toHaveValue(STARTING_GTIN)
 

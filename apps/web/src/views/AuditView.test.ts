@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AuditView from './AuditView.vue'
 import { testRouter } from './editorTestRouter'
 import { useLabelDocumentStore } from '../stores/labelDocument'
+import { SEVERITY_STYLES } from '../severity'
 
 /**
  * The encode path is stubbed, not the reading.
@@ -504,6 +505,69 @@ describe('handing the document to the editor', () => {
     await wrapper.find('[data-test="width"]').setValue('90')
     await wrapper.find('[data-test="open-in-editor"]').trigger('click')
     expect(useLabelDocumentStore().ghsStock.widthMm).toBe(90)
+  })
+})
+
+/**
+ * Colour means severity here and nothing else, and a severity is never colour alone.
+ *
+ * Six places on this screen wore `danger` or `caution` with nothing else saying
+ * so: two errors that were red text, and four notes — an unusable code, a field
+ * with nothing to accept, the reconstruction notice and the unconfirmed fields —
+ * that borrowed CAUTION's colour for things that are not verdicts at all. Every
+ * state that renders one is visited, and any element still carrying a severity's
+ * colour must say in words what it is.
+ */
+describe('colour on this screen', () => {
+  const SEVERITY_COLOUR = /\b(?:text|border)-(?:danger|warning|caution|notice)\b/
+  // Every word and heading a severity is printed with, plus the plain "Error" a
+  // failed request gets — which is not a severity and so has no glyph of its own.
+  const WORDS = [
+    'Error',
+    ...Object.values(SEVERITY_STYLES).flatMap((style) => [style.word, style.heading]),
+  ]
+  const worded = (text: string) => WORDS.some((word) => text.includes(word))
+
+  function colouredWithoutAWord(wrapper: Awaited<ReturnType<typeof mountAudit>>) {
+    return wrapper
+      .findAll('*')
+      .filter((node) => SEVERITY_COLOUR.test(node.attributes('class') ?? ''))
+      .filter((node) => !worded(node.text()))
+      .map((node) => node.html().slice(0, 120))
+  }
+
+  it('is never the only thing saying a reading failed', async () => {
+    const wrapper = await readALabel(
+      await mountAudit({ error: 'Reading this image was declined' }, false, 422),
+    )
+    // The premise: the failure is on screen.
+    expect(wrapper.find('[role="alert"]').text()).toContain('declined')
+    expect(colouredWithoutAWord(wrapper)).toEqual([])
+  })
+
+  it('is never the only thing marking a field that cannot be carried', async () => {
+    const wrapper = await readALabel(await mountAudit())
+    await wrapper.findAll('[data-field="productIdentifier"] button')[1]!.trigger('click')
+    await wrapper.find('[data-test="edit-productIdentifier"]').setValue('   ')
+    // The premises: both notes are on screen.
+    expect(wrapper.find('[data-unusable="hazardStatementCodes"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Nothing to accept yet.')
+    expect(colouredWithoutAWord(wrapper)).toEqual([])
+  })
+
+  it('is never the only thing qualifying the report', async () => {
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    expect(wrapper.find('[data-test="not-judged"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="unconfirmed"]').exists()).toBe(true)
+    expect(colouredWithoutAWord(wrapper)).toEqual([])
+  })
+
+  it('is never the only thing saying the label could not be drawn', async () => {
+    const wrapper = await completeTheDocument(await readALabel(await mountAudit()))
+    await wrapper.find('[data-test="width"]').setValue('2')
+    const report = wrapper.find('[aria-labelledby="audit-report-heading"]')
+    expect(report.find('[role="alert"]').exists()).toBe(true)
+    expect(colouredWithoutAWord(wrapper)).toEqual([])
   })
 })
 

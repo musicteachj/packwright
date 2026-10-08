@@ -125,10 +125,15 @@ test('the masthead fits the narrowest screen rather than clipping', async ({ pag
   // its accessible name.
   await openEditor(page, 375)
 
-  for (const name of [/Export PDF/, /Label type/]) {
-    const control = page.getByRole(name === undefined ? 'button' : 'button', { name })
-    if ((await control.count()) === 0) continue
-    const box = await control.first().boundingBox()
+  // Each by its own role. Both were once asked for as buttons and a missing one
+  // was skipped, so "Label type" — a select — was never measured at all.
+  for (const [name, control] of [
+    ['Export PDF', page.getByRole('button', { name: /Export PDF/ })],
+    ['Label type', page.getByRole('combobox', { name: 'Label type' })],
+    ['the wordmark', page.getByRole('link', { name: 'packwright' })],
+  ] as const) {
+    await expect(control).toHaveCount(1)
+    const box = await control.boundingBox()
     expect(box, 'the control must be laid out').not.toBeNull()
     expect(box!.x).toBeGreaterThanOrEqual(0)
     expect(box!.x + box!.width, `${name} runs off the right edge`).toBeLessThanOrEqual(375)
