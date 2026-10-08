@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { deletesWhatItSaves } from './support/savedLabels'
 
 /**
  * Save a label, open it, export it — at the stock it was saved with.
@@ -21,6 +22,8 @@ const SAVED_STOCK = { widthMm: 90, heightMm: 50, marginMm: 3 }
 /** 90 mm in PostScript points, which is what a MediaBox is measured in. */
 const EXPECTED_WIDTH_PT = (90 / 25.4) * 72
 
+const saved = deletesWhatItSaves()
+
 test('exports a saved label at the stock it was saved with', async ({ page, request }) => {
   const created = await request.post('/api/labels', {
     data: {
@@ -32,6 +35,7 @@ test('exports a saved label at the stock it was saved with', async ({ page, requ
   })
   expect(created.status(), 'the premise: the label has to save').toBe(201)
   const { id } = (await created.json()) as { id: string }
+  saved(id)
 
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(`/labels/${id}`)

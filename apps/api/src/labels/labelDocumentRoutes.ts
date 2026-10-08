@@ -60,6 +60,23 @@ const DEFAULT_PAGE = 50
 /** The most it will carry however large a number is asked for. */
 const MAX_PAGE = 200
 
+/**
+ * How many labels the application keeps, in total.
+ *
+ * Decided on 2026-10-08: twenty, across the whole collection, refusing the
+ * twenty-first. There is no owner concept in this API, so a per-user cap would
+ * be a cap on nobody. The figure is the old `barcode-crud` app's. Twenty fits
+ * one page, so a client can fetch the list once and know from `count` whether
+ * that was all of it, rather than walking the cursor. `PUT` is not counted:
+ * replacing a label adds nothing.
+ */
+export const LABEL_CAP = 20
+
+/** Said by the 409, and shown by the editor as written. */
+const AT_CAP = `There are already ${LABEL_CAP} saved labels, which is as many as this app keeps. Delete one from Saved labels before saving another.`
+
+const atCap = (response: Response) => response.status(409).json({ error: AT_CAP })
+
 export function createLabelDocumentRouter(): Router {
   const router = Router()
 
@@ -113,6 +130,10 @@ export function createLabelDocumentRouter(): Router {
     const last = page[page.length - 1]
 
     response.json({
+      // The whole collection, not this page, so a list can say "n of 20" and
+      // tell a page that is everything from one that was cut short.
+      cap: LABEL_CAP,
+      count: await LabelDocument.countDocuments({}),
       labels: page.map((document) => ({
         id: String(document._id),
         name: document.name,
@@ -130,7 +151,22 @@ export function createLabelDocumentRouter(): Router {
   router.post('/', async (request: Request, response: Response) => {
     const parsed = LabelDocumentInput.safeParse(request.body)
     if (!parsed.success) return badRequest(response, parsed.error.issues)
+    if ((await LabelDocument.countDocuments({})) >= LABEL_CAP) return atCap(response)
     const created = await LabelDocument.create(parsed.data)
+    // **Counted again once the label exists**, because the count above can be
+    // stale by the time the insert lands: two saves at nineteen both read
+    // nineteen and both insert. Whoever finds the collection over the cap takes
+    // their own label back out, so it cannot overshoot. The cost is that two
+    // saves racing for the last place can both find twenty-one and both
+    // withdraw — a refusal the user can retry, rather than a twenty-first label.
+    // A transaction would settle it exactly, and needs a replica set the
+    // development database is not. If the withdrawing delete itself fails, the
+    // save answers 500 and a twenty-first label stays; that is as far as it can
+    // go, because every later save is refused by the count above.
+    if ((await LabelDocument.countDocuments({})) > LABEL_CAP) {
+      await LabelDocument.deleteOne({ _id: created._id })
+      return atCap(response)
+    }
     response.status(201).json(serializeLabelDocument(created))
   })
 

@@ -10,6 +10,19 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The application keeps at most twenty saved labels.** The API had no cap, and `docs/DESIGN.md` had left
+  the figure open. It is twenty across the whole collection, because the API has no owner concept. `POST
+  /api/labels` refuses the twenty-first with a 409 and a sentence saying to delete a label first. It counts
+  before inserting, and counts again after, so two saves racing for the last place cannot both land: whoever
+  finds twenty-one takes their own label back out. Both can withdraw, which is a refusal the user can retry
+  rather than an overshoot. `PUT` is not counted, since replacing a label adds nothing. `GET` now reports
+  `cap` and the whole collection's `count` beside each page.
+
+  **The browser specs now delete the labels they save.** Playwright reuses a server already listening on its
+  port, database and all. Three specs left about three labels behind per run, and with the cap that becomes a
+  suite failing on its own premises. Measured against a long-lived server: on the sixth run, two specs failed
+  with "the label has to save". Review caught it.
+
 - **The barcode encoder loads when a barcode is first drawn, not with the page.** bwip-js is 934,645 bytes raw
   and 250,944 gzipped. The landing page and the editor's store imported it statically, so `/`, `/audit` and
   every editor route fetched it before rendering, including an editor opened on a GHS or food label. It now

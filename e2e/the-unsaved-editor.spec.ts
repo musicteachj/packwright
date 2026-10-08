@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { deletesWhatItSaves } from './support/savedLabels'
 
 /**
  * Unsaved work does not leave without being asked about.
@@ -17,6 +18,8 @@ import { expect, test, type Page } from '@playwright/test'
 
 const STARTING_GTIN = '036000291452'
 const EDITED_GTIN = '012345678905'
+
+const saved = deletesWhatItSaves()
 
 /** Records every leave prompt, and always stays on the page. */
 function countPrompts(page: Page): () => number {
@@ -71,6 +74,7 @@ test('asks before leaving a saved label that was edited and then switched type',
     },
   })
   expect(created.status(), 'the premise: the label has to save').toBe(201)
+  saved(((await created.json()) as { id: string }).id)
 
   const prompts = countPrompts(page)
   await page.setViewportSize({ width: 1440, height: 900 })
