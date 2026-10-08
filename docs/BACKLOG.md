@@ -576,7 +576,23 @@ what (b)(2)(i)(D) asks for. Where the label declares no basis at all the answer 
 column absent would be a false positive, clearing it would certify a column the engine cannot identify — so
 that case is a new advisory rather than either.
 
-**A package owing both additional columns cannot be made compliant in this tool.** Where a package sits in the
+**~~A package owing both additional columns cannot be made compliant in this tool.~~ Shipped as a documented
+limit on 2026-10-08**, as James decided, not modelled. Read that day from the eCFR: (b)(12)(i) "must" provide a
+column for the entire package, (b)(2)(i)(D) "shall" provide one per individual unit, and (e)(6) frames each as a
+two-column presentation joined by "or". None of them says whether one second column can serve as both. Both can
+apply only where the package is itself one unit in the band, per 81 FR 34000, Responses 9 and 21.
+
+Where both are owed, the package is a single unit, and the drawn second column could be either one,
+`us-food/dual-column-required` now judges nothing. Instead it declines with `Decline.limit`, saying plainly
+that the limit is the tool's. Where the contents differ, or the column counts something else, a column is
+provably absent and is still reported. Each basis used to draw a violation
+citing the other paragraph, so no setting satisfied the report. Where no second column is drawn it still
+reports, since no reading is met by none. `docs/WHAT-IS-NOT-CHECKED.md` has the section.
+
+Modelling a third column, or a single column labelled for both, is post-deployment work, and it should follow
+FDA guidance on the case rather than a reading of the paragraphs alone. What follows is the entry as it stood.
+
+Where a package sits in the
 200–300 percent band *and* its individual unit does, (b)(12)(i) and (b)(2)(i)(D) each ask for a column, and
 `UsFoodNutritionFacts.columns` holds one `basis` and one `secondAmounts` — so every such label is reported for
 the column it cannot express. That is the right answer to give and a poor place to leave a user: the finding

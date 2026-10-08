@@ -8,6 +8,26 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Changed
+
+- **A package owing both second columns is told the limit is the tool's, not blamed for it.** 21 CFR
+  101.9(b)(12)(i) asks for a second column for the entire package and (b)(2)(i)(D) for one per individual unit.
+  Both can reach the same package, which per 81 FR 34000 happens only where the package is itself one unit in
+  the 200–300 percent band. This tool draws one second column of one basis, and each basis drew a violation
+  citing the other paragraph, so no setting satisfied the report and the user was blamed for the tool's limit.
+  Read from the eCFR on 2026-10-08: neither paragraph, nor (e)(6), says whether one second column can serve as
+  both where the two would carry the same figures. So where both are owed, the package is a single unit (its
+  contents equal its unit's), and the drawn second column could be either one (it counts the package or the
+  unit, or does not say), `us-food/dual-column-required` now gives no verdict.
+  Instead it declines with a new `Decline.limit`, shown under "checks that did not run" with nothing to fill in.
+  That entry is marked as a limit of this tool, and says plainly that the limit is not a fault found in the
+  label. Where the column's basis is stated and the panel is one this tool draws, its form is still judged. The violation stands in three cases, because no reading is met by any of them: no second
+  column drawn at all, a drawn column counting something else such as per 100 g, or package and unit contents
+  that differ, where one column would have to carry two sets of figures. Review caught the last two, which the
+  first version of the notice covered too. `docs/WHAT-IS-NOT-CHECKED.md` gains the section, and its note on what that list names gains the one
+  exception. Modelling both columns, as a third column or a single column labelled for both, is
+  post-deployment work, and should follow FDA guidance rather than a reading of the paragraphs alone.
+
 ### Fixed
 
 - **The five reported editor-rail defects were all real, and are fixed.** Each was reproduced in the browser

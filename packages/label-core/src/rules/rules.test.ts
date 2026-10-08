@@ -17,7 +17,13 @@ import {
   listRules,
   runRules,
 } from './registry'
-import { codesOf, compareSeverity, type DeclinedFact, type RuleContext } from './types'
+import {
+  codesOf,
+  compareSeverity,
+  type Decline,
+  type DeclinedFact,
+  type RuleContext,
+} from './types'
 import type { GhsLabelData } from '../templates/ghs'
 import type { UsFoodLabelData } from '../templates/usFood'
 
@@ -577,6 +583,16 @@ describe('a rule that stands down says so, and only then', () => {
   })
 })
 
+describe('a decline that is a limit of the tool', () => {
+  it('cannot name a fact to state, by its type', () => {
+    // Held by the compiler, not by a fixture reaching it: if a limit naming a fact
+    // ever compiles, this directive goes unused and the typecheck fails.
+    // @ts-expect-error — a limit has nothing for the user to state
+    const wrong: Decline = { reason: 'A limit.', wants: ['hazards'], limit: true }
+    expect(wrong.limit).toBe(true)
+  })
+})
+
 /**
  * What a check that stood down asks for, held to its word.
  *
@@ -614,6 +630,19 @@ describe('a check that stood down names what would let it run', () => {
 
   /** The shapes no fixture reaches, one per declining branch the fixtures miss. */
   const constructed = [
+    food('a package owing both additional columns, drawing one', {
+      availableSurfaceSqInches: 60,
+      referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
+      packageContent: 100,
+      unitContent: 100,
+      packagedAndSoldIndividually: true,
+      columns: {
+        mode: 'dual',
+        basis: 'per-container',
+        headings: ['Per serving', 'Per container'],
+        secondAmounts: { ...foodPanel.amounts },
+      },
+    }),
     unweighed('an ingredient whose percentage was never stated', [1]),
     unweighed('a grouped ingredient whose percentage was never stated', [3], 2),
     food('a second column that does not say what it counts', {
@@ -760,6 +789,13 @@ describe('a check that stood down names what would let it run', () => {
     for (const one of cases) {
       const context = contextOf(one.labelType, one.data, one.stock)
       for (const declined of declinedChecks(context)) {
+        // A limit of the tool names nothing, because there is nothing to state — and
+        // says whose limit it is, so the silence beside it is not read as the label's.
+        if (declined.limit === true) {
+          expect(declined.wants, `${declined.ruleId} on ${one.name}`).toEqual([])
+          expect(declined.reason).toContain('a limit of this tool')
+          continue
+        }
         expect(
           declined.wants.length,
           `${declined.ruleId} on ${one.name} names nothing`,
@@ -784,7 +820,10 @@ describe('a check that stood down names what would let it run', () => {
     // decline that asked for nothing passed by never entering the loop — which
     // is exactly the decline that cannot be followed.
     for (const one of cases) {
-      for (const first of declinedChecks(contextOf(one.labelType, one.data, one.stock))) {
+      for (const first of declinedChecks(contextOf(one.labelType, one.data, one.stock)).filter(
+        // A limit of the tool promises nothing to follow; the test above holds it to that.
+        (declined) => declined.limit !== true,
+      )) {
         let data = one.data
         let asked: readonly DeclinedFact[] = first.wants
         const path: string[] = []

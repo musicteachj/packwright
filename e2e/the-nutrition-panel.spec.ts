@@ -152,3 +152,32 @@ test('the tabular display is reachable, and says what it could not draw', async 
   await expect(cannotCheck).toBeVisible()
   await expect(cannotCheck).toContainText(/second column/i)
 })
+
+test('a package owing both second columns is told the limit is the tool’s, not blamed for it', async ({
+  page,
+}) => {
+  // (b)(12)(i) and (b)(2)(i)(D) both reach a package that is itself one unit in the 200
+  // to 300 percent band, and this tool draws one second column. Each basis drew a
+  // WARNING citing the other paragraph, so no setting satisfied the report. Neither
+  // paragraph, nor (e)(6), says whether one column can serve as both (read from the
+  // eCFR on 2026-10-08), so the report says so and judges nothing.
+  await openFoodEditor(page)
+  await page.locator('#field-food-nf-racc').fill('40')
+  await page.locator('#field-food-nf-package-content').fill('100')
+  await page.locator('#field-food-nf-unit-content').fill('100')
+  await page.locator('#field-food-nf-sold-individually').selectOption('yes')
+  await page.locator('#field-food-nf-dual').check()
+  await page.locator('#field-food-nf2-calcium').fill('650')
+
+  const checks = page.locator('#pane-checks')
+  await expect(checks).toContainText(
+    'That is a limit of this tool, not a fault found in your label.',
+  )
+  // Marked as a limit on screen, not only in the sentence.
+  await expect(checks.locator('[data-test="tool-limit"]')).toHaveText('A limit of this tool')
+  for (const basis of ['per-container', 'per-unit'] as const) {
+    await page.locator('#field-food-nf-basis').selectOption(basis)
+    await expect(checks).toContainText('a limit of this tool')
+    await expect(checks).not.toContainText('which is not the column')
+  }
+})

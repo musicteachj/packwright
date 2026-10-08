@@ -512,27 +512,22 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     },
   },
   {
-    name: 'a package owing two additional columns and able to carry only one',
+    name: 'a package owing both additional columns and drawing neither',
     defect:
-      'A 100 g package against a 40 g reference amount is 250 percent of it, and its individual ' +
-      'unit at 90 g is 225 percent — so (b)(12)(i) asks for a column for the entire package and ' +
-      '(b)(2)(i)(D) asks for one per individual unit, both at once. This document model holds ' +
-      'one basis and one set of second amounts, so no label it can express satisfies both; the ' +
-      'one drawn counts the unit and the package column is absent. The rule certified every one ' +
-      'of these, because it asked only whether the declared basis was among those required.',
+      'A 100 g package against a 40 g reference amount is 250 percent of it, and it is a single ' +
+      '100 g unit — so (b)(12)(i) asks for a column for the entire package and (b)(2)(i)(D) for ' +
+      'one per individual unit. The panel draws no second column at all, which fails either ' +
+      'reading. Where it draws one, whether one column can serve as both is a question this ' +
+      'tool does not decide, and the rule says so instead of judging — see `usFoodRules.test.ts`. ' +
+      'A single unit on purpose: it is the case where the rule could wrongly stand down, so the ' +
+      'judge-or-decline contract in `rules.test.ts` is held to it here.',
     data: {
       ...BASE,
       netQuantity: OWED_COLUMN_NET_QUANTITY,
       nutritionFacts: {
         ...BASE_NUTRITION,
         ...OWES_A_PER_CONTAINER_COLUMN,
-        unitContent: 90,
-        columns: {
-          mode: 'dual',
-          basis: 'per-unit',
-          headings: ['Per serving', 'Per unit'],
-          secondAmounts: { ...SECOND_COLUMN_AMOUNTS },
-        },
+        unitContent: 100,
       },
     },
     stock: CONFORMING_STOCK,
