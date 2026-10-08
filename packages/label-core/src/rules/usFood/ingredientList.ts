@@ -37,6 +37,7 @@ import type {
   UsFoodAssortmentExemption,
   UsFoodIngredient,
   UsFoodIngredientsExemptionKind,
+  UsFoodLabelData,
 } from '../../templates/usFood'
 import type { TextPrimitive } from '../../layout/types'
 import { INGREDIENT_THRESHOLD_PERCENTS } from '../../templates/usFood'
@@ -86,6 +87,15 @@ const EXEMPTIONS: Record<
 
 /** § 101.100(a)(1), the one ingredient exemption whose condition is on the label. */
 const ASSORTMENT = untitled(EXEMPTION, '21 CFR 101.100(a)(1)')
+
+/**
+ * How many entries sit behind the quantifying statement, clamped to the list.
+ *
+ * One clamp, read by both rules and both of their declines, so the rows a decline asks
+ * about are the rows its check judged. It was written out four times.
+ */
+const groupedCountOf = (data: UsFoodLabelData): number =>
+  Math.min(Math.max(0, data.ingredientThreshold?.count ?? 0), (data.ingredients ?? []).length)
 
 /** An ingredient whose share of the food by weight the label states. */
 type Weighed = UsFoodIngredient & { percentByWeight: number }
@@ -141,11 +151,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
   declines(context: UsFoodContext): Decline | undefined {
     if (usFoodIngredientListRule.check(context).length > 0) return undefined
     const ingredients = context.data.ingredients ?? []
-    const grouped = Math.min(
-      Math.max(0, context.data.ingredientThreshold?.count ?? 0),
-      ingredients.length,
-    )
-    const unweighed = unweighedIn(ingredients, 0, ingredients.length - grouped)
+    const unweighed = unweighedIn(ingredients, 0, ingredients.length - groupedCountOf(context.data))
     if (unweighed.length === 0) return undefined
     return {
       reason:
@@ -268,7 +274,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // then reported "0 ingredients run in descending order" as a pass, about a
     // list it had not looked at. The count reaches here from a form that never
     // lowered it on removal and an API that set no upper bound.
-    const grouped = Math.min(Math.max(0, data.ingredientThreshold?.count ?? 0), ingredients.length)
+    const grouped = groupedCountOf(data)
     const ordered = ingredients.slice(0, ingredients.length - grouped)
 
     // Every entry released from the ordering requirement leaves nothing for this
@@ -451,7 +457,7 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
     if (threshold === undefined || threshold.count <= 0) return undefined
     const unweighed = unweighedIn(
       ingredients,
-      Math.max(0, ingredients.length - Math.min(threshold.count, ingredients.length)),
+      ingredients.length - groupedCountOf(context.data),
       ingredients.length,
     )
     if (unweighed.length === 0) return undefined
@@ -488,9 +494,7 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
       ]
     }
 
-    const grouped = ingredients.slice(
-      Math.max(0, ingredients.length - Math.min(threshold.count, ingredients.length)),
-    )
+    const grouped = ingredients.slice(ingredients.length - groupedCountOf(data))
     // An unstated figure is not one under the threshold. It compared as not-over, so
     // a grouped ingredient with no percentage counted towards "none exceeding it".
     const over = grouped

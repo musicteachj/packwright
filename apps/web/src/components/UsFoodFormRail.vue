@@ -63,7 +63,7 @@ import {
   type UnitContainerWording,
   type DailyValuePopulation,
 } from '@packwright/label-core'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import { useAnnouncement } from '../stores/announcer'
 import { DECLINED_FACT_FIELDS } from '../declinedFacts'
@@ -277,8 +277,8 @@ const REFUSED_PERCENTAGE =
  * rather than judging as zero. A figure outside 0 to 100 is refused the way stage 4's
  * measurements are — the document holds nothing, the box keeps what was typed, and a
  * sentence beside it and a line through the announcer say so — rather than reaching
- * the API as a raw 400. Held against `documentGeneration`, and dropped when the rows
- * move, so it cannot attach itself to another label or another row.
+ * the API as a raw 400. Held against `documentGeneration`, and carried with its row
+ * when rows move or go, so it cannot attach itself to another label or another row.
  */
 const percentRefusals = ref<{ generation: number; typed: Readonly<Record<number, string>> }>({
   generation: -1,
@@ -294,26 +294,63 @@ const refusedTyped = (index: number): string | undefined =>
     ? percentRefusals.value.typed[index]
     : undefined
 
-function forgetPercentRefusals(): void {
-  percentRefusals.value = { generation: -1, typed: {} }
+/**
+ * Carries each refused figure to its row's new place, or drops it with its row.
+ *
+ * Removing or moving a row used to forget every refusal, so a figure typed into one
+ * row vanished when another was moved — the cross-row loss the per-row map exists to
+ * stop. Found by `/code-review high` on PR #65.
+ */
+function movePercentRefusals(to: (index: number) => number | undefined): void {
+  if (percentRefusals.value.generation !== store.documentGeneration) return
+  const typed: Record<number, string> = {}
+  for (const [from, figure] of Object.entries(percentRefusals.value.typed)) {
+    const index = to(Number(from))
+    if (index !== undefined) typed[index] = figure
+  }
+  percentRefusals.value = { generation: store.documentGeneration, typed }
 }
 
 const percentRefused = (index: number): boolean => refusedTyped(index) !== undefined
 
-/** The first ingredient stating no percentage, which a decline asking for them lands on. */
-const firstUnweighed = computed(() =>
-  ingredients.value.findIndex((ingredient) => ingredient.percentByWeight === undefined),
-)
+/**
+ * The first box a check that did not run is waiting for, which its link lands on.
+ *
+ * Read from the checks that actually stood down rather than inferred: the order check
+ * reads the ordered run and the threshold check the entries behind the statement. The
+ * first blank anywhere could be a row neither needs, and guessing from the ranges alone
+ * still sent the link to the ordered run when the order check had judged instead of
+ * declining. Both found by review of PR #65.
+ */
+const firstUnweighed = computed(() => {
+  const list = ingredients.value
+  const grouped = Math.min(Math.max(0, data.ingredientThreshold?.count ?? 0), list.length)
+  const orderedEnd = list.length - grouped
+  const declined = new Set(store.declined.map((check) => check.ruleId))
+  const blank = (from: number, to: number) => {
+    for (let i = from; i < to; i += 1) if (list[i]!.percentByWeight === undefined) return i
+    return -1
+  }
+  const inOrdered = declined.has('us-food/ingredient-list') ? blank(0, orderedEnd) : -1
+  if (inOrdered !== -1) return inOrdered
+  return declined.has('us-food/ingredient-threshold') ? blank(orderedEnd, list.length) : -1
+})
 
-function setPercent(index: number, typed: string): void {
-  const figure = typed.trim() === '' ? undefined : Number(typed)
+function setPercent(index: number, typed: string, unparseable: boolean): void {
+  // A box the browser cannot parse — "7e", a lone "-" — reads back as `''`, the same as
+  // a cleared one. Taken as cleared, the stated figure went while the box went on showing
+  // "7e" with nothing said; ignored, the box showed "-" while the label printed 7. It is a
+  // refusal like any other figure that is not one: the document holds nothing, the box
+  // keeps its text, and the sentence beside it says so. Found by review of PR #65.
+  const figure = unparseable || typed.trim() === '' ? undefined : Number(typed)
   const accepted = figure !== undefined && Number.isFinite(figure) && figure >= 0 && figure <= 100
+  const refused = unparseable || (figure !== undefined && !accepted)
   const current =
     percentRefusals.value.generation === store.documentGeneration ? percentRefusals.value.typed : {}
   const { [index]: _previous, ...others } = current
   percentRefusals.value = {
     generation: store.documentGeneration,
-    typed: figure !== undefined && !accepted ? { ...others, [index]: typed } : others,
+    typed: refused ? { ...others, [index]: typed } : others,
   }
   setIngredients(
     ingredients.value.map((entry, i) => {
@@ -333,14 +370,42 @@ useAnnouncement('refused:ingredient-percent', () =>
     .join(' '),
 )
 
+/**
+ * A key per ingredient row that moves with the row, so its inputs do.
+ *
+ * Keyed by index, a row's input stayed where it was while the row's data moved, and any
+ * text living only in the box went with the position rather than the row — "7e", which
+ * the browser reports as `''`, sat on in whichever row slid into its place, unmarked. Kept
+ * beside the list rather than on it, because a key is the rail's business and not the
+ * label's. Rebuilt for a new document, and padded or cut if the list changes elsewhere.
+ * Found by review of PR #65.
+ */
+let nextRowKey = 0
+const rowKeys = ref<number[]>([])
+watch(
+  () => [store.documentGeneration, ingredients.value.length] as const,
+  ([generation, length], previous) => {
+    if (previous === undefined || generation !== previous[0]) {
+      rowKeys.value = Array.from({ length }, () => nextRowKey++)
+    } else if (rowKeys.value.length !== length) {
+      const kept = rowKeys.value.slice(0, length)
+      while (kept.length < length) kept.push(nextRowKey++)
+      rowKeys.value = kept
+    }
+  },
+  { immediate: true },
+)
+
 function addIngredient(): void {
   // No percentage until one is stated. It was seeded at 0, which the order rule then
   // judged as a figure the user had given. Refusals are kept: appending moves no row.
+  rowKeys.value = [...rowKeys.value, nextRowKey++]
   setIngredients([...ingredients.value.map((i) => ({ ...i })), { name: '' }])
 }
 
 function removeIngredient(index: number): void {
-  forgetPercentRefusals()
+  movePercentRefusals((i) => (i === index ? undefined : i > index ? i - 1 : i))
+  rowKeys.value = rowKeys.value.filter((_, i) => i !== index)
   const next = ingredients.value.filter((_, i) => i !== index).map((i) => ({ ...i }))
   setIngredients(next)
   // The grouped count has to come down with the list. Left alone it could cover
@@ -352,10 +417,13 @@ function removeIngredient(index: number): void {
 
 /** Moving an entry is how a compliant list is made non-compliant, deliberately. */
 function moveIngredient(index: number, by: number): void {
-  forgetPercentRefusals()
   const next = ingredients.value.map((i) => ({ ...i }))
   const target = index + by
   if (target < 0 || target >= next.length) return
+  movePercentRefusals((i) => (i === index ? target : i === target ? index : i))
+  const keys = [...rowKeys.value]
+  ;[keys[index], keys[target]] = [keys[target]!, keys[index]!]
+  rowKeys.value = keys
   const [moved] = next.splice(index, 1)
   next.splice(target, 0, moved!)
   setIngredients(next)
@@ -640,6 +708,9 @@ const nutritionExemption = computed({
 const hasPanel = computed({
   get: () => data.nutritionFacts !== undefined,
   set: (on: boolean) => {
+    // A panel thrown away takes its set-aside second column with it, so a new one
+    // does not inherit the old panel's figures. Found by `/code-review high` on PR #65.
+    setAsideColumns.value = null
     if (on) data.nutritionFacts = { servingSize: '', amounts: {} }
     else delete data.nutritionFacts
   },
@@ -1599,7 +1670,7 @@ const packaging = computed({
 
       <div
         v-for="(ingredient, index) in ingredients"
-        :key="index"
+        :key="rowKeys[index] ?? `row-${index}`"
         class="border-chrome-800 flex flex-wrap items-end gap-1 border-b pb-2"
       >
         <TextField
@@ -1637,7 +1708,13 @@ const packaging = computed({
             min="0"
             max="100"
             step="0.1"
-            @input="setPercent(index, ($event.target as HTMLInputElement).value)"
+            @input="
+              setPercent(
+                index,
+                ($event.target as HTMLInputElement).value,
+                ($event.target as HTMLInputElement).validity.badInput,
+              )
+            "
           />
         </div>
         <button
@@ -1678,7 +1755,7 @@ const packaging = computed({
         </p>
       </div>
 
-      <div v-for="(ingredient, index) in ingredients" :key="`allergen-${index}`">
+      <div v-for="(ingredient, index) in ingredients" :key="`allergen-${rowKeys[index] ?? index}`">
         <SelectField
           :id="`field-food-ing-allergen-${index}`"
           :label="`Major food allergen in ${ingredient.name || `ingredient ${index + 1}`}`"

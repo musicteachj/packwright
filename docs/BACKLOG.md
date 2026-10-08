@@ -726,7 +726,27 @@ items, were all real and are fixed on `fix/editor-rail-reported`.
   A `Rule` may judge or decline, never both — `rules.test.ts` holds that across every fixture — so where the
   statement is judged and a listed ingredient states no percentage, the order goes unjudged and is not named
   under "checks that did not run". No pass is issued, so nothing is cleared that should not be. The fix is to
-  give the order check a rule of its own, so it can decline while the statement is judged.
+  give the order check a rule of its own, so it can decline while the statement is judged. This change is what
+  makes the gap reachable — before it, every percentage was a number — which is the strongest reason to do
+  the split before deployment rather than after.
+
+  **And four more from the `/code-review high` on PR #65, recorded rather than fixed:**
+
+  - **Labels saved before this change still carry the zeros the old rail wrote.** A row added and named but
+    never weighed was seeded at 0, and the order rule reads those as stated: oats 90 then two seeded rows passes
+    as "3 ingredients run in descending order". Nothing has been deployed — phase 8 is deployment — so no saved
+    label a user holds carries them; only development databases do. Worth a sentence in the deployment
+    checklist, not a migration.
+  - **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** The same defect this
+    change fixed for percentages, on the field it touched; `optionalNumber` accepts any finite figure. It wants
+    the refusal the measurements have, which is a change to that guard rather than to the override.
+  - **Three pieces of rail state each re-implement "only while `documentGeneration` matches" by hand** — the
+    held override, the refused percentages and the set-aside second column — and each has to be cleared by hand
+    on every in-document reset. A `heldForDocument` helper, or a store-side scratch map cleared when the
+    generation moves, would put the rule in one place.
+  - **The percentage refusal is a second refusal mechanism** beside `refusableNumber`, `REFUSED_MEASUREMENT` and
+    `sayRefusal`, retiring on a different signal. A per-row `refusableNumber` would share one path. Not done
+    here because `refusableNumber` holds one figure per field and the rows are a list.
 - ~~**`generate-font-metrics.mjs`'s missing-glyph guards are dead.**~~ **Fixed.** Reproduced: fontkit maps an
   unmapped code point to glyph 0, `.notdef`, advance 472 units in Plex Sans. The measurements moved into
   `scripts/fontMetrics.mjs`, which asks `hasGlyphForCodePoint`, and a `scripts` vitest project holds them to it.

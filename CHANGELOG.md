@@ -22,8 +22,12 @@ into a version only when there is a reason to.
   - **A percentage outside 0–100 is refused in the form, not by the server's raw 400.** The box keeps what was
     typed, the document holds nothing, and a sentence under the row says so, as the box's description and
     through the announcer. Refusals are per row: the first version held one, so editing another row erased it
-    from a box the user had not touched. A link under "checks that did not run" lands on the first box with no
-    percentage.
+    from a box the user had not touched. Refusals follow their rows when rows move or go, and a box the
+    browser cannot parse, like "7e", is refused too, instead of being cleared in silence. A link under "checks
+    that did not run" lands on the first box the check that stood down needs, read from the checks that did.
+    The rows are keyed by a key that moves with each row rather than by position, so text living only in a
+    box moves with its row. These came from the `/code-review high` on the pull request and the reviews after
+    it.
   - **A hand-set type size can be cleared and retyped.** Emptying the box used to untick the override and
     unmount the box under the cursor.
   - **Correcting an ingredient's allergen keeps the choice about naming its source.** It used to switch the
@@ -32,7 +36,8 @@ into a version only when there is a reason to.
     them. They are now set aside by the rail for that document, not left in it. A single-column panel keeping
     a second column's figures would have the engine report each one as unprinted, which it rightly does, and
     a saved label would carry figures nothing on it shows. The first version kept them in the document, and
-    review caught exactly that.
+    review caught exactly that. Removing the whole panel discards what was set aside, so a new panel does not
+    inherit the old one's figures.
 
 - **Six reported defects verified: four real, one real and latent, one not a defect.** The "Reported, not yet
   verified" entries in `docs/BACKLOG.md` were each reproduced by measurement before anything was believed.

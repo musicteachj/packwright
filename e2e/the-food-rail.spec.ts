@@ -126,3 +126,89 @@ test('turning the second column off and on again keeps what was typed into it', 
   await expect(page.locator('#field-food-nf2-calcium')).toHaveValue('520')
   await expect(page.locator('#field-food-nf2-dv-calcium')).toHaveValue('40')
 })
+
+test.describe('found by the review of these fixes', () => {
+  test('a refused figure stays with its row when rows move or go', async ({ page }) => {
+    // Moving or removing any row forgot every refusal — even a move past the top,
+    // which moves nothing.
+    await openFoodEditor(page)
+    await page.locator('#field-food-ing-pct-1').fill('150')
+    // Moved up, the refusal goes with almonds to the top.
+    await page.getByRole('button', { name: 'Move almonds up' }).click()
+    await expect(page.locator('#field-food-ing-pct-0')).toHaveValue('150')
+    // Up again from the top moves nothing, and the refusal stays where it is.
+    await page.getByRole('button', { name: 'Move almonds up' }).click()
+    await expect(page.locator('#field-food-ing-pct-0')).toHaveValue('150')
+    // Another row going leaves it alone.
+    await page.getByRole('button', { name: 'Remove salt' }).click()
+    await expect(page.locator('#field-food-ing-pct-0')).toHaveValue('150')
+    await expect(page.locator('#field-food-ing-pct-0')).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  test('a box that does not parse is refused, not cleared in silence', async ({ page }) => {
+    // "7e" reads back as '' and was taken for a cleared box: the 7 went and nothing said
+    // so. Ignoring it instead left "-" on screen while the label printed 7. It is a
+    // refusal: the box keeps its text, is marked, and says the figure is not in the label.
+    await openFoodEditor(page)
+    const almonds = page.locator('#field-food-ing-pct-1')
+    await almonds.focus()
+    await page.keyboard.press('End')
+    await page.keyboard.type('e')
+    await expect(almonds).toHaveAttribute('aria-invalid', 'true')
+    await expect(
+      page.locator('#pane-form').getByText('A percentage by weight is between 0 and 100'),
+    ).toBeVisible()
+    await expect(checks(page)).toContainText('"almonds" states no percentage by weight')
+
+    // Moved, its text and its refusal arrive together. Rows were keyed by index, so the
+    // text stayed behind in the old position while the refusal moved. Read from the
+    // browser's own `badInput`, because a box holding "7e" reports its value as `''` and
+    // an assertion on the value could not tell it from an empty box. Found by review.
+    await page.getByRole('button', { name: 'Move almonds up' }).click()
+    const top = page.locator('#field-food-ing-pct-0')
+    await expect(top).toHaveAttribute('aria-invalid', 'true')
+    expect(await top.evaluate((el) => (el as HTMLInputElement).validity.badInput)).toBe(true)
+    // And the row it swapped with is a plain box again.
+    const second = page.locator('#field-food-ing-pct-1')
+    await expect(second).toHaveValue('90')
+    expect(await second.evaluate((el) => (el as HTMLInputElement).validity.badInput)).toBe(false)
+
+    // Removed, its text goes with it, rather than staying on whichever row moves up.
+    await page.getByRole('button', { name: 'Remove almonds' }).click()
+    const stuck = await page
+      .locator('[id^="field-food-ing-pct-"]')
+      .evaluateAll(
+        (boxes) => boxes.filter((box) => (box as HTMLInputElement).validity.badInput).length,
+      )
+    expect(stuck).toBe(0)
+  })
+
+  test('the link lands on the box the check that did not run needs', async ({ page }) => {
+    // The order check judges rather than declines — oats 5 under almonds 7 is out of
+    // order whatever the blank between them holds — so only the threshold check is
+    // waiting, for salt. The link went to the first blank, then to the ordered run's.
+    await openFoodEditor(page)
+    await page.getByRole('button', { name: 'Add an ingredient' }).click()
+    await page.locator('#field-food-ing-name-4').fill('honey')
+    await page.getByRole('button', { name: 'Move honey up' }).click()
+    await page.getByRole('button', { name: 'Move honey up' }).click()
+    // oats, almonds, honey (no figure), sugar, salt — the last two grouped.
+    await page.locator('#field-food-ing-pct-0').fill('5')
+    await page.locator('#field-food-ing-pct-4').fill('')
+    await expect(checks(page)).toContainText('listed after "whole grain rolled oats" at 5%')
+    await checks(page).getByRole('button', { name: 'Ingredients', exact: true }).click()
+    await expect(page.locator('#field-food-ing-pct-4')).toBeFocused()
+  })
+
+  test('a panel thrown away takes its set-aside second column with it', async ({ page }) => {
+    await openFoodEditor(page)
+    const dual = page.locator('#field-food-nf-dual')
+    await dual.check()
+    await page.locator('#field-food-nf2-calcium').fill('520')
+    await dual.uncheck()
+    await page.locator('#field-food-nf-present').uncheck()
+    await page.locator('#field-food-nf-present').check()
+    await page.locator('#field-food-nf-dual').check()
+    await expect(page.locator('#field-food-nf2-calcium')).toHaveValue('')
+  })
+})
