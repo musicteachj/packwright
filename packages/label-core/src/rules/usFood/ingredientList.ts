@@ -30,6 +30,13 @@
  * pass cites the paragraph and says what it does not check, and a label saved
  * with the old bare flag gets an advisory asking which paragraph it claims. The
  * passes rest on the artwork like the rest. Read from the eCFR on 2026-09-16.
+ *
+ * **Two rules, one for the list and one for its order.** They were one, and a rule may
+ * judge or decline, never both. So on an assortment, where the statement was judged, a
+ * listed ingredient with no stated percentage left the order unjudged and unnamed under
+ * "checks that did not run" — a gap the optional percentage made reachable. The order
+ * now has a rule of its own, `us-food/ingredient-order`, which can decline while
+ * `us-food/ingredient-list` judges the statement.
  */
 
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
@@ -43,9 +50,10 @@ import type { TextPrimitive } from '../../layout/types'
 import { INGREDIENT_THRESHOLD_PERCENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork, untitled } from '../finding'
-import type { Decline, UsFoodContext, UsFoodRule } from '../types'
+import type { Decline, DeclinedFact, UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_INGREDIENTS_MISSING = 'FDA_INGREDIENTS_MISSING'
+export const FDA_INGREDIENT_STATEMENT_MET = 'FDA_INGREDIENT_STATEMENT_MET'
 export const FDA_INGREDIENT_NAME_MISSING = 'FDA_INGREDIENT_NAME_MISSING'
 export const FDA_INGREDIENTS_OUT_OF_ORDER = 'FDA_INGREDIENTS_OUT_OF_ORDER'
 export const FDA_INGREDIENTS_ORDER_MET = 'FDA_INGREDIENTS_ORDER_MET'
@@ -102,26 +110,96 @@ type Weighed = UsFoodIngredient & { percentByWeight: number }
 const isWeighed = (ingredient: UsFoodIngredient): ingredient is Weighed =>
   ingredient.percentByWeight !== undefined
 
+/**
+ * An entry with no name. The engine draws it as an empty slot in the statement —
+ * "INGREDIENTS: oats, ." — so no pass may count it, and a check waiting on it asks for the
+ * name. One predicate for the rules and the editor's link, so they cannot disagree.
+ */
+export const isUnnamedIngredient = (ingredient: UsFoodIngredient): boolean =>
+  ingredient.name.trim() === ''
+
+/** An ingredient as a message names it: its name, or its place where it has none. */
+const plainOf = (ingredient: UsFoodIngredient, index: number): string =>
+  isUnnamedIngredient(ingredient) ? `ingredient ${index + 1}` : ingredient.name.trim()
+const quotedOf = (ingredient: UsFoodIngredient, index: number): string =>
+  isUnnamedIngredient(ingredient) ? plainOf(ingredient, index) : `"${plainOf(ingredient, index)}"`
+
+/** A message that opens on an entry's place opens on a capital: "Ingredient 2 is …". */
+const sentenceStart = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1)
+
 /** "oats", "oats and salt", "oats, salt and sugar" — or the row's place where it has no name. */
 const namesOf = (unweighed: readonly { ingredient: UsFoodIngredient; index: number }[]): string => {
-  const names = unweighed.map(({ ingredient, index }) =>
-    ingredient.name.trim() === '' ? `ingredient ${index + 1}` : `"${ingredient.name.trim()}"`,
-  )
+  const names = unweighed.map(({ ingredient, index }) => quotedOf(ingredient, index))
   return names.length === 1
     ? names[0]!
     : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]!}`
 }
 
-/** The entries in `range` the label states no percentage for, with their place in the list. */
-const unweighedIn = (ingredients: readonly UsFoodIngredient[], from: number, to: number) =>
-  ingredients
-    .map((ingredient, index) => ({ ingredient, index }))
-    .slice(from, to)
-    .filter(({ ingredient }) => !isWeighed(ingredient))
+/**
+ * What a check over entries `from` to `to` is waiting for, said once per entry.
+ *
+ * An entry missing both a figure and a name is named once, with both — naming it twice read
+ * as two entries. `figuresMatter` is false for a run of one, which is in order whatever it
+ * weighs. `undefined` where nothing is missing.
+ */
+function missingIn(
+  ingredients: readonly UsFoodIngredient[],
+  from: number,
+  to: number,
+  figuresMatter: boolean,
+): { said: string; ask: string; wants: DeclinedFact[] } | undefined {
+  const entries = ingredients.map((ingredient, index) => ({ ingredient, index })).slice(from, to)
+  const noFigure = (entry: { ingredient: UsFoodIngredient }) =>
+    figuresMatter && !isWeighed(entry.ingredient)
+  const both = entries.filter((entry) => noFigure(entry) && isUnnamedIngredient(entry.ingredient))
+  const figureOnly = entries.filter(
+    (entry) => noFigure(entry) && !isUnnamedIngredient(entry.ingredient),
+  )
+  const nameOnly = entries.filter(
+    (entry) => !noFigure(entry) && isUnnamedIngredient(entry.ingredient),
+  )
+  if (both.length + figureOnly.length + nameOnly.length === 0) return undefined
+
+  const slot = (count: number) =>
+    count === 1 ? 'so it prints as an empty slot' : 'so they print as empty slots'
+  const said = [
+    ...(figureOnly.length > 0
+      ? [
+          `${namesOf(figureOnly)} ${figureOnly.length === 1 ? 'states' : 'state'} no percentage by weight`,
+        ]
+      : []),
+    ...(both.length > 0
+      ? [
+          `${namesOf(both)} ${both.length === 1 ? 'states no percentage and has' : 'state no percentage and have'} ` +
+            `no name, ${slot(both.length)}`,
+        ]
+      : []),
+    ...(nameOnly.length > 0
+      ? [
+          `${namesOf(nameOnly)} ${nameOnly.length === 1 ? 'has' : 'have'} no name, ${slot(nameOnly.length)}`,
+        ]
+      : []),
+  ].join(', and ')
+  const figures = both.length + figureOnly.length > 0
+  const names = both.length + nameOnly.length > 0
+  return {
+    said,
+    ask:
+      figures && names
+        ? 'State a percentage and a name for each'
+        : figures
+          ? 'State a percentage for each'
+          : 'Name each',
+    wants: [
+      ...(figures ? (['ingredients.percentByWeight'] as const) : []),
+      ...(names ? (['ingredients.name'] as const) : []),
+    ],
+  }
+}
 
 export const usFoodIngredientListRule: UsFoodRule = {
   id: 'us-food/ingredient-list',
-  title: 'The ingredient statement is present and in descending order of predominance by weight.',
+  title: 'The ingredient statement is present, with every ingredient named.',
   citation: CITATION,
   citations: [
     CITATION,
@@ -132,35 +210,13 @@ export const usFoodIngredientListRule: UsFoodRule = {
   codes: {
     [FDA_INGREDIENTS_MISSING]: ['blocking'],
     [FDA_INGREDIENT_NAME_MISSING]: ['violation'],
-    [FDA_INGREDIENTS_OUT_OF_ORDER]: ['violation'],
-    [FDA_INGREDIENTS_ORDER_MET]: ['pass'],
+    [FDA_INGREDIENT_STATEMENT_MET]: ['pass'],
     [FDA_INGREDIENTS_EXEMPT]: ['pass'],
     [FDA_INGREDIENTS_EXEMPTION_UNSTATED]: ['advisory'],
     [FDA_ASSORTMENT_STATEMENT_MISSING]: ['blocking'],
     [FDA_ASSORTMENT_STATEMENT_INCOMPLETE]: ['violation'],
   },
   appliesTo: 'us-food',
-
-  /**
-   * The order cannot be judged while an ingredient it covers states no percentage.
-   *
-   * Only where the check found nothing to say: an inversion between two stated
-   * figures is reported whatever the rest are, and every other branch above it —
-   * an exemption, a missing or unnamed statement — has its own answer.
-   */
-  declines(context: UsFoodContext): Decline | undefined {
-    if (usFoodIngredientListRule.check(context).length > 0) return undefined
-    const ingredients = context.data.ingredients ?? []
-    const unweighed = unweighedIn(ingredients, 0, ingredients.length - groupedCountOf(context.data))
-    if (unweighed.length === 0) return undefined
-    return {
-      reason:
-        `Whether the ingredients run in descending order of predominance cannot be told while ` +
-        `${namesOf(unweighed)} ${unweighed.length === 1 ? 'states' : 'state'} no percentage by ` +
-        'weight. State a percentage for each ingredient and this check will run.',
-      wants: ['ingredients.percentByWeight'],
-    }
-  },
 
   check(context: UsFoodContext): Finding[] {
     const { data } = context
@@ -170,7 +226,8 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // common to all packages". So the common ingredients are listed and judged like any
     // list — by this same rule on the label without the claim, rather than by a second
     // copy of it — and where no ingredient is common to all packages there is nothing to
-    // list, and only the statement is owed.
+    // list, and only the statement is owed. Their order is `us-food/ingredient-order`'s,
+    // which judges a printed list whatever the label claims.
     if (data.ingredientsExemption?.kind === 'assortment') {
       const statement = assortmentStatement(data.ingredientsExemption, context)
       if (ingredients.length === 0) return statement
@@ -248,7 +305,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // about having once drawn "INGREDIENTS: .". Nothing reported it, and the API
     // rejected the document instead — a `min(1)` standing in for a rule, which
     // turned a compliance finding into a 400 on the one screen a user meets it.
-    const unnamed = ingredients.filter((ingredient) => ingredient.name.trim() === '').length
+    const unnamed = ingredients.filter(isUnnamedIngredient).length
     if (unnamed > 0) {
       return [
         finding(usFoodIngredientListRule, {
@@ -265,6 +322,71 @@ export const usFoodIngredientListRule: UsFoodRule = {
         }),
       ]
     }
+
+    return [
+      // 101.4(a)(1): the ingredients "shall be listed" on the panel: the artwork.
+      passedOnArtwork(
+        usFoodIngredientListRule,
+        FDA_INGREDIENT_STATEMENT_MET,
+        `The label lists ${ingredients.length} ingredient${ingredients.length === 1 ? '' : 's'}, ` +
+          'each with a name. Not checked here: whether each name is the common or usual name of ' +
+          'the ingredient, and whether the statement sits on the principal display panel or the ' +
+          'information panel. Their order is judged on its own.',
+        US_FOOD_ELEMENTS.ingredients,
+      ),
+    ]
+  },
+}
+
+/**
+ * Ingredients run in descending order of predominance by weight: 101.4(a)(1), judged on
+ * the figures the label states.
+ *
+ * A rule of its own so it can decline while the list rule judges — see the module note.
+ * It judges whatever list the label prints, under any exemption: § 101.100 relieves a
+ * food of bearing a list, not a printed list of running in order, and on an assortment
+ * the common ingredients are listed and judged like any other.
+ */
+export const usFoodIngredientOrderRule: UsFoodRule = {
+  id: 'us-food/ingredient-order',
+  title: 'Ingredients run in descending order of predominance by weight.',
+  citation: CITATION,
+  codes: {
+    [FDA_INGREDIENTS_OUT_OF_ORDER]: ['violation'],
+    [FDA_INGREDIENTS_ORDER_MET]: ['pass'],
+  },
+  appliesTo: 'us-food',
+
+  /**
+   * The order cannot be judged while an ingredient it covers states no percentage, or has
+   * no name and so does not print.
+   *
+   * Only where the check found nothing to say: an inversion between two stated figures is
+   * reported whatever the rest are. A run of one needs no figure, so none is asked for.
+   * An unnamed entry is asked for by name, because without one the pass would vouch for an
+   * empty slot in the printed list — and asking only for percentages there would promise a
+   * check that still would not run. Found by review.
+   */
+  declines(context: UsFoodContext): Decline | undefined {
+    if (usFoodIngredientOrderRule.check(context).length > 0) return undefined
+    const ingredients = context.data.ingredients ?? []
+    const orderedEnd = ingredients.length - groupedCountOf(context.data)
+    if (orderedEnd <= 0) return undefined
+    const missing = missingIn(ingredients, 0, orderedEnd, orderedEnd > 1)
+    if (missing === undefined) return undefined
+    return {
+      reason:
+        `Whether the ingredients run in descending order of predominance cannot be told while ` +
+        `${missing.said}. ${missing.ask} ingredient and this check will run.`,
+      wants: missing.wants,
+    }
+  },
+
+  check({ data }: UsFoodContext): Finding[] {
+    const ingredients = data.ingredients ?? []
+    // Nothing listed is nothing to order. Whether the label owes a list, or is excused
+    // one, is the list rule's question.
+    if (ingredients.length === 0) return []
 
     // Entries behind a 101.4(a)(2) quantifying statement are outside the
     // ordering requirement entirely, so they are excluded before the comparison
@@ -286,27 +408,37 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // figures is a defect whatever the unstated ones are, so it is still reported;
     // the stated figures in order, with some missing, clear nothing — an unstated
     // entry could belong anywhere in the run — and `declines` asks for them.
-    const weighed = ordered.filter(isWeighed)
-    const inversions = weighed.flatMap((ingredient, index) => {
-      const next = weighed[index + 1]
-      return next !== undefined && next.percentByWeight > ingredient.percentByWeight
-        ? [{ ingredient, next }]
+    //
+    // Each keeps its place in the list, so an entry with no name is still named by where it
+    // sits. Unnamed entries are the list rule's finding; their order is still this rule's.
+    const weighed = ordered
+      .map((ingredient, index) => ({ ingredient, index }))
+      .filter((entry): entry is { ingredient: Weighed; index: number } =>
+        isWeighed(entry.ingredient),
+      )
+    const inversions = weighed.flatMap((entry, position) => {
+      const next = weighed[position + 1]
+      return next !== undefined &&
+        next.ingredient.percentByWeight > entry.ingredient.percentByWeight
+        ? [{ before: entry, after: next }]
         : []
     })
 
     if (inversions.length > 0) {
-      const [first] = inversions
+      const { before, after } = inversions[0]!
       return [
-        finding(usFoodIngredientListRule, {
+        finding(usFoodIngredientOrderRule, {
           code: FDA_INGREDIENTS_OUT_OF_ORDER,
           severity: 'violation',
           message:
-            `"${first!.next.name}" is ${first!.next.percentByWeight}% of the food and is listed ` +
-            `after "${first!.ingredient.name}" at ${first!.ingredient.percentByWeight}%. ` +
-            'Ingredients run in descending order of predominance by weight.',
+            `${sentenceStart(quotedOf(after.ingredient, after.index))} is ` +
+            `${after.ingredient.percentByWeight}% of ` +
+            `the food and is listed after ${quotedOf(before.ingredient, before.index)} at ` +
+            `${before.ingredient.percentByWeight}%. Ingredients run in descending order of ` +
+            'predominance by weight.',
           measurement: {
-            actual: `${first!.ingredient.name} then ${first!.next.name}`,
-            required: `${first!.next.name} then ${first!.ingredient.name}`,
+            actual: `${plainOf(before.ingredient, before.index)} then ${plainOf(after.ingredient, after.index)}`,
+            required: `${plainOf(after.ingredient, after.index)} then ${plainOf(before.ingredient, before.index)}`,
           },
           elementId: US_FOOD_ELEMENTS.ingredients,
         }),
@@ -317,13 +449,25 @@ export const usFoodIngredientListRule: UsFoodRule = {
     // and asking for it would hold up a single-ingredient label for nothing.
     if (ordered.length > 1 && weighed.length < ordered.length) return []
 
+    // **No pass over an entry the label never printed.** An unnamed entry draws as an empty
+    // slot — "INGREDIENTS: oats, ." — so a pass counting it would vouch for the order of
+    // something not on the label. An inversion is still reported above, since that is a
+    // defect in the figures whatever the names; and the list rule reports the missing name,
+    // so the label is not left looking clean. Found by review.
+    if (ordered.some(isUnnamedIngredient)) return []
+
+    // The entries behind the quantifying statement are mentioned only where all of them
+    // printed. Counted with an empty slot among them, the pass vouched for an entry that
+    // is not on the label. Found by `/code-review high` on PR #72.
+    const groupedPrinted = ingredients.slice(ordered.length).every((i) => !isUnnamedIngredient(i))
+
     return [
       // 101.4(a)(1): the ingredients "shall be listed" in that order on the panel: the artwork.
       passedOnArtwork(
-        usFoodIngredientListRule,
+        usFoodIngredientOrderRule,
         FDA_INGREDIENTS_ORDER_MET,
         `${ordered.length} ingredient${ordered.length === 1 ? '' : 's'} run in descending order ` +
-          `of predominance by weight${grouped > 0 ? `, with ${grouped} grouped behind the quantifying statement` : ''}.`,
+          `of predominance by weight${grouped > 0 && groupedPrinted ? `, with ${grouped} grouped behind the quantifying statement` : ''}.`,
         US_FOOD_ELEMENTS.ingredients,
       ),
     ]
@@ -449,24 +593,27 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
   },
   appliesTo: 'us-food',
 
-  /** As the order rule's: a grouped ingredient with no percentage cannot be held to the threshold. */
+  /**
+   * As the order rule's: a grouped ingredient with no percentage cannot be held to the
+   * threshold, and one with no name prints as an empty slot the pass would count.
+   */
   declines(context: UsFoodContext): Decline | undefined {
     if (usFoodIngredientThresholdRule.check(context).length > 0) return undefined
     const threshold = context.data.ingredientThreshold
     const ingredients = context.data.ingredients ?? []
     if (threshold === undefined || threshold.count <= 0) return undefined
-    const unweighed = unweighedIn(
+    const missing = missingIn(
       ingredients,
       ingredients.length - groupedCountOf(context.data),
       ingredients.length,
+      true,
     )
-    if (unweighed.length === 0) return undefined
+    if (missing === undefined) return undefined
     return {
       reason:
         `Whether every ingredient behind the ${threshold.percent} percent statement is within it ` +
-        `cannot be told while ${namesOf(unweighed)} ${unweighed.length === 1 ? 'states' : 'state'} ` +
-        'no percentage by weight. State a percentage for each and this check will run.',
-      wants: ['ingredients.percentByWeight'],
+        `cannot be told while ${missing.said}. ${missing.ask} one and this check will run.`,
+      wants: missing.wants,
     }
   },
 
@@ -501,13 +648,15 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
       .filter(isWeighed)
       .filter((ingredient) => ingredient.percentByWeight > threshold.percent)
 
+    const groupedFrom = ingredients.length - grouped.length
     if (over.length > 0) {
       return over.map((ingredient) =>
         finding(usFoodIngredientThresholdRule, {
           code: FDA_INGREDIENT_THRESHOLD_EXCEEDED,
           severity: 'violation',
           message:
-            `"${ingredient.name}" is ${ingredient.percentByWeight}% of the food and sits behind a ` +
+            `${sentenceStart(quotedOf(ingredient, groupedFrom + grouped.indexOf(ingredient)))} is ` +
+            `${ingredient.percentByWeight}% of the food and sits behind a ` +
             `statement covering ${threshold.percent} percent or less. No ingredient the phrase ` +
             'applies to may exceed the threshold it states.',
           measurement: {
@@ -520,6 +669,8 @@ export const usFoodIngredientThresholdRule: UsFoodRule = {
     }
 
     if (!grouped.every(isWeighed)) return []
+    // No pass over an entry that prints as an empty slot; `declines` asks for its name.
+    if (grouped.some(isUnnamedIngredient)) return []
 
     return [
       // (a)(2)'s permission turns on a listing "placed at the end" of the statement: the artwork.

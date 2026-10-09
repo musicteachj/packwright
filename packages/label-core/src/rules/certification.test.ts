@@ -54,6 +54,7 @@ import {
   FDA_ALLERGEN_DECLARED_MET,
   FDA_CONTAINS_TYPE_MET,
   FDA_INGREDIENTS_ORDER_MET,
+  FDA_INGREDIENT_STATEMENT_MET,
   FDA_STATEMENT_OF_IDENTITY_MET,
   FDA_INGREDIENT_THRESHOLD_MET,
   FDA_RESPONSIBLE_FIRM_MET,
@@ -162,7 +163,9 @@ describe('a rule never certifies what the engine did not print', () => {
       findings.every((result) => result.severity === 'pass'),
       'withholding must not cost a clean label any of its passes',
     ).toBe(true)
-    expect(findings).toHaveLength(18)
+    // 19 since the ingredient order became a rule of its own: the list rule now passes the
+    // statement itself (`FDA_INGREDIENT_STATEMENT_MET`) beside the order rule's pass.
+    expect(findings).toHaveLength(19)
   })
 
   it('keeps an entitlement that rests on the document, not on the artwork', () => {
@@ -227,7 +230,12 @@ describe('the US food passes that rest on the artwork', () => {
       },
       {
         stock: { widthMm: 20, heightMm: 60, marginMm: 1 },
-        judged: [FDA_INGREDIENTS_ORDER_MET, FDA_INGREDIENT_THRESHOLD_MET, FDA_CONTAINS_TYPE_MET],
+        judged: [
+          FDA_INGREDIENT_STATEMENT_MET,
+          FDA_INGREDIENTS_ORDER_MET,
+          FDA_INGREDIENT_THRESHOLD_MET,
+          FDA_CONTAINS_TYPE_MET,
+        ],
         names: [US_FOOD_ELEMENTS.ingredients, US_FOOD_ELEMENTS.containsStatement],
       },
     ] satisfies { stock: LabelStock; judged: string[]; names: string[] }[]

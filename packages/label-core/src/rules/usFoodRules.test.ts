@@ -32,12 +32,15 @@ import {
   FDA_CONTAINS_TYPE_TOO_SMALL,
   FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
   FDA_INGREDIENTS_EXEMPT,
+  FDA_INGREDIENT_NAME_MISSING,
+  FDA_INGREDIENT_STATEMENT_MET,
   FDA_INGREDIENTS_EXEMPTION_UNSTATED,
   FDA_INGREDIENTS_MISSING,
   FDA_NUTRITION_EXEMPTION_UNSTATED,
   FDA_INGREDIENTS_ORDER_MET,
   FDA_INGREDIENTS_OUT_OF_ORDER,
   FDA_INGREDIENT_THRESHOLD_EXCEEDED,
+  FDA_INGREDIENT_THRESHOLD_MET,
   FDA_PANEL_TYPE_SIZE_MET,
   FDA_PANEL_TYPE_TOO_SMALL,
   FDA_NUTRITION_CONTACT_MISSING,
@@ -56,6 +59,8 @@ import {
   FDA_ASSORTMENT_STATEMENT_MISSING,
   FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
   usFoodIngredientListRule,
+  usFoodIngredientOrderRule,
+  usFoodIngredientThresholdRule,
 } from './index'
 import { US_FOOD_RULES, declinedChecks, runRules } from './registry'
 import { codesOf } from './types'
@@ -1358,6 +1363,146 @@ describe('findings from the stage 4 review', () => {
   })
 })
 
+describe('the list and its order, as two rules', () => {
+  const stock = US_FOOD_CONFORMANT.stock
+  const judge = (data: UsFoodLabelData) => {
+    const context = {
+      labelType: 'us-food' as const,
+      data,
+      stock,
+      layout: layOutUsFoodLabel({ data, stock }),
+    }
+    return { findings: runRules(context), declined: declinedChecks(context) }
+  }
+
+  it('passes the statement on its own, and says what it does not check', () => {
+    const statement = judge(US_FOOD_CONFORMANT.data).findings.find(
+      (f) => f.code === FDA_INGREDIENT_STATEMENT_MET,
+    )
+    expect(statement?.message).toMatch(/^The label lists 4 ingredients, each with a name\./)
+    expect(statement?.message).toContain('whether each name is the common or usual name')
+  })
+
+  it('still orders a list with an unnamed entry, naming it by its place', () => {
+    // An unnamed entry is the list rule's finding. It used to end the whole check, so a
+    // list with a blank name was never asked about its order at all.
+    const { ingredientThreshold: _grouping, ...data } = US_FOOD_CONFORMANT.data
+    const ingredients = [
+      { name: 'oats', percentByWeight: 50 },
+      { name: '', percentByWeight: 60 },
+    ]
+    const findings = judge({ ...data, ingredients, containsStatement: [] }).findings
+    const codes = findings.map((f) => f.code)
+    expect(codes).toContain(FDA_INGREDIENT_NAME_MISSING)
+    expect(findings.find((f) => f.code === FDA_INGREDIENTS_OUT_OF_ORDER)?.message).toMatch(
+      /^Ingredient 2 is 60% of the food and is listed after "oats" at 50%/,
+    )
+  })
+
+  it('does not pass the order of a list with an unnamed entry, which did not print', () => {
+    // "INGREDIENTS: oats, ." — the pass said "2 ingredients run in descending order",
+    // vouching for an entry the label never printed. Found by review.
+    const { ingredientThreshold: _grouping, ...data } = US_FOOD_CONFORMANT.data
+    const ingredients = [
+      { name: 'oats', percentByWeight: 60 },
+      { name: '', percentByWeight: 40 },
+    ]
+    const { findings, declined } = judge({ ...data, ingredients, containsStatement: [] })
+    const codes = findings.map((f) => f.code)
+    expect(codes).toContain(FDA_INGREDIENT_NAME_MISSING)
+    expect(codes).not.toContain(FDA_INGREDIENTS_ORDER_MET)
+    // And says so, rather than standing down in silence — the gap this rule exists to close.
+    const order = declined.find((d) => d.ruleId === usFoodIngredientOrderRule.id)
+    expect(order?.wants).toEqual(['ingredients.name'])
+    expect(order?.reason).toContain('ingredient 2 has no name, so it prints as an empty slot')
+    expect(order?.reason).toContain('Name each ingredient and this check will run.')
+  })
+
+  it('asks for a percentage and a name where both are missing, and promises only what will run', () => {
+    // Asking only for the percentage promised a check that would still not run.
+    const { ingredientThreshold: _grouping, ...data } = US_FOOD_CONFORMANT.data
+    const ingredients = [{ name: 'oats' }, { name: '', percentByWeight: 40 }]
+    const order = judge({ ...data, ingredients, containsStatement: [] }).declined.find(
+      (d) => d.ruleId === usFoodIngredientOrderRule.id,
+    )
+    expect(order?.wants).toEqual(['ingredients.percentByWeight', 'ingredients.name'])
+    expect(order?.reason).toContain('State a percentage and a name for each ingredient')
+  })
+
+  it('names an entry missing a figure and a name once, with both', () => {
+    // It read "ingredient 1 states no percentage by weight, and ingredient 1 has no name",
+    // two entries to a reader. Found by `/code-review high` on PR #72.
+    const { ingredientThreshold: _grouping, ...data } = US_FOOD_CONFORMANT.data
+    const ingredients = [{ name: '' }, { name: 'oats', percentByWeight: 50 }]
+    const order = judge({ ...data, ingredients, containsStatement: [] }).declined.find(
+      (d) => d.ruleId === usFoodIngredientOrderRule.id,
+    )
+    expect(order?.reason).toContain(
+      'ingredient 1 states no percentage and has no name, so it prints as an empty slot',
+    )
+    expect(order?.reason).not.toContain('ingredient 1 states no percentage by weight')
+  })
+
+  it('does not count an unprinted entry behind the quantifying statement in the order pass', () => {
+    // "3 ingredients run in descending order …, with 2 grouped behind the quantifying
+    // statement" — one of the 2 printed as an empty slot. Found by `/code-review high` on PR #72.
+    const ingredients = [
+      ...US_FOOD_CONFORMANT.data.ingredients!.slice(0, 3),
+      { name: '', percentByWeight: 0.5 },
+    ]
+    const order = judge({ ...US_FOOD_CONFORMANT.data, ingredients }).findings.find(
+      (f) => f.code === FDA_INGREDIENTS_ORDER_MET,
+    )
+    expect(order?.message).not.toContain('grouped')
+  })
+
+  it('holds the threshold to the same rule: no pass over an unnamed entry, and a name asked for', () => {
+    const ingredients = [
+      ...US_FOOD_CONFORMANT.data.ingredients!.slice(0, 3),
+      { name: '', percentByWeight: 0.5 },
+    ]
+    const { findings, declined } = judge({ ...US_FOOD_CONFORMANT.data, ingredients })
+    expect(findings.map((f) => f.code)).not.toContain(FDA_INGREDIENT_THRESHOLD_MET)
+    const threshold = declined.find((d) => d.ruleId === usFoodIngredientThresholdRule.id)
+    expect(threshold?.wants).toEqual(['ingredients.name'])
+    expect(threshold?.reason).toContain('ingredient 4 has no name, so it prints as an empty slot')
+  })
+
+  it('names an unnamed entry over the threshold by its place, not as an empty quote', () => {
+    const ingredients = [
+      ...US_FOOD_CONFORMANT.data.ingredients!.slice(0, 3),
+      { name: '', percentByWeight: 3 },
+    ]
+    const exceeded = judge({ ...US_FOOD_CONFORMANT.data, ingredients }).findings.find(
+      (f) => f.code === FDA_INGREDIENT_THRESHOLD_EXCEEDED,
+    )
+    expect(exceeded?.message).toMatch(/^Ingredient 4 is 3% of the food/)
+  })
+
+  it("says the statement's placement is not checked, as 101.4(a)(1) asks for one", () => {
+    // "on either the principal display panel or the information panel", read from the
+    // eCFR on 2026-10-09. Found by `/code-review high` on PR #72.
+    const statement = judge(US_FOOD_CONFORMANT.data).findings.find(
+      (f) => f.code === FDA_INGREDIENT_STATEMENT_MET,
+    )
+    expect(statement?.message).toContain(
+      'whether the statement sits on the principal display panel or the information panel',
+    )
+  })
+
+  it('leaves an exempt label with no list to the list rule alone', () => {
+    const exempt = {
+      ...US_FOOD_CONFORMANT.data,
+      ingredients: [],
+      ingredientsExemption: { kind: 'bulk-at-retail' as const },
+    }
+    const { findings, declined } = judge(exempt)
+    expect(findings.map((f) => f.code)).toContain(FDA_INGREDIENTS_EXEMPT)
+    expect(findings.filter((f) => f.code.startsWith('FDA_INGREDIENTS_O'))).toEqual([])
+    expect(declined.find((d) => d.ruleId === usFoodIngredientOrderRule.id)).toBeUndefined()
+  })
+})
+
 describe('an ingredient whose percentage is not stated', () => {
   // The editor wrote a cleared percentage box as 0 and seeded every new row with it,
   // because the field was a required number. Clearing oats' figure on the opening
@@ -1387,10 +1532,32 @@ describe('an ingredient whose percentage is not stated', () => {
     expect(codes).not.toContain(FDA_INGREDIENTS_OUT_OF_ORDER)
     expect(codes).not.toContain(FDA_INGREDIENTS_ORDER_MET)
     const declined = declinedChecks(contextOf(data)).find(
-      (d) => d.ruleId === usFoodIngredientListRule.id,
+      (d) => d.ruleId === usFoodIngredientOrderRule.id,
     )
     expect(declined?.wants).toEqual(['ingredients.percentByWeight'])
     expect(declined?.reason).toContain(`"${US_FOOD_CONFORMANT.data.ingredients![0]!.name}"`)
+  })
+
+  it('is named under the checks that did not run on an assortment whose statement was judged', () => {
+    // The gap #65 made reachable. The order check and the assortment's statement were one
+    // rule, and a rule may judge or decline, never both — so where the statement was judged
+    // and a listed ingredient stated no percentage, the order went unjudged and unnamed.
+    const data = without([0], {
+      ingredientsExemption: {
+        kind: 'assortment',
+        statement: 'May also contain pecans or walnuts.',
+        mayBePresent: ['pecans', 'walnuts'],
+      },
+    })
+    const codes = findingsFor(data, stock).map((f) => f.code)
+    expect(codes, 'the statement is judged').toContain(FDA_INGREDIENTS_EXEMPT)
+    expect(codes).not.toContain(FDA_INGREDIENTS_ORDER_MET)
+    const declined = declinedChecks(contextOf(data)).find(
+      (d) => d.ruleId === usFoodIngredientOrderRule.id,
+    )
+    expect(declined?.wants, 'and the order is said not to have run').toEqual([
+      'ingredients.percentByWeight',
+    ])
   })
 
   it('is not asked for where one ingredient is the whole run', () => {
@@ -1400,7 +1567,7 @@ describe('an ingredient whose percentage is not stated', () => {
     const single = { ...data, ingredients: [{ name: 'almonds' }] } as UsFoodLabelData
     expect(findingsFor(single, stock).map((f) => f.code)).toContain(FDA_INGREDIENTS_ORDER_MET)
     expect(
-      declinedChecks(contextOf(single)).find((d) => d.ruleId === usFoodIngredientListRule.id),
+      declinedChecks(contextOf(single)).find((d) => d.ruleId === usFoodIngredientOrderRule.id),
     ).toBeUndefined()
   })
 

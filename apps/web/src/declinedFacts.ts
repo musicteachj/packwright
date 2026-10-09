@@ -24,12 +24,30 @@ export interface FactField {
   fieldId: string
   /** What the form calls it, so the link reads as the field the user will find. */
   name: string
+  /**
+   * Which control within it, where two facts share one section. The order check can ask for
+   * an ingredient's percentage and another's name at once, and two links both reading
+   * "Ingredients" and leading to different boxes could not be told apart. Found by review.
+   */
+  part?: string
+}
+
+/** The link's text: the field's name, and the part of it where that alone would be ambiguous. */
+export const factLabel = (fact: DeclinedFact): string => {
+  const { name, part } = DECLINED_FACT_FIELDS[fact]
+  return part === undefined ? name : `${name} (${part})`
 }
 
 export const DECLINED_FACT_FIELDS: Readonly<Record<DeclinedFact, FactField>> = {
   hazards: { fieldId: 'field-ghs-classification', name: 'Hazard classification' },
   // The first percentage box with nothing in it; the section is what the page calls it.
-  'ingredients.percentByWeight': { fieldId: 'field-food-ingredients', name: 'Ingredients' },
+  'ingredients.percentByWeight': {
+    fieldId: 'field-food-ingredients',
+    name: 'Ingredients',
+    part: 'percentages',
+  },
+  // The first name box with nothing in it, the same way.
+  'ingredients.name': { fieldId: 'field-food-ingredient-name', name: 'Ingredients', part: 'names' },
   'nutritionFacts.referenceAmount': { fieldId: 'field-food-nf-racc', name: 'Reference amount' },
   'nutritionFacts.packageContent': {
     fieldId: 'field-food-nf-package-content',

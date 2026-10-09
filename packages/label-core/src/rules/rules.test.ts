@@ -742,6 +742,10 @@ describe('a check that stood down names what would let it run', () => {
         return ((data as UsFoodLabelData).ingredients ?? []).every(
           (ingredient) => ingredient.percentByWeight !== undefined,
         )
+      case 'ingredients.name':
+        return ((data as UsFoodLabelData).ingredients ?? []).every(
+          (ingredient) => ingredient.name.trim() !== '',
+        )
       case 'nutritionFacts.referenceAmount':
         return figure(panel?.referenceAmount?.amount)
       case 'nutritionFacts.packageContent':
@@ -769,9 +773,18 @@ describe('a check that stood down names what would let it run', () => {
       })
       return { ...label, ingredients }
     }
+    if (fact === 'ingredients.name') {
+      // Named by its place, as a user filling the box in might.
+      const ingredients = (label.ingredients ?? []).map((ingredient, index) =>
+        ingredient.name.trim() === ''
+          ? { ...ingredient, name: `ingredient ${index + 1}` }
+          : ingredient,
+      )
+      return { ...label, ingredients }
+    }
     const panel = label.nutritionFacts!
     const answer: Record<
-      Exclude<DeclinedFact, 'hazards' | 'ingredients.percentByWeight'>,
+      Exclude<DeclinedFact, 'hazards' | 'ingredients.percentByWeight' | 'ingredients.name'>,
       object
     > = {
       'nutritionFacts.referenceAmount': {
