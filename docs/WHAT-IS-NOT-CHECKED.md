@@ -226,7 +226,10 @@ check used to do, told US labels their pictograms were wrong under a regulation 
 
 Two related checks still run on US labels under OSHA's own text: pictogram precedence (Appendix C.2.1), and that
 each pictogram is one of OSHA's eight symbols (C.2.3.2). Where the tool works your pictograms out from the
-classification, it now leaves out the environment pictogram, which OSHA does not use.
+classification, it leaves out the environment pictogram, which is not among OSHA's eight symbols (C.2.3.2) and
+which this tool reports if a US label prints it, and it works out the rest
+from CLP's table. That table has not been checked against C.4, so on a US label check each pictogram the tool
+draws against C.4 yourself. The editor says so beside the classification.
 
 ---
 

@@ -17,6 +17,19 @@
  * four clauses to CLP's five, its skull-and-crossbones rule is narrowed to the
  * exclamation mark "used for acute toxicity", and it has no equivalent of the
  * two CLP clauses that make a pictogram optional rather than forbidden.
+ *
+ * **Why each pictogram is present is read from CLP's table on a US label too,** and
+ * that is sound for the four classes OSHA's clauses turn on. Read from the eCFR on
+ * 2026-10-09, Figure C.1 as the image the eCFR serves for it (Federal Register
+ * `ER08JA26.012`), since it is published as no text; C.2.3.2 incorporates it ("depicted
+ * in Figure C.1"). It assigns the exclamation mark to "Irritant", "Dermal Sensitizer"
+ * and "Acute Toxicity(harmful)", the skull and crossbones to "Acute Toxicity
+ * (severe)", the health hazard to "Respiratory Sensitizer" and corrosion to
+ * "Corrosives"; and C.4.1
+ * gives oral acute toxicity categories 1 to 3 the skull and category 4 the exclamation
+ * mark. CLP Annex V makes the same assignments. The wider class-to-pictogram mapping
+ * is not verified against C.4, which is why `ghs/pictogram-set` stands down on US
+ * labels.
  */
 
 import { hazardsRequiring, requiredPictograms } from './classification'

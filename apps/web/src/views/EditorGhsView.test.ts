@@ -180,6 +180,18 @@ describe('the GHS form rail', () => {
 
     expect(wrapper.text()).toContain('Currently GHS02.')
     expect(store.layout!.pictograms.map((p) => p.code)).toEqual(['GHS02'])
+    // And says why, beside the class captioned with it — and that nothing here checks the
+    // set against OSHA's own tables.
+    const note = wrapper.get('[data-us-pictogram-note]').text()
+    expect(note).toContain('GHS09 is left out')
+    expect(note).toContain('not checked them against OSHA’s Appendix C.4')
+  })
+
+  it('says nothing of OSHA on an EU label', async () => {
+    const { store, wrapper } = await mountGhs()
+    store.ghsData.regime = 'eu-clp'
+    await nextTick()
+    expect(wrapper.find('[data-us-pictogram-note]').exists()).toBe(false)
   })
 
   it('stores a statement as a code, never as text', async () => {

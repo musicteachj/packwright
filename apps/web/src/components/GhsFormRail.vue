@@ -27,7 +27,9 @@ import {
   GHS_ELEMENTS,
   GHS_REGIMES,
   GHS_SIGNAL_WORDS,
-  derivedPictograms as pictogramsFor,
+  derivedPictograms,
+  isPictogramRecognised,
+  requiredPictograms,
   smallContainerThresholdL,
   type GhsRegime,
   type GhsSignalWord,
@@ -115,7 +117,16 @@ function toggleHazard(id: string, on: boolean): void {
  * And only the symbols the regime recognises: the engine draws through the same
  * function, so the preview cannot list a pictogram the label will not carry.
  */
-const derivedPictograms = computed(() => pictogramsFor(hazards.value, data.regime))
+const previewPictograms = computed(() => derivedPictograms(hazards.value, data.regime))
+
+/**
+ * Pictograms CLP's table gives the declared classes that this regime does not use — on a
+ * US label, the environment pictogram for an aquatic hazard. Said beside the preview, so a
+ * class captioned "→ GHS09" that draws nothing is explained rather than silently dropped.
+ */
+const leftOut = computed(() =>
+  requiredPictograms(hazards.value).filter((code) => !isPictogramRecognised(data.regime, code)),
+)
 
 const signalWords = computed(() => data.signalWords ?? [])
 
@@ -281,9 +292,22 @@ const supplierTelephone = computed({
     >
       <p class="text-chrome-400 text-xs">
         Pictograms are derived from the classification, not chosen.
-        <span v-if="derivedPictograms.length" class="numeric text-chrome-200">
-          Currently {{ derivedPictograms.join(', ') }}.
+        <span v-if="previewPictograms.length" class="numeric text-chrome-200">
+          Currently {{ previewPictograms.join(', ') }}.
         </span>
+      </p>
+      <!--
+        The classes and the pictogram table are CLP's; on a US label nothing checks the set
+        against OSHA's Appendix C.4, and `ghs/pictogram-set` stands down. Said here, where
+        the set is offered, as well as under the checks that did not run.
+      -->
+      <p v-if="data.regime === 'us-osha'" class="text-chrome-400 text-xs" data-us-pictogram-note>
+        These classes, and the table the pictograms come from, are the EU’s (CLP). This tool has not
+        checked them against OSHA’s Appendix C.4, so check each pictogram there.
+        <template v-if="leftOut.length">
+          <span class="numeric">{{ leftOut.join(', ') }}</span> is left out: OSHA’s eight symbols
+          (Appendix C.2.3.2) do not include the environment pictogram.
+        </template>
       </p>
 
       <!--

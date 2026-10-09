@@ -26,8 +26,17 @@ into a version only when there is a reason to.
   table, it drew GHS09 for a US label declaring an aquatic hazard, and `ghs/pictogram-integrity` then reported it
   as not one of OSHA's eight symbols (C.2.3.2). That was the tool's own drawing, blamed on the label. One function,
   `derivedPictograms`, now works the set out for the engine, the editor's preview and the rule, and keeps only
-  the symbols the regime recognises. The US fixture for GHS09 now declares the pictogram, since a label that
-  prints it is the real defect.
+  the symbols the regime recognises. The US fixture for GHS09 now declares the pictogram, rather than relying on
+  the engine to draw it.
+
+  **The editor says so on a US label.** Beside the classification, a US label is told that the classes and the
+  pictogram table are CLP's and unchecked against C.4, and why an aquatic hazard draws no GHS09. The reasoning
+  `ghs/pictogram-precedence` uses on US labels is now recorded against OSHA's own text: Figure C.1 and C.4.1,
+  read the same day, assign the four classes its clauses turn on as CLP does. Whether printing GHS09 on a US label
+  should be a violation at all is recorded in the backlog as open: C.2.3.2 names eight symbols, but OSHA's own
+  pictogram card calls the environment pictogram non-mandatory. The rule's catalogue title now names the EU, and
+  which regimes it stands down on is an exhaustive switch, so a regime added later does not compile until
+  somebody decides what the rule says about it.
 
 - **`docs/BACKLOG.md` is down from 1,802 lines to 888, and says what it is for.** It records findings
   deliberately not acted on, and is not a to-do list. Most of its length was finished work: 66 struck-through

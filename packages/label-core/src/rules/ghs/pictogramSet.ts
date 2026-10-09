@@ -39,6 +39,7 @@ import { wasFullyDrawn } from '../../layout/omissions'
 import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
+import type { GhsRegime } from '../../ghs/statements'
 import type { Decline, GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_PICTOGRAM_NOT_REQUIRED = 'GHS_PICTOGRAM_NOT_REQUIRED'
@@ -58,9 +59,41 @@ const US_CITATION: Citation = {
   title: 'Label elements specified in C.4 for each hazard class and category',
 }
 
+/**
+ * Whether this rule stands down on a regime's labels, and what it says when it does.
+ *
+ * It judges only against CLP Annex V, the table it holds. **An exhaustive switch rather than a
+ * test for one regime**, so a regime added to `GhsRegime` does not compile until somebody decides
+ * what this rule says about it, instead of being judged against Annex V by default or told it
+ * is a US label. One function for `declines` and `check`, so the two cannot disagree.
+ */
+function standsDownFor(regime: GhsRegime): Decline | undefined {
+  switch (regime) {
+    case 'eu-clp':
+      return undefined
+    case 'us-osha':
+      return {
+        reason:
+          'This label is for the US market, where 29 CFR 1910.1200 Appendix C.2 takes a ' +
+          'classified chemical’s pictograms from the tables in C.4, hazard class by hazard ' +
+          'class. This tool holds no verified copy of those tables, and the hazard classes it ' +
+          'offers are those of the EU’s CLP Regulation, which do not map one to one onto ' +
+          'OSHA’s. So it gives no verdict on whether the pictograms printed are the ones your ' +
+          'classification requires. That is a limit of this tool, not a fault found in your label.',
+        citation: US_CITATION,
+        wants: [],
+        limit: true,
+      }
+    default: {
+      const unreached: never = regime
+      return unreached
+    }
+  }
+}
+
 export const ghsPictogramSetRule: GhsChemicalRule = {
   id: 'ghs/pictogram-set',
-  title: 'Every pictogram on the label is one the classification requires.',
+  title: 'On an EU label, every pictogram is one the classification requires.',
   citation: CITATION,
   codes: {
     [GHS_PICTOGRAM_NOT_REQUIRED]: ['violation'],
@@ -79,20 +112,8 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
    */
   declines({ data }: GhsChemicalContext): Decline | undefined {
     // First, because no fact the label could state would make the check run.
-    if (data.regime === 'us-osha') {
-      return {
-        reason:
-          'This label is for the US market, where 29 CFR 1910.1200 Appendix C.2 takes a ' +
-          'classified chemical’s pictograms from the tables in C.4, hazard class by hazard ' +
-          'class. This tool holds no verified copy of those tables, and the hazard classes it ' +
-          'offers are those of the EU’s CLP Regulation, which do not map one to one onto ' +
-          'OSHA’s. So it gives no verdict on whether the pictograms printed are the ones your ' +
-          'classification requires. That is a limit of this tool, not a fault found in your label.',
-        citation: US_CITATION,
-        wants: [],
-        limit: true,
-      }
-    }
+    const limit = standsDownFor(data.regime)
+    if (limit !== undefined) return limit
     if ((data.hazards ?? []).length > 0) return undefined
     return {
       reason:
@@ -106,7 +127,7 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
   check({ data, layout }: GhsChemicalContext): Finding[] {
     // Declined above, at this tool's limit. Judging a US label against Annex V is the
     // defect this guard exists to prevent.
-    if (data.regime === 'us-osha') return []
+    if (standsDownFor(data.regime) !== undefined) return []
     const hazards = data.hazards ?? []
     // With no classification there is nothing to compare against. Declining is
     // not a pass — see the note on `Rule.check`.
