@@ -10,6 +10,15 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The phone scan-back test has written steps**, in `docs/plans/2026-10-08-phone-scan-back.md`. It is done by
+  hand. A phone camera needs a secure context, and plain HTTP to the laptop's LAN address was measured to fail
+  before the camera is even reached: helmet's `upgrade-insecure-requests` rewrote the page's own assets to
+  `https://`. So the build is served through a Quick Tunnel. The expected printed sizes are worked from GS1
+  General Specifications 26.0, read from its rendered pages on 2026-10-08: a bar pattern 95 × 0.330 =
+  31.35 mm wide, and guard bars 22.85 + 1.65 = 24.50 mm tall. The exported PDF measures the same. The steps
+  say what to record and what counts as a failure. A wrong number counts first, ahead of no read, and a
+  control symbol that scans makes the test inconclusive.
+
 - **The application keeps at most twenty saved labels.** The API had no cap, and `docs/DESIGN.md` had left
   the figure open. It is twenty across the whole collection, because the API has no owner concept. `POST
   /api/labels` refuses the twenty-first with a 409 and a sentence saying to delete a label first. It counts
