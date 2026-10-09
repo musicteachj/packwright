@@ -35,7 +35,8 @@ import {
   type GhsSignalWord,
   type HazardClassEntry,
 } from '@packwright/label-core'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useAnnouncement } from '../stores/announcer'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import { DECLINED_FACT_FIELDS } from '../declinedFacts'
 import EditorSection from './EditorSection.vue'
@@ -49,6 +50,42 @@ const store = useLabelDocumentStore()
 const data = store.ghsData
 const select = (elementId: string) => store.select(elementId)
 
+const REGIME_NAMES: Record<GhsRegime, string> = {
+  'eu-clp': 'EU — CLP',
+  'us-osha': 'US — OSHA HazCom',
+}
+
+/**
+ * Statement codes the market a label was switched to cannot carry, held for the document.
+ *
+ * A code stayed on the label through a change of market, so choosing EU, picking H225 and
+ * switching to US left a label that could be neither saved nor exported: this build holds
+ * no verified US wording, and the API refuses a code its table cannot spell. Measured on
+ * 2026-10-09. James chose to set such codes aside and restore them, as #65's second column
+ * does: they leave the label, the rail names them, and switching back brings them home.
+ * Held against `documentGeneration`, so another label never inherits them.
+ *
+ * **Held in the form, and the note says so.** A change of label type unmounts this rail
+ * and moves the generation, as a failed open does, so the codes do not survive either —
+ * and the note first promised they returned "while this label is open". Found by review.
+ * Holding them in the store, cleared only when the document really changes, is the
+ * backlog's entry on rail state held by hand against the generation.
+ */
+const setAside = ref<{
+  generation: number
+  from: GhsRegime
+  hazard: readonly string[]
+  precautionary: readonly string[]
+} | null>(null)
+const setAsideNow = computed(() =>
+  setAside.value?.generation === store.documentGeneration ? setAside.value : null,
+)
+const setAsideCodes = computed(() =>
+  setAsideNow.value === null
+    ? []
+    : [...setAsideNow.value.hazard, ...setAsideNow.value.precautionary],
+)
+
 /**
  * `SelectField`'s model is typed `string`, generic across every select in the
  * app; `data.regime` is the narrower `GhsRegime` union. Read straight through
@@ -58,9 +95,58 @@ const select = (elementId: string) => store.select(elementId)
 const regime = computed({
   get: () => data.regime,
   set: (value: GhsRegime) => {
+    const from = data.regime
+    const held = setAsideNow.value
+    // Everything chosen or held, sorted by whether the new market's table carries it.
+    const sort = (kind: 'hazard' | 'precautionary') => {
+      const chosen = kind === 'hazard' ? chosenHazardStatements.value : chosenPrecautionary.value
+      const all = [...chosen, ...(held?.[kind] ?? []).filter((code) => !chosen.includes(code))]
+      const carries = (code: string) =>
+        (kind === 'hazard' ? hazardStatementText : precautionaryStatementText)(value, code) !==
+        undefined
+      return { keep: all.filter(carries), away: all.filter((code) => !carries(code)) }
+    }
+    const hazard = sort('hazard')
+    const precautionary = sort('precautionary')
+
     data.regime = value
+    if (hazard.keep.length === 0) delete data.hazardStatementCodes
+    else data.hazardStatementCodes = hazard.keep
+    if (precautionary.keep.length === 0) delete data.precautionaryStatementCodes
+    else data.precautionaryStatementCodes = precautionary.keep
+    setAside.value =
+      hazard.away.length + precautionary.away.length === 0
+        ? null
+        : {
+            generation: store.documentGeneration,
+            from: held?.from ?? from,
+            hazard: hazard.away,
+            precautionary: precautionary.away,
+          }
   },
 })
+
+/**
+ * What is said about the codes set aside: under each statements section, where they went
+ * missing from, and once through the announcer, since the switch happened at the Market
+ * field, away from both.
+ */
+const setAsideSentence = (codes: readonly string[]) => {
+  const held = setAsideNow.value
+  if (held === null || codes.length === 0) return ''
+  const one = codes.length === 1
+  return (
+    `${codes.join(', ')} ${one ? 'is' : 'are'} set aside: this build has no verified ` +
+    `${REGIME_NAMES[data.regime]} wording for ${one ? 'it' : 'them'}. Switch the market back to ` +
+    `${REGIME_NAMES[held.from]} and ${one ? 'it returns' : 'they return'}. ${one ? 'It is' : 'They are'} ` +
+    `held in this form only, so changing the label type or opening another label lets ${one ? 'it' : 'them'} go.`
+  )
+}
+const hazardSetAside = computed(() => setAsideSentence(setAsideNow.value?.hazard ?? []))
+const precautionarySetAside = computed(() =>
+  setAsideSentence(setAsideNow.value?.precautionary ?? []),
+)
+useAnnouncement('ghs-statements-set-aside', () => setAsideSentence(setAsideCodes.value))
 
 /** Annex I part, so 44 classifications read as four groups rather than one list. */
 const PART_NAMES: Record<string, string> = {
@@ -144,9 +230,10 @@ function toggleSignalWord(word: GhsSignalWord, on: boolean): void {
  * `ghs/statements.ts` exists to prevent, printed in the editor beside the code
  * it misdescribes.
  *
- * **Three clicks away**, and not by way of a stored record: choose EU, pick a
- * statement, then change Market. Nothing clears the codes on a regime change,
- * which is its own entry in `docs/BACKLOG.md`.
+ * It was three clicks away, and not by way of a stored record: choose EU, pick a
+ * statement, then change Market. A change of market now sets aside the codes the
+ * new one cannot carry — see `setAside` — but a saved label may still arrive
+ * with one, and this is what keeps it from being captioned in another regime's words.
  */
 const textFor = (kind: 'hazard' | 'precautionary', code: string) =>
   (kind === 'hazard' ? hazardStatementText : precautionaryStatementText)(data.regime, code) ?? ''
@@ -267,7 +354,7 @@ const supplierTelephone = computed({
 
       <SelectField id="field-ghs-regime" v-model="regime" label="Market">
         <option v-for="option in GHS_REGIMES" :key="option" :value="option">
-          {{ option === 'eu-clp' ? 'EU — CLP' : 'US — OSHA HazCom' }}
+          {{ REGIME_NAMES[option] }}
         </option>
       </SelectField>
 
@@ -388,6 +475,9 @@ const supplierTelephone = computed({
         No verified statement text exists for this market yet, so none can be offered. The EU
         wording is deliberately not reused.
       </p>
+      <p v-if="hazardSetAside" class="text-chrome-300 text-xs" data-statements-set-aside="hazard">
+        {{ hazardSetAside }}
+      </p>
 
       <ul v-if="chosenHazardStatements.length" class="flex flex-col gap-1">
         <li v-for="code in chosenHazardStatements" :key="code" :class="CHIP">
@@ -426,6 +516,13 @@ const supplierTelephone = computed({
       </SelectField>
       <p v-else class="text-chrome-400 text-xs">
         No verified statement text exists for this market yet.
+      </p>
+      <p
+        v-if="precautionarySetAside"
+        class="text-chrome-300 text-xs"
+        data-statements-set-aside="precautionary"
+      >
+        {{ precautionarySetAside }}
       </p>
 
       <ul v-if="chosenPrecautionary.length" class="flex flex-col gap-1">

@@ -1,11 +1,12 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { knownHazardStatementCodes } from '@packwright/label-core'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import EditorView from './EditorView.vue'
 import { testRouter } from './editorTestRouter'
+import { withAnnouncer } from './withAnnouncer'
 
 /**
  * The GHS label, driven through the real editor.
@@ -281,31 +282,16 @@ describe('the statement rail belongs to the label\u2019s regime', () => {
     // substitution `ghs/statements.ts` exists to prevent, printed in the editor
     // beside the code it misdescribes.
     //
-    // **Reached the way a user reaches it**, which is three clicks: choose EU,
-    // pick a statement, then change Market. Nothing clears the codes on a regime
-    // change — see `docs/BACKLOG.md` — so the label keeps them and the rail was
-    // captioning them out of the wrong regulation.
+    // **Reached the way a saved label reaches it.** It used to take three clicks — choose
+    // EU, pick a statement, change Market — but a change of market now sets aside what the
+    // new one cannot carry. A label saved with a code on a US regime, or handed over from an
+    // audit, still arrives with one, so the label is built that way here.
     const store = useLabelDocumentStore()
     store.labelType = 'ghs-chemical'
-    store.ghsData.regime = 'eu-clp'
+    store.ghsData.regime = 'us-osha'
     store.ghsData.hazardStatementCodes = ['H225']
     const wrapper = mountEditor()
     await nextTick()
-
-    expect(
-      wrapper
-        .findAll('li')
-        .find((li) => li.text().includes('H225'))
-        ?.text(),
-      'the premise: it is captioned correctly before the switch',
-    ).toContain('Highly flammable liquid and vapour')
-
-    await wrapper.find('#field-ghs-regime').setValue('us-osha')
-    await nextTick()
-    expect(
-      store.ghsData.hazardStatementCodes,
-      'the premise: changing market keeps the codes',
-    ).toEqual(['H225'])
 
     const chip = wrapper.findAll('li').find((li) => li.text().includes('H225'))
     expect(chip, 'the premise: the code has to be on screen at all').toBeDefined()
@@ -342,5 +328,128 @@ describe('the statement rail belongs to the label\u2019s regime', () => {
     expect(knownHazardStatementCodes('us-osha'), 'the premise').toHaveLength(0)
     const options = wrapper.findAll('select option').filter((o) => /^H\d{3}/.test(o.text()))
     expect(options).toHaveLength(0)
+  })
+})
+
+describe('a change of market', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  const mountChosen = async () => {
+    const store = useLabelDocumentStore()
+    store.labelType = 'ghs-chemical'
+    store.ghsData.regime = 'eu-clp'
+    store.ghsData.hazardStatementCodes = ['H225']
+    store.ghsData.precautionaryStatementCodes = ['P210']
+    // Beside the root's announcer, so what is said can be read.
+    const wrapper = mount(withAnnouncer(EditorView), {
+      global: { plugins: [testRouter()], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+    return { store, wrapper }
+  }
+
+  it('sets aside the codes the new market cannot carry, and brings them back', async () => {
+    // They stayed through the switch, and the label could then be neither saved nor
+    // exported: this build holds no verified US wording. Measured 2026-10-09.
+    const { store, wrapper } = await mountChosen()
+    await wrapper.find('#field-ghs-regime').setValue('us-osha')
+    await nextTick()
+    expect(store.ghsData.hazardStatementCodes).toBeUndefined()
+    expect(store.ghsData.precautionaryStatementCodes).toBeUndefined()
+    // Said under each statements section, where the codes went missing from.
+    expect(wrapper.get('[data-statements-set-aside="hazard"]').text()).toBe(
+      'H225 is set aside: this build has no verified US — OSHA HazCom wording for it. ' +
+        'Switch the market back to EU — CLP and it returns. It is held in this form only, so changing the label type or opening another label lets it go.',
+    )
+    expect(wrapper.get('[data-statements-set-aside="precautionary"]').text()).toBe(
+      'P210 is set aside: this build has no verified US — OSHA HazCom wording for it. ' +
+        'Switch the market back to EU — CLP and it returns. It is held in this form only, so changing the label type or opening another label lets it go.',
+    )
+    // And once through the announcer, since the switch happened away from both.
+    expect(wrapper.get('[aria-live]').text()).toContain(
+      'H225, P210 are set aside: this build has no verified US — OSHA HazCom wording for them.',
+    )
+
+    await wrapper.find('#field-ghs-regime').setValue('eu-clp')
+    await nextTick()
+    expect(store.ghsData.hazardStatementCodes).toEqual(['H225'])
+    expect(store.ghsData.precautionaryStatementCodes).toEqual(['P210'])
+    expect(wrapper.find('[data-statements-set-aside]').exists()).toBe(false)
+  })
+
+  it('does not carry codes set aside on one label into the next', async () => {
+    const { store, wrapper } = await mountChosen()
+    await wrapper.find('#field-ghs-regime').setValue('us-osha')
+    await nextTick()
+    store.supersede()
+    await nextTick()
+    expect(wrapper.find('[data-statements-set-aside]').exists()).toBe(false)
+  })
+})
+
+describe('an export the server refuses', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+  // In an `afterEach`, so a failing test does not leave its stubs for the next.
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('says what the server said, not "[object Object]"', async () => {
+    // Measured 2026-10-09: "Invalid label request: [object Object]; [object Object]".
+    const store = useLabelDocumentStore()
+    store.labelType = 'ghs-chemical'
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: 'Invalid label request',
+          detail: [{ path: 'data.hazardStatementCodes', message: 'No verified text.' }, 'Plain.'],
+        }),
+      } as unknown as Response),
+    )
+    const wrapper = mountEditor()
+    await nextTick()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Export'))!
+      .trigger('click')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await nextTick()
+    expect(wrapper.text()).toContain(
+      'Invalid label request: data.hazardStatementCodes No verified text.; Plain.',
+    )
+    expect(wrapper.text()).not.toContain('[object Object]')
+  })
+
+  it('says a refusal whose detail is one sentence, as the layout refusal sends it', async () => {
+    // `Array.isArray` alone dropped it, so the user read the error and not the reason.
+    // Found by review.
+    const store = useLabelDocumentStore()
+    store.labelType = 'ghs-chemical'
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: async () => ({
+          error: 'Label cannot be laid out',
+          detail: 'The margin leaves no panel.',
+        }),
+      } as unknown as Response),
+    )
+    const wrapper = mountEditor()
+    await nextTick()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Export'))!
+      .trigger('click')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await nextTick()
+    expect(wrapper.text()).toContain('Label cannot be laid out: The margin leaves no panel.')
   })
 })
