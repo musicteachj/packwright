@@ -211,6 +211,26 @@ Deriving a classification from H-codes automatically would need Annex VI transcr
 emphatically not something to have a language model guess at — a guessed classification would make the
 precedence check judge the guess rather than the label.
 
+### Whether a US label's pictograms are the ones its classification requires
+
+On a label for the US market, the check that the pictograms match the hazards gives no verdict. It appears
+under "checks that did not run" as a limit of this tool, with nothing for you to fill in, and says that the
+limit is not a fault found in your label.
+
+The reason is the source. 29 CFR 1910.1200 Appendix C.2 says a classified chemical's label shall include the
+pictograms "specified in C.4 for each hazard class and associated hazard category". This tool holds no
+verified copy of C.4's tables, and the hazard classes it offers are those of the EU's CLP Regulation, which do
+not line up one to one with OSHA's: OSHA lets eye irritation Category 2 be split into 2A and 2B (Appendix
+A.3.2.1), and it has no aquatic hazard class at all. Judging a US label against the EU table, which is what this
+check used to do, told US labels their pictograms were wrong under a regulation that does not govern them.
+
+Two related checks still run on US labels under OSHA's own text: pictogram precedence (Appendix C.2.1), and that
+each pictogram is one of OSHA's eight symbols (C.2.3.2). Where the tool works your pictograms out from the
+classification, it leaves out the environment pictogram, which is not among OSHA's eight symbols (C.2.3.2) and
+which this tool reports if a US label prints it, and it works out the rest
+from CLP's table. That table has not been checked against C.4, so on a US label check each pictogram the tool
+draws against C.4 yourself. The editor says so beside the classification.
+
 ---
 
 ## Barcodes

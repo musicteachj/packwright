@@ -63,6 +63,24 @@ describe('layOutGhsLabel', () => {
     expect(pictogram!.drawnAreaSqMm).toBeLessThan(100)
   })
 
+  it('works out no environment pictogram for a US label, because OSHA recognises eight', () => {
+    // 29 CFR 1910.1200 Appendix C.2.3.2: "One of eight standard hazard symbols", and GHS09 is
+    // not one of them. The engine drew it from CLP's table and `ghs/pictogram-integrity` then
+    // reported it — the tool's own drawing, blamed on the label.
+    const hazards = [
+      '2.6/flammable-liquids-1-2-3',
+      '4.1/hazardous-to-the-aquatic-environment-acute-acute-1-long',
+    ]
+    const drawn = (regime: GhsLabelData['regime']) =>
+      layOutGhsLabel({
+        // No `pictograms`, so the engine works them out from the classification.
+        data: { regime, productIdentifier: 'Acetone', capacityL: 5, hazards },
+        stock: STOCK,
+      }).pictograms.map((p) => p.code)
+    expect(drawn('us-osha')).toEqual(['GHS02'])
+    expect(drawn('eu-clp'), 'CLP still requires it').toEqual(['GHS02', 'GHS09'])
+  })
+
   it('draws every pictogram frame and records every missing glyph', () => {
     const layout = layOutGhsLabel({ data: DATA, stock: STOCK })
     const frames = layout.primitives.filter((p) => p.kind === 'path')

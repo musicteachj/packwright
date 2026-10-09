@@ -165,6 +165,35 @@ describe('the GHS form rail', () => {
     expect(store.layout!.pictograms.map((p) => p.code)).toContain('GHS02')
   })
 
+  it('previews no environment pictogram on a US label, and draws none', async () => {
+    // OSHA recognises eight symbols (1910.1200 Appendix C.2.3.2) and GHS09 is not among
+    // them. The preview and the engine work the set out through one function, so the
+    // rail cannot list a pictogram the label will not carry.
+    const { store, wrapper } = await mountGhs()
+    delete store.ghsData.pictograms
+    store.ghsData.regime = 'us-osha'
+    store.ghsData.hazards = [
+      '2.6/flammable-liquids-1-2-3',
+      '4.1/hazardous-to-the-aquatic-environment-acute-acute-1-long',
+    ]
+    await nextTick()
+
+    expect(wrapper.text()).toContain('Currently GHS02.')
+    expect(store.layout!.pictograms.map((p) => p.code)).toEqual(['GHS02'])
+    // And says why, beside the class captioned with it — and that nothing here checks the
+    // set against OSHA's own tables.
+    const note = wrapper.get('[data-us-pictogram-note]').text()
+    expect(note).toContain('GHS09 is left out')
+    expect(note).toContain('not checked them against OSHA’s Appendix C.4')
+  })
+
+  it('says nothing of OSHA on an EU label', async () => {
+    const { store, wrapper } = await mountGhs()
+    store.ghsData.regime = 'eu-clp'
+    await nextTick()
+    expect(wrapper.find('[data-us-pictogram-note]').exists()).toBe(false)
+  })
+
   it('stores a statement as a code, never as text', async () => {
     const { store, wrapper } = await mountGhs()
     const add = wrapper.find('#field-add-h')
