@@ -24,15 +24,15 @@ piece, that piece stayed, as an entry of its own. What remains is open.
 The entries fall into four kinds:
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. **One outstanding:** `ghs/pictogram-set` cites CLP Annex V
-on US OSHA labels too, under "Verified, no stage yet".
+provision that does not say what the finding claims. **None outstanding.** The last, `ghs/pictogram-set`
+citing CLP Annex V on US OSHA labels, was closed on 2026-10-09 by standing it down on US labels.
 
 **Requirements nothing checks, and the findings say so.** Real regulatory ground the engine does not cover,
 where every pass it issues admits the gap in its own message. Schedulable, and safe to leave: the reference
 amounts of §101.12(b), the aggregate and bilingual displays, (j)(13)(ii)(B)'s permitted abbreviations, an egg
 carton's declared second column, a percentage stated for a nutrient with no Daily Value, the two spellings of
 a bracketed GHS combination code, the printed text of a GHS statement, (j)(15)'s conditions on the outer
-package, and the US OSHA statement texts.
+package, the US OSHA statement texts, and which pictograms a US classification requires.
 
 **What this engine does not check, by decision.** Not work, and not going to become work without a change of
 scope: the Nutrition Facts footnote, which no document can make wrong; 101.3(b) and (d); the single-typeface
@@ -53,15 +53,12 @@ which cost four review rounds on one pull request.
 
 Agreed 2026-10-08; the order and review levels are in `docs/plans/2026-10-08-road-to-deployment.md`.
 
-1. **`ghs/pictogram-set` cites CLP Annex V whatever the regime**, so a US OSHA label is told its pictograms are
-   wrong under an EU regulation. Read and verify 29 CFR 1910.1200 Appendix C and cite per regime, or step aside
-   for US labels with `Decline.limit`. Entry under "Verified, no stage yet".
-2. **An assortment label's order check can stand down in silence.** Give the order check a rule of its own.
+1. **An assortment label's order check can stand down in silence.** Give the order check a rule of its own.
    Entry under "Open from verifying the reported entries".
-3. **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** Same section.
-4. **The Nutrition Facts section reads "exempt" while the label also carries a panel.** Entry under "Saved
+2. **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** Same section.
+3. **The Nutrition Facts section reads "exempt" while the label also carries a panel.** Entry under "Saved
    labels", where it was filed.
-5. **Changing the market does not clear the statement codes chosen under the old one**, which the export route
+4. **Changing the market does not clear the statement codes chosen under the old one**, which the export route
    then refuses. Entry under "What reading the GS1 provisions turned up", where it was filed.
 
 The deployment checklist (unknown routes answered 200, pre-#65 seeded zeros, the first schema change needing a
@@ -299,13 +296,20 @@ paragraph (e)(6)(i)", whose sample labels are headed — so the question is whet
 illustration's headings as a requirement, which is exactly the "guidance figure made a requirement" trap
 `CLAUDE.md` records. Wants the displays read and the phrase weighed before anything changes.
 
-**`ghs/pictogram-set` cites CLP Annex V whatever the regime.** Its sibling `ghs/pictogram-precedence` selects
-29 CFR 1910.1200 Appendix C for a `us-osha` label and CLP Article 26 for an EU one; this rule has a single
-citation and no branch, so a US label is told its pictograms are wrong under an EU regulation. Noticed while
-adding declines — the decline inherits the rule's citation, so it inherits this too — and left alone because
-it predates that change and needs the OSHA pictogram set read and verified before a second citation can ship,
-which is a reading rather than a refactor. `docs/WHAT-IS-NOT-CHECKED.md` does not mention it; it should, if
-this is not fixed first.
+**OSHA's pictogram tables are not modelled, so `ghs/pictogram-set` stands down on US labels.** Since
+2026-10-09 the rule declines every `us-osha` label at this tool's limit, citing 29 CFR 1910.1200 Appendix C,
+C.2, instead of judging it against CLP Annex V under Annex V's citation. C.2, read from the eCFR that day,
+takes a classified chemical's pictograms from "C.4 for each hazard class and associated hazard category".
+Judging US labels would need three things:
+- **C.4's tables, transcribed and verified.** The eCFR publishes them as Federal Register images, not text, so
+  they need reading as rendered pages.
+- **A mapping from the CLP classes this tool offers to OSHA's.** It is not one to one: Appendix A.3.2.1 lets
+  eye irritation Category 2 be classified 2A or 2B, and 1910.1200 has no aquatic hazard class at all.
+- **A decision about the editor**, which offers CLP's whole classification list on a US label, aquatic hazards
+  included, captioned with CLP's pictogram ("→ GHS09"). The engine no longer draws GHS09 for a US label,
+  through `derivedPictograms`, but the list still shows it.
+
+A stage of reading, or more. `docs/WHAT-IS-NOT-CHECKED.md` tells users.
 
 **`gs1/quiet-zone` stands down on four symbologies and says nothing, deliberately.** It declines where no
 figure has been confirmed against a source document — CODE128, CODE39, MSI and PHARMACODE — and unlike the

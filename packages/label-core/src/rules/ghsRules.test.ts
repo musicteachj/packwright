@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { layOutGhsLabel } from '../layout/ghsEngine'
 import { GHS_CONFORMANT, GHS_FIXTURES, HAZARDS } from './fixtures/ghs'
 import { GHS_PICTOGRAM_PRECEDENCE_OPTIONAL, GHS_PICTOGRAM_SYMBOL_MISSING } from './index'
-import { GHS_RULES, runRules } from './registry'
+import { GHS_RULES, declinedChecks, runRules } from './registry'
 import { codesOf } from './types'
 import type { GhsLabelData } from '../templates/ghs'
 import type { LabelStock } from '../templates/stock'
@@ -124,5 +124,66 @@ describe('rules that only one regime sets', () => {
     const pass = us.find((f) => f.code === 'GHS_SIGNAL_WORD_SINGLE')
     expect(pass!.citation.authority).toBe('OSHA')
     expect(pass!.citation.reference).toBe('29 CFR 1910.1200, Appendix C, C.2.1.1')
+  })
+
+  describe('which pictograms a US classification requires', () => {
+    // It judged a US label against CLP Annex V and cited Annex V, so a US label was told its
+    // pictograms were wrong under an EU regulation. OSHA takes them from Appendix C.4, which
+    // this tool does not hold, so it says that instead of judging.
+    const usLabel = (data: Partial<GhsLabelData>): GhsLabelData => ({
+      regime: 'us-osha',
+      productIdentifier: 'X',
+      capacityL: 5,
+      ...data,
+    })
+    const declineOf = (data: GhsLabelData) => {
+      const stock = GHS_CONFORMANT.stock
+      return declinedChecks({
+        labelType: 'ghs-chemical',
+        data,
+        stock,
+        layout: layOutGhsLabel({ data, stock }),
+      }).find((declined) => declined.ruleId === 'ghs/pictogram-set')
+    }
+
+    it("gives no verdict on the set, and says the limit is the tool's", () => {
+      // A flame the classification requires, and an exclamation mark it does not: under CLP
+      // this label draws both a violation and an advisory, each citing Annex V.
+      const data = usLabel({ hazards: [HAZARDS.flammableLiquid], pictograms: ['GHS07'] })
+      const findings = findingsFor(data, GHS_CONFORMANT.stock)
+      expect(
+        findings.filter(
+          (f) => f.code === 'GHS_PICTOGRAM_NOT_REQUIRED' || f.code === 'GHS_PICTOGRAM_MISSING',
+        ),
+      ).toEqual([])
+      expect(findings.map((f) => f.citation.reference)).not.toContain(
+        'Regulation (EC) No 1272/2008 (CLP), Annex V',
+      )
+
+      const declined = declineOf(data)
+      expect(declined?.limit).toBe(true)
+      expect(declined?.wants).toEqual([])
+      expect(declined?.citation).toEqual({
+        authority: 'OSHA',
+        reference: '29 CFR 1910.1200, Appendix C, C.2',
+        title: 'Label elements specified in C.4 for each hazard class and category',
+      })
+    })
+
+    it('says so before asking for a classification that would not make it run', () => {
+      const declined = declineOf(usLabel({ pictograms: ['GHS02'] }))
+      expect(declined?.limit, 'not "classify the substance and this check will run"').toBe(true)
+    })
+
+    it('still judges an EU label against Annex V', () => {
+      const data = {
+        ...usLabel({ hazards: [HAZARDS.flammableLiquid], pictograms: ['GHS07'] }),
+        regime: 'eu-clp' as const,
+      }
+      const codes = findingsFor(data, GHS_CONFORMANT.stock).map((f) => f.code)
+      expect(codes).toContain('GHS_PICTOGRAM_NOT_REQUIRED')
+      expect(codes).toContain('GHS_PICTOGRAM_MISSING')
+      expect(declineOf(data)).toBeUndefined()
+    })
   })
 })

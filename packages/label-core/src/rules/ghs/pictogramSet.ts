@@ -16,10 +16,23 @@
  * others — and this rule does not model which. So absence is reported as an
  * advisory that says plainly it may be precedence at work, rather than asserting
  * a violation this rule cannot actually establish.
+ *
+ * **On a US label it stands down, and says the limit is this tool's.** It used to
+ * judge a `us-osha` label against CLP Annex V and cite Annex V while doing it, so a
+ * US label was told its pictograms were wrong under an EU regulation. 29 CFR
+ * 1910.1200 Appendix C.2, read from the eCFR on 2026-10-09, gives the US answer:
+ * a classified chemical's label "shall include the ... pictogram(s) ... specified
+ * in C.4 for each hazard class and associated hazard category". C.4's tables are
+ * published as images, this tool holds no verified copy of them, and its hazard
+ * classes are CLP's, which do not map one to one onto OSHA's — Appendix A.3.2.1
+ * lets a substance in eye irritation Category 2 be classified 2A or 2B, and
+ * 1910.1200 has no aquatic hazard class at all. So on a US label this rule gives
+ * no verdict, citing the paragraph it could not judge, and
+ * `docs/WHAT-IS-NOT-CHECKED.md` says so. `ghs/pictogram-precedence` and
+ * `ghs/pictogram-integrity` still judge US labels under OSHA's own text.
  */
 
-import { requiredPictograms } from '../../ghs/classification'
-import { applyPrecedence } from '../../ghs/precedence'
+import { derivedPictograms } from '../../ghs/precedence'
 import type { GhsPictogramCode } from '../../ghs/pictograms'
 import { GHS_PICTOGRAM_SYMBOLS } from '../../ghs/pictograms'
 import { wasFullyDrawn } from '../../layout/omissions'
@@ -36,6 +49,13 @@ const CITATION: Citation = {
   authority: 'EU',
   reference: 'Regulation (EC) No 1272/2008 (CLP), Annex V',
   title: 'Hazard pictograms required by hazard class and category',
+}
+
+/** What a US label's pictograms answer to, which this rule cannot judge. See the note above. */
+const US_CITATION: Citation = {
+  authority: 'OSHA',
+  reference: '29 CFR 1910.1200, Appendix C, C.2',
+  title: 'Label elements specified in C.4 for each hazard class and category',
 }
 
 export const ghsPictogramSetRule: GhsChemicalRule = {
@@ -58,6 +78,21 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
    * it is the normal case rather than the exception.
    */
   declines({ data }: GhsChemicalContext): Decline | undefined {
+    // First, because no fact the label could state would make the check run.
+    if (data.regime === 'us-osha') {
+      return {
+        reason:
+          'This label is for the US market, where 29 CFR 1910.1200 Appendix C.2 takes a ' +
+          'classified chemical’s pictograms from the tables in C.4, hazard class by hazard ' +
+          'class. This tool holds no verified copy of those tables, and the hazard classes it ' +
+          'offers are those of the EU’s CLP Regulation, which do not map one to one onto ' +
+          'OSHA’s. So it gives no verdict on whether the pictograms printed are the ones your ' +
+          'classification requires. That is a limit of this tool, not a fault found in your label.',
+        citation: US_CITATION,
+        wants: [],
+        limit: true,
+      }
+    }
     if ((data.hazards ?? []).length > 0) return undefined
     return {
       reason:
@@ -69,6 +104,9 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
   },
 
   check({ data, layout }: GhsChemicalContext): Finding[] {
+    // Declined above, at this tool's limit. Judging a US label against Annex V is the
+    // defect this guard exists to prevent.
+    if (data.regime === 'us-osha') return []
     const hazards = data.hazards ?? []
     // With no classification there is nothing to compare against. Declining is
     // not a pass — see the note on `Rule.check`.
@@ -78,7 +116,7 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
     // against the raw requirement flagged GHS07 as missing on labels this tool
     // had itself derived as compliant — reintroducing the derivation-versus-rule
     // disagreement that `ghs/precedence.ts` was extracted to end.
-    const required = new Set(applyPrecedence(requiredPictograms(hazards), hazards, data.regime))
+    const required = new Set(derivedPictograms(hazards, data.regime))
     const drawn = layout.pictograms.map((p) => ({
       code: p.code as GhsPictogramCode,
       elementId: p.elementId,

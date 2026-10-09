@@ -27,8 +27,7 @@ import {
   GHS_ELEMENTS,
   GHS_REGIMES,
   GHS_SIGNAL_WORDS,
-  applyPrecedence,
-  requiredPictograms,
+  derivedPictograms as pictogramsFor,
   smallContainerThresholdL,
   type GhsRegime,
   type GhsSignalWord,
@@ -112,10 +111,11 @@ function toggleHazard(id: string, on: boolean): void {
  * it — the form produced a label its own rules rejected. Clauses that make a
  * pictogram *optional* are deliberately left in: omitting a hazard symbol is the
  * supplier's decision, not this tool's, and the rule raises those as guidance.
+ *
+ * And only the symbols the regime recognises: the engine draws through the same
+ * function, so the preview cannot list a pictogram the label will not carry.
  */
-const derivedPictograms = computed(() =>
-  applyPrecedence(requiredPictograms(hazards.value), hazards.value, data.regime),
-)
+const derivedPictograms = computed(() => pictogramsFor(hazards.value, data.regime))
 
 const signalWords = computed(() => data.signalWords ?? [])
 

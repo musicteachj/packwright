@@ -19,8 +19,8 @@
  * two CLP clauses that make a pictogram optional rather than forbidden.
  */
 
-import { hazardsRequiring } from './classification'
-import type { GhsPictogramCode } from './pictograms'
+import { hazardsRequiring, requiredPictograms } from './classification'
+import { isPictogramRecognised, type GhsPictogramCode } from './pictograms'
 import type { GhsRegime } from './statements'
 
 /**
@@ -183,4 +183,28 @@ export function applyPrecedence(
       .map((suppression) => suppression.code),
   )
   return pictograms.filter((code) => !forbidden.has(code))
+}
+
+/**
+ * The pictograms a classification puts on a label under a regime: what Annex V
+ * requires, reduced by the regime's precedence, **keeping only the symbols the
+ * regime recognises**.
+ *
+ * The last step is the US one. 29 CFR 1910.1200 Appendix C.2.3.2, read from the
+ * eCFR on 2026-10-09: "One of eight standard hazard symbols shall be used in each
+ * pictogram" — and the environment symbol, GHS09, is not among the eight. The
+ * classification list is CLP's, so a US label could declare an aquatic hazard
+ * and the engine drew GHS09 for it, which `ghs/pictogram-integrity` then reported
+ * as not recognised: the tool's own drawing, blamed on the label.
+ *
+ * One function for the engine, the editor's preview and `ghs/pictogram-set`, so
+ * what is drawn, what is shown and what is judged cannot disagree.
+ */
+export function derivedPictograms(
+  hazardIds: readonly string[],
+  regime: GhsRegime,
+): readonly GhsPictogramCode[] {
+  return applyPrecedence(requiredPictograms(hazardIds), hazardIds, regime).filter((code) =>
+    isPictogramRecognised(regime, code),
+  )
 }

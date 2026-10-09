@@ -10,6 +10,25 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **A US label's pictograms are no longer judged against the EU's table.** `ghs/pictogram-set` worked out the
+  pictograms a classification requires from CLP Annex V on every label, and cited Annex V while doing it. So a
+  US OSHA label with an extra exclamation mark drew a violation citing Regulation (EC) No 1272/2008, which does
+  not govern it.
+
+  29 CFR 1910.1200 Appendix C.2, read from the eCFR on 2026-10-09, takes a US label's pictograms from the tables
+  in C.4. Those are published as images, this tool holds no verified copy of them, and its hazard classes are
+  CLP's, which do not map one to one onto OSHA's. So on a US label the rule now gives no verdict. It declines at
+  this tool's limit, citing C.2, and says plainly that the limit is not a fault found in the label.
+  `docs/WHAT-IS-NOT-CHECKED.md` explains it. Precedence and the eight-symbol check still judge US labels under
+  OSHA's own paragraphs.
+
+  **The engine no longer draws the environment pictogram on a US label.** Working pictograms out from CLP's
+  table, it drew GHS09 for a US label declaring an aquatic hazard, and `ghs/pictogram-integrity` then reported it
+  as not one of OSHA's eight symbols (C.2.3.2). That was the tool's own drawing, blamed on the label. One function,
+  `derivedPictograms`, now works the set out for the engine, the editor's preview and the rule, and keeps only
+  the symbols the regime recognises. The US fixture for GHS09 now declares the pictogram, since a label that
+  prints it is the real defect.
+
 - **`docs/BACKLOG.md` is down from 1,802 lines to 888, and says what it is for.** It records findings
   deliberately not acted on, and is not a to-do list. Most of its length was finished work: 66 struck-through
   entries and list items that kept their whole original text under the strike. Each was checked against this changelog before

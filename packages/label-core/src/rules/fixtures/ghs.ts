@@ -208,7 +208,10 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
   {
     name: 'the environment pictogram on a US label',
     defect: 'OSHA recognises eight hazard symbols; GHS09 is not among them.',
-    data: { ...BASE, regime: 'us-osha', hazards: [HAZARDS.aquatic] },
+    // Declared, not derived. The engine no longer derives GHS09 for a US label —
+    // drawing it and then reporting it blamed the label for the tool — so the
+    // defect this fixture holds is a label that prints it anyway.
+    data: { ...BASE, regime: 'us-osha', hazards: [HAZARDS.aquatic], pictograms: ['GHS09'] },
     stock: CONFORMING_STOCK,
     expected: {
       code: GHS_PICTOGRAM_NOT_RECOGNISED,
