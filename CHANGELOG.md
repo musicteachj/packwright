@@ -10,6 +10,46 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **`docs/BACKLOG.md` is down from 1,802 lines to 888, and says what it is for.** It records findings
+  deliberately not acted on, and is not a to-do list. Most of its length was finished work: 66 struck-through
+  entries and list items that kept their whole original text under the strike. Each was checked against this changelog before
+  it went, and every one is recorded here. Six open pieces those entries still carried stayed, as entries of
+  their own:
+  - zeros and negatives in the optional figures;
+  - the edge-level limits;
+  - (j)(15)'s outer-package conditions;
+  - the resolver-domain citation;
+  - the empty US OSHA statement tables;
+  - a P378 combination spelled the label's own way.
+
+  So did the open "Bold text is measured with Regular metrics" entry, which carried a strike over its reported
+  claim, not over its work. A new section at the top pins the five entries worth doing before deployment:
+  - `ghs/pictogram-set` citing CLP Annex V on US labels;
+  - the assortment order check;
+  - the hand-set type size;
+  - the "exempt" status;
+  - the GHS market switch.
+
+  Three stale entries were corrected against the code:
+  - the audit route is now the only one with a 10 MB body limit;
+  - all three rails, not one, still bind their stock fields raw;
+  - the saved-labels error has its own element.
+
+- **`docs/DESIGN.md` § Phase 8 lists what to settle before deploying:**
+  - a `dev` → `main` release;
+  - unknown routes answering 200;
+  - pre-#65 seeded zeros;
+  - the first schema change needing a migration;
+  - per-process quotas;
+  - edge-level limits.
+
+- **The order of work to deployment is written down.** `docs/plans/2026-10-08-road-to-deployment.md` holds the
+  stages from here, each with its review level. `docs/ideas/2026-10-08-mcp-server.md` records the idea of
+  exposing the rule engine as an MCP server, with the explanation that made it clear, and the condition James
+  set: only as a whole package. That means a shared judge, a server that says what it did not check, a
+  with/without eval, and a live endpoint. Nothing is decided and nothing is built. A cheap experiment, an AI
+  asked about the fixture labels with no tool, comes first and decides whether it goes ahead.
+
 - **The phone scan-back test has written steps**, in `docs/plans/2026-10-08-phone-scan-back.md`. It is done by
   hand. A phone camera needs a secure context, and plain HTTP to the laptop's LAN address was measured to fail
   before the camera is even reached: helmet's `upgrade-insecure-requests` rewrote the page's own assets to

@@ -10,39 +10,62 @@ forward. A finding worth keeping is not automatically a finding worth doing next
 
 ---
 
-## What is in here, as of 2026-09-17
+## How to read this file, as of 2026-10-09
 
-Every entry was read against the code on 2026-09-17 and sorted into four kinds. Nothing was struck on this
-pass: the entries describing work already done had been struck as the work landed, and no open entry turned out
-to be finished. What the reading changed is the shape of the file rather than its contents — a count of open
-entries was frightening and meaningless, because most of them are not work anybody intends to do.
+**This is a record of findings deliberately not acted on, not a to-do list.** Agreed with James on 2026-10-08:
+working through it is not the goal. The few entries worth doing before deployment are pinned in the next
+section and ordered in `docs/plans/2026-10-08-road-to-deployment.md`. Everything else stays here by decision,
+with its reasoning, so nobody has to rediscover it.
+
+**Entries that were done have been removed.** On 2026-10-09 every struck-through entry was taken out after
+checking that its history is in `CHANGELOG.md`; git keeps the rest. Where a struck entry still carried an open
+piece, that piece stayed, as an entry of its own. What remains is open.
+
+The entries fall into four kinds:
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. **None outstanding.** There were two on 2026-09-17 and both
-are struck below: the (e)(6) citation, under the phase 6 opening review, and the two GS1 rules that kept no
-reading of their source, under phase 7 stage 1.
+provision that does not say what the finding claims. **One outstanding:** `ghs/pictogram-set` cites CLP Annex V
+on US OSHA labels too, under "Verified, no stage yet".
 
 **Requirements nothing checks, and the findings say so.** Real regulatory ground the engine does not cover,
 where every pass it issues admits the gap in its own message. Schedulable, and safe to leave: the reference
 amounts of §101.12(b), the aggregate and bilingual displays, (j)(13)(ii)(B)'s permitted abbreviations, an egg
 carton's declared second column, a percentage stated for a nutrient with no Daily Value, the two spellings of
-a bracketed GHS combination code, the printed text of a GHS statement, and which mark belongs on the
-small-package abbreviated footnote.
+a bracketed GHS combination code, the printed text of a GHS statement, (j)(15)'s conditions on the outer
+package, and the US OSHA statement texts.
 
 **What this engine does not check, by decision.** Not work, and not going to become work without a change of
-scope. These belong in front of a user rather than in a backlog: the Nutrition Facts footnote, which no
-document can make wrong; 101.3(b) and (d); the single-typeface assumption behind every type-size measurement;
-nutrition claims, whose condition reaches "labeling or advertising" beyond any label; the allergen advisory's
-deliberate over-strictness; a hazard classification derived from statement codes; the calorie-free footnote
-variant; and where the "% Daily Value*" heading sits on a dual-column panel. **All eight are now in front of a
-user**, in `docs/WHAT-IS-NOT-CHECKED.md`, with the quiet-zone fallback the README already asserted — nine in
-all. They stay listed here because this is where the reasoning lives; the document says what it means for
-somebody holding a report.
+scope: the Nutrition Facts footnote, which no document can make wrong; 101.3(b) and (d); the single-typeface
+assumption behind every type-size measurement; nutrition claims, whose condition reaches "labeling or
+advertising" beyond any label; the allergen advisory's deliberate over-strictness; a hazard classification
+derived from statement codes; the calorie-free footnote variant; and where the "% Daily Value*" heading sits on
+a dual-column panel. All of them are in front of a user in `docs/WHAT-IS-NOT-CHECKED.md`, with the quiet-zone
+fallback. They stay listed here because this is where the reasoning lives.
 
-**Notes, history and chores.** The rest: decision records, reviewer claims since disproved, entries struck as
-they were fixed, and editor, API, scanner, security and test-hygiene work with no compliance meaning. One
-chore is worth doing before anything else that reads a nutrition panel's columns — **a primitive does not say
-which column it belongs to**, which cost four review rounds on one pull request.
+**Notes and chores.** The rest: decision records, reviewer claims since disproved and kept for the lesson, and
+editor, API, scanner, security and test-hygiene work with no compliance meaning. One chore is worth doing before
+anything else that reads a nutrition panel's columns: **a primitive does not say which column it belongs to**,
+which cost four review rounds on one pull request.
+
+---
+
+## Worth doing before deployment
+
+Agreed 2026-10-08; the order and review levels are in `docs/plans/2026-10-08-road-to-deployment.md`.
+
+1. **`ghs/pictogram-set` cites CLP Annex V whatever the regime**, so a US OSHA label is told its pictograms are
+   wrong under an EU regulation. Read and verify 29 CFR 1910.1200 Appendix C and cite per regime, or step aside
+   for US labels with `Decline.limit`. Entry under "Verified, no stage yet".
+2. **An assortment label's order check can stand down in silence.** Give the order check a rule of its own.
+   Entry under "Open from verifying the reported entries".
+3. **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** Same section.
+4. **The Nutrition Facts section reads "exempt" while the label also carries a panel.** Entry under "Saved
+   labels", where it was filed.
+5. **Changing the market does not clear the statement codes chosen under the old one**, which the export route
+   then refuses. Entry under "What reading the GS1 provisions turned up", where it was filed.
+
+The deployment checklist (unknown routes answered 200, pre-#65 seeded zeros, the first schema change needing a
+migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phase 8.
 
 ---
 
@@ -89,8 +112,9 @@ dimensions are required, so a blank has no defined meaning, and the fix is a des
 guard: retaining the last value snaps the digits back mid-edit, which is worse than the bug for anyone
 clearing a field to retype it. Sites: `UsFoodFormRail.vue` container width/height/circumference/surface area
 and stock width/height/margin. Re-read on 2026-09-17: the container fields now go through `requiredNumber`,
-which writes `NaN` rather than the empty string; the three stock fields are still bound raw, so that half
-stands.
+which writes `NaN` rather than the empty string. Re-read on 2026-10-09: every rail has its own three stock fields
+— `UpcAFormRail.vue` (`stock`), `UsFoodFormRail.vue` (`foodStock`) and `GhsFormRail.vue` (`ghsStock`) — and
+all nine are still bound raw with `v-model.number`, so that half stands.
 
 **The entry that stood here claimed a false clearance, and there was none.** It said `'' * 240` is `0` rather
 than `NaN`, so a cleared "Panel width" made the panel area a valid zero, `isNetQuantityZoneRequired(0)`
@@ -119,96 +143,7 @@ source is degenerate. An ingredient whose name does not reveal the allergen — 
 `marzipan (almonds)` — would show the feature earning its place. A content decision about the seeded
 document, not a correctness fix.
 
-**~~`gtin-scan-note`'s id changed when the GTIN field moved onto `TextField`.~~ Closed** in the same stage,
-and the entry is kept because what it cost to close is the interesting part.
-
-The scan note used to be two mutually exclusive `<p>`s sharing a hand-written id, wired to the field by a
-hand-written conditional `aria-describedby`. On `TextField`'s `description` slot both ends move onto the
-component: `FormField` generates the id itself. `EditorView.test.ts` asserted the literal string
-`'gtin-scan-note'`, so it failed.
-
-**Neither remedy this entry originally proposed was taken.** Giving `FormField` a caller-supplied id would
-have added API surface to serve a test's string. Swapping one literal for another would have kept the
-coupling and merely renamed it. The assertion was rewritten as the relationship it was always making — read
-`aria-describedby` off the field, then look for *that* element — which is id-agnostic and strictly stronger.
-
-Doing so exposed a second test passing for free. `clears the note once the field is typed in` asserted
-`find('#gtin-scan-note').exists()` was `false`, and an element that no longer exists under any condition is
-always absent, so it would have stayed green however broken the clearing became. It now asserts the field
-points at nothing. Both are mutation-tested: removing the description slot fails two tests.
-
-The general lesson, which is the reason this is not simply struck: **an assertion written as a literal id is
-a relationship in disguise**, and it fails or goes vacuous the moment the wiring moves. `UsFoodFormRail` has
-seventy of these sites left to migrate.
-
-**~~`GhsFormRail.vue`'s 44 hazard-class checkboxes lost their per-run styling when they moved onto
-`CheckboxField`.~~ Fixed in the same stage, and the entry is kept for what it nearly cost.**
-
-The hand-written markup set the Annex I section number in the mono face and the pictogram code in its own —
-`numeric text-chrome-400` for `entry.section`, `numeric text-chrome-200` for `→ GHS0x`. `CheckboxField`'s
-`label` was a plain string with no slot, so the migration concatenated all three runs into one and the
-styling went.
-
-It was recorded here as a deliberate simplification on the grounds that nothing observable moved: the
-accessible name was always that concatenation, and no test reads a section number's font. Both of those are
-true and the conclusion still does not follow. **A GHS hazard class number and a pictogram code are
-identifiers**, and this entire component layer exists to put identifiers in the mono face — the migration
-would have undone that rule on forty-four rows at once, in the name of applying it. "No test covers it" is
-the reason it needed catching by eye, not a reason to accept it.
-
-`CheckboxField` takes a default slot now, with `label` still required and still the accessible name, on the
-same pattern as `FormField`'s description. `label` stays required as the stated intent and the fallback —
-but the slot is what renders, and a label's accessible name is its text content, so the slot *is* the name.
-The component warns in development when the two disagree. Mutation tested — removing the slot fails a named test.
-
-The general shape, for the seventy sites in `UsFoodFormRail` still to migrate: **a component API that only
-takes strings will quietly flatten every label that was not one run of prose**, and no test will say so
-because styling is not part of an accessible name.
-
 ## Saved labels
-
-**~~A saved label's `data` cannot be posted to the export route as it stands.~~ Closed** by the saved-labels
-user interface, which is the stage this entry said would make it reachable. Opening `/labels/:id` restores the
-stock a label was saved at as well as its data, and `e2e/the-saved-label-round-trip.spec.ts` carries the round
-trip: save at 90 mm, open, export, assert the PDF's MediaBox. Reverting the fix makes it report `[0 0 170.07874
-113.385827]` — 60 mm, the default — which is the silent wrong size this entry described.
-
-The helper it also asked for was not written. Nothing outside the editor builds an export request, so a shared
-one would have a single caller and would be a guess at what a second one wants.
-
-**~~The label list is unbounded.~~ Fixed.** `GET /api/labels` returned every document on every call. It pages
-now — `{ labels, nextBefore? }`, fifty by default and two hundred at most — over a **cursor** rather than a
-skip, because `skip` re-reads and discards everything before the offset, which makes the last page of a long
-list the most expensive one to fetch. `labelDocument.ts` indexes both keys; it indexed only `updatedAt` for
-one commit after the sort gained `_id`, which put the planner back on a collection scan — confirmed either way
-with `explain`, and caught by review rather than by a test.
-
-The cursor is compound, `(updatedAt, _id)`, and the first version was not: Mongo stores milliseconds, labels
-saved inside one of them tie, and a cursor of `updatedAt < boundary` steps over every neighbour of the
-boundary. Four labels sharing a timestamp returned two and reported the list finished. Caught by review, and
-the test written for it now creates its labels with a shared timestamp rather than sleeping to avoid one.
-
-**~~A label saved while the client walks the pages is missed.~~ Closed 2026-10-08** with the twenty-label cap.
-The client no longer walks: `listLabels` makes one request for a page as large as the cap, so there is no second
-fetch for a label to fall between. The entry as it was:
-
-Raised by the review of the paging change and left. `listLabels` follows the cursor page by page, and a label created between two of those requests sorts
-above the cursor and appears on neither — so the list omits it until the next refresh. The single unbounded
-query it replaced could not miss a row, which makes this a real if small regression. It is inherent to
-cursoring on a mutable sort key rather than a fix anybody forgot: `updatedAt` is what "newest first" means
-here, and seeking on `_id` alone would order by creation instead. The honest remedies are to accept it — a
-list that is not live is the ordinary case, and the label appears on the next load — or to make the view
-explicitly incremental, which is the "load more" decision below. Worth deciding with that one rather than
-separately.
-
-**~~What is not done is the list view.~~ Closed 2026-10-08.** The cap decided it: twenty fits one page, so
-"load more" was dropped rather than built. `/labels` says "n of 20 saved", and if the server ever has a second
-page to give — only a database from before the cap can — a visible line says the list shows the twenty most
-recently changed of however many there are. The entry as it was:
-
-`listLabels` follows the cursor to the end, so the client behaves as it always did and every individual query is bounded — but a "load more" control, or any indication that a list
-has been cut short, is a design decision for the view rather than the client. Until one exists, an account
-with more than two thousand labels would silently stop at that many.
 
 **The Nutrition Facts section reads "exempt" while the label also carries a panel.** The status line is
 `nutritionExemption !== '' ? 'exempt' : …`, and neither the exemption picker nor the panel checkbox clears the
@@ -303,101 +238,7 @@ project ships therefore carried generated regulatory text. Fetching the paragrap
 the shipped string is exact, and the claim was wrong. The reviewer had flagged that it had not fetched the
 source. Nothing below moves without the same check.
 
-### Verified, deferred with a stage
-
-**~~A dual column is certified by one figure out of fifteen.~~ Fixed**, and found so on 2026-09-16 when this file
-was counted rather than struck when the fix landed. A panel whose second column carries only
-`{ 'total-fat': 6 }` now returns `FDA_DUAL_COLUMN_INCOMPLETE`, naming the thirteen nutrients declared in the
-first column only. What follows is the entry as it stood. `nutritionPanel.ts` emits the
-`food-nutrition-second-column` band as soon as *any* nutrient carries a second value, and both
-`us-food/dual-column-required` and `us-food/dual-column-form` test only that the band exists. Reproduced: a
-panel with `secondAmounts: { 'total-fat': 6 }` and nothing else prints one figure in the second column and
-returns `FDA_DUAL_COLUMN_FORM_MET/pass`. (b)(12)(i)'s mandate reported satisfied by a fifteenth of a column.
-**Phase 6 stage 2**, with the rest of the dual-column work.
-
-**~~The dual-column branch discards `declaredPercentDv`.~~ Fixed**, and found so on the same day. Both column
-paths in `layout/nutritionPanel.ts` go through `percentOf()`, so a dual-column panel declaring Total Fat at
-9% prints "3g 9%" and `FDA_NUTRITION_PERCENT_DV_WRONG` reports it: the artefact and the finding agree. What
-follows is the entry as it stood. The single-column path goes through `percentOf()`,
-which honours a declared percentage; the dual path calls `printedPercentDailyValue(id, value)` directly. So
-on a dual-column panel the renderer silently prints the *correct* percentage while
-`us-food/nutrition-percent-dv` reads the document and reports the wrong one — the artefact and the finding
-contradicting each other, and the mis-declared-percentage defect made undrawable. **Phase 6 stage 2.**
-
 ### Verified, no stage yet
-
-**~~101.7(f)'s exemption is conditional and is applied unconditionally.~~ Fixed** on
-`fix/net-quantity-zone-proviso`. The placement rule now grants `FDA_NET_QUANTITY_ZONE_NOT_REQUIRED` only when the
-declaration clears the three part 101 requirements this project checks on it — presence under 101.7(a), type
-size under 101.7(i), separation under 101.7(f) — asked of those rules rather than re-derived. Where it does not,
-the placement requirement applies and is judged as for any package, and an `FDA_NET_QUANTITY_OUTSIDE_ZONE` on a
-small package says which requirement cost it the exemption. The dual declaration is not a condition: its
-mandate is the FPLA's, and 101.7(p), read from the eCFR on 2026-09-16, says only that a metric statement "may
-also appear". The rest of 101.7 is not modelled, and the pass says it rests on the three. The same defect had two
-more forms than the one reproduced below: `US_FOOD_SMALL_PANEL` was reported crowded and exempt at once, which
-a test asserted, and a small package with a blank inch-pound declaration got the exemption beside the blocking
-finding that it had none. What follows is the entry as it stood. The proviso reads that the
-bottom-30 percent requirement "shall not apply … **when the declaration of net quantity of contents meets the
-other requirements of this part**", and `netQuantityPlacement.ts` quotes that clause in its own doc block and
-then keys the exemption on package area alone. Reproduced on a 0.9 in² panel with undersized type:
-`FDA_NET_QUANTITY_TYPE_TOO_SMALL/violation` and `FDA_NET_QUANTITY_ZONE_NOT_REQUIRED/pass` on the same
-declaration, the second predicated on a condition the first has just reported unmet. Lower severity than the
-others here — the type-size violation is still reported, so nothing is wholly cleared — but it is a pass
-issued on an unsatisfied condition, and the fix is a conditional the rule already has the inputs for.
-
-The US food reading kept `FDA_NET_QUANTITY_ZONE_NOT_REQUIRED` on the artwork, and this entry is the reason.
-Keyed on panel area it reads like an entitlement, which makes it the obvious candidate for the document. But the
-proviso's condition is about the printed declaration, so stamping it `document` would have let it survive
-the omission of the very declaration it is conditional on — this defect, deepened. `certification.test.ts`
-now fails if it survives one.
-
-**~~A "Contains" statement can vanish unannounced.~~ Fixed** on `fix/contains-unnamed-allergen`. The engine
-records a detail omission for each ingredient whose allergen needs a specific type and states none, naming the
-ingredient, whether or not the statement prints for others. Reproduced again before the fix on 2026-09-17. What
-follows is the entry as it stood. `usFoodEngine.ts` records an omission for an allergen no
-ingredient carries, but not for the case where every bearing ingredient yields no food-source name — which is
-what `tree nuts`, `fish` and `crustacean shellfish` do without an `allergenSpecificType`. Reproduced:
-`containsStatement: ['tree-nuts']` with `{ name: 'praline', allergen: 'tree-nuts' }` draws no Contains
-element and records `omissions: []`. Not a false clearance — `FDA_ALLERGEN_SOURCE_NOT_SPECIFIC` still fires —
-but a declared element leaves the artefact with nothing saying so, which is the one thing `LayoutOmission`
-exists to prevent.
-
-**~~Two of the three footnote variants are unreachable.~~ Half fixed** on `feat/childrens-footnote`. A panel
-declared `representedFor: 'children-1-through-3'` is drawn with the 1,000-calorie footnote on both drawing paths,
-against Daily Values for that group. The first-sentence-only variant is still unreachable: (d)(9) permits it only
-for foods that can use § 101.60(b)'s calorie-free terms, and this project models no claims. What follows is the
-entry as it stood. `NUTRITION_FOOTNOTE.childrenOneToThree` and
-`.firstSentenceOnly` have no consumer; `layout/nutritionPanel.ts` hardcodes `.standard` at both sites. The
-eCFR text fetched this session confirms both variants are real requirements — a food "represented or
-purported to be for children 1 through 3 years of age" **shall** substitute "1,000 calories" — so a
-children's food is drawn with the 2,000-calorie wording and no rule looks at the footnote at all (see
-"Nothing checks the Nutrition Facts footnote", above). There is also no field on `UsFoodNutritionFacts` to
-declare the food as being for that age group, so the substitution is currently unreachable from the app as
-well as undrawn. Needs a selector before it needs a rule.
-
-**~~A food for children 1 through 3 must give its protein percentage, and nothing asks for it.~~ Fixed** on
-`feat/toddler-protein-percent`. `us-food/protein-percent` reads the printed protein row of a panel declared for
-children 1 through 3 and reports one with no percentage; an egg carton's is asked of its declared figures. The value
-is still not judged, and a protein claim, the other trigger, is not modelled. What follows is the entry as it stood. 21 CFR
-101.9(c)(7)(i), read from the eCFR on 2026-09-17: the protein percentage "may be placed on the label, except that
-such a statement shall be given if a protein claim is made for the product, or if the product is represented or
-purported to be specifically for infants through 12 months or children 1 through 3 years of age". A *shall* for
-exactly the food `representedFor` now declares. Reproduced on `feat/childrens-footnote`: the conformant panel
-declared for children 1 through 3, with no stated protein percentage, prints "Protein 5g" and no rule mentions
-protein. The engine cannot derive the figure, because (c)(7)(ii) corrects the amount by a digestibility score no
-label carries, and the percentage rule excludes protein for the same reason. What is missing is a rule requiring a
-declared protein percentage on a toddler food, and whether a declared one can be judged at all without that score.
-
-**~~A dual-column panel cannot state a protein percentage in its second column, so a toddler food on one cannot
-comply.~~ Fixed** on `feat/second-column-percentages`. `columns.secondPercentDv` states the second column's
-percentages, the panel prints them in place of the figures it derives, and `us-food/nutrition-percent-dv` judges
-them against the second column's own amounts. What follows is the entry as it stood. Found by the review of `us-food/protein-percent` on `feat/toddler-protein-percent`, and reproduced. Read from
-the eCFR on 2026-09-17, 101.9(e)(2), (e)(3) and (e)(6) each present the percent Daily Value in every column, by what
-the second column counts, and for a food for children 1 through 3 that includes the protein percentage (c)(7)(i)
-requires. The first column prints a stated percentage, but `UsFoodNutritionFacts` has no field to state one for the
-second column, and the engine derives none for protein, so the second column prints "5g" with nothing beside it.
-The rule reports that under the paragraph for the column's basis, which is true of the printed label, and nothing in the editor can fix it. The
-fix is a declared second-column percentage, at least for protein, with the rail offering it.
 
 **No form rule judges the columns an egg carton declares.** Found by `/code-review high` on PR #41, and verified.
 `us-food/dual-column-form` returns as soon as no `food-nutrition-second-column` element is drawn, which is always
@@ -427,33 +268,6 @@ prints "0g 99%" and `us-food/nutrition-percent-dv` skips it: there is nothing to
 requires the percentage "for each nutrient" with a DRV or RDI and the (d)(12) display leaves those two cells blank,
 so a figure there is a defect a rule could report from the document alone. The field pre-dates this branch on the
 first column; the second column widened it. A rule would need its own code, citation and fixture.
-
-**~~(e)(6) is cited for every per-container column, though its own words reach only the mandatory ones.~~
-Fixed.** Found by `/code-review high` on PR #40. 101.9(e)(6) opens "When dual labeling is presented for a food on
-a per serving basis and per container basis **as required in paragraph (b)(12)(i)** of this section or on a per
-serving basis and per unit basis **as required in paragraph (b)(2)(i)(D)**", so a column carried voluntarily was
-being cited to a paragraph whose own predicate its label does not meet.
-
-`dualColumnDuty` now reports every basis actually required rather than only the first, because the predicate is
-per-provision: a per-unit column is (e)(6)'s business only where (b)(2)(i)(D) required a per-unit column, and
-both provisions can bite on one label. `eachColumnReference` and `separatedColumnsReference` consult it and
-return `undefined` where (e)(6) does not reach, leaving each rule to fall back to the citation it declares —
-(e) for `us-food/dual-column-form`, (c)(7)(i) for `us-food/protein-percent`, which is the path a label stating
-no basis already took. The messages distinguish the two, because "no basis stated" is a field the user can fill
-in and "carried voluntarily" is not.
-
-**The reading that settled it**, from the eCFR on 2026-09-17: nothing in (e) covers a voluntary column. (e)'s
-opening permits dual labeling for forms, combinations under (h)(4), "different units ... as provided for in
-paragraph (b)" and RDI groups, and a per-container column is none of them. The one paragraph in 101.9 that
-contemplates a voluntary second column is **(b)(6)** — a package "more than 150 percent and less than 200
-percent of the applicable reference amount" *may* provide, "to the left of" the per-container column, a column
-"per common household measure that most closely approximates the reference amount". That is a different column
-from the one a label declaring `per-container` describes: it sits on the other side and counts something else.
-So (b)(6) was not adopted as a substitute citation, and the general reference stands instead of an invented
-specific one.
-
-Two things that reading turned up, neither in scope and both below: what authorises a per-container column
-*outside* (b)(6)'s window, and (b)(11)'s promoted-use column.
 
 **Nothing authorises a per-container column outside (b)(6)'s window, and no rule says so.** (b)(6), read from
 the eCFR on 2026-09-17, permits a voluntary second column only for a package holding "more than 150 percent and
@@ -485,24 +299,6 @@ paragraph (e)(6)(i)", whose sample labels are headed — so the question is whet
 illustration's headings as a requirement, which is exactly the "guidance figure made a requirement" trap
 `CLAUDE.md` records. Wants the displays read and the phrase weighed before anything changes.
 
-**~~An incomplete voluntary second column is still reported as a violation, under a paragraph that does not
-reach it.~~ Fixed by removing the finding.** Raised by the review of the (e)(6) citation fix and settled on
-2026-09-18 by reading (e) again. Its opening permits dual labeling for four things and its requirements are
-the terms on which *those* permissions are exercised — "When **such** dual labeling is provided". A
-per-container column nothing compels is none of the four, so no provision of 101.9 governs its form.
-
-**Advisory was considered and rejected.** `Finding.citation` is required, so an advisory would still have named
-101.9(e) while saying (e) does not reach the column — the same false statement at lower volume, and the defect
-this project treats most seriously. There being no provision, there is no finding; the limit is in
-`docs/WHAT-IS-NOT-CHECKED.md` instead, which is what that document is for and keeps this consistent with
-`gs1/quiet-zone`, silent for the same reason.
-
-**What it cost, which is worth knowing.** The editor seeds a per-container column and collects no reference
-amount, so a browser-built dual column is governed by nothing until the user states the three facts — and four
-checks that used to fire on it (completeness, separation, headings, equal prominence) now do not. They were
-firing under a citation that did not apply, so this is a correction rather than a loss, but it is the commonest
-label this tool draws. The mandate rule's decline asks for exactly those facts, which is the path back.
-
 **`ghs/pictogram-set` cites CLP Annex V whatever the regime.** Its sibling `ghs/pictogram-precedence` selects
 29 CFR 1910.1200 Appendix C for a `us-osha` label and CLP Article 26 for an EU one; this rule has a single
 citation and no branch, so a US label is told its pictograms are wrong under an EU regulation. Noticed while
@@ -528,85 +324,14 @@ cannot be persisted, and the geometry fields are guarded by `requiredNumber` wri
 that a user can type one, see the preview change, and learn only on save. Worth one pass over the rail's
 numeric inputs with a shared guard rather than four more copies of the same three lines.
 
-**~~The rejected figure also stays on screen.~~ Settled in interface stage 4, for the three fields it
-applied to.** The policy is **show it as rejected**: the box keeps the figure, the field takes
-`aria-invalid`, and a sentence beside it says the label does not hold it and what to state instead.
-Clamping was rejected outright — the document would hold a measurement nobody typed, on a tool whose only
-value is being right — and refusing the keystroke was rejected because `type="number"` sanitises its own
-value, so the control cannot tell a refused figure from a half-typed one without becoming a text input.
-
-The entry as written was half wrong in a way worth keeping. It described one defect; there were two, in
-opposite directions, from the same keystroke. Where the field had never been filled the `0` did stay on
-screen, as recorded. Where it already held a figure the box was **blanked** instead, because the bound
-value moved and Vue patched the element — which is the worse of the two, since it takes back a keystroke
-as it is typed.
-
-**What stands is the wider half of the entry above, and it is untouched.** `optionalNumber` still accepts
-`0` and negatives into `servingsPerContainer`, `netQuantityFontSizeMm`, `availableSurfaceSqInches` and
-`continuousVerticalSpaceInches`; eight `min="0"` attributes still mean `positive()`; and nine bindings
-across the three rails still write `''` into a field typed `number`. None of those refuses anything today,
-so none of them has the disagreement that was just fixed — a user types a zero, sees the preview change,
-and learns on save. Closing them is a change to what the guards accept rather than to what the control
-shows, which is a different question and a much larger diff. Left out of stage 4 for scope, not doubt.
-
-**~~The editor has no inputs for the three facts a dual-column duty turns on.~~ Fixed.** Found by
-`/code-review high` on PR #43. `UsFoodFormRail.vue` collected no reference amount, package content, unit
-content or "packaged and sold individually", though the type and the API schema carried all four — so every
-label built in the browser left 101.9(b)(12)(i) and (b)(2)(i)(D) unanswerable, and
-`us-food/dual-column-required`, the one rule in the set that reports a label for *omitting* a required display,
-was silent on every one of them. The rail now takes all four.
-
-Two details worth keeping. The reference amount's three parts travel together, so entering an amount creates
-the whole record and clearing it removes the record rather than leaving a category claiming a row of §101.12(b)
-with no figure against it. And "packaged and sold individually" is a **three-state** control rather than a
-checkbox: a checkbox can say "yes" or say nothing, and saying nothing is exactly the state that left the duty
-unanswerable, while "no" is a real answer that takes the duty away — a multi-serving box is not sold
-individually and (b)(12)(i) does not reach it.
-
-**~~`us-food/dual-column-required` clears a label that drew a column of the wrong basis.~~ Fixed.** Found by the review
-of the (e)(6) citation fix. The rule asks whether a second column is *present*, never what it counts, so a
-package whose unit sits at 250 percent of the reference amount — owing a per-unit column under (b)(2)(i)(D) —
-gets `FDA_DUAL_COLUMN_MET` for drawing a column its own document labels per container. The pass is not wrong
-about what it says, which is that a column was drawn; it is wrong about what a reader takes from it, which is
-that the obligation was discharged. The citation fix works around the reader-facing half by naming the column
-actually owed in the *other* rule's message rather than calling the declared one voluntary, so the two findings
-no longer contradict each other on the same label. The mandate rule itself is untouched, and closing it means
-deciding what a mismatch is: a distinct finding code, or a withheld pass. Note (b)(12)(i) and (b)(2)(i)(D) can
-both bite at once, so "the wrong basis" is not always a single right answer — which is why the check asks
-which owed columns are **not** on the label rather than whether the one drawn is among those owed. Asking the
-second was the first version of the fix, and it certified every package owing two columns, since a label can
-only draw one and whichever it drew was always "among" them.
-
-The reading that settled it, from the eCFR on 2026-09-18: both provisions name what their column must carry,
-not merely that one exists. A label owing a per-unit column and drawing a per-container one has not provided
-what (b)(2)(i)(D) asks for. Where the label declares no basis at all the answer is neither — reporting the
-column absent would be a false positive, clearing it would certify a column the engine cannot identify — so
-that case is a new advisory rather than either.
-
-**~~A package owing both additional columns cannot be made compliant in this tool.~~ Shipped as a documented
-limit on 2026-10-08**, as James decided, not modelled. Read that day from the eCFR: (b)(12)(i) "must" provide a
-column for the entire package, (b)(2)(i)(D) "shall" provide one per individual unit, and (e)(6) frames each as a
-two-column presentation joined by "or". None of them says whether one second column can serve as both. Both can
-apply only where the package is itself one unit in the band, per 81 FR 34000, Responses 9 and 21.
-
-Where both are owed, the package is a single unit, and the drawn second column could be either one,
-`us-food/dual-column-required` now judges nothing. Instead it declines with `Decline.limit`, saying plainly
-that the limit is the tool's. Where the contents differ, or the column counts something else, a column is
-provably absent and is still reported. Each basis used to draw a violation
-citing the other paragraph, so no setting satisfied the report. Where no second column is drawn it still
-reports, since no reading is met by none. `docs/WHAT-IS-NOT-CHECKED.md` has the section.
-
-Modelling a third column, or a single column labelled for both, is post-deployment work, and it should follow
-FDA guidance on the case rather than a reading of the paragraphs alone. What follows is the entry as it stood.
-
-Where a package sits in the
-200–300 percent band *and* its individual unit does, (b)(12)(i) and (b)(2)(i)(D) each ask for a column, and
-`UsFoodNutritionFacts.columns` holds one `basis` and one `secondAmounts` — so every such label is reported for
-the column it cannot express. That is the right answer to give and a poor place to leave a user: the finding
-is accurate and there is nothing they can do about it in the editor. Fixing it means a third column in the
-model, the engine and the panel, which is a larger change than the reading that surfaced it. Noticed while
-correcting the basis check, and reported rather than cleared because certifying the label would be the false
-clearance this whole line of work has been removing.
+**`optionalNumber` accepts 0 and negatives, and `min="0"` means `positive()`.** It admits them into
+`servingsPerContainer`, `netQuantityFontSizeMm`, `availableSurfaceSqInches` and `continuousVerticalSpaceInches`;
+eight `min="0"` attributes mean `positive()`; and nine bindings across the three rails write `''` into a field
+typed `number`. None of them refuses anything, so a user types a zero, sees the preview change, and learns on
+save. Interface stage 4 settled the refusal policy for the three measurement fields (the box keeps the figure,
+the field takes `aria-invalid`, a sentence says what to state instead); closing these is a change to what the
+guards accept, and a much larger diff. The hand-set type size is the same defect, pinned under "Worth doing
+before deployment".
 
 **(b)(11)'s promoted-use second column is unmodelled.** 21 CFR 101.9(b)(11), read from the eCFR on 2026-09-17:
 a product "promoted on the label, labeling, or advertising for a use that differs in quantity by twofold or
@@ -620,45 +345,9 @@ exemptions. And its exemption list is its own — "nondiscrete bulk products ...
 ... or traditionally used for multipurposes ... and multipurpose baking mixes" — which is a different set from
 (b)(12)(i)(A) to (C), so it cannot borrow the shared one. There is also no `DualColumnBasis` value for it.
 
-**~~`us-food/dual-column-form` cites (e)(2) for an incomplete second column whatever the column counts.~~ Fixed**
-on `fix/dual-column-citations`, and the unseparated-columns finding with it, which cited (e)(3) the same way. Both
-choose by `columns.basis` from a table shared with `us-food/protein-percent`; a label stating no basis cites (e)
-itself. What follows is the entry as it stood. Found by
-`/code-review high` on PR #39, and read from the eCFR on 2026-09-17. `FDA_DUAL_COLUMN_INCOMPLETE` always carries 21 CFR
-101.9(e)(2), whose "for the form of the product as packaged and for any other form" is about forms and combinations.
-For per-serving beside per-container or per-unit columns, (e)(6) is the paragraph that puts "the quantitative
-information by weight as required in paragraph (d)(7)(i)" in two columns, and for units and RDI groups it is (e)(3).
-The finding is right and its citation is wrong for most of the bases the engine draws, including the mandatory
-per-container column. `us-food/protein-percent` already chooses by `columns.basis`, and the same table fits here.
-Left for its own change because it alters an existing finding's citation and its fixtures.
+### Open from verifying the reported entries (2026-10-08)
 
-**Struck with it:** the carton is now asked for the second column its information declares, under the paragraph
-for what that column counts. What follows is that entry as it stood. An egg carton escapes the same check. With no
-panel drawn, `us-food/protein-percent` asks the carton only for a
-declared first-column percentage. Reproduced: a carton claiming (j)(14), declared for children 1 through 3 with two
-columns and 38 percent stated for protein, gets no protein finding at all. It is never passed either. Found by the
-review of the dual-column fix, and left here because a toddler food in an egg carton with a second column is
-unlikely and the declared second column has no percentage field to ask about anyway; it closes with the field.
-
-### Reported, not yet verified
-
-Recorded as reviewer claims rather than as facts. Each is checked before it is picked up. Six of the seven
-open here were reproduced and settled on 2026-10-08, on `fix/reported-not-verified`: four were real and are
-fixed, one was real and latent and is fixed, and one was not a defect. The seventh, the editor rail's five
-items, were all real and are fixed on `fix/editor-rail-reported`.
-
-- ~~**The two small-package displays abbreviate the footnote in two ways, and neither matches the regulation's
-  string.**~~ **Struck — reproduced, and not a defect.** The tabular display prints `*% DV = % Daily Value` and
-  the linear `% DV = % Daily Value.`, as reported. Read from the eCFR on 2026-10-08: (j)(13)(i) relieves these
-  packages of "the information in paragraphs (d)(9) and (f)(5) related to the footnote" and permits "the
-  abbreviated footnote statement '% DV = % Daily Value'". (d)(6) says the "% Daily Value" column heading
-  "shall" be "followed by an asterisk", and the tabular display prints that heading; (d)(9)'s footnote is
-  "preceded by an asterisk". So the tabular asterisk is the heading's referent, which (j)(13)(i) relaxes the
-  wording around and not the mark. The linear display has no column heading — (d)(7) excepts it — so nothing
-  wants an asterisk, and its full stop closes the run the way its commas separate it. Both tests that only
-  asked `toContain` now pin each display's exact string, with this reading beside them.
-
-- ~~**Bold text is measured with Regular metrics.**~~ **Verified, and narrower than reported.** The
+- **Bold text is measured with Regular metrics.** **Verified, and narrower than reported.** The
   mechanism is real: `measureTextMm` and `glyphHeightMm` take only `fontFamily`, while `TextPrimitive`
   carries `fontWeight` and `renderPdf` resolves `>= 600` to a separate face. Both faces' figures were checked
   against the TTFs with fontkit rather than against the table that quotes them — Regular `o` 0.5400 and
@@ -696,95 +385,36 @@ items, were all real and are fixed on `fix/editor-rail-reported`.
   SemiBold — so a bold word can overprint the start of the word after it on any line. The panel-border check
   now measures ink in the printing face and reports the cases that cross the border; the overlap inside a line
   is this entry's, and closes with it.
-- ~~**The Calories word and numeral sit on different baselines on the vertical display.**~~ **Fixed.**
-  Measured: the 16 point word's baseline at 47.33 mm, the 22 point figure's at 49.45 mm — 2.12 mm, six points
-  apart. `text()` in `nutritionPanel.ts` takes a `lineSizePt`, and every run on a line sits on the baseline the
-  line is sized for. The same mechanism had a second victim: a second column set at a different
-  `secondColumnTypeScale` floated above its row when smaller, and when larger fell out of the bottom of its own
-  row box, where the hairline to the next row is ruled — 5.64 mm deep in a 4.23 mm row at 2×. Each row is now
-  as tall as its largest run.
-- ~~**The (c)(8) thick bar can be drawn above the first nutrient row.**~~ **Fixed.** Reproduced with `order`
-  beginning at vitamin D: a 7 point bar at 55.52 mm, between the heading and the first row at 57.99. It now
-  goes before the first vitamin or mineral that follows a drawn nutrient — the first version of the fix only
-  waited for a drawn row, which on that panel drew no bar anywhere; `/code-review high` on PR #64 found it.
-- ~~**A finding can carry an element id nothing resolves.**~~ **Fixed, and wider than reported.** As claimed,
-  `us-food/nutrition-rounding` judged every declared amount, so a nutrient left out of `order` was reported
-  against a row never drawn. Its pass was the worse half: an artwork pass, saying the printed amounts round
-  correctly, that counted that unprinted figure — 11 amounts with or without sodium's row. It now judges only
-  rows the panel drew, where it drew a panel; a panel printed beneath a (j)(14) lid is still judged, and its
-  finding names no element. And Calories was never a row: its findings pointed at `food-nutrition-row-calories`,
-  which no display has ever drawn. A new sweep, `elementIds.test.ts`, asks every finding in every fixture
-  whether the engine drew the element it names, and found three more — a wrong check digit naming the symbol it
-  prevents, an unstated ingredient exemption naming the statement an exempt label lacks, and the exemption's
-  own pass. The first two are fixed; the third is the entry below.
-- ~~**A tabular nutrient column wider than its panel is drawn outside it.**~~ **Fixed.** On a 60 mm label with a
-  12 mm margin the columns ended 1.64 mm past the panel's border, inside the margin, with no omission recorded
-  and six passes keyed to the panel standing. The engine now records one at the panel's own right edge, so those
-  passes are withheld; the format entitlement, a fact about the document, survives. It measures the printed
-  ink in the face each run is set in, since a row's box is measured in Regular and its bold text is wider.
-- ~~**Editor rail, five items.**~~ **All five reproduced in the browser on 2026-10-08, and fixed** on
-  `fix/editor-rail-reported`; `e2e/the-food-rail.spec.ts` carries one test each.
-  - **The type-size override unmounted itself when its box was emptied** — measured: the box gone and the
-    checkbox unticked. A cleared override is now held for the document it was cleared on.
-  - **A blank ingredient percentage was written as 0**, and that was worse than reported: clearing oats on the
-    opening label drew "almonds is 7% … listed after whole grain rolled oats at 0%", a violation from a figure
-    nobody gave, and every new row was seeded at 0. The model had no way to say "not stated", so
-    `percentByWeight` is now optional in `label-core` and the API. The order and threshold rules judge the
-    figures a label states — an inversion between two of them is still reported — and stand down where one is
-    missing, naming the ingredients under "checks that did not run". The threshold rule had counted an unstated
-    figure as within its threshold.
-  - **An out-of-range percentage reached the API as a raw 400** ("Invalid label document: …percentByWeight Too
-    big"). It is refused in the form now, the way stage 4's measurements are: the box keeps what was typed, the
-    document holds nothing, and a sentence under the row and a line through the announcer say so. Per row — the
-    first version held one refusal, and a screenshot showed it vanishing from a box when another row was edited.
-  - **Changing an ingredient's allergen re-ticked "name the source in parentheses".** It now keeps the user's
-    choice when one allergen replaces another, and defaults to on only where an allergen first arrives.
-  - **Unticking the second column discarded every figure typed into it.** The rail now sets them aside for the
-    document and restores them when the column is turned on again. They are not left in the document: a
-    single-column panel's leftover second-column percentage is reported by the engine as unprinted, rightly,
-    which is what the first version of this fix ran into.
 
-  **Found by the review of those fixes, and left: an assortment label's order check can stand down in silence.**
-  `us-food/ingredient-list` judges an assortment claim's statement and then the list under it, in one `check`.
-  A `Rule` may judge or decline, never both — `rules.test.ts` holds that across every fixture — so where the
-  statement is judged and a listed ingredient states no percentage, the order goes unjudged and is not named
-  under "checks that did not run". No pass is issued, so nothing is cleared that should not be. The fix is to
-  give the order check a rule of its own, so it can decline while the statement is judged. This change is what
-  makes the gap reachable — before it, every percentage was a number — which is the strongest reason to do
-  the split before deployment rather than after.
+**An assortment label's order check can stand down in silence.** Found by the review of the editor-rail fixes
+in PR #65, and left.
+`us-food/ingredient-list` judges an assortment claim's statement and then the list under it, in one `check`.
+A `Rule` may judge or decline, never both — `rules.test.ts` holds that across every fixture — so where the
+statement is judged and a listed ingredient states no percentage, the order goes unjudged and is not named
+under "checks that did not run". No pass is issued, so nothing is cleared that should not be. The fix is to
+give the order check a rule of its own, so it can decline while the statement is judged. This change is what
+makes the gap reachable — before it, every percentage was a number — which is the strongest reason to do
+the split before deployment rather than after.
 
-  **And four more from the `/code-review high` on PR #65, recorded rather than fixed:**
+**Four more from the `/code-review high` on PR #65, recorded rather than fixed:**
 
-  - **Labels saved before this change still carry the zeros the old rail wrote.** A row added and named but
-    never weighed was seeded at 0, and the order rule reads those as stated: oats 90 then two seeded rows passes
-    as "3 ingredients run in descending order". Nothing has been deployed — phase 8 is deployment — so no saved
-    label a user holds carries them; only development databases do. Worth a sentence in the deployment
-    checklist, not a migration.
-  - **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** The same defect this
-    change fixed for percentages, on the field it touched; `optionalNumber` accepts any finite figure. It wants
-    the refusal the measurements have, which is a change to that guard rather than to the override.
-  - **Three pieces of rail state each re-implement "only while `documentGeneration` matches" by hand** — the
-    held override, the refused percentages and the set-aside second column — and each has to be cleared by hand
-    on every in-document reset. A `heldForDocument` helper, or a store-side scratch map cleared when the
-    generation moves, would put the rule in one place.
-  - **The percentage refusal is a second refusal mechanism** beside `refusableNumber`, `REFUSED_MEASUREMENT` and
-    `sayRefusal`, retiring on a different signal. A per-row `refusableNumber` would share one path. Not done
-    here because `refusableNumber` holds one figure per field and the rows are a list.
-- ~~**`generate-font-metrics.mjs`'s missing-glyph guards are dead.**~~ **Fixed.** Reproduced: fontkit maps an
-  unmapped code point to glyph 0, `.notdef`, advance 472 units in Plex Sans. The measurements moved into
-  `scripts/fontMetrics.mjs`, which asks `hasGlyphForCodePoint`, and a `scripts` vitest project holds them to it.
-  Regenerating the table afterwards produced a byte-identical `metrics.ts`, so nothing shipped was affected.
+- **Labels saved before #65 still carry the zeros the old rail wrote.** A row added and named but
+  never weighed was seeded at 0, and the order rule reads those as stated: oats 90 then two seeded rows passes
+  as "3 ingredients run in descending order". Nothing has been deployed — phase 8 is deployment — so no saved
+  label a user holds carries them; only development databases do. Worth a sentence in the deployment
+  checklist, not a migration.
+- **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** The same defect #65
+  fixed for percentages, on the field it touched; `optionalNumber` accepts any finite figure. It wants
+  the refusal the measurements have, which is a change to that guard rather than to the override.
+- **Three pieces of rail state each re-implement "only while `documentGeneration` matches" by hand** — the
+  held override, the refused percentages and the set-aside second column — and each has to be cleared by hand
+  on every in-document reset. A `heldForDocument` helper, or a store-side scratch map cleared when the
+  generation moves, would put the rule in one place.
+- **The percentage refusal is a second refusal mechanism** beside `refusableNumber`, `REFUSED_MEASUREMENT` and
+  `sayRefusal`, retiring on a different signal. A per-row `refusableNumber` would share one path. Not done
+  here because `refusableNumber` holds one figure per field and the rows are a list.
 
-**Found while verifying the entries above.** One fixed:
-
-- ~~**`us-food/nutrition-percent-dv` judged nothing on the tabular and linear displays.**~~ **Fixed.** It counted
-  a column as drawn only where a row had a separate end-anchored cell, and those two displays print the
-  percentage inside the row's own run — "Total Fat 3g 4%" — so the count was always zero. A declared 99 percent
-  for fat was reported on the vertical display and drew nothing at all, finding or pass, on the other two: the
-  same silence the report keeps where no provision governs. The first column now also counts as drawn where the
-  stated figure appears as a whole token in what the row printed. Two fixtures, one per display.
-
-And two recorded rather than fixed:
+Two more found while verifying the reported entries, recorded rather than fixed:
 
 - **A finding's element is both where to look and what withholds it.** `FDA_INGREDIENTS_EXEMPT` names
   `food-ingredients`, which an exempt label never draws, so selecting the pass outlines nothing. The id is not
@@ -799,14 +429,13 @@ And two recorded rather than fixed:
   (j)(14) carton, whose passes name an undrawn panel, records an omission and is withheld. It would be reached
   by the next element drawn conditionally without an omission recorded for its absence.
 
-
 ---
 
 ## The rule catalogue's severities
 
 **Two guidance codes are declared from reading, not from observation.** `GHS_PICTOGRAM_PRECEDENCE_OPTIONAL`
 and `GHS_SMALL_CONTAINER_AVAILABLE` are reached by no fixture and no sweep document, so `severities.test.ts`
-lists them as unreached alongside the three pass codes in "Four pass codes are reached by no fixture",
+lists them as unreached alongside the three pass codes in "Three pass codes are reached by no fixture",
 under the phase 7 review. Each is emitted only as `'guidance'`, which is
 what it declares: `GHS_SMALL_CONTAINER_AVAILABLE` as a literal, and `GHS_PICTOGRAM_PRECEDENCE_OPTIONAL` from
 a ternary whose condition also chooses the code, so its other branch is a different code. A sweep document for each would move them from read to observed.
@@ -858,52 +487,6 @@ this entry records is that the decision was deliberately not taken inside the mi
 
 ## From stage 4, canvas and editor
 
-**~~A refused figure is shown but not announced.~~ Fixed in interface stage 5**, through the announcer
-rather than through the description. Each of the three fields says its refusal on a line of its own, with
-the field named, because it is heard away from the box it is about; the line goes when the field is
-answered or left empty. Copying the GTIN's conditional `live` was not done, for the reasons this entry
-gave, and `live` no longer exists to copy.
-
-**~~A failed open says the editor is showing a new document, and it is not.~~ Fixed**, by making the
-sentence true rather than changing it: a failed open now detaches exactly as arriving at `/labels/new` does —
-the fields stay, nothing is attached, the name goes — so a Save creates a record rather than replacing the
-one left behind. For any failure, not only a 404: the label on screen is not the one the URL names, which is
-the only fact a Save needs. A non-404 message is framed as a sentence whatever the server sent.
-
-**~~A Save still in flight when the user moves to another label lands on that label.~~ Fixed** as the
-entry proposed, with the request-scoped shape the pending open uses: a Save records which document it was
-made about — `documentGeneration`, which the store moves whenever a label is opened or let go of — and if
-that has moved by the time it answers, its success is not applied: the record is still written, as asked,
-but the label now on screen is not told it is that record and the URL is not moved back. A failure is still
-said, naming the label it was for — a version that dropped it hid unwritten edits, and review caught it. A first version keyed on the route, and review
-showed a route can be returned to; a second review showed the generation had to move on every type change
-and when an open starts, not when it lands.
-
-Fixed alongside, unrecorded until found: `markSaved` took its baseline when the Save answered, so an edit
-made while it was out was marked saved, and the server's name was written back over a rename typed in the
-meantime. The baseline is now the payload that was sent, and the name is adopted only if unchanged.
-
-**~~The wait's live region is created with its text already in it.~~ Fixed in the same stage**, by not
-giving the wait a region at all. The panes stay mounted through it, the findings rail takes `pending`, and
-the regions already being observed say "Opening this label…" and then the opened label's counts — two
-changes to one node, both of which a screen reader hears. The version this entry described was worse than
-it said: by swapping the grid out it also unmounted the *rail's* region and rebuilt it full on arrival, so
-the opened label's findings went unannounced where on `dev` they had been heard. Found by the phase's
-whole-branch review.
-
-What remains is the first page load of `/labels/:id`, where the region is born saying "Opening this
-label…" because the page itself is. That is page content arriving, not a change to announce, and the change
-that follows it is heard. The live-region question for the GTIN note and the refused measurements is
-unaffected and still open.
-
-**~~On a narrow screen showing Checks, two live regions are perceivable, and a comment says it cannot
-happen.~~ Fixed in interface stage 5**, by there being one region to perceive. The findings rail and the
-editor's narrow-only region both said the summary, in two wordings; both are gone, and the summary is said
-once through the announcer at the application root. The patch this entry warned against — gating the
-editor's region on the pane — was not needed and was not taken, for the reason given: it would have moved
-the announcement from node to node as the panes changed. `e2e/the-responsive-collapse.spec.ts` now visits
-every narrow pane, which is how the old version missed this.
-
 **A Save answered after a quick trip away from its label and straight back is set aside.** `supersede`
 moves the generation when an open starts, and returning to the label already held — no second read — does
 not move it back, so a `PUT` on `/labels/abc` that answers after `/labels/def` and back is treated as stale.
@@ -921,33 +504,6 @@ fails after the user has left the editor sets its error on an editor no longer o
 seen — which was true before this change as well; the leave guards asked first, because the edits were
 still unsaved. Both found by review of the overwrite fixes.
 
-**~~The editor's header keeps naming the previous label while the next one is being opened.~~ Fixed with
-the shell.** The name field reads empty under an "Opening a label…" placeholder for the wait, the chip goes,
-and Save stops reading "Saved"; the window title says "Opening a label". What follows is the entry as it
-stood. The panes go,
-but the name field still reads "Granola 340g" and the chip beside it still reads "Saved" — a document
-identity asserted about something not on screen. Everything there is disabled, so nothing can be edited or
-lost, which is why this is an entry rather than part of the fix: the harm the stage closed was a document
-that could be edited and then silently discarded, and this is the cosmetic remainder. Worth doing with the
-shell work, where the header is being looked at anyway.
-
-**~~The dimension callout's figure is drawn over the barcode's own digits.~~ Fixed.** Measured: the
-figure's ink started at 33.39 mm and the human-readable digits' ended at 33.85 mm. It is now placed from
-where its ink starts — clear of the symbol's drawn box by 0.6 mm, with the ink's height taken from the
-engine's own measurement of Plex Mono's capitals — and the rule sits under it. The browser test reads both
-baselines and sizes from the elements and compares ink rather than bounding boxes, which include the
-font's empty ascent and descent and would have demanded room the ink does not need. The measurement also
-corrected a guess in the first version of this entry: the engine's drawn height ends at the digits'
-baseline, not below their descent.
-
-The clearance cost 0.46 mm of depth: the callout now reaches about 3.3 mm below the symbol where it reached
-about 2.8. The overlay shares the label's `viewBox`, so a symbol placed closer than that to the bottom edge
-has the callout's tick ends clipped — as it already would have at 2.8 mm. The default retail label leaves
-about 6 mm. Noted by the review of the fix; not worth a change until a label puts a symbol there.
-
-**~~The canvas's two overlay checkboxes never joined the component layer.~~ Fixed.** They are
-`CheckboxField`s now. Measured as bare inputs: 13×13 boxes in 17 px rows with 0 px between box and word.
-
 **"Needs 2.97 mm" wraps onto a line of its own, away from the clear-space figures it qualifies.** An audit
 finding (`docs/ui-audit-2026-09-18/close-figcaption.png`) that was never written down here, and still true:
 at the canvas's width in the editor the figcaption's `<dl>` wraps after "Clear space", so the requirement
@@ -955,58 +511,6 @@ sits under the zoom row's neighbours rather than beside the measurement it is th
 with the two above because the obvious repair — wrapping the two pairs so they wrap together — is not
 valid inside a `<dl>`, which allows a `div` around one name and its value but not around two. It wants a
 decision about the markup: one pair whose value states both figures, or a different element.
-
-## From stage 2, the report surface
-
-**~~The rail repeats a forty-word explanation once per element, and the fix belongs in the engine.~~ Fixed
-in the engine, as this entry said it should be.** `LayoutOmission` carries an optional `explanation` — what is
-missing here, and why — built only through `explainedOmission`, which assembles `reason` from the two halves
-so the sentence and its parts cannot disagree. The GHS pictogram and statement omissions use it; the rail
-groups on `why` as a whole string it was handed and prints each element's own half above it. Every word the
-engine wrote is still printed. The statement omission's single sentence with a colon became two sentences,
-so its shared half reads as a sentence when said once; nothing quoted the old wording, and no rule reads an
-omission's text — rules ask whether an element has omissions at all.
-
-The editor's store and the audit report each assembled the "cannot be checked" list, and both had to change
-the same way, so they call one builder now. The audit's copy had left out the overprinted-symbol half on
-purpose, since an audit layout has no symbols — an earlier draft of this entry called that drift, which a
-review corrected by quoting the comment that said why.
-
-**~~"Checks that did not run" names facts a user could state and cannot link to any of them.~~ Fixed.**
-`Decline` carries `wants`: the facts the label has not stated, named as paths into its own data
-(`nutritionFacts.referenceAmount`) rather than as anything of the interface's, from a closed union. The web
-app maps each to the field that states it in a `Record` over that union, so a fact without a field is a
-compile error; a test renders each declining state and checks every field asked for is on the page. Each
-check that did not run now offers a control per fact, and following one shows the Form pane on a narrow
-screen and focuses the field.
-
-**Writing the test that holds a decline to its word found the word broken.** `Decline.reason` promises that
-doing what it says makes the check run. For a second column counting the individual unit, two rules told
-the user to state the reference amount, what the package holds and whether it is packaged and sold
-individually — and (b)(2)(i)(D) reads the reference amount and the *unit* content, nothing of the package. An
-existing fixture reached it: a label that had stated all three package facts was asked for all three again,
-and could never make the check run. The duty computation now reports what each provision is still missing
-from the same `stated` test it decides with, each rule names its own provision's facts, and the "State …"
-sentence is built from that list, so the instruction and the links cannot disagree. `rules.test.ts` follows
-every decline's ask until the rule runs.
-
-## From the stage 1 rail migrations
-
-**~~The GTIN's scan note is created in the same render as the text it announces, so it may never be
-spoken.~~ Settled in interface stage 5, and the decision this entry asked for was taken.** It set out two
-shapes: accept a second live region and make "exactly one" into "one per concern", or route announcements
-through a region that already exists. The second was taken, in a stronger form — not the findings rail's
-region, which came and went with the rail, but one announcer mounted at the application root that nothing
-can unmount. The scan note is now only a description; what a scan did is said through the announcer.
-
-The first shape turned out to be half-true already, which is worth keeping. "Exactly one live region" was
-never so: with the barcode scanner open there were two, measured, and nobody had decided it. The rule as
-written now admits that — a widget the user opens may keep a status line about itself — and asserts the
-thing that matters to someone listening, that a fact is heard once.
-
-**`live` is gone from `FormField` and the three controls built on it.** It existed for this one field, and
-the shape it offered — a description that is also a live region — cannot work, because the description is
-created in the same render as its text. Removed rather than left unused, so the shape cannot come back.
 
 ## From the interface stage 0 review
 
@@ -1039,35 +543,11 @@ out loud.** Neither changes behaviour today, so neither has a test that dies wit
 **Not taken, and left for the stage that owns it.** The `Error` assertion in `LabelsView.test.ts` reads
 `toContain('Error')` against a fixture message of `Internal server error`, so it depends on that fixture not
 itself containing the capitalised word. It is load-bearing today — mutation-tested both ways — but it is
-pinned by the fixture rather than by the markup. Worth tightening when the component layer gives the error
-its own testable element, which is stage 1.
+pinned by the fixture rather than by the markup. The error has its own element now, `[data-labels-error]`,
+from the saved-labels stage, but the assertion still reads its whole text; asserting the `<span>` that
+carries the word would pin the markup instead.
 
 ## Serving the client
-
-**Nothing is compressed.** The API serves `apps/web`'s build uncompressed, and the largest chunk is
-`LabelCanvas-*.js` at roughly 1.07 MB — bwip-js, which the canvas needs and which nothing currently splits
-out of the first load. Vite's dev server gzips; this one does not, and an ALB does not compress on a task's
-behalf either, so the deployed app would ship the full megabyte on every cold visit.
-
-**~~Not fixed in phase 6 stage 1~~ — the compression half is done.** `compression` is mounted ahead of every
-route, with PDFs excluded by an explicit filter: PDFKit deflates its content streams already, so gzipping an
-export is CPU spent to grow the response by a percent. That takes the JavaScript to roughly a quarter of what
-it was on the wire.
-
-**~~The code-splitting half is deliberately not done~~ — done in interface stage 7, 2026-10-08.** bwip-js loads
-when a barcode is first drawn (`apps/web/src/barcodeEncoder.ts`). Until it arrives, the landing page and the editor
-draw the engine's own placeholder: the real layout with the symbol's ink left out, so the figure holds the same box
-at every width, by construction. `/audit`, `/rules`, `/labels` and an editor never drawing a barcode no longer
-fetch it. Nothing is judged while it loads, and a failed load says so rather than waiting. What follows is the
-entry as it stood.
-
-**The code-splitting half is deliberately not done, and it is a UI decision rather than a build one.** The
-chunk is large because the landing page draws a *real* barcode through bwip-js, synchronously, in a
-`computed` — so the only way to take it off the critical path is to load it after the page renders and show
-something else meanwhile. That changes what a first-time visitor sees: a barcode that appears a beat late,
-or a placeholder that has to be designed. Splitting it into its own chunk without that changes nothing a
-visitor would notice, since the landing page still waits for it. It belongs with the UI work, not here, and
-doing it as a `manualChunks` line would have looked like progress while moving nothing.
 
 **An address with no page is answered 200.** The client has a 404 route now, inside the shell, but the server
 cannot know which paths the client routes: `app.ts` hands `index.html` to any GET that is not reserved and has
@@ -1084,44 +564,19 @@ The pass itself came back clean on the thing it was run for: no secret has ever 
 bundle carries none, and stage 1's static handler cannot be walked out of. Two findings were fixed at the
 time — the wildcard CORS header and the two production advisories, both in `CHANGELOG.md`. These are the rest.
 
-**~~Nothing rate-limits the export endpoint.~~ Fixed.** `POST /api/labels/*/export` is unauthenticated, renders a PDF per
-call, and sits behind `express.json({ limit: '10mb' })`. That combination is a cheap way to spend a task's CPU
-from the outside. It mattered less while the wildcard CORS header made the API openly callable anyway and the
-app was not deployed; it matters more once it is. The right home is **phase 8**, where an ALB and a WAF rule
-are the natural places to put it rather than middleware in this process — and where the vision endpoint,
-which spends money per call, will need the same protection more urgently.
+**Edge-level limits are phase 8's.** Every limit on this server is middleware in this process: the audit route
+has twenty calls per client per hour, two hundred per process per day and an optional `AUDIT_API_KEY`; the export
+routes have sixty renders per client per hour; the 10 MB body limit is on `/api/audit` alone and everything else
+is held to 256 KB. A per-route daily cap on the one route that spends a key is something only this process can
+enforce, but refusing traffic cheaply belongs at the edge — an ALB rule or a WAF — and that is deployment work.
+The routes are unauthenticated, which is also the edge's job.
 
-**~~That endpoint now exists.~~ The audit route is covered; the export routes are not.** `POST /api/audit/ghs`
-costs roughly two US cents a call at the sample label's token count, which made it the most expensive thing on
-this server to abuse and the reason this entry stopped being theoretical. It now carries two quotas — twenty
-per client per hour and two hundred per process per day — and an optional `AUDIT_API_KEY` that is required the
-moment it is set. Both run before the extractor, so a refused request spends nothing, and the quota counts
-refused keys so the key cannot be guessed at for free.
-
-**This is middleware in this process, which the entry above says is the wrong home**, and that judgement still
-stands for the shape of the protection rather than against having any. An ALB and a WAF rule are better at
-refusing traffic cheaply and are still the right answer at the edge; what they cannot do is know that this
-particular route spends a key per call, so a per-process daily cap on *this* route is a thing only this process
-can enforce. The two are complements. What remains for phase 8 is the edge. The export routes now carry an
-hourly per-client limit of their own — sixty renders, generous for a proof cycle and useless for a script —
-and the 10 mb body limit is no longer theirs: it is mounted on `/api/audit` alone, the one route that posts a
-photograph, with everything else held to 256 KB. They are still unauthenticated, which is the edge's job.
-
-**~~There is no `.env.example`.~~ Written in phase 6 stage 6**, the stage that made `MONGODB_URI`
-load-bearing, as this entry asked. It lives at `apps/api/.env.example` rather than the repository root:
-`dotenv` resolves `.env` against the working directory and npm runs a workspace script from that workspace, so
-a root `.env` is read by nothing. That was latent for as long as every variable was optional, and became a
-failure to start the moment one was not.
-
-**The audit route's guards run after its body has been parsed.** `express.json({ limit: '10mb' })` is
-app-wide and registered before every router, so a request the quotas or the key refuse has already been
-buffered and parsed in full. The guards bound what the route can *spend*, which was their job; they bound
-nothing about what it costs to refuse, so ten megabytes of JSON still gets read before a 401. Raised by the
-review of the audit-route change and left deliberately, because the fix is the body limit rather than the
-guards: 10 mb is a figure chosen for a photograph, and every route on this server pays it. That sits with the
-deferred hardening — the export routes' rate limit, the body size, compression — rather than here. A limiter
-mounted at app level ahead of `express.json` would help the audit path alone, at the cost of splitting one
-route's protections across two files, which is worth doing only if the body limit stays where it is.
+**The audit route's guards run after its body has been parsed.** `/api/audit`'s `express.json({ limit: '10mb'
+})` is mounted ahead of its router, so a request the quotas or the key refuse has already been buffered and
+parsed in full: ten megabytes of JSON can be read before a 401. The guards bound what the route can *spend*,
+which was their job, and nothing about what it costs to refuse. Narrower than when it was raised: the 10 MB
+limit is now on this route alone, and every other route is held to 256 KB. A limiter mounted ahead of the body
+parser would close it, at the cost of splitting the route's protections across two files.
 
 **The audit route's quotas are per process, so two containers are two allowances.** `express-rate-limit`'s
 default store is in memory, which is the right call for one container and the wrong one for a service scaled
@@ -1129,7 +584,7 @@ horizontally: the daily cap is what stops a deployment spending its key, and fou
 the figure that was set. Nothing is wrong today — this runs as a single container, which is what bundling
 `label-core` through tsup is for — and a shared store is a dependency and a Redis to run, which is not worth
 adding before there is a second task. Worth remembering as part of any move to more than one, alongside the
-edge-level limits the entry above still wants.
+edge-level limits in "Edge-level limits are phase 8's".
 
 **Three dev-only advisories remain.** `vitest` and `@vitest/mocker` (a path traversal in the mocker's redirect
 handling) and `esbuild` (arbitrary file read via the dev server, on Windows). None ships: `esbuild` is only
@@ -1137,14 +592,6 @@ reachable from production dependencies via `vue-router` → `vite`, which no run
 fix` will not resolve them without a major bump of the test runner, and taking a vitest major inside a
 security change is how an unrelated breakage gets attributed to the wrong commit. Worth doing deliberately,
 on its own, when there is a reason to touch the tooling.
-
-**~~When stage 5 widens the CSP for the scanner, it must add `'wasm-unsafe-eval'` and not `'unsafe-eval'`.~~
-Done**, and found so on 2026-09-16. `apps/api/src/app.ts` sets `script-src` to `'self'` and
-`'wasm-unsafe-eval'`, with a note giving this entry's reason. What follows is the entry as it stood.
-Helmet's default `script-src 'self'` blocks `WebAssembly.instantiate`, so zxing cannot decode anything in the
-single artifact until the policy admits it. The two directives look interchangeable and are not: the second
-re-enables `eval` and `new Function` for the whole application, which is the larger grant by far and the easy
-mistake to make in a hurry.
 
 ---
 
@@ -1174,92 +621,12 @@ not become a rule on the strength of an illustration.
 
 The extraction endpoint, and what writing it turned up.
 
-**~~`Finding.certifies` is the right idea, and nothing defaults it any more — but the widening is in progress,
-and this entry's original framing of *why* was wrong.~~ The widening is done**: every stamp was decided on
-`feat/certifies-every-pass` and merged in PR #28, as the third paragraph below already said beneath a heading
-that had not caught up. What stays true is the note that `certifies` on violations would need designing. What
-follows is the entry as it stood. It said filtering an audit report on the field
-would empty the report. No such filter exists: `withholdUncertifiablePasses` is the field's only reader, and
-the audit report builds its "cannot be checked" block from `layout.omissions` directly. So widening
-`certifies` changes one thing only — which passes survive an omission — and can only ever make that guard
-*looser*. A report that separates a verdict about the user's label from one about our reconstruction would
-need `certifies` on violations too, which `Finding` now forbids (`certifies?: never`) until someone designs
-it.
-
-Where it stands: `Finding` is discriminated on `severity`, so a `pass` without `certifies` does not compile.
-When the builders were split, every existing `passed` call became `passedOnArtwork` so that no verdict
-changed in the same commit as the mechanism. **Those thirty-seven stamps preserve the old default; they are
-not yet decisions.** The provisions are read rule set by rule set, and a call site that has been judged
-carries a note saying what its provision governs.
-
-GS1's six were read on 2026-09-16. The check digit and the Digital Link rest on the document; the four that
-measure the printed symbol rest on the artwork. GHS's seven were read the same day, and all seven rest on
-the artwork. US food was read last. The SI exemption, the nutrition format entitlement and the second-column
-exemption rest on the document, and the other twenty-three rest on the artwork. The ingredient exemption was
-stamped `document` first and reversed once §101.100 was read. **No stamp is left undecided.**
-
 ### What reviewing the mechanism turned up
 
 Each reproduced before being written here. None is fixed by choosing `artwork` or `document`, which is why
 they are separate entries rather than part of the reading.
 
-**~~`us-food/information-panel-type-size` clears type that was never printed.~~ Fixed** on
-`fix/passes-rest-on-what-printed`. The rule now declines its pass unless every element it measured
-`wasFullyDrawn` — not by counting only what printed, which would read as clearing the panel. Undersized type is
-still reported whether or not it printed. What follows is the entry as it stood. Its pass names
-`food-pdp`, and the engine never records an omission against that id, so the guard cannot withhold it. On
-`US_FOOD_CONFORMANT` with 400 ingredients, the responsible firm is recorded as an `element`-scope omission
-— "begins 645.22 mm down a 240.00 mm label, past its bottom edge, so none of it is printed" — and the engine
-still emits its text primitives. The rule counts them: `FDA_PANEL_TYPE_SIZE_MET`, "3 elements on the panel
-clear the 1.59 mm floor", where the three are the statement of identity, the ingredients (itself partly
-omitted) and a firm that is not on the label. `certification.test.ts` asserts `FDA_RESPONSIBLE_FIRM_MET` is
-withheld for this exact document, so two rules disagree about the same undrawn element and the one that
-survives is the one certifying more. A live false clearance.
-
-The US food reading kept it on the artwork — 101.2(c) bounds the height of printed letters — so the stamp is
-right and cannot reach the defect. The pass names an element the engine never omits. The fix belongs in the
-rule, counting only elements that `wasFullyDrawn`.
-
-**~~`GHS_SMALL_CONTAINER_COMPLETE` names no element, so nothing can withhold it.~~ Fixed** on
-`fix/passes-rest-on-what-printed`: the rule now declines the pass unless every element its list names
-`wasFullyDrawn` — the product identifier, each pictogram, the supplier, and under OSHA the signal word and the
-outer-package statement. While no glyph is drawn that is every container carrying a pictogram. What follows is
-the entry as it stood. On a complete EU small
-container (0.1 L, GHS02) it reports "The container carries everything the small-container provision requires
-of it" while the only pictogram is a frame with no symbol in it. The rule's own list includes "at least one
-hazard pictogram", which it checks as `layout.pictograms.length > 0` — frames, not glyphs. The violation
-branch names `GHS_ELEMENTS.supplier`, so an id was available. `GHS_PICTOGRAM_SYMBOL_MISSING` is still raised
-on the same label, so the label is not silently clean, but this pass states something false.
-
-The GHS reading kept it on the artwork — both provisions list what the container's own label must carry — and
-found it reaches further than the pictogram. It reads the supplier and the outer-package statement from the
-document, so it also counts them when they were never printed: see the GHS engine entry under "What reading
-the GHS provisions turned up".
-
-One other `passedOnArtwork` site names no element and is equally beyond the guard's reach:
-`GHS_PICTOGRAM_PRECEDENCE_MET`. **The GHS reading found it is not a false clearance on today's engine.**
-Article 26 and C.2.1 say which pictograms "shall not appear", so it rests on the artwork. But the only
-omissions `layOutGhsLabel` records against pictograms are missing glyphs, one on every pictogram alike, and
-those change neither the codes `precedenceSuppressions` reads nor the truth of a claim that nothing forbidden
-appears. `GS1_DIGITAL_LINK_VALID` was the second site, and the GS1 reading settled it on the document: URI
-Syntax governs a string, and this engine prints no carrier for the link, so there is no ink to withhold the
-pass over.
-
-**~~`GHS_PICTOGRAM_SET_MATCHES` names the strip; omissions are recorded per pictogram.~~ Fixed** on
-`fix/passes-rest-on-what-printed`, as the entry proposed: the pass is withheld unless every member pictogram
-`wasFullyDrawn`. It carries
-`ghs-pictograms`, and the engine records `ghs-pictograms-GHS02` — so on `GHS_CONFORMANT` the guard never
-matches, and the pass "Every pictogram on the label is required by a declared hazard class" survives beside
-a `GHS_PICTOGRAM_SYMBOL_MISSING` violation for the same pictogram. `ghs/pictogram-size` names the suffixed id
-and *is* withheld. ~~Recorded as a mechanism, not yet as a defect~~ — **the GHS reading makes it a defect, and
-a live false clearance.** The rule judges whether the pictograms the label *carries* are the ones Annex V
-requires. That is the artwork, in the same way 101.5's firm is: the codes are read from the layout as a proxy
-for what is printed, and a frame with no symbol is not a pictogram (C.2.3.1). So this pass should fall with
-the pictograms it vouches for, and the guard never gets the chance. The fix is in the rule or the id, not the
-stamp: withhold the pass unless every member pictogram `wasFullyDrawn`. On today's engine that withholds it
-on every label carrying a pictogram, which is the correct answer while no glyph is drawn.
-
-**Four pass codes are reached by no fixture.** The sweep in `fixtures/sweep.ts` reaches 35 of 40, re-counted on
+**Three pass codes are reached by no fixture, all for one reason.** The sweep in `fixtures/sweep.ts` reaches 35 of 40, re-counted on
 2026-09-17; the figures below were 34 of 39 when this was written, and the rule set has grown since. Both
 figures are counted by hand, and that is itself a small gap: nothing asserts either one. The nearest check,
 `certification.test.ts`, counts *rules* that cleared at least once, not pass codes, so the sweep could lose a
@@ -1291,19 +658,6 @@ from a document of its own, so the sweep — which the citation, certification a
 never saw it. Three remain, all unreachable for the `glyphDrawn` reason above: `GHS_PICTOGRAM_COMPLETE`,
 `GHS_PICTOGRAM_SET_MATCHES` and `GHS_SMALL_CONTAINER_COMPLETE`.
 
-**~~`us-food/nutrition-format`'s docblock and its behaviour disagree about (d)(11)(iii).~~ They do not, and
-this entry was wrong.** It recorded a disagreement while declining to read the paragraph, which `CLAUDE.md`
-says to fetch in the session that writes about it. Read from the eCFR on 2026-09-16: "If there is not
-sufficient continuous vertical space (i.e., approximately 3 in) to accommodate the required components of the
-nutrition label up to and including the mandatory declaration of potassium, the nutrition label may be
-presented in a tabular display". A permission, conditional on vertical space and on nothing about package
-size. `fda/nutritionFormats.ts` quotes it and `formatIsPermitted` implements it. The sweep document that
-"reached nothing" was built on a paraphrase that dropped the condition, so it never declared
-`continuousVerticalSpaceInches`, and the rule refused it under (j)(13) as it should.
-
-Kept rather than deleted, because acting on the old entry meant "fixing" one of the two, and the likeliest
-fix removes the route that entitles a tall, thin, large package to the tabular display.
-
 **The sweep's documents duplicate ones the rule tests already build — reported by review, not yet
 verified.** A reuse pass over the `certifies` mechanism reported that the permission documents in
 `fixtures/sweep.ts` repeat documents `usFoodRules.test.ts` builds and asserts exactly; that the second-column
@@ -1318,56 +672,11 @@ counted as fixture coverage and escaped the check that every such document reach
 
 ### What reading the US food provisions turned up
 
-**~~Neither exemption rule knows which exemption it grants, so the conditions they put on the label go
-unchecked.~~ Fixed** on `fix/exemption-conditions`, in three commits. The paragraph claimed is recorded —
-`ingredientsExemption` and `nutritionExemption`, each a `kind` naming one paragraph — and every exempt pass cites
-it and says what of it goes unchecked; a label saved with a bare flag is excused and advised rather than
-cleared. (j)(13)(i)(A)'s line and (a)(1)'s statement are both declared, printed by the engine, required by a
-rule, and named by the pass so that one which did not print withholds it. (a)(1) turned out reachable after
-all: its common ingredients are listed and judged as any list, and where none is common to all packages only
-the statement is owed. What either line says beyond the names it must carry is not judged. (j)(15) and (j)(14)
-followed on `feat/egg-carton-and-unit-container`. Still open, below: the nutrition-claims condition most (j)
-paragraphs share. What follows is the entry as it stood. `ingredientsExempt` and `nutritionFactsExempt` are booleans. Read from the eCFR on 2026-09-16:
-§101.100(a)(1) excuses an assortment "on the condition that the label shall bear, in conjunction with the
-names of such ingredients as are common to all packages, a statement … indicating by name other ingredients
-which may be present". And 101.9(j)(13)(i)(A) says the manufacturer "shall provide on the label of packages
-that qualify for and use this exemption an address or telephone number". No rule checks either, and (a)(1)
-is not reachable at all. The exempt path requires an empty ingredient list, while (a)(1) keeps the common
-ingredients listed, so an assortment claiming it goes down the ordinary path and is never asked for its
-statement. Both passes now rest on the artwork, which is right, but a stamp cannot supply a check that does
-not exist. The fix is to record which paragraph is claimed and check what that paragraph requires the label
-to bear.
-
-**~~101.9(j)(15)'s unit container is not offered, because its condition is a statement nothing checks.~~
-Fixed** on `feat/egg-carton-and-unit-container`. The label declares which of the three wordings the unit
-bears, the engine prints it from `fda/unitContainerStatement.ts` where the panel would sit, and the
-completeness rule reads the printed statement back — its words against the wording claimed, its height
-against (iii)'s 1/16 inch on the basis 101.2(c) incorporates from 101.7(h)(2) — and names it in the pass, so
-one that did not print withholds the exemption. The 101.2(c) rule leaves the element to (iii), so one
-dimension is not reported twice. The two conditions on the outer package are not checked. What follows is the
-entry as it stood. Read from the eCFR on 2026-09-16: the unit containers in a multiunit retail package are exempt where the outer
-package carries the nutrition information, the units are "securely enclosed within and not intended to be
-separated from the retail package", and "each unit container is labeled with the statement 'This Unit Not
-Labeled For Retail Sale' in type size not less than 1/16-inch in height" — with "individual" permitted in or
-before "Retail", and no statement needed where the units bear no labeling at all. Offering the exemption
-before the engine draws that exact text, and a rule measures it, would issue a pass on a label condition no
-one reads. It needs the statement taken verbatim from the regulation, its two permitted variants, and a
-height check at the 101.2(c) floor it shares. Left out of the exemption work on the scope agreed for it.
-
-**~~(j)(14)'s egg carton is not offered, because its information moves beneath the lid.~~ Fixed** on
-`feat/egg-carton-and-unit-container`. The carton declares where its information is presented and keeps its
-`nutritionFacts`, which are still required and judged. The engine draws no panel on the outer carton and records a
-detail omission, which withholds every pass about the panel's printed figures while the violations still report.
-The exemption's own pass names the principal display panel and says that where and how the information is
-presented is not checked. What follows is the entry as it stood.
-
-(j)(14)'s egg carton is left out for the same reason, found by the review of the commit that recorded the
-paragraphs — which had offered it. Shell eggs in a carton with a conforming top lid "are exempt from outer carton
-label requirements where the required nutrition information is clearly presented immediately beneath the
-carton lid or in an insert that can be clearly seen when the carton is opened". The information is relocated,
-not excused, and this engine draws neither the underside of a lid nor an insert, so a pass saying no panel is
-required would certify a declaration nothing printed.
-
+**(j)(15)'s two conditions on the outer package are not checked.** The unit container's statement is drawn
+from `fda/unitContainerStatement.ts` and measured, and the exemption names it so that one which did not print
+withholds the pass. What (j)(15) asks of the multiunit package itself — that it carries the nutrition
+information, and that the units are "securely enclosed within and not intended to be separated from the retail
+package" — is outside the label this engine draws, and the pass says so.
 **An egg carton's second column is required, but not checked for completeness.** Found by `/code-review high`
 on PR #36 and reproduced on `feat/egg-carton-and-unit-container`. A package in (b)(12)(i)'s band declaring a
 second column with a figure for total fat alone gets `FDA_DUAL_COLUMN_MET` and `FDA_DUAL_COLUMN_INCOMPLETE` on
@@ -1379,27 +688,6 @@ does not check. Checking it from the declared figures is possible, but (e)(1)'s 
 drawn panel, and deciding which of them hold of information presented beneath a lid wants a reading of its
 own rather than a patch.
 
-**~~The small-package display route trusts a typed area that the label and its panel rule out.~~ Fixed** on
-`fix/small-package-display-floor`. One helper, `labelingSurfaceFloor` in `geometry/pdp.ts`, takes the larger of
-the label's area and the principal display panel's, and `smallPackageRouteApplies` and `formatIsPermitted` let it
-overrule a smaller declared figure. It reached further than this entry said. Three things turn on that route,
-and all three trusted the typed area: the format entitlement; the display chosen, and so the Calories numeral
-and servings statement the engine draws and the type-size rule accepts — 14 point where (d)(11)'s tabular
-display needs 22, on a 44.64 in² label with 5 in² typed; and the (b)(12)(i)(A) second-column exemption, a
-`document` pass, which excused a mandatory second column on the same label. The engine and every rule compute
-the floor the same way, and the (j)(13)(i) exemption now uses the same helper. What follows is the entry as it
-stood. Found by the
-`high` review of PR #34, and reproduced. The 101.9(j)(13)(i) exemption now refuses a package whose label or
-principal display panel is itself 12 in² or more, since each is a floor under the surface available to bear
-labeling. The (j)(13)(ii) display route in `fda/nutritionFormats.ts` — `smallPackageRouteApplies` and
-`formatIsPermitted` — reads the same declared `availableSurfaceSqInches` with no such floor. On
-`US_FOOD_CONFORMANT`'s 120 × 240 mm label, whose panel is also 44.64 in², a panel declaring
-`availableSurfaceSqInches: 5` and `format: 'tabular'` returns `FDA_NUTRITION_FORMAT_MET`, "A package of 5.0 in²
-may present its nutrition information in a tabular display". The sweep's "tabular display, small package"
-permission document is built exactly that way. The fix is the same floor, applied where the entitlement is
-decided, with that document moved onto a small label and container. Not done in that PR because the file is
-outside it, and the display type sizes that follow from the route need re-checking with it.
-
 **No rule models nutrition claims, so the condition most 101.9(j) exemptions share goes unchecked.** (j)(1),
 (2)(i)–(iii), (3), (4), (10), (13)(i) and (18) each hold only while the food "bears no nutrition claims or other
 nutrition information in any context on the label or in labeling or advertising" (read from the eCFR on
@@ -1408,61 +696,6 @@ one of those passes says the condition is not checked, and none can be withdrawn
 same gap already keeps (c)(2)(i), (c)(3) and (c)(6)'s "if no claims are made" relaxations unapplied. Modelling
 claims, even as a declared list the label prints, is a piece of work of its own; "or in labeling or
 advertising" reaches beyond the label and could never be checked here at all.
-
-**~~`FDA_SERVING_SIZE_MET` names a row the engine never omits.~~ Fixed** on
-`fix/passes-rest-on-what-printed`. The rule now declines unless the panel and the row both `wasFullyDrawn`.
-Because omissions name the panel, that also withholds it where the row printed and something below it did
-not — stricter than it needs to be, never looser, and how every other pass on the panel already behaves. The
-engine records a Nutrition Facts panel
-running past the bottom of the stock against `food-nutrition-panel`, and never against its rows. On
-`US_FOOD_CONFORMANT` on a 120 × 25 mm label, the panel begins at 16.8 mm, the serving-size row prints at
-32.2–36.0 mm (wholly below the edge), and the only omission is `food-nutrition-panel/detail`. `runRules`
-still returns "The panel declares a serving size of …". The stamp is right; the id is out of the guard's
-reach. The same shape as the panel type-size entry above. Reproduced 2026-09-16.
-
-**~~`FDA_ALLERGEN_DECLARED_MET` names the ingredient list, and can rest on the Contains statement instead.~~
-Fixed** on `fix/passes-rest-on-what-printed`. The rule now learns which element declared each source and
-declines its pass unless at least one of them printed in full. It declines rather than reporting the allergen
-undeclared, because the omission is already the finding.
-Found by the `high` review of PR #28 and reproduced. §403(w)(1) is satisfied by either form, and the rule
-searches both printed texts — but the pass always names `food-ingredients`, and the engine still emits text
-primitives for a block it records as off the label. On `US_FOOD_CONFORMANT` with the almond ingredient renamed
-`nut paste` and `declareInline: false`, on a 120 × 158 mm label, the Contains statement begins at 159.8 mm and
-is recorded as an `element` omission, the printed list never names almonds, and `runRules` still returns
-"almonds is declared." `FDA_CONTAINS_TYPE_MET` beside it is correctly withheld. The artwork stamp is right; the
-pass names the element that did not make the declaration. The fix is to name, or require `wasFullyDrawn` of,
-whichever element's text discharged it — the same shape as the serving-size, panel type-size and
-pictogram-set entries, which are worth fixing together.
-
-**~~A declared allergen whose only declaration is cut off gets no allergen finding at all.~~ Fixed** on
-`fix/unconfirmed-allergen-declaration`. The rule now raises `FDA_ALLERGEN_DECLARATION_UNCONFIRMED`, an
-advisory under §403(w)(1), for each ingredient whose source is declared only in elements with an omission
-recorded against them. It names the source and points at the declaring element, and the pass stays withheld.
-It is not "not declared" for the reason below, and it does not block export: it makes the lost declaration
-visible rather than stopping it shipping. Because `wasFullyDrawn` counts any omission, it also fires where the
-source did print — a Contains statement whose only omission is an entry no ingredient carries, or the
-163.15 mm case below — so its message says an omission is recorded, never that the text went unprinted. The
-first wording said "did not print in full"; the `high` review of PR #31 found that false in a state the editor
-keeps on purpose, where clearing an ingredient's allergen leaves its Contains tick and the statement prints
-whole. Telling those cases apart is the open entry that follows this one. What follows here is the entry as it
-stood.
-Found by the `high` review of PR #29 and reproduced. Since that branch, the allergen rule declines its pass when every element
-declaring a source has an omission, and reports nothing in its place. Where the statement is wholly off the
-label, the `element` omission says so plainly. Where it is only cut, the omission is `detail` — on
-`US_FOOD_CONFORMANT` with the almonds renamed `nut paste`, a 161.74 mm label puts "Contains: almonds." on a
-baseline at 162.77 mm — and the only explanation is "runs past the bottom", which names no allergen. No pass
-is issued, so it is not a false clearance, **but it can ship.** Export is refused only for `element`
-omissions (`blockingOmissions`). The firm, drawn below the statement, is one — but only when the label has a
-firm. Without one, `FDA_RESPONSIBLE_FIRM_MISSING` is reported, and a blocking *finding* only asks the editor's
-user to confirm before exporting, so the PDF goes out with the declaration cut off and no allergen finding.
-A first draft of this entry said export was always blocked; the review of it read `usFoodEngine` and found
-the firm is drawn only when present. A missing allergen declaration is the most consequential thing on a food
-label to leave unnamed, and "not declared" cannot simply be raised instead: the
-omission is per element, so the rule cannot tell whether the lost line held the source. The reverse also
-shows: at 163.15 mm the whole line prints and only its line box overhangs, and the pass is withheld anyway.
-Deciding this needs omissions that say which lines were lost, or an advisory finding that says the
-declaration could not be confirmed on the label. The advisory is a new code with a citation and a fixture, so
-it is a change of its own.
 
 **`FDA_ALLERGEN_DECLARATION_UNCONFIRMED` fires on a declaration that printed whole.** Recorded from the `high`
 review of PR #31, and reproduced. The allergen rule asks `wasFullyDrawn` of each declaring element, which counts
@@ -1487,126 +720,13 @@ the element" to the rule's own measurement. That is the direction in which every
 shipped, so it wants its own branch and its own review. The alternative is omissions that say what was lost —
 lines, or entries — which is a change to the engine's contract.
 
-**~~`usFoodEngine` records nothing for a word that runs off the right edge.~~ Fixed** on
-`fix/engines-record-what-runs-off`. The statement of identity, measured in the SemiBold face it prints in, and
-every block `stackText` draws now record a `detail` omission when their widest line runs past the stock, or
-an `element` omission when they begin past it. The
-face resolution is shared with the GHS engine as `measuredFamilyFor` in `text/measure`. What follows is the
-entry as it stood. Found while fixing the same gap in
-the GHS engine, and reproduced. `wrapTextMm` never breaks inside a word, and the engine's bounds checks look at
-the bottom edge alone — only the net quantity declaration is checked across. On `US_FOOD_CONFORMANT` on a
-60 mm label, a statement of identity of "Supercalifragilisticexpialidociousgranola" is set as one line whose
-right edge is 114.8 mm, nothing is recorded against it, and `FDA_STATEMENT_OF_IDENTITY_MET` still clears. A
-live false clearance, and the fix is the one `layOutGhsLabel` now has: measure each block's widest line
-against the stock, for the stacked blocks and the statement of identity's own loop — in the face it prints
-in, since the statement of identity is bold.
-
-**~~A margin as wide as the stock describes no panel, and all three engines accept it.~~ Fixed** on
-`fix/margin-leaves-no-panel`, decided as a `LayoutError`. All three engines now refuse a margin that leaves
-the panel zero or less in either dimension, through one shared `assertMarginLeavesPanel`. Zero rather than a
-minimum usable panel, because no source publishes one. Reproducing it before the decision corrected the
-sentence below that nothing ships: that holds for a margin wider than the stock, but at exactly half the width
-it does not. On `GHS_CONFORMANT`'s 74 mm stock a 37 mm margin left a panel no width at all, the statements ran
-up to 74.79 mm past the right edge as `detail` omissions only, and nothing blocked export — while 36.99 mm was
-refused. In the three cases whose passes were checked against the drawing — US food at a 125 mm margin, GHS at
-37 mm, UPC-A at 65 mm — every pass that survived named ink that did print, so none of those was a false
-clearance.
-The refusal costs a centred UPC-A, which lands in the middle of the label even on a negative panel. The
-omission branches for a symbol or block wholly off the label are kept, though no accepted stock reaches them.
-What follows is the entry as it stood. Found reviewing the
-right-edge checks on `fix/engines-record-what-runs-off`, and reproduced. Every engine requires only a finite,
-non-negative margin, so `{ widthMm: 60, marginMm: 65 }` resolves a panel of negative width, and anchors then
-place elements wholly off the label. That branch made each engine record such an element as an `element`
-omission, so no empty label exports — except that `usFoodEngine`'s net quantity check, which predates it, still
-files a declaration wholly outside the label (x 65.0–153.1 mm on a 60 mm stock) as a `detail`. Nothing ships
-because of it: under that margin every stacked block also begins off the label and blocks export. But the
-honest answer to such a stock is probably a `LayoutError` — "input that describes no drawing at all" — which
-would make every one of these cases unreachable rather than handled one by one. A decision about the engines'
-contract, not a fix to make in passing.
-
-### What reading the GHS provisions turned up
-
-**~~The GHS engine records no omission for a block drawn off its stock, so no GHS pass about text can be
-withheld.~~ Fixed** on `fix/engines-record-what-runs-off`. `layOutGhsLabel` now records what `usFoodEngine`
-does for every stacked block — an `element` omission for one that begins past the bottom edge, a `detail` for
-one that runs past it — including the statements, which it draws by its own loop, and each pictogram. It checks
-the right edge too, for pictograms and for text, since the wrapper never breaks inside a word. Both reproductions below are laid out for real
-in `certification.test.ts`. An `element` omission blocks export, so a GHS label with a block wholly off its
-stock is now refused by the export route, as a US food label already was. What follows is the entry as it
-stood. `layOutGhsLabel` stacks its blocks top to bottom and, by design, clamps nothing — but unlike
-`usFoodEngine` it records nothing either. On `GHS_CONFORMANT`'s data and a 60 × 6 mm stock the signal word's
-baseline sits at 13.4 mm, wholly below the edge, and `GHS_SIGNAL_WORD_SINGLE` still reports "The label carries
-one signal word, “Danger”". The realistic case is the small container. A US 50 ml container invoking
-(f)(12), on a 50 × 25 mm label, prints its outer-package statement at 34.3–41.3 mm and its manufacturer at
-43.3–49.8 mm — both wholly off the label — and its only pictogram at 18.1–32.3 mm, more than half off. The
-only omission recorded is the missing glyph. `runRules` returned `GHS_SMALL_CONTAINER_COMPLETE`, "The container
-carries everything the small-container provision requires of it", beside `GHS_PICTOGRAM_SET_MATCHES` for the
-half-printed strip, while the manufacturer's name and telephone and the outer-package statement — three
-entries on the rule's own list — are not on the label. Reproduced 2026-09-16. **Both passes are now withheld by
-their own rules** — but on this label only because the glyph is missing. The small-container rule also gates
-on the supplier and the outer-package statement printing, and that gate had nothing to act on until this
-engine recorded the omission. It is the GHS sibling of the GS1 off-stock entry
-below, and `usFoodEngine`'s bounds check is the precedent for the fix.
-
 ### What reading the GS1 provisions turned up
 
-**~~A UPC-A drawn off its stock clears bar height and its digits on ink that is not on the label.~~ Fixed** on
-`fix/engines-record-what-runs-off`, as an omission from the engine rather than a gate in the two rules.
-`layOutUpcALabel` records a `detail` omission against the symbol when its ink runs past any edge, or an
-`element` omission when it lies wholly outside the label — the bars,
-and the digits the quiet zones carry, measured from the primitives. The guard then withholds every pass
-measured off the symbol, magnification included, and the check digit stands. What follows is the entry as it
-stood. On
-100 × 20 mm stock — the document `rules.test.ts` already uses for vertical overflow — the nominal symbol
-starts at y −3.85 mm. That puts 3.85 mm of its 22.85 mm bars above the top edge, and the digits' baselines at
-23.85 mm, below the bottom one. `runRules` returns four passes and nothing else, among them
-`GS1_BAR_HEIGHT_SUFFICIENT`, "The bars are 22.85 mm, meeting the 22.85 mm minimum", and `GS1_HRI_PRESENT`,
-"The symbol prints 036000291452 beneath the bars", with every digit off the label. The quiet-zone rule
-declines to certify this symbol through `certifiable`; the two rules beside it never learned to. Neither
-`certifies` answer reaches it, because the engine records `verticalOverflowMm` on the symbol and no
-omission, so the guard has nothing to look up. A live false clearance, reproduced 2026-09-16. The fix is a
-containment gate in the two rules or an omission from the engine, and choosing between them decides whether
-magnification — still measurable on the part that did print — is withheld with them.
-
-**~~Two GS1 rules keep no reading of their source.~~ Fixed.** Both primary sources were fetched on 2026-09-17
-and both rules now cite by release and section, with the reading recorded in the module note.
-`gs1/gtin-check-digit` and `gs1/checkDigit.ts` cite **GS1 General Specifications Standard, Release 26.0
-(Ratified Jan 26), §7.9.1 and table 7-8**, from https://ref.gs1.org/standards/genspecs/ — page 544 read as a
-rendered image rather than a text extract. `gs1/digital-link` cites **GS1 Digital Link Standard: URI Syntax,
-Release 1.7.0 (Ratified Aug 2026) §4**, from https://ref.gs1.org/standards/digital-link/uri-syntax/, with the
-alphas finding moved from a bare "1.3.0" to **§4.1 of the release in force**, which names the removal and dates
-it. §2 settles that §4 is the right primary clause: "The core of this standard is expressed using ABNF grammar
-[RFC 5234] in section 4 such that conformance can be determined with certainty."
-
-`geometry/symbol.ts` was re-read in the same commit rather than left citing 25.0, so the repository does not
-quote two releases of one standard. **Every figure in it was unchanged** — 0.330 mm nominal, the 0.264/0.660
-bounds behind `MIN_MAGNIFICATION` and `MAX_MAGNIFICATION`, UPC-A's 113 modules including quiet zones, the
-9X/9X and 11X/7X quiet zones, the 22.85 and 18.23 mm heights — and every quotation still matches word for
-word. **Three table identifiers were wrong**, recorded as "figure 5.2.3.4-1", "figure 5.2.3.5-1" and "figure
-5.12.3.1-1" where the standard numbers them **tables 5-11, 5-12 and 5-44**.
-
-Three things worth keeping from the reading:
-
-- **The standard contradicts itself about the alphas' deprecation release.** §4.1 says "marked as deprecated in
-  version 1.2 of the standard"; the change log at §8.2 says "deprecated in version 1.2.0". The message follows
-  §4.1 because §4.1 is what it cites, and `gs1/digitalLink.ts` records both. Nothing turns on it: the removal
-  release is 1.3.0 in each.
-- **Checked and not a defect.** URI Syntax 1.4.0 requires a GTIN expressed as 14 digits — "the value of a
-  GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes ... to reach a total of 14 digits".
-  `buildDigitalLinkUri` already routes AI `01` through `normaliseToGtin14`, so it conforms. Its docblock example
-  did not, showing the removed `/gtin/` alpha, and was corrected.
-- **Still open, deliberately.** The resolver-domain check rests on §4.11's `scheme = "http" / "https" / "HTTP" /
-  "HTTPS"` production specifically, not on §4 generally, but it shares `GS1_DIGITAL_LINK_INVALID` and its
-  citation with every rejection `buildDigitalLinkUri` makes. Splitting it into its own citation wants a fixture
-  for a bad domain separate from the one for a bad AI value, and is worth doing when one is written.
-
-**~~`ExtractionResult` admits a field that is present with no value.~~ Fixed in stage 2**, the stage this
-entry said should carry it. `fields` is now `{ [K in keyof T]?: ExtractedField<NonNullable<T[K]>> }`, so
-`fields.supplier.value` is a `GhsSupplier` rather than a `GhsSupplier | undefined` and the second optional
-chain every consumer needed is gone. Absence was already sayable — the field itself is optional, and leaving
-it out is how a producer says it could not read one. Nothing else in the repository needed changing, which is
-what "land it with its first consumer" was worth waiting for.
-
+**The resolver-domain check shares a code and a citation with every other Digital Link rejection.** It rests
+on GS1 Digital Link URI Syntax 1.7.0 §4.11's `scheme = "http" / "https" / "HTTP" / "HTTPS"` production
+specifically, not on §4 generally, but it is reported as `GS1_DIGITAL_LINK_INVALID` with §4's citation like
+every rejection `buildDigitalLinkUri` makes. Splitting it wants a fixture for a bad domain separate from the one
+for a bad AI value, and is worth doing when one is written.
 **`sourceRegion` is millimetres on a stock, and a vision region is pixels on a photograph.** `BoundingBox`
 names all four members `xMm`, `yMm`, `widthMm`, `heightMm`, and the same type is what `ResolvedElement.box`
 uses. Filling it from a model would either put pixels in fields named for millimetres — the first breach of
@@ -1615,14 +735,11 @@ requested at all in stage 1. Highlighting the part of a photograph a value came 
 on the confirm screen, and the vision documentation calls its localisation approximate, so it needs a
 deliberate decision about what an approximate region may be used for before it needs a type.
 
-**~~`GhsRequest` validates a `us-osha` label's statement codes against the EU table.~~ Fixed.** See
-`CHANGELOG.md`. The premise that the two were “one problem” and needed the same fix turned out to be wrong,
-and that is the part worth keeping: transcribing Appendix C.4 was never required. An enum could not be made
-regime-correct at all — it is built at module load and a correct one would be empty under `us-osha`, which
-`z.enum` cannot express — so the fix was to stop using one and ask the table the same question every other
-layer asks. The transcription is still wanted, and it is now an independent piece of work rather than a
-blocker.
-
+**The US OSHA statement tables are empty.** `US_OSHA_HAZARD_STATEMENTS` and `US_OSHA_PRECAUTIONARY_STATEMENTS`
+hold nothing, so a `us-osha` label can name no statement code this build can spell, and every lookup under that
+regime refuses rather than guesses. Transcribing 29 CFR 1910.1200 Appendix C.4 is wanted, as a reference table
+with its own provenance — read and verified, never generated. `GhsRequest` already asks the table rather than an
+enum, so it needs no change when the table fills.
 **Changing the market does not clear the statement codes chosen under the old one.** `GhsFormRail`'s Market
 control is a plain `v-model="data.regime"`, so choosing EU, picking `H225`, and switching to US OSHA leaves
 the code on a label whose regime has no text for it. Three clicks. The rail no longer *captions* it out of the
@@ -1665,21 +782,7 @@ A deterministic H-code to hazard-class mapping would close that, and it is a ref
 provenance requirements rather than a function — Annex VI, read and verified, not inferred. Emphatically not a
 job for the model: a classification it guessed would make the precedence rule judge the guess.
 
-**~~A combination code carrying an optional member cannot be matched.~~ The entry that stood here was wrong,
-and its own suggested fix would have printed regulatory text nobody asked for.** It said a label printing
-`P370 + P380 + P375` — correctly, having not used P378 — resolved to nothing. It does not:
-`'P370 + P380 + P375'` is **its own key** in `EU_CLP_PRECAUTIONARY_STATEMENTS`, with its own text, sitting two
-lines above the bracketed one. Both resolve. The claim was written from reading the bracketed key and
-inferring the rest, which is the shape this file keeps having to correct.
-
-It matters because the fix it proposed — “a lookup that understands the bracket” — reads naturally as mapping
-the un-bracketed code onto the bracketed entry. That would append “[Use … to extinguish].” to a label that
-never carried P378: this project generating regulatory text, which is the one thing it exists not to do.
-
-**The standing questions are answered.** One key in 199 carries a bracket, and it is that one. It has an
-un-bracketed twin, and no other bracketed key does, because there is no other bracketed key.
-
-**What is actually unmatched is the opposite case**, and it is small. A label that *did* use P378 and printed
+**A label printing P378 in its combination its own way is warned as unrecognised.** Small. A label that *did* use P378 and printed
 the combination as `P370 + P380 + P375 + P378`, or as `[P378]` without the plus, resolves to nothing and is
 warned as unrecognised — verified. Both are a label spelling a real code in a way the regulation does not.
 Aliasing those two spellings onto the bracketed key is safe in a way the reverse is not, because both say
@@ -1727,23 +830,6 @@ carries its own error class.
 ---
 
 ## From phase 7, stage 3
-
-**~~Whether `detach()` could lose work at `/labels/new` without an audit is unchecked.~~ Walked in a browser;
-the answer is no, and the walk found a different defect that is now fixed.** See `CHANGELOG.md`. Editing at
-`/labels/new`, leaving, returning and leaving again prompts every time: `savedId` is null throughout that
-route, so the watcher's `detach()` had nothing to let go of and the phase 7 guard covered it.
-
-**What the walk found instead was `detach()` itself, on the path nobody had asked about.** It rebased the
-baseline onto the document in front of it, so an edit made before detaching stopped counting as unsaved.
-Reachable by switching the label type on an edited saved label — no audit, no route change, two clicks — and
-the leave guards then said nothing at all. Fixed by leaving the baseline where it is, with the type watcher
-deciding the one case where a switch makes the comparison meaningless.
-
-**The methodology note is the part worth keeping.** The original probe “did not hold” for a reason, and the
-reason was in the harness rather than in the application: the test router's initial navigation is a promise,
-so mounting without awaiting `isReady()` runs the route watcher against the empty starting route first — a
-trap `EditorSaveView.test.ts:29-33` already documents. “It proved nothing” was the right verdict and the wrong
-stopping point; ten minutes in a browser settled what a second jsdom probe would not have.
 
 **Switching type away from an untouched saved label and straight back reports unsaved changes.** Two clicks,
 nothing typed, and both leave guards fire over a document identical to the stored one. The first switch
