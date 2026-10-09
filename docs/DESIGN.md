@@ -697,6 +697,22 @@ group, ALB listener rule, Route 53 record, and the two Secrets Manager entries.
 - Push to `main` deploys; a failed deploy rolls back via the deployment circuit breaker
 - CloudWatch `/ecs/packwright` shows application logs
 
+*Settle before deploying* (recorded 2026-10-09; the reasoning for each is in `docs/BACKLOG.md`):
+- **A `dev` → `main` release.** A push to `main` deploys, and `main` is far behind `dev` and left alone by
+  agreement until then.
+- **Unknown routes answer 200.** The server hands `index.html` to any GET it does not reserve, so
+  `/labels/abc/edit` returns 200 and the client says there is no page. The server needs the client's route
+  table, or a copy of it, to answer 404.
+- **Labels saved before #65 carry seeded zeros.** Only development databases hold them, so this is a line in
+  the release notes, not a migration: start the deployed database empty.
+- **The first schema change after deploying needs a migration.** `GET /api/labels/:id` re-validates a stored
+  document and answers 500 when it no longer matches, and `PUT` validates the same shape, so nothing in the
+  application can repair one. Before any further tightening, decide on a migration or a read path that repairs.
+- **Rate limits and quotas are per process.** They hold for the single container this plan deploys; a second
+  task would double the audit route's daily cap. Keep the service at one task, or move to a shared store.
+- **Edge-level limits.** Every limit today is middleware in this process. An ALB rule or a WAF is the place
+  to refuse traffic cheaply, and the audit route still parses its 10 MB body before its guards run.
+
 This should be a short phase. `barcode-crud` already proves this exact shape — Vue + Express + Mongo, single
 container, shared cluster and ALB — so it is provisioning against a known-good reference rather than working
 anything out.
