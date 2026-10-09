@@ -1600,3 +1600,84 @@ describe('correcting an ingredient’s allergen', () => {
     expect(store.foodData.ingredients![1]!.declareInline).toBe(false)
   })
 })
+
+describe('the hand-set type size', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it.each(['0', '-2'])(
+    'refuses %s in the form, rather than sending it to a raw 400 on save',
+    async (typed) => {
+      // `optionalNumber` took any finite figure, and the save answered "Invalid label
+      // document: data.netQuantityFontSizeMm Too small". Measured 2026-10-09.
+      const { store, wrapper } = await mountFood()
+      await wrapper.find('#field-food-override-type').setValue(true)
+      await nextTick()
+      await wrapper.find('#field-food-type-size').setValue(typed)
+      await nextTick()
+
+      expect(store.foodData.netQuantityFontSizeMm).toBeUndefined()
+      const box = wrapper.get('#field-food-type-size')
+      expect((box.element as HTMLInputElement).value, 'the box keeps what was typed').toBe(typed)
+      expect(box.attributes('aria-invalid')).toBe('true')
+      expect(wrapper.text()).toContain('A measurement has to be above zero')
+      expect(wrapper.get('[aria-live]').text()).toContain(
+        'Type size: A measurement has to be above zero',
+      )
+
+      await wrapper.find('#field-food-type-size').setValue('5')
+      await nextTick()
+      expect(store.foodData.netQuantityFontSizeMm).toBe(5)
+      expect(wrapper.get('#field-food-type-size').attributes('aria-invalid')).not.toBe('true')
+    },
+  )
+
+  it('stops saying a refusal once the override, and its box, are gone', async () => {
+    // Unticked with a refusal standing, the box went and the announcer went on saying it.
+    // Found by review.
+    const { wrapper } = await mountFood()
+    await wrapper.find('#field-food-override-type').setValue(true)
+    await nextTick()
+    await wrapper.find('#field-food-type-size').setValue('0')
+    await nextTick()
+    expect(wrapper.get('[aria-live]').text(), 'the premise').toContain('Type size:')
+    await wrapper.find('#field-food-override-type').setValue(false)
+    await nextTick()
+    expect(wrapper.get('[aria-live]').text()).not.toContain('Type size:')
+  })
+})
+
+describe('a claimed exemption beside a printed panel', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  /** The Nutrition Facts section's status line. */
+  const statusOf = (wrapper: ReturnType<typeof mountEditor>) =>
+    wrapper
+      .get('#field-food-nf-exemption')
+      .element.closest('section')
+      ?.querySelector('p.numeric')
+      ?.textContent?.trim()
+
+  it('says the panel is printed and the exemption not used, as the report does', async () => {
+    // The status read "exempt" beside 16 passes against the panel. James chose to say what
+    // the report does rather than clear either control.
+    const { store, wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-exemption').setValue('small-business')
+    await nextTick()
+    expect(store.foodData.nutritionFacts, 'the premise: a panel is printed').toBeDefined()
+    expect(statusOf(wrapper)).toBe('present')
+    expect(wrapper.find('[data-exemption-unused]').exists()).toBe(true)
+
+    await wrapper.find('#field-food-nf-present').setValue(false)
+    await nextTick()
+    expect(statusOf(wrapper)).toBe('exempt')
+    expect(wrapper.find('[data-exemption-unused]').exists()).toBe(false)
+  })
+
+  it('leaves an egg carton exempt, whose panel moves beneath the lid', async () => {
+    const { wrapper } = await mountFood()
+    await wrapper.find('#field-food-nf-exemption').setValue('egg-carton')
+    await nextTick()
+    expect(statusOf(wrapper)).toBe('exempt')
+    expect(wrapper.find('[data-exemption-unused]').exists()).toBe(false)
+  })
+})

@@ -233,6 +233,9 @@ const overrideTypeSize = computed({
     data.netQuantityFontSizeMm !== undefined || overrideHeldIn.value === store.documentGeneration,
   set: (on: boolean) => {
     overrideHeldIn.value = null
+    // The box goes with the override, so a refusal made in it goes too — it was still
+    // being announced with nothing on screen to explain it. Found by review.
+    typeSizeRefusal.value = null
     // Rounded *up*. `toFixed` rounds to nearest, so an all-caps declaration
     // needing 6.823066 mm was seeded at 6.82 and reported too small the instant
     // the box was ticked — the same "taking control of the size breaks a
@@ -738,6 +741,23 @@ const nutritionExemption = computed({
   },
 })
 
+/**
+ * An exemption the label claims and is not using, because it prints a panel.
+ *
+ * The section's status read "exempt" whenever a claim was made, while the rules treat a
+ * label printing a panel as not using its exemption and judge the panel — so the rail said
+ * the opposite of the report (measured 2026-10-09: "exempt" beside 16 passes against the
+ * panel). The test is the rules' own: every claim but the egg carton, whose (j)(14) moves the
+ * information beneath the lid rather than excusing it. James chose to say what the report
+ * does rather than clear either control.
+ */
+const exemptionUnused = computed(
+  () =>
+    nutritionExemption.value !== '' &&
+    nutritionExemption.value !== 'egg-carton' &&
+    data.nutritionFacts !== undefined,
+)
+
 const hasPanel = computed({
   get: () => data.nutritionFacts !== undefined,
   set: (on: boolean) => {
@@ -1107,14 +1127,37 @@ const containerSurfaceAreaSqMmField = numberField(containerSurfaceAreaSqMm)
 
 const servingsPerContainer = optionalNumber(() => data.nutritionFacts, 'servingsPerContainer')
 const servingsPerContainerField = numberField(servingsPerContainer)
-const netQuantityFontSizeMm = optionalNumber(() => data, 'netQuantityFontSizeMm')
-const netQuantityFontSizeMmSized = numberField(netQuantityFontSizeMm)
+/**
+ * The hand-set type size, refused in the form the way the measurements are.
+ *
+ * `optionalNumber` took any finite figure, so a 0 or a negative went into the document
+ * and the API answered the save with a raw 400 — "Invalid label document: … Too small" —
+ * measured on 2026-10-09. The same defect #65 fixed for percentages, on the field it
+ * touched. A figure that is not a size is now kept in the box, marked, and said beside it
+ * and through the announcer; the document holds nothing, so the engine derives the size.
+ * Held against `documentGeneration`, like the held override above, so opening another
+ * label retires it.
+ */
+const typeSizeRefusal = ref<{ generation: number; typed: number | string } | null>(null)
+const netQuantityFontSizeMmRefused = computed(
+  () =>
+    typeSizeRefusal.value?.generation === store.documentGeneration &&
+    data.netQuantityFontSizeMm === undefined,
+)
 const netQuantityFontSizeMmField = computed<number | string>({
-  get: () => netQuantityFontSizeMmSized.value,
+  get: () =>
+    data.netQuantityFontSizeMm ??
+    (netQuantityFontSizeMmRefused.value ? typeSizeRefusal.value!.typed : ''),
   set: (next) => {
-    netQuantityFontSizeMmSized.value = next
+    const figure = asMeasurement(next)
+    if (figure === undefined) delete data.netQuantityFontSizeMm
+    else data.netQuantityFontSizeMm = figure
+    typeSizeRefusal.value =
+      next !== '' && figure === undefined
+        ? { generation: store.documentGeneration, typed: next }
+        : null
     overrideHeldIn.value =
-      netQuantityFontSizeMm.value === undefined ? store.documentGeneration : null
+      data.netQuantityFontSizeMm === undefined ? store.documentGeneration : null
   },
 })
 
@@ -1365,6 +1408,7 @@ const sayRefusal = (id: string, label: () => string, refused: { value: boolean }
 sayRefusal('field-food-nf-racc', () => REFERENCE_AMOUNT_LABEL, referenceAmountRefused)
 sayRefusal('field-food-nf-package-content', () => packageContentLabel.value, packageContentRefused)
 sayRefusal('field-food-nf-unit-content', () => unitContentLabel.value, unitContentRefused)
+sayRefusal('field-food-type-size', () => 'Type size', netQuantityFontSizeMmRefused)
 
 /**
  * Three states, not two, and the third is the point.
@@ -1628,6 +1672,8 @@ const packaging = computed({
         id="field-food-type-size"
         v-model.number="netQuantityFontSizeMmField"
         label="Type size, em (mm)"
+        :invalid="netQuantityFontSizeMmRefused"
+        :description="netQuantityFontSizeMmRefused ? REFUSED_MEASUREMENT : ''"
         min="0.1"
         step="0.1"
       />
@@ -1898,7 +1944,9 @@ const packaging = computed({
       title="Nutrition Facts"
       :element-id="US_FOOD_ELEMENTS.nutritionPanel"
       :selected-element-id="store.selectedElementId"
-      :status="nutritionExemption !== '' ? 'exempt' : hasPanel ? 'present' : 'none'"
+      :status="
+        nutritionExemption !== '' && !exemptionUnused ? 'exempt' : hasPanel ? 'present' : 'none'
+      "
       @select="select"
     >
       <SelectField
@@ -1914,6 +1962,10 @@ const packaging = computed({
           {{ name }}
         </option>
       </SelectField>
+      <p v-if="exemptionUnused" class="text-chrome-300 text-xs" data-exemption-unused>
+        The label prints a Nutrition Facts panel, so it is not using this exemption, and the panel
+        is judged like any other. Untick the panel below to rely on the exemption instead.
+      </p>
 
       <template v-if="nutritionExemption === 'small-package'">
         <MeasurementField

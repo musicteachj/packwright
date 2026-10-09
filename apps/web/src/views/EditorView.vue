@@ -558,8 +558,27 @@ async function exportPdf() {
       // quota — which carries an error and no detail — was reported to the user
       // as "The export failed (429)", discarding the one line that said why and
       // that waiting would fix it. Found by review.
+      //
+      // Each detail is a sentence or a `{ path, message }` issue. Joined raw, the issues
+      // read "Invalid label request: [object Object]; [object Object]" — measured on
+      // 2026-10-09, exporting a GHS label after a change of market. Said as the save says
+      // them: the path, then the message.
       const body = await response.json().catch(() => null)
-      const detail = Array.isArray(body?.detail) ? body.detail.join('; ') : ''
+      const detail =
+        typeof body?.detail === 'string'
+          ? body.detail
+          : Array.isArray(body?.detail)
+            ? (body.detail as unknown[])
+                .map((item) =>
+                  typeof item === 'string'
+                    ? item
+                    : typeof item === 'object' && item !== null && 'message' in item
+                      ? `${String((item as { path?: unknown }).path ?? '')} ${String(item.message)}`.trim()
+                      : '',
+                )
+                .filter((text) => text !== '')
+                .join('; ')
+            : ''
       exportError.value =
         typeof body?.error === 'string'
           ? `${body.error}${detail === '' ? '' : `: ${detail}`}`

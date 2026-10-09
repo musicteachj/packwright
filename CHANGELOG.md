@@ -10,6 +10,28 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **Four dead ends in the editor, each reproduced in a browser first.**
+  - **The hand-set type size refuses a zero or a negative in the form.** It went to the API, which answered the
+    save with a raw "Invalid label document: data.netQuantityFontSizeMm Too small". The box now keeps what was
+    typed, is marked invalid, says beside itself and through the announcer that the label does not hold it, and
+    the engine derives the size meanwhile. It is the refusal the measurements already had.
+  - **The Nutrition Facts status says what the report does.** It read "exempt" whenever an exemption was
+    claimed, beside 16 passes judging the printed panel. A label printing a panel is not using its exemption, so
+    the status now reads "present" and a line under the picker says so. The egg carton is the exception, as it
+    is in the rules: (j)(14) moves its information beneath the lid. James chose this over clearing either control.
+  - **A change of market sets aside the statement codes the new one cannot carry, and restores them.** Choosing
+    EU, picking H225 and switching to US left a label that could be neither saved nor exported, because this
+    build holds no verified US wording. The codes now leave the label, a line under each statements section names
+    them and how to bring them back, and switching back restores them. James chose this over clearing them or
+    leaving them in. They are held in the form, as #65's second column is, so a change of label type or another
+    label lets them go, and the note says so. Holding them in the store is the backlog's entry on rail state.
+  - **An export the server refuses says why.** Its details were joined raw, so the editor showed "Invalid label
+    request: [object Object]; [object Object]". Found while reproducing the market switch. A layout refusal,
+    whose detail is one sentence rather than a list, now shows that sentence too.
+
+  The backlog's "worth doing before deployment" list is now empty. Three entries rescued in stage 7 had lost the
+  blank line after them and ran into the next paragraph; they are separated again.
+
 - **The ingredient order is a rule of its own, `us-food/ingredient-order`.** It shared a rule with the ingredient
   statement, and a rule may judge or decline, never both. On an assortment the statement was judged, so where a
   listed ingredient stated no percentage, the order went unjudged and was not named under "checks that did not

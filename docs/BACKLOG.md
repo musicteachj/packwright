@@ -51,14 +51,9 @@ which cost four review rounds on one pull request.
 
 ## Worth doing before deployment
 
-Agreed 2026-10-08; the order and review levels are in `docs/plans/2026-10-08-road-to-deployment.md`.
-
-1. **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** Entry under "Open
-   from verifying the reported entries".
-2. **The Nutrition Facts section reads "exempt" while the label also carries a panel.** Entry under "Saved
-   labels", where it was filed.
-3. **Changing the market does not clear the statement codes chosen under the old one**, which the export route
-   then refuses. Entry under "What reading the GS1 provisions turned up", where it was filed.
+**All done, as of 2026-10-09.** The five pinned on 2026-10-08 were fixed in PRs #71 to #73: `ghs/pictogram-set`
+citing the EU on US labels, the assortment order check, the hand-set type size, the "exempt" status beside a
+printed panel, and statement codes kept through a change of market. Their history is in `CHANGELOG.md`.
 
 The deployment checklist (unknown routes answered 200, pre-#65 seeded zeros, the first schema change needing a
 migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phase 8.
@@ -140,17 +135,6 @@ source is degenerate. An ingredient whose name does not reveal the allergen — 
 document, not a correctness fix.
 
 ## Saved labels
-
-**The Nutrition Facts section reads "exempt" while the label also carries a panel.** The status line is
-`nutritionExemption !== '' ? 'exempt' : …`, and neither the exemption picker nor the panel checkbox clears the
-other. Reproduced in jsdom on `feat/egg-carton-and-unit-container`: claim the (j)(15) unit container, then tick
-"The label bears a Nutrition Facts panel". The section says "exempt", while the rules treat the label as
-carrying a panel. They grant no exemption, report the new empty panel's missing nutrients, and the engine
-draws no statement. The rules are right, because a label printing a panel is not using its exemption, so
-nothing false is certified. But the rail tells the user the opposite of what the report does, and the saved
-document carries a claim nothing judges. It was already true of the (j)(13)(i) small package and every kind
-claimed alone. Whether ticking one should clear the other, or the status should read the panel first, is a
-design choice for the editor rather than a fix to slip into the exemption work.
 
 ## The API's tests
 
@@ -340,13 +324,13 @@ that a user can type one, see the preview change, and learn only on save. Worth 
 numeric inputs with a shared guard rather than four more copies of the same three lines.
 
 **`optionalNumber` accepts 0 and negatives, and `min="0"` means `positive()`.** It admits them into
-`servingsPerContainer`, `netQuantityFontSizeMm`, `availableSurfaceSqInches` and `continuousVerticalSpaceInches`;
+`servingsPerContainer`, `availableSurfaceSqInches` and `continuousVerticalSpaceInches`;
 eight `min="0"` attributes mean `positive()`; and nine bindings across the three rails write `''` into a field
 typed `number`. None of them refuses anything, so a user types a zero, sees the preview change, and learns on
 save. Interface stage 4 settled the refusal policy for the three measurement fields (the box keeps the figure,
 the field takes `aria-invalid`, a sentence says what to state instead); closing these is a change to what the
-guards accept, and a much larger diff. The hand-set type size is the same defect, pinned under "Worth doing
-before deployment".
+guards accept, and a much larger diff. The hand-set type size had the same defect, and since 2026-10-09 it
+uses the measurements' refusal.
 
 **(b)(11)'s promoted-use second column is unmodelled.** 21 CFR 101.9(b)(11), read from the eCFR on 2026-09-17:
 a product "promoted on the label, labeling, or advertising for a use that differs in quantity by twofold or
@@ -410,19 +394,18 @@ sent where no check asked for one, came from exactly that copy. A `Decline` that
 there because it changes `Decline`'s shape for every rule that declines, for its own pull request. The editor
 now filters on what each check asked for, and `declinedFacts.test.ts` lands each link on the box its check named.
 
-**Four more from the `/code-review high` on PR #65, recorded rather than fixed:**
+**Three more from the `/code-review high` on PR #65, recorded rather than fixed:**
 
 - **Labels saved before #65 still carry the zeros the old rail wrote.** A row added and named but
   never weighed was seeded at 0, and the order rule reads those as stated: oats 90 then two seeded rows passes
   as "3 ingredients run in descending order". Nothing has been deployed — phase 8 is deployment — so no saved
   label a user holds carries them; only development databases do. Worth a sentence in the deployment
   checklist, not a migration.
-- **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** The same defect #65
-  fixed for percentages, on the field it touched; `optionalNumber` accepts any finite figure. It wants
-  the refusal the measurements have, which is a change to that guard rather than to the override.
-- **Three pieces of rail state each re-implement "only while `documentGeneration` matches" by hand** — the
-  held override, the refused percentages and the set-aside second column — and each has to be cleared by hand
-  on every in-document reset. A `heldForDocument` helper, or a store-side scratch map cleared when the
+- **Five pieces of rail state each re-implement "only while `documentGeneration` matches" by hand** — the
+  held override, the refused percentages, the set-aside second column, and since 2026-10-09 the refused type
+  size and the GHS statement codes set aside on a change of market — and each has to be cleared by hand on
+  every in-document reset. Held in a component, each is also lost when a change of label type unmounts its
+  rail; the GHS note now says so rather than promising the codes return. A `heldForDocument` helper, or a store-side scratch map cleared when the
   generation moves, would put the rule in one place.
 - **The percentage refusal is a second refusal mechanism** beside `refusableNumber`, `REFUSED_MEASUREMENT` and
   `sayRefusal`, retiring on a different signal. A per-row `refusableNumber` would share one path. Not done
@@ -691,6 +674,7 @@ from `fda/unitContainerStatement.ts` and measured, and the exemption names it so
 withholds the pass. What (j)(15) asks of the multiunit package itself — that it carries the nutrition
 information, and that the units are "securely enclosed within and not intended to be separated from the retail
 package" — is outside the label this engine draws, and the pass says so.
+
 **An egg carton's second column is required, but not checked for completeness.** Found by `/code-review high`
 on PR #36 and reproduced on `feat/egg-carton-and-unit-container`. A package in (b)(12)(i)'s band declaring a
 second column with a figure for total fat alone gets `FDA_DUAL_COLUMN_MET` and `FDA_DUAL_COLUMN_INCOMPLETE` on
@@ -741,6 +725,7 @@ on GS1 Digital Link URI Syntax 1.7.0 §4.11's `scheme = "http" / "https" / "HTTP
 specifically, not on §4 generally, but it is reported as `GS1_DIGITAL_LINK_INVALID` with §4's citation like
 every rejection `buildDigitalLinkUri` makes. Splitting it wants a fixture for a bad domain separate from the one
 for a bad AI value, and is worth doing when one is written.
+
 **`sourceRegion` is millimetres on a stock, and a vision region is pixels on a photograph.** `BoundingBox`
 names all four members `xMm`, `yMm`, `widthMm`, `heightMm`, and the same type is what `ResolvedElement.box`
 uses. Filling it from a model would either put pixels in fields named for millimetres — the first breach of
@@ -754,16 +739,6 @@ hold nothing, so a `us-osha` label can name no statement code this build can spe
 regime refuses rather than guesses. Transcribing 29 CFR 1910.1200 Appendix C.4 is wanted, as a reference table
 with its own provenance — read and verified, never generated. `GhsRequest` already asks the table rather than an
 enum, so it needs no change when the table fills.
-**Changing the market does not clear the statement codes chosen under the old one.** `GhsFormRail`'s Market
-control is a plain `v-model="data.regime"`, so choosing EU, picking `H225`, and switching to US OSHA leaves
-the code on a label whose regime has no text for it. Three clicks. The rail no longer *captions* it out of the
-wrong regulation — that was the defect fixed here — but the code is still there, the engine will record an
-omission for it, and the export route will now refuse the label outright.
-
-Not fixed here because what should happen is a real question rather than an oversight. Silently dropping a
-user's chosen statements when they change a dropdown is its own kind of data loss; keeping them and reporting
-the label is honest but obstructive; the audit confirm screen's answer — show them, mark them uncarriable,
-carry the rest — is probably the right shape and is a piece of interface work rather than a guard.
 
 **A label already stored with EU codes on a `us-osha` regime can no longer be opened.** `GET /labels/:id`
 re-validates the stored document against `LabelDocumentInput` and answers 500 when it does not match —
