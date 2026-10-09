@@ -10,6 +10,27 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The ingredient order is a rule of its own, `us-food/ingredient-order`.** It shared a rule with the ingredient
+  statement, and a rule may judge or decline, never both. On an assortment the statement was judged, so where a
+  listed ingredient stated no percentage, the order went unjudged and was not named under "checks that did not
+  run". The gap became reachable when #65 made percentages optional. Reproduced before the fix: the statement
+  passed, and the order neither passed, failed nor declined. Now the order rule declines and asks for the
+  percentage while `us-food/ingredient-list` judges the statement.
+
+  The list rule keeps the statement, its names, the § 101.100 exemptions and the assortment statement, and gains
+  a pass of its own, `FDA_INGREDIENT_STATEMENT_MET`. That pass says what it does not check: whether each name is
+  the ingredient's common or usual name. Before, the order pass was the only thing the rule said about a good list.
+  The order rule judges any printed list, whatever the label claims. An entry with no name no longer stops an
+  inversion being reported, and a message names it by its place, as "Ingredient 2". But the order is not passed
+  while one is unnamed: such an entry prints as an empty slot, and a pass would vouch for something not on the
+  label. The rule declines instead and asks for the name, through a new fact a check can ask for,
+  `ingredients.name`. Its link lands on that entry's name box. Asking only for a percentage there would have
+  promised a check that still would not run. Review caught both. Where both are asked for at once, the two
+  links read "Ingredients (percentages)" and "Ingredients (names)". Before, both read "Ingredients" and led to
+  different boxes. And the percentages link now goes only where a check asked for a percentage, since the order
+  check can stand down for a name alone. The editor's link from the declined
+  order check to the empty percentage box follows the new rule.
+
 - **A US label's pictograms are no longer judged against the EU's table.** `ghs/pictogram-set` worked out the
   pictograms a classification requires from CLP Annex V on every label, and cited Annex V while doing it. So a
   US OSHA label with an extra exclamation mark drew a violation citing Regulation (EC) No 1272/2008, which does

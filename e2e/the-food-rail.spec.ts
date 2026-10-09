@@ -49,7 +49,7 @@ test('a cleared percentage is not stated, rather than zero', async ({ page }) =>
     '"whole grain rolled oats" states no percentage by weight',
   )
   // And the link to state it lands on the box that is empty, not on the first name.
-  await checks(page).getByRole('button', { name: 'Ingredients', exact: true }).click()
+  await checks(page).getByRole('button', { name: 'Ingredients (percentages)', exact: true }).click()
   await expect(oats).toBeFocused()
 
   // And a new row starts with nothing, not with 0.
@@ -202,7 +202,9 @@ test.describe('found by the review of these fixes', () => {
     await page.locator('#field-food-ing-pct-0').fill('5')
     await page.locator('#field-food-ing-pct-4').fill('')
     await expect(checks(page)).toContainText('listed after "whole grain rolled oats" at 5%')
-    await checks(page).getByRole('button', { name: 'Ingredients', exact: true }).click()
+    await checks(page)
+      .getByRole('button', { name: 'Ingredients (percentages)', exact: true })
+      .click()
     await expect(page.locator('#field-food-ing-pct-4')).toBeFocused()
   })
 

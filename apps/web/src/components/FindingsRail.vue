@@ -22,7 +22,7 @@ import { computed } from 'vue'
 import { NOT_A_VERDICT, SEVERITY_STYLES } from '../severity'
 import { useAnnouncement } from '../stores/announcer'
 import type { Uncheckable } from '../uncheckable'
-import { DECLINED_FACT_FIELDS } from '../declinedFacts'
+import { factLabel } from '../declinedFacts'
 import FindingItem from './FindingItem.vue'
 
 const props = withDefaults(
@@ -440,7 +440,7 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
               class="text-chrome-200 decoration-chrome-400 hover:text-chrome-100 focus-visible:outline-notice underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
               @click="$emit('state', fact)"
             >
-              {{ DECLINED_FACT_FIELDS[fact].name }}
+              {{ factLabel(fact) }}
             </button>
           </p>
         </div>

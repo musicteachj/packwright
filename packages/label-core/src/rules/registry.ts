@@ -28,7 +28,11 @@ import { ghsSignalWordRule } from './ghs/signalWord'
 import { ghsSmallContainerRule } from './ghs/smallContainer'
 import { usFoodAllergenRule } from './usFood/allergens'
 import { usFoodContainsStatementTypeRule } from './usFood/containsStatementType'
-import { usFoodIngredientListRule, usFoodIngredientThresholdRule } from './usFood/ingredientList'
+import {
+  usFoodIngredientListRule,
+  usFoodIngredientOrderRule,
+  usFoodIngredientThresholdRule,
+} from './usFood/ingredientList'
 import { usFoodInformationPanelTypeSizeRule } from './usFood/informationPanelTypeSize'
 import { usFoodProteinPercentRule } from './usFood/proteinPercent'
 import {
@@ -125,6 +129,7 @@ export const US_FOOD_RULES: readonly UsFoodRule[] = [
   usFoodNetQuantitySeparationRule,
   usFoodNetQuantityDualDeclarationRule,
   usFoodIngredientListRule,
+  usFoodIngredientOrderRule,
   usFoodIngredientThresholdRule,
   usFoodAllergenRule,
   usFoodContainsStatementTypeRule,

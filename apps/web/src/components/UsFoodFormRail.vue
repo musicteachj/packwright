@@ -326,14 +326,34 @@ const firstUnweighed = computed(() => {
   const list = ingredients.value
   const grouped = Math.min(Math.max(0, data.ingredientThreshold?.count ?? 0), list.length)
   const orderedEnd = list.length - grouped
-  const declined = new Set(store.declined.map((check) => check.ruleId))
+  // Only the checks that asked for percentages. The order check can also stand down for a
+  // missing name alone, and read as any decline it sent this link to a figure nobody asked
+  // for. Found by review.
+  const declined = new Set(
+    store.declined
+      .filter((check) => check.wants.includes('ingredients.percentByWeight'))
+      .map((check) => check.ruleId),
+  )
   const blank = (from: number, to: number) => {
     for (let i = from; i < to; i += 1) if (list[i]!.percentByWeight === undefined) return i
     return -1
   }
-  const inOrdered = declined.has('us-food/ingredient-list') ? blank(0, orderedEnd) : -1
+  const inOrdered = declined.has('us-food/ingredient-order') ? blank(0, orderedEnd) : -1
   if (inOrdered !== -1) return inOrdered
   return declined.has('us-food/ingredient-threshold') ? blank(orderedEnd, list.length) : -1
+})
+
+/**
+ * The first entry with no name, where the order check asked for one — its link lands there.
+ * Read from the check that stood down, as `firstUnweighed` is, so the link goes where the
+ * check is waiting rather than to whatever box happens to be blank.
+ */
+const firstUnnamed = computed(() => {
+  const asked = store.declined.some(
+    (check) =>
+      check.ruleId === 'us-food/ingredient-order' && check.wants.includes('ingredients.name'),
+  )
+  return asked ? ingredients.value.findIndex((ingredient) => ingredient.name.trim() === '') : -1
 })
 
 function setPercent(index: number, typed: string, unparseable: boolean): void {
@@ -1673,23 +1693,32 @@ const packaging = computed({
         :key="rowKeys[index] ?? `row-${index}`"
         class="border-chrome-800 flex flex-wrap items-end gap-1 border-b pb-2"
       >
-        <TextField
-          :id="`field-food-ing-name-${index}`"
-          class="flex-1"
-          :label="`Ingredient ${index + 1} name`"
-          label-hidden
-          :value="ingredient.name"
-          placeholder="common or usual name"
-          @input="
-            setIngredients(
-              ingredients.map((entry, i) =>
-                i === index
-                  ? { ...entry, name: ($event.target as HTMLInputElement).value }
-                  : { ...entry },
-              ),
-            )
-          "
-        />
+        <!--
+            Where the order check that did not run lands when it asks for names: the first
+            entry with none, which prints as an empty slot. Wrapped so the anchor is not the
+            field's own id, which the label and description are keyed to.
+          -->
+        <div
+          :id="index === firstUnnamed ? 'field-food-ingredient-name' : undefined"
+          class="min-w-0 flex-1"
+        >
+          <TextField
+            :id="`field-food-ing-name-${index}`"
+            :label="`Ingredient ${index + 1} name`"
+            label-hidden
+            :value="ingredient.name"
+            placeholder="common or usual name"
+            @input="
+              setIngredients(
+                ingredients.map((entry, i) =>
+                  i === index
+                    ? { ...entry, name: ($event.target as HTMLInputElement).value }
+                    : { ...entry },
+                ),
+              )
+            "
+          />
+        </div>
         <!--
             Where "checks that did not run" lands when it asks for percentages: on the
             first box with none, so following the link focuses the figure missing. It

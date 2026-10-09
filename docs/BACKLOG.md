@@ -53,12 +53,11 @@ which cost four review rounds on one pull request.
 
 Agreed 2026-10-08; the order and review levels are in `docs/plans/2026-10-08-road-to-deployment.md`.
 
-1. **An assortment label's order check can stand down in silence.** Give the order check a rule of its own.
-   Entry under "Open from verifying the reported entries".
-2. **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** Same section.
-3. **The Nutrition Facts section reads "exempt" while the label also carries a panel.** Entry under "Saved
+1. **The hand-set type size takes 0 or a negative and the API refuses it as a raw 400.** Entry under "Open
+   from verifying the reported entries".
+2. **The Nutrition Facts section reads "exempt" while the label also carries a panel.** Entry under "Saved
    labels", where it was filed.
-4. **Changing the market does not clear the statement codes chosen under the old one**, which the export route
+3. **Changing the market does not clear the statement codes chosen under the old one**, which the export route
    then refuses. Entry under "What reading the GS1 provisions turned up", where it was filed.
 
 The deployment checklist (unknown routes answered 200, pre-#65 seeded zeros, the first schema change needing a
@@ -401,16 +400,6 @@ exemptions. And its exemption list is its own — "nondiscrete bulk products ...
   SemiBold — so a bold word can overprint the start of the word after it on any line. The panel-border check
   now measures ink in the printing face and reports the cases that cross the border; the overlap inside a line
   is this entry's, and closes with it.
-
-**An assortment label's order check can stand down in silence.** Found by the review of the editor-rail fixes
-in PR #65, and left.
-`us-food/ingredient-list` judges an assortment claim's statement and then the list under it, in one `check`.
-A `Rule` may judge or decline, never both — `rules.test.ts` holds that across every fixture — so where the
-statement is judged and a listed ingredient states no percentage, the order goes unjudged and is not named
-under "checks that did not run". No pass is issued, so nothing is cleared that should not be. The fix is to
-give the order check a rule of its own, so it can decline while the statement is judged. This change is what
-makes the gap reachable — before it, every percentage was a number — which is the strongest reason to do
-the split before deployment rather than after.
 
 **Four more from the `/code-review high` on PR #65, recorded rather than fixed:**
 

@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import type { DeclinedFact } from '@packwright/label-core'
-import { DECLINED_FACT_FIELDS } from './declinedFacts'
+import { DECLINED_FACT_FIELDS, factLabel } from './declinedFacts'
 import { useLabelDocumentStore } from './stores/labelDocument'
 import EditorView from './views/EditorView.vue'
 import { testRouter } from './views/editorTestRouter'
@@ -67,6 +67,14 @@ const scenarios: Array<[string, (store: Store) => void]> = [
       const [first, ...rest] = store.foodData.ingredients!
       const { percentByWeight: _cleared, ...unweighed } = first!
       store.foodData.ingredients = [unweighed, ...rest]
+    },
+  ],
+  [
+    'a food label with an ingredient whose name was cleared',
+    (store) => {
+      store.labelType = 'us-food'
+      const [first, ...rest] = store.foodData.ingredients!
+      store.foodData.ingredients = [{ ...first!, name: '' }, ...rest]
     },
   ],
   [
@@ -140,6 +148,74 @@ describe('the fields a check that did not run links to', () => {
 })
 
 describe('following a fact', () => {
+  it('lands on the name box an unnamed ingredient needs', async () => {
+    // The order check asks for a name where an entry has none, since an unnamed entry prints
+    // as an empty slot. Its link lands on that entry's box, not the first in the list.
+    const store = useLabelDocumentStore()
+    store.labelType = 'us-food'
+    const [first, second, ...rest] = store.foodData.ingredients!
+    store.foodData.ingredients = [first!, { ...second!, name: '' }, ...rest]
+    const wrapper = mount(EditorView, {
+      attachTo: document.body,
+      global: { plugins: [testRouter()], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+
+    const control = wrapper
+      .findAll('button')
+      .find((button) => button.text() === factLabel('ingredients.name'))
+    expect(control, 'the rail offers the ingredient').toBeDefined()
+    await control!.trigger('click')
+    await nextTick()
+
+    expect(document.activeElement?.id).toBe('field-food-ing-name-1')
+    wrapper.unmount()
+  })
+
+  it('names two asks in one section apart, so each link says where it goes', async () => {
+    // One entry with no percentage and another with no name: both are asked for at once.
+    // They read "Ingredients" and "Ingredients", leading to different boxes. Found by review.
+    const store = useLabelDocumentStore()
+    store.labelType = 'us-food'
+    const [first, second, ...rest] = store.foodData.ingredients!
+    const { percentByWeight: _cleared, ...unweighed } = first!
+    store.foodData.ingredients = [unweighed, { ...second!, name: '' }, ...rest]
+    const wrapper = mount(EditorView, {
+      global: { plugins: [testRouter()], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+    const labels = wrapper.findAll('button').map((button) => button.text())
+    expect(labels).toContain('Ingredients (percentages)')
+    expect(labels).toContain('Ingredients (names)')
+    wrapper.unmount()
+  })
+
+  it('sends the percentages link only where a check asked for percentages', async () => {
+    // The first entry has no name and no figure; the second, grouped behind the quantifying
+    // statement, has no figure. The order check asks only for the name — a run of one needs no
+    // figure — and the threshold check asks for the second's percentage. The link landed on the
+    // first entry's box, which no check had asked about. Found by review.
+    const store = useLabelDocumentStore()
+    store.labelType = 'us-food'
+    store.foodData.ingredients = [{ name: '' }, { name: 'salt' }]
+    store.foodData.ingredientThreshold = { percent: 2, count: 1 }
+    const wrapper = mount(EditorView, {
+      attachTo: document.body,
+      global: { plugins: [testRouter()], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+
+    const control = wrapper
+      .findAll('button')
+      .find((button) => button.text() === factLabel('ingredients.percentByWeight'))
+    expect(control, 'the threshold check asks for a percentage').toBeDefined()
+    await control!.trigger('click')
+    await nextTick()
+
+    expect(document.activeElement?.id).toBe('field-food-ing-pct-1')
+    wrapper.unmount()
+  })
+
   it('lands on the field that states it', async () => {
     const store = useLabelDocumentStore()
     store.labelType = 'us-food'
