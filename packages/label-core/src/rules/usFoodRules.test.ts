@@ -40,6 +40,7 @@ import {
   FDA_INGREDIENTS_ORDER_MET,
   FDA_INGREDIENTS_OUT_OF_ORDER,
   FDA_INGREDIENT_THRESHOLD_EXCEEDED,
+  FDA_INGREDIENT_THRESHOLD_MET,
   FDA_PANEL_TYPE_SIZE_MET,
   FDA_PANEL_TYPE_TOO_SMALL,
   FDA_NUTRITION_CONTACT_MISSING,
@@ -59,6 +60,7 @@ import {
   FDA_ASSORTMENT_STATEMENT_INCOMPLETE,
   usFoodIngredientListRule,
   usFoodIngredientOrderRule,
+  usFoodIngredientThresholdRule,
 } from './index'
 import { US_FOOD_RULES, declinedChecks, runRules } from './registry'
 import { codesOf } from './types'
@@ -1412,7 +1414,7 @@ describe('the list and its order, as two rules', () => {
     // And says so, rather than standing down in silence — the gap this rule exists to close.
     const order = declined.find((d) => d.ruleId === usFoodIngredientOrderRule.id)
     expect(order?.wants).toEqual(['ingredients.name'])
-    expect(order?.reason).toContain('ingredient 2 has no name, so it does not print')
+    expect(order?.reason).toContain('ingredient 2 has no name, so it prints as an empty slot')
     expect(order?.reason).toContain('Name each ingredient and this check will run.')
   })
 
@@ -1425,6 +1427,67 @@ describe('the list and its order, as two rules', () => {
     )
     expect(order?.wants).toEqual(['ingredients.percentByWeight', 'ingredients.name'])
     expect(order?.reason).toContain('State a percentage and a name for each ingredient')
+  })
+
+  it('names an entry missing a figure and a name once, with both', () => {
+    // It read "ingredient 1 states no percentage by weight, and ingredient 1 has no name",
+    // two entries to a reader. Found by `/code-review high` on PR #72.
+    const { ingredientThreshold: _grouping, ...data } = US_FOOD_CONFORMANT.data
+    const ingredients = [{ name: '' }, { name: 'oats', percentByWeight: 50 }]
+    const order = judge({ ...data, ingredients, containsStatement: [] }).declined.find(
+      (d) => d.ruleId === usFoodIngredientOrderRule.id,
+    )
+    expect(order?.reason).toContain(
+      'ingredient 1 states no percentage and has no name, so it prints as an empty slot',
+    )
+    expect(order?.reason).not.toContain('ingredient 1 states no percentage by weight')
+  })
+
+  it('does not count an unprinted entry behind the quantifying statement in the order pass', () => {
+    // "3 ingredients run in descending order …, with 2 grouped behind the quantifying
+    // statement" — one of the 2 printed as an empty slot. Found by `/code-review high` on PR #72.
+    const ingredients = [
+      ...US_FOOD_CONFORMANT.data.ingredients!.slice(0, 3),
+      { name: '', percentByWeight: 0.5 },
+    ]
+    const order = judge({ ...US_FOOD_CONFORMANT.data, ingredients }).findings.find(
+      (f) => f.code === FDA_INGREDIENTS_ORDER_MET,
+    )
+    expect(order?.message).not.toContain('grouped')
+  })
+
+  it('holds the threshold to the same rule: no pass over an unnamed entry, and a name asked for', () => {
+    const ingredients = [
+      ...US_FOOD_CONFORMANT.data.ingredients!.slice(0, 3),
+      { name: '', percentByWeight: 0.5 },
+    ]
+    const { findings, declined } = judge({ ...US_FOOD_CONFORMANT.data, ingredients })
+    expect(findings.map((f) => f.code)).not.toContain(FDA_INGREDIENT_THRESHOLD_MET)
+    const threshold = declined.find((d) => d.ruleId === usFoodIngredientThresholdRule.id)
+    expect(threshold?.wants).toEqual(['ingredients.name'])
+    expect(threshold?.reason).toContain('ingredient 4 has no name, so it prints as an empty slot')
+  })
+
+  it('names an unnamed entry over the threshold by its place, not as an empty quote', () => {
+    const ingredients = [
+      ...US_FOOD_CONFORMANT.data.ingredients!.slice(0, 3),
+      { name: '', percentByWeight: 3 },
+    ]
+    const exceeded = judge({ ...US_FOOD_CONFORMANT.data, ingredients }).findings.find(
+      (f) => f.code === FDA_INGREDIENT_THRESHOLD_EXCEEDED,
+    )
+    expect(exceeded?.message).toMatch(/^Ingredient 4 is 3% of the food/)
+  })
+
+  it("says the statement's placement is not checked, as 101.4(a)(1) asks for one", () => {
+    // "on either the principal display panel or the information panel", read from the
+    // eCFR on 2026-10-09. Found by `/code-review high` on PR #72.
+    const statement = judge(US_FOOD_CONFORMANT.data).findings.find(
+      (f) => f.code === FDA_INGREDIENT_STATEMENT_MET,
+    )
+    expect(statement?.message).toContain(
+      'whether the statement sits on the principal display panel or the information panel',
+    )
   })
 
   it('leaves an exempt label with no list to the list rule alone', () => {

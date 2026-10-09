@@ -401,6 +401,15 @@ exemptions. And its exemption list is its own — "nondiscrete bulk products ...
   now measures ink in the printing face and reports the cases that cross the border; the overlap inside a line
   is this entry's, and closes with it.
 
+**The editor re-derives which ingredient row a declined check is waiting on.** Raised by `/code-review high` on
+PR #72. `firstUnweighed` and `firstUnnamed` in `UsFoodFormRail.vue` repeat the rules' own split between the
+ordered run and the entries behind the quantifying statement, and the rule ids that own each range, to decide
+which box a link from "checks that did not run" lands on. The second link defect PR #72 fixed, a percentages link
+sent where no check asked for one, came from exactly that copy. A `Decline` that named the rows it wants —
+`wants: [{ fact, index }]` or similar — would let the editor read the answer instead of recomputing it. Not done
+there because it changes `Decline`'s shape for every rule that declines, for its own pull request. The editor
+now filters on what each check asked for, and `declinedFacts.test.ts` lands each link on the box its check named.
+
 **Four more from the `/code-review high` on PR #65, recorded rather than fixed:**
 
 - **Labels saved before #65 still carry the zeros the old rail wrote.** A row added and named but

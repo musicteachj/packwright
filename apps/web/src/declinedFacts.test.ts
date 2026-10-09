@@ -172,6 +172,33 @@ describe('following a fact', () => {
     wrapper.unmount()
   })
 
+  it('lands on an unnamed entry behind the quantifying statement, where the threshold asks', async () => {
+    // The threshold check asks for the name of a grouped entry that has none; the link
+    // follows that check's range, not the first blank anywhere. Found by review of PR #72.
+    const store = useLabelDocumentStore()
+    store.labelType = 'us-food'
+    store.foodData.ingredients = [
+      { name: 'oats', percentByWeight: 90 },
+      { name: '', percentByWeight: 1 },
+    ]
+    store.foodData.ingredientThreshold = { percent: 2, count: 1 }
+    const wrapper = mount(EditorView, {
+      attachTo: document.body,
+      global: { plugins: [testRouter()], stubs: { RouterLink: true } },
+    })
+    await nextTick()
+
+    const control = wrapper
+      .findAll('button')
+      .find((button) => button.text() === factLabel('ingredients.name'))
+    expect(control, 'the threshold check asks for the name').toBeDefined()
+    await control!.trigger('click')
+    await nextTick()
+
+    expect(document.activeElement?.id).toBe('field-food-ing-name-1')
+    wrapper.unmount()
+  })
+
   it('names two asks in one section apart, so each link says where it goes', async () => {
     // One entry with no percentage and another with no name: both are asked for at once.
     // They read "Ingredients" and "Ingredients", leading to different boxes. Found by review.

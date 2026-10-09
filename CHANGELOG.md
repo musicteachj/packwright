@@ -28,8 +28,20 @@ into a version only when there is a reason to.
   promised a check that still would not run. Review caught both. Where both are asked for at once, the two
   links read "Ingredients (percentages)" and "Ingredients (names)". Before, both read "Ingredients" and led to
   different boxes. And the percentages link now goes only where a check asked for a percentage, since the order
-  check can stand down for a name alone. The editor's link from the declined
-  order check to the empty percentage box follows the new rule.
+  check can stand down for a name alone. The editor's link from the declined order check to the empty percentage
+  box follows the new rule.
+
+  **After the `/code-review high` on #72:**
+  - `us-food/ingredient-threshold` follows the same rule. No pass over a grouped entry with no name; it asks for
+    the name.
+  - The order pass no longer counts an unprinted grouped entry in its "with N grouped" clause.
+  - The threshold violation names an unnamed entry by its place rather than as `""`.
+  - A decline names an entry missing both a figure and a name once, with both, and says it prints as an empty
+    slot, which is what the engine draws.
+  - The statement pass says its placement is unchecked. 101.4(a)(1) lists the statement "on either the principal
+    display panel or the information panel", read from the eCFR on 2026-10-09.
+  - One predicate, `isUnnamedIngredient`, now defines an unnamed entry for the rules and the editor.
+  - The editor re-deriving which row a check waits on is recorded in the backlog.
 
 - **A US label's pictograms are no longer judged against the EU's table.** `ghs/pictogram-set` worked out the
   pictograms a classification requires from CLP Annex V on every label, and cited Annex V while doing it. So a

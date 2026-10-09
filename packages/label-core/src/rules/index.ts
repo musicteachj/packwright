@@ -151,6 +151,7 @@ export {
   FDA_INGREDIENT_THRESHOLD_EXCEEDED,
   FDA_INGREDIENT_THRESHOLD_MET,
   FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED,
+  isUnnamedIngredient,
   usFoodIngredientListRule,
   usFoodIngredientOrderRule,
   usFoodIngredientThresholdRule,

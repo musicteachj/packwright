@@ -62,6 +62,7 @@ import {
   type UsFoodEggCartonPresentation,
   type UnitContainerWording,
   type DailyValuePopulation,
+  isUnnamedIngredient,
 } from '@packwright/label-core'
 import { computed, ref, watch } from 'vue'
 import { useLabelDocumentStore } from '../stores/labelDocument'
@@ -344,16 +345,28 @@ const firstUnweighed = computed(() => {
 })
 
 /**
- * The first entry with no name, where the order check asked for one — its link lands there.
+ * The first entry with no name in the range of a check that asked for one — the order check
+ * over the ordered run, the threshold check over the entries behind the statement. Its link
+ * lands there.
  * Read from the check that stood down, as `firstUnweighed` is, so the link goes where the
  * check is waiting rather than to whatever box happens to be blank.
  */
 const firstUnnamed = computed(() => {
-  const asked = store.declined.some(
-    (check) =>
-      check.ruleId === 'us-food/ingredient-order' && check.wants.includes('ingredients.name'),
+  const list = ingredients.value
+  const grouped = Math.min(Math.max(0, data.ingredientThreshold?.count ?? 0), list.length)
+  const orderedEnd = list.length - grouped
+  const asked = new Set(
+    store.declined
+      .filter((check) => check.wants.includes('ingredients.name'))
+      .map((check) => check.ruleId),
   )
-  return asked ? ingredients.value.findIndex((ingredient) => ingredient.name.trim() === '') : -1
+  const unnamed = (from: number, to: number) => {
+    for (let i = from; i < to; i += 1) if (isUnnamedIngredient(list[i]!)) return i
+    return -1
+  }
+  const inOrdered = asked.has('us-food/ingredient-order') ? unnamed(0, orderedEnd) : -1
+  if (inOrdered !== -1) return inOrdered
+  return asked.has('us-food/ingredient-threshold') ? unnamed(orderedEnd, list.length) : -1
 })
 
 function setPercent(index: number, typed: string, unparseable: boolean): void {
