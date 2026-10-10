@@ -56,6 +56,15 @@ describe('the labels the landing page draws', () => {
     expect(codes).toEqual(['GHS_PICTOGRAM_SYMBOL_MISSING', 'GHS_PICTOGRAM_SYMBOL_MISSING'])
   })
 
+  it('names a supplier established in the Union, with a telephone number', () => {
+    // CLP Article 4(11), applying from 1 July 2026, and Article 17(1)(a). No rule
+    // reads either, so the check above passed a Leeds supplier with no number;
+    // this pins the sample instead. The Netherlands is an EU member state.
+    expect(GHS_SAMPLE.regime).toBe('eu-clp')
+    expect(GHS_SAMPLE.supplier?.address).toMatch(/, Netherlands$/)
+    expect(GHS_SAMPLE.supplier?.telephone?.trim()).toBeTruthy()
+  })
+
   it('declares an allergen the ingredient name does not give away', () => {
     // `marzipan (almonds)`, not `almonds (almonds)`. The parenthetical only
     // demonstrates anything on an ingredient that needs one.

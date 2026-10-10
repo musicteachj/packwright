@@ -16,7 +16,14 @@ export const GHS_SAMPLE: GhsLabelData = {
   pictograms: ['GHS02', 'GHS07'],
   hazardStatementCodes: ['H225', 'H319'],
   precautionaryStatementCodes: ['P210', 'P233', 'P280'],
-  supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way, Leeds LS1 1AA' },
+  // CLP Article 4(11), applying from 1 July 2026: a supplier established in the Union,
+  // identified on the label; and Article 17(1)(a), its telephone number. This sample named a
+  // supplier in Leeds with no number, and no rule reads either. See docs/WHAT-IS-NOT-CHECKED.md.
+  supplier: {
+    name: 'Example Chemicals B.V.',
+    address: '1 Voorbeeldstraat, 3011 AA Rotterdam, Netherlands',
+    telephone: '+31 10 000 0000',
+  },
 }
 
 /**

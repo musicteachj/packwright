@@ -71,6 +71,14 @@ describe('the label document store', () => {
     store.select(null)
     expect(store.selectedElementId).toBeNull()
   })
+  it('opens the chemical editor on a supplier established in the Union, with a telephone number', () => {
+    // CLP Article 4(11), applying from 1 July 2026, and Article 17(1)(a). The seed
+    // named a Leeds supplier with no number, and no rule reads either.
+    const store = useLabelDocumentStore()
+    expect(store.ghsData.regime).toBe('eu-clp')
+    expect(store.ghsData.supplier?.address).toMatch(/, Netherlands$/)
+    expect(store.ghsData.supplier?.telephone?.trim()).toBeTruthy()
+  })
 })
 
 /**

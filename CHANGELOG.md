@@ -10,6 +10,13 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The EU sample labels name a supplier established in the Union, with a telephone number.** The landing page's
+  chemical sample, the editor's starting label and `GHS_CONFORMANT` named only a supplier in Leeds, with no
+  number: since 1 July 2026 CLP Article 4(11) wants a supplier established in the Union identified on the label,
+  and Article 17(1)(a) its telephone number. No rule reads either, so every check passed them. Each now names a
+  supplier in Rotterdam with a number, and a test pins the two the app shows. The landing sample's acetone needs
+  more than this — H336, EUH066 and an identification number under Annex VI and Article 18(2)(a) — which is in
+  the backlog for a decision, beside the engine having no EUH statements at all.
 - **`docs/WHAT-IS-NOT-CHECKED.md` names two EU requirements nothing checks.** CLP Article 4(11) has required a
   supplier established in the Union, identified on the label, since 1 July 2026; and Article 25(7) puts a
   mixture's UFI in its supplemental information, with Annex VIII Part A, 5.3's alternatives. No rule reads either,
