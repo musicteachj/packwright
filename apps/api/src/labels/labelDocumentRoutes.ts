@@ -15,7 +15,7 @@
 import { Router, type Request, type Response } from 'express'
 import { Types, isValidObjectId } from 'mongoose'
 import { LabelDocument, serializeLabelDocument } from './labelDocument'
-import { LabelDocumentInput } from './schemas'
+import { LabelDocumentInput } from '@packwright/label-core/schema'
 
 /** The export routes' error shape, reused so the API has one contract for a bad body. */
 const badRequest = (

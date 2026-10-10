@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { describe, expect, it, vi } from 'vitest'
-import { GhsRequest } from '../labels/schemas'
+import { GhsRequest } from '@packwright/label-core/schema'
 import {
   EXTRACTION_MODEL,
   ExtractionDeclined,

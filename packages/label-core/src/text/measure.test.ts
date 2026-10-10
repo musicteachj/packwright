@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EU_CLP_HAZARD_STATEMENTS, EU_CLP_PRECAUTIONARY_STATEMENTS } from '../ghs/statements'
+import { EMBEDDED_FONT_FAMILIES } from './faces'
 import { FONT_METRICS } from './metrics'
 import {
   fontSizeMmForGlyphHeight,
@@ -12,13 +13,9 @@ import {
 describe('measuring', () => {
   it('carries metrics for every face the exporter embeds', () => {
     // If these fall out of step, a label asks for a face the table cannot
-    // measure and silently wraps against the fallback instead.
-    for (const face of [
-      'IBM Plex Sans',
-      'IBM Plex Sans SemiBold',
-      'IBM Plex Mono',
-      'IBM Plex Mono SemiBold',
-    ]) {
+    // measure and silently wraps against the fallback instead. Read from the
+    // list the schema and the exporter share, rather than a fifth copy of it.
+    for (const face of EMBEDDED_FONT_FAMILIES) {
       expect(hasMetrics(face), `no metrics for ${face}`).toBe(true)
     }
   })

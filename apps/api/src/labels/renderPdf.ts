@@ -8,7 +8,12 @@
  * collect the bytes.
  */
 
-import { pageSizePoints, toPDF, type ResolvedLayout } from '@packwright/label-core'
+import {
+  pageSizePoints,
+  toPDF,
+  type EmbeddedFontFamily,
+  type ResolvedLayout,
+} from '@packwright/label-core'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -70,8 +75,12 @@ function resolveFontDir(): string {
  *
  * The TTFs are the ones vendored for the web build, so both paths draw from one
  * set of files rather than two copies that could drift.
+ *
+ * Keyed on `label-core`'s list of embedded faces, so a name the schema admits
+ * with no file here, or a file here under a name the schema refuses, does not
+ * compile.
  */
-const PLEX_FACES: Record<string, string> = {
+const PLEX_FACES: Readonly<Record<EmbeddedFontFamily, string>> = {
   'IBM Plex Mono': 'IBMPlexMono-Regular.ttf',
   'IBM Plex Mono SemiBold': 'IBMPlexMono-SemiBold.ttf',
   'IBM Plex Sans': 'IBMPlexSans-Regular.ttf',
@@ -92,17 +101,6 @@ function registerPlex(document: PDFKit.PDFDocument): void {
   }
 }
 
-/**
- * The only font names this renderer will pass to PDFKit.
- *
- * `document.font(name)` treats anything it does not recognise as a **filesystem
- * path**, so an unregistered family from a request body was an arbitrary local
- * file read — `fontFamily: 'Arial'` returned a 500 naming the working directory,
- * and a real path was opened. Everything unknown now falls back to the label's
- * body face rather than reaching the filesystem.
- */
-export const EMBEDDED_FONT_FAMILIES = Object.keys(PLEX_FACES)
-
 const FALLBACK_FAMILY = 'IBM Plex Sans'
 
 /**
@@ -118,7 +116,8 @@ const SEMIBOLD_FROM = 600
 
 export function embeddedFontFor(family: string, weight?: number): string {
   // `in` would walk the prototype chain and let 'constructor' through a guard
-  // this file's own comment calls a security boundary.
+  // that is a security boundary — an unknown name reaches PDFKit as a file
+  // path, as `EMBEDDED_FONT_FAMILIES` in `label-core` records.
   const base = Object.hasOwn(PLEX_FACES, family) ? family : FALLBACK_FAMILY
   if (weight === undefined || weight < SEMIBOLD_FROM) return base
   const semibold = `${base} SemiBold`

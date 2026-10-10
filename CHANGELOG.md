@@ -10,6 +10,17 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The label schema is in `label-core`, as `@packwright/label-core/schema`.** The MCP server has to refuse the
+  documents the export routes refuse, in the same words, and the only way to make that true rather than hoped is
+  one schema. `apps/api/src/labels/schemas.ts` and its tests moved there unchanged in what they accept and say; the
+  export routes, the saved-label routes and the photo audit import it from there. It could not move while it took
+  the embedded font list from the PDF renderer, which loads PDFKit and Node, so that list moved first, to
+  `label-core`'s `text/` module as `EMBEDDED_FONT_FAMILIES`; the renderer's face table is now keyed on it, so a face
+  admitted without a file, or a file under a name the schema refuses, no longer compiles. The schema's own copy of
+  `LABEL_TYPES` went, leaving the one `rules/` already exported. The module is reached by its subpath and not the
+  package root, since its schemas are built on load and the web app, which validates nothing with zod, would
+  otherwise carry them: the web bundle is the same 1,419,099 bytes before and after, with no zod in it. Eight
+  malformed and unexportable requests across the three export routes answer byte for byte as they did on `dev`.
 - **One judge for every report, in `label-core`.** `judgeLabel` lays a label out and judges it; `judgeLayout`
   judges a layout in hand. The editor, the audit screen and the experiment harness now all call them, and the MCP
   server will, so none can tell a label something another would not. The report was assembled twice in the browser

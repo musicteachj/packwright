@@ -2,8 +2,8 @@
  * A saved label, as the database holds it.
  *
  * **`data` is `Mixed`, and that is deliberate.** Mongoose gets no say over the
- * shape of a label's fields; Zod does, in `schemas.ts`, which is the same
- * description the export routes validate against. Restating three large
+ * shape of a label's fields; Zod does, in `label-core`'s `schema/` module, which
+ * is the same description the export routes validate against. Restating three large
  * label-data shapes in a second schema language would be a second source of
  * truth for one set of facts — the drift `getSymbologyConstraints` was
  * introduced into `routes.ts` to stop having to manage.
@@ -14,7 +14,7 @@
  * grounds that a stored document is untrusted input the moment the schema moves.
  */
 import { Schema, model } from 'mongoose'
-import { LABEL_TYPES } from './schemas'
+import { LABEL_TYPES } from '@packwright/label-core'
 
 export interface SerializedLabelDocument {
   readonly id: string

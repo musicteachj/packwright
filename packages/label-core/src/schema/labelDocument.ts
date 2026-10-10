@@ -1,56 +1,68 @@
 /**
  * What a label is, as a shape a request can be checked against.
  *
- * Extracted from `routes.ts` because the export routes are no longer the only
- * thing that needs it: a saved label is the same label, and validating it
- * against a second, separately-written description of the same fields would be
- * two sources of truth for one set of facts. That is the drift
- * `getSymbologyConstraints` was introduced below to end — each side used to
- * carry its own copy of the payload length and the magnification range, tested
- * against itself, so the two could disagree without a single test failing.
+ * **In `label-core` so that every door refuses the same documents in the same
+ * words.** It began inside the API's export routes, moved beside them once saved
+ * labels needed the same description, and moved here for the MCP server of
+ * `docs/plans/2026-10-10-mcp.md`: a server that checked a label against its own
+ * copy of these fields could accept a document the exporter refuses, or refuse
+ * one with a different sentence, and nobody would notice until a user did. It
+ * could not move while it took the embedded font list from the PDF renderer,
+ * which loads PDFKit and Node; that list is now `text/faces.ts`.
  *
- * The `toX` functions come with the schemas rather than staying with the routes.
- * They exist to reconcile Zod's `string | undefined` with `label-core`'s
- * genuinely-absent optionals under `exactOptionalPropertyTypes`, which is a fact
- * about the schema above them rather than about any particular route.
+ * One description also ends the drift `getSymbologyConstraints` was introduced
+ * below to end — each side used to carry its own copy of the payload length and
+ * the magnification range, tested against itself, so the two could disagree
+ * without a single test failing.
+ *
+ * **Reached through `@packwright/label-core/schema`, not the package root.** The
+ * schemas are built when this module loads, which a bundler cannot prove free of
+ * side effects, and the web app — which imports the root and validates nothing
+ * with zod — would otherwise carry zod and every schema in its bundle.
+ *
+ * The `toX` functions come with the schemas. They exist to reconcile Zod's
+ * `string | undefined` with `label-core`'s genuinely-absent optionals under
+ * `exactOptionalPropertyTypes`, which is a fact about the schema above them
+ * rather than about any particular route.
  */
 
+import { z } from 'zod'
 import {
-  ANCHORS,
-  GHS_PICTOGRAM_CODES,
+  DUAL_COLUMN_BASES,
+  NUTRITION_COLUMN_MODES,
+  NUTRITION_FORMATS,
+} from '../fda/nutritionFormats'
+import { MAJOR_FOOD_ALLERGEN_IDS } from '../fda/allergens'
+import { DAILY_VALUE_POPULATIONS, NUTRIENT_IDS } from '../fda/nutrients'
+import { UNIT_CONTAINER_WORDINGS } from '../fda/unitContainerStatement'
+import { HAZARD_CLASS_IDS } from '../ghs/classification'
+import { GHS_PICTOGRAM_CODES } from '../ghs/pictograms'
+import {
   GHS_REGIMES,
-  HAZARD_CLASS_IDS,
   canonicalStatementCode,
   hazardStatementText,
   knownHazardStatementCodes,
   knownPrecautionaryStatementCodes,
   precautionaryStatementText,
-  GHS_SIGNAL_WORDS,
-  getSymbologyConstraints,
+  type GhsRegime,
+} from '../ghs/statements'
+import { getSymbologyConstraints } from '../symbology/constraints'
+import { GHS_SIGNAL_WORDS, type GhsSupplier } from '../templates/ghs'
+import { ANCHORS, type ArtworkBlock } from '../templates/stock'
+import type { DigitalLinkData } from '../templates/upcA'
+import {
   INGREDIENT_THRESHOLD_PERCENTS,
-  DUAL_COLUMN_BASES,
-  NUTRITION_COLUMN_MODES,
-  NUTRITION_FORMATS,
-  MAJOR_FOOD_ALLERGEN_IDS,
-  NUTRIENT_IDS,
-  DAILY_VALUE_POPULATIONS,
+  US_FOOD_EGG_CARTON_PRESENTATIONS,
   US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
   US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE,
-  UNIT_CONTAINER_WORDINGS,
-  US_FOOD_EGG_CARTON_PRESENTATIONS,
   US_FOOD_PACKAGINGS,
-  type ArtworkBlock,
-  type DigitalLinkData,
-  type GhsRegime,
-  type GhsSupplier,
+  type UsFoodIngredient,
   type UsFoodLabelData,
   type UsFoodNetQuantity,
-  type UsFoodIngredient,
   type UsFoodNutritionFacts,
   type UsFoodResponsibleFirm,
-} from '@packwright/label-core'
-import { z } from 'zod'
-import { EMBEDDED_FONT_FAMILIES } from './renderPdf'
+} from '../templates/usFood'
+import { EMBEDDED_FONT_FAMILIES } from '../text/faces'
 
 /**
  * A GTIN-12 as printed on the pack — the eleven digits a user types plus the
@@ -75,7 +87,7 @@ export const Artwork = z.object({
   // Constrained to the faces the exporter actually embeds. Free text here
   // reached PDFKit's `document.font()`, which resolves an unknown name as a
   // filesystem path.
-  fontFamily: z.enum(EMBEDDED_FONT_FAMILIES as [string, ...string[]]).optional(),
+  fontFamily: z.enum(EMBEDDED_FONT_FAMILIES).optional(),
 })
 
 export const DigitalLink = z.object({
@@ -709,15 +721,6 @@ export function toContainer(
       : { obviousPanelAreaSqMm: container.obviousPanelAreaSqMm }),
   }
 }
-
-/**
- * The label types the editor can produce, in one place.
- *
- * The model and the routes both need this list. It is declared here because this
- * file is already where the shape of a label is decided, and a second copy is
- * the drift `getSymbologyConstraints` was introduced to end.
- */
-export const LABEL_TYPES = ['gs1-retail', 'ghs-chemical', 'us-food'] as const
 
 export const StockSchema = z.object({
   widthMm: z.number().positive(),

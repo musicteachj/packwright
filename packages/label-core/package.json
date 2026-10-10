@@ -15,6 +15,7 @@
     "./layout": "./src/layout/index.ts",
     "./render": "./src/render/index.ts",
     "./rules": "./src/rules/index.ts",
+    "./schema": "./src/schema/index.ts",
     "./symbology": "./src/symbology/index.ts",
     "./templates": "./src/templates/index.ts",
     "./text": "./src/text/index.ts",

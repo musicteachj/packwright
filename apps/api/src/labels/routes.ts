@@ -45,7 +45,7 @@ import {
   toNutritionFacts,
   toResponsibleFirm,
   toSupplier,
-} from './schemas'
+} from '@packwright/label-core/schema'
 
 /**
  * What one client may render in an hour.

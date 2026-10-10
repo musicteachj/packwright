@@ -23,6 +23,7 @@ const MODULES = [
   'layout',
   'render',
   'rules',
+  'schema',
   'symbology',
   'templates',
   'text',

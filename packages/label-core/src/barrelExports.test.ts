@@ -82,6 +82,9 @@ import * as confirm from './extraction/confirm'
 import * as judgeBarrel from './judge/index'
 import * as judge from './judge/judge'
 import * as uncheckable from './judge/uncheckable'
+import * as schemaBarrel from './schema/index'
+import * as labelDocumentSchema from './schema/labelDocument'
+import * as textFaces from './text/faces'
 
 /**
  * Every public symbol must be reachable from its module's barrel.
@@ -124,6 +127,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     ],
   ],
   ['extraction', extractionBarrel, [['confirm.ts', confirm]]],
+  ['schema', schemaBarrel, [['labelDocument.ts', labelDocumentSchema]]],
   [
     'judge',
     judgeBarrel,
@@ -233,6 +237,7 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     'text',
     textBarrel,
     [
+      ['faces.ts', textFaces],
       ['measure.ts', textMeasure],
       ['metrics.ts', textMetrics],
     ],
