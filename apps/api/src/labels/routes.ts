@@ -25,9 +25,6 @@ import {
   layOutGhsLabel,
   layOutUpcALabel,
   layOutUsFoodLabel,
-  type GhsLabelData,
-  type UpcALabelData,
-  type UsFoodLabelData,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import { Router, type Request, type RequestHandler, type Response } from 'express'
@@ -38,14 +35,9 @@ import {
   GhsRequest,
   UpcARequest,
   UsFoodRequest,
-  toArtwork,
-  toContainer,
-  toDigitalLink,
-  toIngredient,
-  toNetQuantity,
-  toNutritionFacts,
-  toResponsibleFirm,
-  toSupplier,
+  toGhsLabelData,
+  toUpcALabelData,
+  toUsFoodLabelData,
 } from '@packwright/label-core/schema'
 
 /**
@@ -123,20 +115,7 @@ export function createLabelRouter(
 
     const { stock = DEFAULT_UPC_A_STOCK, ...rest } = parsed.data
 
-    // Built key by key rather than cast. Under `exactOptionalPropertyTypes` an
-    // absent optional and one explicitly set to `undefined` are different types,
-    // so a spread does not satisfy `UpcALabelData` — and the `as never` that
-    // silenced it also switched off the only check that the request schema and
-    // the engine's input still agree on.
-    const data: UpcALabelData = {
-      gtin: rest.gtin,
-      ...(rest.magnification === undefined ? {} : { magnification: rest.magnification }),
-      ...(rest.barHeightMm === undefined ? {} : { barHeightMm: rest.barHeightMm }),
-      ...(rest.omitHri === undefined ? {} : { omitHri: rest.omitHri }),
-      ...(rest.symbolPlacement === undefined ? {} : { symbolPlacement: rest.symbolPlacement }),
-      ...(rest.artwork === undefined ? {} : { artwork: toArtwork(rest.artwork) }),
-      ...(rest.digitalLink === undefined ? {} : { digitalLink: toDigitalLink(rest.digitalLink) }),
-    }
+    const data = toUpcALabelData(rest)
 
     try {
       const layout = layOutUpcALabel(bwip, { data, stock })
@@ -188,28 +167,7 @@ export function createLabelRouter(
 
     const { stock = DEFAULT_GHS_STOCK, ...rest } = parsed.data
 
-    const data: GhsLabelData = {
-      regime: rest.regime,
-      productIdentifier: rest.productIdentifier,
-      capacityL: rest.capacityL,
-      ...(rest.signalWords === undefined ? {} : { signalWords: rest.signalWords }),
-      ...(rest.hazards === undefined ? {} : { hazards: rest.hazards }),
-      ...(rest.pictograms === undefined ? {} : { pictograms: rest.pictograms }),
-      ...(rest.hazardStatementCodes === undefined
-        ? {}
-        : { hazardStatementCodes: rest.hazardStatementCodes }),
-      ...(rest.precautionaryStatementCodes === undefined
-        ? {}
-        : { precautionaryStatementCodes: rest.precautionaryStatementCodes }),
-      ...(rest.supplier === undefined ? {} : { supplier: toSupplier(rest.supplier) }),
-      ...(rest.smallContainerLabelling === undefined
-        ? {}
-        : { smallContainerLabelling: rest.smallContainerLabelling }),
-      ...(rest.outerPackageStatement === undefined
-        ? {}
-        : { outerPackageStatement: rest.outerPackageStatement }),
-      ...(rest.pictogramSideMm === undefined ? {} : { pictogramSideMm: rest.pictogramSideMm }),
-    }
+    const data = toGhsLabelData(rest)
 
     try {
       const layout = layOutGhsLabel({ data, stock })
@@ -258,54 +216,7 @@ export function createLabelRouter(
 
     const { stock = DEFAULT_US_FOOD_STOCK, ...rest } = parsed.data
 
-    const data: UsFoodLabelData = {
-      statementOfIdentity: rest.statementOfIdentity,
-      netQuantity: toNetQuantity(rest.netQuantity),
-      container: toContainer(rest.container),
-      ...(rest.markingMethod === undefined ? {} : { markingMethod: rest.markingMethod }),
-      ...(rest.netQuantityFontSizeMm === undefined
-        ? {}
-        : { netQuantityFontSizeMm: rest.netQuantityFontSizeMm }),
-      ...(rest.netQuantityAnchor === undefined
-        ? {}
-        : { netQuantityAnchor: rest.netQuantityAnchor }),
-      ...(rest.informationPanelFontSizeMm === undefined
-        ? {}
-        : { informationPanelFontSizeMm: rest.informationPanelFontSizeMm }),
-      ...(rest.ingredients === undefined
-        ? {}
-        : { ingredients: rest.ingredients.map(toIngredient) }),
-      ...(rest.ingredientThreshold === undefined
-        ? {}
-        : { ingredientThreshold: rest.ingredientThreshold }),
-      ...(rest.ingredientsExemption === undefined
-        ? {}
-        : { ingredientsExemption: rest.ingredientsExemption }),
-      ...(rest.ingredientsExempt === undefined
-        ? {}
-        : { ingredientsExempt: rest.ingredientsExempt }),
-      ...(rest.containsStatement === undefined
-        ? {}
-        : { containsStatement: rest.containsStatement }),
-      ...(rest.containsStatementFontSizeMm === undefined
-        ? {}
-        : { containsStatementFontSizeMm: rest.containsStatementFontSizeMm }),
-      ...(rest.containsStatementGapMm === undefined
-        ? {}
-        : { containsStatementGapMm: rest.containsStatementGapMm }),
-      ...(rest.nutritionFacts === undefined
-        ? {}
-        : { nutritionFacts: toNutritionFacts(rest.nutritionFacts) }),
-      ...(rest.nutritionExemption === undefined
-        ? {}
-        : { nutritionExemption: rest.nutritionExemption }),
-      ...(rest.nutritionFactsExempt === undefined
-        ? {}
-        : { nutritionFactsExempt: rest.nutritionFactsExempt }),
-      ...(rest.responsibleFirm === undefined
-        ? {}
-        : { responsibleFirm: toResponsibleFirm(rest.responsibleFirm) }),
-    }
+    const data = toUsFoodLabelData(rest)
 
     try {
       const layout = layOutUsFoodLabel({ data, stock })
