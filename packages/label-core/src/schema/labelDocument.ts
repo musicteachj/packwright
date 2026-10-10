@@ -47,6 +47,7 @@ import {
   type GhsRegime,
 } from '../ghs/statements'
 import type { JudgeRequest } from '../judge/judge'
+import { LABEL_TYPES } from '../rules/types'
 import { getSymbologyConstraints } from '../symbology/constraints'
 import type { BarcodeEncoder } from '../symbology/layOutSymbol'
 import {
@@ -827,6 +828,36 @@ export const LabelCheckRequest = z.discriminatedUnion('labelType', [
 ])
 
 export type LabelCheckRequest = z.output<typeof LabelCheckRequest>
+
+/**
+ * The check request as one object, **for describing it, not for checking it.**
+ *
+ * `LabelCheckRequest` is a union at its top, which JSON Schema writes as `oneOf`,
+ * and Anthropic's API refuses a tool whose input schema has one there. Claude Code
+ * says so and drops the tool — “Skipping tool "check_label": its input schema
+ * uses top-level oneOf, which the Anthropic API does not accept”, from its own
+ * debug log on 2026-10-10 — so a model would never see the one tool that matters.
+ * This is the same request with the union moved down into `data`, where it is
+ * accepted, for a client to read; a request is still validated against
+ * `LabelCheckRequest`, which this cannot replace: it does not tie `data`'s form to
+ * `labelType`, and it carries none of the refinements.
+ */
+export const LabelCheckRequestOutline = z.object({
+  labelType: z.enum(LABEL_TYPES).describe('Which kind of label `data` describes.'),
+  data: z
+    .union([
+      UpcARequest.omit({ stock: true }),
+      GhsRequestShape.omit({ stock: true }),
+      UsFoodRequestBase.omit({ stock: true }),
+    ])
+    .describe(
+      "The label's fields, in the form `labelType` selects: the first for gs1-retail, the " +
+        'second for ghs-chemical, the third for us-food.',
+    ),
+  stock: StockSchema.optional().describe(
+    'The label stock in millimetres. Beside `data`, not inside it; defaults per label type.',
+  ),
+})
 
 /**
  * A parsed UPC-A request as the engine's input.

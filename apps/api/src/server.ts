@@ -1,6 +1,7 @@
 import { createApp } from './app'
 import { DEFAULT_AUDIT_LIMITS } from './audit/routes'
 import { DEFAULT_EXPORT_LIMIT } from './labels/routes'
+import { DEFAULT_MCP_LIMITS } from './mcp/routes'
 import { extractGhsLabel, sendThrough, visionClient, type ExtractLabel } from './audit/extract'
 import { connectToDatabase, databaseStatus } from './db'
 import { loadDotenv } from './dotenv'
@@ -53,6 +54,15 @@ const app = createApp({
   exportLimit: DEFAULT_EXPORT_LIMIT,
   ...(env.AUDIT_API_KEY === undefined ? {} : { auditApiKey: env.AUDIT_API_KEY }),
   ...(env.TRUST_PROXY_HOPS === undefined ? {} : { trustProxyHops: env.TRUST_PROXY_HOPS }),
+  ...(env.MCP_ENABLED
+    ? {
+        mcp: {
+          allowedHosts: env.MCP_ALLOWED_HOSTS,
+          allowedOrigins: env.MCP_ALLOWED_ORIGINS,
+          limits: DEFAULT_MCP_LIMITS,
+        },
+      }
+    : {}),
 })
 
 app.listen(env.PORT, () => {
@@ -72,5 +82,10 @@ app.listen(env.PORT, () => {
     extract === undefined
       ? 'no ANTHROPIC_API_KEY — /api/audit will answer 503'
       : 'vision extraction configured',
+  )
+  console.log(
+    env.MCP_ENABLED
+      ? `/mcp enabled, answering to localhost${env.MCP_ALLOWED_HOSTS.map((host) => `, ${host}`).join('')}`
+      : '/mcp disabled by MCP_ENABLED',
   )
 })

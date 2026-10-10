@@ -8,6 +8,7 @@ export {
   GhsSupplierSchema,
   IngredientSchema,
   LabelCheckRequest,
+  LabelCheckRequestOutline,
   LabelDocumentInput,
   NON_COMPLIANT_BUT_WELL_FORMED,
   NetQuantitySchema,
