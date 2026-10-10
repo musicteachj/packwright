@@ -92,13 +92,19 @@ Annex VIII Part A §5.2 sets ("UFI:"). It turns on whether the mixture falls und
 does not say. **Disclosed in `docs/WHAT-IS-NOT-CHECKED.md` on 2026-10-10**, with Part A, 5.3's alternatives:
 the inner or outer packaging, or the safety data sheet for a mixture supplied to an industrial site.
 
-**The EU sample labels name a supplier in Leeds, with no telephone number.** The landing page's GHS sample
-(`apps/web/src/views/landingSamples.ts`), the editor's starting label (`stores/labelDocument.ts`) and
-`GHS_CONFORMANT` are all `eu-clp` labels whose only supplier is in the UK, so none could be placed on the EU
-market since Article 4(11) began to apply on 1 July 2026; and all three give the supplier as a name and an
-address only, without the telephone number Article 17(1)(a) names. No rule reads either on a full label, so
-every check passes them. Each is a one-line change of sample
-data. Recorded on 2026-10-10 for James to decide, rather than folded into the disclosure stage.
+**Which precautionary statements a label carries is not judged, and not disclosed.** CLP Articles 22 and 28
+leave the selection from Annex I's tables to the supplier, with Article 28(3)'s limit of six unless more are
+needed. No rule compares a label's P-statements with its classification, so an eye irritant printing no eye
+response statement passes — the landing sample did, until 2026-10-10. `docs/WHAT-IS-NOT-CHECKED.md` says
+nothing about the selection; a sentence there would close it.
+
+**This engine cannot print a CLP supplemental hazard statement.** Annex II's EUH statements — EUH066 "Repeated
+exposure may cause skin dryness or cracking" among them, required by Annex VI for acetone — have no table in
+`ghs/statements.ts` and no field in a label document, so a substance or mixture that needs one cannot be
+labelled completely here. Found on 2026-10-10 while checking the landing sample, which was acetone and is now a
+fictional mixture that needs none. **Disclosed in `docs/WHAT-IS-NOT-CHECKED.md` the same day.** The statements
+themselves would need Annex II transcribed and verified, as the H- and P-statements were, and a field to carry
+those Annex VI assigns.
 
 **Servings per container is not checked against the net quantity.** The base US food fixture declares 8
 servings of 40 g in a 340 g package, which is 8.5. 101.9(b)(8)(i) rounds to the nearest whole number and does

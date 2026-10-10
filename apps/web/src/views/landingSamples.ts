@@ -1,6 +1,6 @@
 import type { GhsLabelData, UsFoodLabelData } from '@packwright/label-core'
 
-/**
+/*
  * Showcase documents, declared here rather than borrowed from the store.
  *
  * The editor's seeds exist to be edited: they open on a label the rules pass so
@@ -8,15 +8,43 @@ import type { GhsLabelData, UsFoodLabelData } from '@packwright/label-core'
  * two want different things, and sharing them would mean a change to the
  * editor's starting point silently redrawing the front door.
  */
+/**
+ * **A fictional mixture, not acetone.** This was "Acetone, technical grade" with H225 and
+ * H319. Acetone is harmonised in CLP Annex VI (index 606-001-00-8) as Flam. Liq. 2, Eye
+ * Irrit. 2 and STOT SE 3, so its label needs H336 and the supplemental EUH066 as well, and
+ * an identification number beside the name under Article 18(2)(a) — and this engine has no
+ * EUH statements, so it cannot draw acetone's label complete.
+ *
+ * A mixture classified Flam. Liq. 2 and Eye Irrit. 2 comes closer. Those give H225 and H319,
+ * GHS02 and GHS07, and "Danger" over "Warning" (Article 20(3)); Article 18(3)(b) asks a
+ * mixture's identifier to name its substances only for hazards it lists, eye irritation not
+ * among them. The precautionary statements are a selection from the Annex I tables for the
+ * two classes — P210 and P233 for the liquid, P280 for both, P305 + P351 + P338 for the eyes
+ * — and choosing them is the supplier's under Articles 22 and 28, which this tool does not
+ * judge.
+ *
+ * **Not complete, and no sample can be.** A real hazardous mixture placed on the EU market
+ * would carry its UFI (Article 25(7), Annex VIII Part A, 5.1–5.2). The submitter creates the
+ * code for a real Annex VIII submission, so a sample could only carry an invented one, which
+ * would be worse than none, and this tool has no field for it — `docs/WHAT-IS-NOT-CHECKED.md`
+ * says so. Read from the CLP consolidation in force, 02008R1272-20260701, on 2026-10-10.
+ */
 export const GHS_SAMPLE: GhsLabelData = {
   regime: 'eu-clp',
-  productIdentifier: 'Acetone, technical grade',
+  productIdentifier: 'Example degreaser',
   capacityL: 5,
   signalWords: ['Danger'],
   pictograms: ['GHS02', 'GHS07'],
   hazardStatementCodes: ['H225', 'H319'],
-  precautionaryStatementCodes: ['P210', 'P233', 'P280'],
-  supplier: { name: 'Example Chemicals Ltd', address: '1 Example Way, Leeds LS1 1AA' },
+  precautionaryStatementCodes: ['P210', 'P233', 'P280', 'P305 + P351 + P338'],
+  // CLP Article 4(11), applying from 1 July 2026: a supplier established in the Union,
+  // identified on the label; and Article 17(1)(a), its telephone number. This sample named a
+  // supplier in Leeds with no number, and no rule reads either. See docs/WHAT-IS-NOT-CHECKED.md.
+  supplier: {
+    name: 'Example Chemicals B.V.',
+    address: '1 Voorbeeldstraat, 3011 AA Rotterdam, Netherlands',
+    telephone: '+31 10 000 0000',
+  },
 }
 
 /**

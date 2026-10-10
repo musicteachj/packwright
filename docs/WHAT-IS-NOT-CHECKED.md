@@ -259,7 +259,18 @@ data sheet in place of the label.
 classification and its notification, which the label document does not carry. If your product is a hazardous
 mixture placed on the EU market, check the UFI yourself.
 
-These two readings are from consolidated CLP text 02008R1272-20260701, the version in force on 2026-10-10, and
+### Supplemental hazard statements (EUH) cannot be printed
+
+CLP Article 25(1) says supplemental statements "shall be included" on the label of a substance or mixture
+classified as hazardous that has the properties listed in Annex II, Part 1, and that a substance listed in Part 3
+of Annex VI carries "any supplemental hazard statements given therein" — EUH066, "Repeated exposure may cause
+skin dryness or cracking", for acetone among them. Annex II, Part 2 adds further statements for certain mixtures.
+
+**This tool holds none of these statements and has nowhere to put one.** It prints the H- and P-statements it
+holds verified texts for, and no EUH statement at all, so a label for a product that needs one is incomplete
+however clean its report. If your product needs a supplemental statement, add it to the printed label yourself.
+
+These three readings are from consolidated CLP text 02008R1272-20260701, the version in force on 2026-10-10, and
 Regulations (EU) 2024/2865 and 2025/2439, all read from the EU Publications Office on 2026-10-10. The
 consolidated text is a documentation aid; the Official Journal is the authentic version.
 
