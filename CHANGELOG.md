@@ -21,6 +21,13 @@ into a version only when there is a reason to.
   package root, since its schemas are built on load and the web app, which validates nothing with zod, would
   otherwise carry them: the web bundle is the same 1,419,099 bytes before and after, with no zod in it. Eight
   malformed and unexportable requests across the three export routes answer byte for byte as they did on `dev`.
+- **The export routes refuse a symbol the encoder could not produce, as the judge does.** A `SymbolLayoutError`
+  reached Express's error handler and came back a 500, while a `LayoutError` came back a 422 saying what could not
+  be drawn — and the judge and the editor already treat the two alike (#79). All three routes now ask one question,
+  `isLayoutRefusal`, and answer both with the same 422. No route is known to reach it with bwip-js, which raises a
+  `LayoutError` first, so a test stands bwip-js in with an encoder that draws nothing; it answers 500 without the
+  change. Only the UPC-A route draws a symbol; the other two share the test so they cannot drift from it. Closes the
+  backlog entry from the shared judge.
 - **One judge for every report, in `label-core`.** `judgeLabel` lays a label out and judges it; `judgeLayout`
   judges a layout in hand. The editor, the audit screen and the experiment harness now all call them, and the MCP
   server will, so none can tell a label something another would not. The report was assembled twice in the browser

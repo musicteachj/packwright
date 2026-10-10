@@ -19,6 +19,7 @@ import {
   DEFAULT_UPC_A_STOCK,
   DEFAULT_US_FOOD_STOCK,
   LayoutError,
+  SymbolLayoutError,
   blockingOmissions,
   labelFilename,
   layOutGhsLabel,
@@ -67,6 +68,19 @@ export const DEFAULT_EXPORT_LIMIT = { perHour: 60 } as const
 export interface ExportLimit {
   /** PDF renders per client per hour. */
   perHour: number
+}
+
+/**
+ * Whether an error is the engine declining to draw the label, rather than a fault.
+ *
+ * Two classes, one answer. `LayoutError` is a document that describes no drawing;
+ * `SymbolLayoutError` is a symbol the encoder could not produce. The judge and the
+ * editor refuse both alike (#79), and an export that answered the second with a
+ * 500 would be the one door disagreeing about the same label. Said once, so the
+ * three routes below cannot drift apart on it.
+ */
+function isLayoutRefusal(error: unknown): error is LayoutError | SymbolLayoutError {
+  return error instanceof LayoutError || error instanceof SymbolLayoutError
 }
 
 export function createLabelRouter(
@@ -151,7 +165,7 @@ export function createLabelRouter(
     } catch (error) {
       // A layout that cannot be produced at all is the caller's problem, not the
       // server's, and the message says exactly what could not be drawn.
-      if (error instanceof LayoutError) {
+      if (isLayoutRefusal(error)) {
         response.status(422).json({ error: 'Label cannot be laid out', detail: error.message })
         return
       }
@@ -221,7 +235,7 @@ export function createLabelRouter(
         )
       response.end(pdf)
     } catch (error) {
-      if (error instanceof LayoutError) {
+      if (isLayoutRefusal(error)) {
         response.status(422).json({ error: 'Label cannot be laid out', detail: error.message })
         return
       }
@@ -317,7 +331,7 @@ export function createLabelRouter(
         )
       response.end(pdf)
     } catch (error) {
-      if (error instanceof LayoutError) {
+      if (isLayoutRefusal(error)) {
         response.status(422).json({ error: 'Label cannot be laid out', detail: error.message })
         return
       }
