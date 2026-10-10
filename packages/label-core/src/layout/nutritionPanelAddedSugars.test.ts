@@ -21,9 +21,9 @@
 import { describe, expect, it } from 'vitest'
 import { NUTRIENT_IDS, nutrient } from '../fda/nutrients'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES } from '../rules/fixtures/usFood'
-import { nutritionRowElementId } from '../templates/usFood'
+import { US_FOOD_ELEMENTS, nutritionRowElementId } from '../templates/usFood'
 import type { UsFoodLabelData, UsFoodNutritionFacts } from '../templates/usFood'
-import { measureTextMm } from '../text/measure'
+import { measureTextMm, measuredFamilyFor } from '../text/measure'
 import type { ResolvedLayout, TextPrimitive } from './types'
 import { layOutUsFoodLabel } from './usFoodEngine'
 
@@ -57,6 +57,20 @@ describe('the standard vertical display', () => {
     expect(addedSugars.xMm).toBeGreaterThan(totalSugars.xMm)
   })
 
+  it('prints no "Includes" where there is no amount for it to introduce', () => {
+    // (c)(6)(iii) prefaces the *amount*. A panel listing Added Sugars with none
+    // declared is incomplete, and the completeness rule says so; the row should not
+    // also print a preface introducing a figure that is not there.
+    const facts = US_FOOD_CONFORMANT.data.nutritionFacts!
+    const { 'added-sugars': _amount, ...amounts } = facts.amounts
+    const { 'added-sugars': _declared, ...declaredAmounts } = facts.declaredAmounts ?? {}
+    const bare = layOutUsFoodLabel({
+      data: panelOf({ amounts, declaredAmounts }),
+      stock: US_FOOD_CONFORMANT.stock,
+    })
+    expect(nameOf(bare, 'added-sugars')?.text).toBe('Added Sugars')
+  })
+
   it('leaves every other row as it was', () => {
     expect(nameOf(layout, 'total-sugars')?.text).toBe('Total Sugars 1g')
     expect(nameOf(layout, 'protein')?.text).toBe('Protein 5g')
@@ -82,6 +96,28 @@ describe('the dual-column display', () => {
       .filter((primitive) => primitive.anchor === 'end')
       .map((primitive) => primitive.text)
     expect(cells).toEqual(['0g 0%', '0g 0%'])
+  })
+})
+
+describe('a dual-column row with no amount in either column', () => {
+  it('is named alone, with no "Includes" introducing figures that are not there', () => {
+    const facts = US_FOOD_CONFORMANT.data.nutritionFacts!
+    const { 'added-sugars': _amount, ...amounts } = facts.amounts
+    const { 'added-sugars': _declared, ...declaredAmounts } = facts.declaredAmounts ?? {}
+    const layout = layOutUsFoodLabel({
+      data: panelOf({
+        amounts,
+        declaredAmounts,
+        columns: {
+          mode: 'dual',
+          basis: 'per-container',
+          headings: ['Per serving', 'Per container'],
+          secondAmounts: { iron: 16 },
+        },
+      }),
+      stock: US_FOOD_CONFORMANT.stock,
+    })
+    expect(nameOf(layout, 'added-sugars')?.text).toBe('Added Sugars')
   })
 })
 
@@ -154,7 +190,14 @@ describe('indentation on the tabular display', () => {
     })
     expect(drawnRows.length).toBeGreaterThan(10)
     for (const { id, element, text } of drawnRows) {
-      const endMm = text.xMm + measureTextMm(text.text, text.fontSizeMm, text.fontFamily)
+      // In the face it prints in: a top-level row is SemiBold, 3 to 5 percent wider.
+      const endMm =
+        text.xMm +
+        measureTextMm(
+          text.text,
+          text.fontSizeMm,
+          measuredFamilyFor(text.fontFamily, text.fontWeight),
+        )
       expect(endMm, id).toBeLessThanOrEqual(element.box.xMm + element.box.widthMm + 1e-6)
     }
   })
@@ -196,13 +239,90 @@ describe('a sub-row and its parent on the tabular display', () => {
   )
 })
 
+describe('a name printed into its own figures', () => {
+  // A vertical row's name is set from the left and its figures from the right, and
+  // nothing measured one against the other. "Includes Added Sugars", two levels in,
+  // ran 1.87 mm into its own "0g 0%" on a 61 mm dual-column panel with no omission,
+  // so every pass keyed to the panel stood over overprinted ink. Found by
+  // `/code-review high` on PR #75. Measured in the face each run prints in.
+  const dualAt = (widthMm: number) =>
+    layOutUsFoodLabel({
+      data: {
+        ...panelOf({
+          columns: {
+            mode: 'dual',
+            basis: 'per-container',
+            headings: ['Per serving', 'Per container'],
+            secondAmounts: { 'added-sugars': 0 },
+          },
+        }),
+        container: { shape: 'rectangular', widthMm, heightMm: 240 },
+      },
+      stock: { widthMm, heightMm: 240, marginMm: 3 },
+    })
+  const overprint = (layout: ResolvedLayout) =>
+    layout.omissions.filter(
+      (o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel && /printed over/.test(o.reason),
+    )
+
+  it.each([61, 62, 63])('is recorded against the panel at %i mm', (widthMm) => {
+    const found = overprint(dualAt(widthMm))
+    expect(found).toHaveLength(1)
+    expect(found[0]!.reason).toMatch(/^On the Added Sugars line, the words run .* into the figures/)
+  })
+
+  it('is not recorded where the name clears its figures', () => {
+    expect(overprint(dualAt(70))).toEqual([])
+    expect(overprint(layOutUsFoodLabel(US_FOOD_CONFORMANT))).toEqual([])
+  })
+
+  // The serving size is set the same way — its label from the left, the size the
+  // user typed from the right — and was not measured either: on a 61 mm label a long
+  // one ran 30 mm over "Serving size" and 7 mm off the label's left edge, every
+  // panel pass standing. Found by `/code-review medium` on 2026-10-10.
+  const longServing = layOutUsFoodLabel({
+    data: {
+      ...panelOf({ servingSize: '1 cup prepared (240mL) about 3 pieces' }),
+      container: { shape: 'rectangular', widthMm: 61, heightMm: 240 },
+    },
+    stock: { widthMm: 61, heightMm: 240, marginMm: 3 },
+  })
+
+  it('is recorded for a serving size printed over its own label', () => {
+    expect(overprint(longServing).map((o) => o.reason)).toEqual([
+      expect.stringMatching(/^On the Serving size line, the words run .* into the figures/),
+    ])
+  })
+
+  it('pairs the Calories word with its figure, drawn as two elements', () => {
+    // At 40 mm the conformant panel's "150" runs 3.45 mm into "Calories".
+    const narrow = layOutUsFoodLabel({
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        container: { shape: 'rectangular', widthMm: 40, heightMm: 240 },
+      },
+      stock: { widthMm: 40, heightMm: 240, marginMm: 3 },
+    })
+    expect(overprint(narrow).map((o) => o.reason)).toContainEqual(
+      expect.stringMatching(/^On the Calories line, the words run/),
+    )
+  })
+
+  it('records a figure set from the right that runs off the label to the left', () => {
+    expect(
+      longServing.omissions.filter(
+        (o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel && /left edge/.test(o.reason),
+      ),
+    ).toHaveLength(1)
+  })
+})
+
 describe('the longer line', () => {
-  // The vertical display measures no row against the figures beside it, and this
-  // line grew by nine characters and an indent; on a dual-column panel the names
-  // get a fixed share of the width. Every fixture drawing an Added Sugars row on a
-  // vertical panel, single or dual, is checked for the name running into the first
-  // figure. Fixtures that draw no such row are left out up front rather than
-  // passed silently inside the test.
+  // This line grew by nine characters and an indent, and on a dual-column panel the
+  // names get a fixed share of the width. The engine now records a name printed into
+  // its figures; this checks that no fixture reaches that, measured as the engine
+  // measures, in the face each run prints in. Fixtures that draw no such row are left
+  // out up front rather than passed silently inside the test.
   const drawn = [
     { name: 'conformant', ...US_FOOD_CONFORMANT },
     ...US_FOOD_FIXTURES.map(({ name, data, stock }) => ({ name, data, stock })),
@@ -222,10 +342,10 @@ describe('the longer line', () => {
   it.each(drawn.map((entry) => [entry.name, entry] as const))(
     'does not run into its figures: %s',
     (_name, { label, figures }) => {
-      const labelEndMm = label.xMm + measureTextMm(label.text, label.fontSizeMm, label.fontFamily)
-      const firstFigureMm = Math.min(
-        ...figures.map((f) => f.xMm - measureTextMm(f.text, f.fontSizeMm, f.fontFamily)),
-      )
+      const inkMm = (run: TextPrimitive) =>
+        measureTextMm(run.text, run.fontSizeMm, measuredFamilyFor(run.fontFamily, run.fontWeight))
+      const labelEndMm = label.xMm + inkMm(label)
+      const firstFigureMm = Math.min(...figures.map((f) => f.xMm - inkMm(f)))
       expect(labelEndMm).toBeLessThan(firstFigureMm)
     },
   )

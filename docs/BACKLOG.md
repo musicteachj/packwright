@@ -66,13 +66,6 @@ Found because a model, asked about labels this engine passes, raised requirement
 Each was verified against the primary source on 2026-10-09; the experiment is
 `docs/experiments/2026-10-09-mcp-without/`.
 
-**The vertical display measures no row against the figures beside it.** A row's name is set from the left and
-its percentage from the right, and nothing checks that the two do not meet; a narrow enough panel would print
-one through the other. Found while lengthening the Added Sugars line on 2026-10-10, which a test now checks
-across every fixture: the tightest, a 60 mm label on a cylinder, keeps 9.7 mm between them, and the conformant
-label 21.7 mm. The risk is old and general — "Total Carbohydrate 27g" is nearly as long — so it waits for a
-label that reaches it, when it becomes a layout omission like the tabular display's border check.
-
 **The linear display prints Added Sugars as an item of its own.** The engine's run reads "…, Total Sugars 1g,
 Includes 0g Added Sugars 0%, …". The regulation's own linear sample, at (j)(13)(ii)(A)(2), nests it after Total
 Sugars: "Total Sugars 2g (Incl. 2g Added Sugars, 4% DV)". The text of (c)(6)(iii) asks for the preface and an

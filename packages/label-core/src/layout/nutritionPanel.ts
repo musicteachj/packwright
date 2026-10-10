@@ -958,7 +958,9 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     const start = yMm
     const elementId = nutritionRowElementId(id)
     const amount = amountOf(facts, id)
-    const label = printedNutrientLine(entry, amount)
+    // With no amount there is nothing for (c)(6)(iii)'s "Includes" to introduce, so
+    // the row is named alone; the completeness rule reports the missing figure.
+    const label = amount === undefined ? entry.name : printedNutrientLine(entry, amount)
     // Two spaces per level: a sub-row under its parent, and Added Sugars one level
     // further, "indented under Total Sugars" as (c)(6)(iii) requires.
     const indentMm =
@@ -980,7 +982,11 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     // In a dual column the weight belongs *in* the column beside the percentage,
     // not appended to the name — (e)(3) presents "the quantitative information by
     // weight and the percent Daily Value" together, per column.
-    text(dual ? printedNutrientLine(entry) : label, NUTRITION_PANEL_TYPE.nutrientPt, {
+    // A dual row's figures sit in the columns, so its name carries the preface only
+    // where one of them has a figure for it to introduce.
+    const dualName =
+      amount === undefined && second === undefined ? entry.name : printedNutrientLine(entry)
+    text(dual ? dualName : label, NUTRITION_PANEL_TYPE.nutrientPt, {
       bold: entry.indent === 0,
       x: leftMm + indentMm,
       elementId,
