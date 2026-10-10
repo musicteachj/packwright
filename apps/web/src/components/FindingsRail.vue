@@ -27,9 +27,9 @@ import FindingItem from './FindingItem.vue'
 
 const props = withDefaults(
   defineProps<{
-    groups: ReadonlyArray<[Severity, Finding[]]>
-    failures: Finding[]
-    passes: Finding[]
+    groups: ReadonlyArray<readonly [Severity, readonly Finding[]]>
+    failures: readonly Finding[]
+    passes: readonly Finding[]
     /** Symbols that could not be certified — reported, but deliberately not judged. */
     uncertifiable: ReadonlyArray<Uncheckable>
     /**

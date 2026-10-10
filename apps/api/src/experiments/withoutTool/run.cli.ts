@@ -37,7 +37,7 @@ import {
   sha256,
   type Recorded,
 } from './records'
-import { engineFindings, layOut, promptFor } from './prompt'
+import { judgeCase, promptFor } from './prompt'
 
 /**
  * The two models, at their API defaults. Sonnet 5.5 runs adaptive thinking at
@@ -102,8 +102,7 @@ function describe(): Map<string, string> {
   ]
 
   for (const item of CASES) {
-    const layout = layOut(item)
-    const findings = engineFindings(item, layout)
+    const { layout, findings } = judgeCase(item)
     const reported = findings.filter((finding) => finding.severity !== 'pass')
     if (item.expected !== null) {
       const { code, citation } = item.expected

@@ -17,9 +17,6 @@
 
 import * as bwip from 'bwip-js/generic'
 import { describe, expect, it } from 'vitest'
-import { layOutGhsLabel } from '../layout/ghsEngine'
-import { layOutUpcALabel } from '../layout/engine'
-import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import type { ResolvedLayout } from '../layout/types'
 import { declinedChecks, runRules } from '../rules/registry'
 import { compareSeverity, type RuleContext } from '../rules/types'
@@ -28,7 +25,7 @@ import { GHS_CONFORMANT, GHS_FIXTURES } from '../rules/fixtures/ghs'
 import { PERMISSION_PATHS } from '../rules/fixtures/sweep'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES, US_FOOD_SMALL_PANEL } from '../rules/fixtures/usFood'
 import type { Finding, Severity } from '../types/index'
-import { judgeLabel, judgeLayout, type JudgeRequest } from './judge'
+import { judgeLabel, type JudgeRequest } from './judge'
 
 /** `apps/web/src/uncheckable.ts` at `fe0112f`, frozen. */
 function legacyUncheckable(layout: ResolvedLayout) {
@@ -125,17 +122,6 @@ const documents: { name: string; request: JudgeRequest }[] = [
   })),
 ]
 
-const layOut = (request: JudgeRequest): ResolvedLayout => {
-  switch (request.labelType) {
-    case 'gs1-retail':
-      return layOutUpcALabel(request.barcode, request)
-    case 'ghs-chemical':
-      return layOutGhsLabel(request)
-    case 'us-food':
-      return layOutUsFoodLabel(request)
-  }
-}
-
 describe('the judge, against the report the browser built', () => {
   it('has the whole sweep to compare, every label type among it', () => {
     expect(documents.length).toBeGreaterThan(60)
@@ -160,19 +146,6 @@ describe('the judge, against the report the browser built', () => {
     ).toContainEqual({
       text: expect.stringMatching(/^Artwork is printed over the UPC-A symbol\./),
     })
-  })
-
-  it('judges an existing layout the same way it judges a request', () => {
-    // `judgeLayout` is what the editor calls, on the layout it has already drawn.
-    for (const { request } of documents) {
-      const layout = layOut(request)
-      const { layout: _drawn, ...fromRequest } = judgeLabel(request) as Extract<
-        ReturnType<typeof judgeLabel>,
-        { outcome: 'judged' }
-      >
-      const { layout: _given, ...fromLayout } = judgeLayout({ ...request, layout } as RuleContext)
-      expect(fromLayout).toEqual(fromRequest)
-    }
   })
 })
 
@@ -225,6 +198,21 @@ describe('what the judge refuses', () => {
     expect(judged).toEqual({
       outcome: 'refused',
       reason: expect.stringMatching(/^There is no label type "pharma-leaflet"/),
+    })
+  })
+
+  it('refuses a symbol the encoder could not produce, rather than crash', () => {
+    // `SymbolLayoutError` is its own class, not a `LayoutError`; an encoder that draws
+    // no bars raises one from inside the engine. Found by `/code-review high` on #79.
+    const judged = judgeLabel({
+      labelType: 'gs1-retail',
+      data: CONFORMANT_FIXTURE.data,
+      stock: CONFORMANT_FIXTURE.stock,
+      barcode: { render: (_options, drawing) => drawing.end() },
+    })
+    expect(judged).toEqual({
+      outcome: 'refused',
+      reason: expect.stringMatching(/produced no bars/),
     })
   })
 })

@@ -17,10 +17,9 @@ import {
   DEFAULT_UPC_A_STOCK,
   DEFAULT_US_FOOD_STOCK,
   LayoutError,
+  SymbolLayoutError,
   judgeLayout,
-  layOutGhsLabel,
-  layOutUpcALabel,
-  layOutUsFoodLabel,
+  layOutLabel,
   normaliseScannedGtin,
   uncheckableIn,
   type DeclinedCheck,
@@ -203,17 +202,24 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
       if (labelType.value === 'gs1-retail' && encoder === null) {
         void loadBarcodeEncoder().catch(() => {})
       }
+      // Through `layOutLabel`, the one dispatch the judge and the server use too, so
+      // the editor cannot draw a document differently from the way they do. The
+      // placeholder is the exception, and is never judged: see `encoderPending`.
       const layout =
         labelType.value === 'gs1-retail'
           ? encoder === null
             ? placeholderUpcALayout({ data, stock })
-            : layOutUpcALabel(encoder, { data, stock })
+            : layOutLabel({ labelType: 'gs1-retail', data, stock, barcode: encoder })
           : labelType.value === 'ghs-chemical'
-            ? layOutGhsLabel({ data: ghsData, stock: ghsStock })
-            : layOutUsFoodLabel({ data: foodData, stock: foodStock })
+            ? layOutLabel({ labelType: 'ghs-chemical', data: ghsData, stock: ghsStock })
+            : layOutLabel({ labelType: 'us-food', data: foodData, stock: foodStock })
       return { layout, error: null }
     } catch (error) {
-      if (error instanceof LayoutError) return { layout: null, error: error.message }
+      // `SymbolLayoutError` too, which is its own class: the judge refuses it, and the
+      // editor shows it as the same kind of form state rather than throw out of a computed.
+      if (error instanceof LayoutError || error instanceof SymbolLayoutError) {
+        return { layout: null, error: error.message }
+      }
       throw error
     }
   })
@@ -290,7 +296,7 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     return context === undefined ? undefined : judgeLayout(context)
   })
 
-  const findings = computed<Finding[]>(() => judgement.value?.findings ?? [])
+  const findings = computed<readonly Finding[]>(() => judgement.value?.findings ?? [])
 
   /**
    * Checks that did not run, and what each would need in order to.
@@ -300,10 +306,10 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    * one names questions the label never answered. `docs/WHAT-IS-NOT-CHECKED.md`
    * tells a reader they are different things, so the rail has to keep them apart.
    */
-  const declined = computed<DeclinedCheck[]>(() => judgement.value?.declined ?? [])
+  const declined = computed<readonly DeclinedCheck[]>(() => judgement.value?.declined ?? [])
 
   /** Most severe first; passes last, where the rail collapses them. */
-  const findingsBySeverity = computed<ReadonlyArray<[Severity, Finding[]]>>(
+  const findingsBySeverity = computed<ReadonlyArray<readonly [Severity, readonly Finding[]]>>(
     () => judgement.value?.groups ?? [],
   )
 
@@ -325,10 +331,9 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    * off the label, with nothing saying why. A check that was declined has to read
    * as declined, or it is indistinguishable from a check that was never written.
    */
-  // The judge's list once there is a judgement. Before one — the barcode encoder still
-  // loading — the same builder reads the placeholder layout, so what cannot be drawn
-  // is said while the findings wait.
-  const uncertifiable = computed(() => judgement.value?.uncheckable ?? uncheckableIn(layout.value))
+  // The builder the judge uses, on the layout alone — it reads no rule, so it need not
+  // wait for one, and it reads the placeholder too while the encoder loads.
+  const uncertifiable = computed(() => uncheckableIn(layout.value))
 
   const elementLabels = computed(() => {
     const labels = new Map<ElementId, string>()

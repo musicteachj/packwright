@@ -36,9 +36,9 @@ export interface AuditReport {
   readonly outcome: 'reported'
   readonly layout: ResolvedLayout
   readonly findings: readonly Finding[]
-  readonly groups: ReadonlyArray<[Severity, Finding[]]>
-  readonly failures: Finding[]
-  readonly passes: Finding[]
+  readonly groups: ReadonlyArray<readonly [Severity, readonly Finding[]]>
+  readonly failures: readonly Finding[]
+  readonly passes: readonly Finding[]
   /**
    * What the engine could not draw, and why.
    *

@@ -10,39 +10,27 @@
 
 import {
   buildDigitalLinkUri,
-  layOutGhsLabel,
-  layOutUpcALabel,
-  judgeLayout,
-  layOutUsFoodLabel,
-  type Finding,
+  judgeLabel,
+  type Judgement,
   type ResolvedLayout,
-  type RuleContext,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import type { CaseLabel, ExperimentCase } from './cases'
 
-export function layOut(item: ExperimentCase): ResolvedLayout {
-  const { label } = item
-  switch (label.labelType) {
-    case 'ghs-chemical':
-      return layOutGhsLabel({ data: label.data, stock: label.stock })
-    case 'gs1-retail':
-      return layOutUpcALabel(bwip, { data: label.data, stock: label.stock })
-    case 'us-food':
-      return layOutUsFoodLabel({ data: label.data, stock: label.stock })
-  }
-}
-
 /**
- * The findings the engine reports on the document — what the "with" half would return.
+ * The case judged by the judge the editor and the MCP server share.
  *
- * Through the judge the editor and the MCP server share, so the experiment's two
- * halves are read against one judgement. Its findings are `runRules`'s exactly, so
- * the recorded `engine.json` does not change.
+ * One call instead of this file's own switch from label type to layout function and
+ * a cast to the rules' context. A case the judge refuses is a broken case, not a
+ * result, so it throws. What `run.cli.ts` records from it is unchanged — the
+ * findings, as `engine.json` has held them since 2026-10-09 — and the full
+ * judgement, declined checks included, is stage 19's to record in its new record.
  */
-export function engineFindings(item: ExperimentCase, layout: ResolvedLayout): Finding[] {
+export function judgeCase(item: ExperimentCase): Judgement {
   const { label } = item
-  return judgeLayout({ ...label, layout } as RuleContext).findings
+  const judged = judgeLabel(label.labelType === 'gs1-retail' ? { ...label, barcode: bwip } : label)
+  if (judged.outcome === 'refused') throw new Error(`${item.id}: refused — ${judged.reason}`)
+  return judged
 }
 
 /** Baselines closer than this are one printed line. */
