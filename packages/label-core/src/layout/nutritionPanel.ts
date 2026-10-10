@@ -618,6 +618,10 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
           // puts Added Sugars under Total Sugars; no display is excepted, and the
           // tabular samples indent. This display set every row flush and told a
           // sub-row only by its weight. Two spaces a level, as the vertical panel.
+          // How far is not a requirement anywhere: 101.9 sets no measure, and
+          // Appendix B to part 101 — which (d)(1) only "strongly recommends" — shows
+          // indented rows but gives no figure for them. Read from the eCFR on
+          // 2026-10-10, so no rule judges the depth, only that it is there.
           indentMm: entry.indent * gutterMm,
         },
       ]
