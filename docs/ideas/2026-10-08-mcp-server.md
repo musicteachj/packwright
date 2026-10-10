@@ -121,7 +121,10 @@ Express server in that container.
 - **No login, on purpose**: the tools only read and judge; nothing saved, nothing that spends money. Saving
   labels and the photo audit stay out.
 - **Rate limit** `/mcp`, and set `TRUST_PROXY_HOPS=1` behind the load balancer so each caller gets their own limit.
-- Treat tool names and inputs like a public API: renaming one breaks people's connections.
+  (Corrected 2026-10-10: every claude.ai user arrives from one Anthropic address range, so a single per-address
+  limit would cut them all off at once. The plan uses two tiers — `docs/plans/2026-10-10-mcp.md`, stage 18.)
+- Treat tool names and inputs like a public API. (Corrected 2026-10-10: renaming one does not break a connection,
+  since a client asks for the tool list each time it connects, but it resets whatever refers to a tool by name.)
 - Test locally first with the **MCP Inspector** (the official debugging tool), then in Claude Code / Desktop,
   then the live URL as a Claude connector.
 
@@ -158,7 +161,7 @@ The suggested order, recorded 2026-10-08:
 ## Open decisions
 
 - Whether the order above holds (it is a suggestion, not agreed).
-- Public, private, or local only.
+- ~~Public, private, or local only.~~ Public, decided 2026-10-10 — see `docs/plans/2026-10-10-mcp.md`.
 - ~~Whether to run the cheap "without" experiment first.~~ Run on 2026-10-09, and it confirms the case: Claude
   Sonnet 5.5 found most planted defects but put a wrong or nonexistent citation in 31 of 36 answers and cleared a
   defective label three times. `docs/experiments/2026-10-09-mcp-without/README.md`.
