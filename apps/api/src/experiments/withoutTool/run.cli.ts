@@ -56,7 +56,10 @@ const CONCURRENCY = 4
 /** Stop starting calls once recorded spend reaches this, in USD. */
 const SPEND_CAP_USD = 6
 
-const OUT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../docs/experiments/2026-10-09-mcp-without')
+const OUT = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../../../docs/experiments/2026-10-09-mcp-without',
+)
 const RESPONSES = join(OUT, 'responses.jsonl')
 
 type ModelSpec = (typeof MODELS)[number]
@@ -72,7 +75,10 @@ function readRecorded(): Recorded[] {
   if (!existsSync(RESPONSES)) return []
   const text = readFileSync(RESPONSES, 'utf8')
   const { records, truncatedTail, intact } = parseRecorded(text)
-  if (truncatedTail) console.error(`Removing an unfinished last line from ${RESPONSES}; its call will be made again.`)
+  if (truncatedTail)
+    console.error(
+      `Removing an unfinished last line from ${RESPONSES}; its call will be made again.`,
+    )
   if (intact !== text) writeFileSync(RESPONSES, intact)
   return records
 }
@@ -124,7 +130,9 @@ function describe(): Map<string, string> {
       `## ${item.id}`,
       '',
       `From fixture: ${item.fixtureName}. Planted: ${
-        item.expected === null ? 'nothing (control)' : `\`${item.expected.code}\`, ${item.expected.citation}`
+        item.expected === null
+          ? 'nothing (control)'
+          : `\`${item.expected.code}\`, ${item.expected.citation}`
       }.`,
       ...(item.note === undefined ? [] : ['', `Note: ${item.note}`]),
       '',
@@ -149,11 +157,17 @@ function describe(): Map<string, string> {
   if (answered.size > 0 && !existsSync(casesPath)) {
     // The records of 2026-10-09 carry no prompt hash; cases.md is the only
     // evidence of what they answered, and a fresh one would be today's prompts.
-    console.error('responses.jsonl holds answers but cases.md is missing; restore it from git. Nothing was written.')
+    console.error(
+      'responses.jsonl holds answers but cases.md is missing; restore it from git. Nothing was written.',
+    )
     process.exit(1)
   }
   if (answered.size > 0) {
-    const changed = promptsThatChanged(promptsInCasesMd(readFileSync(casesPath, 'utf8')), prompts, answered)
+    const changed = promptsThatChanged(
+      promptsInCasesMd(readFileSync(casesPath, 'utf8')),
+      prompts,
+      answered,
+    )
     if (changed.length > 0) {
       console.error(
         `responses.jsonl holds answers to the prompts in cases.md, and these would change: ${changed.join(', ')}.` +
@@ -170,7 +184,9 @@ function describe(): Map<string, string> {
   const engineJson = `${JSON.stringify(engine, null, 2)}\n`
   if (answered.size === 0 || !existsSync(enginePath)) writeFileSync(enginePath, engineJson)
   else if (readFileSync(enginePath, 'utf8') !== engineJson)
-    console.error('The engine now reports differently on these cases; engine.json is kept as it was graded.')
+    console.error(
+      'The engine now reports differently on these cases; engine.json is kept as it was graded.',
+    )
   return prompts
 }
 
@@ -264,7 +280,9 @@ async function main(): Promise<void> {
     console.error(`Stopped at the $${SPEND_CAP_USD} cap with ${notStarted.length} calls not made.`)
   console.log(`Recorded spend: $${spent.toFixed(4)}`)
   if (failed.length > 0) {
-    console.error(`${failed.length} calls failed and were not recorded; run again to retry only those.`)
+    console.error(
+      `${failed.length} calls failed and were not recorded; run again to retry only those.`,
+    )
     process.exitCode = 1
   }
 }

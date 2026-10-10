@@ -346,7 +346,9 @@ export const CASES: readonly ExperimentCase[] = [
       code: GS1_GTIN_CHECK_DIGIT_INVALID,
       citation: 'GS1 General Specifications 26.0 §7.9.1',
     },
-    facts: ['This is the barcode label for a retail product; the GTIN was assigned from our GS1 US company prefix.'],
+    facts: [
+      'This is the barcode label for a retail product; the GTIN was assigned from our GS1 US company prefix.',
+    ],
     note:
       'Described from the document: the engine refuses to draw a UPC-A whose check digit is wrong, ' +
       'so its layout prints nothing.',
