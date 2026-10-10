@@ -16,7 +16,7 @@ and the twenty-label cap (#68), and the phone scan-back steps (#69).
 | 8 | **GHS pictogram citation for US labels** | `ghs/pictogram-set` cites CLP Annex V on `us-osha` labels too. Read and verify 29 CFR 1910.1200 Appendix C, then cite per regime — or, if the reading does not support that, step aside for US labels with `Decline.limit`. | high (`rules/`) | one stage |
 | 9 | **The ingredient-order check as its own rule** | Closes the assortment gap: the order check can stand down in silence, unnamed under "checks that did not run", reachable since #65. | high (`rules/`) | one stage |
 | 10 | **Editor dead ends** | The hand-set type size refusing a zero the way measurements do, not a raw 400. The Nutrition Facts "exempt" status contradicting a ticked panel. A GHS market switch leaving codes the export refuses — behaviour to be decided with James first; suggested: the audit screen's pattern (show them, mark them not carried, keep the rest). | medium | one stage |
-| — | **The MCP "without" experiment** | A few fixture labels given to an AI with no tool: does it invent regulations or miss problems? A few dollars. **The gate** — it decides whether the MCP work goes ahead. Independent of stages 7–10; can run earlier if James wants the answer sooner. | — | about an hour |
+| 11 | **The MCP "without" experiment** | A few fixture labels given to an AI with no tool: does it invent regulations or miss problems? A few dollars. **The gate** — it decides whether the MCP work goes ahead. **Run on 2026-10-09: it confirms the case.** Sonnet 5.5 caught 26 of 30 planted defects, but 31 of its 36 answers carried a wrong or nonexistent citation and it cleared a defective label three times; $2.11. See `docs/experiments/2026-10-09-mcp-without/`. | — | about an hour |
 | — | **MCP planning, then building** | Only if the experiment confirms the case. The shared judge in `label-core` (high), then the server. See `docs/ideas/2026-10-08-mcp-server.md`. | per stage | two stages |
 | — | **Phase 8, deployment** | `docs/DESIGN.md` § Phase 8, with `/mcp` live if built. Confirmed with James before it starts. | — | — |
 | — | **The full with/without eval** | Before or after phase 8. | — | one stage |
@@ -33,7 +33,9 @@ and the twenty-label cap (#68), and the phone scan-back steps (#69).
 
 ## Before the MCP experiment — James to arrange
 
-- An Anthropic API key with a spending limit set in the console. There is no `.env` in the repository now.
+- An Anthropic API key with a spending limit set in the console. **The key already exists:** `apps/api/.env` holds
+  `ANTHROPIC_API_KEY`, gitignored, the one the photo audit uses. This line said on 2026-10-08 that there was no
+  `.env` in the repository, which was wrong. Whether the console has a spending limit set is James's to confirm.
 - Which models to test. Suggested: Sonnet 5.5, perhaps Haiku 4.5 for contrast.
 
 ## Coming at phase 8

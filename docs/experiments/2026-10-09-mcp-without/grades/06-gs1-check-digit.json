@@ -1,0 +1,454 @@
+{
+ "caseId": "06-gs1-check-digit",
+ "sources": "GS1 General Specifications 26.0 (/tmp/mcpw/sources/gs1-general-specifications-26.0.pdf; pp. 7, 410, 544 rendered and read as images); 15 USC 1453, 21 CFR 101.x and FDCA 403 from /tmp/mcpw/sources; 16 CFR Part 500, 16 CFR Part 701, 21 CFR 101.1 and the Title 21 structure fetched from the eCFR on 2026-10-09",
+ "answers": [
+  {
+   "model": "claude-sonnet-5-5",
+   "run": 1,
+   "planted": "caught",
+   "falseClearance": false,
+   "citations": [
+    {
+     "ref": "GS1 General Specifications, \"Check digit calculation\" section",
+     "claim": "check digit of 0 36000 29145 must be 2, not 3",
+     "verdict": "V",
+     "evidence": "GenSpecs 26.0 §7.9.1, Table 7-8 \"Check digit algorithm\": GTIN-12 positions N1..N11 weighted x3,x1,...,x3; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2."
+    },
+    {
+     "ref": "ISO/IEC 15420",
+     "claim": "UPC-A symbology definition",
+     "verdict": "U",
+     "evidence": "ISO/IEC standard not among sources; not verified."
+    },
+    {
+     "ref": "GS1 US membership and licensing terms",
+     "claim": "may not use a GTIN from a prefix you are not licensed for",
+     "verdict": "U",
+     "evidence": "GS1 US terms not among sources."
+    },
+    {
+     "ref": "GS1 General Specifications (GTIN allocation)",
+     "claim": "may not use a number you are not licensed to use",
+     "verdict": "V",
+     "evidence": "GenSpecs §1.5: \"A GS1 identification licence, GS1 Company Prefix, or individual GS1 identification key SHALL NOT be sold, leased, or given, in whole or in part, for use by any other company.\"; §4 (p.281): a trade item \"SHALL be assigned a GTIN from the GTIN allocator's licenced GS1 Company Prefix or individual GS1 keys\"."
+    },
+    {
+     "ref": "ISO/IEC 15416",
+     "claim": "scan grade 1.5 (C) or better typically required",
+     "verdict": "U",
+     "evidence": "ISO/IEC standard not among sources; not verified. (GenSpecs Table 5-44 does specify minimum quality 1.5/06/660.)"
+    },
+    {
+     "ref": "GS1 General Specifications",
+     "claim": "quiet zones and size; UPC-A nominal X 0.33 mm, 80%-200%",
+     "verdict": "V",
+     "evidence": "GenSpecs §5.12.3.1, Table 5-44 (symbol specification table 1, retail POS): UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (i.e. 80%-200%); Quiet Zone left 9X, right 9X; minimum quality specification 1.5/06/660."
+    },
+    {
+     "ref": "Fair Packaging and Labeling Act (16 CFR Part 500)",
+     "claim": "identity, net quantity, name and place of business for most consumer commodities",
+     "verdict": "V",
+     "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\"."
+    },
+    {
+     "ref": "FDA 21 CFR Part 101, CPSC, Textile/Wool/Fur Acts",
+     "claim": "product-specific rules may apply",
+     "verdict": "-",
+     "evidence": "bare references, not graded"
+    }
+   ],
+   "otherClaims": [
+    {
+     "claim": "prefix 0 36000 may belong to another company / is a widely used sample",
+     "grade": "unclear"
+    },
+    {
+     "claim": "other mandatory label content may be missing depending on product",
+     "grade": "unclear"
+    }
+   ],
+   "notes": "Correct worked calculation (sum 58, check digit 2)."
+  },
+  {
+   "model": "claude-sonnet-5-5",
+   "run": 2,
+   "planted": "caught",
+   "falseClearance": false,
+   "citations": [
+    {
+     "ref": "GS1 General Specifications, check digit calculation (mod-10 for GTIN-12)",
+     "claim": "check digit must be 2, not 3",
+     "verdict": "V",
+     "evidence": "GenSpecs 26.0 §7.9.1, Table 7-8 \"Check digit algorithm\": GTIN-12 positions N1..N11 weighted x3,x1,...,x3; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2. (answer writes \"80 - 58 = 2\", an arithmetic slip; correct is 60 - 58.)"
+    },
+    {
+     "ref": "ISO/IEC 15420",
+     "claim": "UPC-A/EAN symbology",
+     "verdict": "U",
+     "evidence": "ISO/IEC standard not among sources; not verified."
+    },
+    {
+     "ref": "GS1 US rules and the GS1 membership agreement",
+     "claim": "a GTIN may only be used by the company whose prefix it carries",
+     "verdict": "U",
+     "evidence": "GS1 US rules / membership agreement not among sources (GenSpecs §1.5 is to the same effect)."
+    },
+    {
+     "ref": "GS1 General Specifications",
+     "claim": "quiet zones 9 modules each side; nominal X 0.33 mm, 80-200%; grade 1.5/C",
+     "verdict": "V",
+     "evidence": "GenSpecs §5.12.3.1, Table 5-44 (symbol specification table 1, retail POS): UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (i.e. 80%-200%); Quiet Zone left 9X, right 9X; minimum quality specification 1.5/06/660."
+    },
+    {
+     "ref": "ISO/IEC 15416",
+     "claim": "print quality grade",
+     "verdict": "U",
+     "evidence": "ISO/IEC standard not among sources; not verified."
+    },
+    {
+     "ref": "Fair Packaging and Labeling Act (15 USC 1451 ff.; 16 CFR Part 500)",
+     "claim": "identity, net quantity, name and place of business",
+     "verdict": "V",
+     "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\"."
+    },
+    {
+     "ref": "FDA 21 CFR Part 101; FALCPA",
+     "claim": "food needs Nutrition Facts, ingredient list, allergen declaration",
+     "verdict": "V",
+     "evidence": "21 CFR 101.9 (nutrition labeling), 21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\". FDCA 403(w), 21 USC 343(w) (enacted by FALCPA): \"Major food allergen labeling requirements\"."
+    },
+    {
+     "ref": "MoCRA and 21 CFR Part 701",
+     "claim": "cosmetics need ingredients and responsible-person address",
+     "verdict": "U",
+     "evidence": "Not among sources."
+    },
+    {
+     "ref": "Textile Act",
+     "claim": "fiber content and country of origin",
+     "verdict": "U",
+     "evidence": "Not among sources."
+    },
+    {
+     "ref": "19 USC 1304",
+     "claim": "country of origin for imported goods",
+     "verdict": "U",
+     "evidence": "Not among sources."
+    }
+   ],
+   "otherClaims": [
+    {
+     "claim": "prefix 0 36000 may belong to Kimberly-Clark / is the well-known example UPC",
+     "grade": "unclear"
+    },
+    {
+     "claim": "package may be missing legally required labeling",
+     "grade": "unclear"
+    }
+   ],
+   "notes": "Caught, final digit 2 correct despite the \"80 - 58\" slip."
+  },
+  {
+   "model": "claude-sonnet-5-5",
+   "run": 3,
+   "planted": "caught",
+   "falseClearance": false,
+   "citations": [
+    {
+     "ref": "GS1 General Specifications (check digit for GTIN-12)",
+     "claim": "check digit must be 2",
+     "verdict": "V",
+     "evidence": "GenSpecs 26.0 §7.9.1, Table 7-8 \"Check digit algorithm\": GTIN-12 positions N1..N11 weighted x3,x1,...,x3; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2."
+    },
+    {
+     "ref": "ISO/IEC 15420",
+     "claim": "EAN/UPC symbology",
+     "verdict": "U",
+     "evidence": "ISO/IEC standard not among sources; not verified."
+    },
+    {
+     "ref": "GS1 / ISO/IEC 15416 / ANSI grading",
+     "claim": "quiet zones 9 modules, magnification 80-200%, grade 1.5 (C) or better",
+     "verdict": "V",
+     "evidence": "GenSpecs §5.12.3.1, Table 5-44 (symbol specification table 1, retail POS): UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (i.e. 80%-200%); Quiet Zone left 9X, right 9X; minimum quality specification 1.5/06/660. (the ISO/ANSI attribution itself is unverified)"
+    },
+    {
+     "ref": "GS1 / ISO/IEC 15416",
+     "claim": "no red bars",
+     "verdict": "U",
+     "evidence": "GenSpecs 26.0 contains no rule on bar colour (full-text search for \"red\" finds only an unrelated example); ISO/IEC 15416 not among sources."
+    },
+    {
+     "ref": "Fair Packaging and Labeling Act (15 USC 1451 et seq.) and 16 CFR Part 500",
+     "claim": "identity, net quantity, name and place of business for non-food consumer goods",
+     "verdict": "V",
+     "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\"."
+    },
+    {
+     "ref": "21 CFR Part 101",
+     "claim": "FDA rules apply to foods",
+     "verdict": "-",
+     "evidence": "bare reference"
+    },
+    {
+     "ref": "19 USC 1304 and 19 CFR Part 134",
+     "claim": "country of origin for imports",
+     "verdict": "U",
+     "evidence": "Not among sources."
+    },
+    {
+     "ref": "16 CFR Parts 300, 303, 423",
+     "claim": "textile/wool/care labeling",
+     "verdict": "U",
+     "evidence": "Not among sources."
+    },
+    {
+     "ref": "Prop 65",
+     "claim": "California warnings",
+     "verdict": "U",
+     "evidence": "Not among sources."
+    }
+   ],
+   "otherClaims": [
+    {
+     "claim": "036000 prefix widely published as sample; confirm it is yours",
+     "grade": "unclear"
+    },
+    {
+     "claim": "other label content missing if this is the whole consumer label",
+     "grade": "unclear"
+    }
+   ],
+   "notes": "Caught with correct table and sum."
+  },
+  {
+   "model": "claude-haiku-4-5",
+   "run": 1,
+   "planted": "missed",
+   "falseClearance": false,
+   "citations": [
+    {
+     "ref": "21 CFR 101.36",
+     "claim": "product identity/description required",
+     "verdict": "M",
+     "evidence": "21 CFR 101.36 is \"Nutrition labeling of dietary supplements\" (Supplement Facts); it does not require a statement of identity or Nutrition Facts for conventional food (those are 101.3 and 101.9)."
+    },
+    {
+     "ref": "FTC Act Section 5",
+     "claim": "product identity required",
+     "verdict": "U",
+     "evidence": "15 USC 45 not among sources; FTC rules graded U per instructions."
+    },
+    {
+     "ref": "Fair Packaging and Labeling Act",
+     "claim": "net quantity statement required",
+     "verdict": "V",
+     "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\"."
+    },
+    {
+     "ref": "16 CFR 500.10",
+     "claim": "net quantity statement required",
+     "verdict": "M",
+     "evidence": "16 CFR 500.10 is \"Units of fluid measure, how expressed\" (how a fluid declaration is worded); the duty to declare net quantity is 500.6/500.7 (and FPLA 1453(a)(2))."
+    },
+    {
+     "ref": "21 CFR 101.4",
+     "claim": "ingredient list for most foods, cosmetics and OTC drugs",
+     "verdict": "M",
+     "evidence": "21 CFR 101.4 is \"Food; designation of ingredients\" — food only; cosmetics and OTC drugs are not covered by it."
+    },
+    {
+     "ref": "21 CFR 101.5 and FPLA",
+     "claim": "name and address of manufacturer/packer/distributor",
+     "verdict": "V",
+     "evidence": "21 CFR 101.5 \"Food; name and place of business of manufacturer, packer, or distributor\".; 15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\"."
+    },
+    {
+     "ref": "FALCPA",
+     "claim": "major allergens must be identified",
+     "verdict": "V",
+     "evidence": "FDCA 403(w), 21 USC 343(w) (enacted by FALCPA): \"Major food allergen labeling requirements\"."
+    }
+   ],
+   "otherClaims": [
+    {
+     "claim": "missing identity",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing net quantity",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing ingredient list",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing manufacturer information",
+     "grade": "unclear"
+    },
+    {
+     "claim": "possible allergen declarations",
+     "grade": "unclear"
+    }
+   ],
+   "notes": "Never examines the barcode digits; treats a barcode label as a food label. No explicit statement that the GTIN is valid."
+  },
+  {
+   "model": "claude-haiku-4-5",
+   "run": 2,
+   "planted": "missed",
+   "falseClearance": false,
+   "citations": [
+    {
+     "ref": "21 CFR 101.105",
+     "claim": "net quantity on PDP in both metric and US customary units",
+     "verdict": "F",
+     "evidence": "21 CFR 101.105 does not exist in the current CFR: the eCFR Title 21 structure lists Subpart G of Part 101 as §101.100 and §101.108 only; the net quantity section is §101.7 \"Declaration of net quantity of contents\" (§ 101.105 is in the April 2016 annual CFR edition on govinfo and absent from April 2017 onward; checked by the lead on 2026-10-09)."
+    },
+    {
+     "ref": "FTC Act Section 5",
+     "claim": "net quantity required",
+     "verdict": "U",
+     "evidence": "Not among sources."
+    },
+    {
+     "ref": "21 CFR 101.1",
+     "claim": "product name, identity and net quantity must appear on PDP",
+     "verdict": "M",
+     "evidence": "21 CFR 101.1 defines the principal display panel of package-form food and says it \"shall be large enough to accommodate all the mandatory label information\"; the identity requirement is 101.3(a) (\"The principal display panel ... shall bear ... a statement of the identity\") and net quantity is 101.7."
+    },
+    {
+     "ref": "21 CFR 101.5",
+     "claim": "name and address of manufacturer/packer/distributor",
+     "verdict": "V",
+     "evidence": "21 CFR 101.5 \"Food; name and place of business of manufacturer, packer, or distributor\"."
+    },
+    {
+     "ref": "21 CFR 101.4",
+     "claim": "ingredients in descending order (food)",
+     "verdict": "V",
+     "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"."
+    },
+    {
+     "ref": "16 CFR 701",
+     "claim": "ingredient declaration for cosmetics/OTC drugs",
+     "verdict": "M",
+     "evidence": "16 CFR Part 701 is \"Disclosure of Written Consumer Product Warranty Terms and Conditions\" (Magnuson-Moss); nothing on ingredient lists."
+    },
+    {
+     "ref": "21 CFR 101.100 (FALCPA)",
+     "claim": "major allergens must be declared",
+     "verdict": "M",
+     "evidence": "21 CFR 101.100 is \"Food; exemptions from labeling\" (e.g. (a) exemptions from ingredient declaration); the allergen declaration is FDCA 403(w), 21 USC 343(w)."
+    }
+   ],
+   "otherClaims": [
+    {
+     "claim": "missing net quantity",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing PDP identity",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing manufacturer info",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing ingredients",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing allergen declarations",
+     "grade": "unclear"
+    }
+   ],
+   "notes": "Never examines the barcode. Cites a CFR section that no longer exists (101.105) and a warranty regulation (16 CFR 701) for cosmetic ingredients."
+  },
+  {
+   "model": "claude-haiku-4-5",
+   "run": 3,
+   "planted": "missed",
+   "falseClearance": true,
+   "citations": [
+    {
+     "ref": "21 CFR 101.1",
+     "claim": "PDP with product identity required",
+     "verdict": "M",
+     "evidence": "21 CFR 101.1 defines the principal display panel of package-form food and says it \"shall be large enough to accommodate all the mandatory label information\"; the identity requirement is 101.3(a) (\"The principal display panel ... shall bear ... a statement of the identity\") and net quantity is 101.7."
+    },
+    {
+     "ref": "FTC regulations",
+     "claim": "PDP product identity",
+     "verdict": "-",
+     "evidence": "bare reference"
+    },
+    {
+     "ref": "Fair Packaging and Labeling Act",
+     "claim": "conspicuous net quantity",
+     "verdict": "V",
+     "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\"."
+    },
+    {
+     "ref": "21 CFR 101.2",
+     "claim": "conspicuous net quantity labeling",
+     "verdict": "M",
+     "evidence": "21 CFR 101.2 is \"Information panel of package form food\"; its list of information-panel items (101.4, 101.5, 101.8, 101.9, 101.13, 101.17, 101.36 ...) does not include net quantity, which belongs on the PDP under 101.7."
+    },
+    {
+     "ref": "21 CFR 101.4",
+     "claim": "ingredients in descending order of predominance (food)",
+     "verdict": "V",
+     "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"."
+    },
+    {
+     "ref": "21 CFR 101.5",
+     "claim": "manufacturer/packer/distributor name and address",
+     "verdict": "V",
+     "evidence": "21 CFR 101.5 \"Food; name and place of business of manufacturer, packer, or distributor\"."
+    },
+    {
+     "ref": "FALCPA",
+     "claim": "major allergens must be declared",
+     "verdict": "V",
+     "evidence": "FDCA 403(w), 21 USC 343(w) (enacted by FALCPA): \"Major food allergen labeling requirements\"."
+    },
+    {
+     "ref": "Various FDA and CPSC regulations",
+     "claim": "warnings by product category",
+     "verdict": "-",
+     "evidence": "bare reference"
+    }
+   ],
+   "otherClaims": [
+    {
+     "claim": "missing identity",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing net quantity",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing ingredients",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing manufacturer info",
+     "grade": "unclear"
+    },
+    {
+     "claim": "missing allergens",
+     "grade": "unclear"
+    },
+    {
+     "claim": "possible warnings",
+     "grade": "unclear"
+    }
+   ],
+   "notes": "States \"The barcode itself appears valid (UPC-A with check digit)\" — false clearance of the invalid check digit (correct digit is 2)."
+  }
+ ]
+}

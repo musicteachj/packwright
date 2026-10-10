@@ -58,6 +58,46 @@ printed panel, and statement codes kept through a change of market. Their histor
 The deployment checklist (unknown routes answered 200, pre-#65 seeded zeros, the first schema change needing a
 migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phase 8.
 
+**Proposed on 2026-10-09, for James to decide: the Added Sugars line.** Every US food label this engine draws
+prints "Added Sugars 0g" where 21 CFR 101.9(c)(6)(iii) requires "Includes 0g Added Sugars". Found by the MCP
+"without" experiment; the entry is below, under that heading.
+
+---
+
+## From the MCP "without" experiment, 2026-10-09
+
+Found because a model, asked about labels this engine passes, raised requirements the engine does not check.
+Each was verified against the primary source on 2026-10-09; the experiment is
+`docs/experiments/2026-10-09-mcp-without/`.
+
+**The engine prints "Added Sugars 0g", and 101.9(c)(6)(iii) requires "Includes".** Read from the eCFR:
+"Added sugars content shall be indented under Total Sugars and shall be prefaced with the word 'Includes'
+followed by the amount (in grams) 'Added Sugars' ('Includes 'X' g Added Sugars')." The row's name in
+`fda/nutrients.ts` is "Added Sugars" and nothing in `label-core` prints "Includes", so every panel the engine
+draws, the conformant fixture's among them, carries a line its own citation forbids. (j)(13)(ii)(B) lets a
+package of 40 square inches or less abbreviate it to "Incl.", and says the abbreviation "can also be used on
+dual-column displays as shown in paragraphs (e)(5), (e)(6)(i), and (e)(6)(ii)"; a fix has to respect both. Before fixing, ask the CLAUDE.md question of the
+rules that read this row: which of them pass a panel today on the strength of a line printed wrongly.
+
+**An EU label must identify a supplier established in the Union, and nothing checks it.** CLP Article 4(11),
+read from consolidation 02008R1272-20260701: "A substance or a mixture shall not be placed on the market unless
+a supplier established in the Union, which shall be identified on the label, …". Inserted by Regulation (EU)
+2024/2865 and applicable from 1 July 2026. `GHS_CONFORMANT` carries a supplier in Leeds, so the EU control is a
+label that has not been placeable since July. Whether an address is in the Union is not something a rule can
+read from free text, so this is a disclosure for `docs/WHAT-IS-NOT-CHECKED.md` first, and perhaps a field later.
+The CLP citations this engine carries were read against the 2025-09-01 consolidation; the six this experiment
+leaned on were re-read against 2026-07-01 and are unchanged, and the rest have not been.
+
+**A mixture's UFI is neither checked nor disclosed.** CLP Article 25(7): where a unique formula identifier is
+created under Annex VIII, "it shall be included in the supplemental information on the label", in the form
+Annex VIII Part A §5.2 sets ("UFI:"). It turns on whether the mixture falls under Annex VIII, which the document
+does not say — another candidate for `docs/WHAT-IS-NOT-CHECKED.md`.
+
+**Servings per container is not checked against the net quantity.** The base US food fixture declares 8
+servings of 40 g in a 340 g package, which is 8.5. 101.9(b)(8)(i) rounds to the nearest whole number and does
+not break a tie at .5 ("about" is a *should*), so this label is not shown to be wrong — but nothing would notice
+one that was. No rule cross-checks the two figures.
+
 ---
 
 ## Rules that do not exist yet
