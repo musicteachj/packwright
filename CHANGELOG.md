@@ -14,9 +14,20 @@ into a version only when there is a reason to.
   chemical sample, the editor's starting label and `GHS_CONFORMANT` named only a supplier in Leeds, with no
   number: since 1 July 2026 CLP Article 4(11) wants a supplier established in the Union identified on the label,
   and Article 17(1)(a) its telephone number. No rule reads either, so every check passed them. Each now names a
-  supplier in Rotterdam with a number, and a test pins the two the app shows. The landing sample's acetone needs
-  more than this — H336, EUH066 and an identification number under Annex VI and Article 18(2)(a) — which is in
-  the backlog for a decision, beside the engine having no EUH statements at all.
+  supplier in Rotterdam with a number, and a test pins the two the app shows.
+- **The landing page's chemical sample is a fictional mixture, not acetone.** Acetone is harmonised in CLP Annex
+  VI as Flam. Liq. 2, Eye Irrit. 2 and STOT SE 3, so its label needs H336 and EUH066 besides the H225 and H319
+  the sample printed, and an identification number under Article 18(2)(a); this engine has no EUH statements, so
+  it could not draw that label complete. "Example degreaser" is classified Flam. Liq. 2 and Eye Irrit. 2: it
+  prints the hazard statements, pictograms and signal word those give, and a selection of their precautionary
+  statements, now including P305 + P351 + P338 for the eyes, which the sample lacked. As a real hazardous mixture
+  it would also carry a UFI, which the submitter creates for a real Annex VIII submission, so it cannot honestly
+  appear on a sample, and has no field here. The front door is as complete as a sample can be, not complete,
+  and the comment beside it says so. Read from the CLP consolidation in force on 2026-10-10, label-element
+  tables and pictograms included.
+- **`docs/WHAT-IS-NOT-CHECKED.md` says that supplemental hazard statements cannot be printed.** Article 25(1)
+  requires the Annex II statements where their properties apply, and those Annex VI assigns; this tool holds
+  none of them and has no field for one.
 - **`docs/WHAT-IS-NOT-CHECKED.md` names two EU requirements nothing checks.** CLP Article 4(11) has required a
   supplier established in the Union, identified on the label, since 1 July 2026; and Article 25(7) puts a
   mixture's UFI in its supplemental information, with Annex VIII Part A, 5.3's alternatives. No rule reads either,

@@ -92,23 +92,19 @@ Annex VIII Part A §5.2 sets ("UFI:"). It turns on whether the mixture falls und
 does not say. **Disclosed in `docs/WHAT-IS-NOT-CHECKED.md` on 2026-10-10**, with Part A, 5.3's alternatives:
 the inner or outer packaging, or the safety data sheet for a mixture supplied to an industrial site.
 
-**The landing page's chemical sample is acetone, and acetone's label needs more than it prints.** Read from
-the CLP consolidation in force on 2026-10-10, Annex VI, Part 3, Table 3: acetone (index 606-001-00-8, EC
-200-662-2, CAS 67-64-1) is harmonised as Flam. Liq. 2, Eye Irrit. 2 and STOT SE 3, labelled H225, H319 and
-H336 with GHS02, GHS07 and "Danger", and with the supplemental EUH066. The sample (`landingSamples.ts`) prints
-H225 and H319 only, no EUH066, and "Acetone, technical grade" without the identification number Article
-18(2)(a) asks of a substance in Annex VI. No rule compares a label with Annex VI, so the page's test passes it.
-H336 and a number are one-line additions; EUH066 is not, because this engine has no EUH statements at all (next
-entry), so an acetone sample cannot be drawn complete. A fictional mixture classified Flam. Liq. 2 and Eye
-Irrit. 2 would be: Article 18(3)(b) asks a mixture's identifier to name its substances only for the hazards it
-lists, and eye irritation is not among them. For James to decide.
+**Which precautionary statements a label carries is not judged, and not disclosed.** CLP Articles 22 and 28
+leave the selection from Annex I's tables to the supplier, with Article 28(3)'s limit of six unless more are
+needed. No rule compares a label's P-statements with its classification, so an eye irritant printing no eye
+response statement passes — the landing sample did, until 2026-10-10. `docs/WHAT-IS-NOT-CHECKED.md` says
+nothing about the selection; a sentence there would close it.
 
 **This engine cannot print a CLP supplemental hazard statement.** Annex II's EUH statements — EUH066 "Repeated
 exposure may cause skin dryness or cracking" among them, required by Annex VI for acetone — have no table in
 `ghs/statements.ts` and no field in a label document, so a substance or mixture that needs one cannot be
-labelled completely here, and `docs/WHAT-IS-NOT-CHECKED.md` does not say so. Found on 2026-10-10 while checking
-the landing sample. At least a disclosure; the statements themselves would need Annex II transcribed and
-verified, as the H- and P-statements were.
+labelled completely here. Found on 2026-10-10 while checking the landing sample, which was acetone and is now a
+fictional mixture that needs none. **Disclosed in `docs/WHAT-IS-NOT-CHECKED.md` the same day.** The statements
+themselves would need Annex II transcribed and verified, as the H- and P-statements were, and a field to carry
+those Annex VI assigns.
 
 **Servings per container is not checked against the net quantity.** The base US food fixture declares 8
 servings of 40 g in a 340 g package, which is 8.5. 101.9(b)(8)(i) rounds to the nearest whole number and does
