@@ -30,7 +30,7 @@ import {
   type GhsLabelData,
   type GhsRegime,
 } from '@packwright/label-core'
-import { toSupplier } from '../labels/schemas'
+import { toSupplier } from '@packwright/label-core/schema'
 import { EXTRACTED_FIELDS, GhsExtraction } from './extractionSchema'
 
 export const EXTRACTION_MODEL = 'claude-opus-5'

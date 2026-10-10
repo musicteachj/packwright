@@ -7,9 +7,9 @@
  * here instead.
  *
  * Nothing in this module knows what a label *is* — it moves whatever the server
- * describes. The shape of a label is decided by `schemas.ts` on the server and by
- * `label-core` in the browser, and a third opinion here would be the drift this
- * project keeps closing.
+ * describes. The shape of a label is decided by `label-core`'s `schema/` module
+ * on the server and by `label-core`'s engine in the browser, and a third opinion
+ * here would be the drift this project keeps closing.
  */
 
 export interface SavedLabelSummary {

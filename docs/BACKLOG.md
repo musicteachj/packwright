@@ -60,15 +60,18 @@ migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phas
 
 ---
 
-## From the shared judge, 2026-10-10
+## From the shared schema, 2026-10-10
 
-**The export routes catch `LayoutError` and not `SymbolLayoutError`.** `apps/api/src/labels/routes.ts` turns a
-`LayoutError` into a 422 at each of its three exports, but a symbol the encoder could not produce raises the
-separate `SymbolLayoutError`, which reaches Express's error handler instead. The judge and the editor now refuse it
-the same way they refuse a layout error (#79). No route is known to reach it with bwip-js and a document the
-schema accepts — the engine checks the payload first and raises `LayoutError` — so it is consistency rather than a
-live failure. Fold it into stage 17 or 18 of `docs/plans/2026-10-10-mcp.md`, which rework the routes' input
-anyway.
+**A blank statement code makes the schema misreport its siblings.** `GhsRequest` canonicalises and de-duplicates
+statement codes in a transform, and checks them against the regime's table in a refinement. When one entry fails
+its own `.trim().min(1)`, zod skips the array's transform but still runs the object's refinement, so the refinement
+reads the codes as sent. `["H999", " ", "h225"]` under `eu-clp` is answered with "“h225” has no verified eu-clp
+hazard statement text" beside the blank's own complaint — false, since `h225` alone is accepted as `H225`. Seen
+while recording the export routes' answers before the schema moved; left as it is because that stage's proof was
+that every answer stayed byte for byte the same. The request is refused either way, so it is a misleading message
+rather than a wrong verdict. The fix is to canonicalise inside the refinement too, or to skip it when the field
+already has an issue; the comment above `if (code === '') continue` in `schema/labelDocument.ts` is where the
+existing half of that guard lives.
 
 ## From the MCP "without" experiment, 2026-10-09
 

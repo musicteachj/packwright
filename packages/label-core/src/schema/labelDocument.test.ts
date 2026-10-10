@@ -5,15 +5,15 @@
  * same one the export routes are built from — so these cases are also what stops
  * the two paths drifting into disagreeing about what a valid label is.
  */
-import { DEFAULT_GHS_STOCK, DEFAULT_UPC_A_STOCK } from '@packwright/label-core'
 import { describe, expect, it } from 'vitest'
+import { LABEL_TYPES } from '../rules/types'
+import { DEFAULT_GHS_STOCK, DEFAULT_UPC_A_STOCK } from '../templates'
 import {
   GhsRequest,
-  LABEL_TYPES,
   LabelDocumentInput,
   NutritionFactsSchema,
   toNutritionFacts,
-} from './schemas'
+} from './labelDocument'
 
 // From the engine's own default rather than three numbers typed here. A copy
 // keeps passing after the default moves, which leaves a fixture asserting

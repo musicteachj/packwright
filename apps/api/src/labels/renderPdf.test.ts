@@ -1,5 +1,6 @@
 import {
   DEFAULT_GHS_STOCK,
+  EMBEDDED_FONT_FAMILIES,
   layOutGhsLabel,
   layOutUpcALabel,
   mmToPoints,
@@ -7,7 +8,7 @@ import {
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import { describe, expect, it } from 'vitest'
-import { EMBEDDED_FONT_FAMILIES, embeddedFontFor, renderLayoutToPdf } from './renderPdf'
+import { embeddedFontFor, renderLayoutToPdf } from './renderPdf'
 
 /**
  * The test the whole phase exists for.
