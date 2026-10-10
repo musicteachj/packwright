@@ -1,0 +1,627 @@
+{
+  "caseId": "02-clp-both-signal-words",
+  "answers": [
+    {
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "partly",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "CLP Annex IV",
+          "claim": "Flam. Liq. 2 must include prevention statements P210, P211, P235, P242, P243; at minimum P211",
+          "verdict": "M",
+          "evidence": "Annex IV Table 6.2: P211 'Do not spray on an open flame or other ignition source' is assigned to 'Aerosols (section 2.3) 1, 2' only, not flammable liquids. Table 2.6.2 prevention for Cat 2 is P210 P233 P240 P241 P242 P243 P280; label already carries P210, P233, P240 and P403+P235 (not 'only P210')."
+        },
+        {
+          "ref": "CLP Article 17",
+          "claim": "Product identifier must be the exact name used consistently",
+          "verdict": "M",
+          "evidence": "Art. 17(1)(c) only refers to 'product identifiers as specified in Article 18'; consistency with the SDS is Art. 18(1). 'Example solvent' satisfies Art. 18(3)(a) 'the trade name or the designation of the mixture'."
+        },
+        {
+          "ref": "CLP Annex IV",
+          "claim": "EUH066 supplemental statement must be included where listed",
+          "verdict": "M",
+          "evidence": "Annex IV is the list of precautionary statements. EUH066 is assigned by Annex II 1.2.4 and worded per Annex III Part 2 (Art. 25(1))."
+        },
+        {
+          "ref": "CLP Article 18(3)",
+          "claim": "Pictograms must be >= 10 mm",
+          "verdict": "M",
+          "evidence": "Art. 18(3) is the product identifier for a mixture. Pictogram size is Annex I 1.2.1.4 Table 1.3, which for >3 L to 50 L requires 'At least 23 x 23' (10 x 10 is the <=3 L floor)."
+        },
+        {
+          "ref": "CLP Article 17",
+          "claim": "Must use only 'Danger' (not 'Danger Warning')",
+          "verdict": "M",
+          "evidence": "Art. 17(1)(e) only lists 'where applicable, signal words in accordance with Article 20'. The rule is Art. 20(3): \"Where the signal word 'Danger' is used on the label, the signal word 'Warning' shall not appear on the label.\""
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Need P211 / more prevention statements",
+          "grade": "not-real",
+          "quote": "Annex IV Table 6.2: P211 is for 'Aerosols (section 2.3)'; label already has P210, P233, P240"
+        },
+        {
+          "claim": "Product identifier not on 'principal display' / verify name",
+          "grade": "not-real",
+          "quote": "Art. 18(3)(a): 'the trade name or the designation of the mixture' - 'Example solvent' is printed; CLP has no 'principal display' concept"
+        },
+        {
+          "claim": "EUH066 may be needed",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Label dimensions typically >= 52 x 74 mm for 5 L (uncited recommendation)",
+          "grade": "not-real",
+          "quote": "Table 1.3: >3 L to 50 L label 'At least 74 x 105'"
+        }
+      ],
+      "notes": "Flags 'Danger Warning' and says use only 'Danger' - right fix, but calls it 'non-standard phrasing' and cites Art. 17 rather than Art. 20(3): partly. Misses EU supplier, response statements, UFI, nominal quantity, language, tactile warning."
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "CLP Annex I, Table 2.6.2",
+          "claim": "Flam. Liq. 2 takes only 'Danger'",
+          "verdict": "V",
+          "evidence": "Annex I Table 2.6.2 (Flam. Liq. Category 2): signal word \"Danger\"; \"H225: Highly flammable liquid and vapour\"; Prevention P210 P233 P240 P241 P242 P243 P280; Response P303 + P361 + P353, P370 + P378; Storage P403 + P235; Disposal P501."
+        },
+        {
+          "ref": "Art. 17(1)(c)",
+          "claim": "Signal word requirement",
+          "verdict": "M",
+          "evidence": "Art. 17(1)(c) is \"product identifiers as specified in Article 18\"; nominal quantity is 17(1)(b), pictograms 17(1)(d), signal words 17(1)(e), precautionary statements 17(1)(g)"
+        },
+        {
+          "ref": "CLP Art. 20(3)",
+          "claim": "'Warning' must not appear when 'Danger' applies",
+          "verdict": "V",
+          "evidence": "Art. 20(3): \"Where the signal word 'Danger' is used on the label, the signal word 'Warning' shall not appear on the label.\""
+        },
+        {
+          "ref": "Art. 17(1)(a); Arts. 4 and 17",
+          "claim": "Supplier name/address/phone; EU-established supplier must be identified",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(a): \"the name, address and telephone number of the supplier(s)\"; Art. 4(11) (M37, applies from 1 July 2026 per Reg. (EU) 2024/2865 Art. 2(2), fetched from Publications Office CELEX 32024R2865): \"A substance or a mixture shall not be placed on the market unless a supplier established in the Union, which shall be identified on the label, in the course of an industrial or professional activity fulfils the requirements set out in this Regulation\""
+        },
+        {
+          "ref": "Art. 28 and Annex I, Table 2.6.2",
+          "claim": "Cat 2 calls for P210, P233, P240-P243, P280, P303+P361+P353, P370+P378, P403+P235, P501",
+          "verdict": "V",
+          "evidence": "Annex I Table 2.6.2 (Flam. Liq. Category 2): signal word \"Danger\"; \"H225: Highly flammable liquid and vapour\"; Prevention P210 P233 P240 P241 P242 P243 P280; Response P303 + P361 + P353, P370 + P378; Storage P403 + P235; Disposal P501."
+        },
+        {
+          "ref": "Art. 28",
+          "claim": "P501 mandatory if supplied to the general public",
+          "verdict": "V",
+          "evidence": "Art. 28(2): \"Where the substance or mixture is supplied to the general public, one precautionary statement addressing the disposal of that substance or mixture as well as the disposal of packaging shall appear on the label, unless not required under Article 22.\""
+        },
+        {
+          "ref": "Art. 28(3)",
+          "claim": "Cap of six P-statements unless more needed",
+          "verdict": "V",
+          "evidence": "Art. 28(3): \"Not more than six precautionary statements shall appear on the label, unless necessary to reflect the nature and the severity of the hazards.\""
+        },
+        {
+          "ref": "Art. 17(1)(b)",
+          "claim": "Nominal quantity for general-public products unless given elsewhere on package",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package\""
+        },
+        {
+          "ref": "Directive 76/211/EEC",
+          "claim": "Pre-packaging rules may require quantity for other buyers",
+          "verdict": "U",
+          "evidence": "Not among sources; not fetched."
+        },
+        {
+          "ref": "Art. 45 and Annex VIII",
+          "claim": "Mixture classified for a physical hazard falls under poison-centre notification",
+          "verdict": "V",
+          "evidence": "Annex VIII Part A 3.1: submitters 'shall provide information relating to mixtures classified as hazardous on the basis of their health or physical effects to the bodies appointed under Article 45(1)'."
+        },
+        {
+          "ref": "Annex VIII, Part A, section 5.1",
+          "claim": "UFI printed on label, or on package near other label information",
+          "verdict": "M",
+          "evidence": "Part A 5.1 is the creation of the UFI ('The submitter shall create a Unique Formula Identifier...'). Label placement is Art. 25(7) and the packaging alternative is 5.3 ('...opt to print or affix it on the inner packaging located with the other label elements')."
+        },
+        {
+          "ref": "Art. 17(2)",
+          "claim": "Label in official language(s) of each Member State",
+          "verdict": "V",
+          "evidence": "Art. 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\""
+        },
+        {
+          "ref": "Art. 19, Annex V, Annex I 1.2.1",
+          "claim": "Pictogram as a diamond, black flame, white background, red border",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.1 \"Hazard pictograms shall be in the shape of a square set at a point\"; 1.2.1.2 \"black symbol on a white background with a red frame\"; Annex V gives the symbols; Art. 19(2) refers to 1.2.1 and Annex V."
+        },
+        {
+          "ref": "Annex I, Table 1.3",
+          "claim": "5 L: minimum pictogram 16 x 16 mm, minimum label 52 x 74 mm",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 x 105 [label] / At least 23 x 23 [pictogram]\". 52 x 74 and 16 x 16 are the \"Not exceeding 3 litres\" row (\"If possible, at least 52 x 74\"; \"Not smaller than 10 x 10 / If possible, at least 16 x 16\")."
+        },
+        {
+          "ref": "Art. 35, Annex II Part 3",
+          "claim": "Tactile warning for Flam. Liq. 1 and 2 to general public; no child-resistant fastening on flammability alone",
+          "verdict": "V",
+          "evidence": "Annex II 3.2.1.1: \"Where substances or mixtures are supplied to the general public and classified for ... flammable liquids categories 1 or 2 ... the packaging of whatever capacity, shall be fitted with a tactile warning of danger\"; 3.2.2 refers to EN ISO 11683; Art. 35(2) third subparagraph. 3.1.1.1 (child-resistant) does not list flammable liquids."
+        },
+        {
+          "ref": "Art. 18",
+          "claim": "'Example solvent' acceptable as trade name",
+          "verdict": "V",
+          "evidence": "Art. 18(3)(a): 'the trade name or the designation of the mixture'."
+        },
+        {
+          "ref": "Art. 18(3)(b)",
+          "claim": "Substance names needed only if health classifications such as acute tox, aspiration, STOT",
+          "verdict": "V",
+          "evidence": "Art. 18(3)(b): \"the identity of all substances in the mixture that contribute to the classification of the mixture as regards acute toxicity, skin corrosion or serious eye damage, germ cell mutagenicity, ... STOT or aspiration hazard\"; following subparagraph: \"a maximum of four chemical names shall suffice\""
+        },
+        {
+          "ref": "Annex II section 1",
+          "claim": "EUH statements may apply depending on composition",
+          "verdict": "V",
+          "evidence": "Annex II Part 1 1.2.2 EUH031, 1.2.4 EUH066 (criteria given there); Part 2 2.6: EUH206 for \"mixtures containing more than 1 % of active chlorine\"; Art. 25(1) requires them where the properties apply."
+        },
+        {
+          "ref": "ADR / Directive 2008/68/EC",
+          "claim": "Transport labels (Class 3, UN number) on outer packaging",
+          "verdict": "U",
+          "evidence": "Not among sources; not fetched."
+        },
+        {
+          "ref": "CLP Art. 33",
+          "claim": "Precedence between transport and CLP pictograms",
+          "verdict": "V",
+          "evidence": "Art. 33(1)/(3): 'Where the hazard pictogram(s) required by this Regulation relate to the same hazard as in the rules for the transport of dangerous goods, the hazard pictogram(s) required by this Regulation need not appear'."
+        },
+        {
+          "ref": "Regulation (EU) 2024/2865",
+          "claim": "Adds label legibility rules incl. minimum font sizes, with later application dates",
+          "verdict": "V",
+          "evidence": "Fetched CELEX 32024R2865 from the Publications Office: Art. 1 replaces Annex I 1.2.1.4 with a Table 1.3 adding 'Minimum font size (x-height in millimetres)' (1,8 for >3-50 L) and Art. 2(3): 'points (2) and (3) of Annex I ... shall apply from 1 January 2027'."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "No EU-established supplier",
+          "grade": "real"
+        },
+        {
+          "claim": "No response statements (P303+P361+P353, P370+P378)",
+          "grade": "real"
+        },
+        {
+          "claim": "P501 missing",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Nominal quantity missing",
+          "grade": "unclear"
+        },
+        {
+          "claim": "UFI missing",
+          "grade": "real"
+        },
+        {
+          "claim": "Language",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Tactile warning if general public",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "Caught with Art. 20(3). Repeats the <=3 L Table 1.3 figures (16 x 16, 52 x 74) for a 5 L can. Cites 17(1)(c) for signal words."
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "CLP Annex IV, Part A (Table 3.1 for acute tox/flammable liquids)",
+          "claim": "Missing P235, P240/P241, response P370+P378 and P305+P351+P338",
+          "verdict": "F",
+          "evidence": "Annex IV has 'Part 1: Criteria for the selection of precautionary statements' (Tables 6.1-6.5) and 'Part 2: precautionary statements'; there is no Part A and no Table 3.1 in Annex IV (Table 3.1.x tables are Annex I acute toxicity)."
+        },
+        {
+          "ref": "CLP Annex III",
+          "claim": "EUH066 may be needed",
+          "verdict": "M",
+          "evidence": "Annex III Part 2 only gives the wording of supplemental statements; whether EUH066 applies is assigned by Annex II 1.2.4 via Art. 25(1)."
+        },
+        {
+          "ref": "CLP Article 35(3)",
+          "claim": "Pictogram at least 20 mm on a 5 L container",
+          "verdict": "M",
+          "evidence": "Art. 35(3): packaging 'shall be deemed to satisfy the requirements of paragraph 1(a), (b) and (c) if it complies with the requirements of the rules on the transport of dangerous goods'. Pictogram size is Table 1.3: 'At least 23 x 23' for >3-50 L; no 20 mm figure exists."
+        },
+        {
+          "ref": "CLP Annex I, Section 1.2.1",
+          "claim": "Signal word positioned prominently near the pictogram",
+          "verdict": "M",
+          "evidence": "1.2.1 covers pictogram shape, colour and dimensions only; the co-location rule is Art. 32(1)."
+        },
+        {
+          "ref": "CLP Annex VI",
+          "claim": "Cross-reference Annex VI classification table for Cat 2 flammable liquids",
+          "verdict": "M",
+          "evidence": "Annex VI Part 3 lists harmonised classifications of individual substances; it has no classification table for flammable-liquid categories (that is Annex I Table 2.6.1)."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "'Keep cool' (P235) insufficient; needs standalone P235",
+          "grade": "not-real",
+          "quote": "Label prints 'Store in a well-ventilated place. Keep cool.' = P403 + P235, exactly as Table 2.6.2 storage row"
+        },
+        {
+          "claim": "P240/P241 need non-sparking tools",
+          "grade": "unclear"
+        },
+        {
+          "claim": "No response statements; need P370+P378",
+          "grade": "real"
+        },
+        {
+          "claim": "Need P305+P351+P338 eye-contact statement",
+          "grade": "not-real",
+          "quote": "Annex I Table 2.6.2 response row for Cat 2 is 'P303 + P361 + P353, P370 + P378' only"
+        },
+        {
+          "claim": "EUH066 may apply",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Signal word should be near the pictogram",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "Does not notice 'Warning'. Treats the printed signal word as 'DANGER' and asks only that it be positioned prominently - implies the signal word itself is fine (falseClearance, implied). Also claims the label has 'P211, P271, P280, P283 equivalents' which it does not."
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "CLP Annex I, Table 2.6.3",
+          "claim": "Flam. Liq. 2 takes 'Danger' only",
+          "verdict": "M",
+          "evidence": "Annex I Table 2.6.3 is 'Methods for determining the flash point of flammable liquids'. Label elements are Table 2.6.2 (Cat 2: 'Danger')."
+        },
+        {
+          "ref": "Art. 20(3)",
+          "claim": "'Warning' must not appear where 'Danger' is required",
+          "verdict": "V",
+          "evidence": "Art. 20(3): \"Where the signal word 'Danger' is used on the label, the signal word 'Warning' shall not appear on the label.\""
+        },
+        {
+          "ref": "Art. 17(1)(a); Art. 4",
+          "claim": "Supplier details; EU importer/DU must be identified",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(a): \"the name, address and telephone number of the supplier(s)\"; Art. 4(11) (M37, applies from 1 July 2026 per Reg. (EU) 2024/2865 Art. 2(2), fetched from Publications Office CELEX 32024R2865): \"A substance or a mixture shall not be placed on the market unless a supplier established in the Union, which shall be identified on the label, in the course of an industrial or professional activity fulfils the requirements set out in this Regulation\""
+        },
+        {
+          "ref": "Art. 28 and Annex I Table 2.6.3",
+          "claim": "Table lists P303+P361+P353 and P370+P378 for Flam. Liq. 2",
+          "verdict": "M",
+          "evidence": "Table 2.6.3 is the flash-point test-methods table; the P-statements are in Table 2.6.2. (Art. 28/Annex IV part of the claim is fine.)"
+        },
+        {
+          "ref": "Art. 28(3)",
+          "claim": "Normally no more than six statements",
+          "verdict": "V",
+          "evidence": "Art. 28(3): \"Not more than six precautionary statements shall appear on the label, unless necessary to reflect the nature and the severity of the hazards.\""
+        },
+        {
+          "ref": "Annex VIII Part A (Art. 45)",
+          "claim": "UFI on label of hazardous mixtures incl. physical-hazard-only; PCN before placing on market",
+          "verdict": "V",
+          "evidence": "Art. 25(7): \"Where under Annex VIII the submitter creates a unique formula identifier, it shall be included in the supplemental information on the label in accordance with the provisions of Section 5 of Part A of that Annex\"; Annex VIII Part A 3.1 covers \"mixtures classified as hazardous on the basis of their health or physical effects\"; Part A 5.2: \"preceded by the acronym 'UFI' in capital letters followed by a colon\""
+        },
+        {
+          "ref": "Art. 17(2)",
+          "claim": "Label in official language(s) of each Member State",
+          "verdict": "V",
+          "evidence": "Art. 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\""
+        },
+        {
+          "ref": "Art. 17(1)(b)",
+          "claim": "Nominal quantity if general public unless elsewhere on package",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package\""
+        },
+        {
+          "ref": "Annex II Part 3 and Art. 35",
+          "claim": "Tactile warning for Flam. Liq. 1 and 2 when supplied to general public",
+          "verdict": "V",
+          "evidence": "Annex II 3.2.1.1: \"Where substances or mixtures are supplied to the general public and classified for ... flammable liquids categories 1 or 2 ... the packaging of whatever capacity, shall be fitted with a tactile warning of danger\"; 3.2.2 refers to EN ISO 11683; Art. 35(2) third subparagraph. 3.1.1.1 (child-resistant) does not list flammable liquids."
+        },
+        {
+          "ref": "Art. 22 and Annex IV",
+          "claim": "General statements such as P101/P102 called for on consumer products",
+          "verdict": "V",
+          "evidence": "Annex IV Table 6.1: P101, P102 'as appropriate', 'Consumer products'; preamble: general statements 'shall also be used where relevant'. (Answer presents it as conditional.)"
+        },
+        {
+          "ref": "Art. 31(3)",
+          "claim": "Pictogram must be a diamond, black symbol, white background, red border",
+          "verdict": "M",
+          "evidence": "Art. 31(3): label elements 'shall be clearly and indelibly marked ... stand out clearly from the background'. Shape/colour/size are Art. 31(4) and Annex I 1.2.1."
+        },
+        {
+          "ref": "Annex I, 1.2.1; Annex V",
+          "claim": "Pictogram form (diamond, red border)",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.1 \"Hazard pictograms shall be in the shape of a square set at a point\"; 1.2.1.2 \"black symbol on a white background with a red frame\"; Annex V gives the symbols; Art. 19(2) refers to 1.2.1 and Annex V."
+        },
+        {
+          "ref": "Annex I 1.2.1",
+          "claim": "5 L: minimum label 52 x 74 mm, minimum pictogram 16 x 16 mm",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 x 105 [label] / At least 23 x 23 [pictogram]\". 52 x 74 and 16 x 16 are the \"Not exceeding 3 litres\" row (\"If possible, at least 52 x 74\"; \"Not smaller than 10 x 10 / If possible, at least 16 x 16\")."
+        },
+        {
+          "ref": "Arts. 31 and 32",
+          "claim": "Label firmly attached, readable horizontally; hazard elements grouped together",
+          "verdict": "V",
+          "evidence": "Art. 31(1): \"Labels shall be firmly affixed ... and shall be readable horizontally when the package is set down normally\"; Art. 32(1): \"The hazard pictograms, signal word, hazard statements and precautionary statements shall be located together on the label.\""
+        },
+        {
+          "ref": "Art. 18(3)(a)",
+          "claim": "Trade name meets the identifier requirement",
+          "verdict": "V",
+          "evidence": "Art. 18(3)(a): 'the trade name or the designation of the mixture'."
+        },
+        {
+          "ref": "Art. 18(3)(b)",
+          "claim": "Ingredient names only for certain health hazards",
+          "verdict": "V",
+          "evidence": "Art. 18(3)(b): \"the identity of all substances in the mixture that contribute to the classification of the mixture as regards acute toxicity, skin corrosion or serious eye damage, germ cell mutagenicity, ... STOT or aspiration hazard\"; following subparagraph: \"a maximum of four chemical names shall suffice\""
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "No EU-established supplier",
+          "grade": "real"
+        },
+        {
+          "claim": "No response statement",
+          "grade": "real"
+        },
+        {
+          "claim": "UFI missing",
+          "grade": "real"
+        },
+        {
+          "claim": "Language",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Nominal quantity if general public",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Tactile warning and P101/P102 if general public",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "Caught with Art. 20(3). Points to Table 2.6.3 (flash-point methods) twice instead of 2.6.2, and repeats the <=3 L size figures for a 5 L can."
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "CLP Annex IV",
+          "claim": "Must add a storage statement / code P403+P235",
+          "verdict": "M",
+          "evidence": "Annex IV Table 6.4 assigns P403 + P235 to flammable liquids, and Part 2 wording is 'Store in a well-ventilated place. Keep cool.' - which the label already prints; codes are not required on the label."
+        },
+        {
+          "ref": "CLP Article 35",
+          "claim": "'Danger' should be more prominent (larger font, contrasting colour)",
+          "verdict": "M",
+          "evidence": "Art. 35 is 'Packaging' (packaging strength, child-resistant fastenings, tactile warnings); it has no signal-word prominence rule."
+        },
+        {
+          "ref": "CLP Annex I",
+          "claim": "Additional H-statements required if other hazards apply",
+          "verdict": "V",
+          "evidence": "Annex I Parts 2-5 tables set the hazard statement for each class/category; Art. 21(2)."
+        },
+        {
+          "ref": "CLP Annex I",
+          "claim": "Check whether EUH statements apply",
+          "verdict": "M",
+          "evidence": "EUH statements are assigned by Annex II (Part 1 and 2) and worded in Annex III Part 2; Annex I does not set them."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Storage statement/code missing",
+          "grade": "not-real",
+          "quote": "Label prints 'Store in a well-ventilated place. Keep cool.' = P403 + P235 (Annex IV Part 2); Table 2.6.2 storage row is P403 + P235 only"
+        },
+        {
+          "claim": "'Danger' insufficiently prominent",
+          "grade": "not-real",
+          "quote": "No CLP size/colour rule for the signal word; Art. 31(3) only requires elements to 'stand out clearly from the background'"
+        },
+        {
+          "claim": "Additional H-statements if other hazards",
+          "grade": "unclear"
+        },
+        {
+          "claim": "EUH statements may apply",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Supplier details present and OK",
+          "grade": "not-real",
+          "quote": "Art. 4(11): 'a supplier established in the Union, which shall be identified on the label' - only a UK supplier is shown"
+        }
+      ],
+      "notes": "Does not notice 'Warning'; says of the signal word 'It appears you've listed it' and asks only for prominence - implied clearance. Also clears the UK-only supplier ('present')."
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "CLP Art. 17(1)(c)",
+          "claim": "Signal word: 'Danger' only",
+          "verdict": "M",
+          "evidence": "Art. 17(1)(c) is \"product identifiers as specified in Article 18\"; nominal quantity is 17(1)(b), pictograms 17(1)(d), signal words 17(1)(e), precautionary statements 17(1)(g)"
+        },
+        {
+          "ref": "Annex I Table 2.6.2",
+          "claim": "Flam. Liq. 2 signal word 'Danger'",
+          "verdict": "V",
+          "evidence": "Annex I Table 2.6.2 (Flam. Liq. Category 2): signal word \"Danger\"; \"H225: Highly flammable liquid and vapour\"; Prevention P210 P233 P240 P241 P242 P243 P280; Response P303 + P361 + P353, P370 + P378; Storage P403 + P235; Disposal P501."
+        },
+        {
+          "ref": "Art. 20 (signal-word rule)",
+          "claim": "'Warning' must be removed when 'Danger' applies",
+          "verdict": "V",
+          "evidence": "Art. 20(3): \"Where the signal word 'Danger' is used on the label, the signal word 'Warning' shall not appear on the label.\""
+        },
+        {
+          "ref": "CLP Art. 17(1)(a) and Art. 4",
+          "claim": "EU-established supplier must be named on label",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(a): \"the name, address and telephone number of the supplier(s)\"; Art. 4(11) (M37, applies from 1 July 2026 per Reg. (EU) 2024/2865 Art. 2(2), fetched from Publications Office CELEX 32024R2865): \"A substance or a mixture shall not be placed on the market unless a supplier established in the Union, which shall be identified on the label, in the course of an industrial or professional activity fulfils the requirements set out in this Regulation\""
+        },
+        {
+          "ref": "CLP Art. 17(1)(b)",
+          "claim": "Nominal quantity unless elsewhere on package; general public",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package\""
+        },
+        {
+          "ref": "CLP Annex VIII Part A (Reg. (EU) 2017/542), referenced in Art. 25",
+          "claim": "UFI on label or next to it, with PCN",
+          "verdict": "V",
+          "evidence": "Art. 25(7): \"Where under Annex VIII the submitter creates a unique formula identifier, it shall be included in the supplemental information on the label in accordance with the provisions of Section 5 of Part A of that Annex\"; Annex VIII Part A 3.1 covers \"mixtures classified as hazardous on the basis of their health or physical effects\"; Part A 5.2: \"preceded by the acronym 'UFI' in capital letters followed by a colon\" Annex VIII was inserted by Commission Regulation (EU) 2017/542 (listed in the consolidated text's amendment list)."
+        },
+        {
+          "ref": "CLP Art. 17(1)(d)",
+          "claim": "P-statement requirement",
+          "verdict": "M",
+          "evidence": "Art. 17(1)(d) is 'where applicable, hazard pictograms in accordance with Article 19'; precautionary statements are 17(1)(g)."
+        },
+        {
+          "ref": "Art. 22, Art. 28, Annex I Part 2 (Table 2.6.2), Annex IV Part 1",
+          "claim": "Selection for Flam. Liq. 2 also includes P241-P243, P280, P303+P361+P353, P370+P378, P501; cap ~six",
+          "verdict": "V",
+          "evidence": "Annex I Table 2.6.2 (Flam. Liq. Category 2): signal word \"Danger\"; \"H225: Highly flammable liquid and vapour\"; Prevention P210 P233 P240 P241 P242 P243 P280; Response P303 + P361 + P353, P370 + P378; Storage P403 + P235; Disposal P501. Art. 28(3): \"Not more than six precautionary statements shall appear on the label, unless necessary to reflect the nature and the severity of the hazards.\""
+        },
+        {
+          "ref": "Art. 22(1)",
+          "claim": "If general public, needs P102 unless clearly not accessible to children",
+          "verdict": "M",
+          "evidence": "Annex IV Part 1 Table 6.1: P101 and P102 hazard class \"as appropriate\", conditions for use \"Consumer products\"; P103 \"Consumer products - omit where P202 is used\". Annex IV preamble: general statements \"shall also be used where relevant\". Art. 22(1) only: \"The label shall include the relevant precautionary statements.\" Conditional, not an unconditional requirement. The 'unless clearly not accessible to children' exception is not in the text."
+        },
+        {
+          "ref": "Art. 35(2), Annex II Part 3, EN ISO 11683",
+          "claim": "Tactile warning for Flam. Liq. 2 consumer supply",
+          "verdict": "V",
+          "evidence": "Annex II 3.2.1.1: \"Where substances or mixtures are supplied to the general public and classified for ... flammable liquids categories 1 or 2 ... the packaging of whatever capacity, shall be fitted with a tactile warning of danger\"; 3.2.2 refers to EN ISO 11683; Art. 35(2) third subparagraph. 3.1.1.1 (child-resistant) does not list flammable liquids."
+        },
+        {
+          "ref": "CLP Art. 17(2)",
+          "claim": "Official language(s) of each Member State",
+          "verdict": "V",
+          "evidence": "Art. 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\""
+        },
+        {
+          "ref": "CLP Annex I 1.2.1, Art. 19, Annex V",
+          "claim": "23 mm pictogram correct minimum for 5 L; label at least 52 x 74 mm",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 x 105 [label] / At least 23 x 23 [pictogram]\". 52 x 74 and 16 x 16 are the \"Not exceeding 3 litres\" row (\"If possible, at least 52 x 74\"; \"Not smaller than 10 x 10 / If possible, at least 16 x 16\"). Pictogram figure right; label figure is the <=3 L row."
+        },
+        {
+          "ref": "Annex I 1.2.1, Art. 19, Annex V",
+          "claim": "Pictogram square on point, red border, black on white",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.1 \"Hazard pictograms shall be in the shape of a square set at a point\"; 1.2.1.2 \"black symbol on a white background with a red frame\"; Annex V gives the symbols; Art. 19(2) refers to 1.2.1 and Annex V."
+        },
+        {
+          "ref": "CLP Art. 18(3)(b)",
+          "claim": "Substance names only for certain health hazards",
+          "verdict": "V",
+          "evidence": "Art. 18(3)(b): \"the identity of all substances in the mixture that contribute to the classification of the mixture as regards acute toxicity, skin corrosion or serious eye damage, germ cell mutagenicity, ... STOT or aspiration hazard\"; following subparagraph: \"a maximum of four chemical names shall suffice\""
+        },
+        {
+          "ref": "Art. 26",
+          "claim": "Pictogram precedence may change layout if other classes",
+          "verdict": "V",
+          "evidence": "Art. 26(1): 'rules of precedence shall apply to reduce the number of hazard pictograms required'."
+        },
+        {
+          "ref": "CLP Art. 25 and Annex II",
+          "claim": "EUH066 may apply",
+          "verdict": "V",
+          "evidence": "Annex II Part 1 1.2.2 EUH031, 1.2.4 EUH066 (criteria given there); Part 2 2.6: EUH206 for \"mixtures containing more than 1 % of active chlorine\"; Art. 25(1) requires them where the properties apply."
+        },
+        {
+          "ref": "ADR/IMDG/IATA",
+          "claim": "Transport labelling separate (UN number, class 3)",
+          "verdict": "U",
+          "evidence": "Not among sources; not fetched."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "No EU-established supplier",
+          "grade": "real"
+        },
+        {
+          "claim": "Nominal quantity missing",
+          "grade": "unclear"
+        },
+        {
+          "claim": "UFI missing",
+          "grade": "real"
+        },
+        {
+          "claim": "No response statements",
+          "grade": "real"
+        },
+        {
+          "claim": "P501 missing",
+          "grade": "unclear"
+        },
+        {
+          "claim": "P102 and tactile warning if general public",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Language",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "Caught: 'Danger Warning' not allowed, 'Warning' must be removed, citing Art. 20 and Table 2.6.2 (also mis-cites 17(1)(c)). Label minimum 52 x 74 for 5 L is wrong (74 x 105)."
+    }
+  ]
+}

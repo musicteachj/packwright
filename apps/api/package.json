@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "print-test": "tsx src/labels/printTestSheet.cli.ts",
     "record:extraction": "tsx src/audit/recordFixture.cli.ts",
+    "experiment:without": "tsx src/experiments/withoutTool/run.cli.ts",
     "sample:photo": "node ../../scripts/make-audit-sample.mjs"
   },
   "dependencies": {

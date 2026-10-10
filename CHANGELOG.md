@@ -8,6 +8,30 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **The MCP "without" experiment, which decides whether the MCP work goes ahead.** Twelve labels, each a
+  conformant fixture with one rule fixture's defect planted in it, go to Claude Sonnet 5.5 and Claude Haiku 4.5
+  with no tool, three times each, and every answer is graded against the primary sources: was the defect found,
+  was each citation real and did it say what was claimed, and was a bad label called compliant. The harness is
+  `apps/api/src/experiments/withoutTool/`, run by hand with `npm run experiment:without` and never by CI. It
+  refuses to start unless the engine still raises each planted defect, reads the printed text off the engine's
+  own layout rather than from a paraphrase, writes each response the moment it arrives and resumes without paying
+  again for a recorded answer, and stops at $6. The prompts, the engine's findings, the raw responses and the grading are in
+  `docs/experiments/2026-10-09-mcp-without/`. The fixture for GHS09 on a US label was left out, because the
+  backlog records that whether it is a violation is open.
+  **It confirms the case.** Sonnet 5.5 caught 26 of 30 planted defects, but 31 of its 36 answers carried a
+  citation that was wrong or did not exist, and it called a defective label compliant three times — all three
+  runs of the Digital Link case passed a `/gtin/` path the standard has removed. Haiku 4.5 missed 24 of 30. The
+  run cost $2.11. Every answer was graded against the primary source fetched that day, by five agents on a fixed
+  rubric, with the examples, every planted citation and every nonexistent Sonnet citation re-checked by hand.
+- **Four things the experiment found about Packwright itself, in the backlog.** Every US food label prints
+  "Added Sugars 0g" where 21 CFR 101.9(c)(6)(iii) requires "Includes"; nothing checks CLP Article 4(11)'s
+  EU-established supplier, in force since 1 July 2026, or a mixture's UFI; and nothing cross-checks servings per
+  container against the net quantity. The first is proposed for before deployment.
+- **The roadmap no longer says there is no `.env`.** The key the experiment needs was already in
+  `apps/api/.env`, gitignored, where the photo audit reads it.
+
 ### Changed
 
 - **Four dead ends in the editor, each reproduced in a browser first.**

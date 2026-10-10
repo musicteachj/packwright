@@ -1,0 +1,396 @@
+{
+  "caseId": "07-gs1-digital-link-alphas",
+  "sources": "GS1 Digital Link URI Syntax 1.7.0 (/tmp/mcpw/sources/gs1-digital-link-uri-syntax-1.7.0.txt); GS1 General Specifications 26.0 (pp. 7, 122, 410, 544 rendered and read as images); 21 CFR 101.x from /tmp/mcpw/sources; 16 CFR Part 500 and Title 21 structure fetched from the eCFR on 2026-10-09",
+  "answers": [
+    {
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications (Mod-10)",
+          "claim": "check digit 2 is correct for 0 36000 29145 2",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 §7.9.1, Table 7-8 \"Check digit algorithm\": GTIN-12 positions N1..N11 weighted x3,x1,...,x3; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2."
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "1-5-5-1 HRI grouping is the standard UPC-A layout",
+          "verdict": "V",
+          "evidence": "GenSpecs §5.2.5: \"The human readable digits SHALL be printed underneath the main symbol ... All the encoded digits for EAN-13, UPC-A, EAN-8 barcodes ... SHALL be shown in human readable interpretation form\"; first and last UPC-A digits are set outside the guard bars (5 modules), giving the 1-5-5-1 layout."
+        },
+        {
+          "ref": "GS1 Digital Link standard",
+          "claim": "12-digit UPC padded with leading zeros to 14 digits",
+          "verdict": "V",
+          "evidence": "DL §4.1: \"the value of a GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes serving as filler digits to reach a total of 14 digits\"; GenSpecs 2.1.13.1: \"GTIN SHALL be expressed as 14 digits\"."
+        },
+        {
+          "ref": "GS1 Digital Link standard",
+          "claim": "the /gtin/ path segment is the correct application identifier key",
+          "verdict": "M",
+          "evidence": "DL URI Syntax 1.7.0 §4.1: \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\"; change log: \"have now been removed so that, for example, 'gtin' cannot be used instead of '01' in the path.\" GenSpecs 2.1.13.1 example: https://example.com/01/09506000134369."
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "80-200% magnification and quiet zones",
+          "verdict": "V",
+          "evidence": "GenSpecs §5.12.3.1, Table 5-44 (symbol specification table 1, retail POS): UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (i.e. 80%-200%); Quiet Zone left 9X, right 9X; minimum quality specification 1.5/06/660."
+        },
+        {
+          "ref": "ISO/IEC 15416",
+          "claim": "verify, minimum 1.5/C",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not among sources; not verified."
+        },
+        {
+          "ref": "ISO/IEC 18004; ISO/IEC 15415",
+          "claim": "QR 4-module quiet zone; 2D grading",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not among sources; not verified."
+        },
+        {
+          "ref": "GS1 US Sunrise 2027",
+          "claim": "industry transition, not regulation",
+          "verdict": "U",
+          "evidence": "GS1 US material not among sources."
+        },
+        {
+          "ref": "FDA, FTC/FPLA, CPSC, USDA",
+          "claim": "product rules may apply",
+          "verdict": "-",
+          "evidence": "bare references"
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "id.example.com is a placeholder; real domain must be live",
+          "grade": "unclear"
+        },
+        {
+          "claim": "confirm 036000 prefix is yours",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "Opens \"Nothing on this label is non-compliant\" and affirmatively endorses /gtin/ as correct — the removed convenience alpha."
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications check digit calculation",
+          "claim": "check digit 2 matches",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 §7.9.1, Table 7-8 \"Check digit algorithm\": GTIN-12 positions N1..N11 weighted x3,x1,...,x3; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2."
+        },
+        {
+          "ref": "GS1 Digital Link standard",
+          "claim": "/gtin/ path is valid; GTIN padded to 14 digits",
+          "verdict": "M",
+          "evidence": "DL URI Syntax 1.7.0 §4.1: \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\"; change log: \"have now been removed so that, for example, 'gtin' cannot be used instead of '01' in the path.\" GenSpecs 2.1.13.1 example: https://example.com/01/09506000134369. (the 14-digit padding part is right: DL §4.1: \"the value of a GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes serving as filler digits to reach a total of 14 digits\"; GenSpecs 2.1.13.1: \"GTIN SHALL be expressed as 14 digits\".)"
+        },
+        {
+          "ref": "GS1 (two symbols on a pack)",
+          "claim": "both symbols must carry the same GTIN",
+          "verdict": "V",
+          "evidence": "GenSpecs §4.15.1(2): \"All GS1 data carriers that are used for the same application on an entity SHALL encode the same GS1 identifier (e.g., same GTIN, same GRAI, etc.).\""
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "human-readable digits required",
+          "verdict": "V",
+          "evidence": "GenSpecs §5.2.5: \"The human readable digits SHALL be printed underneath the main symbol ... All the encoded digits for EAN-13, UPC-A, EAN-8 barcodes ... SHALL be shown in human readable interpretation form\"; first and last UPC-A digits are set outside the guard bars (5 modules), giving the 1-5-5-1 layout."
+        },
+        {
+          "ref": "GS1 General Specifications (ISO/IEC 15416)",
+          "claim": "magnification, quiet zones, contrast and print grade are set by GenSpecs",
+          "verdict": "V",
+          "evidence": "GenSpecs §5.12.3.1, Table 5-44 (symbol specification table 1, retail POS): UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (i.e. 80%-200%); Quiet Zone left 9X, right 9X; minimum quality specification 1.5/06/660."
+        },
+        {
+          "ref": "Fair Packaging and Labeling Act",
+          "claim": "identity statement and net quantity",
+          "verdict": "V",
+          "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\"."
+        },
+        {
+          "ref": "FDA rules; CPSC rules; FTC rules",
+          "claim": "product-category rules",
+          "verdict": "-",
+          "evidence": "bare references"
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "placeholder domain; use a real domain, ideally a GS1-conformant resolver",
+          "grade": "unclear"
+        },
+        {
+          "claim": "036000 prefix associated with Kimberly-Clark",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "\"I don't see anything non-compliant in the barcode elements\" and \"the /gtin/ path is valid per the GS1 Digital Link standard\" — explicit false clearance."
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications, check digit calculation",
+          "claim": "check digit 2 matches",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 §7.9.1, Table 7-8 \"Check digit algorithm\": GTIN-12 positions N1..N11 weighted x3,x1,...,x3; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2."
+        },
+        {
+          "ref": "GS1 Digital Link URI syntax",
+          "claim": "/gtin/ followed by the GTIN matches the syntax",
+          "verdict": "M",
+          "evidence": "DL URI Syntax 1.7.0 §4.1: \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\"; change log: \"have now been removed so that, for example, 'gtin' cannot be used instead of '01' in the path.\" GenSpecs 2.1.13.1 example: https://example.com/01/09506000134369."
+        },
+        {
+          "ref": "GS1 Digital Link URI syntax",
+          "claim": "any domain you control is allowed",
+          "verdict": "V",
+          "evidence": "DL §4.12 \"Canonical GS1 Digital Link URIs\": \"A GS1 Digital Link URI can be constructed in any domain name ... to ensure brands can remain in control of the domains they use.\""
+        },
+        {
+          "ref": "GS1 US Sunrise 2027",
+          "claim": "encourages 2D pairing; not a legal requirement",
+          "verdict": "U",
+          "evidence": "GS1 US material not among sources."
+        },
+        {
+          "ref": "GS1 US licensing rules",
+          "claim": "using another company's prefix violates licensing",
+          "verdict": "U",
+          "evidence": "GS1 US rules not among sources (GenSpecs §1.5 is to the same effect)."
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "size, quiet zones, grade 1.5 (C) or better",
+          "verdict": "V",
+          "evidence": "GenSpecs §5.12.3.1, Table 5-44 (symbol specification table 1, retail POS): UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (i.e. 80%-200%); Quiet Zone left 9X, right 9X; minimum quality specification 1.5/06/660."
+        },
+        {
+          "ref": "ISO/IEC 15416 and 15415",
+          "claim": "verified grade",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not among sources; not verified."
+        },
+        {
+          "ref": "GS1 Digital Link",
+          "claim": "the URI is expected to work when scanned, usually a redirect",
+          "verdict": "M",
+          "evidence": "DL §2 (Conformance, normative): \"Applications SHALL NOT assume that a URL that follows the syntax defined in this standard will point to a resolver\"; change log: \"GS1 Digital Link URIs do not have to, and SHALL NOT be assumed to, point to a resolver\". GenSpecs 2.1.13.1 says only (descriptively) that DL \"explicitly encodes a resolvable Web URI\" and that example.com is \"a place holder for any domain name\"."
+        },
+        {
+          "ref": "Fair Packaging and Labeling Act (15 USC 1451 et seq.; 16 CFR Part 500)",
+          "claim": "identity, net quantity, name and place of business",
+          "verdict": "V",
+          "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\"."
+        },
+        {
+          "ref": "21 CFR Part 101",
+          "claim": "food: nutrition facts and ingredients",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9 and 21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"."
+        },
+        {
+          "ref": "21 CFR Part 101",
+          "claim": "food: allergens",
+          "verdict": "M",
+          "evidence": "No allergen-declaration requirement in Part 101 (sources 101.2-101.100 contain no \"allergen\"); it is FDCA 403(w), 21 USC 343(w) (enacted by FALCPA): \"Major food allergen labeling requirements\"."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "036000 registered to Kimberly-Clark",
+          "grade": "unclear"
+        },
+        {
+          "claim": "QR must resolve",
+          "grade": "not-real",
+          "quote": "DL §2 (Conformance, normative): \"Applications SHALL NOT assume that a URL that follows the syntax defined in this standard will point to a resolver\"; change log: \"GS1 Digital Link URIs do not have to, and SHALL NOT be assumed to, point to a resolver\". GenSpecs 2.1.13.1 says only (descriptively) that DL \"explicitly encodes a resolvable Web URI\" and that example.com is \"a place holder for any domain name\"."
+        }
+      ],
+      "notes": "\"Nothing on what you've listed is non-compliant\"; endorses /gtin/ path."
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "Digital Links must resolve to actual, functional URLs; example.com reserved for documentation",
+          "verdict": "M",
+          "evidence": "DL §2 (Conformance, normative): \"Applications SHALL NOT assume that a URL that follows the syntax defined in this standard will point to a resolver\"; change log: \"GS1 Digital Link URIs do not have to, and SHALL NOT be assumed to, point to a resolver\". GenSpecs 2.1.13.1 says only (descriptively) that DL \"explicitly encodes a resolvable Web URI\" and that example.com is \"a place holder for any domain name\"."
+        },
+        {
+          "ref": "21 CFR 101.105",
+          "claim": "net quantity in both metric and US customary units on PDP",
+          "verdict": "F",
+          "evidence": "21 CFR 101.105 does not exist in the current CFR: the eCFR Title 21 structure lists Subpart G of Part 101 as §101.100 and §101.108 only; the net quantity section is §101.7 \"Declaration of net quantity of contents\" (§ 101.105 is in the April 2016 annual CFR edition on govinfo and absent from April 2017 onward; checked by the lead on 2026-10-09)."
+        },
+        {
+          "ref": "16 CFR Part 500",
+          "claim": "net quantity in both metric and US customary units for consumer products",
+          "verdict": "V",
+          "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\"."
+        },
+        {
+          "ref": "21 CFR 101.3",
+          "claim": "product identity/name",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a): \"The principal display panel of a food in package form shall bear as one of its principal features a statement of the identity of the commodity.\""
+        },
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "ingredient statement",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"."
+        },
+        {
+          "ref": "21 CFR 101.5",
+          "claim": "manufacturer/distributor name and address",
+          "verdict": "V",
+          "evidence": "21 CFR 101.5 \"Food; name and place of business of manufacturer, packer, or distributor\"."
+        },
+        {
+          "ref": "21 CFR 101.36",
+          "claim": "Nutrition Facts",
+          "verdict": "M",
+          "evidence": "21 CFR 101.36 is \"Nutrition labeling of dietary supplements\" (Supplement Facts); it does not require a statement of identity or Nutrition Facts for conventional food (those are 101.3 and 101.9)."
+        },
+        {
+          "ref": "21 CFR 101.22",
+          "claim": "allergen declarations",
+          "verdict": "M",
+          "evidence": "21 CFR 101.22 is \"Foods; labeling of spices, flavorings, colorings and chemical preservatives\"; allergen declaration is FDCA 403(w)."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "placeholder domain id.example.com",
+          "grade": "unclear"
+        },
+        {
+          "claim": "missing net quantity",
+          "grade": "unclear"
+        },
+        {
+          "claim": "other product-type label content",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "Says \"The barcode and QR code encoding themselves are compliant\" and recommends https://id.yourcompany.com/gtin/... — reproduces the defect in its fix."
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications section 3.2.1",
+          "claim": "Digital Links must use only official GS1 resolver domains (e.g. gs1.easysmartlinks.com)",
+          "verdict": "F",
+          "evidence": "GenSpecs 26.0 has no §3.2.1: the contents (p.7, read from the rendered page) list 3.2 \"GS1 Application Identifiers in numerical order\" followed directly by 3.3. And the requirement is contrary to the standard: DL §4.12 \"Canonical GS1 Digital Link URIs\": \"A GS1 Digital Link URI can be constructed in any domain name ... to ensure brands can remain in control of the domains they use.\""
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "proper URI encoding and DL syntax",
+          "verdict": "-",
+          "evidence": "generic, no specific claim"
+        },
+        {
+          "ref": "21 CFR 101",
+          "claim": "ingredient lists",
+          "verdict": "-",
+          "evidence": "bare reference"
+        },
+        {
+          "ref": "21 CFR 101.36",
+          "claim": "Nutrition Facts",
+          "verdict": "M",
+          "evidence": "21 CFR 101.36 is \"Nutrition labeling of dietary supplements\" (Supplement Facts); it does not require a statement of identity or Nutrition Facts for conventional food (those are 101.3 and 101.9)."
+        },
+        {
+          "ref": "21 CFR 101.105",
+          "claim": "net quantity",
+          "verdict": "F",
+          "evidence": "21 CFR 101.105 does not exist in the current CFR: the eCFR Title 21 structure lists Subpart G of Part 101 as §101.100 and §101.108 only; the net quantity section is §101.7 \"Declaration of net quantity of contents\" (§ 101.105 is in the April 2016 annual CFR edition on govinfo and absent from April 2017 onward; checked by the lead on 2026-10-09)."
+        },
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "allergen declarations",
+          "verdict": "M",
+          "evidence": "21 CFR 101.4 is \"Food; designation of ingredients\"; allergen declaration is FDCA 403(w), 21 USC 343(w) (enacted by FALCPA): \"Major food allergen labeling requirements\"."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "custom domain non-compliant; must use GS1 resolver",
+          "grade": "not-real",
+          "quote": "DL §4.12 \"Canonical GS1 Digital Link URIs\": \"A GS1 Digital Link URI can be constructed in any domain name ... to ensure brands can remain in control of the domains they use.\""
+        },
+        {
+          "claim": "product-specific regulatory content possibly missing",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "\"The primary barcode/QR issue is the custom domain resolver\" — implies the URI path is otherwise fine; invents a GenSpecs section and a GS1 domain requirement."
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 Digital Link specification (GS1 General Specifications)",
+          "claim": "domain must be a real registered domain you control that resolves",
+          "verdict": "M",
+          "evidence": "DL §2 (Conformance, normative): \"Applications SHALL NOT assume that a URL that follows the syntax defined in this standard will point to a resolver\"; change log: \"GS1 Digital Link URIs do not have to, and SHALL NOT be assumed to, point to a resolver\". GenSpecs 2.1.13.1 says only (descriptively) that DL \"explicitly encodes a resolvable Web URI\" and that example.com is \"a place holder for any domain name\". DL §3 says the hostname \"is typically a registered Internet domain name\" — descriptive, not a requirement."
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "recommend GS1 logo or \"Scan for more info\" next to QR codes",
+          "verdict": "M",
+          "evidence": "No such recommendation in GenSpecs 26.0: full-text search finds no \"Scan for\" or call-to-action text, and \"logo\" occurs only for trademarks, verification-report copyright, placement around embossed logos and front-of-pack identification."
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "consistency of GTIN across codes; 14-digit form in URL",
+          "verdict": "V",
+          "evidence": "GenSpecs §4.15.1(2): \"All GS1 data carriers that are used for the same application on an entity SHALL encode the same GS1 identifier (e.g., same GTIN, same GRAI, etc.).\" DL §4.1: \"the value of a GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes serving as filler digits to reach a total of 14 digits\"; GenSpecs 2.1.13.1: \"GTIN SHALL be expressed as 14 digits\"."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "placeholder domain must be replaced",
+          "grade": "unclear"
+        },
+        {
+          "claim": "QR needs GS1 logo / call to action",
+          "grade": "not-real",
+          "quote": "No requirement in GenSpecs or DL URI syntax (see citation evidence)."
+        },
+        {
+          "claim": "GTIN-14 vs UPC-A digits worth noting",
+          "grade": "not-real",
+          "quote": "Not a problem: DL §4.1: \"the value of a GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes serving as filler digits to reach a total of 14 digits\"; GenSpecs 2.1.13.1: \"GTIN SHALL be expressed as 14 digits\"."
+        }
+      ],
+      "notes": "Its fix keeps /gtin/ (https://id.yourcompany.com/gtin/00036000291452), implying the path is fine."
+    }
+  ]
+}

@@ -159,7 +159,9 @@ The suggested order, recorded 2026-10-08:
 
 - Whether the order above holds (it is a suggestion, not agreed).
 - Public, private, or local only.
-- Whether to run the cheap "without" experiment first.
+- ~~Whether to run the cheap "without" experiment first.~~ Run on 2026-10-09, and it confirms the case: Claude
+  Sonnet 5.5 found most planted defects but put a wrong or nonexistent citation in 31 of 36 answers and cleared a
+  defective label three times. `docs/experiments/2026-10-09-mcp-without/README.md`.
 
 ## Risks to remember
 

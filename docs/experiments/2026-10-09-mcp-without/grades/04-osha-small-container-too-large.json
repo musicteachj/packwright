@@ -1,0 +1,461 @@
+{
+  "caseId": "04-osha-small-container-too-large",
+  "sources": "29 CFR 1910.1200 (eCFR text, /tmp/mcpw/sources/29cfr1910.1200.txt, 2026-10-09); App. C table C.4.19 and App. D Table D.1 read from the eCFR's Federal Register images ER08JA26.024 / ER08JA26.033, fetched 2026-10-09",
+  "answers": [
+    {
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "partly",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "1910.1200(f)(1)",
+          "claim": "every shipped container must carry all six elements on the label itself",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\""
+        },
+        {
+          "ref": "1910.1200(f)(1)(iii), Appendix C",
+          "claim": "hazard statement required; Flam. Liq. 2 = H225 \"Highly flammable liquid and vapor\"",
+          "verdict": "V",
+          "evidence": "(f)(1)(iii) \"Hazard statement(s);\"; App. C table C.4.19 Flammable Liquids: category 2 — signal word \"Danger\", hazard statement \"Highly flammable liquid and vapor\" (category 3 is \"Flammable liquid and vapor\"), flame pictogram."
+        },
+        {
+          "ref": "1910.1200(f)(1)(v), Appendix C",
+          "claim": "precautionary statements required; P210, P233, P240-P243, P280, P303+P361+P353, P370+P378, P403+P235, P501",
+          "verdict": "V",
+          "evidence": "(f)(1)(v) \"Precautionary statement(s);\"; Table C.4.19 lists for flammable liquids: \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\"; \"Keep container tightly closed.\"; \"Ground and bond container and receiving equipment.\"; \"Use explosion-proof [electrical/ventilating/lighting/...] equipment.\"; \"Use non-sparking tools.\"; \"Take action to prevent static discharge.\"; \"Wear protective gloves/protective clothing/eye protection...\"; \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\"; \"In case of fire: Use ... to extinguish.\"; \"Store in a well-ventilated place. Keep cool.\"; \"Dispose of contents/container to...\" (OSHA prints no P-codes, but the GHS codes listed map to these statements)."
+        },
+        {
+          "ref": "1910.1200(g)(2) and Appendix D, Sections 2 and 15",
+          "claim": "label and SDS must be consistent",
+          "verdict": "V",
+          "evidence": "App. D Table D.1, Section 2(b): \"Signal word, hazard statement(s), symbol(s) and precautionary statement(s) in accordance with paragraph (f) of §1910.1200\"; App. D intro: \"Sections 12-15 may be included in the SDS, but are not mandatory\" (Section 15 adds nothing)."
+        },
+        {
+          "ref": "1910.1200(f)(1)(iv), Appendix C.3 and C.4",
+          "claim": "pictogram must be a red-bordered diamond, white background, black symbol; no OSHA minimum size",
+          "verdict": "M",
+          "evidence": "App. C.3 is \"Supplementary Hazard Information\" (C.3.1-C.3.3); the shape/colour rule is C.2.3.1. App. C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible.\" (the size statement is correct: No minimum pictogram size exists anywhere in 1910.1200 (no \"cm\"/\"mm\" figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets only shape and colour.)"
+        },
+        {
+          "ref": "1910.1200(f)(1)(i), (g)(2)",
+          "claim": "product identifier must match the SDS name",
+          "verdict": "V",
+          "evidence": "(c): \"Product identifier means the name or number used for a hazardous chemical on a label or in the SDS ... The product identifier used shall permit cross-references to be made among the list of hazardous chemicals ..., the label and the SDS.\"; App. D Table D.1 Section 1(a): \"Product identifier used on the label\"; (g)(2) requires the SDS sections per Appendix D."
+        },
+        {
+          "ref": "Appendix C",
+          "claim": "\"Danger\" correct for Flam. Liq. 2",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 Flammable Liquids: category 2 — signal word \"Danger\", hazard statement \"Highly flammable liquid and vapor\" (category 3 is \"Flammable liquid and vapor\"), flame pictogram."
+        },
+        {
+          "ref": "1910.1200(f)(1)(vi)",
+          "claim": "name, address and phone required (present)",
+          "verdict": "V",
+          "evidence": "(f)(1)(vi) \"Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\""
+        },
+        {
+          "ref": "1910.1200(f)(10)",
+          "claim": "label must be in English",
+          "verdict": "M",
+          "evidence": "(f)(10) is the employer's duty for workplace labels (\"The employer shall ensure that workplace labels or other forms of warning are legible, in English, and prominently displayed\"); for shipped containers English/prominence sits in (f)(2). Neither paragraph mentions durability."
+        },
+        {
+          "ref": "1910.1200(b)(6)(ix)",
+          "claim": "HazCom does not apply if sold to the general public",
+          "verdict": "M",
+          "evidence": "(b)(6)(ix) exempts consumer products \"where the employer can show that it is used in the workplace for the purpose intended ... and the use results in a duration and frequency of exposure which is not greater than ... consumers\" — an employer-use exemption. The labeling carve-out is (b)(5)(v): \"This section does not require labeling of ... Any consumer product or hazardous substance as those terms are defined in the Consumer Product Safety Act ... and Federal Hazardous Substances Act ..., when subject to a consumer product safety standard or labeling requirement of those Acts\"."
+        },
+        {
+          "ref": "CPSC Federal Hazardous Substances Act",
+          "claim": "consumer products fall under FHSA labeling instead",
+          "verdict": "U",
+          "evidence": "FHSA / 16 CFR 1500 not among sources; not verified. (OSHA (b)(5)(v) does carve CPSA/FHSA-labelled products out of HazCom labeling.)"
+        },
+        {
+          "ref": "49 CFR Parts 172 and 173",
+          "claim": "DOT hazmat marking applies separately to shipping",
+          "verdict": "U",
+          "evidence": "Not among the provided sources (49 CFR not fetched); (f)(5)(i) only confirms HazCom labels must not conflict with DOT rules."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "OSHA did not adopt a small-container exemption; reduced labels come only from UN GHS/CLP",
+          "grade": "not-real",
+          "quote": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1)\"; (f)(12)(ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\""
+        },
+        {
+          "claim": "hazard statement missing",
+          "grade": "real"
+        },
+        {
+          "claim": "precautionary statements missing",
+          "grade": "real"
+        },
+        {
+          "claim": "pictogram may not be a red-bordered diamond",
+          "grade": "unclear"
+        },
+        {
+          "claim": "product identifier must match SDS",
+          "grade": "unclear"
+        },
+        {
+          "claim": "other unlisted health hazards may need elements",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "Reaches the right outcome (full label needed on the 500 ml can) for a wrong reason: asserts OSHA has no small-container provision at all, whereas (f)(12)(ii) exists and is limited to <=100 ml. Hence partly."
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "1910.1200(f)(1)",
+          "claim": "every shipped container needs all six elements",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\""
+        },
+        {
+          "ref": "2024 HazCom update / paragraph (f)",
+          "claim": "small-container relief only for about 100 mL or less where a full label is impractical, with conditions; 500 mL does not qualify",
+          "verdict": "V",
+          "evidence": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1)\"; (f)(12)(ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\""
+        },
+        {
+          "ref": "1910.1200(f)(1)(iii); Appendix C, Table C.4.5",
+          "claim": "hazard statement required; Flam. Liq. 2 = \"Highly flammable liquid and vapor\"; Table C.4.5 assigns it",
+          "verdict": "M",
+          "evidence": "(f)(1)(iii) \"Hazard statement(s);\" — substance right, but the flammable-liquids table is C.4.19 (\"C.4.19 FLAMMABLE LIQUIDS (Classified in Accordance with Appendix B.6)\"), not C.4.5. App. C table C.4.19 Flammable Liquids: category 2 — signal word \"Danger\", hazard statement \"Highly flammable liquid and vapor\" (category 3 is \"Flammable liquid and vapor\"), flame pictogram."
+        },
+        {
+          "ref": "1910.1200(f)(1)(iv); Appendix C, Table C.4.5",
+          "claim": "precautionary statements required",
+          "verdict": "M",
+          "evidence": "(f)(1)(iv) \"Pictogram(s);\" — precautionary statements are (f)(1)(v); and the table is C.4.19, not C.4.5."
+        },
+        {
+          "ref": "1910.1200(f)(2)",
+          "claim": "may consolidate or omit statements only where clearly redundant or inappropriate",
+          "verdict": "M",
+          "evidence": "(f)(2): information under (f)(1)(i)-(v) shall be \"in accordance with Appendix C ..., for each hazard class and associated hazard category ..., prominently displayed, and in English (other languages may also be included if appropriate).\" The consolidation/omission permissions are App. C.2.2.2, C.2.4.6 and C.2.4.9 (\"If the chemical manufacturer ... can demonstrate that a precautionary statement is inappropriate ... may be omitted\"), not (f)(2)."
+        },
+        {
+          "ref": "1910.1200(f)(1)(ii) and Appendix C.2",
+          "claim": "pictogram black symbol, white background, red diamond border",
+          "verdict": "M",
+          "evidence": "(f)(1)(ii) is \"Signal word;\" — not pictograms; App. C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible.\" (C.2 supports it; the (f)(1)(ii) reference is wrong)."
+        },
+        {
+          "ref": "1910.1200(f)(6) and (f)(1)",
+          "claim": "no minimum pictogram size, but must be legible and prominent",
+          "verdict": "M",
+          "evidence": "(f)(6) is \"Workplace labeling\" — the employer labels workplace containers with \"(i) The information specified under paragraphs (f)(1)(i) through (v) ...; or, (ii) Product identifier and words, pictures, symbols ...\" It has only (i) and (ii), and contains no size, small-container or reduced-label provision. Prominence for shipped labels is (f)(2). No minimum pictogram size exists anywhere in 1910.1200 (no \"cm\"/\"mm\" figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets only shape and colour."
+        },
+        {
+          "ref": "1910.1200(f)(2), (g)(2)",
+          "claim": "product identifier must match SDS",
+          "verdict": "V",
+          "evidence": "(c): \"Product identifier means the name or number used for a hazardous chemical on a label or in the SDS ... The product identifier used shall permit cross-references to be made among the list of hazardous chemicals ..., the label and the SDS.\"; App. D Table D.1 Section 1(a): \"Product identifier used on the label\"; (g)(2) requires the SDS sections per Appendix D."
+        },
+        {
+          "ref": "1910.1200(d), (f)",
+          "claim": "classification must cover all hazards of the mixture",
+          "verdict": "V",
+          "evidence": "(d) \"Hazard classification\"; App. C.2: \"The label for each hazardous chemical that is classified shall include the signal word, hazard statement(s), pictogram(s), and precautionary statement(s) specified in C.4 for each hazard class and associated hazard category\""
+        },
+        {
+          "ref": "1910.1200(f)(6) and (f)(9)",
+          "claim": "label in English, legible, prominent and durable on a metal can",
+          "verdict": "M",
+          "evidence": "(f)(6) is \"Workplace labeling\" — the employer labels workplace containers with \"(i) The information specified under paragraphs (f)(1)(i) through (v) ...; or, (ii) Product identifier and words, pictures, symbols ...\" It has only (i) and (ii), and contains no size, small-container or reduced-label provision. (f)(9): \"The employer shall not remove or deface existing labels on incoming containers ...\" — nothing on durability."
+        },
+        {
+          "ref": "1910.1200(f)(1)(vi)",
+          "claim": "name, address and phone present and compliant",
+          "verdict": "V",
+          "evidence": "(f)(1)(vi) \"Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\""
+        },
+        {
+          "ref": "DOT 49 CFR Parts 172 and 173",
+          "claim": "limited-quantity marking may apply",
+          "verdict": "U",
+          "evidence": "Not among the provided sources (49 CFR not fetched); (f)(5)(i) only confirms HazCom labels must not conflict with DOT rules."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "hazard statement missing",
+          "grade": "real"
+        },
+        {
+          "claim": "precautionary statements missing",
+          "grade": "real"
+        },
+        {
+          "claim": "pictogram must be confirmed as red diamond",
+          "grade": "unclear"
+        },
+        {
+          "claim": "other classified hazards may apply",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "Caught: says the 2024 small-container relief applies only to ~100 mL or less and 500 mL does not qualify (hedged 'as I understand it', no paragraph number). Several sub-paragraph citations are shifted by one."
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "1910.1200(f)(1)",
+          "claim": "each shipped container needs all required elements",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\""
+        },
+        {
+          "ref": "OSHA guidance (immediate container inside outer packaging)",
+          "claim": "immediate container label must be visible or outer package also labelled",
+          "verdict": "U",
+          "evidence": "Unspecified OSHA guidance/interpretation; not in sources."
+        },
+        {
+          "ref": "2024 HazCom update",
+          "claim": "small-container accommodation ~100 mL or less; 500 mL well above it",
+          "verdict": "V",
+          "evidence": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1)\"; (f)(12)(ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\""
+        },
+        {
+          "ref": "1910.1200(f)(1)(iv) and Appendix C",
+          "claim": "hazard statement \"Highly flammable liquid and vapor\" required",
+          "verdict": "M",
+          "evidence": "(f)(1)(iv) \"Pictogram(s);\" — hazard statements are (f)(1)(iii). App. C table C.4.19 Flammable Liquids: category 2 — signal word \"Danger\", hazard statement \"Highly flammable liquid and vapor\" (category 3 is \"Flammable liquid and vapor\"), flame pictogram."
+        },
+        {
+          "ref": "1910.1200(f)(1)(v), Appendix C (C.4)",
+          "claim": "precautionary statements required; list for Flam. Liq. 2",
+          "verdict": "V",
+          "evidence": "(f)(1)(v) \"Precautionary statement(s);\"; Table C.4.19 lists for flammable liquids: \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\"; \"Keep container tightly closed.\"; \"Ground and bond container and receiving equipment.\"; \"Use explosion-proof [electrical/ventilating/lighting/...] equipment.\"; \"Use non-sparking tools.\"; \"Take action to prevent static discharge.\"; \"Wear protective gloves/protective clothing/eye protection...\"; \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\"; \"In case of fire: Use ... to extinguish.\"; \"Store in a well-ventilated place. Keep cool.\"; \"Dispose of contents/container to...\" (OSHA prints no P-codes, but the GHS codes listed map to these statements)."
+        },
+        {
+          "ref": "1910.1200(f)(1)(iii), (c) pictogram definition, Appendix C",
+          "claim": "pictogram must be red-bordered square set at a point on white",
+          "verdict": "M",
+          "evidence": "(f)(1)(iii) \"Hazard statement(s);\" — pictograms are (f)(1)(iv); the (c) definition only says a pictogram \"may include a symbol plus other graphic elements, such as a border...\"; the rule is App. C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible.\""
+        },
+        {
+          "ref": "Appendix C",
+          "claim": "\"Danger\" correct for Flam. Liq. 2",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 Flammable Liquids: category 2 — signal word \"Danger\", hazard statement \"Highly flammable liquid and vapor\" (category 3 is \"Flammable liquid and vapor\"), flame pictogram."
+        },
+        {
+          "ref": "1910.1200(f)(1)(i)",
+          "claim": "product identifier must match the SDS",
+          "verdict": "V",
+          "evidence": "(c): \"Product identifier means the name or number used for a hazardous chemical on a label or in the SDS ... The product identifier used shall permit cross-references to be made among the list of hazardous chemicals ..., the label and the SDS.\"; App. D Table D.1 Section 1(a): \"Product identifier used on the label\"; (g)(2) requires the SDS sections per Appendix D."
+        },
+        {
+          "ref": "1910.1200(f)(1)(vi)",
+          "claim": "name, address and phone required (present)",
+          "verdict": "V",
+          "evidence": "(f)(1)(vi) \"Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\""
+        },
+        {
+          "ref": "49 CFR 172",
+          "claim": "DOT Class 3 label/markings may apply",
+          "verdict": "U",
+          "evidence": "Not among the provided sources (49 CFR not fetched); (f)(5)(i) only confirms HazCom labels must not conflict with DOT rules."
+        },
+        {
+          "ref": "CPSC/FHSA (16 CFR 1500)",
+          "claim": "consumer products fall under FHSA instead of OSHA",
+          "verdict": "U",
+          "evidence": "FHSA / 16 CFR 1500 not among sources; not verified. (OSHA (b)(5)(v) does carve CPSA/FHSA-labelled products out of HazCom labeling.)"
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "hazard statement missing",
+          "grade": "real"
+        },
+        {
+          "claim": "precautionary statements missing",
+          "grade": "real"
+        },
+        {
+          "claim": "pictogram must be diamond with red border",
+          "grade": "unclear"
+        },
+        {
+          "claim": "whole-mixture classification may add hazards",
+          "grade": "unclear"
+        }
+      ],
+      "notes": "Caught: 2024 accommodation for ~100 mL or less, 500 mL well above (hedged, no paragraph). Pictogram and hazard-statement sub-paragraphs swapped."
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(4)",
+          "claim": "hazard and precautionary statements required; on reduced small-container labels they must appear or be referenced as on the outer package",
+          "verdict": "M",
+          "evidence": "(f)(4) is \"Solid materials\" (label for solid metal, wood, plastic, whole grain may be transmitted with the initial shipment); it says nothing about hazard or precautionary statements. Small containers are (f)(12), which does not require hazard or precautionary statements on the <=100 ml label."
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(1)(vi)",
+          "claim": "pictograms at least 1 cm x 1 cm",
+          "verdict": "M",
+          "evidence": "(f)(1)(vi) \"Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" — no size. No minimum pictogram size exists anywhere in 1910.1200 (no \"cm\"/\"mm\" figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets only shape and colour."
+        },
+        {
+          "ref": "ANSI Z535.4 and GHS guidance",
+          "claim": "recommend 1-2 cm pictograms on small containers",
+          "verdict": "U",
+          "evidence": "ANSI Z535.4 / UN GHS not among sources."
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(1)(i)",
+          "claim": "product identifier must be \"clear, visible, and readily apparent\"",
+          "verdict": "M",
+          "evidence": "(f)(1)(i) reads only \"Product identifier;\"; the quoted words do not occur in 1910.1200."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "hazard/precautionary statements missing (or must be cross-referenced)",
+          "grade": "real"
+        },
+        {
+          "claim": "pictogram 10 mm may be undersized",
+          "grade": "not-real",
+          "quote": "No minimum pictogram size exists anywhere in 1910.1200 (no \"cm\"/\"mm\" figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets only shape and colour."
+        },
+        {
+          "claim": "product identifier lacks visual separation",
+          "grade": "not-real",
+          "quote": "(f)(1)(i) reads only \"Product identifier;\" — no separation or emphasis requirement."
+        }
+      ],
+      "notes": "Treats the reduced small-container label as acceptable and proposes adding a cross-reference statement the label already carries; never questions eligibility of 500 ml. Invented 1 cm pictogram minimum and an invented quotation."
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(1)",
+          "claim": "signal word must be \"displayed in a color contrasting with the background\"",
+          "verdict": "M",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" — no colour/contrast requirement; the quoted words do not occur in 1910.1200."
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(3)",
+          "claim": "at least one hazard statement per class; Flam. Liq. 2 = \"Flammable liquid and vapor\"",
+          "verdict": "M",
+          "evidence": "(f)(3) is only: \"the information provided under paragraphs (f)(1)(ii) through (iv) ... is located together on the label, tag, or mark.\" Also wrong text: App. C table C.4.19 Flammable Liquids: category 2 — signal word \"Danger\", hazard statement \"Highly flammable liquid and vapor\" (category 3 is \"Flammable liquid and vapor\"), flame pictogram."
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(4)",
+          "claim": "precautionary statements required",
+          "verdict": "M",
+          "evidence": "(f)(4) is \"Solid materials\" (label for solid metal, wood, plastic, whole grain may be transmitted with the initial shipment); it says nothing about hazard or precautionary statements."
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(6)(i)",
+          "claim": "pictograms at least 1 cm (10 mm) on a side",
+          "verdict": "M",
+          "evidence": "(f)(6) is \"Workplace labeling\" — the employer labels workplace containers with \"(i) The information specified under paragraphs (f)(1)(i) through (v) ...; or, (ii) Product identifier and words, pictures, symbols ...\" It has only (i) and (ii), and contains no size, small-container or reduced-label provision. No minimum pictogram size exists anywhere in 1910.1200 (no \"cm\"/\"mm\" figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets only shape and colour."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "signal word lacks contrasting colour",
+          "grade": "not-real",
+          "quote": "No colour requirement for the signal word in (f)(1)/(f)(2) or App. C; (f)(1)(ii) reads only \"Signal word;\"."
+        },
+        {
+          "claim": "hazard statement missing",
+          "grade": "real"
+        },
+        {
+          "claim": "precautionary statements missing",
+          "grade": "real"
+        },
+        {
+          "claim": "pictogram 10 mm borderline small",
+          "grade": "not-real",
+          "quote": "No minimum pictogram size exists anywhere in 1910.1200 (no \"cm\"/\"mm\" figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets only shape and colour."
+        }
+      ],
+      "notes": "Explicitly says the \"full label reference\" is compliant — false clearance of the planted defect. Gives category 3 hazard statement for category 2."
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "partly",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(1)",
+          "claim": "signal word must be displayed prominently (larger/bold)",
+          "verdict": "M",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" Prominence is in (f)(2) (\"prominently displayed\"), which sets no font size/weight."
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(4)",
+          "claim": "hazard statements required",
+          "verdict": "M",
+          "evidence": "(f)(4) is \"Solid materials\" (label for solid metal, wood, plastic, whole grain may be transmitted with the initial shipment); it says nothing about hazard or precautionary statements."
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(5)",
+          "claim": "precautionary statements required",
+          "verdict": "M",
+          "evidence": "(f)(5) is \"Transportation\" (labels must not conflict with HMTA/DOT rules; bulk shipments; DOT pictogram substitution); nothing about precautionary statements."
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(6)(i)",
+          "claim": "reduced labels allowed only if full label on outer package and reduced label has product identifier, signal word, pictogram and hazard statement",
+          "verdict": "M",
+          "evidence": "(f)(6) is \"Workplace labeling\" — the employer labels workplace containers with \"(i) The information specified under paragraphs (f)(1)(i) through (v) ...; or, (ii) Product identifier and words, pictures, symbols ...\" It has only (i) and (ii), and contains no size, small-container or reduced-label provision. The small-container rule is (f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1)\"; (f)(12)(ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\" — it requires name and phone, not hazard statements."
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "signal word lacks emphasis",
+          "grade": "not-real",
+          "quote": "(f)(2) requires only that the information be \"prominently displayed\"; no font size/bold rule."
+        },
+        {
+          "claim": "hazard statement missing",
+          "grade": "real"
+        },
+        {
+          "claim": "precautionary statements missing",
+          "grade": "real"
+        },
+        {
+          "claim": "hazard statement required even on small-container label",
+          "grade": "not-real",
+          "quote": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1)\"; (f)(12)(ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\""
+        }
+      ],
+      "notes": "Only gestures at the planted defect (\"verify that 500 ml qualifies for reduced labeling\") under the wrong paragraph and with the wrong element list; never states the 100 ml limit."
+    }
+  ]
+}
