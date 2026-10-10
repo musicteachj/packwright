@@ -17,13 +17,11 @@ import {
   DEFAULT_UPC_A_STOCK,
   DEFAULT_US_FOOD_STOCK,
   LayoutError,
-  compareSeverity,
-  layOutGhsLabel,
-  layOutUpcALabel,
-  layOutUsFoodLabel,
-  declinedChecks,
+  SymbolLayoutError,
+  judgeLayout,
+  layOutLabel,
   normaliseScannedGtin,
-  runRules,
+  uncheckableIn,
   type DeclinedCheck,
   type ElementId,
   type Finding,
@@ -45,7 +43,6 @@ import {
   placeholderUpcALayout,
 } from '../barcodeEncoder'
 import { sameDocument, type DocumentSnapshot } from './documentIdentity'
-import { uncheckableIn } from '../uncheckable'
 import { computed, reactive, ref, watch } from 'vue'
 
 /** A real GTIN-12, so the editor opens on something that resolves. */
@@ -205,17 +202,24 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
       if (labelType.value === 'gs1-retail' && encoder === null) {
         void loadBarcodeEncoder().catch(() => {})
       }
+      // Through `layOutLabel`, the one dispatch the judge and the server use too, so
+      // the editor cannot draw a document differently from the way they do. The
+      // placeholder is the exception, and is never judged: see `encoderPending`.
       const layout =
         labelType.value === 'gs1-retail'
           ? encoder === null
             ? placeholderUpcALayout({ data, stock })
-            : layOutUpcALabel(encoder, { data, stock })
+            : layOutLabel({ labelType: 'gs1-retail', data, stock, barcode: encoder })
           : labelType.value === 'ghs-chemical'
-            ? layOutGhsLabel({ data: ghsData, stock: ghsStock })
-            : layOutUsFoodLabel({ data: foodData, stock: foodStock })
+            ? layOutLabel({ labelType: 'ghs-chemical', data: ghsData, stock: ghsStock })
+            : layOutLabel({ labelType: 'us-food', data: foodData, stock: foodStock })
       return { layout, error: null }
     } catch (error) {
-      if (error instanceof LayoutError) return { layout: null, error: error.message }
+      // `SymbolLayoutError` too, which is its own class: the judge refuses it, and the
+      // editor shows it as the same kind of form state rather than throw out of a computed.
+      if (error instanceof LayoutError || error instanceof SymbolLayoutError) {
+        return { layout: null, error: error.message }
+      }
       throw error
     }
   })
@@ -281,10 +285,18 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
     }
   })
 
-  const findings = computed<Finding[]>(() => {
+  /**
+   * The report on the label, from the judge every caller shares — the audit screen
+   * and the MCP server ask the same function, so none can tell a label something the
+   * editor would not. Undefined while there is nothing to judge: no layout yet, or a
+   * barcode encoder still loading.
+   */
+  const judgement = computed(() => {
     const context = ruleContext.value
-    return context === undefined ? [] : runRules(context)
+    return context === undefined ? undefined : judgeLayout(context)
   })
+
+  const findings = computed<readonly Finding[]>(() => judgement.value?.findings ?? [])
 
   /**
    * Checks that did not run, and what each would need in order to.
@@ -294,25 +306,16 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    * one names questions the label never answered. `docs/WHAT-IS-NOT-CHECKED.md`
    * tells a reader they are different things, so the rail has to keep them apart.
    */
-  const declined = computed<DeclinedCheck[]>(() => {
-    const context = ruleContext.value
-    return context === undefined ? [] : declinedChecks(context)
-  })
+  const declined = computed<readonly DeclinedCheck[]>(() => judgement.value?.declined ?? [])
 
   /** Most severe first; passes last, where the rail collapses them. */
-  const findingsBySeverity = computed<ReadonlyArray<[Severity, Finding[]]>>(() => {
-    const groups = new Map<Severity, Finding[]>()
-    for (const finding of findings.value) {
-      const group = groups.get(finding.severity)
-      if (group) group.push(finding)
-      else groups.set(finding.severity, [finding])
-    }
-    return [...groups.entries()].sort(([a], [b]) => compareSeverity(a, b))
-  })
+  const findingsBySeverity = computed<ReadonlyArray<readonly [Severity, readonly Finding[]]>>(
+    () => judgement.value?.groups ?? [],
+  )
 
-  const failures = computed(() => findings.value.filter((f) => f.severity !== 'pass'))
-  const passes = computed(() => findings.value.filter((f) => f.severity === 'pass'))
-  const hasBlocking = computed(() => findings.value.some((f) => f.severity === 'blocking'))
+  const failures = computed(() => judgement.value?.failures ?? [])
+  const passes = computed(() => judgement.value?.passes ?? [])
+  const hasBlocking = computed(() => judgement.value?.blocking ?? false)
 
   /**
    * Everything that could not be certified, and why.
@@ -328,8 +331,8 @@ export const useLabelDocumentStore = defineStore('labelDocument', () => {
    * off the label, with nothing saying why. A check that was declined has to read
    * as declined, or it is indistinguishable from a check that was never written.
    */
-  // Assembled in `uncheckable.ts`, which the audit report shares — two copies
-  // of this had already drifted apart.
+  // The builder the judge uses, on the layout alone — it reads no rule, so it need not
+  // wait for one, and it reads the placeholder too while the encoder loads.
   const uncertifiable = computed(() => uncheckableIn(layout.value))
 
   const elementLabels = computed(() => {

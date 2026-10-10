@@ -60,6 +60,16 @@ migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phas
 
 ---
 
+## From the shared judge, 2026-10-10
+
+**The export routes catch `LayoutError` and not `SymbolLayoutError`.** `apps/api/src/labels/routes.ts` turns a
+`LayoutError` into a 422 at each of its three exports, but a symbol the encoder could not produce raises the
+separate `SymbolLayoutError`, which reaches Express's error handler instead. The judge and the editor now refuse it
+the same way they refuse a layout error (#79). No route is known to reach it with bwip-js and a document the
+schema accepts — the engine checks the payload first and raises `LayoutError` — so it is consistency rather than a
+live failure. Fold it into stage 17 or 18 of `docs/plans/2026-10-10-mcp.md`, which rework the routes' input
+anyway.
+
 ## From the MCP "without" experiment, 2026-10-09
 
 Found because a model, asked about labels this engine passes, raised requirements the engine does not check.

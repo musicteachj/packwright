@@ -1,7 +1,8 @@
-import { UPC_A_ELEMENTS } from '@packwright/label-core'
+import { UPC_A_ELEMENTS, judgeLabel } from '@packwright/label-core'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useLabelDocumentStore } from './labelDocument'
+import { barcodeEncoder } from '../barcodeEncoder'
 
 describe('the label document store', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -78,6 +79,53 @@ describe('the label document store', () => {
     expect(store.ghsData.regime).toBe('eu-clp')
     expect(store.ghsData.supplier?.address).toMatch(/, Netherlands$/)
     expect(store.ghsData.supplier?.telephone?.trim()).toBeTruthy()
+  })
+
+  it.each(['gs1-retail', 'ghs-chemical', 'us-food'] as const)(
+    'reports on a %s label exactly what the shared judge reports',
+    (labelType) => {
+      // The editor lays out and judges through `layOutLabel` and `judgeLayout`; the
+      // server will call `judgeLabel`. This is the check that the two paths agree on
+      // the editor's own documents — the comparison `/code-review high` on #79 found
+      // missing, since the judge's own test compared it with a copy of its dispatch.
+      const store = useLabelDocumentStore()
+      store.labelType = labelType
+      const request =
+        labelType === 'gs1-retail'
+          ? { labelType, data: store.data, stock: store.stock, barcode: barcodeEncoder.value! }
+          : labelType === 'ghs-chemical'
+            ? { labelType, data: store.ghsData, stock: store.ghsStock }
+            : { labelType, data: store.foodData, stock: store.foodStock }
+      const judged = judgeLabel(request)
+      if (judged.outcome === 'refused') throw new Error(judged.reason)
+      expect(store.encoderPending).toBe(false)
+      expect(store.layout).toEqual(judged.layout)
+      expect(store.findings).toEqual(judged.findings)
+      expect(store.findingsBySeverity).toEqual(judged.groups)
+      expect(store.failures).toEqual(judged.failures)
+      expect(store.passes).toEqual(judged.passes)
+      expect(store.hasBlocking).toBe(judged.blocking)
+      expect(store.declined).toEqual(judged.declined)
+      expect(store.uncertifiable).toEqual(judged.uncheckable)
+      // Not vacuous: each seed draws a label with findings on it.
+      expect(judged.findings.length).toBeGreaterThan(0)
+    },
+  )
+
+  it('shows a symbol the encoder could not produce as a form state, as the judge refuses it', () => {
+    // `SymbolLayoutError` is its own class; the judge refuses it, and the editor used to
+    // let it throw out of a computed. An encoder that draws no bars raises one.
+    const real = barcodeEncoder.value
+    barcodeEncoder.value = { render: (_options, drawing) => drawing.end() }
+    try {
+      const store = useLabelDocumentStore()
+      store.labelType = 'gs1-retail'
+      expect(store.layout).toBeNull()
+      expect(store.layoutError).toMatch(/produced no bars/)
+      expect(store.findings).toEqual([])
+    } finally {
+      barcodeEncoder.value = real
+    }
   })
 })
 

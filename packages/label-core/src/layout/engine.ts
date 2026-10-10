@@ -33,7 +33,7 @@ import {
 } from '../geometry/symbol'
 import { MEASUREMENT_TOLERANCE_MM, roundTo } from '../geometry/units'
 import { isValidCheckDigit } from '../gs1/checkDigit'
-import type { HriStyle } from '../symbology/layOutSymbol'
+import type { BarcodeEncoder, HriStyle } from '../symbology/layOutSymbol'
 import { layOutSymbol } from '../symbology/layOutSymbol'
 import type { LabelStock } from '../templates/stock'
 import { ARTWORK_DEFAULT, anchorBox, panelFor } from '../templates/stock'
@@ -104,11 +104,6 @@ export function assertMarginLeavesPanel(stock: LabelStock): void {
   }
 }
 
-/** The slice of bwip-js the engine passes through to the symbol adapter. */
-interface BwipRenderer {
-  render<T>(options: Record<string, unknown>, drawing: T): unknown
-}
-
 export interface UpcALayoutRequest {
   data: UpcALabelData
   stock: LabelStock
@@ -123,7 +118,7 @@ export interface UpcALayoutRequest {
 
 const GTIN_12 = /^[0-9]{12}$/
 
-export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest): ResolvedLayout {
+export function layOutUpcALabel(bwip: BarcodeEncoder, request: UpcALayoutRequest): ResolvedLayout {
   const { data, stock } = request
   const magnification = data.magnification ?? 1
 
@@ -254,7 +249,7 @@ export function layOutUpcALabel(bwip: BwipRenderer, request: UpcALayoutRequest):
     // The eleven data digits. The encoder appends the twelfth itself, and it
     // recomputes to the same digit we just verified — so the symbol encodes the
     // GTIN as supplied rather than a corrected version of it.
-    const placed = layOutSymbol(bwip as never, {
+    const placed = layOutSymbol(bwip, {
       symbology: 'UPC-A',
       payload: data.gtin.slice(0, -1),
       xDimensionMm,

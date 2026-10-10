@@ -139,7 +139,7 @@ export function buildPrintTestSheet(): ResolvedLayout {
     primitives.push(caption(block.caption, MARGIN_MM, cursorYMm))
     cursorYMm += CAPTION_SIZE_MM + 3
 
-    const laidOut = layOutSymbol(bwip as never, {
+    const laidOut = layOutSymbol(bwip, {
       symbology: 'UPC-A',
       payload: GTIN_PAYLOAD,
       xDimensionMm: magnificationToXDimensionMm(block.magnification),

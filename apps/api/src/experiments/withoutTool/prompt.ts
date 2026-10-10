@@ -10,32 +10,27 @@
 
 import {
   buildDigitalLinkUri,
-  layOutGhsLabel,
-  layOutUpcALabel,
-  layOutUsFoodLabel,
-  runRules,
-  type Finding,
+  judgeLabel,
+  type Judgement,
   type ResolvedLayout,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import type { CaseLabel, ExperimentCase } from './cases'
 
-export function layOut(item: ExperimentCase): ResolvedLayout {
+/**
+ * The case judged by the judge the editor and the MCP server share.
+ *
+ * One call instead of this file's own switch from label type to layout function and
+ * a cast to the rules' context. A case the judge refuses is a broken case, not a
+ * result, so it throws. What `run.cli.ts` records from it is unchanged — the
+ * findings, as `engine.json` has held them since 2026-10-09 — and the full
+ * judgement, declined checks included, is stage 19's to record in its new record.
+ */
+export function judgeCase(item: ExperimentCase): Judgement {
   const { label } = item
-  switch (label.labelType) {
-    case 'ghs-chemical':
-      return layOutGhsLabel({ data: label.data, stock: label.stock })
-    case 'gs1-retail':
-      return layOutUpcALabel(bwip as never, { data: label.data, stock: label.stock })
-    case 'us-food':
-      return layOutUsFoodLabel({ data: label.data, stock: label.stock })
-  }
-}
-
-/** The findings the engine reports on the document — what the "with" half would return. */
-export function engineFindings(item: ExperimentCase, layout: ResolvedLayout): Finding[] {
-  const { label } = item
-  return runRules({ ...label, layout } as Parameters<typeof runRules>[0])
+  const judged = judgeLabel(label.labelType === 'gs1-retail' ? { ...label, barcode: bwip } : label)
+  if (judged.outcome === 'refused') throw new Error(`${item.id}: refused — ${judged.reason}`)
+  return judged
 }
 
 /** Baselines closer than this are one printed line. */

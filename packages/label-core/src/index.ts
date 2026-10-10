@@ -1,5 +1,6 @@
 export * from './extraction/index'
 export * from './gs1/index'
+export * from './judge/index'
 export * from './geometry/index'
 export * from './ghs/index'
 export * from './layout/index'

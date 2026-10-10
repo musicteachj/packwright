@@ -25,6 +25,7 @@ import { layOutUpcALabel } from '../../layout/engine'
 import { layOutGhsLabel } from '../../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../../layout/usFoodEngine'
 import type { ResolvedLayout } from '../../layout/types'
+import type { BarcodeEncoder } from '../../symbology/layOutSymbol'
 import type { LabelStock } from '../../templates/stock'
 import type { Finding } from '../../types/index'
 import { GHS_RULES, GS1_RETAIL_RULES, US_FOOD_RULES } from '../registry'
@@ -195,7 +196,7 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument; stoc
     },
   ]
 
-export function sweepEveryRule(bwip: unknown): SweptFinding[] {
+export function sweepEveryRule(bwip: BarcodeEncoder): SweptFinding[] {
   const swept: SweptFinding[] = []
   // `source` has no default. Only the US-food loop used to pass one, so a GHS
   // permission document added later would have been labelled a fixture and
@@ -205,7 +206,7 @@ export function sweepEveryRule(bwip: unknown): SweptFinding[] {
   }
 
   for (const fixture of [...GS1_RETAIL_FIXTURES, CONFORMANT_FIXTURE]) {
-    const layout = layOutUpcALabel(bwip as never, { data: fixture.data, stock: fixture.stock })
+    const layout = layOutUpcALabel(bwip, { data: fixture.data, stock: fixture.stock })
     const context = {
       labelType: 'gs1-retail',
       data: fixture.data,

@@ -11,6 +11,7 @@
     "./geometry": "./src/geometry/index.ts",
     "./ghs": "./src/ghs/index.ts",
     "./gs1": "./src/gs1/index.ts",
+    "./judge": "./src/judge/index.ts",
     "./layout": "./src/layout/index.ts",
     "./render": "./src/render/index.ts",
     "./rules": "./src/rules/index.ts",

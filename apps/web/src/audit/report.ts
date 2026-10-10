@@ -21,28 +21,24 @@
  */
 
 import {
-  compareSeverity,
-  layOutGhsLabel,
-  LayoutError,
-  declinedChecks,
-  runRules,
+  judgeLabel,
   type DeclinedCheck,
   type Finding,
   type GhsLabelData,
   type LabelStock,
   type ResolvedLayout,
   type Severity,
+  type Uncheckable,
 } from '@packwright/label-core'
 import { FIELD_SHAPES, type ReadingKey } from './readingRows'
-import { uncheckableIn, type Uncheckable } from '../uncheckable'
 
 export interface AuditReport {
   readonly outcome: 'reported'
   readonly layout: ResolvedLayout
   readonly findings: readonly Finding[]
-  readonly groups: ReadonlyArray<[Severity, Finding[]]>
-  readonly failures: Finding[]
-  readonly passes: Finding[]
+  readonly groups: ReadonlyArray<readonly [Severity, readonly Finding[]]>
+  readonly failures: readonly Finding[]
+  readonly passes: readonly Finding[]
   /**
    * What the engine could not draw, and why.
    *
@@ -70,42 +66,27 @@ export function auditReport(
   read: ReadonlySet<ReadingKey>,
   confirmed: ReadonlySet<ReadingKey>,
 ): AuditReport | AuditRefusal {
-  let layout: ResolvedLayout
-  try {
-    layout = layOutGhsLabel({ data, stock })
-  } catch (error) {
-    // The engine declines input that describes no drawing at all — a capacity of
-    // zero, a stock with no area. That is a refusal with a reason, not a crash,
-    // and the reason is already written as a sentence for a reader.
-    if (error instanceof LayoutError) return { outcome: 'refused', reason: error.message }
-    throw error
-  }
-
-  // Built once and used twice, so the findings and the declines cannot come to
-  // describe different labels.
-  const context = { labelType: 'ghs-chemical' as const, data, stock, layout }
-  const findings = runRules(context)
-
-  const groups = new Map<Severity, Finding[]>()
-  for (const finding of findings) {
-    const group = groups.get(finding.severity)
-    if (group) group.push(finding)
-    else groups.set(finding.severity, [finding])
-  }
+  // The judge the editor and the MCP server share, so an audited label is told
+  // exactly what the editor would tell the same document.
+  const judged = judgeLabel({ labelType: 'ghs-chemical', data, stock })
+  // The engine declines input that describes no drawing at all — a capacity of
+  // zero, a stock with no area. That is a refusal with a reason, not a crash,
+  // and the reason is already written as a sentence for a reader.
+  if (judged.outcome === 'refused') return judged
 
   return {
     outcome: 'reported',
-    layout,
-    findings,
-    groups: [...groups.entries()].sort(([a], [b]) => compareSeverity(a, b)),
-    failures: findings.filter((finding) => finding.severity !== 'pass'),
-    passes: findings.filter((finding) => finding.severity === 'pass'),
-    uncertifiable: uncheckableIn(layout),
+    layout: judged.layout,
+    findings: judged.findings,
+    groups: judged.groups,
+    failures: judged.failures,
+    passes: judged.passes,
+    uncertifiable: judged.uncheckable,
     // The audit path is where this matters most. A photograph yields H-codes and
     // pictograms, never a hazard classification, so the two rules that read one
     // stand down on almost every reading — and until now they did it in silence,
     // beside a report that looked complete.
-    declined: declinedChecks(context),
+    declined: judged.declined,
     unconfirmed: [...read]
       .filter((key) => !confirmed.has(key))
       .map((key) => FIELD_SHAPES[key].label),

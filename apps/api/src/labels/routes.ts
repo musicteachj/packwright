@@ -125,7 +125,7 @@ export function createLabelRouter(
     }
 
     try {
-      const layout = layOutUpcALabel(bwip as never, { data, stock })
+      const layout = layOutUpcALabel(bwip, { data, stock })
 
       // A label whose barcode could not be drawn is a blank page, and a blank
       // page is not an export. The browser warns before it gets here; a script

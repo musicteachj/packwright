@@ -8,6 +8,27 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Changed
+
+- **One judge for every report, in `label-core`.** `judgeLabel` lays a label out and judges it; `judgeLayout`
+  judges a layout in hand. The editor, the audit screen and the experiment harness now all call them, and the MCP
+  server will, so none can tell a label something another would not. The report was assembled twice in the browser
+  before — the grouping by severity, the failures and passes, the blocking flag and the cannot-be-checked list —
+  and the overprinted-symbol sentence was report text the web app wrote for itself; `uncheckableIn` moved into
+  `label-core` with it, word for word. A test holds the report as the browser built it at `fe0112f` and checks the
+  judge reproduces it exactly for every fixture, conformant control and permission document, 88 in all, an
+  overprinted barcode among them. A UPC-A label handed no barcode encoder — or null, or anything without a
+  `render` — is refused, never judged with no symbol drawn, and an unknown label type is refused rather than reach
+  the rules: the server will hand the judge parsed JSON. So is a symbol the encoder could not produce, which
+  raises its own `SymbolLayoutError`. `layOutLabel` is the one dispatch from label type to engine, which the
+  editor, the judge and the harness each kept a copy of; a test now holds the editor store's report to
+  `judgeLabel`'s on each of its seeds, and the judgement's arrays are read-only, since every view shares them. Found
+  by `/code-review high` on #79. The rewording of the overprint sentence passed the old test, which matched part of it; it is pinned
+  exactly now.
+- **The barcode encoder has a type, and nothing casts to it.** `BarcodeEncoder` was declared twice and exported
+  from neither, so seven call sites cast bwip-js to fit. Declaring its options as exactly the four the engine passes
+  made bwip-js satisfy the one exported type as it is, and every cast outside the tests is gone.
+
 ### Added
 
 - **A plan for the MCP server, `docs/plans/2026-10-10-mcp.md`, approved by James on 2026-10-10.** Four stages: one judge in
