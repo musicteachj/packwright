@@ -10,6 +10,20 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **A request to check a label, and its conversion to label data, are one thing every door shares.** The MCP
+  server will take a label as `labelType`, `data` and an optional `stock`, and `LabelCheckRequest` in
+  `@packwright/label-core/schema` is that shape, built from the parts the saved-label schema is built from and
+  refined the same way. A test holds the two to raising identical issues for the same malformed data. It adds one
+  refusal of its own: a `stock` inside `data`, where the export requests keep it, is refused with a sentence saying
+  where it goes, since stripping it would judge the label on the default stock without a word. The
+  conversion from a parsed request to the engine's input lived inline in each export route; it is now
+  `toUpcALabelData`, `toGhsLabelData` and `toUsFoodLabelData`, moved word for word, with `toJudgeRequest` on top
+  to borrow the default stock an export would. The routes call them, and their answers to the eight recorded
+  malformed and unexportable requests are unchanged. A field the schema accepts and a conversion forgets is
+  stripped without a word, which has happened here before, so a new test fills in every field of each label type,
+  nested objects included, and checks that every one the schema keeps reaches the label data; a second holds
+  those documents to every field the schemas declare, at every level a conversion rebuilds, so a new field cannot
+  slip past both. Both found by `/code-review medium`.
 - **The label schema is in `label-core`, as `@packwright/label-core/schema`.** The MCP server has to refuse the
   documents the export routes refuse, in the same words, and the only way to make that true rather than hoped is
   one schema. `apps/api/src/labels/schemas.ts` and its tests moved there unchanged in what they accept and say; the

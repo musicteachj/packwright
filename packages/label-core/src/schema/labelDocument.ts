@@ -46,11 +46,19 @@ import {
   precautionaryStatementText,
   type GhsRegime,
 } from '../ghs/statements'
+import type { JudgeRequest } from '../judge/judge'
 import { getSymbologyConstraints } from '../symbology/constraints'
-import { GHS_SIGNAL_WORDS, type GhsSupplier } from '../templates/ghs'
-import { ANCHORS, type ArtworkBlock } from '../templates/stock'
-import type { DigitalLinkData } from '../templates/upcA'
+import type { BarcodeEncoder } from '../symbology/layOutSymbol'
 import {
+  DEFAULT_GHS_STOCK,
+  GHS_SIGNAL_WORDS,
+  type GhsLabelData,
+  type GhsSupplier,
+} from '../templates/ghs'
+import { ANCHORS, type ArtworkBlock } from '../templates/stock'
+import { DEFAULT_UPC_A_STOCK, type DigitalLinkData, type UpcALabelData } from '../templates/upcA'
+import {
+  DEFAULT_US_FOOD_STOCK,
   INGREDIENT_THRESHOLD_PERCENTS,
   US_FOOD_EGG_CARTON_PRESENTATIONS,
   US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE,
@@ -772,3 +780,193 @@ export const LabelDocumentInput = z.discriminatedUnion('labelType', [
 ])
 
 export type LabelDocumentInput = z.infer<typeof LabelDocumentInput>
+
+/**
+ * `stock` inside a check request's `data`, which is where the export requests keep
+ * it and where a caller copying one of them would put it.
+ *
+ * Refused rather than stripped. Zod drops a key a schema does not list, so a stock
+ * left inside `data` would vanish and the label be judged on the default stock —
+ * every size and placement finding then about a label of a different size from the
+ * one the caller described, with nothing to say so.
+ */
+const STOCK_BESIDE_DATA = z
+  .never({ error: '`stock` goes beside `data` in a check request, not inside it' })
+  .optional()
+
+/**
+ * A request to check a label: its type, its fields, and optionally its stock.
+ *
+ * The saved-label shape without a name, and with the stock optional, as the export
+ * requests have it — a check borrows the label type's default stock exactly as an
+ * export does. Built from the same parts as `LabelDocumentInput`, and refined the
+ * same way, so a document the exporter or the saved-label routes refuse is refused
+ * here too, with the same issues. The one addition is `STOCK_BESIDE_DATA`.
+ */
+export const LabelCheckRequest = z.discriminatedUnion('labelType', [
+  z.object({
+    labelType: z.literal('gs1-retail'),
+    data: UpcARequest.extend({ stock: STOCK_BESIDE_DATA }),
+    stock: StockSchema.optional(),
+  }),
+  z.object({
+    labelType: z.literal('ghs-chemical'),
+    data: GhsRequestShape.extend({ stock: STOCK_BESIDE_DATA }).superRefine(
+      statementCodesMatchRegime,
+    ),
+    stock: StockSchema.optional(),
+  }),
+  z.object({
+    labelType: z.literal('us-food'),
+    data: UsFoodRequestBase.extend({ stock: STOCK_BESIDE_DATA }).refine(
+      coversOnlyListedIngredients,
+      COVERS_ONLY_LISTED_INGREDIENTS,
+    ),
+    stock: StockSchema.optional(),
+  }),
+])
+
+export type LabelCheckRequest = z.output<typeof LabelCheckRequest>
+
+/**
+ * A parsed UPC-A request as the engine's input.
+ *
+ * Built key by key rather than cast. Under `exactOptionalPropertyTypes` an
+ * absent optional and one explicitly set to `undefined` are different types, so
+ * a spread does not satisfy `UpcALabelData` — and the `as never` that silenced
+ * it also switched off the only check that the request schema and the engine's
+ * input still agree on.
+ *
+ * **Here rather than in each caller.** The export routes and the MCP server both
+ * turn a parsed request into label data, and a field one of them forgot would be
+ * stripped silently: a label previewed, or judged, with something the other door
+ * never drew.
+ */
+export function toUpcALabelData(
+  request: Omit<z.output<typeof UpcARequest>, 'stock'>,
+): UpcALabelData {
+  return {
+    gtin: request.gtin,
+    ...(request.magnification === undefined ? {} : { magnification: request.magnification }),
+    ...(request.barHeightMm === undefined ? {} : { barHeightMm: request.barHeightMm }),
+    ...(request.omitHri === undefined ? {} : { omitHri: request.omitHri }),
+    ...(request.symbolPlacement === undefined ? {} : { symbolPlacement: request.symbolPlacement }),
+    ...(request.artwork === undefined ? {} : { artwork: toArtwork(request.artwork) }),
+    ...(request.digitalLink === undefined
+      ? {}
+      : { digitalLink: toDigitalLink(request.digitalLink) }),
+  }
+}
+
+/** A parsed GHS request as the engine's input, for the reasons `toUpcALabelData` gives. */
+export function toGhsLabelData(
+  request: Omit<z.output<typeof GhsRequestShape>, 'stock'>,
+): GhsLabelData {
+  return {
+    regime: request.regime,
+    productIdentifier: request.productIdentifier,
+    capacityL: request.capacityL,
+    ...(request.signalWords === undefined ? {} : { signalWords: request.signalWords }),
+    ...(request.hazards === undefined ? {} : { hazards: request.hazards }),
+    ...(request.pictograms === undefined ? {} : { pictograms: request.pictograms }),
+    ...(request.hazardStatementCodes === undefined
+      ? {}
+      : { hazardStatementCodes: request.hazardStatementCodes }),
+    ...(request.precautionaryStatementCodes === undefined
+      ? {}
+      : { precautionaryStatementCodes: request.precautionaryStatementCodes }),
+    ...(request.supplier === undefined ? {} : { supplier: toSupplier(request.supplier) }),
+    ...(request.smallContainerLabelling === undefined
+      ? {}
+      : { smallContainerLabelling: request.smallContainerLabelling }),
+    ...(request.outerPackageStatement === undefined
+      ? {}
+      : { outerPackageStatement: request.outerPackageStatement }),
+    ...(request.pictogramSideMm === undefined ? {} : { pictogramSideMm: request.pictogramSideMm }),
+  }
+}
+
+/** A parsed US food request as the engine's input, for the reasons `toUpcALabelData` gives. */
+export function toUsFoodLabelData(
+  request: Omit<z.output<typeof UsFoodRequestBase>, 'stock'>,
+): UsFoodLabelData {
+  return {
+    statementOfIdentity: request.statementOfIdentity,
+    netQuantity: toNetQuantity(request.netQuantity),
+    container: toContainer(request.container),
+    ...(request.markingMethod === undefined ? {} : { markingMethod: request.markingMethod }),
+    ...(request.netQuantityFontSizeMm === undefined
+      ? {}
+      : { netQuantityFontSizeMm: request.netQuantityFontSizeMm }),
+    ...(request.netQuantityAnchor === undefined
+      ? {}
+      : { netQuantityAnchor: request.netQuantityAnchor }),
+    ...(request.informationPanelFontSizeMm === undefined
+      ? {}
+      : { informationPanelFontSizeMm: request.informationPanelFontSizeMm }),
+    ...(request.ingredients === undefined
+      ? {}
+      : { ingredients: request.ingredients.map(toIngredient) }),
+    ...(request.ingredientThreshold === undefined
+      ? {}
+      : { ingredientThreshold: request.ingredientThreshold }),
+    ...(request.ingredientsExemption === undefined
+      ? {}
+      : { ingredientsExemption: request.ingredientsExemption }),
+    ...(request.ingredientsExempt === undefined
+      ? {}
+      : { ingredientsExempt: request.ingredientsExempt }),
+    ...(request.containsStatement === undefined
+      ? {}
+      : { containsStatement: request.containsStatement }),
+    ...(request.containsStatementFontSizeMm === undefined
+      ? {}
+      : { containsStatementFontSizeMm: request.containsStatementFontSizeMm }),
+    ...(request.containsStatementGapMm === undefined
+      ? {}
+      : { containsStatementGapMm: request.containsStatementGapMm }),
+    ...(request.nutritionFacts === undefined
+      ? {}
+      : { nutritionFacts: toNutritionFacts(request.nutritionFacts) }),
+    ...(request.nutritionExemption === undefined
+      ? {}
+      : { nutritionExemption: request.nutritionExemption }),
+    ...(request.nutritionFactsExempt === undefined
+      ? {}
+      : { nutritionFactsExempt: request.nutritionFactsExempt }),
+    ...(request.responsibleFirm === undefined
+      ? {}
+      : { responsibleFirm: toResponsibleFirm(request.responsibleFirm) }),
+  }
+}
+
+/**
+ * A parsed check request as the judge's input, on the label type's default stock
+ * where it names none — the stock an export of the same request is drawn on.
+ *
+ * The encoder is the caller's, as `JudgeRequest` requires: `label-core` does not
+ * import bwip-js.
+ */
+export function toJudgeRequest(request: LabelCheckRequest, barcode: BarcodeEncoder): JudgeRequest {
+  switch (request.labelType) {
+    case 'gs1-retail':
+      return {
+        labelType: 'gs1-retail',
+        data: toUpcALabelData(request.data),
+        stock: request.stock ?? DEFAULT_UPC_A_STOCK,
+        barcode,
+      }
+    case 'ghs-chemical':
+      return {
+        labelType: 'ghs-chemical',
+        data: toGhsLabelData(request.data),
+        stock: request.stock ?? DEFAULT_GHS_STOCK,
+      }
+    case 'us-food':
+      return {
+        labelType: 'us-food',
+        data: toUsFoodLabelData(request.data),
+        stock: request.stock ?? DEFAULT_US_FOOD_STOCK,
+      }
+  }
+}
