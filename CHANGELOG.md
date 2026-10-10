@@ -8,6 +8,16 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+- **One GHS statement code could hold the server for two minutes.** `canonicalStatementCode`'s rules were
+  written `\s*\+\s*` and the like, which on a long run of whitespace with no `+` after it scan the rest of the run
+  from every position: quadratic. A code padded with 250,000 spaces, inside the 256 kB body limit, took 122
+  seconds, measured — through the GHS export route as well as the MCP server, so this predates it. Whitespace is
+  now collapsed first, which gives the same result in linear time; a test holds the new function to the old one on
+  every table key and 20,000 seeded random strings, and the padded code now takes milliseconds. The MCP tool also
+  caps a code at 100 characters. Found by `/code-review high` on #82.
+
 ### Added
 
 - **Packwright as an MCP server, at `/mcp`.** An assistant can now call four read-only tools: `check_label`, which
@@ -25,7 +35,11 @@ into a version only when there is a reason to.
   connection, and refusing a batch that carries more than one, since a batch would otherwise be a hundred calls
   for the price of one; and `MCP_ENABLED`, `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS`, the two lists lowercased
   and refused at startup unless they are bare hostnames, since `https://` or a port would match nothing and leave
-  a deployed `/mcp` answering 403 to everyone. Both found by a second round of review. **Connecting Claude Code found what no test had:** it dropped `check_label`, because
+  a deployed `/mcp` answering 403 to everyone. Both found by a second round of review. The high review on #82
+  added four more: the limits now default on, with `false` the only way off; a refusal over a limit is a JSON-RPC
+  error carrying the call's id, as the SDK's own 403s are; a label the engine declines to draw says it was not
+  judged, rather than carrying the notice about failures and declined checks it does not have; and the GTIN
+  lengths come from `label-core`'s table of GS1 keys. **Connecting Claude Code found what no test had:** it dropped `check_label`, because
   Anthropic's API refuses a tool whose input schema is a union at the top, and the SDK and Inspector's `--strict`
   had both passed it. The tool is now advertised as one object, `LabelCheckRequestOutline`, and still validated by
   `LabelCheckRequest`; a test holds every tool to a plain object, and a second run of Claude Code saw all four and

@@ -7,7 +7,7 @@
 import supertest from 'supertest'
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../app'
-import { isFromAnthropic, toolCallsIn, type McpRouterOptions } from './routes'
+import { DEFAULT_MCP_LIMITS, isFromAnthropic, toolCallsIn, type McpRouterOptions } from './routes'
 
 /** A `tools/list` call, as the SDK's documentation sends one by hand. */
 const listTools = (agent: supertest.Agent | ReturnType<typeof supertest>) =>
@@ -95,6 +95,17 @@ describe('rate limits', () => {
   const from = (agent: ReturnType<typeof supertest>, ip: string) =>
     checkGtin(agent).set('X-Forwarded-For', ip)
 
+  it('applies the default allowances when none are stated', async () => {
+    // `false` is the only way to switch them off; an option nobody passed must
+    // not leave a public endpoint unlimited.
+    const { app } = appWith({}, 1)
+    const agent = supertest(app)
+    for (let i = 0; i < DEFAULT_MCP_LIMITS.perClientPerHour; i++) {
+      expect((await from(agent, '198.51.100.7')).status).toBe(200)
+    }
+    expect((await from(agent, '198.51.100.7')).status).toBe(429)
+  })
+
   it('counts tool calls, not the requests a client makes to get ready for one', async () => {
     // The older protocol's handshake and `tools/list` come before every call. Counted,
     // they spent most of an allowance before a single label was checked.
@@ -113,7 +124,13 @@ describe('rate limits', () => {
     expect((await from(agent, '203.0.113.1')).status).toBe(200)
     const refused = await from(agent, '203.0.113.1')
     expect(refused.status).toBe(429)
-    expect(refused.body).toEqual({ error: 'Too many requests to /mcp — try again later' })
+    // A JSON-RPC error carrying the call's own id, as the SDK's 403s are, so a
+    // client can match the refusal to what it asked.
+    expect(refused.body).toEqual({
+      jsonrpc: '2.0',
+      error: { code: -32000, message: 'Too many tool calls to /mcp — try again later' },
+      id: 2,
+    })
     expect(lines).toEqual([expect.stringContaining('per-client limit, from 203.0.113.1')])
     // Someone else's allowance is untouched.
     expect((await from(agent, '203.0.113.2')).status).toBe(200)
@@ -134,7 +151,8 @@ describe('rate limits', () => {
       .set('X-Forwarded-For', '203.0.113.5')
       .send([call(1), call(2)])
     expect(response.status).toBe(400)
-    expect(response.body.error).toContain('one tool call per request')
+    expect(response.body).toMatchObject({ jsonrpc: '2.0', id: null })
+    expect(response.body.error.message).toContain('one tool call per request')
     expect(lines).toEqual([expect.stringContaining('refused a batch of tool calls')])
   })
 

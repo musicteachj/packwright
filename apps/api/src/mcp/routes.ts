@@ -102,22 +102,43 @@ export interface McpRouterOptions {
   allowedHosts?: readonly string[] | undefined
   /** `Origin` hostnames admitted, besides localhost. A request with none always passes. */
   allowedOrigins?: readonly string[] | undefined
-  /** The two allowances, or `false` for none. */
+  /**
+   * The two allowances, or `false` for none. Absent means `DEFAULT_MCP_LIMITS`:
+   * an endpoint left unlimited by an option nobody passed would be the one
+   * nobody noticed.
+   */
   limits?: McpLimits | false | undefined
   /** Where a refusal, or an `Origin`, is written down. */
   log?: ((line: string) => void) | undefined
 }
 
-/** A refusal's body, in the words the export limiter uses. */
-const TOO_MANY = { error: 'Too many requests to /mcp — try again later' }
+const TOO_MANY = 'Too many tool calls to /mcp — try again later'
+const ONE_CALL_PER_REQUEST =
+  'Send one tool call per request — a batch may carry at most one tools/call'
 
-/** See the batch guard below. */
-const ONE_CALL_PER_REQUEST = {
-  error: 'Send one tool call per request — a batch may carry at most one tools/call',
+/**
+ * A refusal as a JSON-RPC error, as the SDK's own `Host` and `Origin` refusals
+ * on this route are, so a client can match it to what it asked. The request's
+ * `id` where it has one; a batch, or a body with none, gets `null`.
+ */
+function refusal(body: unknown, message: string) {
+  const id =
+    typeof body === 'object' && body !== null && !Array.isArray(body)
+      ? ((body as { id?: unknown }).id ?? null)
+      : null
+  return { jsonrpc: '2.0', error: { code: -32000, message }, id }
 }
 
+/** What the guards below read, counted once per request. */
+const toolCallsOf = (response: Response): number => response.locals.toolCalls as number
+
 export function createMcpRouter(options: McpRouterOptions = {}): Router {
-  const { allowedHosts = [], allowedOrigins = [], limits, log = console.log } = options
+  const {
+    allowedHosts = [],
+    allowedOrigins = [],
+    limits = DEFAULT_MCP_LIMITS,
+    log = console.log,
+  } = options
   const router = Router()
 
   // **Logged whenever one arrives, allowed or not.** Whether Anthropic's requests
@@ -139,7 +160,12 @@ export function createMcpRouter(options: McpRouterOptions = {}): Router {
   router.use(hostHeaderValidation([...localhostAllowedHostnames(), ...allowedHosts]))
   router.use(originValidation([...localhostAllowedOrigins(), ...allowedOrigins]))
 
-  if (limits !== false && limits !== undefined) {
+  router.use((request: Request, response: Response, next: NextFunction) => {
+    response.locals.toolCalls = toolCallsIn(request.body)
+    next()
+  })
+
+  if (limits !== false) {
     // **A batch carries at most one tool call.** The allowances count requests, and
     // the older protocol lets one request carry up to a hundred messages, so a
     // batch of calls would be a hundred checks for the price of one — 6,000 an hour
@@ -147,9 +173,9 @@ export function createMcpRouter(options: McpRouterOptions = {}): Router {
     // Claude client batches (Claude Code 2.1.169 sent one message per request,
     // observed 2026-10-10), and the newer protocol has no batches at all.
     router.use((request: Request, response: Response, next: NextFunction) => {
-      if (toolCallsIn(request.body) > 1) {
+      if (toolCallsOf(response) > 1) {
         log(`mcp: refused a batch of tool calls, from ${request.ip ?? 'unknown'}`)
-        response.status(400).json(ONE_CALL_PER_REQUEST)
+        response.status(400).json(refusal(request.body, ONE_CALL_PER_REQUEST))
         return
       }
       next()
@@ -157,7 +183,7 @@ export function createMcpRouter(options: McpRouterOptions = {}): Router {
 
     const refuse = (tier: string) => (request: Request, response: Response) => {
       log(`mcp: refused over the ${tier} limit, from ${request.ip ?? 'unknown'}`)
-      response.status(429).json(TOO_MANY)
+      response.status(429).json(refusal(request.body, TOO_MANY))
     }
     // Two limiters, each skipping the other's callers, so neither can spend the
     // other's allowance, and both skipping whatever is not a tool call.
@@ -167,7 +193,7 @@ export function createMcpRouter(options: McpRouterOptions = {}): Router {
         limit: limits.anthropicPerHour,
         standardHeaders: 'draft-7',
         legacyHeaders: false,
-        skip: (request) => toolCallsIn(request.body) === 0 || !isFromAnthropic(request.ip),
+        skip: (request, response) => toolCallsOf(response) === 0 || !isFromAnthropic(request.ip),
         keyGenerator: () => 'anthropic',
         handler: refuse('shared Anthropic'),
       }),
@@ -178,7 +204,7 @@ export function createMcpRouter(options: McpRouterOptions = {}): Router {
         limit: limits.perClientPerHour,
         standardHeaders: 'draft-7',
         legacyHeaders: false,
-        skip: (request) => toolCallsIn(request.body) === 0 || isFromAnthropic(request.ip),
+        skip: (request, response) => toolCallsOf(response) === 0 || isFromAnthropic(request.ip),
         handler: refuse('per-client'),
       }),
     )

@@ -23,12 +23,12 @@ import {
   GHS_REGIMES,
   LABEL_TYPES,
   SEVERITY_ORDER,
+  GS1_KEY_LENGTHS,
   calculateCheckDigit,
   canonicalStatementCode,
   citationsOf,
   codesOf,
   hazardStatementText,
-  isValidCheckDigit,
   judgeLabel,
   knownHazardStatementCodes,
   knownPrecautionaryStatementCodes,
@@ -74,6 +74,17 @@ export const NOT_A_STATEMENT_OF_COMPLIANCE =
   '`whatIsNotChecked` — and the checks listed under `declined` did not run on this label.'
 
 /**
+ * Said instead when the engine declined to draw the label.
+ *
+ * The judged notice speaks of failures and of a `declined` list, and a refusal
+ * has neither; handed it, an assistant could tell a user that nothing failed
+ * about a label nothing was run on.
+ */
+export const NOT_JUDGED =
+  'This label was not judged: the engine declined to draw it, for the reason given, so no rule ran ' +
+  'on it. Nothing here is a finding about the label, for or against.'
+
+/**
  * Generous for any real label, and far below what would cost this server anything.
  *
  * The largest document in the rule fixtures has a few hundred members; the 256 kB
@@ -81,6 +92,18 @@ export const NOT_A_STATEMENT_OF_COMPLIANCE =
  * one the SDK offers, refusing before the schema runs.
  */
 export const MAX_TOOL_INPUT_ELEMENTS = 5_000
+
+const outlineJsonSchema = LabelCheckRequestOutline['~standard'].jsonSchema
+
+/** A JSON Schema conversion, done once per set of options rather than once per request. */
+const memoised = (convert: typeof outlineJsonSchema.input): typeof convert => {
+  const byOptions = new Map<string, ReturnType<typeof convert>>()
+  return (options) => {
+    const key = JSON.stringify(options)
+    if (!byOptions.has(key)) byOptions.set(key, convert(options))
+    return byOptions.get(key)!
+  }
+}
 
 /**
  * `check_label`'s input: advertised as one object, checked as the shared union.
@@ -94,7 +117,12 @@ export const MAX_TOOL_INPUT_ELEMENTS = 5_000
 const CheckLabelInput = {
   '~standard': {
     ...LabelCheckRequest['~standard'],
-    jsonSchema: LabelCheckRequestOutline['~standard'].jsonSchema,
+    // Converted once rather than on every `tools/list`: the server is built afresh
+    // for every request, and this is a schema of every field of every label type.
+    jsonSchema: {
+      input: memoised(outlineJsonSchema.input),
+      output: memoised(outlineJsonSchema.output),
+    },
   },
 } as StandardSchemaWithJSON<z.input<typeof LabelCheckRequest>, z.output<typeof LabelCheckRequest>>
 
@@ -252,7 +280,7 @@ export function checkLabelOutput(
       outcome: 'refused',
       labelType,
       reason: judgement.reason,
-      notice: NOT_A_STATEMENT_OF_COMPLIANCE,
+      notice: NOT_JUDGED,
       whatIsNotChecked: WHAT_IS_NOT_CHECKED_URL,
     }
   }
@@ -323,12 +351,15 @@ export function statementText(
   }
 }
 
-const GTIN_FORMATS = {
-  8: 'GTIN-8',
-  12: 'GTIN-12',
-  13: 'GTIN-13',
-  14: 'GTIN-14',
-} as const
+/** The four GTINs, from `label-core`'s table of GS1 key lengths — the SSCC is not one. */
+const GTIN_FORMATS = (['GTIN-8', 'GTIN-12', 'GTIN-13', 'GTIN-14'] as const).map(
+  (format) => [format, GS1_KEY_LENGTHS[format]] as const,
+)
+
+/** Exactly those lengths, digits only. */
+const GTIN_PATTERN = new RegExp(
+  `^(?:${GTIN_FORMATS.map(([, length]) => `\\d{${length}}`).join('|')})$`,
+)
 
 /**
  * Whether a GTIN's check digit is right, and the right one.
@@ -338,12 +369,14 @@ const GTIN_FORMATS = {
  * rather than called a valid GTIN.
  */
 export function checkGtin(gtin: string): z.infer<typeof CheckGtinOutput> {
+  const statedCheckDigit = Number(gtin.slice(-1))
+  const expectedCheckDigit = calculateCheckDigit(gtin.slice(0, -1))
   return {
     gtin,
-    format: GTIN_FORMATS[gtin.length as keyof typeof GTIN_FORMATS],
-    valid: isValidCheckDigit(gtin),
-    statedCheckDigit: Number(gtin.slice(-1)),
-    expectedCheckDigit: calculateCheckDigit(gtin.slice(0, -1)),
+    format: GTIN_FORMATS.find(([, length]) => length === gtin.length)![0],
+    valid: statedCheckDigit === expectedCheckDigit,
+    statedCheckDigit,
+    expectedCheckDigit,
   }
 }
 
@@ -373,8 +406,10 @@ export function createPackwrightMcpServer(): McpServer {
         'Draws a label from its details and checks it against every rule Packwright implements for ' +
         'its type. Returns each finding with its severity, message, measurement and citation; the ' +
         'checks that did not run and what each needs; what could not be drawn or judged; and a ' +
-        'notice that no failures is not a statement of compliance. `labelType` selects the shape ' +
-        'of `data`; `stock` is the label size in millimetres and defaults per label type.',
+        'notice that no failures is not a statement of compliance. A label the engine cannot ' +
+        'draw is answered `refused`, with the reason and a notice that it was not judged. ' +
+        '`labelType` selects the shape of `data`; `stock` is the label size in millimetres and ' +
+        'defaults per label type.',
       inputSchema: CheckLabelInput,
       outputSchema: CheckLabelOutput,
       annotations: READ_ONLY,
@@ -416,7 +451,9 @@ export function createPackwrightMcpServer(): McpServer {
         'verified text for it. Text is never generated.',
       inputSchema: z.object({
         regime: z.enum(GHS_REGIMES),
-        code: z.string().trim().min(1),
+        // The longest code in the tables is under thirty characters. The cap is a
+        // second guard on `canonicalStatementCode`, which was once quadratic.
+        code: z.string().trim().min(1).max(100),
       }),
       outputSchema: StatementTextOutput,
       annotations: READ_ONLY,
@@ -435,10 +472,7 @@ export function createPackwrightMcpServer(): McpServer {
       inputSchema: z.object({
         gtin: z
           .string()
-          .regex(
-            /^(?:\d{8}|\d{12}|\d{13}|\d{14})$/,
-            'A GTIN is 8, 12, 13 or 14 digits, check digit included',
-          ),
+          .regex(GTIN_PATTERN, 'A GTIN is 8, 12, 13 or 14 digits, check digit included'),
       }),
       outputSchema: CheckGtinOutput,
       annotations: READ_ONLY,

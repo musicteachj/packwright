@@ -44,9 +44,10 @@ claude mcp add --transport http packwright https://packwright.jameslittlefield.n
 
 ## Limits
 
-Each address may make 60 tool calls an hour; connecting and listing the tools are not counted. Calls made
-through claude.ai all arrive from Anthropic's addresses, so they share a much larger allowance between them. A
-call over a limit is answered with HTTP 429; wait and try again.
+Each address may make 60 tool calls an hour — on IPv6, each /56 network, so a household or office on one prefix
+shares them. Connecting and listing the tools are not counted. Calls made through claude.ai all arrive from
+Anthropic's addresses, so they share a much larger allowance between them. A call over a limit is answered with
+HTTP 429; wait and try again.
 
 Sources for the steps above: Claude's "Add a custom connector" and Claude Code's MCP documentation, read
 2026-10-10.

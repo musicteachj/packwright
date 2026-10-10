@@ -43,6 +43,7 @@ import { createApp } from '../app'
 import {
   MAX_TOOL_INPUT_ELEMENTS,
   NOT_A_STATEMENT_OF_COMPLIANCE,
+  NOT_JUDGED,
   WHAT_IS_NOT_CHECKED_URL,
   checkLabelOutput,
   createPackwrightMcpServer,
@@ -109,6 +110,10 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
     // the SDK and Inspector's --strict both passed it.
     const { tools } = await (await connect(era)).listTools()
     for (const tool of tools) {
+      // An output schema may be a union, and two are; their root is still typed
+      // as an object, which is what a client reading the older specification
+      // looks for, and Claude Code accepted both.
+      expect(tool.outputSchema?.type, `${tool.name} output`).toBe('object')
       expect(tool.inputSchema.type, tool.name).toBe('object')
       for (const keyword of ['oneOf', 'anyOf', 'allOf']) {
         expect(tool.inputSchema, `${tool.name} ${keyword}`).not.toHaveProperty(keyword)
@@ -296,7 +301,7 @@ describe('check_label, refusing', () => {
     expect(textOf(result)).toContain('`stock` goes beside `data`')
   })
 
-  it('answers a label the engine declines to draw with the refusal and the notice', async () => {
+  it('answers a label the engine declines to draw with the refusal, and says it was not judged', async () => {
     // A margin that leaves no panel describes no drawing at all.
     const result = await (
       await connect()
@@ -312,7 +317,9 @@ describe('check_label, refusing', () => {
     expect(result.structuredContent).toMatchObject({
       outcome: 'refused',
       labelType: 'ghs-chemical',
-      notice: NOT_A_STATEMENT_OF_COMPLIANCE,
+      // Not the judged notice, which speaks of failures and declined checks a
+      // refusal does not have.
+      notice: NOT_JUDGED,
       whatIsNotChecked: WHAT_IS_NOT_CHECKED_URL,
     })
     expect((result.structuredContent as { reason: string }).reason).not.toBe('')
@@ -423,6 +430,16 @@ describe('ghs_statement_text', () => {
     })
   })
 
+  it('refuses a code longer than any code is', async () => {
+    const result = await (
+      await connect()
+    ).callTool({
+      name: 'ghs_statement_text',
+      arguments: { regime: 'eu-clp', code: `H${' '.repeat(200)}225` },
+    })
+    expect(result.isError).toBe(true)
+  })
+
   it('says it has no text rather than offering some', async () => {
     expect(await lookUp('eu-clp', 'H999')).toMatchObject({ found: false, code: 'H999' })
     expect(await lookUp('eu-clp', 'EUH066')).toMatchObject({ found: false })
@@ -451,6 +468,16 @@ describe('check_gtin', () => {
     // so the check digit is 60 − 57 = 3.
     expect((await check('6291041500213')).structuredContent).toMatchObject({
       format: 'GTIN-13',
+      valid: true,
+    })
+    // 9638507 weighted the same way sums to 86, so 90 − 86 = 4.
+    expect((await check('96385074')).structuredContent).toMatchObject({
+      format: 'GTIN-8',
+      valid: true,
+    })
+    // 1001234567890 sums to 88, so 90 − 88 = 2.
+    expect((await check('10012345678902')).structuredContent).toMatchObject({
+      format: 'GTIN-14',
       valid: true,
     })
   })

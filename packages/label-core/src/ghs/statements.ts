@@ -363,13 +363,22 @@ const PRECAUTIONARY: Readonly<Record<GhsRegime, Readonly<Record<string, string>>
  * bracket; it is this one.
  */
 export function canonicalStatementCode(code: string): string {
+  // **Whitespace collapsed first, so each pattern after it sees one space at most.**
+  // The rules below were written `\s*\+\s*`, `\s*\[\s*\+\s*` and `\s*\]`, and on a run
+  // of whitespace with no `+` or `]` after it each of those scans the rest of the
+  // run from every position it starts at — quadratic, so a code padded with 80,000
+  // spaces held the event loop for 11.5 s, through the MCP server and the GHS
+  // export route alike (found by `/code-review high` on #82). Collapsing first
+  // gives the same result in linear time; `statements.test.ts` holds it to the old
+  // function on a randomised sweep.
   return code
     .trim()
     .toUpperCase()
-    .replace(/\s*\+\s*/g, ' + ')
-    .replace(/\s*\[\s*\+\s*/g, ' [+ ')
-    .replace(/\s*\]/g, ']')
     .replace(/\s+/g, ' ')
+    .replace(/ ?\+ ?/g, ' + ')
+    .replace(/ ?\[ ?\+ ?/g, ' [+ ')
+    .replace(/ ?\]/g, ']')
+    .replace(/ +/g, ' ')
     .trim()
 }
 
