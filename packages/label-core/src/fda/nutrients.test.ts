@@ -6,6 +6,7 @@ import {
   nutrient,
   percentDailyValue,
   permittedNutrientAmounts,
+  printedNutrientLine,
   roundNutrientAmount,
 } from './nutrients'
 
@@ -23,13 +24,27 @@ describe('the declared nutrients', () => {
   })
 
   it('indents exactly the nutrients that sit under a parent', () => {
-    expect(NUTRIENTS.filter((n) => n.indented).map((n) => n.id)).toEqual([
+    expect(NUTRIENTS.filter((n) => n.indent > 0).map((n) => n.id)).toEqual([
       'saturated-fat',
       'trans-fat',
       'dietary-fiber',
       'total-sugars',
       'added-sugars',
     ])
+  })
+
+  it('indents Added Sugars under Total Sugars, a level deeper than its parent', () => {
+    // 101.9(c)(6)(iii): "Added sugars content shall be indented under Total Sugars".
+    expect(nutrient('total-sugars')?.indent).toBe(1)
+    expect(nutrient('added-sugars')?.indent).toBe(2)
+  })
+
+  it('prefaces Added Sugars with "Includes", the amount before the name', () => {
+    // 101.9(c)(6)(iii): "('Includes 'X' g Added Sugars')".
+    expect(printedNutrientLine(nutrient('added-sugars')!, 0)).toBe('Includes 0g Added Sugars')
+    expect(printedNutrientLine(nutrient('added-sugars')!)).toBe('Includes Added Sugars')
+    expect(printedNutrientLine(nutrient('total-sugars')!, 1)).toBe('Total Sugars 1g')
+    expect(printedNutrientLine(nutrient('total-sugars')!)).toBe('Total Sugars')
   })
 
   it('sets no Daily Value where the regulation sets none', () => {

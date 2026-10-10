@@ -8,6 +8,33 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Added Sugars line says "Includes", and sits under Total Sugars.** Every US food label printed "Added
+  Sugars 0g" at the same indent as Total Sugars, where 21 CFR 101.9(c)(6)(iii) says the line "shall be indented
+  under Total Sugars and shall be prefaced with the word 'Includes' followed by the amount (in grams) 'Added
+  Sugars'". Found by the MCP "without" experiment, whose model read the engine's own conformant label. It now
+  reads "Includes 0g Added Sugars" on the vertical, tabular and linear displays, as the regulation's sample
+  labels print it, and "Includes Added Sugars" in a dual-column name column, where the (e)(5) sample abbreviates
+  to "Incl." and this engine, which abbreviates nothing, does not. It stands one level deeper than Total
+  Sugars. Nutrients carry an indent depth instead of a yes-or-no, and one function, `printedNutrientLine`,
+  composes every row's words.
+- **The tabular display indents its sub-rows.** (c)(2) and (c)(6) say Saturated Fat, Trans Fat, Dietary Fiber
+  and Total Sugars each "shall be indented", with no display excepted, and the tabular samples indent; this
+  display set every row flush and told a sub-row by weight alone. Columns now widen by the indent, so no row
+  leaves the box it was given, and break only before a row at the margin: split by count alone, Added Sugars
+  opened a column at 250 and 400 mm with no Total Sugars above it, indented under nothing. One test of the tabular border check needed a new document: its premise is a
+  bold row that is the widest, and the indented Added Sugars line now usually is.
+- **A line of the Nutrition Facts panel printed over itself is recorded, not passed.** The panel sets a line's
+  words from the left and its figures from the right, and nothing measured one against the other. The longer
+  Added Sugars line ran 1.87 mm into its own "0g 0%" on a 61 mm dual-column panel; a long serving size, typed
+  freely, ran 30 mm over "Serving size" and 7 mm off the label's left edge; and at 40 mm "150" runs into
+  "Calories". Every pass keyed to the panel stood each time. The engine now records each against the panel,
+  measured in the face each run prints in, and records figures set from the right that run past the panel's left
+  border or the label's left edge. The 50 × 60 mm small-panel fixture turns out to have printed its serving
+  size over itself all along, and with the longer line its Added Sugars too; both are now recorded. Found by
+  `/code-review high` on #75 and the medium review that followed.
+
 ### Added
 
 - **The MCP "without" experiment, which decides whether the MCP work goes ahead.** Twelve labels, each a

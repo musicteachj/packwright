@@ -637,6 +637,74 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       })
     }
 
+    // **And a line's words against its own figures.** The panel sets a line's words
+    // from the left and its figures from the right, and nothing measured one against
+    // the other: "Includes Added Sugars", two levels in, ran 1.87 mm into its own
+    // "0g 0%" on a 61 mm dual-column panel, and a long serving size — free text —
+    // ran 30 mm over "Serving size" and 7 mm off the label's left edge, every pass
+    // keyed to the panel standing. Against the panel, as the border check above is,
+    // because that is the element those passes certify. Calories is drawn as two
+    // elements, word and figure, and is paired here. The tabular and linear displays
+    // set a nutrient as one run, so they have nothing here to meet. Found by
+    // `/code-review high` on PR #75 and the medium review that followed.
+    const inkWidthMm = (run: TextPrimitive) =>
+      measureTextMm(run.text, run.fontSizeMm, measuredFamilyFor(run.fontFamily, run.fontWeight))
+    const lineOf = (elementId: string) =>
+      elementId === US_FOOD_ELEMENTS.nutritionCaloriesFigure
+        ? US_FOOD_ELEMENTS.nutritionCalories
+        : elementId
+    const lines = new Map<string, TextPrimitive[]>()
+    for (const primitive of drawn.primitives) {
+      if (primitive.kind !== 'text' || primitive.elementId === undefined) continue
+      const line = lineOf(primitive.elementId)
+      lines.set(line, [...(lines.get(line) ?? []), primitive])
+    }
+    for (const [elementId, runs] of lines) {
+      const words = runs.find((run) => run.anchor !== 'end')
+      const figures = runs.filter((run) => run.anchor === 'end')
+      if (words === undefined || figures.length === 0) continue
+      const label = drawn.elements.find((e) => e.elementId === elementId)?.label ?? elementId
+      const overlapMm =
+        words.xMm + inkWidthMm(words) - Math.min(...figures.map((run) => run.xMm - inkWidthMm(run)))
+      if (overlapMm > 0) {
+        omissions.push({
+          elementId: US_FOOD_ELEMENTS.nutritionPanel,
+          reason:
+            `On the ${label} line, the words run ${mmText(overlapMm)} into the figures beside ` +
+            'them, so the two are printed over each other.',
+          scope: 'detail',
+        })
+      }
+    }
+    // A figure set from the right grows leftward, past anything the right-edge checks
+    // above can see.
+    const inkLeftMm = Math.min(
+      Infinity,
+      ...drawn.primitives
+        .filter(
+          (primitive): primitive is TextPrimitive =>
+            primitive.kind === 'text' && primitive.anchor === 'end',
+        )
+        .map((run) => run.xMm - inkWidthMm(run)),
+    )
+    if (inkLeftMm < 0) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        reason:
+          `The Nutrition Facts panel's figures run ${mmText(-inkLeftMm)} past the left edge of ` +
+          'the label, so part of them is not printed.',
+        scope: 'detail',
+      })
+    } else if (inkLeftMm < panel.xMm) {
+      omissions.push({
+        elementId: US_FOOD_ELEMENTS.nutritionPanel,
+        reason:
+          `The Nutrition Facts panel's figures run ${mmText(panel.xMm - inkLeftMm)} past ` +
+          "the panel's own left border, so the box is drawn through them.",
+        scope: 'detail',
+      })
+    }
+
     cursorYMm = bottomMm + type.blockGapMm
   }
 
