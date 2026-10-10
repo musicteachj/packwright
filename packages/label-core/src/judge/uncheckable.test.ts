@@ -1,4 +1,6 @@
-import { DEFAULT_GHS_STOCK, layOutGhsLabel, type ResolvedLayout } from '@packwright/label-core'
+import { layOutGhsLabel } from '../layout/ghsEngine'
+import type { ResolvedLayout } from '../layout/types'
+import { DEFAULT_GHS_STOCK } from '../templates/ghs'
 import { describe, expect, it } from 'vitest'
 import { uncheckableIn } from './uncheckable'
 
@@ -53,7 +55,12 @@ describe('what cannot be checked', () => {
     }
     const [item] = uncheckableIn(overprinted)
     expect(item!.elementId).toBe('symbol')
-    expect(item!.reasons[0]!.text).toContain('printed over')
+    // Exactly, because it is report text a reader sees, and since 2026-10-10 the MCP
+    // server says it too: a mutation that reworded it passed the old `toContain`.
+    expect(item!.reasons[0]!.text).toBe(
+      'Artwork is printed over the UPC-A symbol. A symbol with ink through it will not scan ' +
+        'whatever its margins measure.',
+    )
   })
 
   it('has nothing to say about no layout at all', () => {

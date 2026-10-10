@@ -119,16 +119,30 @@ interface RawBar {
 }
 
 /**
- * The subset of bwip-js this adapter uses.
+ * The barcode encoder the engine draws symbols with: the subset of bwip-js it uses.
  *
  * Declared structurally rather than imported as a type so the dependency stays
- * one-way: the adapter states what it needs, and bwip-js happens to satisfy it.
+ * one-way: the engine states what it needs, and bwip-js happens to satisfy it.
+ * `label-core` never imports bwip-js; whoever calls the engine hands one in.
+ *
+ * Exported since 2026-10-10. It was declared twice — here, and more loosely in
+ * `layout/engine.ts` — and exported from neither, so every caller cast bwip-js to
+ * fit. One declaration, exported, is what a shared judge can ask for by name.
  */
-interface BwipRenderer {
-  render<T>(options: Record<string, unknown>, drawing: BwipDrawingContext<T>): T
+export interface BarcodeEncoder {
+  render<T>(options: BarcodeRenderOptions, drawing: BarcodeDrawingContext<T>): T
 }
 
-interface BwipDrawingContext<T> {
+/** The options the engine passes to `render`, and no others. */
+export interface BarcodeRenderOptions {
+  bcid: string
+  text: string
+  includetext: boolean
+  scale: number
+}
+
+/** What the encoder draws on. See `BarcodeEncoder`. */
+export interface BarcodeDrawingContext<T> {
   scale(sx: number, sy: number): [number, number] | null
   measure(
     str: string,
@@ -155,7 +169,7 @@ interface BwipDrawingContext<T> {
  * through this adapter would otherwise render as a blank rectangle, which is
  * a far worse failure than an error.
  */
-function createBarCollector(): BwipDrawingContext<RawBar[]> & { bars: RawBar[] } {
+function createBarCollector(): BarcodeDrawingContext<RawBar[]> & { bars: RawBar[] } {
   const bars: RawBar[] = []
   const reject = (primitive: string) => (): never => {
     throw new SymbolLayoutError(
@@ -284,7 +298,7 @@ function layOutHri(options: {
  * `bwip` is injected rather than imported so this stays testable without the
  * library and so `label-core` keeps a single, explicit seam to it.
  */
-export function layOutSymbol(bwip: BwipRenderer, request: SymbolRequest): LaidOutSymbol {
+export function layOutSymbol(bwip: BarcodeEncoder, request: SymbolRequest): LaidOutSymbol {
   const { symbology, payload, xDimensionMm, xMm, yMm, elementId } = request
 
   if (!(xDimensionMm > 0)) {

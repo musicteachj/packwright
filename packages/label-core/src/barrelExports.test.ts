@@ -79,6 +79,9 @@ import * as upcA from './templates/upcA'
 import * as usFoodTemplate from './templates/usFood'
 import * as extractionBarrel from './extraction/index'
 import * as confirm from './extraction/confirm'
+import * as judgeBarrel from './judge/index'
+import * as judge from './judge/judge'
+import * as uncheckable from './judge/uncheckable'
 
 /**
  * Every public symbol must be reachable from its module's barrel.
@@ -121,6 +124,14 @@ const MODULES: ReadonlyArray<readonly [name: string, barrel: object, members: Me
     ],
   ],
   ['extraction', extractionBarrel, [['confirm.ts', confirm]]],
+  [
+    'judge',
+    judgeBarrel,
+    [
+      ['judge.ts', judge],
+      ['uncheckable.ts', uncheckable],
+    ],
+  ],
   [
     'geometry',
     geometryBarrel,

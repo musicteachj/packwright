@@ -1,10 +1,12 @@
 /**
  * What no rule can judge on a layout, element by element, in the engine's words.
  *
- * Written once. It used to be assembled twice, in the editor's store and in the
- * audit report, and both had to change the same way for the explanation below
- * to reach the rail. The audit's copy left out the overprinted-symbol half on
- * purpose — an audit layout is GHS and has no symbols — and here that half
+ * Moved here from `apps/web` on 2026-10-10 so the MCP server says what the editor
+ * says: the overprinted-symbol sentence below was report text the web app wrote
+ * for itself. Written once. It used to be assembled twice, in the editor's store
+ * and in the audit report, and both had to change the same way for the explanation
+ * below to reach the rail. The audit's copy left out the overprinted-symbol half
+ * on purpose — an audit layout is GHS and has no symbols — and here that half
  * simply finds nothing on one.
  *
  * Every reason is passed through as the engine wrote it. Where the engine says
@@ -12,7 +14,7 @@
  * too, so the findings rail can say the shared part once — grouping on a whole
  * string it was handed, rather than taking the engine's sentence apart.
  */
-import type { LayoutOmission, ResolvedLayout } from '@packwright/label-core'
+import type { LayoutOmission, ResolvedLayout } from '../layout/types'
 
 export interface UncheckableReason {
   /** The whole sentence, exactly as the engine wrote it. */

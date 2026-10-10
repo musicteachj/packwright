@@ -12,10 +12,11 @@ import {
   buildDigitalLinkUri,
   layOutGhsLabel,
   layOutUpcALabel,
+  judgeLayout,
   layOutUsFoodLabel,
-  runRules,
   type Finding,
   type ResolvedLayout,
+  type RuleContext,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
 import type { CaseLabel, ExperimentCase } from './cases'
@@ -26,16 +27,22 @@ export function layOut(item: ExperimentCase): ResolvedLayout {
     case 'ghs-chemical':
       return layOutGhsLabel({ data: label.data, stock: label.stock })
     case 'gs1-retail':
-      return layOutUpcALabel(bwip as never, { data: label.data, stock: label.stock })
+      return layOutUpcALabel(bwip, { data: label.data, stock: label.stock })
     case 'us-food':
       return layOutUsFoodLabel({ data: label.data, stock: label.stock })
   }
 }
 
-/** The findings the engine reports on the document — what the "with" half would return. */
+/**
+ * The findings the engine reports on the document — what the "with" half would return.
+ *
+ * Through the judge the editor and the MCP server share, so the experiment's two
+ * halves are read against one judgement. Its findings are `runRules`'s exactly, so
+ * the recorded `engine.json` does not change.
+ */
 export function engineFindings(item: ExperimentCase, layout: ResolvedLayout): Finding[] {
   const { label } = item
-  return runRules({ ...label, layout } as Parameters<typeof runRules>[0])
+  return judgeLayout({ ...label, layout } as RuleContext).findings
 }
 
 /** Baselines closer than this are one printed line. */

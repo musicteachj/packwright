@@ -27,12 +27,12 @@ import {
   barPatternWidthMm,
   layOutUpcALabel,
   listSymbologies,
+  type BarcodeDrawingContext,
+  type BarcodeEncoder,
+  type BarcodeRenderOptions,
   type ResolvedLayout,
   type UpcALayoutRequest,
 } from '@packwright/label-core'
-
-/** The slice of bwip-js `label-core` calls, as `layOutUpcALabel` declares it. */
-type BarcodeEncoder = Parameters<typeof layOutUpcALabel>[0]
 
 /** bwip-js once it has loaded; `null` until then. Shared, so it loads once per page. */
 export const barcodeEncoder = shallowRef<BarcodeEncoder | null>(null)
@@ -54,7 +54,7 @@ export const barcodeEncoderFailed = ref(false)
 export function loadBarcodeEncoder(): Promise<void> {
   loading ??= import('bwip-js/generic').then(
     (module) => {
-      barcodeEncoder.value = module as unknown as BarcodeEncoder
+      barcodeEncoder.value = module
     },
     (error: unknown) => {
       barcodeEncoderFailed.value = true
@@ -71,20 +71,12 @@ export function loadBarcodeEncoder(): Promise<void> {
  * same drawing call bwip-js makes — so `layOutSymbol`'s own check that the bars span the
  * tabulated width passes on the engine's numbers rather than on ours.
  */
-const verifiedSpanOnly = {
-  render(
-    options: Record<string, unknown>,
-    drawing: {
-      line(x0: number, y0: number, x1: number, y1: number, lw: number, rgb: string): void
-      end(): unknown
-    },
-  ): unknown {
+const verifiedSpanOnly: BarcodeEncoder = {
+  render<T>(options: BarcodeRenderOptions, drawing: BarcodeDrawingContext<T>): T {
     const symbology = listSymbologies().find((constraints) => constraints.bwipId === options.bcid)
     const modules = symbology === undefined ? undefined : barPatternWidthMm(symbology.id, 1)
     if (modules === undefined) {
-      throw new Error(
-        `No verified module width for the symbology bwip-js calls "${String(options.bcid)}".`,
-      )
+      throw new Error(`No verified module width for the symbology bwip-js calls "${options.bcid}".`)
     }
     drawing.line(modules / 2, 0, modules / 2, 1, modules, '000000')
     return drawing.end()
@@ -99,7 +91,7 @@ const verifiedSpanOnly = {
  * paper is blank where they will be drawn.
  */
 export function placeholderUpcALayout(request: UpcALayoutRequest): ResolvedLayout {
-  const layout = layOutUpcALabel(verifiedSpanOnly as never, request)
+  const layout = layOutUpcALabel(verifiedSpanOnly, request)
   const symbolIds = new Set(layout.symbols.map((symbol) => symbol.elementId))
   return {
     ...layout,
