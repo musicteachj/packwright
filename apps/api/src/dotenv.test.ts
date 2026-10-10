@@ -37,6 +37,9 @@ describe('loading .env over an environment that already has blanks in it', () =>
       [
         'ANTHROPIC_API_KEY',
         'AUDIT_API_KEY',
+        'MCP_ALLOWED_HOSTS',
+        'MCP_ALLOWED_ORIGINS',
+        'MCP_ENABLED',
         'MONGODB_URI',
         'NODE_ENV',
         'PORT',

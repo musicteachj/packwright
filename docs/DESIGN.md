@@ -712,6 +712,19 @@ group, ALB listener rule, Route 53 record, and the two Secrets Manager entries.
   task would double the audit route's daily cap. Keep the service at one task, or move to a shared store.
 - **Edge-level limits.** Every limit today is middleware in this process. An ALB rule or a WAF is the place
   to refuse traffic cheaply, and the audit route still parses its 10 MB body before its guards run.
+- **`/mcp` (recorded 2026-10-10, stage 18 of `docs/plans/2026-10-10-mcp.md`).** Five things, each of which
+  fails quietly if missed:
+  - `MCP_ALLOWED_HOSTS=packwright.jameslittlefield.net`. Without it `/mcp` answers 403 to every request,
+    because the `Host` check admits only localhost unless told otherwise.
+  - `TRUST_PROXY_HOPS=1`. Without it every caller appears to come from the load balancer, so nothing is
+    recognised as Anthropic's range and the whole world shares one per-client allowance of 60 an hour.
+  - The first connector test, by hand in claude.ai: read the `mcp: Origin …` lines in the log. Claude Code
+    sends no `Origin` (observed 2026-10-10), but what Anthropic's hosted connector sends is documented nowhere;
+    if it sends one, add its hostname to `MCP_ALLOWED_ORIGINS`, or every claude.ai call is a 403.
+  - The ALB's idle timeout against SSE answers: Claude's clients speak the older protocol, which is answered as
+    an event stream.
+  - `WHAT_IS_NOT_CHECKED_URL` in `apps/api/src/mcp/server.ts` points at `dev`, because the document is not on
+    `main`; move it to `main` with the release.
 
 This should be a short phase. `barcode-crud` already proves this exact shape — Vue + Express + Mongo, single
 container, shared cluster and ALB — so it is provisioning against a known-good reference rather than working

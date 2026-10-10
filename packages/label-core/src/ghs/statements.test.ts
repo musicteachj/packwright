@@ -89,6 +89,66 @@ describe('canonicalising a code the tables already hold changes nothing', () => 
     }
   })
 
+  it('gives what the quadratic version gave, on every input it was tried with', () => {
+    // The function as it stood at e06b28b, frozen: the rewrite exists to change
+    // how long it takes and nothing else. Seeded, so a failure reproduces.
+    const before = (code: string): string =>
+      code
+        .trim()
+        .toUpperCase()
+        .replace(/\s*\+\s*/g, ' + ')
+        .replace(/\s*\[\s*\+\s*/g, ' [+ ')
+        .replace(/\s*\]/g, ']')
+        .replace(/\s+/g, ' ')
+        .trim()
+    const pieces = [
+      ' ',
+      '  ',
+      '\t',
+      '\n',
+      '\u00a0',
+      '\u2003',
+      '+',
+      '[',
+      ']',
+      'h',
+      'P',
+      'E',
+      'U',
+      '3',
+      '0',
+      'x',
+    ]
+    let seed = 20261010
+    const random = (): number => {
+      seed = (seed * 1103515245 + 12345) % 2 ** 31
+      return seed / 2 ** 31
+    }
+    const tables = [
+      EU_CLP_HAZARD_STATEMENTS,
+      EU_CLP_PRECAUTIONARY_STATEMENTS,
+      US_OSHA_HAZARD_STATEMENTS,
+      US_OSHA_PRECAUTIONARY_STATEMENTS,
+    ]
+    const inputs = tables.flatMap((table) => Object.keys(table))
+    for (let i = 0; i < 20_000; i++) {
+      const length = Math.floor(random() * 24)
+      inputs.push(
+        Array.from({ length }, () => pieces[Math.floor(random() * pieces.length)]!).join(''),
+      )
+    }
+    const differing = inputs.filter((input) => canonicalStatementCode(input) !== before(input))
+    expect(differing.map((input) => JSON.stringify(input))).toEqual([])
+  })
+
+  it('takes linear time on a long run of whitespace', () => {
+    // 80,000 spaces took 11.5 s before; the body limit admits about 250,000.
+    const padded = `H${' '.repeat(250_000)}H`
+    const started = Date.now()
+    expect(canonicalStatementCode(padded)).toBe('H H')
+    expect(Date.now() - started).toBeLessThan(1_000)
+  })
+
   it('still collapses the spellings a label actually prints', () => {
     expect(canonicalStatementCode('p337+p313')).toBe('P337 + P313')
     expect(canonicalStatementCode('  H225  ')).toBe('H225')

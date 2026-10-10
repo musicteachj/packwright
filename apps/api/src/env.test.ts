@@ -14,7 +14,48 @@ const load = (overrides: NodeJS.ProcessEnv = {}) => loadEnv({ ...REQUIRED, ...ov
 
 describe('loadEnv', () => {
   it('applies defaults when nothing else is set', () => {
-    expect(load({})).toEqual({ NODE_ENV: 'development', PORT: 3000, ...REQUIRED })
+    expect(load({})).toEqual({
+      NODE_ENV: 'development',
+      PORT: 3000,
+      MCP_ENABLED: true,
+      MCP_ALLOWED_HOSTS: [],
+      MCP_ALLOWED_ORIGINS: [],
+      ...REQUIRED,
+    })
+  })
+
+  it('turns /mcp off only for the word false', () => {
+    // `z.coerce.boolean()` reads any non-empty string as true, `'false'` included,
+    // which would make the off switch the one value that cannot turn it off.
+    expect(load({ MCP_ENABLED: 'false' }).MCP_ENABLED).toBe(false)
+    expect(load({ MCP_ENABLED: 'true' }).MCP_ENABLED).toBe(true)
+    expect(load({ MCP_ENABLED: '' }).MCP_ENABLED).toBe(true)
+    expect(() => load({ MCP_ENABLED: 'no' })).toThrow(/Invalid environment configuration/)
+  })
+
+  it('reads the /mcp host and origin lists as comma-separated hostnames', () => {
+    const env = load({
+      MCP_ALLOWED_HOSTS: 'packwright.example, www.packwright.example,',
+      MCP_ALLOWED_ORIGINS: 'claude.ai',
+    })
+    expect(env.MCP_ALLOWED_HOSTS).toEqual(['packwright.example', 'www.packwright.example'])
+    expect(env.MCP_ALLOWED_ORIGINS).toEqual(['claude.ai'])
+  })
+
+  it('lowercases the /mcp hostnames, and refuses one with a scheme, port or path', () => {
+    // The checks compare bare lowercased hostnames, so any of these would match
+    // nothing and leave a deployed /mcp answering 403 to everyone.
+    expect(load({ MCP_ALLOWED_HOSTS: 'Packwright.Example' }).MCP_ALLOWED_HOSTS).toEqual([
+      'packwright.example',
+    ])
+    for (const value of [
+      'https://packwright.example',
+      'packwright.example:443',
+      'packwright.example/mcp',
+    ]) {
+      expect(() => load({ MCP_ALLOWED_HOSTS: value }), value).toThrow(/bare hostnames/)
+      expect(() => load({ MCP_ALLOWED_ORIGINS: value }), value).toThrow(/bare hostnames/)
+    }
   })
 
   it.each(['PORT', 'NODE_ENV', 'ANTHROPIC_API_KEY'])(
