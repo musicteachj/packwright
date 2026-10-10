@@ -17,9 +17,11 @@ and the twenty-label cap (#68), and the phone scan-back steps (#69).
 | 9 | **The ingredient-order check as its own rule** | Closes the assortment gap: the order check can stand down in silence, unnamed under "checks that did not run", reachable since #65. | high (`rules/`) | one stage |
 | 10 | **Editor dead ends** | The hand-set type size refusing a zero the way measurements do, not a raw 400. The Nutrition Facts "exempt" status contradicting a ticked panel. A GHS market switch leaving codes the export refuses — behaviour to be decided with James first; suggested: the audit screen's pattern (show them, mark them not carried, keep the rest). | medium | one stage |
 | 11 | **The MCP "without" experiment** | A few fixture labels given to an AI with no tool: does it invent regulations or miss problems? A few dollars. **The gate** — it decides whether the MCP work goes ahead. **Run on 2026-10-09: it confirms the case.** Sonnet 5.5 caught 26 of 30 planted defects, but 31 of its 36 answers carried a wrong or nonexistent citation and it cleared a defective label three times; $2.11. See `docs/experiments/2026-10-09-mcp-without/`. | — | about an hour |
-| — | **MCP planning, then building** | Only if the experiment confirms the case. The shared judge in `label-core` (high), then the server. See `docs/ideas/2026-10-08-mcp-server.md`. | per stage | two stages |
+| 12 | **"Includes" before Added Sugars** | Found by the experiment: every US food label printed "Added Sugars 0g" where 101.9(c)(6)(iii) requires "Includes". Fixed with the tabular sub-row indentation, and a panel line printed over itself now recorded. PR #75. | high (`fda/`, `layout/`) | one stage |
+| 13 | **EU supplier and UFI disclosed** | CLP Article 4(11) and Article 25(7), unchecked, now named in `docs/WHAT-IS-NOT-CHECKED.md`. PR #76. | medium | under an hour |
+| 14 | **The EU sample labels** | An EU supplier with a telephone number on the three EU samples; the landing page's acetone replaced by a fictional mixture; EUH statements disclosed as unprintable. PR #77. | medium | one stage |
+| 15 | **MCP planning, then building** | Only if the experiment confirms the case — it did. **Planned and approved on 2026-10-10, in `docs/plans/2026-10-10-mcp.md`:** the shared judge in `label-core` (16), one shared input schema (17), the server (18), the full with/without eval (19). | per stage | four stages |
 | — | **Phase 8, deployment** | `docs/DESIGN.md` § Phase 8, with `/mcp` live if built. Confirmed with James before it starts. | — | — |
-| — | **The full with/without eval** | Before or after phase 8. | — | one stage |
 
 ## Outside the order
 

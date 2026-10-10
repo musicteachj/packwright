@@ -8,6 +8,18 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **A plan for the MCP server, `docs/plans/2026-10-10-mcp.md`, approved by James on 2026-10-10.** Four stages: one judge in
+  `label-core` that the editor, the audit screen and the server all call, so they cannot disagree; one input schema
+  shared by the export routes and the server; the server itself, with four read-only tools; and the with/without
+  evaluation. It rests on a map of how the website builds a report today and on the MCP specification, SDK and
+  Claude connector documentation read on 2026-10-10 — among them that Claude's connector still speaks the older
+  protocol, and that every claude.ai user arrives from one address range, which rules out a single per-address rate
+  limit. James decided: public, with a two-tier rate limit — the shared claude.ai tier set high, since one bucket is all
+  that range can be — and an off switch; the four tools as named; and the shared
+  schema before the server. Deployment stays on hold.
+
 ### Fixed
 
 - **The EU sample labels name a supplier established in the Union, with a telephone number.** The landing page's
