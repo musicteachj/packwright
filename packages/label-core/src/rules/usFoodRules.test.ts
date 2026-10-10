@@ -4109,17 +4109,27 @@ describe('a tabular panel whose bold ink crosses its border while its boxes do n
   // Regular widths while its non-indented rows print SemiBold, 3–5% wider. So a
   // panel could be judged to fit while the box was ruled through the bold figures.
   // Found by `/code-review high` on PR #64; the stock is found rather than assumed.
+  //
+  // It needs a panel whose widest row prints bold. Since 2026-10-10 the tabular
+  // display indents its sub-rows, and the widest row of the conformant panel became
+  // "Includes 0g Added Sugars 0%" — Regular, two levels in, and inside its box — so
+  // no stock reached the premise and no realistic figure restores it. Total
+  // Carbohydrate is set to 2700 g, an impossible figure chosen only for its width:
+  // nothing here judges it, and the omission under test does not depend on it.
   it('is recorded, measured in the face that prints', () => {
     const at = (widthMm: number) => {
       const stock: LabelStock = { widthMm, heightMm: 400, marginMm: 12 }
+      const facts = US_FOOD_CONFORMANT.data.nutritionFacts!
       const data: UsFoodLabelData = {
         ...US_FOOD_CONFORMANT.data,
         container: { shape: 'rectangular', widthMm, heightMm: 400 },
         nutritionFacts: {
-          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+          ...facts,
           format: 'tabular',
           availableSurfaceSqInches: 80,
           continuousVerticalSpaceInches: 2,
+          amounts: { ...facts.amounts, 'total-carbohydrate': 2700 },
+          declaredAmounts: { ...facts.declaredAmounts, 'total-carbohydrate': 2700 },
         },
       }
       const layout = layOutUsFoodLabel({ data, stock })

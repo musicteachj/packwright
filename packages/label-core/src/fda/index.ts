@@ -13,6 +13,7 @@ export {
   nutrient,
   percentDailyValue,
   permittedNutrientAmounts,
+  printedNutrientLine,
   printedPercentDailyValue,
   roundNutrientAmount,
   roundingIsCheckable,

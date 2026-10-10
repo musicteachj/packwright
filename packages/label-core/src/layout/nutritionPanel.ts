@@ -28,6 +28,7 @@ import {
 import {
   NUTRIENTS,
   nutrient,
+  printedNutrientLine,
   printedPercentDailyValue,
   roundNutrientAmount,
 } from '../fda/nutrients'
@@ -336,9 +337,9 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       const percent = percentOf(facts, id)
       comma()
       span(
-        `${entry.name} ${amount}${entry.unit}${percent === undefined ? '' : ` ${percent}%`}`,
+        `${printedNutrientLine(entry, amount)}${percent === undefined ? '' : ` ${percent}%`}`,
         NUTRITION_PANEL_TYPE.nutrientPt,
-        !entry.indented,
+        entry.indent === 0,
         nutritionRowElementId(id),
         entry.name,
       )
@@ -612,14 +613,19 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
         {
           id,
           entry,
-          text: `${entry.name} ${amount}${entry.unit}${percent === undefined ? '' : ` ${percent}%`}`,
+          text: `${printedNutrientLine(entry, amount)}${percent === undefined ? '' : ` ${percent}%`}`,
+          // (c)(2) and (c)(6) say each sub-row "shall be indented", and (c)(6)(iii)
+          // puts Added Sugars under Total Sugars; no display is excepted, and the
+          // tabular samples indent. This display set every row flush and told a
+          // sub-row only by its weight. Two spaces a level, as the vertical panel.
+          indentMm: entry.indent * gutterMm,
         },
       ]
     })
     const columnMm =
       rows.length === 0
         ? 0
-        : Math.max(...rows.map((r) => measureTextMm(r.text, sizeMm, fontFamily)))
+        : Math.max(...rows.map((r) => r.indentMm + measureTextMm(r.text, sizeMm, fontFamily)))
     // The nutrients go beside the serving block where there is room for at least
     // one column of them, and beneath it where there is not.
     //
@@ -658,23 +664,25 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     // sides of the division rather than to the column alone.
     const availableMm = rightMm - nutrientsXMm
     const columns = Math.max(1, Math.floor((availableMm + gutterMm) / (columnMm + gutterMm)))
-    const perColumn = Math.ceil(rows.length / columns)
+    const { placements, tallest } = keepSubRowsWithParents(
+      rows.map((row) => row.entry.indent),
+      columns,
+    )
 
     rows.forEach((row, index) => {
-      const column = Math.floor(index / perColumn)
-      const rowInColumn = index % perColumn
+      const { column, rowInColumn } = placements[index]!
       const xRowMm = nutrientsXMm + column * (columnMm + gutterMm)
       const yRowMm = nutrientsTopMm + rowInColumn * lineMm
       const elementId = nutritionRowElementId(row.id)
       primitives.push({
         kind: 'text',
         elementId,
-        xMm: xRowMm,
+        xMm: xRowMm + row.indentMm,
         baselineYMm: yRowMm + sizeMm,
         text: row.text,
         fontSizeMm: sizeMm,
         fontFamily,
-        ...(row.entry.indented ? {} : { fontWeight: emphasisFontWeight }),
+        ...(row.entry.indent > 0 ? {} : { fontWeight: emphasisFontWeight }),
         fill: '000000',
         anchor: 'start',
       })
@@ -685,7 +693,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
       })
     })
 
-    const columnsHeightMm = perColumn * lineMm
+    const columnsHeightMm = tallest * lineMm
     // Measured from wherever the columns actually start, which is no longer always
     // the top of the block: below it, the panel is as tall as both stacked.
     const bodyBottomMm = Math.max(leftYMm, nutrientsTopMm + columnsHeightMm)
@@ -950,10 +958,11 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     const start = yMm
     const elementId = nutritionRowElementId(id)
     const amount = amountOf(facts, id)
-    const label = amount === undefined ? entry.name : `${entry.name} ${amount}${entry.unit}`
-    const indentMm = entry.indented
-      ? measureTextMm('  ', mm(NUTRITION_PANEL_TYPE.nutrientPt), fontFamily)
-      : 0
+    const label = printedNutrientLine(entry, amount)
+    // Two spaces per level: a sub-row under its parent, and Added Sugars one level
+    // further, "indented under Total Sugars" as (c)(6)(iii) requires.
+    const indentMm =
+      entry.indent * measureTextMm('  ', mm(NUTRITION_PANEL_TYPE.nutrientPt), fontFamily)
 
     // (e)'s "equal prominence" is a requirement, so the second column is set at the
     // first's size unless the label asks for something else.
@@ -971,8 +980,8 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     // In a dual column the weight belongs *in* the column beside the percentage,
     // not appended to the name — (e)(3) presents "the quantitative information by
     // weight and the percent Daily Value" together, per column.
-    text(dual ? entry.name : label, NUTRITION_PANEL_TYPE.nutrientPt, {
-      bold: !entry.indented,
+    text(dual ? printedNutrientLine(entry) : label, NUTRITION_PANEL_TYPE.nutrientPt, {
+      bold: entry.indent === 0,
       x: leftMm + indentMm,
       elementId,
       lineSizePt: rowPt,
@@ -1128,4 +1137,45 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
   // it at the head of the list — so its opaque white fill sits under everything
   // rather than painting over the bars.
   return finish(heightMm)
+}
+
+/**
+ * Where each tabular row goes: which column, and how far down it.
+ *
+ * A column may break only before a row at the margin, so a sub-row is never
+ * parted from the row it is indented under. The display split by count alone —
+ * `ceil(rows / columns)` a column — and at some widths Added Sugars opened a
+ * column with no Total Sugars above it, indented under nothing; the same cut could
+ * part Total Fat from Saturated Fat. Found by `/code-review medium` on 2026-10-10.
+ * 101.9's tabular samples keep each group together.
+ *
+ * The rows per column start at the even share and grow until the groups fit the
+ * columns there is room for. A group longer than that share still goes whole into
+ * one column, so `tallest` can exceed it.
+ */
+function keepSubRowsWithParents(
+  indents: readonly number[],
+  columns: number,
+): { placements: { column: number; rowInColumn: number }[]; tallest: number } {
+  const groups: number[] = []
+  indents.forEach((indent, index) => {
+    if (index === 0 || indent === 0) groups.push(1)
+    else groups[groups.length - 1]! += 1
+  })
+  for (let perColumn = Math.ceil(indents.length / columns); ; perColumn += 1) {
+    const placements: { column: number; rowInColumn: number }[] = []
+    let column = 0
+    let filled = 0
+    let tallest = 0
+    for (const size of groups) {
+      if (filled > 0 && filled + size > perColumn) {
+        column += 1
+        filled = 0
+      }
+      for (let row = 0; row < size; row += 1) placements.push({ column, rowInColumn: filled + row })
+      filled += size
+      tallest = Math.max(tallest, filled)
+    }
+    if (column < columns || perColumn >= indents.length) return { placements, tallest }
+  }
 }

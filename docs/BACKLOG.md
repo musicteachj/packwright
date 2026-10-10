@@ -58,10 +58,6 @@ printed panel, and statement codes kept through a change of market. Their histor
 The deployment checklist (unknown routes answered 200, pre-#65 seeded zeros, the first schema change needing a
 migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phase 8.
 
-**Proposed on 2026-10-09, for James to decide: the Added Sugars line.** Every US food label this engine draws
-prints "Added Sugars 0g" where 21 CFR 101.9(c)(6)(iii) requires "Includes 0g Added Sugars". Found by the MCP
-"without" experiment; the entry is below, under that heading.
-
 ---
 
 ## From the MCP "without" experiment, 2026-10-09
@@ -70,14 +66,23 @@ Found because a model, asked about labels this engine passes, raised requirement
 Each was verified against the primary source on 2026-10-09; the experiment is
 `docs/experiments/2026-10-09-mcp-without/`.
 
-**The engine prints "Added Sugars 0g", and 101.9(c)(6)(iii) requires "Includes".** Read from the eCFR:
-"Added sugars content shall be indented under Total Sugars and shall be prefaced with the word 'Includes'
-followed by the amount (in grams) 'Added Sugars' ('Includes 'X' g Added Sugars')." The row's name in
-`fda/nutrients.ts` is "Added Sugars" and nothing in `label-core` prints "Includes", so every panel the engine
-draws, the conformant fixture's among them, carries a line its own citation forbids. (j)(13)(ii)(B) lets a
-package of 40 square inches or less abbreviate it to "Incl.", and says the abbreviation "can also be used on
-dual-column displays as shown in paragraphs (e)(5), (e)(6)(i), and (e)(6)(ii)"; a fix has to respect both. Before fixing, ask the CLAUDE.md question of the
-rules that read this row: which of them pass a panel today on the strength of a line printed wrongly.
+**The vertical display measures no row against the figures beside it.** A row's name is set from the left and
+its percentage from the right, and nothing checks that the two do not meet; a narrow enough panel would print
+one through the other. Found while lengthening the Added Sugars line on 2026-10-10, which a test now checks
+across every fixture: the tightest, a 60 mm label on a cylinder, keeps 9.7 mm between them, and the conformant
+label 21.7 mm. The risk is old and general — "Total Carbohydrate 27g" is nearly as long — so it waits for a
+label that reaches it, when it becomes a layout omission like the tabular display's border check.
+
+**The linear display prints Added Sugars as an item of its own.** The engine's run reads "…, Total Sugars 1g,
+Includes 0g Added Sugars 0%, …". The regulation's own linear sample, at (j)(13)(ii)(A)(2), nests it after Total
+Sugars: "Total Sugars 2g (Incl. 2g Added Sugars, 4% DV)". The text of (c)(6)(iii) asks for the preface and an
+indent under Total Sugars, and a linear run cannot indent, so the sample is the only statement of what that
+looks like in a line. It is an illustration, not text, so this is recorded rather than enforced.
+
+**Nothing checks the wording of a nutrient row, by decision.** Every row is composed by
+`printedNutrientLine` from the nutrient table, so no label document can make the wording wrong, and a rule no
+document can fail has no known-bad fixture — the reasoning recorded above for the footnote. The "Includes"
+defect lasted precisely because the composition itself was wrong; tests now pin it on all four displays.
 
 **An EU label must identify a supplier established in the Union, and nothing checks it.** CLP Article 4(11),
 read from consolidation 02008R1272-20260701: "A substance or a mixture shall not be placed on the market unless

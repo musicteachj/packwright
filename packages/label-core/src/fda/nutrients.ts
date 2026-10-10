@@ -103,8 +103,19 @@ export interface Nutrient {
   name: string
   /** `g`, `mg` or `mcg`, as the paragraph declaring it requires. */
   unit: 'g' | 'mg' | 'mcg'
-  /** Indented under its parent on the label — 101.9(d)(7). */
-  indented: boolean
+  /**
+   * How far the row is indented: 0 at the margin, 1 under its parent — 101.9(d)(7)
+   * — and 2 for Added Sugars, which (c)(6)(iii) indents "under Total Sugars", a row
+   * that is itself indented. It was a boolean, and Added Sugars sat beside Total
+   * Sugars on every panel this engine drew.
+   */
+  indent: 0 | 1 | 2
+  /**
+   * A word the regulation sets before the line. Only Added Sugars has one:
+   * (c)(6)(iii) "shall be prefaced with the word 'Includes' followed by the amount
+   * (in grams) 'Added Sugars'". See `printedNutrientLine`.
+   */
+  preface?: 'Includes'
   /** The paragraph this entry is read from, for the rule that cites it. */
   reference: string
   rounding: NutrientRounding
@@ -127,7 +138,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'calories',
     name: 'Calories',
     unit: 'g', // not declared by weight; the unit is unused for calories
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(1)',
     rounding: { kind: 'calories' },
   },
@@ -135,7 +146,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'total-fat',
     name: 'Total Fat',
     unit: 'g',
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(2)',
     rounding: { kind: 'fat-grams' },
     // "Fat ... 78" — 101.9(c)(9), adults and children >= 4 years.
@@ -148,7 +159,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'saturated-fat',
     name: 'Saturated Fat',
     unit: 'g',
-    indented: true,
+    indent: 1,
     reference: '21 CFR 101.9(c)(2)(i)',
     rounding: { kind: 'fat-grams' },
     dailyValue: {
@@ -160,7 +171,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'trans-fat',
     name: 'Trans Fat',
     unit: 'g',
-    indented: true,
+    indent: 1,
     reference: '21 CFR 101.9(c)(2)(ii)',
     rounding: { kind: 'fat-grams' },
     // No DRV in (c)(9). The %DV cell is blank on the printed label.
@@ -169,7 +180,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'cholesterol',
     name: 'Cholesterol',
     unit: 'mg',
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(3)',
     // "expressed in milligrams to the nearest 5-milligram increment"
     rounding: { kind: 'nearest', increment: 5 },
@@ -182,7 +193,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'sodium',
     name: 'Sodium',
     unit: 'mg',
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(4)',
     rounding: { kind: 'sodium' },
     dailyValue: {
@@ -194,7 +205,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'total-carbohydrate',
     name: 'Total Carbohydrate',
     unit: 'g',
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(6)',
     rounding: { kind: 'whole-grams' },
     dailyValue: {
@@ -206,7 +217,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'dietary-fiber',
     name: 'Dietary Fiber',
     unit: 'g',
-    indented: true,
+    indent: 1,
     reference: '21 CFR 101.9(c)(6)(i)',
     rounding: { kind: 'whole-grams' },
     dailyValue: {
@@ -218,7 +229,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'total-sugars',
     name: 'Total Sugars',
     unit: 'g',
-    indented: true,
+    indent: 1,
     reference: '21 CFR 101.9(c)(6)(ii)',
     rounding: { kind: 'whole-grams' },
     // No DRV. Total sugars is declared by weight and carries no percentage.
@@ -227,7 +238,8 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'added-sugars',
     name: 'Added Sugars',
     unit: 'g',
-    indented: true,
+    indent: 2,
+    preface: 'Includes',
     reference: '21 CFR 101.9(c)(6)(iii)',
     rounding: { kind: 'whole-grams' },
     dailyValue: {
@@ -239,7 +251,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'protein',
     name: 'Protein',
     unit: 'g',
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(7)',
     rounding: { kind: 'whole-grams' },
     // 101.9(c)(7)(iii): "a value of 50 grams of protein shall be the DRV for
@@ -260,7 +272,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'vitamin-d',
     name: 'Vitamin D',
     unit: 'mcg',
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(8)(iv)',
     rounding: { kind: 'levels-of-significance' },
     dailyValue: {
@@ -272,7 +284,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'calcium',
     name: 'Calcium',
     unit: 'mg',
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(8)(iv)',
     rounding: { kind: 'levels-of-significance' },
     dailyValue: {
@@ -284,7 +296,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'iron',
     name: 'Iron',
     unit: 'mg',
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(8)(iv)',
     rounding: { kind: 'levels-of-significance' },
     dailyValue: {
@@ -296,7 +308,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     id: 'potassium',
     name: 'Potassium',
     unit: 'mg',
-    indented: false,
+    indent: 0,
     reference: '21 CFR 101.9(c)(8)(iv)',
     rounding: { kind: 'levels-of-significance' },
     dailyValue: {
@@ -363,6 +375,25 @@ export function permittedNutrientAmounts(id: NutrientId, value: number): readonl
 
 export function nutrient(id: string): Nutrient | undefined {
   return BY_ID.get(id as NutrientId)
+}
+
+/**
+ * The words a row prints, before its percentage.
+ *
+ * `amount` is the declared figure, already rounded; leave it out where the
+ * amounts are printed elsewhere — in the columns of a dual-column display — and
+ * the row is named alone. Most rows read name then amount, "Total Sugars 1g".
+ * Added Sugars is the exception (c)(6)(iii) makes and words for itself, the
+ * amount *before* the name: "Includes 'X' g Added Sugars", as the regulation's
+ * sample labels print it — "Includes 10g Added Sugars".
+ */
+export function printedNutrientLine(entry: Nutrient, amount?: number | string): string {
+  if (amount === undefined)
+    return entry.preface === undefined ? entry.name : `${entry.preface} ${entry.name}`
+  const figure = `${amount}${entry.unit}`
+  return entry.preface === undefined
+    ? `${entry.name} ${figure}`
+    : `${entry.preface} ${figure} ${entry.name}`
 }
 
 /** Rounds half away from zero, which is what "to the nearest" means here. */

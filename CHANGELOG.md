@@ -8,6 +8,23 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Added Sugars line says "Includes", and sits under Total Sugars.** Every US food label printed "Added
+  Sugars 0g" at the same indent as Total Sugars, where 21 CFR 101.9(c)(6)(iii) says the line "shall be indented
+  under Total Sugars and shall be prefaced with the word 'Includes' followed by the amount (in grams) 'Added
+  Sugars'". Found by the MCP "without" experiment, whose model read the engine's own conformant label. It now
+  reads "Includes 0g Added Sugars" on the vertical, tabular and linear displays and "Includes Added Sugars" in
+  a dual-column name column, as the regulation's sample labels print it, and stands one level deeper than Total
+  Sugars. Nutrients carry an indent depth instead of a yes-or-no, and one function, `printedNutrientLine`,
+  composes every row's words.
+- **The tabular display indents its sub-rows.** (c)(2) and (c)(6) say Saturated Fat, Trans Fat, Dietary Fiber
+  and Total Sugars each "shall be indented", with no display excepted, and the tabular samples indent; this
+  display set every row flush and told a sub-row by weight alone. Columns now widen by the indent, so no row
+  leaves the box it was given, and break only before a row at the margin: split by count alone, Added Sugars
+  opened a column at 250 and 400 mm with no Total Sugars above it, indented under nothing. One test of the tabular border check needed a new document: its premise is a
+  bold row that is the widest, and the indented Added Sugars line now usually is.
+
 ### Added
 
 - **The MCP "without" experiment, which decides whether the MCP work goes ahead.** Twelve labels, each a
