@@ -60,6 +60,29 @@ migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phas
 
 ---
 
+## From the MCP server, 2026-10-10
+
+**The server refuses four of the 87 documents the judge is tested against, as the exporter does.** Three
+fixtures remove the ingredient list and keep an `ingredientThreshold.count`, which the shared schema refuses as
+covering entries that are not there; the fourth is the 3 percent threshold, which its own fixture has to force
+past the type system (`3 as unknown as 2`) and the schema refuses as a figure 101.4(a)(2) does not permit. The
+editor judges all four and the rules report them. This is decision 4 of the MCP plan working as meant — the
+server refuses what the export routes refuse — and each refusal names its field, so it is a note rather than
+work. It does mean `FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED` can be reached only from the editor.
+
+**A misspelt field is dropped, not refused.** Zod strips keys a schema does not list, everywhere in this
+project, so a model sending `containsStatment` gets a label with no contains statement and a finding about that,
+rather than an error naming the typo. The finding is not a false clearance — a dropped field takes information
+away — but it is a worse answer than a refusal. Refusing unknown keys on the server alone would break decision 4;
+refusing them everywhere changes what the saved-label and export routes accept. Stage 19's evaluation will show
+whether models actually make the mistake before either is worth doing.
+
+**The model sees field names, not their meaning.** `check_label`'s advertised schema is the label schema's
+structure, with a sentence on `labelType`, `data` and `stock` and none on the fields inside. Names like
+`netQuantityFontSizeMm` carry their units, but not, say, that `capacityL` selects the CLP Table 1.3 band. Adding
+`.describe()` to the shared schema is cheap and changes nothing it accepts; stage 19 will show which fields
+models get wrong.
+
 ## From the shared schema, 2026-10-10
 
 **A blank statement code makes the schema misreport its siblings.** `GhsRequest` canonicalises and de-duplicates

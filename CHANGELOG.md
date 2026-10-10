@@ -8,6 +8,31 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **Packwright as an MCP server, at `/mcp`.** An assistant can now call four read-only tools: `check_label`, which
+  draws a label and answers with every finding, its citation as data, the checks that did not run and what could
+  not be drawn, and always a notice that no failures is not a statement of compliance, with the address of
+  `WHAT-IS-NOT-CHECKED.md`; `list_rules`; `ghs_statement_text`, which answers from the verified tables or says it
+  has no text, never generating one; and `check_gtin`, held by its input schema to the four GTIN lengths. Every
+  verdict comes from `judgeLabel` and every input is checked by the shared label schema, so a test sends all 87
+  documents the judge is tested against and holds the server to the editor's verdict on each of the 83 the schema
+  accepts, and to the schema's own words on the four it refuses, as the exporter refuses them. Both protocol eras
+  are served and tested, since Claude's clients speak the older one. In front of it: the `Host` and `Origin`
+  checks, with every `Origin` logged; a shared allowance for Anthropic's outbound range `160.79.104.0/21`, which
+  every claude.ai user arrives from, and 60 an hour for each other address — counting tool calls, not the handshake
+  requests that come before them, which `/code-review medium` found were spending three or four of the sixty per
+  connection, and refusing a batch that carries more than one, since a batch would otherwise be a hundred calls
+  for the price of one; and `MCP_ENABLED`, `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS`, the two lists lowercased
+  and refused at startup unless they are bare hostnames, since `https://` or a port would match nothing and leave
+  a deployed `/mcp` answering 403 to everyone. Both found by a second round of review. **Connecting Claude Code found what no test had:** it dropped `check_label`, because
+  Anthropic's API refuses a tool whose input schema is a union at the top, and the SDK and Inspector's `--strict`
+  had both passed it. The tool is now advertised as one object, `LabelCheckRequestOutline`, and still validated by
+  `LabelCheckRequest`; a test holds every tool to a plain object, and a second run of Claude Code saw all four and
+  called `check_label` end to end. Claude Code sends no `Origin` header. The largest answer is a third of Claude
+  Code's cap. `docs/USE-FROM-YOUR-AI.md` says how to connect, for when there is an address, and the phase 8
+  checklist in `docs/DESIGN.md` gains the five things `/mcp` needs at deployment.
+
 ### Changed
 
 - **A request to check a label, and its conversion to label data, are one thing every door shares.** The MCP

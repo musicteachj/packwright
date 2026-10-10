@@ -86,14 +86,18 @@ describe('what the fallback must never answer for', () => {
     expect(response.body).toEqual({ error: 'Not found' })
   })
 
-  it.each(['/api', '/api/', '/api/labels/nope'])('reserves %s for the server', async (path) => {
-    // Bare `/api` is the case a prefix match on `'/api/'` misses — no trailing
-    // slash, no match — and it is the one path most likely to be typed by hand.
-    // It came back as the client with a 200 on it.
-    const response = await request(withClient()).get(path)
-    expect(response.status).toBe(404)
-    expect(response.body).toEqual({ error: 'Not found' })
-  })
+  it.each(['/api', '/api/', '/api/labels/nope', '/mcp'])(
+    'reserves %s for the server',
+    async (path) => {
+      // Bare `/api` is the case a prefix match on `'/api/'` misses — no trailing
+      // slash, no match — and it is the one path most likely to be typed by hand.
+      // It came back as the client with a 200 on it. `/mcp` here is switched off,
+      // as `withClient` leaves it, and a client probing it needs the 404.
+      const response = await request(withClient()).get(path)
+      expect(response.status).toBe(404)
+      expect(response.body).toEqual({ error: 'Not found' })
+    },
+  )
 })
 
 describe('reserving by segment rather than by prefix', () => {

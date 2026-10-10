@@ -22,6 +22,38 @@ const blankAsAbsent = <T extends z.ZodTypeAny>(schema: T) =>
 const optionalSecret = blankAsAbsent(z.string().min(1).optional())
 
 /**
+ * `a.example, B.example` as a list of hostnames: lowercased, trimmed, and with the
+ * blanks a trailing comma leaves dropped — and refused at startup if one is not a
+ * bare hostname.
+ *
+ * The `Host` and `Origin` checks compare against a lowercased hostname with no
+ * scheme or port, so `https://packwright.example` or `packwright.example:443`
+ * would match nothing, and a deployed `/mcp` would answer 403 to every request
+ * while the startup line said the host was allowed. Refused here instead, where
+ * the message names the variable.
+ */
+const HOSTNAME = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/
+
+const hostnameList = (name: string) =>
+  blankAsAbsent(z.string().optional())
+    .transform((value) =>
+      (value ?? '')
+        .split(',')
+        .map((entry) => entry.trim().toLowerCase())
+        .filter((entry) => entry !== ''),
+    )
+    .pipe(
+      z.array(
+        z
+          .string()
+          .regex(
+            HOSTNAME,
+            `${name} takes bare hostnames, such as packwright.example — no scheme, port or path`,
+          ),
+      ),
+    )
+
+/**
  * The highest port number TCP can express. Without an upper bound a typo like
  * `PORT=80800` passes validation and fails later inside `listen`, by which point
  * the error no longer points at the config that caused it.
@@ -87,8 +119,9 @@ const EnvSchema = z.object({
   /**
    * How many proxies sit in front of this server, or nothing for none.
    *
-   * Only the per-client audit quota reads it, and getting it wrong breaks that
-   * quota in one of two directions. Left unset behind a load balancer, every
+   * The per-client quotas read it — the audit route's, the exports', and both of
+   * `/mcp`'s, which also use it to tell Anthropic's range from everyone else — and
+   * getting it wrong breaks them in one of two directions. Left unset behind a load balancer, every
    * request appears to come from the balancer and the hourly limit becomes one
    * bucket shared by the world — blunt, but it errs towards refusing. Set too
    * high, a caller can forge `X-Forwarded-For` and mint themselves a fresh
@@ -98,6 +131,33 @@ const EnvSchema = z.object({
    * work.
    */
   TRUST_PROXY_HOPS: blankAsAbsent(z.coerce.number().int().min(0).max(10).optional()),
+
+  /**
+   * The off switch for `/mcp`, which is on unless this says `false`.
+   *
+   * `true` and `false` and nothing else. `z.coerce.boolean()` would read the
+   * string `'false'` as true, which is the one value this exists to accept.
+   */
+  MCP_ENABLED: blankAsAbsent(
+    z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+  ),
+
+  /**
+   * Hostnames `/mcp` answers to besides localhost, comma-separated: the public
+   * host, once there is one. Without it a deployed `/mcp` answers 403 to every
+   * request — refusing rather than admitting, as `TRUST_PROXY_HOPS` does.
+   */
+  MCP_ALLOWED_HOSTS: hostnameList('MCP_ALLOWED_HOSTS'),
+
+  /**
+   * `Origin` hostnames `/mcp` admits besides localhost, comma-separated. A
+   * request with no `Origin` always passes; see `mcp/routes.ts` for why the list
+   * starts empty and how it is to be filled.
+   */
+  MCP_ALLOWED_ORIGINS: hostnameList('MCP_ALLOWED_ORIGINS'),
 })
 
 export type Env = z.infer<typeof EnvSchema>

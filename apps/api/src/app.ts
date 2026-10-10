@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { createAuditRouter, type AuditLimits } from './audit/routes'
 import { createLabelDocumentRouter } from './labels/labelDocumentRoutes'
 import { createLabelRouter, type ExportLimit } from './labels/routes'
+import { createMcpRouter, type McpRouterOptions } from './mcp/routes'
 import type { ExtractLabel } from './audit/extract'
 import type { DatabaseStatus } from './db'
 
@@ -78,6 +79,15 @@ export interface AppOptions {
    * shared bucket rather than a forgeable one.
    */
   trustProxyHops?: number | undefined
+  /**
+   * `/mcp` and how it is guarded, or nothing to leave it unmounted.
+   *
+   * Absent means off, for the reason `extract` is injected: `createApp` builds
+   * the same application every time it is called, and a test about PDFs has no
+   * business serving a protocol endpoint. `server.ts` mounts it unless
+   * `MCP_ENABLED` says otherwise.
+   */
+  mcp?: McpRouterOptions | undefined
 }
 
 /**
@@ -89,6 +99,9 @@ export interface AppOptions {
  * on it. `/api/` is the entry that does that work — `/api/labels` is a mounted
  * router, but nothing else under `/api/` is, so without this those paths reach
  * the fallback and come back as a page.
+ *
+ * `/mcp` is listed for when it is switched off: a client probing it then needs
+ * the JSON 404, not the editor's page with a 200 on it.
  *
  * `/health` is listed and is **currently unreachable**, because it is registered
  * as a route above and answered before the fallback is consulted. It is here
@@ -103,7 +116,7 @@ export interface AppOptions {
  * have swallowed any future client route beginning with those letters, 404ing
  * `/health-report` instead of serving the page.
  */
-const RESERVED_FOR_THE_SERVER = ['/api', '/health']
+const RESERVED_FOR_THE_SERVER = ['/api', '/health', '/mcp']
 
 const isReservedForTheServer = (path: string): boolean =>
   RESERVED_FOR_THE_SERVER.some((base) => path === base || path.startsWith(`${base}/`))
@@ -163,6 +176,7 @@ export function createApp(options: AppOptions = {}): Express {
     auditLimits,
     exportLimit,
     trustProxyHops,
+    mcp,
   } = options
   const app = express()
 
@@ -304,6 +318,7 @@ export function createApp(options: AppOptions = {}): Express {
   app.use('/api/labels', createLabelDocumentRouter())
   app.use('/api/labels', createLabelRouter({ limit: exportLimit }))
   app.use('/api/audit', createAuditRouter({ extract, apiKey: auditApiKey, limits: auditLimits }))
+  if (mcp !== undefined) app.use('/mcp', createMcpRouter(mcp))
 
   /**
    * The built client, served from the same origin as the API it calls.
