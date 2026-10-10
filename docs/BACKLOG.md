@@ -80,16 +80,25 @@ defect lasted precisely because the composition itself was wrong; tests now pin 
 **An EU label must identify a supplier established in the Union, and nothing checks it.** CLP Article 4(11),
 read from consolidation 02008R1272-20260701: "A substance or a mixture shall not be placed on the market unless
 a supplier established in the Union, which shall be identified on the label, …". Inserted by Regulation (EU)
-2024/2865 and applicable from 1 July 2026. `GHS_CONFORMANT` carries a supplier in Leeds, so the EU control is a
-label that has not been placeable since July. Whether an address is in the Union is not something a rule can
-read from free text, so this is a disclosure for `docs/WHAT-IS-NOT-CHECKED.md` first, and perhaps a field later.
+2024/2865 and applicable from 1 July 2026. Whether an address is in the Union is not something a rule can read
+from free text. **Disclosed in `docs/WHAT-IS-NOT-CHECKED.md` on 2026-10-10**, with the application date checked
+against 2024/2865's Article 2(2) as 2025/2439 replaced it; a field, and a rule on it, remain possible later.
 The CLP citations this engine carries were read against the 2025-09-01 consolidation; the six this experiment
 leaned on were re-read against 2026-07-01 and are unchanged, and the rest have not been.
 
 **A mixture's UFI is neither checked nor disclosed.** CLP Article 25(7): where a unique formula identifier is
 created under Annex VIII, "it shall be included in the supplemental information on the label", in the form
 Annex VIII Part A §5.2 sets ("UFI:"). It turns on whether the mixture falls under Annex VIII, which the document
-does not say — another candidate for `docs/WHAT-IS-NOT-CHECKED.md`.
+does not say. **Disclosed in `docs/WHAT-IS-NOT-CHECKED.md` on 2026-10-10**, with Part A, 5.3's alternatives:
+the inner or outer packaging, or the safety data sheet for a mixture supplied to an industrial site.
+
+**The EU sample labels name a supplier in Leeds, with no telephone number.** The landing page's GHS sample
+(`apps/web/src/views/landingSamples.ts`), the editor's starting label (`stores/labelDocument.ts`) and
+`GHS_CONFORMANT` are all `eu-clp` labels whose only supplier is in the UK, so none could be placed on the EU
+market since Article 4(11) began to apply on 1 July 2026; and all three give the supplier as a name and an
+address only, without the telephone number Article 17(1)(a) names. No rule reads either on a full label, so
+every check passes them. Each is a one-line change of sample
+data. Recorded on 2026-10-10 for James to decide, rather than folded into the disclosure stage.
 
 **Servings per container is not checked against the net quantity.** The base US food fixture declares 8
 servings of 40 g in a 340 g package, which is 8.5. 101.9(b)(8)(i) rounds to the nearest whole number and does

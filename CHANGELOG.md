@@ -10,6 +10,11 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **`docs/WHAT-IS-NOT-CHECKED.md` names two EU requirements nothing checks.** CLP Article 4(11) has required a
+  supplier established in the Union, identified on the label, since 1 July 2026; and Article 25(7) puts a
+  mixture's UFI in its supplemental information, with Annex VIII Part A, 5.3's alternatives. No rule reads either,
+  and a clean report said nothing to tell a user so. Found by the MCP "without" experiment; read from the
+  consolidated CLP text in force and Regulations (EU) 2024/2865 and 2025/2439 on 2026-10-10.
 - **The Added Sugars line says "Includes", and sits under Total Sugars.** Every US food label printed "Added
   Sugars 0g" at the same indent as Total Sugars, where 21 CFR 101.9(c)(6)(iii) says the line "shall be indented
   under Total Sugars and shall be prefaced with the word 'Includes' followed by the amount (in grams) 'Added

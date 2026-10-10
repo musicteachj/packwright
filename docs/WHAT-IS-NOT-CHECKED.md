@@ -231,6 +231,38 @@ which this tool reports if a US label prints it, and it works out the rest
 from CLP's table. That table has not been checked against C.4, so on a US label check each pictogram the tool
 draws against C.4 yourself. The editor says so beside the classification.
 
+### Whether an EU label's supplier is established in the Union
+
+Since 1 July 2026 a substance or mixture may not be placed on the EU market "unless a supplier established in
+the Union, which shall be identified on the label, … fulfils the requirements set out in this Regulation" — CLP
+Article 4(11), added by Regulation (EU) 2024/2865 and applying from that date under its Article 2(2), as
+Regulation (EU) 2025/2439 replaced that paragraph. A label naming only a supplier outside the EU, a UK one
+included, does not meet it.
+
+**No check here reads where your supplier is.** The supplier is free text, and whether an address lies in the
+Union is not something this tool can read from it reliably; the only supplier check it makes is that a small
+container's reduced label names one with a telephone number. A clean report says nothing about Article 4(11), so
+check it yourself: the supplier on the label should be an EU manufacturer, importer, downstream user or
+distributor — the EU importer, where the product is made elsewhere — alongside any non-EU company you also name.
+
+### A mixture's UFI
+
+Information on a mixture classified as hazardous for its health or physical effects is submitted, before it is
+placed on the market, to the bodies Member States appoint under CLP Article 45 to receive information "relating
+to emergency health response", and the submitter creates a unique formula identifier for it (Annex VIII, Part A, 3.1 and 5.1). Where one has been
+created, CLP Article 25(7) puts it in the label's supplemental information, preceded by "UFI:" (Annex VIII, Part A, 5.2).
+Part A, 5.3 allows it on the inner packaging beside the other label elements instead, on the outer packaging
+where the inner is too small, and, for a packaged mixture supplied for use at an industrial site, in the safety
+data sheet in place of the label.
+
+**This tool has no field for a UFI and checks for none.** Whether your mixture needs one turns on its
+classification and its notification, which the label document does not carry. If your product is a hazardous
+mixture placed on the EU market, check the UFI yourself.
+
+These two readings are from consolidated CLP text 02008R1272-20260701, the version in force on 2026-10-10, and
+Regulations (EU) 2024/2865 and 2025/2439, all read from the EU Publications Office on 2026-10-10. The
+consolidated text is a documentation aid; the Official Journal is the authentic version.
+
 ---
 
 ## Barcodes
