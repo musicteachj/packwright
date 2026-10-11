@@ -700,18 +700,33 @@ group, ALB listener rule, Route 53 record, and the two Secrets Manager entries.
 *Settle before deploying* (recorded 2026-10-09; the reasoning for each is in `docs/BACKLOG.md`):
 - **A `dev` → `main` release.** A push to `main` deploys, and `main` is far behind `dev` and left alone by
   agreement until then.
-- **Unknown routes answer 200.** The server hands `index.html` to any GET it does not reserve, so
-  `/labels/abc/edit` returns 200 and the client says there is no page. The server needs the client's route
-  table, or a copy of it, to answer 404.
+- ~~**Unknown routes answer 200.**~~ **Done, 2026-10-11.** The client build writes its page list
+  (`apps/web/src/router/pages.ts`, held to the router by a test) as `routes.json`; the server reads it from the
+  build it serves and answers any other address 404 with the client's own not-found page, refusing to start from a
+  build without the list.
 - **Labels saved before #65 carry seeded zeros.** Only development databases hold them, so this is a line in
   the release notes, not a migration: start the deployed database empty.
 - **The first schema change after deploying needs a migration.** `GET /api/labels/:id` re-validates a stored
   document and answers 500 when it no longer matches, and `PUT` validates the same shape, so nothing in the
   application can repair one. Before any further tightening, decide on a migration or a read path that repairs.
+  **Decided with James, 2026-10-11: a one-off migration script per schema change, run before the
+  deploy that needs it.** The store is capped at 20 labels in all, so a migration is seconds of work against a
+  handful of documents, and a script can be run against a copy first; a read path that repairs would carry every
+  old shape forever in code that serves every request. The 500 on a document that no longer validates stays the
+  alarm that one was missed.
 - **Rate limits and quotas are per process.** They hold for the single container this plan deploys; a second
   task would double the audit route's daily cap. Keep the service at one task, or move to a shared store.
+  **Decided with James, 2026-10-11: one task.** The 20-label cap, the audit route's spending caps and
+  `/mcp`'s allowances are all held in the process, and this app's traffic does not need a second; a shared store
+  is work to do the day it does. The deployment circuit breaker still replaces a failed task.
 - **Edge-level limits.** Every limit today is middleware in this process. An ALB rule or a WAF is the place
   to refuse traffic cheaply, and the audit route still parses its 10 MB body before its guards run.
+  **Decided with James, 2026-10-11: one AWS WAF rate-based rule, about $6 a month** — $5 for the web
+  ACL, $1 for the rule and $0.60 per million requests (aws.amazon.com/waf/pricing, read 2026-10-11). It is the one
+  limit that counts every request before this process reads a byte: `/mcp`'s handshake requests and the audit
+  route's 10 MB bodies included, which the in-process limits do not reach. The ALB is shared with other services,
+  so the rule is scoped to this app's host; the per-client threshold, and whether Anthropic's range gets its own,
+  follow from the `/mcp` allowances below.
 - **`/mcp` (recorded 2026-10-10, stage 18 of `docs/plans/2026-10-10-mcp.md`).** Five things, each of which
   fails quietly if missed:
   - `MCP_ALLOWED_HOSTS=packwright.jameslittlefield.net`. Without it `/mcp` answers 403 to every request,

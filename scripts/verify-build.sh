@@ -58,9 +58,8 @@ grep -q '<div id="app">' /tmp/pw-index.html || fail "/ served something that is 
 # server for /rules, not for /#/rules — so without a history fallback every route
 # but / 404s on refresh.
 # The body is checked, not just the status. A 200 alone would pass on any page at
-# all, including an error page the server was happy about — and `/rules` is not a
-# registered client route yet, so this exercises the generic fallback rather than
-# a route, which is the weaker of the two things to be asserting.
+# all, including an error page the server was happy about. Both are real pages,
+# in the client's page list (`routes.json`) the server reads from the build.
 for route in /labels/new /rules; do
   code=$(curl -s -o /tmp/pw-deep.html -w '%{http_code}' "${BASE}${route}")
   [ "$code" = "200" ] || fail "deep link ${route} returned HTTP ${code}, not the client"
@@ -77,6 +76,13 @@ asset=$(grep -o '/assets/index-[^"]*\.js' /tmp/pw-index.html | head -1 || true)
 [ -n "$asset" ] || fail "no hashed client bundle referenced in index.html"
 code=$(curl -s -o /dev/null -w '%{http_code}' "${BASE}${asset}")
 [ "$code" = "200" ] || fail "the client's own bundle ${asset} returned HTTP ${code}"
+
+# An address that is no page gets the client too — its own not-found page — but
+# with a 404, so a crawler or a link checker is told the truth. It came back 200
+# before the server read the build's page list.
+code=$(curl -s -o /tmp/pw-nopage.html -w '%{http_code}' "${BASE}/labels/abc/edit")
+[ "$code" = "404" ] || fail "/labels/abc/edit returned HTTP ${code}, expected 404"
+grep -q '<div id="app">' /tmp/pw-nopage.html || fail "/labels/abc/edit 404'd without the client"
 
 # --- and what the fallback must never swallow --------------------------------
 # An API caller that mistypes a route needs its JSON 404, not a page of HTML with

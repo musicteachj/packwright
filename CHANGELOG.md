@@ -8,6 +8,23 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+- **An address with no page is answered 404, not 200.** The server handed the client's `index.html` to every
+  address it did not reserve, so `/labels/abc/edit` came back 200 and only the page said there was nothing there —
+  a crawler, a link checker or an uptime monitor reads the status, and took a mistyped address for a working one.
+  The client's page addresses are now one list, `apps/web/src/router/pages.ts`, held to the router by a test that
+  fails if a route is added to one and not the other; the Vite build writes it as `routes.json` beside
+  `index.html`, and the server reads it from the build it serves, so the two cannot drift by a copy. A page answers
+  200; any other address gets the client with a 404, so the browser still shows the not-found page inside the
+  shell. A build without the list refuses to start, since serving every address 200, or every page 404, would
+  each be silent — which means a local `apps/web/dist` built before this change stops `npm run dev` until it is
+  rebuilt or deleted, as the error says. Paths match as the router matches them — case and one trailing slash
+  ignored, any other empty segment not — and a web test asks the router the same table the server is tested on.
+  The end-to-end test of the not-found page now asserts its status too. Phase 8's checklist in `docs/DESIGN.md`
+  records James's decisions on the three open questions beside it: a migration script per schema
+  change, one task, and one WAF rate-based rule at about $6 a month.
+
 ### Added
 
 - **The with/without evaluation, graded: the tools work, and they have two failures to fix before launch.** With
