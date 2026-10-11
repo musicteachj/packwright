@@ -1,0 +1,1556 @@
+{
+  "caseId": "01-clp-pictogram-precedence",
+  "answers": [
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "CLP Annex I, Section 1.2.1",
+          "claim": "Signal word 'Danger' should appear immediately below the pictograms",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1 ('General rules for the application of labels required by Article 31') contains only 1.2.1.1 (pictogram a square set at a point), 1.2.1.2 (black symbol, white background, red frame), 1.2.1.3 (pictogram at least 1/15 of label area, at least 1 cm2), 1.2.1.4 (Table 1.3, dimensions) and 1.2.1.6 (fold-out labels). It says nothing on this point. The only placement rule is Art. 32(1): \"The hazard pictograms, signal word, hazard statements and precautionary statements shall be located together on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, Section 1.2.1 and Annex III",
+          "claim": "Prevention (P280), storage ('Store in a well-ventilated place' / P405) and disposal (P501) precautionary statements are missing",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1 ('General rules for the application of labels required by Article 31') contains only 1.2.1.1 (pictogram a square set at a point), 1.2.1.2 (black symbol, white background, red frame), 1.2.1.3 (pictogram at least 1/15 of label area, at least 1 cm2), 1.2.1.4 (Table 1.3, dimensions) and 1.2.1.6 (fold-out labels). It says nothing on this point. Precautionary statements are Art. 22 and Annex IV. Annex I Table 3.3.5 (Eye Dam. Cat 1): signal word Danger, H318, Prevention P280, Response P305 + P351 + P338, P310, no storage or disposal statement. Table 3.2.5 (Skin Irrit. Cat 2): Warning, H315, Prevention P264 P280, Response P302 + P352, P321, P332 + P313, P362 + P364, no storage or disposal statement. Art. 22(2): statements \"shall be selected from those set out in the tables in Parts 2 to 5 of Annex I\". Annex III is the list of hazard statements, not precautionary statements. P405 is \"Store locked up.\" (Annex IV, assigned to acute toxicity, skin corrosion etc., not Eye Dam. 1 or Skin Irrit. 2).",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 17",
+          "claim": "Product identifier: the chemical name must also be visible if required by the formulation",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(c): \"product identifiers as specified in Article 18\"; Art. 18(3)(b) requires \"the identity of all substances in the mixture that contribute to the classification of the mixture as regards acute toxicity, skin corrosion or serious eye damage, ...\" — the requirement is reached through Art. 17(1)(c).",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, Section 1.2.1",
+          "claim": "Supplementary hazard information may be needed for Eye Dam. 1",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1 ('General rules for the application of labels required by Article 31') contains only 1.2.1.1 (pictogram a square set at a point), 1.2.1.2 (black symbol, white background, red frame), 1.2.1.3 (pictogram at least 1/15 of label area, at least 1 cm2), 1.2.1.4 (Table 1.3, dimensions) and 1.2.1.6 (fold-out labels). It says nothing on this point. Supplemental information is Art. 25 and Annex II.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, Section 1.2.2",
+          "claim": "Pictograms must be positioned prominently with adequate spacing from text",
+          "verdict": "F",
+          "evidence": "Annex I Part 1 section 1.2 'Labelling' contains only 1.2.1 (1.2.1.1–1.2.1.4 and 1.2.1.6); the next section is 1.3 'Derogations from labelling requirements for special cases'. There is no section 1.2.2 anywhere in Annex I.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Signal word must sit immediately below the pictograms",
+          "grade": "not-real",
+          "reason": "No such rule; Art. 32(1) only requires the elements to be located together."
+        },
+        {
+          "claim": "Prevention statement P280 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "Storage precautionary statement missing",
+          "grade": "not-real",
+          "reason": "Tables 3.3.5 and 3.2.5 assign no storage statement to Eye Dam. 1 or Skin Irrit. 2."
+        },
+        {
+          "claim": "Disposal statement (P501) missing",
+          "grade": "unclear",
+          "reason": "Art. 28(2) requires one only where supplied to the general public; the prompt does not say."
+        },
+        {
+          "claim": "Chemical name may be required in the product identifier",
+          "grade": "real"
+        },
+        {
+          "claim": "Supplementary hazard information may be needed",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Pictograms must be placed prominently with adequate spacing",
+          "grade": "not-real",
+          "reason": "No CLP provision sets pictogram spacing."
+        }
+      ],
+      "tool": null,
+      "notes": "No mention of GHS07 or Art. 26; does not clear the pictograms either. 'P405' is given the wording of P403. Misses EU supplier, UFI, nominal quantity, language, P310. The Art. 17 citation is graded V because 17(1)(c) reaches Art. 18(3)(b) for the eye-damage substance names; 'INCI' is a cosmetics term and irrelevant."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "CLP Annex I, Section 1.3.1",
+          "claim": "The signal word must appear on the label",
+          "verdict": "M",
+          "evidence": "Annex I 1.3.1 is 'Transportable gas cylinders' (in 1.3 'Derogations from labelling requirements for special cases'). The signal-word requirement is Art. 17(1)(e) and Art. 20(1).",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, Section 1.3.5",
+          "claim": "Prevention precautionary statements (P264, P280) are required",
+          "verdict": "M",
+          "evidence": "Annex I 1.3.5 is 'Explosives placed on the market with a view to obtaining an explosive or pyrotechnic effect'. Precautionary statements are Art. 22 and Annex IV; Annex IV's introduction encourages combining statements and Art. 32(2) lets the supplier decide their order.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, Section 1.3.5",
+          "claim": "The IF IN EYES statement must be a separate block following the standard P-code format",
+          "verdict": "M",
+          "evidence": "Annex I 1.3.5 is 'Explosives placed on the market with a view to obtaining an explosive or pyrotechnic effect'. Precautionary statements are Art. 22 and Annex IV; Annex IV's introduction encourages combining statements and Art. 32(2) lets the supplier decide their order.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, Section 1.2.2",
+          "claim": "Pictograms must be at least 1 cm (10 mm) on a side; 23 mm is compliant",
+          "verdict": "F",
+          "evidence": "Annex I Part 1 section 1.2 'Labelling' contains only 1.2.1 (1.2.1.1–1.2.1.4 and 1.2.1.6); the next section is 1.3 'Derogations from labelling requirements for special cases'. There is no section 1.2.2 anywhere in Annex I. The 1 cm2 floor is 1.2.1.3; for >3–50 L Table 1.3 requires at least 23 × 23.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Prevention statements (e.g. P264, P280) missing",
+          "grade": "real",
+          "reason": "P280 is required for Eye Dam. 1 (Table 3.3.5); P264 is listed for Skin Irrit. 2."
+        },
+        {
+          "claim": "First-aid statement must be formatted as a separate P-code block",
+          "grade": "not-real",
+          "reason": "Art. 32(2) leaves order to the supplier; codes are not required wording, and the printed text is Annex IV's wording."
+        },
+        {
+          "claim": "Supplementary information may be required",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "No mention of GHS07 or Art. 26; no clearance of the pictogram set. 'CLP Annex I' cited bare for supplementary information is not graded. Every specific citation is wrong: 1.3.1 and 1.3.5 are gas cylinders and explosives derogations."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "CLP Annex I, Section 1.2.1",
+          "claim": "Signal word 'Danger' should appear immediately below the pictograms",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1 ('General rules for the application of labels required by Article 31') contains only 1.2.1.1 (pictogram a square set at a point), 1.2.1.2 (black symbol, white background, red frame), 1.2.1.3 (pictogram at least 1/15 of label area, at least 1 cm2), 1.2.1.4 (Table 1.3, dimensions) and 1.2.1.6 (fold-out labels). It says nothing on this point. The only placement rule is Art. 32(1): \"The hazard pictograms, signal word, hazard statements and precautionary statements shall be located together on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 25 and Annex I, Section 1.2.1",
+          "claim": "General precautionary statements ('Keep out of reach of children', 'Wear eye protection', 'Avoid contact with eyes/skin') are missing",
+          "verdict": "M",
+          "evidence": "Art. 25 is 'Supplemental information on the label' (EUH statements, UFI). Precautionary statements are Art. 22 / Annex IV; Annex I 1.2.1 covers pictogram shape and label dimensions only.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, Section 1.2.1",
+          "claim": "The product identifier should be placed more prominently",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1 ('General rules for the application of labels required by Article 31') contains only 1.2.1.1 (pictogram a square set at a point), 1.2.1.2 (black symbol, white background, red frame), 1.2.1.3 (pictogram at least 1/15 of label area, at least 1 cm2), 1.2.1.4 (Table 1.3, dimensions) and 1.2.1.6 (fold-out labels). It says nothing on this point. Product identifiers are Art. 18; Art. 18(1) requires the same term as the safety data sheet.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, Section 1.2.1",
+          "claim": "For containers over 125 mL the label must be at least 52 × 74 mm",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 × 105 [label] / At least 23 × 23 [pictogram]\". 52 × 74 and 16 × 16 are the \"Not exceeding 3 litres\" row (\"If possible, at least 52 × 74\"; \"Not smaller than 10 × 10 / If possible, at least 16 × 16\"). 125 ml is the 1.5.2.1 small-package threshold, not a label-size band.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex V",
+          "claim": "'if present and easy to do' is non-standard wording for the eye-rinse statement",
+          "verdict": "M",
+          "evidence": "Annex V is 'HAZARD PICTOGRAMS'. The wording is Annex IV: P305 + P351 + P338 \"IF IN EYES: Rinse cautiously with water for several minutes. Remove contact lenses, if present and easy to do. Continue rinsing.\" — the printed text is the standard wording.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Signal word must be immediately below the pictograms",
+          "grade": "not-real",
+          "reason": "No such rule; Art. 32(1) only 'located together'."
+        },
+        {
+          "claim": "P280 (wear eye protection) missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P102 (keep out of reach of children) missing",
+          "grade": "unclear",
+          "reason": "Annex IV Table 6.1: consumer products, as appropriate; supply channel not stated."
+        },
+        {
+          "claim": "Product identifier must be more prominent",
+          "grade": "not-real",
+          "reason": "No prominence rule for the identifier."
+        },
+        {
+          "claim": "Label must be at least 52 × 74 mm for this container",
+          "grade": "not-real",
+          "reason": "Table 1.3 requires at least 74 × 105 mm for >3 L to 50 L."
+        },
+        {
+          "claim": "'if present and easy to do' is non-standard wording",
+          "grade": "not-real",
+          "reason": "It is Annex IV's own wording of P305 + P351 + P338."
+        },
+        {
+          "claim": "Supplemental hazard information may be needed",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "False clearance: 'The layout and core hazard information is broadly compliant' while the label carries GHS07 beside GHS05 for skin irritation, contrary to Art. 26(1)(c). Never mentions GHS07."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "Art. 26(2) CLP",
+          "claim": "When GHS05 applies, GHS07 is omitted if only there for skin or eye irritation",
+          "verdict": "M",
+          "evidence": "Art. 26(2): \"Where the classification of a substance or mixture would result in more than one hazard pictogram for the same hazard class the label shall include the hazard pictogram corresponding to the most severe hazard category for each hazard class concerned.\" The GHS05/GHS07 rule is Art. 26(1)(c): \"if the hazard pictogram 'GHS05' applies, the hazard pictogram 'GHS07' shall not appear for skin or eye irritation\".",
+          "reused": false
+        },
+        {
+          "ref": "Art. 18(3)(b) CLP",
+          "claim": "Names of the substances causing the serious eye damage classification (up to four) must be given",
+          "verdict": "V",
+          "evidence": "Art. 18(3)(b): \"the identity of all substances in the mixture that contribute to the classification of the mixture as regards acute toxicity, skin corrosion or serious eye damage, germ cell mutagenicity, carcinogenicity, reproductive toxicity, respiratory or skin sensitisation, specific target organ toxicity (STOT) or aspiration hazard.\" and \"a maximum of four chemical names shall suffice\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 17(1)(a) CLP",
+          "claim": "Supplier name, address and telephone; the supplier must be established in the Union",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(a): \"the name, address and telephone number of the supplier(s)\"; Art. 2(26): 'supplier' means any manufacturer, importer, downstream user or distributor placing on the market...; Art. 2(15), (17), (19), (20) each define those actors as persons \"established within the Community\"; Art. 4(11): \"A substance or a mixture shall not be placed on the market unless a supplier established in the Union, which shall be identified on the label, ...\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 17(1)(b) CLP",
+          "claim": "Nominal quantity (5 L) required unless given elsewhere on the package",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package\"",
+          "reused": false
+        },
+        {
+          "ref": "Annex VIII, Part A, CLP",
+          "claim": "UFI required on labels of mixtures classified for health or physical hazards, printed as 'UFI: ...'",
+          "verdict": "V",
+          "evidence": "Annex VIII Part A 3.1: submitters shall provide information on \"mixtures classified as hazardous on the basis of their health or physical effects\"; 5.2: \"The UFI shall be preceded by the acronym 'UFI' in capital letters followed by a colon ('UFI:') ...\"; Art. 25(7): \"Where under Annex VIII the submitter creates a unique formula identifier, it shall be included in the supplemental information on the label ...\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 28 and Annex IV with Annex I Part 3 tables",
+          "claim": "Eye Dam. 1 needs P280 and P310; Skin Irrit. 2 P264 and P302+P352",
+          "verdict": "V",
+          "evidence": "Annex I Table 3.3.5 (Eye Dam. Cat 1): signal word Danger, H318, Prevention P280, Response P305 + P351 + P338, P310, no storage or disposal statement. Table 3.2.5 (Skin Irrit. Cat 2): Warning, H315, Prevention P264 P280, Response P302 + P352, P321, P332 + P313, P362 + P364, no storage or disposal statement. Art. 22(2): statements \"shall be selected from those set out in the tables in Parts 2 to 5 of Annex I\".",
+          "reused": false
+        },
+        {
+          "ref": "Art. 28(3)",
+          "claim": "Normal limit of six precautionary statements",
+          "verdict": "V",
+          "evidence": "Art. 28(3): \"Not more than six precautionary statements shall appear on the label, unless necessary to reflect the nature and the severity of the hazards.\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 17(2) CLP",
+          "claim": "Label in the official language(s) of each Member State",
+          "verdict": "V",
+          "evidence": "Art. 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 28 and Annex IV",
+          "claim": "Consumer sale calls for P102 and a disposal statement such as P501; P101 commonly added",
+          "verdict": "V",
+          "evidence": "Annex IV Table 6.1: P101 'If medical advice is needed, have product container or label at hand.', P102 'Keep out of reach of children.', P103 'Read carefully and follow all instructions.' — hazard class \"as appropriate\", conditions for use \"Consumer products\" (P103: \"omit where P202 is used\"). Annex IV introduction: general statements \"shall also be used where relevant\". Conditional on relevance, not an unconditional requirement. The answer presents them conditionally for consumer sale; Art. 28(2) requires one disposal statement where supplied to the general public. Art. 28(2): \"Where the substance or mixture is supplied to the general public, one precautionary statement addressing the disposal of that substance or mixture as well as the disposal of packaging shall appear on the label\".",
+          "reused": false
+        },
+        {
+          "ref": "Detergents Regulation (EC) No 648/2004, Annex VII",
+          "claim": "If the descaler is a detergent it needs the Annex VII content declaration and an online ingredient list; the regulation is being replaced",
+          "verdict": "V",
+          "evidence": "Reg. (EC) 648/2004, consolidated 2012-04-19 (Publications Office 02004R0648-20120419): Art. 2(1) \"'Detergent' means any substance or mixture containing soaps and/or other surfactants intended for washing and cleaning processes\"; Art. 11(3) \"The packaging of detergents shall indicate the content, in accordance with the specifications provided for in Annex VII A\"; Annex VII A sets weight-percentage bands for listed constituents and \"The website address, from which the list of ingredients mentioned in section D of Annex VII can be obtained, shall be given on the packaging.\" Reg. (EU) 2026/405 (OJ L 2.3.2026), Art. 35: \"Regulation (EC) No 648/2004 is repealed with effect from 23 September 2029.\"",
+          "reused": false
+        },
+        {
+          "ref": "Annex V and Art. 19 CLP",
+          "claim": "Pictogram is a diamond with black symbol, white background, red border",
+          "verdict": "V",
+          "evidence": "Annex V introduction: \"The hazard pictograms for each hazard class ... shall satisfy the provisions of this Annex and Annex I, section 1.2 and conform in terms of symbols and general format, to the specimens shown.\" Annex I 1.2.1.1: square set at a point; 1.2.1.2: black symbol, white background, red frame. Art. 19(2): pictograms shall fulfil 1.2.1 of Annex I and Annex V.",
+          "reused": false
+        },
+        {
+          "ref": "Annex I, 1.2.1",
+          "claim": "Pictograms at least 1/15 of label area and not smaller than 16 × 16 mm for >3 L to 50 L; minimum label 52 × 74 mm for that range",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 × 105 [label] / At least 23 × 23 [pictogram]\". 52 × 74 and 16 × 16 are the \"Not exceeding 3 litres\" row (\"If possible, at least 52 × 74\"; \"Not smaller than 10 × 10 / If possible, at least 16 × 16\"). (The 1/15 rule, 1.2.1.3, is right.)",
+          "reused": false
+        },
+        {
+          "ref": "Art. 31 and Art. 32",
+          "claim": "Hazard elements grouped together, horizontal, legible and indelible",
+          "verdict": "V",
+          "evidence": "Art. 31(1): \"Labels shall be firmly affixed ... and shall be readable horizontally when the package is set down normally\"; 31(3): label elements \"shall be clearly and indelibly marked. They shall stand out clearly from the background\"; Art. 32(1): \"The hazard pictograms, signal word, hazard statements and precautionary statements shall be located together on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "Annex II Part 3",
+          "claim": "Child-resistant fastening and tactile warning are not triggered by Eye Dam. 1 or Skin Irrit. 2 alone",
+          "verdict": "V",
+          "evidence": "Annex II 3.1.1.1: child-resistant fastenings for \"acute toxicity, categories 1 to 3, STOT — single exposure category 1, STOT — repeated exposure category 1, or skin corrosion category 1\"; 3.2.1.1: tactile warning for \"acute toxicity, skin corrosion, germ cell mutagenicity category 2, ... flammable liquids categories 1 or 2, or flammable solids\" when supplied to the general public. Art. 35(2) applies them.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "GHS07 must be removed",
+          "grade": "real"
+        },
+        {
+          "claim": "Contributing substance names missing",
+          "grade": "real"
+        },
+        {
+          "claim": "No EU-established supplier",
+          "grade": "real"
+        },
+        {
+          "claim": "Nominal quantity missing",
+          "grade": "unclear",
+          "reason": "Required only for packages made available to the general public; supply channel not stated."
+        },
+        {
+          "claim": "UFI missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P280 and P310 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P264 and P302+P352 missing",
+          "grade": "unclear",
+          "reason": "Listed for Skin Irrit. 2 but subject to selection and Art. 28's limits."
+        },
+        {
+          "claim": "Language",
+          "grade": "unclear"
+        },
+        {
+          "claim": "P102 and P501 for consumer sale",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Minimum pictogram 16 × 16 mm and label 52 × 74 mm for a 5 L container",
+          "grade": "not-real",
+          "reason": "Table 1.3: 23 × 23 and 74 × 105 for >3 L to 50 L."
+        }
+      ],
+      "tool": null,
+      "notes": "Planted defect caught with the right rule and fix ('Keep GHS05 only') but cited to Art. 26(2) instead of 26(1)(c); graded caught, the citation M. Repeats the ≤3 L Table 1.3 figures for a 5 L container."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "CLP Art. 26",
+          "claim": "Where GHS05 applies, GHS07 must not appear for skin or eye irritation",
+          "verdict": "V",
+          "evidence": "Art. 26(1)(c): \"if the hazard pictogram 'GHS05' applies, the hazard pictogram 'GHS07' shall not appear for skin or eye irritation\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Art. 17(1)(a), with the 'supplier' definition in Art. 2",
+          "claim": "Label must name a supplier established in the EU",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(a): \"the name, address and telephone number of the supplier(s)\"; Art. 2(26): 'supplier' means any manufacturer, importer, downstream user or distributor placing on the market...; Art. 2(15), (17), (19), (20) each define those actors as persons \"established within the Community\"; Art. 4(11): \"A substance or a mixture shall not be placed on the market unless a supplier established in the Union, which shall be identified on the label, ...\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Art. 17(1)(b)",
+          "claim": "Nominal quantity required for packages available to the general public",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package\" (the answer's exception 'unless other EU law specifies it' is not the text's exception, which is 'unless this quantity is specified elsewhere on the package')",
+          "reused": false
+        },
+        {
+          "ref": "CLP Art. 18(3)(b) and 18(2)",
+          "claim": "Names of the substances making the mixture Eye Dam. 1 or Skin Irrit. 2 (up to four) required",
+          "verdict": "M",
+          "evidence": "Art. 18(3)(b) lists \"acute toxicity, skin corrosion or serious eye damage, germ cell mutagenicity, carcinogenicity, reproductive toxicity, respiratory or skin sensitisation, specific target organ toxicity (STOT) or aspiration hazard\" — skin irritation is not among them, so only the substances behind the serious eye damage classification must be named. Art. 18(2) is the product identifier \"for a substance\", not a mixture.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex VIII, Part A (and Art. 45)",
+          "claim": "UFI on label of hazard-classified mixtures; industrial-only products may give it in the SDS",
+          "verdict": "V",
+          "evidence": "Annex VIII Part A 3.1: submitters shall provide information on \"mixtures classified as hazardous on the basis of their health or physical effects\"; 5.2: \"The UFI shall be preceded by the acronym 'UFI' in capital letters followed by a colon ('UFI:') ...\"; Art. 25(7): \"Where under Annex VIII the submitter creates a unique formula identifier, it shall be included in the supplemental information on the label ...\" 5.3: \"In the case of packaged mixtures supplied for use at an industrial site, instead of including the UFI on the label or packaging, the submitter may opt to indicate it in the Safety Data Sheet.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Art. 22 and 28, Annex I (Parts 3.2 and 3.3 tables), Annex IV",
+          "claim": "Eye Dam. 1 calls for P280 and P310; Skin Irrit. 2 lists P264, P280, P302+P352",
+          "verdict": "V",
+          "evidence": "Annex I Table 3.3.5 (Eye Dam. Cat 1): signal word Danger, H318, Prevention P280, Response P305 + P351 + P338, P310, no storage or disposal statement. Table 3.2.5 (Skin Irrit. Cat 2): Warning, H315, Prevention P264 P280, Response P302 + P352, P321, P332 + P313, P362 + P364, no storage or disposal statement. Art. 22(2): statements \"shall be selected from those set out in the tables in Parts 2 to 5 of Annex I\".",
+          "reused": false
+        },
+        {
+          "ref": "CLP Art. 22 and 28, Annex IV",
+          "claim": "P101 is required if sold to consumers",
+          "verdict": "M",
+          "evidence": "Annex IV Table 6.1: P101 'If medical advice is needed, have product container or label at hand.', P102 'Keep out of reach of children.', P103 'Read carefully and follow all instructions.' — hazard class \"as appropriate\", conditions for use \"Consumer products\" (P103: \"omit where P202 is used\"). Annex IV introduction: general statements \"shall also be used where relevant\". Conditional on relevance, not an unconditional requirement.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Art. 17(2)",
+          "claim": "Label in the official language(s) of each Member State",
+          "verdict": "V",
+          "evidence": "Art. 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I §1.2.1; Annex V",
+          "claim": "More than 3 L up to 50 L: label at least 74 × 105 mm, pictograms at least 23 × 23 mm; red diamond border on white",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 × 105 [label] / At least 23 × 23 [pictogram]\". Annex V introduction: \"The hazard pictograms for each hazard class ... shall satisfy the provisions of this Annex and Annex I, section 1.2 and conform in terms of symbols and general format, to the specimens shown.\" Annex I 1.2.1.1: square set at a point; 1.2.1.2: black symbol, white background, red frame.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Art. 25, Annex II",
+          "claim": "EUH statements depend on composition, e.g. EUH208 if a sensitiser is present",
+          "verdict": "V",
+          "evidence": "Annex II Part 1: 1.1.2 EUH018, 1.1.3 EUH019 'May form explosive peroxides', 1.2.4 EUH066 — assigned under Art. 25(1) where the properties apply; Part 2 2.8: EUH208 'Contains (name of sensitising substance). May produce an allergic reaction' for mixtures not classified as sensitising containing a sensitiser at or above Table 3.4.6.",
+          "reused": false
+        },
+        {
+          "ref": "Regulation (EC) No 648/2004",
+          "claim": "A descaler containing surfactants has additional ingredient-labelling requirements",
+          "verdict": "V",
+          "evidence": "Reg. (EC) 648/2004, consolidated 2012-04-19 (Publications Office 02004R0648-20120419): Art. 2(1) \"'Detergent' means any substance or mixture containing soaps and/or other surfactants intended for washing and cleaning processes\"; Art. 11(3) \"The packaging of detergents shall indicate the content, in accordance with the specifications provided for in Annex VII A\"; Annex VII A sets weight-percentage bands for listed constituents and \"The website address, from which the list of ingredients mentioned in section D of Annex VII can be obtained, shall be given on the packaging.\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 20",
+          "claim": "'Danger' is correct for Eye Dam. 1",
+          "verdict": "V",
+          "evidence": "Annex I Table 3.3.5: Category 1 signal word 'Danger'; Art. 20(2).",
+          "reused": false
+        },
+        {
+          "ref": "Art. 21",
+          "claim": "H318 and H315 wording is correct",
+          "verdict": "V",
+          "evidence": "Annex I Table 3.3.5 'H318: Causes serious eye damage'; Table 3.2.5 'H315: Causes skin irritation'; Art. 21(4): worded per Annex III.",
+          "reused": false
+        },
+        {
+          "ref": "Annex II, Part 3",
+          "claim": "Child-resistant fastening and tactile warning not required for Eye Dam. 1 and Skin Irrit. 2",
+          "verdict": "V",
+          "evidence": "Annex II 3.1.1.1: child-resistant fastenings for \"acute toxicity, categories 1 to 3, STOT — single exposure category 1, STOT — repeated exposure category 1, or skin corrosion category 1\"; 3.2.1.1: tactile warning for \"acute toxicity, skin corrosion, germ cell mutagenicity category 2, ... flammable liquids categories 1 or 2, or flammable solids\" when supplied to the general public. Art. 35(2) applies them.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "GHS07 must be removed",
+          "grade": "real"
+        },
+        {
+          "claim": "No EU-established supplier",
+          "grade": "real"
+        },
+        {
+          "claim": "Nominal quantity missing if sold to the general public",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Names of substances behind Eye Dam. 1 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "Names of substances behind Skin Irrit. 2 required",
+          "grade": "not-real",
+          "reason": "Art. 18(3)(b) does not list skin irritation."
+        },
+        {
+          "claim": "UFI missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P280 and P310 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P264 and P302+P352 missing",
+          "grade": "unclear"
+        },
+        {
+          "claim": "P101, P102 and P501 for consumer sale",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Language",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "Caught with Art. 26 and the correct 5 L size figures. Nominal-quantity exception misstated ('unless other EU law specifies it elsewhere'); kept V as in 2026-10-09 grading."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "Art. 26 CLP",
+          "claim": "Where GHS05 applies, GHS07 must not be shown for skin or eye irritation",
+          "verdict": "V",
+          "evidence": "Art. 26(1)(c): \"if the hazard pictogram 'GHS05' applies, the hazard pictogram 'GHS07' shall not appear for skin or eye irritation\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 17(1)(a) CLP",
+          "claim": "Supplier established in the EU must be named",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(a): \"the name, address and telephone number of the supplier(s)\"; Art. 2(26): 'supplier' means any manufacturer, importer, downstream user or distributor placing on the market...; Art. 2(15), (17), (19), (20) each define those actors as persons \"established within the Community\"; Art. 4(11): \"A substance or a mixture shall not be placed on the market unless a supplier established in the Union, which shall be identified on the label, ...\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 18(3)(b) CLP",
+          "claim": "Substances contributing to Eye Dam. 1 must be named (up to four); Skin Irrit. 2 alone would not trigger this",
+          "verdict": "V",
+          "evidence": "Art. 18(3)(b): \"the identity of all substances in the mixture that contribute to the classification of the mixture as regards acute toxicity, skin corrosion or serious eye damage, germ cell mutagenicity, carcinogenicity, reproductive toxicity, respiratory or skin sensitisation, specific target organ toxicity (STOT) or aspiration hazard.\" and \"a maximum of four chemical names shall suffice\"",
+          "reused": false
+        },
+        {
+          "ref": "Annex I, section 1.3",
+          "claim": "The naming rules for contributing substances",
+          "verdict": "M",
+          "evidence": "Annex I 1.3 is 'Derogations from labelling requirements for special cases' (1.3.1 transportable gas cylinders ... 1.3.7); it has no rule on naming substances, which is Art. 18(3)(b).",
+          "reused": false
+        },
+        {
+          "ref": "Art. 22 and Art. 28 CLP, Annex IV Part 1",
+          "claim": "Missing P280, P264, P310, P302+P352",
+          "verdict": "V",
+          "evidence": "Annex I Table 3.3.5 (Eye Dam. Cat 1): signal word Danger, H318, Prevention P280, Response P305 + P351 + P338, P310, no storage or disposal statement. Table 3.2.5 (Skin Irrit. Cat 2): Warning, H315, Prevention P264 P280, Response P302 + P352, P321, P332 + P313, P362 + P364, no storage or disposal statement. Art. 22(2): statements \"shall be selected from those set out in the tables in Parts 2 to 5 of Annex I\".",
+          "reused": false
+        },
+        {
+          "ref": "Art. 28(3)",
+          "claim": "Normal maximum of six statements",
+          "verdict": "V",
+          "evidence": "Art. 28(3): \"Not more than six precautionary statements shall appear on the label, unless necessary to reflect the nature and the severity of the hazards.\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 17(1)(b) CLP",
+          "claim": "Nominal quantity required if available to the general public",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package\"",
+          "reused": false
+        },
+        {
+          "ref": "Annex VIII Part A CLP",
+          "claim": "UFI required; deadlines 2021 consumer, 2024 professional, 2025 industrial",
+          "verdict": "M",
+          "evidence": "Annex VIII Part A 1.1: consumer use \"from 1 January 2021\"; 1.2: professional use \"from 1 January 2021\"; 1.3: industrial use \"from 1 January 2024\"; 1.4: earlier notifications not required to comply \"until 1 January 2025\". Professional is 2021, not 2024; industrial is 2024, not 2025.",
+          "reused": false
+        },
+        {
+          "ref": "Art. 17(2) CLP",
+          "claim": "Official language(s) of each Member State",
+          "verdict": "V",
+          "evidence": "Art. 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 22 and Art. 28 CLP, Annex IV",
+          "claim": "Consumer sale: add P102 and P103 'Read label before use'; P101 expected when the container is not in front of the user; P501 may be needed",
+          "verdict": "M",
+          "evidence": "Annex IV Table 6.1: P103 is \"Read carefully and follow all instructions.\" (not 'Read label before use'); P101 'If medical advice is needed, have product container or label at hand.' carries the condition \"Consumer products\" (not 'when the container is not in front of the user'); all three are \"as appropriate\".",
+          "reused": false
+        },
+        {
+          "ref": "Art. 19 and Annex I section 1.2.1 CLP; Annex V",
+          "claim": "GHS05 must be a diamond with black symbol on white and red border",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.1: \"Hazard pictograms shall be in the shape of a square set at a point.\" 1.2.1.2: \"... black symbol on a white background with a red frame ...\"; Art. 19(2): pictograms \"shall fulfil the requirements laid down in section 1.2.1 of Annex I and in Annex V\".",
+          "reused": false
+        },
+        {
+          "ref": "Art. 19 and Annex I section 1.2.1 CLP",
+          "claim": "5 L container: minimum pictogram 16 × 16 mm and minimum label 52 × 74 mm",
+          "verdict": "M",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 × 105 [label] / At least 23 × 23 [pictogram]\". 52 × 74 and 16 × 16 are the \"Not exceeding 3 litres\" row (\"If possible, at least 52 × 74\"; \"Not smaller than 10 × 10 / If possible, at least 16 × 16\").",
+          "reused": false
+        },
+        {
+          "ref": "Detergents Regulation (EC) No 648/2004",
+          "claim": "Ingredient list by content bands and website reference for the full list",
+          "verdict": "V",
+          "evidence": "Reg. (EC) 648/2004, consolidated 2012-04-19 (Publications Office 02004R0648-20120419): Art. 2(1) \"'Detergent' means any substance or mixture containing soaps and/or other surfactants intended for washing and cleaning processes\"; Art. 11(3) \"The packaging of detergents shall indicate the content, in accordance with the specifications provided for in Annex VII A\"; Annex VII A sets weight-percentage bands for listed constituents and \"The website address, from which the list of ingredients mentioned in section D of Annex VII can be obtained, shall be given on the packaging.\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 35 and Annex II Part 3 CLP",
+          "claim": "Child-resistant fastening and tactile warning not triggered",
+          "verdict": "V",
+          "evidence": "Annex II 3.1.1.1: child-resistant fastenings for \"acute toxicity, categories 1 to 3, STOT — single exposure category 1, STOT — repeated exposure category 1, or skin corrosion category 1\"; 3.2.1.1: tactile warning for \"acute toxicity, skin corrosion, germ cell mutagenicity category 2, ... flammable liquids categories 1 or 2, or flammable solids\" when supplied to the general public. Art. 35(2) applies them.",
+          "reused": false
+        },
+        {
+          "ref": "Art. 20 and Annex I",
+          "claim": "'Danger' correct",
+          "verdict": "V",
+          "evidence": "Annex I Table 3.3.5: Category 1 signal word 'Danger'; Art. 20(2).",
+          "reused": false
+        },
+        {
+          "ref": "Art. 21 and Annex III",
+          "claim": "H318 and H315 wording correct",
+          "verdict": "V",
+          "evidence": "Annex I Table 3.3.5 'H318: Causes serious eye damage'; Table 3.2.5 'H315: Causes skin irritation'; Art. 21(4): worded per Annex III.",
+          "reused": false
+        },
+        {
+          "ref": "Art. 18(1)",
+          "claim": "The product name is correct as identifier",
+          "verdict": "V",
+          "evidence": "Art. 18(1): \"The label shall include details permitting the identification of the substance or mixture (hereinafter referred to as 'product identifiers').\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "GHS07 must be removed",
+          "grade": "real"
+        },
+        {
+          "claim": "No EU-based supplier",
+          "grade": "real"
+        },
+        {
+          "claim": "Names of substances behind Eye Dam. 1 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P280 and P310 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P264 and P302+P352 missing",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Nominal quantity missing if general public",
+          "grade": "unclear"
+        },
+        {
+          "claim": "UFI missing",
+          "grade": "real"
+        },
+        {
+          "claim": "Language",
+          "grade": "unclear"
+        },
+        {
+          "claim": "P101, P102, P103, P501 for consumer sale",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Minimum pictogram 16 × 16 and label 52 × 74 for 5 L",
+          "grade": "not-real",
+          "reason": "Table 1.3: 23 × 23 and 74 × 105."
+        }
+      ],
+      "tool": null,
+      "notes": "Caught with Art. 26. Misdates the UFI deadlines and misquotes P103. Repeats the ≤3 L size row."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2",
+          "claim": "A hazard pictogram must carry a black symbol on a white background",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.2: \"Hazard pictograms as laid down in Annex V shall have a black symbol on a white background with a red frame sufficiently wide to be clearly visible.\"",
+          "reused": false
+        },
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Annex V",
+          "claim": "GHS07 is not required because a more severe pictogram (GHS05) applies",
+          "verdict": "M",
+          "evidence": "Annex V Part 2, 2.3 'Symbol: exclamation mark', GHS07: \"Section 3.2 Skin irritation, hazard category 2\" and \"Section 3.3 Eye irritation, hazard category 2\" (also acute toxicity 4, skin sensitisation, STOT SE 3). Annex V assigns GHS07 to Skin Irrit. 2; it is Art. 26(1)(c) that removes it where GHS05 applies.",
+          "reused": false
+        },
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Article 26(1)",
+          "claim": "Where corrosion applies, GHS07 must be omitted for skin and eye irritation",
+          "verdict": "V",
+          "evidence": "Art. 26(1)(c): \"if the hazard pictogram 'GHS05' applies, the hazard pictogram 'GHS07' shall not appear for skin or eye irritation\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "GHS05 pictogram has only a frame and no symbol",
+          "grade": "not-real",
+          "reason": "The prompt lists the pictogram as printed ('Hazard pictogram GHS05 (corrosion), 23 mm square'). The tool's own uncheckable entry says 'The GHS05 symbol (corrosion) is not drawn ... no verified vector of the specimen artwork was available' — the missing symbol is in Packwright's drawing, not the label."
+        },
+        {
+          "claim": "GHS07 pictogram has only a frame and no symbol",
+          "grade": "not-real",
+          "reason": "The prompt lists the pictogram as printed ('Hazard pictogram GHS05 (corrosion), 23 mm square'). The tool's own uncheckable entry says 'The GHS05 symbol (corrosion) is not drawn ... no verified vector of the specimen artwork was available' — the missing symbol is in Packwright's drawing, not the label."
+        },
+        {
+          "claim": "GHS07 must be removed",
+          "grade": "real"
+        },
+        {
+          "claim": "Label dimensions are compliant for a 5 litre container",
+          "grade": "unclear",
+          "reason": "The prompt gives no label size; Packwright's GHS_LABEL_SIZE_MET pass reports its default stock ('The label is 74.00 mm × 105.00 mm'), which check_label's description says 'defaults per label type'."
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "hazardStatementCodes",
+            "labelSays": "Causes serious eye damage. (H318)",
+            "sent": "H319",
+            "changedPlantedVerdict": false
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS05)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS07)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_NOT_REQUIRED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "The GHS05 and GHS07 pictograms lack their symbols and must be fixed",
+            "source": "engine",
+            "why": "GHS_PICTOGRAM_SYMBOL_MISSING reports a violation about Packwright's own undrawn artwork (its uncheckable list says the symbols were not drawn for want of verified specimen vectors); the prompt states the pictograms are printed."
+          },
+          {
+            "conclusion": "GHS07 is not required by the declared hazard classes (CLP Annex V)",
+            "source": "engine",
+            "why": "GHS_PICTOGRAM_NOT_REQUIRED says 'no hazard class declared for this product requires it', citing Annex V; Annex V 2.3 assigns GHS07 to Skin irritation category 2, which was declared. The removal follows from Art. 26(1)(c), not Annex V."
+          },
+          {
+            "conclusion": "Describes the label's hazard statements as H319 and H315",
+            "source": "transcription",
+            "why": "The printed 'Causes serious eye damage.' is H318; the model sent H319 and repeated it in the answer."
+          },
+          {
+            "conclusion": "Label dimensions are compliant for a 5 litre container",
+            "source": "model",
+            "why": "No label size was given; the tool checked its default stock (74 × 105 mm), as check_label's description says stock defaults per label type."
+          }
+        ]
+      },
+      "notes": "Relays all four findings at face value, including both engine artefacts; tells the user to 'ensure GHS05 displays the proper corrosion symbol'. Names what the tool does not verify (statement correctness, completeness of P-statements, fonts) - notice true. Misses EU supplier, UFI, substance names, nominal quantity, P280/P310."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2",
+          "claim": "'Hazard pictograms shall have a black symbol on a white background'",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.2: \"Hazard pictograms as laid down in Annex V shall have a black symbol on a white background with a red frame sufficiently wide to be clearly visible.\"",
+          "reused": false
+        },
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Annex V",
+          "claim": "Skin irritation (Cat 2) and serious eye damage (Cat 1) do not require GHS07",
+          "verdict": "M",
+          "evidence": "Annex V Part 2, 2.3 'Symbol: exclamation mark', GHS07: \"Section 3.2 Skin irritation, hazard category 2\" and \"Section 3.3 Eye irritation, hazard category 2\" (also acute toxicity 4, skin sensitisation, STOT SE 3). Annex V assigns GHS07 to Skin Irrit. 2; it is Art. 26(1)(c) that removes it where GHS05 applies.",
+          "reused": false
+        },
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Article 26(1)",
+          "claim": "With GHS05 for serious eye damage, GHS07 may not appear for skin or eye irritation",
+          "verdict": "V",
+          "evidence": "Art. 26(1)(c): \"if the hazard pictogram 'GHS05' applies, the hazard pictogram 'GHS07' shall not appear for skin or eye irritation\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "GHS05 and GHS07 symbols missing (frames only)",
+          "grade": "not-real",
+          "reason": "The prompt lists the pictogram as printed ('Hazard pictogram GHS05 (corrosion), 23 mm square'). The tool's own uncheckable entry says 'The GHS05 symbol (corrosion) is not drawn ... no verified vector of the specimen artwork was available' — the missing symbol is in Packwright's drawing, not the label."
+        },
+        {
+          "claim": "GHS07 must be removed",
+          "grade": "real"
+        },
+        {
+          "claim": "Skin Irrit. 2 does not call for GHS07",
+          "grade": "not-real",
+          "reason": "Annex V 2.3 assigns GHS07 to skin irritation category 2."
+        },
+        {
+          "claim": "The hazard and precautionary statements included are appropriate",
+          "grade": "not-real",
+          "reason": "Table 3.3.5 requires P280 and P310 for Eye Dam. 1; neither is printed (Art. 22(1))."
+        },
+        {
+          "claim": "Label size meets minimum requirements for 5 L",
+          "grade": "unclear",
+          "reason": "The prompt gives no label size; Packwright's GHS_LABEL_SIZE_MET pass reports its default stock ('The label is 74.00 mm × 105.00 mm'), which check_label's description says 'defaults per label type'."
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS05)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS07)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_NOT_REQUIRED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": false
+        },
+        "errorSources": [
+          {
+            "conclusion": "The GHS05 and GHS07 pictograms lack their symbols and must be fixed",
+            "source": "engine",
+            "why": "GHS_PICTOGRAM_SYMBOL_MISSING reports a violation about Packwright's own undrawn artwork (its uncheckable list says the symbols were not drawn for want of verified specimen vectors); the prompt states the pictograms are printed."
+          },
+          {
+            "conclusion": "GHS07 is not required by the declared hazard classes (CLP Annex V)",
+            "source": "engine",
+            "why": "GHS_PICTOGRAM_NOT_REQUIRED says 'no hazard class declared for this product requires it', citing Annex V; Annex V 2.3 assigns GHS07 to Skin irritation category 2, which was declared. The removal follows from Art. 26(1)(c), not Annex V."
+          },
+          {
+            "conclusion": "The hazard and precautionary statements included appear appropriate",
+            "source": "model",
+            "why": "The tool did not check P-statement completeness; P280 and P310 are required for Eye Dam. 1 and missing."
+          },
+          {
+            "conclusion": "Label size meets the minimum for a 5 L package",
+            "source": "model",
+            "why": "No label size was given; the pass is on the tool's default stock."
+          }
+        ]
+      },
+      "notes": "No statement that the result is not compliance and no list of what was not checked. Clears the precautionary statements outright."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2",
+          "claim": "Each hazard pictogram must carry a black symbol on a white background",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.2: \"Hazard pictograms as laid down in Annex V shall have a black symbol on a white background with a red frame sufficiently wide to be clearly visible.\"",
+          "reused": false
+        },
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Annex V",
+          "claim": "Pictograms selected by hazard class and category; this classification does not require GHS07",
+          "verdict": "M",
+          "evidence": "Annex V Part 2, 2.3 'Symbol: exclamation mark', GHS07: \"Section 3.2 Skin irritation, hazard category 2\" and \"Section 3.3 Eye irritation, hazard category 2\" (also acute toxicity 4, skin sensitisation, STOT SE 3). Annex V assigns GHS07 to Skin Irrit. 2; it is Art. 26(1)(c) that removes it where GHS05 applies.",
+          "reused": false
+        },
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Article 26(1)",
+          "claim": "When GHS05 applies, GHS07 must not appear for skin or eye irritation",
+          "verdict": "V",
+          "evidence": "Art. 26(1)(c): \"if the hazard pictogram 'GHS05' applies, the hazard pictogram 'GHS07' shall not appear for skin or eye irritation\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "GHS05 and GHS07 are incomplete, with no symbol inside",
+          "grade": "not-real",
+          "reason": "The prompt lists the pictogram as printed ('Hazard pictogram GHS05 (corrosion), 23 mm square'). The tool's own uncheckable entry says 'The GHS05 symbol (corrosion) is not drawn ... no verified vector of the specimen artwork was available' — the missing symbol is in Packwright's drawing, not the label."
+        },
+        {
+          "claim": "GHS07 must be removed",
+          "grade": "real"
+        },
+        {
+          "claim": "H318, H315 and the precautionary statements are properly addressed",
+          "grade": "not-real",
+          "reason": "P280 and P310 (Table 3.3.5) are not printed; Art. 22(1)."
+        },
+        {
+          "claim": "Label size (74 × 105 mm) is correct for a 5 litre container",
+          "grade": "unclear",
+          "reason": "The prompt gives no label size; Packwright's GHS_LABEL_SIZE_MET pass reports its default stock ('The label is 74.00 mm × 105.00 mm'), which check_label's description says 'defaults per label type'."
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS05)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS07)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_NOT_REQUIRED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": false
+        },
+        "errorSources": [
+          {
+            "conclusion": "The GHS05 and GHS07 pictograms lack their symbols and must be fixed",
+            "source": "engine",
+            "why": "GHS_PICTOGRAM_SYMBOL_MISSING reports a violation about Packwright's own undrawn artwork (its uncheckable list says the symbols were not drawn for want of verified specimen vectors); the prompt states the pictograms are printed."
+          },
+          {
+            "conclusion": "GHS07 is not required by the declared hazard classes (CLP Annex V)",
+            "source": "engine",
+            "why": "GHS_PICTOGRAM_NOT_REQUIRED says 'no hazard class declared for this product requires it', citing Annex V; Annex V 2.3 assigns GHS07 to Skin irritation category 2, which was declared. The removal follows from Art. 26(1)(c), not Annex V."
+          },
+          {
+            "conclusion": "Hazard and precautionary statements are properly addressed",
+            "source": "model",
+            "why": "No tool finding supports it; P280 and P310 are missing."
+          },
+          {
+            "conclusion": "The label is 74 × 105 mm and correct for 5 L",
+            "source": "model",
+            "why": "The size is the tool's default stock, not a fact the user gave."
+          }
+        ]
+      },
+      "notes": "Summary tells the user to redraw both pictograms with symbols, then delete GHS07. No notice or list of unchecked items."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Article 26(1)(c)",
+          "claim": "Exclamation mark may not appear for skin or eye irritation where corrosion applies",
+          "verdict": "V",
+          "evidence": "Art. 26(1)(c): \"if the hazard pictogram 'GHS05' applies, the hazard pictogram 'GHS07' shall not appear for skin or eye irritation\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex V",
+          "claim": "GHS07 is not required by any hazard class declared",
+          "verdict": "M",
+          "evidence": "Annex V Part 2, 2.3 'Symbol: exclamation mark', GHS07: \"Section 3.2 Skin irritation, hazard category 2\" and \"Section 3.3 Eye irritation, hazard category 2\" (also acute toxicity 4, skin sensitisation, STOT SE 3). Annex V assigns GHS07 to Skin Irrit. 2; it is Art. 26(1)(c) that removes it where GHS05 applies.",
+          "reused": false
+        },
+        {
+          "ref": "Annex I 1.2.1.2",
+          "claim": "Pictogram must have a black symbol on a white background",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.2: \"Hazard pictograms as laid down in Annex V shall have a black symbol on a white background with a red frame sufficiently wide to be clearly visible.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex V",
+          "claim": "Pictogram must match the official specimen artwork",
+          "verdict": "V",
+          "evidence": "Annex V introduction: \"The hazard pictograms for each hazard class ... shall satisfy the provisions of this Annex and Annex I, section 1.2 and conform in terms of symbols and general format, to the specimens shown.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 20(3)",
+          "claim": "One signal word, 'Danger', is correct",
+          "verdict": "V",
+          "evidence": "Art. 20(3): \"Where the signal word 'Danger' is used on the label, the signal word 'Warning' shall not appear on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, 1.2.1.4, Table 1.3",
+          "claim": "74 × 105 mm meets the minimum for a package over 3 L up to 50 L",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 × 105 [label] / At least 23 × 23 [pictogram]\".",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 17(1)(b)",
+          "claim": "Nominal quantity required for products sold to the general public unless given elsewhere on the package",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 18(3)(b)",
+          "claim": "Substances causing the serious eye damage classification must be named",
+          "verdict": "V",
+          "evidence": "Art. 18(3)(b): \"the identity of all substances in the mixture that contribute to the classification of the mixture as regards acute toxicity, skin corrosion or serious eye damage, germ cell mutagenicity, carcinogenicity, reproductive toxicity, respiratory or skin sensitisation, specific target organ toxicity (STOT) or aspiration hazard.\" and \"a maximum of four chemical names shall suffice\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex VIII",
+          "claim": "Hazardous mixtures generally need a UFI",
+          "verdict": "V",
+          "evidence": "Annex VIII Part A 3.1: submitters shall provide information on \"mixtures classified as hazardous on the basis of their health or physical effects\"; 5.2: \"The UFI shall be preceded by the acronym 'UFI' in capital letters followed by a colon ('UFI:') ...\"; Art. 25(7): \"Where under Annex VIII the submitter creates a unique formula identifier, it shall be included in the supplemental information on the label ...\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 17(1)(a)",
+          "claim": "Name, address and telephone of a supplier in the EU required",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(a): \"the name, address and telephone number of the supplier(s)\"; Art. 2(26): 'supplier' means any manufacturer, importer, downstream user or distributor placing on the market...; Art. 2(15), (17), (19), (20) each define those actors as persons \"established within the Community\"; Art. 4(11): \"A substance or a mixture shall not be placed on the market unless a supplier established in the Union, which shall be identified on the label, ...\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex IV, Table 6.2",
+          "claim": "P280 and P310 are the usual statements for H318",
+          "verdict": "M",
+          "evidence": "Annex IV Part 1 Table 6.2 is 'Precautionary statements — Prevention' (holds P280); P310 'Immediately call a POISON CENTER/doctor/…' is a response statement, in Table 6.3.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 21",
+          "claim": "The hazard-statement wording, not the code, is required",
+          "verdict": "V",
+          "evidence": "Art. 21(1): \"The label shall include the relevant hazard statements\"; 21(4): \"The hazard statements shall be worded in accordance with Annex III.\" No provision requires the code to be printed.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 17(2)",
+          "claim": "Official language of each Member State",
+          "verdict": "V",
+          "evidence": "Art. 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "GHS07 must be removed",
+          "grade": "real"
+        },
+        {
+          "claim": "GHS07 is not required by any declared hazard class",
+          "grade": "not-real",
+          "reason": "Annex V 2.3 assigns GHS07 to Skin Irrit. 2; it goes because of Art. 26(1)(c)."
+        },
+        {
+          "claim": "Nominal quantity missing",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Ingredient names missing",
+          "grade": "real"
+        },
+        {
+          "claim": "UFI missing",
+          "grade": "real"
+        },
+        {
+          "claim": "EU supplier missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P280 and P310 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "Language",
+          "grade": "unclear"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS05)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS07)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_NOT_REQUIRED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "GHS07 is not required by the declared hazard classes (CLP Annex V)",
+            "source": "engine",
+            "why": "GHS_PICTOGRAM_NOT_REQUIRED says 'no hazard class declared for this product requires it', citing Annex V; Annex V 2.3 assigns GHS07 to Skin irritation category 2, which was declared. The removal follows from Art. 26(1)(c), not Annex V."
+          },
+          {
+            "conclusion": "P280 and P310 are in Annex IV Table 6.2",
+            "source": "model",
+            "why": "P310 is a response statement in Table 6.3."
+          }
+        ]
+      },
+      "notes": "Relays the symbol findings and correctly explains them as a tool artefact using the tool's own uncheckable text; caveats the label size as the default stock. Repeats the engine's Annex V reasoning."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Annex V",
+          "claim": "Neither serious eye damage 1 nor skin irritation 2 needs GHS07 once GHS05 is present",
+          "verdict": "M",
+          "evidence": "Annex V Part 2, 2.3 'Symbol: exclamation mark', GHS07: \"Section 3.2 Skin irritation, hazard category 2\" and \"Section 3.3 Eye irritation, hazard category 2\" (also acute toxicity 4, skin sensitisation, STOT SE 3). Annex V assigns GHS07 to Skin Irrit. 2; it is Art. 26(1)(c) that removes it where GHS05 applies.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 26(1), point (c)",
+          "claim": "The exclamation mark may not appear for skin or eye irritation where corrosion applies",
+          "verdict": "V",
+          "evidence": "Art. 26(1)(c): \"if the hazard pictogram 'GHS05' applies, the hazard pictogram 'GHS07' shall not appear for skin or eye irritation\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, 1.2.1.2",
+          "claim": "Black symbol on a white background",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.2: \"Hazard pictograms as laid down in Annex V shall have a black symbol on a white background with a red frame sufficiently wide to be clearly visible.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex V",
+          "claim": "Artwork must match the specimen, black on white inside a red diamond border",
+          "verdict": "V",
+          "evidence": "Annex V introduction: \"The hazard pictograms for each hazard class ... shall satisfy the provisions of this Annex and Annex I, section 1.2 and conform in terms of symbols and general format, to the specimens shown.\" Annex I 1.2.1.1: square set at a point; 1.2.1.2: black symbol, white background, red frame.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 20(3)",
+          "claim": "A single 'Danger' is right",
+          "verdict": "V",
+          "evidence": "Art. 20(3): \"Where the signal word 'Danger' is used on the label, the signal word 'Warning' shall not appear on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, 1.2.1.4, Table 1.3",
+          "claim": "74 × 105 mm meets the minimum for over 3 L up to 50 L",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 × 105 [label] / At least 23 × 23 [pictogram]\".",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 18(1)(c)",
+          "claim": "Nominal quantity required on packages for the general public unless elsewhere on the package",
+          "verdict": "F",
+          "evidence": "Art. 18(1) has two unnumbered subparagraphs (\"The label shall include details permitting the identification of the substance or mixture...\" / \"The term used ... shall be the same as that used in the safety data sheet...\") and no points; there is no Art. 18(1)(c). Nominal quantity is Art. 17(1)(b).",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 18(3)(b)",
+          "claim": "Names of substances contributing to the eye damage and skin irritation classification required",
+          "verdict": "M",
+          "evidence": "Art. 18(3)(b) lists \"acute toxicity, skin corrosion or serious eye damage, germ cell mutagenicity, carcinogenicity, reproductive toxicity, respiratory or skin sensitisation, specific target organ toxicity (STOT) or aspiration hazard\" — skin irritation is not among them, so only the substances behind the serious eye damage classification must be named.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex IV and Article 22",
+          "claim": "P280 and P310 normally expected for H318",
+          "verdict": "V",
+          "evidence": "Annex I Table 3.3.5 (Eye Dam. Cat 1): signal word Danger, H318, Prevention P280, Response P305 + P351 + P338, P310, no storage or disposal statement. Table 3.2.5 (Skin Irrit. Cat 2): Warning, H315, Prevention P264 P280, Response P302 + P352, P321, P332 + P313, P362 + P364, no storage or disposal statement. Art. 22(2): statements \"shall be selected from those set out in the tables in Parts 2 to 5 of Annex I\".",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex IV and Article 22",
+          "claim": "A consumer product also needs P101 and P102",
+          "verdict": "M",
+          "evidence": "Annex IV Table 6.1: P101 'If medical advice is needed, have product container or label at hand.', P102 'Keep out of reach of children.', P103 'Read carefully and follow all instructions.' — hazard class \"as appropriate\", conditions for use \"Consumer products\" (P103: \"omit where P202 is used\"). Annex IV introduction: general statements \"shall also be used where relevant\". Conditional on relevance, not an unconditional requirement.",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 17(1)",
+          "claim": "Name, address and telephone of a supplier; an EU-established supplier is needed",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(a): \"the name, address and telephone number of the supplier(s)\"; Art. 2(26): 'supplier' means any manufacturer, importer, downstream user or distributor placing on the market...; Art. 2(15), (17), (19), (20) each define those actors as persons \"established within the Community\"; Art. 4(11): \"A substance or a mixture shall not be placed on the market unless a supplier established in the Union, which shall be identified on the label, ...\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Article 17(2)",
+          "claim": "Official language of each Member State",
+          "verdict": "V",
+          "evidence": "Art. 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "GHS07 must be removed",
+          "grade": "real"
+        },
+        {
+          "claim": "Nominal quantity missing",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Names of substances behind Eye Dam. 1 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "Names of substances behind Skin Irrit. 2 required",
+          "grade": "not-real",
+          "reason": "Not in Art. 18(3)(b)'s list."
+        },
+        {
+          "claim": "P280 and P310 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P101 and P102 needed for a consumer product",
+          "grade": "unclear"
+        },
+        {
+          "claim": "EU-established supplier needed",
+          "grade": "real"
+        },
+        {
+          "claim": "Language",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Label size 74 × 105 mm meets the minimum",
+          "grade": "unclear",
+          "reason": "The prompt gives no label size; Packwright's GHS_LABEL_SIZE_MET pass reports its default stock ('The label is 74.00 mm × 105.00 mm'), which check_label's description says 'defaults per label type'."
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS05)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS07)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_NOT_REQUIRED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "GHS07 is not required by the declared hazard classes (CLP Annex V)",
+            "source": "engine",
+            "why": "GHS_PICTOGRAM_NOT_REQUIRED says 'no hazard class declared for this product requires it', citing Annex V; Annex V 2.3 assigns GHS07 to Skin irritation category 2, which was declared. The removal follows from Art. 26(1)(c), not Annex V."
+          },
+          {
+            "conclusion": "Nominal quantity required by CLP Article 18(1)(c)",
+            "source": "model",
+            "why": "No such paragraph; the requirement is Art. 17(1)(b)."
+          },
+          {
+            "conclusion": "Skin-irritation contributors must be named under Art. 18(3)(b)",
+            "source": "model",
+            "why": "Art. 18(3)(b) does not list skin irritation."
+          },
+          {
+            "conclusion": "The label is 74 × 105 mm and meets the minimum",
+            "source": "model",
+            "why": "Stated without caveat; the size is the tool's default stock."
+          }
+        ]
+      },
+      "notes": "Identifies the symbol findings as artefacts and keeps the two GHS07 findings as the real problem. 'P101 and P102' graded M as 'need' for 'as appropriate', consistent with 2026-10-09."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "CLP Annex V",
+          "claim": "This classification does not require GHS07",
+          "verdict": "M",
+          "evidence": "Annex V Part 2, 2.3 'Symbol: exclamation mark', GHS07: \"Section 3.2 Skin irritation, hazard category 2\" and \"Section 3.3 Eye irritation, hazard category 2\" (also acute toxicity 4, skin sensitisation, STOT SE 3). Annex V assigns GHS07 to Skin Irrit. 2; it is Art. 26(1)(c) that removes it where GHS05 applies.",
+          "reused": false
+        },
+        {
+          "ref": "Regulation (EC) No 1272/2008 (CLP), Article 26(1)(c)",
+          "claim": "Exclamation mark may not be used for skin or eye irritation where corrosion applies",
+          "verdict": "V",
+          "evidence": "Art. 26(1)(c): \"if the hazard pictogram 'GHS05' applies, the hazard pictogram 'GHS07' shall not appear for skin or eye irritation\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, 1.2.1.2",
+          "claim": "Black symbol on a white background",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.2: \"Hazard pictograms as laid down in Annex V shall have a black symbol on a white background with a red frame sufficiently wide to be clearly visible.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex V",
+          "claim": "Symbol must match the specimen",
+          "verdict": "V",
+          "evidence": "Annex V introduction: \"The hazard pictograms for each hazard class ... shall satisfy the provisions of this Annex and Annex I, section 1.2 and conform in terms of symbols and general format, to the specimens shown.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Art. 20(3)",
+          "claim": "A single signal word 'Danger'",
+          "verdict": "V",
+          "evidence": "Art. 20(3): \"Where the signal word 'Danger' is used on the label, the signal word 'Warning' shall not appear on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "CLP Annex I, 1.2.1.4, Table 1.3",
+          "claim": "74 × 105 mm meets the minimum for over 3 L up to 50 L",
+          "verdict": "V",
+          "evidence": "Annex I 1.2.1.4, Table 1.3: \"Greater than 3 litres but not exceeding 50 litres: At least 74 × 105 [label] / At least 23 × 23 [pictogram]\".",
+          "reused": false
+        },
+        {
+          "ref": "CLP Art. 17(1)(c)",
+          "claim": "Nominal quantity required for products sold to the general public",
+          "verdict": "M",
+          "evidence": "Art. 17(1)(c) is \"product identifiers as specified in Article 18\". Nominal quantity is Art. 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package\".",
+          "reused": true
+        },
+        {
+          "ref": "Art. 18(3)(b)",
+          "claim": "Substances contributing to the eye-damage and skin-irritation classification must be named",
+          "verdict": "M",
+          "evidence": "Art. 18(3)(b) lists \"acute toxicity, skin corrosion or serious eye damage, germ cell mutagenicity, carcinogenicity, reproductive toxicity, respiratory or skin sensitisation, specific target organ toxicity (STOT) or aspiration hazard\" — skin irritation is not among them, so only the substances behind the serious eye damage classification must be named.",
+          "reused": false
+        },
+        {
+          "ref": "Art. 17(1)(a)",
+          "claim": "Supplier established in the EU must be named",
+          "verdict": "V",
+          "evidence": "Art. 17(1)(a): \"the name, address and telephone number of the supplier(s)\"; Art. 2(26): 'supplier' means any manufacturer, importer, downstream user or distributor placing on the market...; Art. 2(15), (17), (19), (20) each define those actors as persons \"established within the Community\"; Art. 4(11): \"A substance or a mixture shall not be placed on the market unless a supplier established in the Union, which shall be identified on the label, ...\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 22 and Annex IV",
+          "claim": "H318 brings P280 and P310; H315 brings P264, P280, P302+P352",
+          "verdict": "V",
+          "evidence": "Annex I Table 3.3.5 (Eye Dam. Cat 1): signal word Danger, H318, Prevention P280, Response P305 + P351 + P338, P310, no storage or disposal statement. Table 3.2.5 (Skin Irrit. Cat 2): Warning, H315, Prevention P264 P280, Response P302 + P352, P321, P332 + P313, P362 + P364, no storage or disposal statement. Art. 22(2): statements \"shall be selected from those set out in the tables in Parts 2 to 5 of Annex I\".",
+          "reused": false
+        },
+        {
+          "ref": "Art. 22 and Annex IV",
+          "claim": "Consumer products also need P101, P102 and P103",
+          "verdict": "M",
+          "evidence": "Annex IV Table 6.1: P101 'If medical advice is needed, have product container or label at hand.', P102 'Keep out of reach of children.', P103 'Read carefully and follow all instructions.' — hazard class \"as appropriate\", conditions for use \"Consumer products\" (P103: \"omit where P202 is used\"). Annex IV introduction: general statements \"shall also be used where relevant\". Conditional on relevance, not an unconditional requirement.",
+          "reused": false
+        },
+        {
+          "ref": "Art. 28",
+          "claim": "Limits how many statements may be printed",
+          "verdict": "V",
+          "evidence": "Art. 28(3): \"Not more than six precautionary statements shall appear on the label, unless necessary to reflect the nature and the severity of the hazards.\"",
+          "reused": false
+        },
+        {
+          "ref": "Art. 17(2)",
+          "claim": "Official language of each Member State",
+          "verdict": "V",
+          "evidence": "Art. 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "GHS07 must be removed",
+          "grade": "real"
+        },
+        {
+          "claim": "Nominal quantity missing",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Names of substances behind Eye Dam. 1 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "Names of substances behind Skin Irrit. 2 required",
+          "grade": "not-real",
+          "reason": "Not in Art. 18(3)(b)'s list."
+        },
+        {
+          "claim": "EU-based supplier needed",
+          "grade": "real"
+        },
+        {
+          "claim": "P280 and P310 missing",
+          "grade": "real"
+        },
+        {
+          "claim": "P101, P102, P103 needed for consumer products",
+          "grade": "unclear"
+        },
+        {
+          "claim": "Language",
+          "grade": "unclear"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS05)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING (GHS07)",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_NOT_REQUIRED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "GHS07 is not required by the declared hazard classes (CLP Annex V)",
+            "source": "engine",
+            "why": "GHS_PICTOGRAM_NOT_REQUIRED says 'no hazard class declared for this product requires it', citing Annex V; Annex V 2.3 assigns GHS07 to Skin irritation category 2, which was declared. The removal follows from Art. 26(1)(c), not Annex V."
+          },
+          {
+            "conclusion": "Nominal quantity cited to Art. 17(1)(c)",
+            "source": "model",
+            "why": "17(1)(c) is product identifiers; nominal quantity is 17(1)(b)."
+          },
+          {
+            "conclusion": "Skin-irritation contributors must be named under Art. 18(3)(b)",
+            "source": "model",
+            "why": "Art. 18(3)(b) does not list skin irritation."
+          }
+        ]
+      },
+      "notes": "Labels the symbol findings 'Not real defects' with the tool's reason; caveats the label size as default stock. Notes that GB CLP applies in Great Britain (not graded: outside the EU question)."
+    }
+  ],
+  "sourcesFetched": [
+    "http://publications.europa.eu/resource/celex/02008R1272-20260701 — CLP consolidated in force 2026-07-01 (XHTML, fetched this session to /tmp/s19/sources/clp-02008R1272-20260701.xhtml; text extract clp-20260701.s1grader.txt): Arts. 2, 4, 17-22, 25-28, 31-35, 60; Annex I 1.2.1, 1.3, Tables 2.6.2, 2.6.3, 3.2.5, 3.3.5; Annex II; Annex III title; Annex IV Part 1; Annex V; Annex VIII Part A",
+    "http://publications.europa.eu/resource/celex/32008R1272 — CLP as originally adopted, for the text of the deleted Art. 25(5)",
+    "http://publications.europa.eu/resource/celex/02004R0648-20120419 — Detergents Regulation consolidated 2012-04-19: Art. 2(1), Art. 11, Annex VII A (later consolidations 02004R0648-20200101 and the base CELEX returned 404)",
+    "http://publications.europa.eu/resource/celex/32026R0405 — Regulation (EU) 2026/405 on detergents and surfactants, Art. 35 (repeal of 648/2004 from 23 September 2029)",
+    "http://publications.europa.eu/resource/celex/02006R1907-20250623 — REACH consolidated 2025-06-23: Art. 31(1), Annex II and Annex VI titles",
+    "/Users/jameslittlefield/Documents/github_things/packwright/docs/experiments/2026-10-10-mcp-with-and-without/responses.jsonl — full tool answers (pass findings, citation titles, notice) for the 'with' calls",
+    "/Users/jameslittlefield/Documents/github_things/packwright/apps/api/src/mcp/server.ts — check_label description ('stock ... defaults per label type')"
+  ]
+}

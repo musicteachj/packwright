@@ -1,0 +1,264 @@
+[
+  {
+    "caseId": "01-clp-pictogram-precedence",
+    "fixtureName": "corrosion alongside an exclamation mark raised by skin irritation",
+    "expected": {
+      "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+      "citation": "Regulation (EC) No 1272/2008 (CLP), Article 26(1)"
+    },
+    "findings": [
+      {
+        "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2",
+        "message": "The GHS05 pictogram is drawn as a frame with no hazard symbol inside it. A hazard pictogram must carry a black symbol on a white background."
+      },
+      {
+        "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2",
+        "message": "The GHS07 pictogram is drawn as a frame with no hazard symbol inside it. A hazard pictogram must carry a black symbol on a white background."
+      },
+      {
+        "code": "GHS_PICTOGRAM_NOT_REQUIRED",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Annex V",
+        "message": "GHS07 (exclamation mark) is on the label, but no hazard class declared for this product requires it."
+      },
+      {
+        "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Article 26(1)",
+        "message": "The corrosion pictogram applies, so the exclamation mark may not appear for skin or eye irritation. (Article 26(1)(c))"
+      }
+    ],
+    "omissions": [
+      "The GHS05 symbol (corrosion) is not drawn. CLP Annex V requires each pictogram to conform to the specimen artwork published with the standard, and no verified vector of the specimen artwork was available. Frames are drawn to their resolved size; an approximation of a symbol would look compliant without being so.",
+      "The GHS07 symbol (exclamation mark) is not drawn. CLP Annex V requires each pictogram to conform to the specimen artwork published with the standard, and no verified vector of the specimen artwork was available. Frames are drawn to their resolved size; an approximation of a symbol would look compliant without being so."
+    ]
+  },
+  {
+    "caseId": "02-clp-both-signal-words",
+    "fixtureName": "both signal words",
+    "expected": {
+      "code": "GHS_SIGNAL_WORD_CONFLICT",
+      "citation": "Regulation (EC) No 1272/2008 (CLP), Article 20(3)"
+    },
+    "findings": [
+      {
+        "code": "GHS_SIGNAL_WORD_CONFLICT",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Article 20(3)",
+        "message": "The label carries both “Danger” and “Warning”. Where “Danger” is used, “Warning” may not appear."
+      },
+      {
+        "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2",
+        "message": "The GHS02 pictogram is drawn as a frame with no hazard symbol inside it. A hazard pictogram must carry a black symbol on a white background."
+      }
+    ],
+    "omissions": [
+      "The GHS02 symbol (flame) is not drawn. CLP Annex V requires each pictogram to conform to the specimen artwork published with the standard, and no verified vector of the specimen artwork was available. Frames are drawn to their resolved size; an approximation of a symbol would look compliant without being so."
+    ]
+  },
+  {
+    "caseId": "03-clp-label-too-small",
+    "fixtureName": "a label smaller than its capacity band allows",
+    "expected": {
+      "code": "GHS_LABEL_BELOW_MINIMUM_SIZE",
+      "citation": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.4, Table 1.3"
+    },
+    "findings": [
+      {
+        "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2",
+        "message": "The GHS02 pictogram is drawn as a frame with no hazard symbol inside it. A hazard pictogram must carry a black symbol on a white background."
+      },
+      {
+        "code": "GHS_LABEL_BELOW_MINIMUM_SIZE",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.4, Table 1.3",
+        "message": "The label is 50.00 mm × 70.00 mm; a package of greater than 3 litres but not exceeding 50 litres requires 74.00 mm × 105.00 mm."
+      }
+    ],
+    "omissions": [
+      "The GHS02 symbol (flame) is not drawn. CLP Annex V requires each pictogram to conform to the specimen artwork published with the standard, and no verified vector of the specimen artwork was available. Frames are drawn to their resolved size; an approximation of a symbol would look compliant without being so.",
+      "Precautionary statements runs 17.27 mm past the bottom of a 70.00 mm label, so part of it is not printed.",
+      "Supplier identification begins 89.27 mm down a 70.00 mm label, past its bottom edge, so none of it is printed."
+    ]
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "fixtureName": "a container too large for the provision it claims",
+    "expected": {
+      "code": "GHS_SMALL_CONTAINER_NOT_ELIGIBLE",
+      "citation": "29 CFR 1910.1200(f)(12)"
+    },
+    "findings": [
+      {
+        "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+        "severity": "blocking",
+        "citation": "29 CFR 1910.1200, Appendix C, C.2.3.1",
+        "message": "The GHS02 pictogram is drawn as a frame with no hazard symbol inside it. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label."
+      },
+      {
+        "code": "GHS_SMALL_CONTAINER_NOT_ELIGIBLE",
+        "severity": "violation",
+        "citation": "29 CFR 1910.1200(f)(12)",
+        "message": "This label relies on the small-container provision, but at 0.5 litres the container exceeds the 0.1 litre threshold the provision sets."
+      }
+    ],
+    "omissions": [
+      "The GHS02 symbol (flame) is not drawn. 29 CFR 1910.1200 Appendix C.2.3.2 requires each pictogram to use one of the eight standard hazard symbols depicted in its Figure C.1, and no verified vector of that artwork was available. Frames are drawn to their resolved size; an approximation of a symbol would look compliant without being so.",
+      "The statement H225 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P210 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P233 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P240 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P403 + P235 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not."
+    ]
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "fixtureName": "a small container missing the phone number the provision names",
+    "expected": {
+      "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+      "citation": "29 CFR 1910.1200(f)(12)"
+    },
+    "findings": [
+      {
+        "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+        "severity": "blocking",
+        "citation": "29 CFR 1910.1200, Appendix C, C.2.3.1",
+        "message": "The GHS02 pictogram is drawn as a frame with no hazard symbol inside it. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label."
+      },
+      {
+        "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+        "severity": "violation",
+        "citation": "29 CFR 1910.1200(f)(12)",
+        "message": "A small container relying on this provision must still carry the manufacturer’s phone number."
+      }
+    ],
+    "omissions": [
+      "The GHS02 symbol (flame) is not drawn. 29 CFR 1910.1200 Appendix C.2.3.2 requires each pictogram to use one of the eight standard hazard symbols depicted in its Figure C.1, and no verified vector of that artwork was available. Frames are drawn to their resolved size; an approximation of a symbol would look compliant without being so.",
+      "The statement H225 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P210 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P233 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P240 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P403 + P235 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not."
+    ]
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "fixtureName": "transposed check digit",
+    "expected": {
+      "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+      "citation": "GS1 General Specifications 26.0 §7.9.1"
+    },
+    "findings": [
+      {
+        "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+        "severity": "blocking",
+        "citation": "GS1 General Specifications 26.0 §7.9.1",
+        "message": "The check digit for 036000291453 should be 2, not 3. No UPC-A symbol can encode this GTIN, so none was drawn."
+      }
+    ],
+    "omissions": [
+      "The GTIN 036000291453 has an invalid check digit, so no UPC-A symbol can encode it."
+    ]
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "fixtureName": "Digital Link using the removed convenience alphas",
+    "expected": {
+      "code": "GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS",
+      "citation": "GS1 Digital Link URI Syntax 1.7.0 §4.1"
+    },
+    "findings": [
+      {
+        "code": "GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS",
+        "severity": "advisory",
+        "citation": "GS1 Digital Link URI Syntax 1.7.0 §4.1",
+        "message": "The Digital Link uses the convenience alphas — `/gtin/` in place of `/01/`. They were deprecated in Digital Link URI Syntax 1.2 and removed in 1.3.0, so the URI is non-conformant to the current standard."
+      }
+    ],
+    "omissions": []
+  },
+  {
+    "caseId": "08-fda-ingredient-order",
+    "fixtureName": "salt listed before the sugar there is more of",
+    "expected": {
+      "code": "FDA_INGREDIENTS_OUT_OF_ORDER",
+      "citation": "21 CFR 101.4(a)(1)"
+    },
+    "findings": [
+      {
+        "code": "FDA_INGREDIENTS_OUT_OF_ORDER",
+        "severity": "violation",
+        "citation": "21 CFR 101.4(a)(1)",
+        "message": "\"sugar\" is 2% of the food and is listed after \"salt\" at 0.7%. Ingredients run in descending order of predominance by weight."
+      }
+    ],
+    "omissions": []
+  },
+  {
+    "caseId": "09-fda-tree-nut-type",
+    "fixtureName": "a tree nut declared as \"tree nuts\"",
+    "expected": {
+      "code": "FDA_ALLERGEN_SOURCE_NOT_SPECIFIC",
+      "citation": "FD&C Act §403(w)(2)"
+    },
+    "findings": [
+      {
+        "code": "FDA_ALLERGEN_SOURCE_NOT_SPECIFIC",
+        "severity": "violation",
+        "citation": "FD&C Act §403(w)(2)",
+        "message": "\"nut pieces\" is tree nuts, which must be declared by its specific type — almonds, pecans, walnuts — and not by the category."
+      }
+    ],
+    "omissions": [
+      "The \"Contains\" statement names nothing for \"nut pieces\", which contains tree nuts and states no specific type, and a food source name for it is not this engine's to invent."
+    ]
+  },
+  {
+    "caseId": "10-fpla-metric-missing",
+    "fixtureName": "net weight in ounces only",
+    "expected": {
+      "code": "FDA_NET_QUANTITY_METRIC_MISSING",
+      "citation": "15 U.S.C. 1453(a)(2)"
+    },
+    "findings": [
+      {
+        "code": "FDA_NET_QUANTITY_METRIC_MISSING",
+        "severity": "violation",
+        "citation": "15 U.S.C. 1453(a)(2)",
+        "message": "The label declares \"NET WT 12 OZ\" and no SI metric equivalent. The Fair Packaging and Labeling Act requires both systems on the principal display panel."
+      }
+    ],
+    "omissions": []
+  },
+  {
+    "caseId": "C1-clp-control",
+    "fixtureName": "GHS_CONFORMANT",
+    "expected": null,
+    "findings": [
+      {
+        "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2",
+        "message": "The GHS02 pictogram is drawn as a frame with no hazard symbol inside it. A hazard pictogram must carry a black symbol on a white background."
+      }
+    ],
+    "omissions": [
+      "The GHS02 symbol (flame) is not drawn. CLP Annex V requires each pictogram to conform to the specimen artwork published with the standard, and no verified vector of the specimen artwork was available. Frames are drawn to their resolved size; an approximation of a symbol would look compliant without being so."
+    ]
+  },
+  {
+    "caseId": "C2-fda-control",
+    "fixtureName": "US_FOOD_CONFORMANT",
+    "expected": null,
+    "findings": [],
+    "omissions": []
+  }
+]

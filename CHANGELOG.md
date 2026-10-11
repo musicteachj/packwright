@@ -8,6 +8,32 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **The with/without evaluation, graded: the tools work, and they have two failures to fix before launch.** With
+  Packwright's tools Sonnet 5.5 caught the planted defect in all 30 answers and cleared no defective label (27 and 2
+  without); answers with a wrong citation fell from 33 of 36 to 20, and with a nonexistent one from 14 to 5. Haiku
+  4.5 went from 5 caught to 21, and from 10 false clearances to 5. The tools' own failures: a model has to describe
+  the label to `check_label`, and Haiku misdescribed it in 30 of 36 answers — inventing an allergen statement on case
+  09 and so earning three false clearances the tool, correctly for what it was sent, gave — and the engine judges
+  its own drawing where the input cannot carry a fact. It passes a label size nobody gave it, reports every GHS
+  pictogram as having no symbol, and reports text laid out at its own type size as not printed. Those, with a
+  `GHS_PICTOGRAM_NOT_REQUIRED` whose reason its citation does not support, are pinned in `docs/BACKLOG.md`; two are
+  must-fix. Six graders worked on a rubric written before any answer was read; the lead re-read every distinct
+  nonexistent-citation verdict and a sample of the rest, corrected one grader's F to M, and found two wrong verdicts
+  in the 2026-10-09 grading, now in an erratum there. Results in `docs/experiments/2026-10-10-mcp-with-and-without/`.
+- **The with/without evaluation of Packwright's MCP tools, run and recorded.** `npm run experiment:mcp` puts the
+  twelve labels of the 2026-10-09 experiment to the same two models with the same question, in two halves: without
+  tools, exactly as before, and with the four tools as an MCP client hands them — `tools/list` and the server's
+  instructions — executed against the in-process `/mcp` handler. Both halves were rerun rather than the old one
+  reused, because the engine now prints "Includes 0g Added Sugars" and four prompts changed with it. The 144
+  conversations cost $5.28 under an $8 cap and sit in `docs/experiments/2026-10-10-mcp-with-and-without/` beside the
+  first record, which the old runner still refuses to overwrite; every tool call is kept with its arguments and
+  answer, and the rubric for grading them was written before any was read. The runner shares the first one's case
+  descriptions, recording and resume, and `/code-review medium` found two gaps in it: a conversation failing after
+  some paid rounds was not charged against the cap — now it is, and the cost is kept in `lost-spend.jsonl` so a
+  resume still counts it — and `cases.md` claimed no prompt carried a system prompt or tools. Both fixed; neither touched this run, which had no failures, and the prompts it records are unchanged.
+
 ### Fixed
 
 - **One GHS statement code could hold the server for two minutes.** `canonicalStatementCode`'s rules were

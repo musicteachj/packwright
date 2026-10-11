@@ -1,0 +1,1015 @@
+{
+  "caseId": "07-gs1-digital-link-alphas",
+  "answers": [
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 Digital Link standard (ISO/IEC 24047)",
+          "claim": "DL URLs must take the form https://<GS1 resolver or GS1-authorised domain>/gtin/<GTIN-14>; a custom domain without GS1 authorisation is non-compliant",
+          "verdict": "M",
+          "evidence": "GS1 Digital Link URI Syntax 1.7.0 (ref.gs1.org HTML, Release 1.7.0, Ratified Aug 2026) §4.1 \"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\": \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\" DL URI Syntax 1.7.0 §4.12 \"Canonical GS1 Digital Link URIs\": \"A GS1 Digital Link URI can be constructed in any domain name, may contain additional key=value pairs in the query string and so on. This flexibility is a deliberate feature of the standard ... to ensure brands can remain in control of the domains they use.\" On the ISO number: the DL standard states it is conformant with \"Encoding and resolving identifiers over HTTP [ISO/IEC 18975]\"; a web search for \"ISO/IEC 24047\" found no such standard (iso.org returned 403), so that number is unverified.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications, Section 2.4.2",
+          "claim": "a GS1 QR Code must carry a \"GS1 QR Code\" indicator or GS1 logo",
+          "verdict": "M",
+          "evidence": "GenSpecs 26.0 p.145 (rendered): §2.4.2 is \"Identification of a physical location\" (AI (414) Physical location, AI (254) GLN extension component). No indicator or logo requirement for QR codes anywhere in 26.0: \"logo\" occurs only for the GS1 trademark notice, verification-quality copyright, vendor logos on hangtags/labels, and pack-front description.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "printing the Digital Link URL in human-readable form near the QR is recommended best practice",
+          "verdict": "M",
+          "evidence": "GenSpecs 26.0 p.308 §4.14.2: \"HRI for any additional consumer engagement (extended packaging) barcode encoding GS1 Digital Link URI SHALL be left to the discretion of the brand owner.\" No recommendation to print the URL.",
+          "reused": false
+        },
+        {
+          "ref": "FTC Endorsement & Testimonials Guides",
+          "claim": "recommend printing the URL near the QR code for transparency",
+          "verdict": "M",
+          "evidence": "16 CFR Part 255 (eCFR, fetched 2026-10-10) \"Guides Concerning Use of Endorsements and Testimonials in Advertising\": §255.0 \"the Guides address the application of section 5 of the FTC Act ... to the use of endorsements and testimonials in advertising\"; nothing on URLs or QR codes.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "custom domain id.example.com non-compliant without GS1 authorisation; use an official GS1 resolver",
+          "grade": "not-real",
+          "reason": "DL 1.7.0 §4.12: \"A GS1 Digital Link URI can be constructed in any domain name ... to ensure brands can remain in control of the domains they use.\""
+        }
+      ],
+      "tool": null,
+      "notes": "False clearance of the planted defect: prescribes https://.../gtin/00036000291452 as the format the standard requires, i.e. the removed convenience alpha. Correctly says the UPC-A check digit is right."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 Digital Link standard and GS1 General Specifications",
+          "claim": "a real, resolvable domain is required; example.com cannot be used",
+          "verdict": "M",
+          "evidence": "DL §2 (Conformance, normative): \"Applications SHALL NOT assume that a URL that follows the syntax defined in this standard will point to a resolver\"; change log: \"GS1 Digital Link URIs do not have to, and SHALL NOT be assumed to, point to a resolver\". GenSpecs 2.1.13.1 says only (descriptively) that DL \"explicitly encodes a resolvable Web URI\" and that example.com is \"a place holder for any domain name\". DL §3 says the hostname \"is typically a registered Internet domain name\" — descriptive, not a requirement.",
+          "reused": true
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "GTIN HRI near the QR code is recommended best practice (not strictly mandatory)",
+          "verdict": "M",
+          "evidence": "GenSpecs 26.0 p.309 (rendered) §4.14.2: \"The 14-digit GTIN HRI is not required for any 2D barcode displayed on the packaging when it is adjacent to a linear barcode with HRI or if the 2D barcode is intended for consumer engagement.\" \"When a linear EAN-8, EAN-13 or UPC-A barcode and 2D barcode are adjacent ..., HRI for the GTIN is only required for the linear barcode. If ... unable to be adjacent, then the GTIN SHOULD accompany both.\" The QR here is beside the UPC-A, so nothing is recommended.",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR Part 101 (FDA labeling)",
+          "claim": "food needs identity, net quantity, ingredients, manufacturer, nutrition facts",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a) (eCFR, current): \"The principal display panel of a food in package form shall bear as one of its principal features a statement of the identity of the commodity.\" 21 CFR 101.7(a) (eCFR, current): \"The principal display panel of a food in package form shall bear a declaration of the net quantity of contents.\" 21 CFR 101.4(a)(1) (eCFR, current), \"Food; designation of ingredients\": ingredients \"shall be listed by common or usual name in descending order of predominance by weight\". 21 CFR 101.5 and 101.9.",
+          "reused": false
+        },
+        {
+          "ref": "16 CFR Part 500 (FTC)",
+          "claim": "consumer commodities need identity, net quantity, manufacturer information",
+          "verdict": "V",
+          "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\".",
+          "reused": true
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "product-type labeling possibly missing",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "\"The barcode and QR code themselves are compliant IF you replace the example domain with a real one\" - false clearance of /gtin/. \"FDA, FTC, or USDA regulations\" bare."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 Digital Link standard (GS1 General Specifications 21.0.1)",
+          "claim": "format should be https://<domain>/01/00036000291452, not /gtin/; GTIN as AI (01) with check digit",
+          "verdict": "V",
+          "evidence": "GS1 Digital Link URI Syntax 1.7.0 (ref.gs1.org HTML, Release 1.7.0, Ratified Aug 2026) §4.1 \"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\": \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\" GenSpecs 21.0.1 (exists: ref.gs1.org archive lists \"Version 21.0.1 Published January 2021\"; PDF fetched, p.76 rendered) §2.1.13.1 gives the example \"https://example.com/01/09506000134369\" and says DL \"is a ratified GS1 technical standard normatively referenced within the GS1 General Specifications\".",
+          "reused": false
+        },
+        {
+          "ref": "GS1 Digital Link standard (GS1 General Specifications 21.0.1)",
+          "claim": "Digital Links must use the domain registered with GS1 for your company",
+          "verdict": "M",
+          "evidence": "GenSpecs 21.0.1 p.76 §2.1.13.1 note: \"The example.com domain name (reserved in RFC 2606 ...) is used in the example as a place holder for any domain name.\" DL URI Syntax 1.7.0 §4.12 \"Canonical GS1 Digital Link URIs\": \"A GS1 Digital Link URI can be constructed in any domain name, may contain additional key=value pairs in the query string and so on. This flexibility is a deliberate feature of the standard ... to ensure brands can remain in control of the domains they use.\"",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15420",
+          "claim": "X-dimension, contrast and quiet zones",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "UPC-A X-dimension, quiet zone and quality requirements",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "register your domain with GS1",
+          "grade": "not-real",
+          "reason": "DL 1.7.0 §4.12: \"A GS1 Digital Link URI can be constructed in any domain name\""
+        },
+        {
+          "claim": "\"Reasonable Interpretation Declaration\" possibly needed under state \"clear sight line\" regulations (e.g. California) and GS1 recommendations",
+          "grade": "unclear",
+          "reason": "no such requirement located: absent from GenSpecs 26.0 and NIST HB 130 UPLR; a web search found nothing; state law not searched exhaustively"
+        }
+      ],
+      "tool": null,
+      "notes": "Caught: \"The format should be ... /01/00036000291452 (not /gtin/)\". Reason given is wrong-adjacent (frames it as part of a domain-registration requirement) and cites the DL standard via a 2021 GenSpecs release, but the defect and fix are right. Graded V on the DL standard the reference names; GenSpecs 21.0.1 itself shows only a /01/ example and does not state the removal."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications, mod-10 check digit",
+          "claim": "check digit 2 is correct for 0 36000 29145 2",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 §7.9.1, Table 7-8 \"Check digit algorithm\": GTIN-12 positions N1..N11 weighted x3,x1,...,x3; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": true
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "1-5-5-1 HRI grouping is the standard UPC-A presentation",
+          "verdict": "V",
+          "evidence": "GenSpecs §5.2.5: \"The human readable digits SHALL be printed underneath the main symbol ... All the encoded digits for EAN-13, UPC-A, EAN-8 barcodes ... SHALL be shown in human readable interpretation form\"; first and last UPC-A digits are set outside the guard bars (5 modules), giving the 1-5-5-1 layout.",
+          "reused": true
+        },
+        {
+          "ref": "ISO/IEC 15420",
+          "claim": "1-5-5-1 HRI presentation",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 Digital Link Standard",
+          "claim": "GTIN must appear in 14-digit form in the path",
+          "verdict": "V",
+          "evidence": "DL URI Syntax 1.7.0 §4.1: \"the value of a GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes serving as filler digits to reach a total of 14 digits\".",
+          "reused": true
+        },
+        {
+          "ref": "GS1 Digital Link syntax",
+          "claim": "https://{domain}/gtin/{GTIN-14} is a valid structure",
+          "verdict": "M",
+          "evidence": "GS1 Digital Link URI Syntax 1.7.0 (ref.gs1.org HTML, Release 1.7.0, Ratified Aug 2026) §4.1 \"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\": \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\" Change log: \"have now been removed so that, for example, 'gtin' cannot be used instead of '01' in the path.\"",
+          "reused": true
+        },
+        {
+          "ref": "GS1 Digital Link standard",
+          "claim": "expects the URI to resolve",
+          "verdict": "M",
+          "evidence": "DL §2 (Conformance, normative): \"Applications SHALL NOT assume that a URL that follows the syntax defined in this standard will point to a resolver\"; change log: \"GS1 Digital Link URIs do not have to, and SHALL NOT be assumed to, point to a resolver\". GenSpecs 2.1.13.1 says only (descriptively) that DL \"explicitly encodes a resolvable Web URI\" and that example.com is \"a place holder for any domain name\".",
+          "reused": true
+        },
+        {
+          "ref": "ISO/IEC 15416 and the GS1 General Specifications",
+          "claim": "symbol grade at least 1.5/C; quiet zones; 80-200%",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660. (the ISO/IEC 15416 attribution is unverified)",
+          "reused": false
+        },
+        {
+          "ref": "GS1 US rules on unique prefix use",
+          "claim": "membership condition",
+          "verdict": "U",
+          "evidence": "GS1 US guidance / membership and licence terms not fetched in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "Fair Packaging and Labeling Act, 15 U.S.C. §1451 ff., 16 CFR Part 500",
+          "claim": "identity, net quantity, name and place of business",
+          "verdict": "V",
+          "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\".",
+          "reused": true
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "prefix 0 36000 associated with another company",
+          "grade": "unclear"
+        },
+        {
+          "claim": "placeholder domain must be replaced with one you control",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "\"Short answer: nothing in what you've listed is non-compliant\" and \"Digital Link syntax: https://{domain}/gtin/{GTIN-14} is a valid structure\" - explicit false clearance. The 1-5-5-1 GenSpecs verdict reuses the 2026-10-09 evidence (GenSpecs §5.2.5)."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 Digital Link Standard, URI syntax section",
+          "claim": "the path uses the numeric AI; /gtin/ is not conformant, use /01/",
+          "verdict": "V",
+          "evidence": "GS1 Digital Link URI Syntax 1.7.0 (ref.gs1.org HTML, Release 1.7.0, Ratified Aug 2026) §4.1 \"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\": \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\"",
+          "reused": false
+        },
+        {
+          "ref": "RFC 2606",
+          "claim": "example.com is reserved",
+          "verdict": "V",
+          "evidence": "RFC 2606 (rfc-editor.org, fetched 2026-10-10) §3 \"Reserved Example Second Level Domain Names\": \"IANA also currently has the following second level domain names reserved which can be used as examples. example.com example.net example.org\".",
+          "reused": false
+        },
+        {
+          "ref": "GS1 US member agreement",
+          "claim": "using another company's prefix is a serious problem",
+          "verdict": "U",
+          "evidence": "GS1 US guidance / membership and licence terms not fetched in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "UPC-A size, quiet zone, contrast and print-quality grade requirements",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15416",
+          "claim": "UPC-A verification",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15415",
+          "claim": "QR quality",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "allow a UPC and a 2D code carrying the same GTIN",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.464 §6.3.3.1: \"When a linear barcode and a 2D barcode are both being used for retail POS applications, the entire 2D barcode including Quiet Zones SHOULD be placed within a 50 millimetre (2 inch) radius from the centre of the linear barcode.\"; p.308 §4.14.2 Figure 4-11 \"Example of extended packaging and POS barcodes\"; §4.15.1(2): \"All GS1 data carriers that are used for the same application on an entity SHALL encode the same GS1 identifier\".",
+          "reused": false
+        },
+        {
+          "ref": "GS1 US guidance on placement",
+          "claim": "placement so the QR is not mistaken for the POS symbol",
+          "verdict": "U",
+          "evidence": "GS1 US guidance / membership and licence terms not fetched in this session; not verified.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "prefix 036000 registered to Kimberly-Clark",
+          "grade": "unclear"
+        },
+        {
+          "claim": "example.com will never resolve in production; use a real domain",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "Caught: \"/gtin/ ... is not a standard-conformant GS1 Digital Link ... should be https://id.example.com/01/00036000291452\". Does not name the removal (§4.1) but the rule and fix are right."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications, check digit calculation",
+          "claim": "check digit 2 matches",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 §7.9.1, Table 7-8 \"Check digit algorithm\": GTIN-12 positions N1..N11 weighted x3,x1,...,x3; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": true
+        },
+        {
+          "ref": "GS1 Digital Link standard",
+          "claim": "GTIN-14 form in the path",
+          "verdict": "V",
+          "evidence": "DL URI Syntax 1.7.0 §4.1: \"the value of a GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes serving as filler digits to reach a total of 14 digits\".",
+          "reused": true
+        },
+        {
+          "ref": "GS1 Digital Link (URI structure)",
+          "claim": "https://id.example.com/gtin/{GTIN} is valid; /gtin/ is the correct AI 01 path element",
+          "verdict": "M",
+          "evidence": "DL URI Syntax 1.7.0 §4.1: \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\"; change log: \"have now been removed so that, for example, 'gtin' cannot be used instead of '01' in the path.\" GenSpecs 2.1.13.1 example: https://example.com/01/09506000134369.",
+          "reused": true
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "printing HRI beneath the symbol is required for UPC-A",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.308 (rendered) §4.14.2 \"General retail consumer trade item human readable text rules\": \"For EAN/UPC barcodes the HRI SHALL show the GTIN-8, GTIN-12, or GTIN-13 and SHALL be placed below the barcode.\"",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications and your GS1 US license agreement",
+          "claim": "you may only use GTINs from your own prefix",
+          "verdict": "V",
+          "evidence": "GenSpecs §1.5: \"A GS1 identification licence, GS1 Company Prefix, or individual GS1 identification key SHALL NOT be sold, leased, or given, in whole or in part, for use by any other company.\"; §4: a trade item \"SHALL be assigned a GTIN from the GTIN allocator's licenced GS1 Company Prefix or individual GS1 keys\". (licence agreement part not verified)",
+          "reused": true
+        },
+        {
+          "ref": "GS1 Digital Link standard",
+          "claim": "assumes a resolvable URI",
+          "verdict": "M",
+          "evidence": "DL §2 (Conformance, normative): \"Applications SHALL NOT assume that a URL that follows the syntax defined in this standard will point to a resolver\"; change log: \"GS1 Digital Link URIs do not have to, and SHALL NOT be assumed to, point to a resolver\". GenSpecs 2.1.13.1 says only (descriptively) that DL \"explicitly encodes a resolvable Web URI\" and that example.com is \"a place holder for any domain name\".",
+          "reused": true
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "UPC-A 80-200% magnification (100% = 0.33 mm); quiet zones 9 modules",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15416",
+          "claim": "grade 1.5 (C) or better",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15415 or ISO/IEC TR 29158",
+          "claim": "QR verification; 4-module quiet zone",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "Fair Packaging and Labeling Act",
+          "claim": "identity, net quantity, manufacturer name and address",
+          "verdict": "V",
+          "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\".",
+          "reused": true
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "prefix 036000 registered to a large consumer-goods company",
+          "grade": "unclear"
+        },
+        {
+          "claim": "URI must resolve on a domain you control",
+          "grade": "not-real",
+          "reason": "DL 1.7.0 §2: \"Applications SHALL NOT assume that a URL that follows the syntax defined in this standard will point to a resolver.\""
+        }
+      ],
+      "tool": null,
+      "notes": "\"I found nothing non-compliant\" and \"The /gtin/ key is the correct AI 01 path element\" - explicit false clearance."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications 25.0, §5.2.3.2 and figure 5.12.3.1-1",
+          "claim": "UPC-A bars at X = 0.330 mm must be at least 22.85 mm",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.279 (rendered) §5.2.3.2 \"Symbol height\": \"For EAN-13, UPC-A and UPC-E barcodes the height of the symbol at the nominal size is 22.85 millimetres (0.900 inch).\" p.356 §5.12.3.1 Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A minimum symbol height for target X-dimension (0.330 mm) 22.85 mm.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 Digital Link URI Syntax 1.7.0 §4",
+          "claim": "a Digital Link must use an http or https web address",
+          "verdict": "V",
+          "evidence": "DL URI Syntax 1.7.0 §4 (ABNF), §4.11 \"Constructing the GS1 Digital Link URI\": scheme=\"http\" / \"https\" / \"HTTP\" / \"HTTPS\".",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "bar height too short (20.64 mm vs 22.85 mm)",
+          "grade": "not-real",
+          "reason": "the prompt states no bar height; 20.64 mm was invented in the tool arguments"
+        },
+        {
+          "claim": "the Digital Link domain is invalid and needs an https address",
+          "grade": "not-real",
+          "reason": "the label's URI already is https://id.example.com/...; the scheme was dropped in transcription"
+        },
+        {
+          "claim": "check with GS1 for approved resolver services",
+          "grade": "not-real",
+          "reason": "DL 1.7.0 §4.12: \"A GS1 Digital Link URI can be constructed in any domain name\""
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "data.barHeightMm",
+            "labelSays": "not stated",
+            "sent": "20.64",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.symbolPlacement",
+            "labelSays": "not stated",
+            "sent": "top-left",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.digitalLink.domain",
+            "labelSays": "https://id.example.com",
+            "sent": "id.example.com (scheme dropped)",
+            "changedPlantedVerdict": true
+          },
+          {
+            "field": "data.digitalLink.useConvenienceAlphas",
+            "labelSays": "QR encodes https://id.example.com/gtin/00036000291452 (convenience alpha /gtin/)",
+            "sent": "omitted (engine defaults to /01/)",
+            "changedPlantedVerdict": true
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_BAR_HEIGHT_BELOW_MINIMUM",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GS1_DIGITAL_LINK_INVALID",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "planted defect (/gtin/ convenience alpha) missed",
+            "source": "transcription",
+            "why": "useConvenienceAlphas omitted and the scheme dropped from the domain; either alone prevents the engine reporting GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS"
+          },
+          {
+            "conclusion": "bars are 20.64 mm, below 22.85 mm",
+            "source": "transcription",
+            "why": "bar height invented; the engine judged correctly on the figure it was given"
+          },
+          {
+            "conclusion": "Digital Link domain invalid / needs HTTPS",
+            "source": "transcription",
+            "why": "label has https://; model sent a bare host name to a field named `domain`"
+          },
+          {
+            "conclusion": "check with GS1 for approved resolver services",
+            "source": "model",
+            "why": "not in the tool output; contrary to DL §4.12"
+          }
+        ]
+      },
+      "notes": "Notice present: lists licensing, placement, print quality as unchecked. Never addresses /gtin/; no explicit statement the URI path is fine, so not a false clearance. The schema field is named `domain` with no description; the engine requires an origin with scheme (rules/gs1/digitalLink.ts tests /^https?:\\/\\//) and returns GS1_DIGITAL_LINK_INVALID before evaluating useConvenienceAlphas, so the dropped scheme alone also suppresses the planted finding. All five answers in this case that sent a Digital Link sent a bare host name first - an interface defect worth recording, though the engine's verdict on the string it got (a URI with no http/https scheme is non-conformant, DL §4.11) is correct."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications 25.0, §5.2.3.2 and figure 5.12.3.1-1",
+          "claim": "UPC-A bars at X = 0.330 mm must be at least 22.85 mm",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.279 (rendered) §5.2.3.2 \"Symbol height\": \"For EAN-13, UPC-A and UPC-E barcodes the height of the symbol at the nominal size is 22.85 millimetres (0.900 inch).\" p.356 §5.12.3.1 Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A minimum symbol height for target X-dimension (0.330 mm) 22.85 mm.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, figure 5.2.3.4-1",
+          "claim": "UPC-A quiet zone at least 2.97 mm each side",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.280 (rendered) §5.2.3.4 \"Quiet Zone\", Figure 5.2.3.4-1 \"Quiet Zone widths by version\": UPC-A left 9 modules / 2.97 mm, right 9 modules / 2.97 mm (\"* This is an example using an X-dimension of 0.330 millimetres\").",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "bar height too short (20 mm)",
+          "grade": "not-real",
+          "reason": "no bar height in the prompt; invented"
+        },
+        {
+          "claim": "left and right quiet zones are 0 mm",
+          "grade": "not-real",
+          "reason": "the prompt describes no artwork; the model placed its own 40x5 mm text block over the symbol"
+        },
+        {
+          "claim": "artwork is printed over the UPC-A symbol",
+          "grade": "not-real",
+          "reason": "same invented artwork block"
+        },
+        {
+          "claim": "Digital Link QR codes are not covered by this checker",
+          "grade": "not-real",
+          "reason": "check_label has a Digital Link rule (gs1/digital-link) and a digitalLink input; the model never sent it"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "data.barHeightMm",
+            "labelSays": "not stated",
+            "sent": "20",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.artwork",
+            "labelSays": "only the digits printed beneath the barcode (which the engine draws itself as HRI)",
+            "sent": "text \"0 36000 29145 2\", anchor centre, 40 x 5 mm",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.digitalLink",
+            "labelSays": "QR code encoding https://id.example.com/gtin/00036000291452",
+            "sent": "omitted",
+            "changedPlantedVerdict": true
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_BAR_HEIGHT_BELOW_MINIMUM",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GS1_QUIET_ZONE_TOO_NARROW",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "planted defect missed",
+            "source": "transcription",
+            "why": "the Digital Link was not sent at all"
+          },
+          {
+            "conclusion": "bars too short",
+            "source": "transcription",
+            "why": "invented 20 mm"
+          },
+          {
+            "conclusion": "quiet zones 0 mm; artwork over symbol",
+            "source": "transcription",
+            "why": "invented centred artwork block over the symbol; engine measured it correctly (overlap -> clamped to 0, uncheckable)"
+          },
+          {
+            "conclusion": "Digital Link not covered by the checker",
+            "source": "model",
+            "why": "false statement about the tool"
+          }
+        ]
+      },
+      "notes": "Two GS1_QUIET_ZONE_TOO_NARROW findings (left and right) share one code; both relayed. The \"not checked\" notice it gives is itself wrong."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "missed",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications 25.0, figure 5.2.3.4-1",
+          "claim": "UPC-A quiet zone at least 2.97 mm each side",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.280 (rendered) §5.2.3.4 \"Quiet Zone\", Figure 5.2.3.4-1 \"Quiet Zone widths by version\": UPC-A left 9 modules / 2.97 mm, right 9 modules / 2.97 mm (\"* This is an example using an X-dimension of 0.330 millimetres\").",
+          "reused": false
+        },
+        {
+          "ref": "GS1 Digital Link URI Syntax 1.7.0 §4",
+          "claim": "a Digital Link needs a complete web address with http or https",
+          "verdict": "V",
+          "evidence": "DL URI Syntax 1.7.0 §4 (ABNF), §4.11 \"Constructing the GS1 Digital Link URI\": scheme=\"http\" / \"https\" / \"HTTP\" / \"HTTPS\".",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "right quiet zone is 0 mm",
+          "grade": "not-real",
+          "reason": "the prompt describes no artwork, placement or stock; all invented"
+        },
+        {
+          "claim": "the Digital Link domain is invalid; change it to https://id.example.com",
+          "grade": "not-real",
+          "reason": "the label already uses https://id.example.com; scheme dropped in transcription"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "data.barHeightMm",
+            "labelSays": "not stated",
+            "sent": "25.4",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.symbolPlacement",
+            "labelSays": "not stated",
+            "sent": "centre-left",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.artwork",
+            "labelSays": "none beyond the HRI digits",
+            "sent": "text \"0 36000 29145 2\", anchor bottom-centre, 50 x 5 mm",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "stock",
+            "labelSays": "not stated",
+            "sent": "100 x 50 mm, margin 5 mm",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.digitalLink.serial",
+            "labelSays": "no serial in the URI",
+            "sent": "00036000291452",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.digitalLink.domain",
+            "labelSays": "https://id.example.com",
+            "sent": "id.example.com (scheme dropped)",
+            "changedPlantedVerdict": true
+          },
+          {
+            "field": "data.digitalLink.useConvenienceAlphas",
+            "labelSays": "QR encodes https://id.example.com/gtin/00036000291452 (convenience alpha /gtin/)",
+            "sent": "omitted (engine defaults to /01/)",
+            "changedPlantedVerdict": true
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_QUIET_ZONE_TOO_NARROW",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GS1_DIGITAL_LINK_INVALID",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "planted defect missed",
+            "source": "transcription",
+            "why": "useConvenienceAlphas omitted and scheme dropped"
+          },
+          {
+            "conclusion": "right quiet zone 0 mm",
+            "source": "transcription",
+            "why": "invented artwork/placement/stock. Engine check: reproduced locally with label-core judgeLabel on the same arguments - symbol band y 9.875-40.125 mm (drawn height incl. HRI 30.25), bars x 7.97-39.32; artwork box x 25-75, y 40-45. The box overlaps the HRI band by 0.125 mm and lies wholly below the bars, yet clearSpaceRightMm = 0 because layout/clearSpace.ts measures against the full drawn height. Consistent with the module's documented design (HRI digits sit in the quiet zone), but a 0.125 mm box-edge overlap below the bars reported as \"right quiet zone 0.00 mm\" is worth the lead's review"
+          },
+          {
+            "conclusion": "Digital Link needs https; change domain",
+            "source": "transcription",
+            "why": "label has https://; bare host sent to the `domain` field"
+          }
+        ]
+      },
+      "notes": "Notice present (contrast, print quality, allocation, placement unchecked). The schema field is named `domain` with no description; the engine requires an origin with scheme (rules/gs1/digitalLink.ts tests /^https?:\\/\\//) and returns GS1_DIGITAL_LINK_INVALID before evaluating useConvenienceAlphas, so the dropped scheme alone also suppresses the planted finding. All five answers in this case that sent a Digital Link sent a bare host name first - an interface defect worth recording, though the engine's verdict on the string it got (a URI with no http/https scheme is non-conformant, DL §4.11) is correct."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 Digital Link URI Syntax 1.7.0 §4.1 (\"Convenience alphas removed from the URI path\")",
+          "claim": "/gtin/ was deprecated in 1.2 and removed in 1.3.0, so the URI is non-conformant; use /01/",
+          "verdict": "V",
+          "evidence": "GS1 Digital Link URI Syntax 1.7.0 (ref.gs1.org HTML, Release 1.7.0, Ratified Aug 2026) §4.1 \"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\": \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\" Note: the quoted title is the engine's, not §4.1's heading (\"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\"); the substance is at §4.1.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 26.0 §7.9.1",
+          "claim": "036000291452 has a valid check digit",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, figure 5.12.3.1-1",
+          "claim": "magnification 1.00x (X 0.330 mm) within 0.80x-2.00x",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, §5.2.3.2",
+          "claim": "bar height 22.85 mm meets the minimum",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.279 (rendered) §5.2.3.2 \"Symbol height\": \"For EAN-13, UPC-A and UPC-E barcodes the height of the symbol at the nominal size is 22.85 millimetres (0.900 inch).\" p.356 §5.12.3.1 Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A minimum symbol height for target X-dimension (0.330 mm) 22.85 mm.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, figure 5.2.3.4-1",
+          "claim": "quiet zones 14.33 mm against a 2.97 mm minimum",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.280 (rendered) §5.2.3.4 \"Quiet Zone\", Figure 5.2.3.4-1 \"Quiet Zone widths by version\": UPC-A left 9 modules / 2.97 mm, right 9 modules / 2.97 mm (\"* This is an example using an X-dimension of 0.330 millimetres\").",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications §4.14.2",
+          "claim": "human-readable digits printed beneath the bars",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.308 (rendered) §4.14.2 \"General retail consumer trade item human readable text rules\": \"For EAN/UPC barcodes the HRI SHALL show the GTIN-8, GTIN-12, or GTIN-13 and SHALL be placed below the barcode.\"",
+          "reused": false
+        },
+        {
+          "ref": "GS1 Digital Link URI Syntax 1.7.0 §4",
+          "claim": "the /01/ form with an https domain and 14-digit GTIN is conformant",
+          "verdict": "V",
+          "evidence": "DL URI Syntax 1.7.0 §4 (ABNF), §4.11 \"Constructing the GS1 Digital Link URI\": scheme=\"http\" / \"https\" / \"HTTP\" / \"HTTPS\". DL URI Syntax 1.7.0 §4.1: \"the value of a GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes serving as filler digits to reach a total of 14 digits\".",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "the QR must use /01/ in place of /gtin/",
+          "grade": "real"
+        },
+        {
+          "claim": "some scanners may still resolve /gtin/, but it is non-conformant",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 3,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "data.digitalLink.domain (call 2)",
+            "labelSays": "https://id.example.com",
+            "sent": "id.example.com",
+            "changedPlantedVerdict": true
+          },
+          {
+            "field": "data.digitalLink.useConvenienceAlphas (calls 2 and 3)",
+            "labelSays": "/gtin/ in the URI",
+            "sent": "omitted",
+            "changedPlantedVerdict": true
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Plus one check_gtin call. Self-corrected: call 3 added https://, call 4 set useConvenienceAlphas; the answer relies on call 4 (and on call 3 for the /01/ pass). Says its first call's domain failure was its own input error. Reports the advisory severity faithfully. Caveats that size/height/quiet-zone figures are engine defaults; names WHAT-IS-NOT-CHECKED and that a clean result is not compliance. The two transcription entries are on superseded calls and did not reach the final verdict. The schema field is named `domain` with no description; the engine requires an origin with scheme (rules/gs1/digitalLink.ts tests /^https?:\\/\\//) and returns GS1_DIGITAL_LINK_INVALID before evaluating useConvenienceAlphas, so the dropped scheme alone also suppresses the planted finding. All five answers in this case that sent a Digital Link sent a bare host name first - an interface defect worth recording, though the engine's verdict on the string it got (a URI with no http/https scheme is non-conformant, DL §4.11) is correct."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 Digital Link URI Syntax 1.7.0 §4.1 (\"Convenience alphas removed from the URI path\")",
+          "claim": "/gtin/ was deprecated in 1.2 and removed in 1.3.0, so the URI is non-conformant; use /01/",
+          "verdict": "V",
+          "evidence": "GS1 Digital Link URI Syntax 1.7.0 (ref.gs1.org HTML, Release 1.7.0, Ratified Aug 2026) §4.1 \"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\": \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\" Note: the quoted title is the engine's, not §4.1's heading (\"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\"); the substance is at §4.1.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 26.0 §7.9.1",
+          "claim": "036000291452 has a valid check digit",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, figure 5.12.3.1-1",
+          "claim": "magnification 1.00x (X 0.330 mm) within 0.80x-2.00x",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, §5.2.3.2",
+          "claim": "bar height 22.85 mm meets the minimum",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.279 (rendered) §5.2.3.2 \"Symbol height\": \"For EAN-13, UPC-A and UPC-E barcodes the height of the symbol at the nominal size is 22.85 millimetres (0.900 inch).\" p.356 §5.12.3.1 Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A minimum symbol height for target X-dimension (0.330 mm) 22.85 mm.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, figure 5.2.3.4-1",
+          "claim": "quiet zones 14.33 mm against a 2.97 mm minimum",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.280 (rendered) §5.2.3.4 \"Quiet Zone\", Figure 5.2.3.4-1 \"Quiet Zone widths by version\": UPC-A left 9 modules / 2.97 mm, right 9 modules / 2.97 mm (\"* This is an example using an X-dimension of 0.330 millimetres\").",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications §4.14.2",
+          "claim": "human-readable digits printed beneath the bars",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.308 (rendered) §4.14.2 \"General retail consumer trade item human readable text rules\": \"For EAN/UPC barcodes the HRI SHALL show the GTIN-8, GTIN-12, or GTIN-13 and SHALL be placed below the barcode.\"",
+          "reused": false
+        },
+        {
+          "ref": "GS1 Digital Link URI Syntax 1.7.0 §4",
+          "claim": "the /01/ form with an https domain and 14-digit GTIN is conformant",
+          "verdict": "V",
+          "evidence": "DL URI Syntax 1.7.0 §4 (ABNF), §4.11 \"Constructing the GS1 Digital Link URI\": scheme=\"http\" / \"https\" / \"HTTP\" / \"HTTPS\". DL URI Syntax 1.7.0 §4.1: \"the value of a GTIN-8, GTIN-12 or GTIN-13 SHALL be prefixed with leading zeroes serving as filler digits to reach a total of 14 digits\".",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "the QR must use /01/ in place of /gtin/",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 3,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "data.digitalLink.domain (call 2)",
+            "labelSays": "https://id.example.com",
+            "sent": "id.example.com",
+            "changedPlantedVerdict": true
+          },
+          {
+            "field": "data.digitalLink.useConvenienceAlphas (calls 2 and 3)",
+            "labelSays": "/gtin/ in the URI",
+            "sent": "omitted",
+            "changedPlantedVerdict": true
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Plus one check_gtin call. Self-corrected: call 3 added https://, call 4 set useConvenienceAlphas; the answer relies on call 4 (and on call 3 for the /01/ pass). Does not mention the first call's failure. Reports the advisory severity faithfully. Caveats that size/height/quiet-zone figures are engine defaults; names WHAT-IS-NOT-CHECKED and that a clean result is not compliance. The two transcription entries are on superseded calls and did not reach the final verdict. The schema field is named `domain` with no description; the engine requires an origin with scheme (rules/gs1/digitalLink.ts tests /^https?:\\/\\//) and returns GS1_DIGITAL_LINK_INVALID before evaluating useConvenienceAlphas, so the dropped scheme alone also suppresses the planted finding. All five answers in this case that sent a Digital Link sent a bare host name first - an interface defect worth recording, though the engine's verdict on the string it got (a URI with no http/https scheme is non-conformant, DL §4.11) is correct."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 Digital Link URI Syntax 1.7.0 §4.1 (\"Convenience alphas removed from the URI path\")",
+          "claim": "/gtin/ was deprecated in 1.2 and removed in 1.3.0, so the URI is non-conformant; use /01/",
+          "verdict": "V",
+          "evidence": "GS1 Digital Link URI Syntax 1.7.0 (ref.gs1.org HTML, Release 1.7.0, Ratified Aug 2026) §4.1 \"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\": \"supported 'convenience alphas' in place of commonly used GS1 Application Identifiers. For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\" Note: the quoted title is the engine's, not §4.1's heading (\"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\"); the substance is at §4.1.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 26.0 §7.9.1",
+          "claim": "036000291452 has a valid check digit",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, figure 5.12.3.1-1",
+          "claim": "magnification 1.00x (X 0.330 mm) within 0.80x-2.00x",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, §5.2.3.2",
+          "claim": "bar height 22.85 mm meets the minimum",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.279 (rendered) §5.2.3.2 \"Symbol height\": \"For EAN-13, UPC-A and UPC-E barcodes the height of the symbol at the nominal size is 22.85 millimetres (0.900 inch).\" p.356 §5.12.3.1 Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A minimum symbol height for target X-dimension (0.330 mm) 22.85 mm.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications 25.0, figure 5.2.3.4-1",
+          "claim": "quiet zones 14.33 mm against a 2.97 mm minimum",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.280 (rendered) §5.2.3.4 \"Quiet Zone\", Figure 5.2.3.4-1 \"Quiet Zone widths by version\": UPC-A left 9 modules / 2.97 mm, right 9 modules / 2.97 mm (\"* This is an example using an X-dimension of 0.330 millimetres\").",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications §4.14.2",
+          "claim": "human-readable digits printed beneath the bars",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.308 (rendered) §4.14.2 \"General retail consumer trade item human readable text rules\": \"For EAN/UPC barcodes the HRI SHALL show the GTIN-8, GTIN-12, or GTIN-13 and SHALL be placed below the barcode.\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "the QR must use /01/ in place of /gtin/",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 3,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "data.digitalLink.domain (call 2)",
+            "labelSays": "https://id.example.com",
+            "sent": "id.example.com",
+            "changedPlantedVerdict": true
+          },
+          {
+            "field": "data.digitalLink.useConvenienceAlphas (calls 2 and 3)",
+            "labelSays": "/gtin/ in the URI",
+            "sent": "omitted",
+            "changedPlantedVerdict": true
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Plus one check_gtin call. Self-corrected: call 3 added https://, call 4 set useConvenienceAlphas; the answer relies on call 4 (and on call 3 for the /01/ pass). Says its first call's domain failure was its own input error. Reports the advisory severity faithfully. Caveats that size/height/quiet-zone figures are engine defaults; names WHAT-IS-NOT-CHECKED and that a clean result is not compliance. The two transcription entries are on superseded calls and did not reach the final verdict. The schema field is named `domain` with no description; the engine requires an origin with scheme (rules/gs1/digitalLink.ts tests /^https?:\\/\\//) and returns GS1_DIGITAL_LINK_INVALID before evaluating useConvenienceAlphas, so the dropped scheme alone also suppresses the planted finding. All five answers in this case that sent a Digital Link sent a bare host name first - an interface defect worth recording, though the engine's verdict on the string it got (a URI with no http/https scheme is non-conformant, DL §4.11) is correct."
+    }
+  ],
+  "sourcesFetched": [
+    "https://ref.gs1.org/standards/genspecs/ (GS1 General Specifications 26.0 PDF; pp.145, 308, 309, 410, 464, 544 rendered and read) — check digit §7.9.1, HRI §4.14.2, §2.4.2, placement §6.3.3.1; saved /tmp/s19/sources/gs1-genspecs-26.0.pdf",
+    "https://ref.gs1.org/standards/genspecs/25.0.0/ (GenSpecs 25.0 PDF; pp.279, 280, 356 rendered) — engine's bar-height, quiet-zone and magnification citations; saved gs1-genspecs-25.0.pdf",
+    "https://ref.gs1.org/standards/genspecs/21.0.1/ (GenSpecs 21.0.1 PDF; p.77 rendered, p.76 text) — Haiku 07-without run 3's citation; and https://ref.gs1.org/standards/genspecs/archive/ for its existence",
+    "https://ref.gs1.org/standards/digital-link/uri-syntax/ (GS1 Digital Link URI Syntax 1.7.0 HTML) — §2, §4.1, §4.11, §4.12; saved gs1-dl-uri-syntax-1.7.0.html",
+    "eCFR 21 CFR 101.1 (renderer API, fetched this session) — 101.1 citations; 101.2, 101.3, 101.4, 101.5, 101.7, 101.36 read from eCFR files saved under /tmp/s19/sources by other graders this session",
+    "eCFR 16 CFR Part 255 — FTC Endorsement Guides citation",
+    "govinfo USCODE-2023 15 USC 45 — FTC Act §5 citation",
+    "govinfo USCODE-2023 19 USC 1304 — country-of-origin citation",
+    "https://www.rfc-editor.org/rfc/rfc2606.txt — example.com reservation",
+    "https://www.nist.gov/document/2026-hb-130-section-iv (NIST HB 130-2026 UPLR) — §3.1 identity, §6.1 dual units",
+    "Web search: 'ISO/IEC 24047' (nothing found; iso.org 403) and ISO/IEC 18975 (the standard the DL spec names); 'reasonable interpretation declaration' (nothing found)",
+    "Local reproduction (not a source): label-core judgeLabel run via tsx on Haiku 07-with run 3's arguments, to check the right-quiet-zone measurement"
+  ]
+}

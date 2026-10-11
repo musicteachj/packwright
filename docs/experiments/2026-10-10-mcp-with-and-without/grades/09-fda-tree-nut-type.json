@@ -1,0 +1,1399 @@
+{
+  "caseId": "09-fda-tree-nut-type",
+  "answers": [
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "almonds must be declared: \"Contains: Tree Nuts (Almonds)\"",
+          "verdict": "M",
+          "evidence": "21 CFR 101.4 (\"Food; designation of ingredients\") contains no allergen-declaration requirement; the \"Contains\"/food-source declaration is FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1))",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(b)",
+          "claim": "\"nut pieces\" should specifically identify almonds",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(b): \"The name of an ingredient shall be a specific name and not a collective (generic) name\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(b)",
+          "claim": "\"Contains 2 percent or less of sugar, salt\" is non-standard; list them as separate ingredients",
+          "verdict": "M",
+          "evidence": "21 CFR 101.4(b) is the specific-name rule (\"shall be a specific name and not a collective (generic) name\"); the quantifying statement is 101.4(a)(2), whose own example is \"Contains __ percent or less of ______\" -- the label's wording follows it and sugar and salt are already listed as ingredients",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.5",
+          "claim": "must state \"Manufactured by\", \"Distributed by\" or \"Product of\"",
+          "verdict": "M",
+          "evidence": "21 CFR 101.5(c) requires a qualifying phrase only \"Where the food is not manufactured by the person whose name appears on the label\"; no paragraph of 101.5 requires \"Manufactured by\" or any relationship phrase from a firm that made the food",
+          "reused": false
+        },
+        {
+          "ref": "Food Allergen Labeling and Consumer Protection Act (FALCPA)",
+          "claim": "requires a clear allergen declaration, typically a \"Contains\" statement",
+          "verdict": "V",
+          "evidence": "FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1)): misbranded unless \"the word “Contains”, followed by the name of the food source from which the major food allergen is derived\" follows the ingredient list, or the ingredient is \"followed in parentheses by the name of the food source\" (not required where the ingredient's name already uses it, (w)(1)(B)(i)); 403(w)(2): \"in the case of a tree nut ... the name of the specific type of nut\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "A \"Contains\" statement is required even though almonds appear in the ingredient list",
+          "grade": "not-real",
+          "reason": "Under 403(w)(1)(B)(i) no parenthetical or separate statement is needed when \"the common or usual name of the ingredient uses the name of the food source\"; a \"Contains\" line is one of two alternatives, not required where the ingredient list names almonds."
+        }
+      ],
+      "tool": null,
+      "notes": "\"FDA Food Labeling Guide\" named with no specific provision: not graded. Caught: names almonds both in the list and in a Contains statement."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "almonds must be declared: \"Contains: Tree Nuts (Almonds)\"",
+          "verdict": "M",
+          "evidence": "21 CFR 101.4 (\"Food; designation of ingredients\") contains no allergen-declaration requirement; the \"Contains\"/food-source declaration is FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1))",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(b)",
+          "claim": "\"nut pieces\" must read \"almonds\"",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(b): \"The name of an ingredient shall be a specific name and not a collective (generic) name\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(b)",
+          "claim": "sugar and salt \"should be listed as ingredients if present\"",
+          "verdict": "M",
+          "evidence": "21 CFR 101.4(b) is the specific-name rule (\"shall be a specific name and not a collective (generic) name\"); the quantifying statement is 101.4(a)(2), whose own example is \"Contains __ percent or less of ______\" -- the label's wording follows it and sugar and salt are already listed as ingredients",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.36",
+          "claim": "\"Includes 0g Added Sugars\" should carry no %DV",
+          "verdict": "M",
+          "evidence": "21 CFR 101.36 is \"Nutrition labeling of dietary supplements\" (Supplement Facts); it does not govern a conventional food's Nutrition Facts. For a food, an Added Sugars %DV is required: 101.9(d)(7)(ii) requires a percent \"for each nutrient ... for which a DRV has been established\", and (c)(9) sets Added Sugars at 50 g",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.17",
+          "claim": "any other major allergens must be declared",
+          "verdict": "M",
+          "evidence": "21 CFR 101.17 is \"Food labeling warning, notice, and safe handling statements\": (a) self-pressurized containers ... (h) shell eggs; it contains no allergen-declaration requirement (that is FD&C 403(w))",
+          "reused": false
+        }
+      ],
+      "otherClaims": [],
+      "tool": null,
+      "notes": "\"FDA Food Labeling Guide\" not graded. Caught: \"It should read almonds\"."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "almonds must be declared: \"Contains: Tree Nuts (Almonds)\", required for all tree nuts",
+          "verdict": "M",
+          "evidence": "21 CFR 101.4 (\"Food; designation of ingredients\") contains no allergen-declaration requirement; the \"Contains\"/food-source declaration is FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1))",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(b)",
+          "claim": "ingredient list incomplete; must list all ingredients in descending order",
+          "verdict": "M",
+          "evidence": "21 CFR 101.4(b) is the specific-name rule (\"shall be a specific name and not a collective (generic) name\"); a complete list in descending order is 101.4(a)(1), and the label already lists every ingredient the prompt gives",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.36(d)",
+          "claim": "Added Sugars line must be associated with Total Sugars",
+          "verdict": "M",
+          "evidence": "21 CFR 101.36(d) (dietary supplements) is \"The source ingredient that supplies a dietary ingredient may be identified within the nutrition label in parentheses\", with (d)(1)-(3) only; the Added Sugars line for a conventional food is 101.9(c)(6)(iii)",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.105",
+          "claim": "net weight on PDP in both metric and US units",
+          "verdict": "F (removed)",
+          "evidence": "F (removed): 21 CFR 101.105 is not in the current CFR -- the eCFR renderer returned 404 on 2026-10-10 and the eCFR structure for title 21 lists only 101.100 and 101.108 in subpart G. It existed as \"Declaration of net quantity of contents when exempt\" in the annual CFR of 2016-04-01 (govinfo CFR-2016-title21-vol2-sec101-105, which carried the bottom-30-percent and 3/16-inch text) and is absent from the 2017-04-01 edition. The rule in force is 21 CFR 101.7: (f) \"within the bottom 30 percent of the area of the label panel\"; (i)(3) \"Not less than three-sixteenths inch in height\" for a panel \"more than 25 but not more than 100 square inches\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "A \"Contains: Tree Nuts (Almonds)\" statement is required for all tree nuts",
+          "grade": "not-real",
+          "reason": "Under 403(w)(1)(B)(i) no parenthetical or separate statement is needed when \"the common or usual name of the ingredient uses the name of the food source\"; a \"Contains\" line is one of two alternatives, not required where the ingredient list names almonds."
+        }
+      ],
+      "tool": null,
+      "notes": "Caught by the rubric (names almonds as what must be declared) though it never says \"nut pieces\" must change."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "FD&C Act §403(w) (FALCPA, FASTER Act)",
+          "claim": "specific nut type must be declared, in the ingredient list or a \"Contains: Almonds\" statement",
+          "verdict": "V",
+          "evidence": "FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1)): misbranded unless \"the word “Contains”, followed by the name of the food source from which the major food allergen is derived\" follows the ingredient list, or the ingredient is \"followed in parentheses by the name of the food source\" (not required where the ingredient's name already uses it, (w)(1)(B)(i)); 403(w)(2): \"in the case of a tree nut ... the name of the specific type of nut\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(a)",
+          "claim": "ingredients by common or usual name; \"nut pieces\" isn't one",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)(9)",
+          "claim": "footnote must include \"(DV)\"",
+          "verdict": "M",
+          "evidence": "21 CFR 101.9(d)(9): \"The footnote shall state: “*The % Daily Value tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.”\" -- no \"(DV)\"; the label prints exactly this text",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(9)",
+          "claim": "potassium DV 4,700 mg; 235 mg = 5% not 6%",
+          "verdict": "M",
+          "evidence": "21 CFR 101.9(c)(9) DRV table lists Fat, Saturated fat, Cholesterol, Total carbohydrate, Sodium, Dietary Fiber, Protein, Added Sugars -- no potassium. Potassium 4,700 mg is an RDI in the (c)(8)(iv) table, and (c)(8)(iii) rounds vitamin/mineral percentages \"to the nearest 2-percent increment up to and including the 10-percent level\", so 5.0% prints as 4% or 6%; 101.9(d)(8) itself gives \"Potassium 235 mg 6%\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.12(b)",
+          "claim": "granola/RTE cereal ~80 g/cup: RACC 55 g",
+          "verdict": "M",
+          "evidence": "21 CFR 101.12(b) Table 2 gives 60 g, not 55 g, for \"Breakfast cereals, ready-to-eat, weighing 43 g or more per cup; biscuit types\"; 55 g is the hot-cereal \"flavored, sweetened cereal\" figure",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)",
+          "claim": "serving size based on RACC",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(2): serving size is determined from the reference amounts in 101.12(b); (b)(2)(iii) bulk products: \"the amount in household measure that most closely approximates the reference amount\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(8)",
+          "claim": "use a correct count, with \"about\" if it isn't a whole number",
+          "verdict": "M",
+          "evidence": "21 CFR 101.9(b)(8)(i): \"The number of servings shall be rounded to the nearest whole number ... Rounding should be indicated by the use of the term about\" -- \"about\" is a recommendation (should), stated by the answer as a requirement",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(4)",
+          "claim": "sodium 0 requires < 5 mg",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(c)(4): sodium \"expressed as zero when the serving contains less than 5 milligrams of sodium, to the nearest 5-milligram increment when the serving contains 5 to 140 milligrams of sodium, and to the nearest 10-milligram increment when the serving contains greater than 140 milligrams\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(6)(iii)",
+          "claim": "added sugars 0 only under 0.5 g",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(c)(6)(iii): \"Added sugars content shall be indented under Total Sugars and shall be prefaced with the word “Includes” ... It shall be expressed to the nearest gram, except that if a serving contains less than 1 gram, the statement “Contains less than 1 gram” or “less than 1 gram” may be used as an alternative, and if the serving contains less than 0.5 gram, the content may be expressed as zero.\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "fortificants must appear in the ingredient list",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 104.20",
+          "claim": "fortification should be consistent with FDA's policy",
+          "verdict": "V",
+          "evidence": "21 CFR 104.20: nutrients \"may appropriately be added\" under stated principles; manufacturers \"are urged\" to follow them -- the answer frames it as \"should be consistent with\", which matches",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.105",
+          "claim": "net quantity: 3/16 in, bottom 30%, parallel",
+          "verdict": "F (removed)",
+          "evidence": "F (removed): 21 CFR 101.105 is not in the current CFR -- the eCFR renderer returned 404 on 2026-10-10 and the eCFR structure for title 21 lists only 101.100 and 101.108 in subpart G. It existed as \"Declaration of net quantity of contents when exempt\" in the annual CFR of 2016-04-01 (govinfo CFR-2016-title21-vol2-sec101-105, which carried the bottom-30-percent and 3/16-inch text) and is absent from the 2017-04-01 edition. The rule in force is 21 CFR 101.7: (f) \"within the bottom 30 percent of the area of the label panel\"; (i)(3) \"Not less than three-sixteenths inch in height\" for a panel \"more than 25 but not more than 100 square inches\"",
+          "reused": false
+        },
+        {
+          "ref": "Fair Packaging and Labeling Act",
+          "claim": "dual declaration",
+          "verdict": "V",
+          "evidence": "15 U.S.C. 1453(a)(2) (FPLA §4, Pub. L. 89-755): net quantity \"using the most appropriate units of both the customary inch/pound system of measure ... and ... the SI metric system\"; (a)(3)(D) lines \"generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.3",
+          "claim": "bold, PDP, reasonably related size",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a) statement of identity \"as one of its principal features\" on the PDP; (b)(2) \"The common or usual name of the food\"; (d) \"shall be presented in bold type on the principal display panel, shall be in a size reasonably related to the most prominent printed matter on such panel ... in lines generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.5",
+          "claim": "qualifier if not the manufacturer",
+          "verdict": "V",
+          "evidence": "21 CFR 101.5(a) \"shall specify conspicuously the name and place of business of the manufacturer, packer, or distributor\"; (c) \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase ... such as “Manufactured for ______”, “Distributed by ______”\"; (d) \"street address, city, State, and ZIP code\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)",
+          "claim": "type sizes, bolding, rules",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d) sets the Nutrition Facts format: e.g. (d)(3)(ii) serving size \"highlighted in bold or extra bold and be in a type size no smaller than 10 point\"; (d)(9) the footnote; (d)(12) sample labels",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "\"Contains 2 percent or less of\" grouping permitted",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(2): the order requirement does \"not apply to ingredients present in amounts of 2 percent or less by weight when a listing of these ingredients is placed at the end of the ingredient statement following an appropriate quantifying statement, e.g., “Contains __ percent or less of ______”\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Servings per container \"8\" doesn't match 340 g",
+          "grade": "unclear",
+          "reason": "340 g / 40 g = 8.5 exactly; 101.9(b)(8)(i) says \"rounded to the nearest whole number\" and does not break the tie, so \"8\" is not shown wrong (normalised as unclear on 2026-10-09)."
+        },
+        {
+          "claim": "Serving size appears not to follow the RACC",
+          "grade": "unclear",
+          "reason": "Depends on product category; for RTE >= 43 g/cup the RACC is 60 g (not the 55 g stated), which would make 40 g low."
+        },
+        {
+          "claim": "Calcium, iron, vitamin D implausible for oats and almonds",
+          "grade": "real"
+        }
+      ],
+      "tool": null,
+      "notes": "Caught. The potassium \"DV table in 101.9(c)\" reference is folded into the (c)(9) citation."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "FD&C Act §403(w) (FALCPA, as amended by FASTER Act)",
+          "claim": "specific tree nut must be named, in list or \"Contains: almonds\"",
+          "verdict": "V",
+          "evidence": "FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1)): misbranded unless \"the word “Contains”, followed by the name of the food source from which the major food allergen is derived\" follows the ingredient list, or the ingredient is \"followed in parentheses by the name of the food source\" (not required where the ingredient's name already uses it, (w)(1)(B)(i)); 403(w)(2): \"in the case of a tree nut ... the name of the specific type of nut\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(a)",
+          "claim": "each ingredient by common or usual name",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(8)",
+          "claim": "stated accurately, rounded, with \"about\" when the count isn't exact",
+          "verdict": "M",
+          "evidence": "21 CFR 101.9(b)(8)(i): \"The number of servings shall be rounded to the nearest whole number ... Rounding should be indicated by the use of the term about\" -- \"about\" is a recommendation (should), stated by the answer as a requirement",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)(9)(i)",
+          "claim": "footnote must include \"(DV)\"",
+          "verdict": "F",
+          "evidence": "No such paragraph: 21 CFR 101.9(d)(9) is a single undivided paragraph, followed directly by (d)(10) (\"Caloric conversion information ...\"); its mandated text also has no \"(DV)\": \"The footnote shall state: “*The % Daily Value tells you how much a nutrient in a serving of food contributes to a daily diet...”\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(9)",
+          "claim": "potassium above 140 mg declared to nearest 10 mg; 235 -> 230/240",
+          "verdict": "M",
+          "evidence": "21 CFR 101.9(c)(8)(iii): \"The quantitative amounts of vitamins and minerals, excluding sodium, shall be ... using the units of measurement and the levels of significance given in paragraph (c)(8)(iv)\" -- potassium is whole milligrams there (RDI 4,700 mg), and 101.9(d)(8) prints \"Potassium 235 mg 6%\". The nearest-10-mg rule above 140 mg is (c)(4), for sodium",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(8)(iii)",
+          "claim": "potassium above 140 mg declared to nearest 10 mg",
+          "verdict": "M",
+          "evidence": "21 CFR 101.9(c)(8)(iii): \"The quantitative amounts of vitamins and minerals, excluding sodium, shall be ... using the units of measurement and the levels of significance given in paragraph (c)(8)(iv)\" -- potassium is whole milligrams there (RDI 4,700 mg), and 101.9(d)(8) prints \"Potassium 235 mg 6%\". The nearest-10-mg rule above 140 mg is (c)(4), for sodium",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.12(b), Table 2",
+          "claim": "granola-type cereals >= 43 g/cup have a 55 g RACC",
+          "verdict": "M",
+          "evidence": "21 CFR 101.12(b) Table 2 gives 60 g, not 55 g, for \"Breakfast cereals, ready-to-eat, weighing 43 g or more per cup; biscuit types\"; 55 g is the hot-cereal \"flavored, sweetened cereal\" figure",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)",
+          "claim": "household measure closest to the RACC",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(2): serving size is determined from the reference amounts in 101.12(b); (b)(2)(iii) bulk products: \"the amount in household measure that most closely approximates the reference amount\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(6)(iii)",
+          "claim": "added sugars zero only below 0.5 g",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(c)(6)(iii): \"Added sugars content shall be indented under Total Sugars and shall be prefaced with the word “Includes” ... It shall be expressed to the nearest gram, except that if a serving contains less than 1 gram, the statement “Contains less than 1 gram” or “less than 1 gram” may be used as an alternative, and if the serving contains less than 0.5 gram, the content may be expressed as zero.\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(4)",
+          "claim": "sodium zero only below 5 mg",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(c)(4): sodium \"expressed as zero when the serving contains less than 5 milligrams of sodium, to the nearest 5-milligram increment when the serving contains 5 to 140 milligrams of sodium, and to the nearest 10-milligram increment when the serving contains greater than 140 milligrams\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(g)",
+          "claim": "values supported by analysis or database",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(g)(4): a food declaring a vitamin, mineral, protein ... \"shall be deemed to be misbranded under section 403(a) ... unless\" Class I nutrients are \"at least equal to the value for that nutrient declared on the label\" and Class II \"at least equal to 80 percent of the value\"; (g)(5): calories, sugars, sodium etc. misbranded if \"greater than 20 percent in excess of the value ... declared\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "fortificants in the ingredient list",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 104.20",
+          "claim": "fortification must follow 104.20",
+          "verdict": "M",
+          "evidence": "21 CFR 104.20 is FDA's fortification policy: \"Manufacturers contemplating using this principle are urged to contact the Food and Drug Administration\"; nutrients \"may appropriately be added\" -- a policy that urges, not a requirement the label must meet",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.105",
+          "claim": "bottom 30%, 3/16 in, clear space",
+          "verdict": "F (removed)",
+          "evidence": "F (removed): 21 CFR 101.105 is not in the current CFR -- the eCFR renderer returned 404 on 2026-10-10 and the eCFR structure for title 21 lists only 101.100 and 101.108 in subpart G. It existed as \"Declaration of net quantity of contents when exempt\" in the annual CFR of 2016-04-01 (govinfo CFR-2016-title21-vol2-sec101-105, which carried the bottom-30-percent and 3/16-inch text) and is absent from the 2017-04-01 edition. The rule in force is 21 CFR 101.7: (f) \"within the bottom 30 percent of the area of the label panel\"; (i)(3) \"Not less than three-sixteenths inch in height\" for a panel \"more than 25 but not more than 100 square inches\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.5",
+          "claim": "qualifier if not the manufacturer",
+          "verdict": "V",
+          "evidence": "21 CFR 101.5(a) \"shall specify conspicuously the name and place of business of the manufacturer, packer, or distributor\"; (c) \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase ... such as “Manufactured for ______”, “Distributed by ______”\"; (d) \"street address, city, State, and ZIP code\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)",
+          "claim": "graphics, type sizes, bars",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d) sets the Nutrition Facts format: e.g. (d)(3)(ii) serving size \"highlighted in bold or extra bold and be in a type size no smaller than 10 point\"; (d)(9) the footnote; (d)(12) sample labels",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.3",
+          "claim": "statement of identity bold on PDP",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a) statement of identity \"as one of its principal features\" on the PDP; (b)(2) \"The common or usual name of the food\"; (d) \"shall be presented in bold type on the principal display panel, shall be in a size reasonably related to the most prominent printed matter on such panel ... in lines generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(g)",
+          "claim": "\"Contains 2 percent or less of\" is a permitted format",
+          "verdict": "M",
+          "evidence": "21 CFR 101.4(g): \"When present, the ingredient list on dietary supplement products shall be located immediately below the nutrition label\" -- dietary supplements; the 2-percent quantifying statement is 101.4(a)(2)",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Servings per container is wrong (8.5)",
+          "grade": "unclear",
+          "reason": "340 g / 40 g = 8.5 exactly; 101.9(b)(8)(i) says \"rounded to the nearest whole number\" and does not break the tie, so \"8\" is not shown wrong (normalised as unclear on 2026-10-09)."
+        },
+        {
+          "claim": "Potassium 235 mg must be 230 or 240 mg",
+          "grade": "not-real",
+          "reason": "101.9(c)(8)(iii)/(iv) state potassium in whole milligrams; the nearest-10-mg rule is sodium's, in (c)(4). 101.9(d)(8) prints \"Potassium 235 mg\"."
+        },
+        {
+          "claim": "Serving size probably not based on the correct RACC",
+          "grade": "unclear",
+          "reason": "Category-dependent; 60 g (not 55 g) for RTE >= 43 g/cup."
+        }
+      ],
+      "tool": null,
+      "notes": "Caught. Two Fs/Ms are invented requirements: \"(DV)\" in the footnote and 10-mg potassium rounding (pre-2016 potassium shared sodium's rounding; current 101.9 does not)."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "FD&C Act §403(w), added by FALCPA",
+          "claim": "tree nuts declared by specific type (\"almonds\")",
+          "verdict": "V",
+          "evidence": "FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1)): misbranded unless \"the word “Contains”, followed by the name of the food source from which the major food allergen is derived\" follows the ingredient list, or the ingredient is \"followed in parentheses by the name of the food source\" (not required where the ingredient's name already uses it, (w)(1)(B)(i)); 403(w)(2): \"in the case of a tree nut ... the name of the specific type of nut\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(8)",
+          "claim": "rounded to nearest whole number when 5+, use \"about\" when not exact",
+          "verdict": "M",
+          "evidence": "21 CFR 101.9(b)(8)(i): \"The number of servings shall be rounded to the nearest whole number ... Rounding should be indicated by the use of the term about\" -- \"about\" is a recommendation (should), stated by the answer as a requirement",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)",
+          "claim": "serving size from RACC",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(2): serving size is determined from the reference amounts in 101.12(b); (b)(2)(iii) bulk products: \"the amount in household measure that most closely approximates the reference amount\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.12(b), Table 2",
+          "claim": "RTE cereals/granola >= 43 g/cup: RACC 55 g",
+          "verdict": "M",
+          "evidence": "21 CFR 101.12(b) Table 2 gives 60 g, not 55 g, for \"Breakfast cereals, ready-to-eat, weighing 43 g or more per cup; biscuit types\"; 55 g is the hot-cereal \"flavored, sweetened cereal\" figure",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(9)",
+          "claim": "potassium DV 4,700 mg; 5% not 6%",
+          "verdict": "M",
+          "evidence": "21 CFR 101.9(c)(9) DRV table lists Fat, Saturated fat, Cholesterol, Total carbohydrate, Sodium, Dietary Fiber, Protein, Added Sugars -- no potassium. Potassium 4,700 mg is an RDI in the (c)(8)(iv) table, and (c)(8)(iii) rounds vitamin/mineral percentages \"to the nearest 2-percent increment up to and including the 10-percent level\", so 5.0% prints as 4% or 6%; 101.9(d)(8) itself gives \"Potassium 235 mg 6%\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(6)(iii)",
+          "claim": "added sugars counted; 0 g only under 0.5 g",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(c)(6)(iii): \"Added sugars content shall be indented under Total Sugars and shall be prefaced with the word “Includes” ... It shall be expressed to the nearest gram, except that if a serving contains less than 1 gram, the statement “Contains less than 1 gram” or “less than 1 gram” may be used as an alternative, and if the serving contains less than 0.5 gram, the content may be expressed as zero.\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "fortificants in ingredient list",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 104.20",
+          "claim": "fortification must comply with the fortification policy",
+          "verdict": "M",
+          "evidence": "21 CFR 104.20 is FDA's fortification policy: \"Manufacturers contemplating using this principle are urged to contact the Food and Drug Administration\"; nutrients \"may appropriately be added\" -- a policy that urges, not a requirement the label must meet",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(g)",
+          "claim": "values supported by analysis or database",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(g)(4): a food declaring a vitamin, mineral, protein ... \"shall be deemed to be misbranded under section 403(a) ... unless\" Class I nutrients are \"at least equal to the value for that nutrient declared on the label\" and Class II \"at least equal to 80 percent of the value\"; (g)(5): calories, sugars, sodium etc. misbranded if \"greater than 20 percent in excess of the value ... declared\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)(4)",
+          "claim": "sodium 0 only under 5 mg",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(c)(4): sodium \"expressed as zero when the serving contains less than 5 milligrams of sodium, to the nearest 5-milligram increment when the serving contains 5 to 140 milligrams of sodium, and to the nearest 10-milligram increment when the serving contains greater than 140 milligrams\"",
+          "reused": false
+        },
+        {
+          "ref": "7 CFR Part 66",
+          "claim": "beet sugar can trigger BE disclosure; refined sugar without detectable modified material exempt with records",
+          "verdict": "V",
+          "evidence": "7 CFR 66.1: a food \"does not contain modified genetic material if the genetic material is not detectable pursuant to § 66.9\"; 66.9(a)(2): records \"to verify that the food has been subjected to a refinement process validated to make the modified genetic material in the food undetectable\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.5",
+          "claim": "qualifier if not the manufacturer",
+          "verdict": "V",
+          "evidence": "21 CFR 101.5(a) \"shall specify conspicuously the name and place of business of the manufacturer, packer, or distributor\"; (c) \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase ... such as “Manufactured for ______”, “Distributed by ______”\"; (d) \"street address, city, State, and ZIP code\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.105",
+          "claim": "bottom 30%, parallel, 3/16 in",
+          "verdict": "F (removed)",
+          "evidence": "F (removed): 21 CFR 101.105 is not in the current CFR -- the eCFR renderer returned 404 on 2026-10-10 and the eCFR structure for title 21 lists only 101.100 and 101.108 in subpart G. It existed as \"Declaration of net quantity of contents when exempt\" in the annual CFR of 2016-04-01 (govinfo CFR-2016-title21-vol2-sec101-105, which carried the bottom-30-percent and 3/16-inch text) and is absent from the 2017-04-01 edition. The rule in force is 21 CFR 101.7: (f) \"within the bottom 30 percent of the area of the label panel\"; (i)(3) \"Not less than three-sixteenths inch in height\" for a panel \"more than 25 but not more than 100 square inches\"",
+          "reused": false
+        },
+        {
+          "ref": "FPLA",
+          "claim": "dual units",
+          "verdict": "V",
+          "evidence": "15 U.S.C. 1453(a)(2) (FPLA §4, Pub. L. 89-755): net quantity \"using the most appropriate units of both the customary inch/pound system of measure ... and ... the SI metric system\"; (a)(3)(D) lines \"generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.3",
+          "claim": "statement of identity at least half the size of the most prominent print",
+          "verdict": "M",
+          "evidence": "21 CFR 101.3(d): \"shall be in a size reasonably related to the most prominent printed matter on such panel\" -- no half-size figure appears in the regulation",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)",
+          "claim": "type sizes, rules, layout",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d) sets the Nutrition Facts format: e.g. (d)(3)(ii) serving size \"highlighted in bold or extra bold and be in a type size no smaller than 10 point\"; (d)(9) the footnote; (d)(12) sample labels",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.2 and 101.4",
+          "claim": "ingredient statement on the same panel as name/address or on PDP; 1/16 in minimum",
+          "verdict": "V",
+          "evidence": "21 CFR 101.2(b): information under 101.4, 101.5 and 101.9 \"shall appear either on the principal display panel or on the information panel\"; (d)(1) \"all information required to appear on the principal display panel or on the information panel under this section shall appear on the same panel unless there is insufficient space\"; (c) one-sixteenth inch minimum",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(a)(2)",
+          "claim": "\"2 percent or less\" grouping permitted",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(2): the order requirement does \"not apply to ingredients present in amounts of 2 percent or less by weight when a listing of these ingredients is placed at the end of the ingredient statement following an appropriate quantifying statement, e.g., “Contains __ percent or less of ______”\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Servings per container should read \"about 9\"",
+          "grade": "unclear",
+          "reason": "340 g / 40 g = 8.5 exactly; 101.9(b)(8)(i) says \"rounded to the nearest whole number\" and does not break the tie, so \"8\" is not shown wrong (normalised as unclear on 2026-10-09)."
+        },
+        {
+          "claim": "Serving size appears not to follow the RACC",
+          "grade": "unclear",
+          "reason": "Category-dependent; 60 g (not 55 g) for RTE >= 43 g/cup."
+        },
+        {
+          "claim": "The footnote wording is correct",
+          "grade": "real"
+        }
+      ],
+      "tool": null,
+      "notes": "Caught."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "21 CFR 101.4(a)(1)",
+          "claim": "descending order of predominance by weight",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(12)(i)",
+          "claim": "second column if 200-300% of the reference amount",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(12)(i): \"Products that are packaged and sold individually and that contain at least 200 percent and up to and including 300 percent of the applicable reference amount must provide an additional column within the Nutrition Facts label\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.12(b)",
+          "claim": "reference amount for granola",
+          "verdict": "V",
+          "evidence": "21 CFR 101.12(b) Table 2: \"Breakfast cereals (hot cereal type), hominy grits | 1 cup prepared; 40 g plain dry cereal; 55 g flavored, sweetened cereal\"; \"Breakfast cereals, ready-to-eat, weighing 43 g or more per cup; biscuit types | 60 g\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR Part 102",
+          "claim": "common or usual name not checked",
+          "verdict": "V",
+          "evidence": "21 CFR part 102 is \"Common or Usual Name for Nonstandardized Foods\" (eCFR title 21 structure, 2026-10-01)",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "\"Allergen declaration (almonds) ✓\" - passed",
+          "grade": "not-real",
+          "reason": "The label has no \"Contains\" line and lists only \"nut pieces\"; 403(w)(1)-(2) require almonds to be named."
+        },
+        {
+          "claim": "\"All the major elements are present and correctly formatted\"; label passes",
+          "grade": "not-real",
+          "reason": "The planted 403(w)(2) defect is present."
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "containsStatement",
+            "labelSays": "no \"Contains\" line; ingredients read \"whole grain rolled oats, nut pieces. Contains 2 percent or less of sugar, salt.\"",
+            "sent": "[\"tree-nuts\"] (with allergenSpecificType \"almonds\" on nut pieces, so the engine drew \"Contains: almonds.\")",
+            "changedPlantedVerdict": true
+          },
+          {
+            "field": "ingredientThreshold",
+            "labelSays": "\"Contains 2 percent or less of sugar, salt\" (101.4(a)(2) grouping)",
+            "sent": "omitted - sugar and salt sent as ordinary list entries",
+            "changedPlantedVerdict": false
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "declined: us-food/ingredient-order",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/dual-column-required",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "Missed the undeclared almonds; reported the allergen declaration as passing",
+            "source": "transcription",
+            "why": "The model sent a \"Contains\" statement the label does not have. Given containsStatement [tree-nuts] and specific type almonds, the engine drew \"Contains: almonds.\" and correctly passed FDA_ALLERGEN_DECLARED_MET on what it was given (layout/usFoodEngine.ts composes the statement from allergenSpecificType)."
+          },
+          {
+            "conclusion": "\"Allergen declaration (almonds) ✓\" (false clearance)",
+            "source": "transcription",
+            "why": "Relays the tool's pass on the invented Contains statement."
+          }
+        ]
+      },
+      "notes": "Explicit false clearance of the planted defect. Not an engine error: the engine was told the label has a Contains statement naming the tree nut."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "21 CFR 101.4(a)(1)",
+          "claim": "descending order of predominance by weight",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(12)(i)",
+          "claim": "second column if 200-300% of reference amount",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(12)(i): \"Products that are packaged and sold individually and that contain at least 200 percent and up to and including 300 percent of the applicable reference amount must provide an additional column within the Nutrition Facts label\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR part 102",
+          "claim": "common or usual name not checked",
+          "verdict": "V",
+          "evidence": "21 CFR part 102 is \"Common or Usual Name for Nonstandardized Foods\" (eCFR title 21 structure, 2026-10-01)",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.12",
+          "claim": "serving size vs reference amount table not checked",
+          "verdict": "V",
+          "evidence": "21 CFR 101.12(b) Table 2: \"Breakfast cereals (hot cereal type), hominy grits | 1 cup prepared; 40 g plain dry cereal; 55 g flavored, sweetened cereal\"; \"Breakfast cereals, ready-to-eat, weighing 43 g or more per cup; biscuit types | 60 g\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "\"your label appears compliant with the checks Packwright performs\"",
+          "grade": "not-real",
+          "reason": "The planted 403(w)(2) defect (almonds never named) is present."
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "containsStatement",
+            "labelSays": "no \"Contains\" line; ingredients read \"whole grain rolled oats, nut pieces. Contains 2 percent or less of sugar, salt.\"",
+            "sent": "[\"tree-nuts\"] (with allergenSpecificType \"almonds\" on nut pieces, so the engine drew \"Contains: almonds.\")",
+            "changedPlantedVerdict": true
+          },
+          {
+            "field": "ingredients[sugar,salt].percentByWeight",
+            "labelSays": "\"Contains 2 percent or less of sugar, salt\" (no figures)",
+            "sent": "2 and 2",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "ingredientThreshold",
+            "labelSays": "\"Contains 2 percent or less of sugar, salt\" (101.4(a)(2) grouping)",
+            "sent": "omitted - sugar and salt sent as ordinary list entries",
+            "changedPlantedVerdict": false
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "declined: us-food/ingredient-order",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/dual-column-required",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "Missed the undeclared almonds; reported the allergen declaration as passing",
+            "source": "transcription",
+            "why": "The model sent a \"Contains\" statement the label does not have. Given containsStatement [tree-nuts] and specific type almonds, the engine drew \"Contains: almonds.\" and correctly passed FDA_ALLERGEN_DECLARED_MET on what it was given (layout/usFoodEngine.ts composes the statement from allergenSpecificType)."
+          },
+          {
+            "conclusion": "\"appears compliant\" (false clearance)",
+            "source": "transcription",
+            "why": "Rests on the tool's clean report, which rests on the invented Contains statement."
+          }
+        ]
+      },
+      "notes": "False clearance hedged (\"with the checks Packwright performs\") but it is the answer's bottom line. Says the dual-column check lacked \"the total weight your package contains\" - the net weight was on the label; minor."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "21 CFR 101.4(a)(1)",
+          "claim": "ingredients in descending order by weight",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(12)(i)",
+          "claim": "dual-column nutrition information",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(12)(i): \"Products that are packaged and sold individually and that contain at least 200 percent and up to and including 300 percent of the applicable reference amount must provide an additional column within the Nutrition Facts label\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.3 and 21 CFR 101.4",
+          "claim": "identity and ingredient names must be common or usual names",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a) statement of identity \"as one of its principal features\" on the PDP; (b)(2) \"The common or usual name of the food\"; (d) \"shall be presented in bold type on the principal display panel, shall be in a size reasonably related to the most prominent printed matter on such panel ... in lines generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.12(b)",
+          "claim": "serving size must match the RACC",
+          "verdict": "V",
+          "evidence": "21 CFR 101.12(b) Table 2: \"Breakfast cereals (hot cereal type), hominy grits | 1 cup prepared; 40 g plain dry cereal; 55 g flavored, sweetened cereal\"; \"Breakfast cereals, ready-to-eat, weighing 43 g or more per cup; biscuit types | 60 g\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "The package contains 320 g (8 x 40 g)",
+          "grade": "not-real",
+          "reason": "The label states NET WT 12 OZ (340 g)."
+        },
+        {
+          "claim": "If the RACC is under 160 g (package >= 200% of it) a second column may be required",
+          "grade": "not-real",
+          "reason": "101.9(b)(12)(i) applies only from 200 up to and including 300 percent, and only to products \"packaged and sold individually\"; a RACC under 160 g can put the package far above 300%."
+        },
+        {
+          "claim": "Ingredient statement must be on the PDP or the information panel",
+          "grade": "real",
+          "reason": "101.2(b)."
+        },
+        {
+          "claim": "\"Good news! Your label passes all the checks Packwright can perform.\"",
+          "grade": "not-real",
+          "reason": "The planted 403(w)(2) defect is present."
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "containsStatement",
+            "labelSays": "no \"Contains\" line; ingredients read \"whole grain rolled oats, nut pieces. Contains 2 percent or less of sugar, salt.\"",
+            "sent": "[\"tree-nuts\"] (with allergenSpecificType \"almonds\" on nut pieces, so the engine drew \"Contains: almonds.\")",
+            "changedPlantedVerdict": true
+          },
+          {
+            "field": "ingredientThreshold",
+            "labelSays": "\"Contains 2 percent or less of sugar, salt\" (101.4(a)(2) grouping)",
+            "sent": "omitted - sugar and salt sent as ordinary list entries",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "nutritionFacts.declaredPercentDv.trans-fat",
+            "labelSays": "Trans Fat 0g (no %DV printed)",
+            "sent": "0",
+            "changedPlantedVerdict": false
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "declined: us-food/ingredient-order",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/dual-column-required",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "Missed the undeclared almonds; reported the allergen declaration as passing",
+            "source": "transcription",
+            "why": "The model sent a \"Contains\" statement the label does not have. Given containsStatement [tree-nuts] and specific type almonds, the engine drew \"Contains: almonds.\" and correctly passed FDA_ALLERGEN_DECLARED_MET on what it was given (layout/usFoodEngine.ts composes the statement from allergenSpecificType)."
+          },
+          {
+            "conclusion": "Package contains 320 g; dual column if RACC < 160 g",
+            "source": "model",
+            "why": "The model's own arithmetic, from servings x serving size, ignoring the printed net weight and the 300% ceiling."
+          }
+        ]
+      },
+      "notes": "Graded a false clearance: the answer opens \"Good news! Your label passes all the checks\" and never mentions the undeclared almonds; it is hedged by a list of unchecked areas."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "FD&C Act §403(w)(1)",
+          "claim": "major food allergens declared by \"Contains\" or in-line parenthetical",
+          "verdict": "V",
+          "evidence": "FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1)): misbranded unless \"the word “Contains”, followed by the name of the food source from which the major food allergen is derived\" follows the ingredient list, or the ingredient is \"followed in parentheses by the name of the food source\" (not required where the ingredient's name already uses it, (w)(1)(B)(i)); 403(w)(2): \"in the case of a tree nut ... the name of the specific type of nut\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(a)(1) and (a)(2)",
+          "claim": "order and \"2 percent or less\" grouping",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(2): the order requirement does \"not apply to ingredients present in amounts of 2 percent or less by weight when a listing of these ingredients is placed at the end of the ingredient statement following an appropriate quantifying statement, e.g., “Contains __ percent or less of ______”\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(12)(i)",
+          "claim": "200-300% of reference amount needs a second column",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(12)(i): \"Products that are packaged and sold individually and that contain at least 200 percent and up to and including 300 percent of the applicable reference amount must provide an additional column within the Nutrition Facts label\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.12(b)",
+          "claim": "confirm RACC for granola",
+          "verdict": "V",
+          "evidence": "21 CFR 101.12(b) Table 2: \"Breakfast cereals (hot cereal type), hominy grits | 1 cup prepared; 40 g plain dry cereal; 55 g flavored, sweetened cereal\"; \"Breakfast cereals, ready-to-eat, weighing 43 g or more per cup; biscuit types | 60 g\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.3(a)",
+          "claim": "statement of identity",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a) statement of identity \"as one of its principal features\" on the PDP; (b)(2) \"The common or usual name of the food\"; (d) \"shall be presented in bold type on the principal display panel, shall be in a size reasonably related to the most prominent printed matter on such panel ... in lines generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.7",
+          "claim": "net quantity declared, type size, bottom 30%, clear space",
+          "verdict": "V",
+          "evidence": "21 CFR 101.7(f): separated \"by at least a space equal to the height of the lettering\"; \"placed on the principal display panel within the bottom 30 percent of the area of the label panel in lines generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "15 U.S.C. 1453(a)(2)",
+          "claim": "oz and g",
+          "verdict": "V",
+          "evidence": "15 U.S.C. 1453(a)(2) (FPLA §4, Pub. L. 89-755): net quantity \"using the most appropriate units of both the customary inch/pound system of measure ... and ... the SI metric system\"; (a)(3)(D) lines \"generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c) and (d)(7)",
+          "claim": "15 nutrients, order, rounding, %DVs",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(c)(8)(ii): \"The declaration of vitamins and minerals as a quantitative amount by weight and percent of the RDI shall include vitamin D, calcium, iron, and potassium in that order\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)",
+          "claim": "nutrition type sizes",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d) sets the Nutrition Facts format: e.g. (d)(3)(ii) serving size \"highlighted in bold or extra bold and be in a type size no smaller than 10 point\"; (d)(9) the footnote; (d)(12) sample labels",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.2(c)",
+          "claim": "minimum type size",
+          "verdict": "V",
+          "evidence": "21 CFR 101.2(c): \"in no case may the letters and/or numbers be less than one-sixteenth inch in height\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.5(a)",
+          "claim": "name and place of business",
+          "verdict": "V",
+          "evidence": "21 CFR 101.5(a) \"shall specify conspicuously the name and place of business of the manufacturer, packer, or distributor\"; (c) \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase ... such as “Manufactured for ______”, “Distributed by ______”\"; (d) \"street address, city, State, and ZIP code\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.5(a)",
+          "claim": "a non-manufacturer needs a qualifying phrase such as \"Distributed by\"",
+          "verdict": "M",
+          "evidence": "21 CFR 101.5(a) requires only \"the name and place of business of the manufacturer, packer, or distributor\"; the qualifying phrase for a firm that did not make the food is 101.5(c): \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase ...\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(8)",
+          "claim": "check how to state 8.5 servings, e.g. \"about 8\"",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(8)(i): \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings ... Rounding should be indicated by the use of the term about\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Fix: \"almonds (tree nuts)\" or \"Contains: Tree Nuts (Almonds)\"",
+          "grade": "real"
+        },
+        {
+          "claim": "Sodium 0 mg and 0 g added sugars valid only if amounts round to zero",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "FDA_ALLERGEN_NOT_DECLARED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/ingredient-order",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/ingredient-threshold",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/dual-column-required",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "101.5(a) cited for the qualifying phrase (M)",
+            "source": "model",
+            "why": "The qualifier is 101.5(c); the tool cited 101.5(a) only for its pass."
+          }
+        ]
+      },
+      "notes": "Caught via FDA_ALLERGEN_NOT_DECLARED rather than the planted FDA_ALLERGEN_SOURCE_NOT_SPECIFIC: the model sent allergenSpecificType \"almonds\", a fact the prompt states (\"The nut pieces are almonds\"), so the engine knew the nut and reported that the label never names it. Same defect, same fix. packageContent 340 and columns single are faithful to the label."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "FD&C Act §403(w)(2)",
+          "claim": "\"A tree nut, fish or Crustacean shellfish is named by its specific type or species\"",
+          "verdict": "V",
+          "evidence": "FD&C Act 403(w)(2) (21 U.S.C. 343(w)(2)): \"in the case of a tree nut, fish, or Crustacean shellfish, the term “name of the food source from which the major food allergen is derived” means the name of the specific type of nut or species of fish or Crustacean shellfish\"",
+          "reused": false
+        },
+        {
+          "ref": "FD&C Act §403(w)(1)",
+          "claim": "check the allergen declaration against FALCPA",
+          "verdict": "V",
+          "evidence": "FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1)): misbranded unless \"the word “Contains”, followed by the name of the food source from which the major food allergen is derived\" follows the ingredient list, or the ingredient is \"followed in parentheses by the name of the food source\" (not required where the ingredient's name already uses it, (w)(1)(B)(i)); 403(w)(2): \"in the case of a tree nut ... the name of the specific type of nut\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.5(c)",
+          "claim": "non-manufacturer must qualify its name",
+          "verdict": "V",
+          "evidence": "21 CFR 101.5(a) \"shall specify conspicuously the name and place of business of the manufacturer, packer, or distributor\"; (c) \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase ... such as “Manufactured for ______”, “Distributed by ______”\"; (d) \"street address, city, State, and ZIP code\"",
+          "reused": false
+        },
+        {
+          "ref": "15 U.S.C. 1453(a)(2)",
+          "claim": "both units",
+          "verdict": "V",
+          "evidence": "15 U.S.C. 1453(a)(2) (FPLA §4, Pub. L. 89-755): net quantity \"using the most appropriate units of both the customary inch/pound system of measure ... and ... the SI metric system\"; (a)(3)(D) lines \"generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.3(a)",
+          "claim": "statement of identity on front panel",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a) statement of identity \"as one of its principal features\" on the PDP; (b)(2) \"The common or usual name of the food\"; (d) \"shall be presented in bold type on the principal display panel, shall be in a size reasonably related to the most prominent printed matter on such panel ... in lines generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.7(i)",
+          "claim": "type size 4.76 mm",
+          "verdict": "V",
+          "evidence": "21 CFR 101.7(i)(3): \"Not less than three-sixteenths inch in height on packages the principal display panel of which has an area of more than 25 but not more than 100 square inches\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.7(f)",
+          "claim": "bottom 30%, clear of other text",
+          "verdict": "V",
+          "evidence": "21 CFR 101.7(f): separated \"by at least a space equal to the height of the lettering\"; \"placed on the principal display panel within the bottom 30 percent of the area of the label panel in lines generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)",
+          "claim": "15 nutrients in order",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(c)(8)(ii): \"The declaration of vitamins and minerals as a quantitative amount by weight and percent of the RDI shall include vitamin D, calcium, iron, and potassium in that order\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)(3)(ii)",
+          "claim": "serving size declared",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d)(3)(ii): \"“Serving size”: A statement of the serving size as specified in paragraph (b)(7) of this section which shall immediately follow the “____servings per container” declaration\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)(7)(ii)",
+          "claim": "11 %DV figures match",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d)(7)(ii): \"A listing of the percent of the DRV ... shall be given in a column aligned under the heading “% Daily Value” ... expressed to the nearest whole percent\" (vitamin/mineral percentages are rounded under (c)(8)(iii); the four printed here match it)",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)",
+          "claim": "type sizes",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d) sets the Nutrition Facts format: e.g. (d)(3)(ii) serving size \"highlighted in bold or extra bold and be in a type size no smaller than 10 point\"; (d)(9) the footnote; (d)(12) sample labels",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.2(c)",
+          "claim": "1.59 mm floor",
+          "verdict": "V",
+          "evidence": "21 CFR 101.2(c): \"in no case may the letters and/or numbers be less than one-sixteenth inch in height\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(a)(1)",
+          "claim": "every ingredient has a name",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(a)(2)",
+          "claim": "\"2 percent or less\" grouping needs percentages to check",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(2): the order requirement does \"not apply to ingredients present in amounts of 2 percent or less by weight when a listing of these ingredients is placed at the end of the ingredient statement following an appropriate quantifying statement, e.g., “Contains __ percent or less of ______”\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(12)(i)",
+          "claim": "second column check",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(12)(i): \"Products that are packaged and sold individually and that contain at least 200 percent and up to and including 300 percent of the applicable reference amount must provide an additional column within the Nutrition Facts label\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.12(b)",
+          "claim": "serving size vs reference amounts not checked",
+          "verdict": "V",
+          "evidence": "21 CFR 101.12(b) Table 2: \"Breakfast cereals (hot cereal type), hominy grits | 1 cup prepared; 40 g plain dry cereal; 55 g flavored, sweetened cereal\"; \"Breakfast cereals, ready-to-eat, weighing 43 g or more per cup; biscuit types | 60 g\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR part 102",
+          "claim": "common or usual name",
+          "verdict": "V",
+          "evidence": "21 CFR part 102 is \"Common or Usual Name for Nonstandardized Foods\" (eCFR title 21 structure, 2026-10-01)",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)",
+          "claim": "servings-per-container rules (8.5 servings)",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(8)(i): \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings ... Rounding should be indicated by the use of the term about\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Change \"nut pieces\" to \"almonds\"",
+          "grade": "real"
+        },
+        {
+          "claim": "Sodium 0 mg with salt as an ingredient needs support",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "ingredients[nut pieces].allergenSpecificType",
+            "labelSays": "prompt: \"The nut pieces are almonds.\"",
+            "sent": "omitted (allergen \"tree-nuts\" only)",
+            "changedPlantedVerdict": false
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "FDA_ALLERGEN_SOURCE_NOT_SPECIFIC",
+              "relayed": "faithful"
+            },
+            {
+              "code": "FDA_RESPONSIBLE_FIRM_UNQUALIFIED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/ingredient-order",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/ingredient-threshold",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/dual-column-required",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Caught with exactly the planted code and citation. The phrase quoted as 403(w)(2) is the tool's citation title (rules/usFood/allergens.ts), not the statute's words; the statute says \"the name of the specific type of nut or species of fish or Crustacean shellfish\" - substance matches, so V, but the quotation marks are misleading. The omitted specific type is the prompt's stated fact; leaving it out happened to reproduce the fixture exactly. isManufacturer false is the schema-required guess, stated as an assumption."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "FD&C Act §403(w)(1)",
+          "claim": "allergen declared in a \"Contains\" statement or parentheses; specific nut must be named",
+          "verdict": "V",
+          "evidence": "FD&C Act 403(w)(1) (21 U.S.C. 343(w)(1)): misbranded unless \"the word “Contains”, followed by the name of the food source from which the major food allergen is derived\" follows the ingredient list, or the ingredient is \"followed in parentheses by the name of the food source\" (not required where the ingredient's name already uses it, (w)(1)(B)(i)); 403(w)(2): \"in the case of a tree nut ... the name of the specific type of nut\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.5(c)",
+          "claim": "non-manufacturer must qualify its name",
+          "verdict": "V",
+          "evidence": "21 CFR 101.5(a) \"shall specify conspicuously the name and place of business of the manufacturer, packer, or distributor\"; (c) \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase ... such as “Manufactured for ______”, “Distributed by ______”\"; (d) \"street address, city, State, and ZIP code\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(a)(1)",
+          "claim": "order needs percentages",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4(a)(2)",
+          "claim": "\"2 percent or less\" grouping",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(2): the order requirement does \"not apply to ingredients present in amounts of 2 percent or less by weight when a listing of these ingredients is placed at the end of the ingredient statement following an appropriate quantifying statement, e.g., “Contains __ percent or less of ______”\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(b)(12)(i)",
+          "claim": "applies to packages holding 200-300% of the reference amount",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(b)(12)(i): \"Products that are packaged and sold individually and that contain at least 200 percent and up to and including 300 percent of the applicable reference amount must provide an additional column within the Nutrition Facts label\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.3(a)",
+          "claim": "statement of identity",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a) statement of identity \"as one of its principal features\" on the PDP; (b)(2) \"The common or usual name of the food\"; (d) \"shall be presented in bold type on the principal display panel, shall be in a size reasonably related to the most prominent printed matter on such panel ... in lines generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.7(a)",
+          "claim": "net quantity declared",
+          "verdict": "V",
+          "evidence": "21 CFR 101.7(a): \"The principal display panel of a food in package form shall bear a declaration of the net quantity of contents\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.7(i)",
+          "claim": "type size",
+          "verdict": "V",
+          "evidence": "21 CFR 101.7(i)(3): \"Not less than three-sixteenths inch in height on packages the principal display panel of which has an area of more than 25 but not more than 100 square inches\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.7(f)",
+          "claim": "bottom 30%, separation",
+          "verdict": "V",
+          "evidence": "21 CFR 101.7(f): separated \"by at least a space equal to the height of the lettering\"; \"placed on the principal display panel within the bottom 30 percent of the area of the label panel in lines generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "15 U.S.C. 1453(a)(2)",
+          "claim": "both units",
+          "verdict": "V",
+          "evidence": "15 U.S.C. 1453(a)(2) (FPLA §4, Pub. L. 89-755): net quantity \"using the most appropriate units of both the customary inch/pound system of measure ... and ... the SI metric system\"; (a)(3)(D) lines \"generally parallel to the base\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(c)",
+          "claim": "15 nutrients in order",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(c)(8)(ii): \"The declaration of vitamins and minerals as a quantitative amount by weight and percent of the RDI shall include vitamin D, calcium, iron, and potassium in that order\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)(3)(ii)",
+          "claim": "serving size declared",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d)(3)(ii): \"“Serving size”: A statement of the serving size as specified in paragraph (b)(7) of this section which shall immediately follow the “____servings per container” declaration\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)(7)(ii)",
+          "claim": "11 %DVs match",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d)(7)(ii): \"A listing of the percent of the DRV ... shall be given in a column aligned under the heading “% Daily Value” ... expressed to the nearest whole percent\" (vitamin/mineral percentages are rounded under (c)(8)(iii); the four printed here match it)",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.9(d)",
+          "claim": "type sizes",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9(d) sets the Nutrition Facts format: e.g. (d)(3)(ii) serving size \"highlighted in bold or extra bold and be in a type size no smaller than 10 point\"; (d)(9) the footnote; (d)(12) sample labels",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.2(c)",
+          "claim": "minimum type size",
+          "verdict": "V",
+          "evidence": "21 CFR 101.2(c): \"in no case may the letters and/or numbers be less than one-sixteenth inch in height\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "Sodium 0 mg generally means under 5 mg per serving; confirm",
+          "grade": "real"
+        },
+        {
+          "claim": "8 x 40 g = 320 g vs 340 g; check \"about\" wording",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "FDA_ALLERGEN_NOT_DECLARED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "FDA_RESPONSIBLE_FIRM_UNQUALIFIED",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/ingredient-order",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/ingredient-threshold",
+              "relayed": "faithful"
+            },
+            {
+              "code": "declined: us-food/dual-column-required",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Caught via FDA_ALLERGEN_NOT_DECLARED (specific type sent from the prompt's stated fact; see Sonnet run 1 note). isManufacturer false is the schema-required guess, stated by the answer."
+    }
+  ],
+  "sourcesFetched": [
+    "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-21?part=101&section=101.4 — ingredient order, (a)(2) grouping, (b) specific names, (c), (g)",
+    "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-21?part=101&section=101.9 — (b)(2), (b)(8), (b)(12)(i), (c)(4), (c)(6)(ii)-(iii), (c)(8)(ii)-(iv) RDI table (potassium 4,700 mg), (c)(9) DRV table, (d)(3)(ii), (d)(7)(ii), (d)(8) example, (d)(9)-(10), (f), (g), (h)",
+    "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-21?part=101&section=101.12 — Table 2 breakfast-cereal RACCs",
+    "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-21?part=101&section=101.2 / 101.3 / 101.5 / 101.7 / 101.17 / 101.36 / 101.60 / 101.91 / 101.100 — the sections cited",
+    "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-21?part=101&section=101.105 — HTTP 404 (section not in current CFR)",
+    "https://www.ecfr.gov/api/versioner/v1/structure/2026-10-01/title-21.json — part 101 section list (subpart G: 101.100, 101.108 only); parts 102, 104, 137 exist",
+    "https://www.govinfo.gov/content/pkg/CFR-2016-title21-vol2/xml/CFR-2016-title21-vol2-sec101-105.xml — 101.105 \"Declaration of net quantity of contents when exempt\" in the 2016-04-01 edition; the same URL for 2017-2020 returns govinfo \"Page Not Found\" (pattern checked against 2017 101.100, which resolves)",
+    "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-21?part=104&section=104.20 — fortification policy wording (\"urged\", \"may appropriately be added\")",
+    "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-7?part=66 — 66.1, 66.9 detectability",
+    "https://www.govinfo.gov/content/pkg/USCODE-2023-title21/html/USCODE-2023-title21-chap9-subchapIV-sec343.htm — 403(a), (i), (q), (w)(1)-(2)",
+    "https://www.govinfo.gov/content/pkg/USCODE-2023-title21/html/USCODE-2023-title21-chap9-subchapII-sec321.htm — 201(qq) major food allergens",
+    "https://www.govinfo.gov/content/pkg/USCODE-2023-title21/html/USCODE-2023-title21-chap9-subchapI-sec301.htm — short-title notes: FALCPA = Pub. L. 108-282 title II; FASTER Act = Pub. L. 117-11",
+    "https://www.govinfo.gov/content/pkg/USCODE-2023-title15/html/USCODE-2023-title15-chap39-sec1453.htm — FPLA §4 (Pub. L. 89-755), 1453(a)(2), (a)(3)(D)"
+  ]
+}
