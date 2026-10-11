@@ -21,12 +21,65 @@ export interface Recorded {
    * the README says what stands in for it there.
    */
   promptSha256?: string
+  /**
+   * Which half of the evaluation this answers. Absent on every record of the
+   * "without" experiment of 2026-10-09, which had only the one half.
+   */
+  arm?: Arm
+  /** The final message of the conversation; the whole of it, for the "without" half. */
   response: Anthropic.Message
+  /**
+   * Tokens across every request of the conversation. The "with" half makes one
+   * request per tool round, and `response.usage` counts only the last; absent
+   * where there was one request and `response.usage` is the whole of it.
+   */
+  usage?: { input_tokens: number; output_tokens: number }
+  /** The "with" half's conversation: every message after the prompt, as sent and received. */
+  transcript?: Anthropic.MessageParam[]
+  /** The "with" half's tool calls, in order. */
+  toolCalls?: ToolCallRecord[]
+  /** Set when the model was still calling tools at the round limit, so the answer is as far as it got. */
+  turnLimitReached?: true
+}
+
+/**
+ * The total of a `lost-spend.jsonl`: what conversations that failed partway cost.
+ * A line cut off mid-append is skipped, as `parseRecorded` skips one — under-
+ * counting one failure by its last write is better than refusing to start.
+ */
+export function lostSpendIn(text: string): number {
+  return text
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .reduce((sum, line) => {
+      try {
+        return sum + (JSON.parse(line) as { costUsd: number }).costUsd
+      } catch {
+        return sum
+      }
+    }, 0)
+}
+
+/** The two halves of the stage 19 evaluation. */
+export type Arm = 'without' | 'with'
+
+export interface ToolCallRecord {
+  name: string
+  input: unknown
+  isError: boolean
+  /** The tool's answer as the model received it. */
+  result: string
 }
 
 export const sha256 = (text: string) => createHash('sha256').update(text).digest('hex')
 
-export const keyOf = (caseId: string, model: string, run: number) => `${caseId}|${model}|${run}`
+/**
+ * A record's identity, for resuming. The "without" half keeps the key the
+ * 2026-10-09 records were written under, so an old record and a new one of that
+ * half are found the same way.
+ */
+export const keyOf = (caseId: string, model: string, run: number, arm: Arm = 'without') =>
+  arm === 'without' ? `${caseId}|${model}|${run}` : `${caseId}|${model}|${run}|with`
 
 /**
  * Parses the file. A last line that does not parse is the trace of a process
@@ -68,8 +121,10 @@ export function parseRecorded(text: string): {
 export function finishedKeys(records: readonly Recorded[]): Set<string> {
   return new Set(
     records
-      .filter((record) => record.response.stop_reason === 'end_turn')
-      .map((record) => keyOf(record.caseId, record.model, record.run)),
+      // A conversation stopped at the round limit is finished too: calling again
+      // would pay for the same rounds and very likely stop in the same place.
+      .filter((record) => record.response.stop_reason === 'end_turn' || record.turnLimitReached)
+      .map((record) => keyOf(record.caseId, record.model, record.run, record.arm)),
   )
 }
 

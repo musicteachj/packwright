@@ -8,6 +8,20 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **The with/without evaluation of Packwright's MCP tools, run and recorded.** `npm run experiment:mcp` puts the
+  twelve labels of the 2026-10-09 experiment to the same two models with the same question, in two halves: without
+  tools, exactly as before, and with the four tools as an MCP client hands them — `tools/list` and the server's
+  instructions — executed against the in-process `/mcp` handler. Both halves were rerun rather than the old one
+  reused, because the engine now prints "Includes 0g Added Sugars" and four prompts changed with it. The 144
+  conversations cost $5.28 under an $8 cap and sit in `docs/experiments/2026-10-10-mcp-with-and-without/` beside the
+  first record, which the old runner still refuses to overwrite; every tool call is kept with its arguments and
+  answer, and the rubric for grading them was written before any was read. The runner shares the first one's case
+  descriptions, recording and resume, and `/code-review medium` found two gaps in it: a conversation failing after
+  some paid rounds was not charged against the cap — now it is, and the cost is kept in `lost-spend.jsonl` so a
+  resume still counts it — and `cases.md` claimed no prompt carried a system prompt or tools. Both fixed; neither touched this run, which had no failures, and the prompts it records are unchanged.
+
 ### Fixed
 
 - **One GHS statement code could hold the server for two minutes.** `canonicalStatementCode`'s rules were

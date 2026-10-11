@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   answeringChangedPrompts,
   finishedKeys,
+  keyOf,
+  lostSpendIn,
   parseRecorded,
   promptsInCasesMd,
   promptsThatChanged,
@@ -48,6 +50,23 @@ describe('finishedKeys', () => {
   it('counts only a finished answer as done, so a truncated one is called again', () => {
     const keys = finishedKeys([record({ run: 1 }), record({ run: 2, stop_reason: 'max_tokens' })])
     expect([...keys]).toEqual(['08-fda-ingredient-order|claude-haiku-4-5|1'])
+  })
+
+  it('keeps the two halves apart, and the without half on the key it was first recorded under', () => {
+    const keys = finishedKeys([record({ run: 1 }), record({ run: 1, arm: 'with' })])
+    expect([...keys].sort()).toEqual([
+      '08-fda-ingredient-order|claude-haiku-4-5|1',
+      '08-fda-ingredient-order|claude-haiku-4-5|1|with',
+    ])
+    expect(keyOf('08', 'm', 1, 'without')).toBe(keyOf('08', 'm', 1))
+  })
+
+  it('counts a conversation stopped at the round limit as done, so it is not paid for again', () => {
+    const keys = finishedKeys([
+      record({ run: 1, arm: 'with', stop_reason: 'tool_use', turnLimitReached: true }),
+      record({ run: 2, arm: 'with', stop_reason: 'tool_use' }),
+    ])
+    expect([...keys]).toEqual(['08-fda-ingredient-order|claude-haiku-4-5|1|with'])
   })
 })
 
@@ -105,5 +124,15 @@ describe('promptsInCasesMd and promptsThatChanged', () => {
       ['C1-b', 'second prompt'],
     ])
     expect(promptsThatChanged(recorded, now, new Set(['C1-b']))).toEqual([])
+  })
+})
+
+describe('lostSpendIn', () => {
+  it('totals what failed conversations cost, so a resume still counts it against the cap', () => {
+    const line = (costUsd: number) => JSON.stringify({ caseId: '08', costUsd })
+    expect(lostSpendIn(`${line(0.25)}\n${line(0.5)}\n`)).toBe(0.75)
+    expect(lostSpendIn('')).toBe(0)
+    // A line cut off mid-append is skipped rather than stopping the runner.
+    expect(lostSpendIn(`${line(0.25)}\n{"caseId":"0`)).toBe(0.25)
   })
 })
