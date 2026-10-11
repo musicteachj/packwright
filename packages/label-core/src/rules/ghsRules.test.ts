@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { layOutGhsLabel } from '../layout/ghsEngine'
 import { GHS_CONFORMANT, GHS_FIXTURES, HAZARDS } from './fixtures/ghs'
 import { GHS_PICTOGRAM_PRECEDENCE_OPTIONAL, GHS_PICTOGRAM_SYMBOL_MISSING } from './index'
+import { ghsPictogramSetRule } from './ghs/pictogramSet'
 import { GHS_RULES, declinedChecks, runRules } from './registry'
 import { codesOf } from './types'
 import type { GhsLabelData } from '../templates/ghs'
@@ -179,6 +180,109 @@ describe('an exclamation mark needed for a hazard the precedence clause does not
   it('is reported missing when left off', () => {
     const missing = withPictograms(['GHS05']).filter((f) => f.code === 'GHS_PICTOGRAM_MISSING')
     expect(missing.map((f) => f.message).join(' ')).toContain('GHS07')
+  })
+})
+
+describe('the pictogram set passes only on a set that is all required', () => {
+  // The pass is withheld today because no pictogram artwork is drawn, which would
+  // hide this defect until the day some is. So the artwork is taken as drawn here —
+  // the pictograms' omissions removed — and the rule is asked directly.
+  const judgeAsIfDrawn = (pictograms: GhsLabelData['pictograms']) => {
+    const data: GhsLabelData = {
+      regime: 'eu-clp',
+      productIdentifier: 'X',
+      capacityL: 5,
+      hazards: [HAZARDS.seriousEyeDamage, HAZARDS.skinIrritation],
+      ...(pictograms === undefined ? {} : { pictograms }),
+    }
+    const stock = GHS_CONFORMANT.stock
+    const layout = layOutGhsLabel({ data, stock })
+    const pictogramIds = new Set(layout.pictograms.map((p) => p.elementId))
+    const drawn = {
+      ...layout,
+      omissions: layout.omissions.filter((o) => !pictogramIds.has(o.elementId)),
+    }
+    return ghsPictogramSetRule.check({ labelType: 'ghs-chemical', data, stock, layout: drawn })
+  }
+  const passes = (findings: ReturnType<typeof judgeAsIfDrawn>) =>
+    findings.filter((f) => f.code === 'GHS_PICTOGRAM_SET_MATCHES')
+
+  it('passes the set Article 26 leaves, so the condition is reachable', () => {
+    expect(passes(judgeAsIfDrawn(['GHS05']))).toHaveLength(1)
+  })
+
+  it('does not pass a set carrying a pictogram it leaves to the precedence rule', () => {
+    // GHS07 beside GHS05 for irritation: reported by ghs/pictogram-precedence, so
+    // nothing is recorded here — and "nothing recorded" used to mean "pass".
+    const findings = judgeAsIfDrawn(['GHS05', 'GHS07'])
+    expect(findings).toEqual([])
+    expect(passes(findings)).toEqual([])
+  })
+})
+
+describe('a pictogram two clauses remove names them both', () => {
+  it('gives 26(1)(c) and (d) when it is there for irritation and sensitisation', () => {
+    // GHS05 for the eye damage, GHS08 for the respiratory sensitisation: (c) bars the
+    // irritation use of GHS07 and (d) the sensitisation use. Neither alone is the
+    // reason, and GHS08 is not drawn, so the precedence rule is silent.
+    const findings = runRules({
+      labelType: 'ghs-chemical',
+      data: {
+        regime: 'eu-clp',
+        productIdentifier: 'X',
+        capacityL: 5,
+        hazards: [
+          HAZARDS.seriousEyeDamage,
+          HAZARDS.skinIrritation,
+          HAZARDS.skinSensitisation,
+          HAZARDS.respiratorySensitisation,
+        ],
+        pictograms: ['GHS05', 'GHS07'],
+      },
+      stock: GHS_CONFORMANT.stock,
+      layout: layOutGhsLabel({
+        data: {
+          regime: 'eu-clp',
+          productIdentifier: 'X',
+          capacityL: 5,
+          hazards: [
+            HAZARDS.seriousEyeDamage,
+            HAZARDS.skinIrritation,
+            HAZARDS.skinSensitisation,
+            HAZARDS.respiratorySensitisation,
+          ],
+          pictograms: ['GHS05', 'GHS07'],
+        },
+        stock: GHS_CONFORMANT.stock,
+      }),
+    })
+    const [finding, ...rest] = findings.filter((f) => f.code === 'GHS_PICTOGRAM_NOT_REQUIRED')
+    expect(rest).toEqual([])
+    expect(finding!.message).toContain('Article 26(1)(c) and Article 26(1)(d) take it off')
+  })
+})
+
+describe('one precedence finding per pictogram', () => {
+  it('names both OSHA clauses that bar one exclamation mark, in a single violation', () => {
+    // C.2.1.2 bars its acute-toxicity use beside the skull and crossbones, C.2.1.3 its
+    // irritation use beside corrosion. One pictogram, one defect, one finding.
+    const data: GhsLabelData = {
+      regime: 'us-osha',
+      productIdentifier: 'X',
+      capacityL: 5,
+      hazards: [
+        HAZARDS.acuteToxicity,
+        '3.1/acute-toxicity-oral-dermal-inhalation-4',
+        HAZARDS.seriousEyeDamage,
+        HAZARDS.skinIrritation,
+      ],
+      pictograms: ['GHS05', 'GHS06', 'GHS07'],
+    }
+    const violations = findingsFor(data, GHS_CONFORMANT.stock).filter(
+      (f) => f.code === 'GHS_PICTOGRAM_PRECEDENCE_VIOLATED',
+    )
+    expect(violations).toHaveLength(1)
+    expect(violations[0]!.message).toContain('(C.2.1.2, C.2.1.3)')
   })
 })
 

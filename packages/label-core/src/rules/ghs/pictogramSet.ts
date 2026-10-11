@@ -192,20 +192,26 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
     for (const pictogram of drawn) {
       if (required.has(pictogram.code)) continue
       const symbol = GHS_PICTOGRAM_SYMBOLS[pictogram.code]
-      const removal = removedByPrecedence.find((suppression) => suppression.code === pictogram.code)
-      if (removal !== undefined && reportedByPrecedence.has(pictogram.code)) continue
+      // Every clause that bars a use of it — two can share the work, (c) the irritation
+      // and (d) the sensitisation — so the reason given is the whole of it.
+      const removals = removedByPrecedence.filter(
+        (suppression) => suppression.code === pictogram.code,
+      )
+      if (removals.length > 0 && reportedByPrecedence.has(pictogram.code)) continue
       findings.push(
         finding(ghsPictogramSetRule, {
           code: GHS_PICTOGRAM_NOT_REQUIRED,
           severity: 'violation',
           message:
-            removal === undefined
+            removals.length === 0
               ? `${pictogram.code} (${symbol}) is on the label, but no hazard class declared for ` +
                 'this product requires it.'
-              : `${pictogram.code} (${symbol}) is on the label, but ${removal.clause} takes it off: ` +
-                `${removal.reason}`,
+              : `${pictogram.code} (${symbol}) is on the label, but ` +
+                `${removals.map((removal) => removal.clause).join(' and ')} ` +
+                `${removals.length === 1 ? 'takes' : 'take'} it off: ` +
+                removals.map((removal) => removal.reason).join(' '),
           elementId: pictogram.elementId,
-          ...(removal === undefined ? {} : { citation: PRECEDENCE_CITATION }),
+          ...(removals.length === 0 ? {} : { citation: PRECEDENCE_CITATION }),
         }),
       )
     }
@@ -238,7 +244,14 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
       wasFullyDrawn(layout, pictogram.elementId),
     )
 
-    if (findings.length === 0 && everyMemberPrinted) {
+    // **Every drawn pictogram in the required set, not merely nothing reported.** A
+    // pictogram left to `ghs/pictogram-precedence` above records no finding here, so
+    // "no findings" would pass a label carrying a pictogram it does not need, saying
+    // every one is required (`/code-review high` on #84). Hidden while no glyph is
+    // drawn; a false pass the day one is.
+    const everyDrawnRequired = drawn.every((pictogram) => required.has(pictogram.code))
+
+    if (findings.length === 0 && everyDrawnRequired && everyMemberPrinted) {
       findings.push(
         // Whether the pictograms the label carries are the ones Annex V requires: the artwork.
         passedOnArtwork(

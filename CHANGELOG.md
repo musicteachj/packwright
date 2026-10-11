@@ -53,9 +53,10 @@ into a version only when there is a reason to.
   label is 74.00 mm × 105.00 mm", and a 50 × 70 mm label too small for its 5 L package passed with it. The check
   request now requires the printed width and height, refusing without them with a sentence telling an assistant to
   ask rather than guess; the margin, which people rarely know, still defaults per label type, and the answer's new
-  `judgedOn` says the size used and whether the margin was assumed. The export routes keep their defaults. Tests hold
-  the refusal, the stated size being the one judged — the 50 × 70 mm label now fails as it should — and the assumed
-  margin being said.
+  `stockUsed` says the size used and whether the margin was assumed — named for what was used, since a refused label
+  carries it too. The export routes keep their defaults, and the check request's stock is now derived from theirs, so
+  a bound added there reaches it. Tests hold the refusal, the stated size being the one judged — the 50 × 70 mm label
+  now fails as it should — and the assumed margin being said.
 - **`GHS_PICTOGRAM_NOT_REQUIRED` gives the true reason when Article 26 is it.** `ghs/pictogram-set` compares the
   drawn pictograms with the set after precedence, and said of any pictogram outside it that "no hazard class declared
   for this product requires it", under Annex V — which, for an exclamation mark beside corrosion, *assigns* it; Article
@@ -63,8 +64,13 @@ into a version only when there is a reason to.
   the 2026-07-01 consolidation. Where the displacing pictogram is drawn too, `ghs/pictogram-precedence` already reports
   the same pictogram under the clause, so this rule no longer repeats it; where it is not, that rule is silent — it
   reads "applies" from the artwork — and this finding is the only one saying the pictogram must go, so it is reworded
-  rather than dropped. A new fixture pins that case, and the three tests around it fail if the finding is dropped,
-  duplicated or cited to Annex V again. Both found by the MCP evaluation.
+  rather than dropped; where two clauses remove it between them, it names both. A new fixture pins that case, and the
+  tests around it fail if the finding is dropped, duplicated or cited to Annex V again. `/code-review high` on #84 then
+  found that leaving the pictogram to the precedence rule made "no findings" pass the set — "Every pictogram on the
+  label is required" — beside a pictogram it did not need: hidden while no glyph is drawn, a false pass the day one
+  is. The pass now requires every drawn pictogram to be in the required set, and a test that takes the artwork as
+  drawn holds it. `ghs/pictogram-precedence` also reports one finding per pictogram, naming every clause, where two
+  clauses barring one exclamation mark had counted one defect twice. Found by the MCP evaluation.
 - **One GHS statement code could hold the server for two minutes.** `canonicalStatementCode`'s rules were
   written `\s*\+\s*` and the like, which on a long run of whitespace with no `+` after it scan the rest of the run
   from every position: quadratic. A code padded with 250,000 spaces, inside the 256 kB body limit, took 122

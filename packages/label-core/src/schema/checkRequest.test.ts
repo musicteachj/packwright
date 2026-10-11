@@ -225,7 +225,14 @@ describe('LabelCheckRequest', () => {
     })
     expect(checked.success).toBe(false)
     expect(checked.error?.issues.map((issue) => issue.path.join('.'))).toEqual(['stock'])
-    expect(checked.error?.issues[0]?.message).toContain('`stock` is required')
+    expect(checked.error?.issues[0]?.message).toContain('`stock` must be the printed label’s size')
+    // Sent in the wrong shape, it is told the shape, not merely told to ask.
+    const asText = LabelCheckRequest.safeParse({
+      labelType: 'ghs-chemical',
+      data: { regime: 'eu-clp', productIdentifier: 'X', capacityL: 5 },
+      stock: '50 x 70 mm',
+    })
+    expect(asText.error?.issues[0]?.message).toContain('an object with widthMm and heightMm')
     // Width and height are the size; a stock missing either is not one.
     expect(
       LabelCheckRequest.safeParse({

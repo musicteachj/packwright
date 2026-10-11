@@ -42,6 +42,7 @@ import {
 import {
   LabelCheckRequest,
   LabelCheckRequestOutline,
+  checkedStock,
   toJudgeRequest,
 } from '@packwright/label-core/schema'
 import {
@@ -151,22 +152,26 @@ const FindingOutput = z.object({
 })
 
 /**
- * The size the label was judged at, said back. A wrong size is the one input
+ * The stock the label was laid out on, said back. A wrong size is the one input
  * error that moves every size and placement finding, so it is shown where a user
  * reading the answer can see it — and an assumed margin says it was assumed.
+ * Named for what was used rather than "judged on", because a refused label
+ * carries it too, beside a notice that it was not judged.
  */
-const JudgedOn = z.object({
-  stock: z.object({ widthMm: z.number(), heightMm: z.number(), marginMm: z.number() }),
+const StockUsed = z.object({
+  widthMm: z.number(),
+  heightMm: z.number(),
+  marginMm: z.number(),
   marginAssumed: z.boolean(),
 })
 
-export type JudgedOn = z.infer<typeof JudgedOn>
+export type StockUsed = z.infer<typeof StockUsed>
 
 const CheckLabelOutput = z.discriminatedUnion('outcome', [
   z.object({
     outcome: z.literal('judged'),
     labelType: z.enum(LABEL_TYPES),
-    judgedOn: JudgedOn,
+    stockUsed: StockUsed,
     summary: z.object({
       blocking: z.boolean(),
       failures: z.number(),
@@ -192,7 +197,7 @@ const CheckLabelOutput = z.discriminatedUnion('outcome', [
   z.object({
     outcome: z.literal('refused'),
     labelType: z.enum(LABEL_TYPES),
-    judgedOn: JudgedOn,
+    stockUsed: StockUsed,
     reason: z.string(),
     notice: z.string(),
     whatIsNotChecked: z.string(),
@@ -288,13 +293,13 @@ const findingOf = (finding: Finding): z.infer<typeof FindingOutput> => ({
 export function checkLabelOutput(
   labelType: (typeof LABEL_TYPES)[number],
   judgement: LabelJudgement,
-  judgedOn: JudgedOn,
+  stockUsed: StockUsed,
 ): CheckLabelOutput {
   if (judgement.outcome === 'refused') {
     return {
       outcome: 'refused',
       labelType,
-      judgedOn,
+      stockUsed,
       reason: judgement.reason,
       notice: NOT_JUDGED,
       whatIsNotChecked: WHAT_IS_NOT_CHECKED_URL,
@@ -303,7 +308,7 @@ export function checkLabelOutput(
   return {
     outcome: 'judged',
     labelType,
-    judgedOn,
+    stockUsed,
     summary: {
       blocking: judgement.blocking,
       failures: judgement.failures.length,
@@ -428,17 +433,17 @@ export function createPackwrightMcpServer(): McpServer {
         '`labelType` selects the shape of `data`. `stock` — the printed label’s width and height ' +
         'in millimetres — is required: if the user has not said how big the label is, ask them ' +
         'rather than guess, because every size and placement finding is measured against it. ' +
-        'The answer’s `judgedOn` says the size used, and whether the margin was assumed.',
+        'The answer’s `stockUsed` says the size used, and whether the margin was assumed.',
       inputSchema: CheckLabelInput,
       outputSchema: CheckLabelOutput,
       annotations: READ_ONLY,
     },
     async (request) => {
-      const judging = toJudgeRequest(request, bwip)
+      const { stock, marginAssumed } = checkedStock(request)
       return answer(
-        checkLabelOutput(request.labelType, judgeLabel(judging), {
-          stock: { ...judging.stock },
-          marginAssumed: request.stock.marginMm === undefined,
+        checkLabelOutput(request.labelType, judgeLabel(toJudgeRequest(request, bwip)), {
+          ...stock,
+          marginAssumed,
         }),
       )
     },

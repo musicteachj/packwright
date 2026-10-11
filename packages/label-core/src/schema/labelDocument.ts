@@ -808,20 +808,20 @@ const STOCK_BESIDE_DATA = z
  *
  * **The margin is optional**, because a person knows their label's size and
  * rarely its unprinted border. Absent, the label type's default margin is used,
- * and the answer says so (`toJudgeRequest`, and `judgedOn` in the MCP server's
+ * and the answer says so (`checkedStock`, and `stockUsed` in the MCP server's
  * answer), so the assumption is stated rather than hidden.
  */
 export const CheckStockSchema = z.object(
+  // `StockSchema`'s own fields, the margin made optional — derived rather than
+  // restated, so a bound added there reaches the check request too.
+  { ...StockSchema.shape, marginMm: StockSchema.shape.marginMm.optional() },
   {
-    widthMm: z.number().positive(),
-    heightMm: z.number().positive(),
-    marginMm: z.number().min(0).optional(),
-  },
-  {
+    // Said for a stock sent in the wrong shape as well as for none at all, so an
+    // assistant that sent "50 x 70 mm" is told the shape rather than told to ask.
     error:
-      '`stock` is required: the label’s printed width and height in millimetres. A size ' +
-      'assumed for it would make every size and placement finding about a different label, so ' +
-      'ask for it rather than guess.',
+      '`stock` must be the printed label’s size: an object with widthMm and heightMm in ' +
+      'millimetres, and marginMm if known. If the user has not said how big the label is, ' +
+      'ask rather than guess — every size and placement finding is measured against it.',
   },
 )
 
@@ -1004,15 +1004,29 @@ export function toUsFoodLabelData(
   }
 }
 
-/** The stated size, with the default stock's margin where the request gives none. */
-const withMargin = (
-  stock: z.output<typeof CheckStockSchema>,
-  fallback: LabelStock,
-): LabelStock => ({
-  widthMm: stock.widthMm,
-  heightMm: stock.heightMm,
-  marginMm: stock.marginMm ?? fallback.marginMm,
-})
+const DEFAULT_STOCKS: Record<LabelCheckRequest['labelType'], LabelStock> = {
+  'gs1-retail': DEFAULT_UPC_A_STOCK,
+  'ghs-chemical': DEFAULT_GHS_STOCK,
+  'us-food': DEFAULT_US_FOOD_STOCK,
+}
+
+/**
+ * The stock a check is judged on, and whether its margin was assumed.
+ *
+ * The one place that says so: `toJudgeRequest` draws on it, and a caller telling
+ * the user what was judged reads `marginAssumed` here rather than working it out
+ * again from the request.
+ */
+export function checkedStock(request: LabelCheckRequest): {
+  stock: LabelStock
+  marginAssumed: boolean
+} {
+  const { widthMm, heightMm, marginMm } = request.stock
+  return {
+    stock: { widthMm, heightMm, marginMm: marginMm ?? DEFAULT_STOCKS[request.labelType].marginMm },
+    marginAssumed: marginMm === undefined,
+  }
+}
 
 /**
  * A parsed check request as the judge's input, on the stock the request states,
@@ -1027,20 +1041,20 @@ export function toJudgeRequest(request: LabelCheckRequest, barcode: BarcodeEncod
       return {
         labelType: 'gs1-retail',
         data: toUpcALabelData(request.data),
-        stock: withMargin(request.stock, DEFAULT_UPC_A_STOCK),
+        stock: checkedStock(request).stock,
         barcode,
       }
     case 'ghs-chemical':
       return {
         labelType: 'ghs-chemical',
         data: toGhsLabelData(request.data),
-        stock: withMargin(request.stock, DEFAULT_GHS_STOCK),
+        stock: checkedStock(request).stock,
       }
     case 'us-food':
       return {
         labelType: 'us-food',
         data: toUsFoodLabelData(request.data),
-        stock: withMargin(request.stock, DEFAULT_US_FOOD_STOCK),
+        stock: checkedStock(request).stock,
       }
   }
 }

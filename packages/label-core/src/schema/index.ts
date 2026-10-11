@@ -21,6 +21,7 @@ export {
   UpcARequest,
   UsFoodRequest,
   UsFoodRequestBase,
+  checkedStock,
   coversOnlyListedIngredients,
   toArtwork,
   toColumns,

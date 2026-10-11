@@ -87,6 +87,13 @@ engine lays its text out at a default and records what overruns as not printed. 
 were reported missing from a label whose prompt says every line is printed, and every "with" answer told the user
 so. The same question as the pictograms: a fact the input cannot carry is being judged from Packwright's drawing.
 
+**An assumed margin can refuse a small label in words that blame the user.** `check_label` needs a size but not
+a margin, and uses the label type's default margin where none is given — saying so in `stockUsed.marginAssumed`.
+On a very small label that default can leave no panel, and the engine's refusal then reads "A 6 mm margin leaves
+no panel on 12 × 40 mm stock", about a margin the user never gave. A refusal rather than a false verdict, and the
+answer says the margin was assumed; but a better default for an unstated margin — zero, or one scaled to the label
+— is a design choice worth making on purpose. Found by `/code-review high` on #84.
+
 **Smaller, from the same grading:** the %DV pass (`FDA_NUTRITION_PERCENT_DV_MET`) cites only 101.9(d)(7)(ii), where
 the four vitamin and mineral percentages are rounded under (c)(8)(iii) — the engine's own source comment names both;
 the GS1 bar-height, quiet-zone and magnification rules cite figures of GenSpecs 25.0 that are numbered differently in

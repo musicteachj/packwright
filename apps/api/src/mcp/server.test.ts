@@ -142,7 +142,7 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
         data: US_FOOD_CONFORMANT.data,
         stock: US_FOOD_CONFORMANT.stock,
       }),
-      { stock: US_FOOD_CONFORMANT.stock, marginAssumed: false },
+      { ...US_FOOD_CONFORMANT.stock, marginAssumed: false },
     )
     expect(result.isError).toBeFalsy()
     expect(result.structuredContent).toEqual(expected)
@@ -221,7 +221,7 @@ describe('check_label on every document the judge is tested against', () => {
       expect(result.isError).toBeFalsy()
       expect(result.structuredContent).toEqual(
         checkLabelOutput(parsed.data.labelType, judgeAsTheEditorDoes(document), {
-          stock: document.stock,
+          ...document.stock,
           marginAssumed: false,
         }),
       )
@@ -293,7 +293,7 @@ describe('check_label, refusing', () => {
       arguments: { labelType: 'ghs-chemical', data: GHS_CONFORMANT.data },
     })
     expect(result.isError).toBe(true)
-    expect(textOf(result)).toContain('`stock` is required')
+    expect(textOf(result)).toContain('`stock` must be the printed label’s size')
   })
 
   it('says it assumed the margin when it was given only the size', async () => {
@@ -307,8 +307,10 @@ describe('check_label, refusing', () => {
         stock: { widthMm: 50, heightMm: 70 },
       },
     })
-    expect((result.structuredContent as { judgedOn: unknown }).judgedOn).toEqual({
-      stock: { widthMm: 50, heightMm: 70, marginMm: DEFAULT_GHS_STOCK.marginMm },
+    expect((result.structuredContent as { stockUsed: unknown }).stockUsed).toEqual({
+      widthMm: 50,
+      heightMm: 70,
+      marginMm: DEFAULT_GHS_STOCK.marginMm,
       marginAssumed: true,
     })
     // And it judged the size it was given: 50 × 70 mm is below the CLP minimum
