@@ -23,6 +23,7 @@ import {
   GHS_REGIMES,
   LABEL_TYPES,
   SEVERITY_ORDER,
+  assertMarginLeavesPanel,
   GS1_KEY_LENGTHS,
   calculateCheckDigit,
   canonicalStatementCode,
@@ -84,6 +85,34 @@ export const NOT_A_STATEMENT_OF_COMPLIANCE =
 export const NOT_JUDGED =
   'This label was not judged: the engine declined to draw it, for the reason given, so no rule ran ' +
   'on it. Nothing here is a finding about the label, for or against.'
+
+/**
+ * Said after the engine's refusal when the margin it refused was one this server
+ * assumed.
+ *
+ * The engine's sentence — "A 6 mm margin leaves no panel on 12 x 40 mm stock" — is
+ * about a margin; a user who never gave one reads it as blaming theirs. The default
+ * is kept on purpose (`CheckStockSchema`), so a small label can still be refused on
+ * it, and this says whose figure it was and what to send instead. Found by
+ * `/code-review high` on #84; decided 2026-10-11.
+ */
+export function assumedMarginNotice(marginMm: number): string {
+  return (
+    `No margin was given, so this check assumed the label type’s default of ${marginMm} mm, ` +
+    'and that is the margin refused here. Ask for the label’s real margin and check again; a ' +
+    'label printed to its edges has a margin of 0.'
+  )
+}
+
+/** Whether the margin alone is why the engine could not draw the label. */
+function marginLeavesNoPanel(stock: StockUsed): boolean {
+  try {
+    assertMarginLeavesPanel(stock)
+    return false
+  } catch {
+    return true
+  }
+}
 
 /**
  * Generous for any real label, and far below what would cost this server anything.
@@ -300,7 +329,13 @@ export function checkLabelOutput(
       outcome: 'refused',
       labelType,
       stockUsed,
-      reason: judgement.reason,
+      // Only where the assumed margin is the cause: a UPC-A refused for its GTIN on an
+      // assumed margin owes nothing to the margin, and saying so would send the user
+      // looking for the wrong figure.
+      reason:
+        stockUsed.marginAssumed && marginLeavesNoPanel(stockUsed)
+          ? `${judgement.reason} ${assumedMarginNotice(stockUsed.marginMm)}`
+          : judgement.reason,
       notice: NOT_JUDGED,
       whatIsNotChecked: WHAT_IS_NOT_CHECKED_URL,
     }
@@ -433,7 +468,11 @@ export function createPackwrightMcpServer(): McpServer {
         '`labelType` selects the shape of `data`. `stock` — the printed label’s width and height ' +
         'in millimetres — is required: if the user has not said how big the label is, ask them ' +
         'rather than guess, because every size and placement finding is measured against it. ' +
-        'The answer’s `stockUsed` says the size used, and whether the margin was assumed.',
+        'The answer’s `stockUsed` says the size used, and whether the margin was assumed. ' +
+        'Packwright draws no pictogram artwork and a GHS label’s input carries no type sizes, so ' +
+        'on a GHS label whether each pictogram carries its symbol, and whether the text fits at ' +
+        'the label’s own type sizes, are not checked: the answer says so under `declined` and ' +
+        '`uncheckable` rather than reporting them as faults.',
       inputSchema: CheckLabelInput,
       outputSchema: CheckLabelOutput,
       annotations: READ_ONLY,

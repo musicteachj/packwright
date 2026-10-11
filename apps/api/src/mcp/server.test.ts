@@ -15,6 +15,7 @@ import { createMcpHandler } from '@modelcontextprotocol/server'
 import {
   EU_CLP_HAZARD_STATEMENTS,
   DEFAULT_GHS_STOCK,
+  DEFAULT_US_FOOD_STOCK,
   EU_CLP_PRECAUTIONARY_STATEMENTS,
   SEVERITY_ORDER,
   judgeLabel,
@@ -46,6 +47,7 @@ import {
   NOT_A_STATEMENT_OF_COMPLIANCE,
   NOT_JUDGED,
   WHAT_IS_NOT_CHECKED_URL,
+  assumedMarginNotice,
   checkLabelOutput,
   createPackwrightMcpServer,
 } from './server'
@@ -126,6 +128,24 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
       'labelType',
       'stock',
     ])
+  })
+
+  it('advertises what the fields mean, and that the request takes no other keys', async () => {
+    // The descriptions the 2026-10-10 evaluation showed were missing — every model's
+    // first Digital Link sent a bare host name — and the strict top level, which a
+    // client sees as `additionalProperties: false`.
+    const { tools } = await (await connect(era)).listTools()
+    const schema = tools.find((tool) => tool.name === 'check_label')!.inputSchema as {
+      additionalProperties?: unknown
+      properties: Record<string, { additionalProperties?: unknown; properties?: object }>
+    }
+    expect(schema.additionalProperties).toBe(false)
+    expect(schema.properties.stock!.additionalProperties).toBe(false)
+    const advertised = JSON.stringify(schema)
+    expect(advertised).toContain('scheme included')
+    expect(advertised).toContain('not the size of the label')
+    expect(advertised).toContain('Leave it out entirely if the label has no')
+    expect(advertised).toContain(`${DEFAULT_US_FOOD_STOCK.marginMm} mm for us-food`)
   })
 
   it('answers check_label with the judge’s verdict, in both forms', async () => {
@@ -402,6 +422,76 @@ describe('check_label, refusing', () => {
       whatIsNotChecked: WHAT_IS_NOT_CHECKED_URL,
     })
     expect((result.structuredContent as { reason: string }).reason).not.toBe('')
+    // The margin was the caller's, so nothing says it was assumed.
+    expect((result.structuredContent as { reason: string }).reason).not.toContain(
+      'No margin was given',
+    )
+  })
+
+  it('says so when the margin it refused was one it assumed', async () => {
+    // The us-food default of 6 mm leaves no panel on a 12 mm wide label, and the
+    // engine's sentence names a margin the user never gave. Found by
+    // `/code-review high` on #84.
+    const data = {
+      statementOfIdentity: 'Oats',
+      netQuantity: { inchPound: '1 oz' },
+      container: { shape: 'rectangular', widthMm: 12, heightMm: 40 },
+    }
+    const client = await connect()
+    const assumed = await client.callTool({
+      name: 'check_label',
+      arguments: { labelType: 'us-food', data, stock: { widthMm: 12, heightMm: 40 } },
+    })
+    expect(assumed.structuredContent).toMatchObject({ outcome: 'refused' })
+    expect((assumed.structuredContent as { reason: string }).reason).toContain(
+      assumedMarginNotice(DEFAULT_US_FOOD_STOCK.marginMm),
+    )
+
+    // Given its real margin, the same label is drawn and judged.
+    const stated = await client.callTool({
+      name: 'check_label',
+      arguments: { labelType: 'us-food', data, stock: { widthMm: 12, heightMm: 40, marginMm: 1 } },
+    })
+    expect(stated.structuredContent).toMatchObject({ outcome: 'judged' })
+  })
+
+  it('blames an assumed margin only for a refusal the margin caused', () => {
+    // No refusal but the margin's is reachable through the schema today, which
+    // refuses every other drawing the engines decline; held here directly, so a
+    // refusal added later is not told to look for a margin.
+    const refusal = { outcome: 'refused', reason: 'Some other reason.' } as const
+    const roomy = { widthMm: 60, heightMm: 40, marginMm: 3, marginAssumed: true }
+    expect(checkLabelOutput('gs1-retail', refusal, roomy)).toMatchObject({
+      reason: 'Some other reason.',
+    })
+  })
+
+  it('refuses a key it does not know at the top of the request, or in the stock, by name', async () => {
+    // Stripped, `stok` left a request with no stock, refused for the wrong reason; and a
+    // `marginMM` dropped would have been judged at the default margin, silently.
+    const client = await connect()
+    const misspelt = await client.callTool({
+      name: 'check_label',
+      arguments: {
+        labelType: 'ghs-chemical',
+        data: GHS_CONFORMANT.data,
+        stock: { widthMm: 74, heightMm: 105 },
+        stok: { widthMm: 74, heightMm: 105 },
+      },
+    })
+    expect(misspelt.isError).toBe(true)
+    expect(textOf(misspelt)).toContain('stok')
+
+    const inStock = await client.callTool({
+      name: 'check_label',
+      arguments: {
+        labelType: 'ghs-chemical',
+        data: GHS_CONFORMANT.data,
+        stock: { widthMm: 74, heightMm: 105, marginMM: 2 },
+      },
+    })
+    expect(inStock.isError).toBe(true)
+    expect(textOf(inStock)).toContain('marginMM')
   })
 
   it('refuses arguments with more elements than any label has, before the schema runs', async () => {

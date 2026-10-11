@@ -99,12 +99,36 @@ export const Artwork = z.object({
   fontFamily: z.enum(EMBEDDED_FONT_FAMILIES).optional(),
 })
 
+// The descriptions below, and those on the GHS and US food fields, are what a model
+// reading `check_label`'s schema is told about each field (they reach the advertised
+// schema through `~standard.jsonSchema`). They change nothing accepted. Added on
+// 2026-10-11 for the fields the 2026-10-10 evaluation found models getting wrong or
+// could not have known: every model's first Digital Link sent a bare host name.
+// Provisions named in them were read that day: FD&C Act §403(w)(1)(A) from govinfo
+// (21 U.S.C. 343, 2023 edition); CLP Annex I 1.2.1.4 and 1.5 from the consolidated
+// text 02008R1272-20260701 (EU Publications Office); 29 CFR 1910.1200(f)(12) from
+// the eCFR as of 2026-10-01.
 export const DigitalLink = z.object({
-  domain: z.string().min(1),
-  lot: z.string().optional(),
-  serial: z.string().optional(),
-  expiry: z.string().optional(),
-  useConvenienceAlphas: z.boolean().optional(),
+  domain: z
+    .string()
+    .min(1)
+    .describe(
+      'The resolver’s whole origin, scheme included — "https://id.example.com", not ' +
+        '"id.example.com".',
+    ),
+  lot: z.string().optional().describe('Batch or lot number, GS1 Application Identifier (10).'),
+  serial: z.string().optional().describe('Serial number, GS1 Application Identifier (21).'),
+  expiry: z
+    .string()
+    .optional()
+    .describe('Expiration date as YYMMDD, GS1 Application Identifier (17).'),
+  useConvenienceAlphas: z
+    .boolean()
+    .optional()
+    .describe(
+      'True only if the printed link writes /gtin/ where the standard writes /01/. Removed ' +
+        'from GS1 Digital Link URI Syntax 1.3.0, and reported as such.',
+    ),
 })
 
 export const UpcARequest = z.object({
@@ -277,7 +301,13 @@ const GhsRequestShape = z.object({
   // Bounded below only, and required. Capacity selects the CLP Table 1.3 band
   // that every dimensional rule is measured against; defaulting it would invent
   // a requirement the caller never stated.
-  capacityL: z.number().positive(),
+  capacityL: z
+    .number()
+    .positive()
+    .describe(
+      'The capacity of the package in litres — not the size of the label. Selects the CLP ' +
+        'Annex I Table 1.3 band the minimum label and pictogram sizes are taken from.',
+    ),
   // Both enums are derived from `label-core`'s own lists rather than restated,
   // so a signal word or pictogram code cannot exist on one side and not the
   // other — the drift the UPC-A schema was already fixed for.
@@ -314,9 +344,23 @@ const GhsRequestShape = z.object({
     .transform(distinctCodes)
     .optional(),
   supplier: GhsSupplierSchema.optional(),
-  smallContainerLabelling: z.boolean().optional(),
+  smallContainerLabelling: z
+    .boolean()
+    .optional()
+    .describe(
+      'True only if the supplier relies on the small-container provision — 29 CFR ' +
+        '1910.1200(f)(12) on a US label, CLP Annex I section 1.5 on an EU one. Stated, not ' +
+        'inferred from the capacity.',
+    ),
   outerPackageStatement: z.string().optional(),
-  pictogramSideMm: z.number().positive().optional(),
+  pictogramSideMm: z
+    .number()
+    .positive()
+    .optional()
+    .describe(
+      'The side of each pictogram’s square in millimetres, not its diagonal. Omitted, the ' +
+        'minimum for the capacity’s CLP Table 1.3 band is drawn.',
+    ),
   stock: z
     .object({
       widthMm: z.number().positive(),
@@ -633,8 +677,22 @@ export const UsFoodRequestBase = z.object({
     .optional(),
   // Superseded, and accepted so a label saved with it still opens and exports.
   ingredientsExempt: z.boolean().optional(),
-  containsStatement: z.array(z.enum(MAJOR_FOOD_ALLERGEN_IDS)).optional(),
-  containsStatementFontSizeMm: z.number().positive().optional(),
+  containsStatement: z
+    .array(z.enum(MAJOR_FOOD_ALLERGEN_IDS))
+    .optional()
+    .describe(
+      'The allergens the printed "Contains" statement names (FD&C Act §403(w)(1)(A)), as ' +
+        'printed — not worked out from the ingredients. Leave it out entirely if the label ' +
+        'has no "Contains" statement.',
+    ),
+  containsStatementFontSizeMm: z
+    .number()
+    .positive()
+    .optional()
+    .describe(
+      'The "Contains" statement’s em size in millimetres. Omitted, it matches the ingredient ' +
+        'list.',
+    ),
   containsStatementGapMm: z.number().min(0).optional(),
   nutritionFacts: NutritionFactsSchema.optional(),
   // Claimed by paragraph alone; or the small package with the area that qualifies it
@@ -795,6 +853,11 @@ const STOCK_BESIDE_DATA = z
   .never({ error: '`stock` goes beside `data` in a check request, not inside it' })
   .optional()
 
+/** The default margins, as the `marginMm` description states them — from the stocks, never restated. */
+const DEFAULT_MARGINS_TEXT =
+  `${DEFAULT_UPC_A_STOCK.marginMm} mm for gs1-retail, ${DEFAULT_GHS_STOCK.marginMm} mm for ` +
+  `ghs-chemical, ${DEFAULT_US_FOOD_STOCK.marginMm} mm for us-food`
+
 /**
  * The size of the label being checked, which the request must state.
  *
@@ -809,19 +872,39 @@ const STOCK_BESIDE_DATA = z
  * **The margin is optional**, because a person knows their label's size and
  * rarely its unprinted border. Absent, the label type's default margin is used,
  * and the answer says so (`checkedStock`, and `stockUsed` in the MCP server's
- * answer), so the assumption is stated rather than hidden.
+ * answer), so the assumption is stated rather than hidden. **The default is kept
+ * on purpose** (decided 2026-10-11): a smaller assumed margin leaves more room,
+ * and content that overruns at the label's real margin could then fit and pass —
+ * a pass on geometry the label may not have. The default can only refuse, and a
+ * refusal on an assumed margin says it was assumed.
+ *
+ * **Strict**, as the request around it is: a key it does not know is refused by
+ * name rather than dropped. A `marginMM` dropped would have been judged at the
+ * default margin with nothing to say the caller's figure was ignored.
  */
-export const CheckStockSchema = z.object(
+export const CheckStockSchema = z.strictObject(
   // `StockSchema`'s own fields, the margin made optional — derived rather than
   // restated, so a bound added there reaches the check request too.
-  { ...StockSchema.shape, marginMm: StockSchema.shape.marginMm.optional() },
+  {
+    ...StockSchema.shape,
+    marginMm: StockSchema.shape.marginMm
+      .optional()
+      .describe(
+        'The unprinted border in millimetres, if known. Omitted, the label type’s default is ' +
+          `used — ${DEFAULT_MARGINS_TEXT} — and the answer says it was assumed.`,
+      ),
+  },
   {
     // Said for a stock sent in the wrong shape as well as for none at all, so an
-    // assistant that sent "50 x 70 mm" is told the shape rather than told to ask.
-    error:
-      '`stock` must be the printed label’s size: an object with widthMm and heightMm in ' +
-      'millimetres, and marginMm if known. If the user has not said how big the label is, ' +
-      'ask rather than guess — every size and placement finding is measured against it.',
+    // assistant that sent "50 x 70 mm" is told the shape rather than told to ask. Not
+    // for a key it does not know, which zod's own message names — this sentence in its
+    // place told a caller who sent `marginMM` to ask for a size they had given.
+    error: (issue) =>
+      issue.code === 'unrecognized_keys'
+        ? undefined
+        : '`stock` must be the printed label’s size: an object with widthMm and heightMm in ' +
+          'millimetres, and marginMm if known. If the user has not said how big the label is, ' +
+          'ask rather than guess — every size and placement finding is measured against it.',
   },
 )
 
@@ -833,21 +916,28 @@ export const CheckStockSchema = z.object(
  * saved-label routes refuse is refused here too, with the same issues. Two
  * additions: `STOCK_BESIDE_DATA`, and a stock that is required (`CheckStockSchema`)
  * where the export requests default it.
+ *
+ * **Strict at the top, and only there.** `{ labelType, data, stock }` refuses a key
+ * it does not know — a `stok` would otherwise be dropped and the request refused
+ * for having no stock, naming the wrong problem. Inside `data` unknown keys are
+ * still stripped, as the exporter and the saved-label routes strip them: decision 4
+ * of `docs/plans/2026-10-10-mcp.md` is that this door refuses what those refuse,
+ * and the evaluation of 2026-10-10 found no model misspelling a key there.
  */
 export const LabelCheckRequest = z.discriminatedUnion('labelType', [
-  z.object({
+  z.strictObject({
     labelType: z.literal('gs1-retail'),
     data: UpcARequest.extend({ stock: STOCK_BESIDE_DATA }),
     stock: CheckStockSchema,
   }),
-  z.object({
+  z.strictObject({
     labelType: z.literal('ghs-chemical'),
     data: GhsRequestShape.extend({ stock: STOCK_BESIDE_DATA }).superRefine(
       statementCodesMatchRegime,
     ),
     stock: CheckStockSchema,
   }),
-  z.object({
+  z.strictObject({
     labelType: z.literal('us-food'),
     data: UsFoodRequestBase.extend({ stock: STOCK_BESIDE_DATA }).refine(
       coversOnlyListedIngredients,
@@ -872,7 +962,7 @@ export type LabelCheckRequest = z.output<typeof LabelCheckRequest>
  * `LabelCheckRequest`, which this cannot replace: it does not tie `data`'s form to
  * `labelType`, and it carries none of the refinements.
  */
-export const LabelCheckRequestOutline = z.object({
+export const LabelCheckRequestOutline = z.strictObject({
   labelType: z.enum(LABEL_TYPES).describe('Which kind of label `data` describes.'),
   data: z
     .union([

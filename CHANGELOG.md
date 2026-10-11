@@ -10,6 +10,22 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **`check_label` tells a model what its fields mean, refuses a key it does not know, and says when a margin
+  it refused was its own assumption.** The 2026-10-10 evaluation found models reading field names without their
+  meaning: every model's first Digital Link sent a bare host name, which the rule rightly refuses. The shared schema
+  now describes the fields the evaluation and the backlog named — the Digital Link's `domain` as the whole
+  `https://` origin and its three Application Identifiers, `capacityL` as the package's capacity selecting the CLP
+  Table 1.3 band, `containsStatement` as the allergens the printed statement names under FD&C Act §403(w)(1)(A),
+  `pictogramSideMm`, `smallContainerLabelling` and the margin with each label type's default — and the
+  descriptions reach the advertised schema without changing anything accepted. The request's top level and its
+  `stock` are strict: `stok` or `marginMM` is refused by name, where it used to be dropped and the request refused
+  for the wrong reason or judged at the default margin. Inside `data` keys are still stripped, as the exporter and
+  the saved-label routes strip them. An unstated margin keeps the label type's default on purpose, since a smaller
+  one could let content that overruns the real margin pass; where that default leaves no panel, the refusal now
+  says the margin was assumed and asks for the real one. The tool's description says a GHS check cannot see
+  pictogram artwork or the label's type sizes. The provisions named were read on 2026-10-11 from govinfo, the eCFR
+  and the EU Publications Office.
+
 - **A label checked through `/mcp` or audited from a photograph is no longer judged on Packwright's drawing of
   it.** The 2026-10-10 evaluation found two false findings about users' own labels, both facts the input cannot
   carry being read off the engine's reconstruction. Packwright draws no pictogram artwork, so

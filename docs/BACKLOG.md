@@ -95,20 +95,21 @@ empty pictogram frame or text "not printed" at the default type sizes. Before th
 whether the record should be the drawing's or `check_label`'s, and regenerate it with `describe.ts`, which says when
 the engine now reports differently. Found by `/code-review medium` on stage 22.
 
-**An assumed margin can refuse a small label in words that blame the user.** `check_label` needs a size but not
-a margin, and uses the label type's default margin where none is given — saying so in `stockUsed.marginAssumed`.
-On a very small label that default can leave no panel, and the engine's refusal then reads "A 6 mm margin leaves
-no panel on 12 × 40 mm stock", about a margin the user never gave. A refusal rather than a false verdict, and the
-answer says the margin was assumed; but a better default for an unstated margin — zero, or one scaled to the label
-— is a design choice worth making on purpose. Found by `/code-review high` on #84.
+**An assumed margin keeps the label type's default, on purpose (decided 2026-10-11).** `check_label` needs a size but
+not a margin, and uses the label type's default where none is given, saying so in `stockUsed.marginAssumed`. A
+smaller default — zero, or 5% of the label — was considered and rejected: no rule reads the margin, but it sets the
+panel the engines place content in, so a smaller assumed margin leaves more room, and content that overruns at the
+label's real margin could then fit and pass on geometry the label may not have. The default can only refuse. Where it
+does, the answer now says the margin was assumed and asks for the real one (`assumedMarginNotice`), rather than
+reading "A 6 mm margin leaves no panel" about a margin the user never gave. Found by `/code-review high` on #84.
 
 **Smaller, from the same grading:** the %DV pass (`FDA_NUTRITION_PERCENT_DV_MET`) cites only 101.9(d)(7)(ii), where
 the four vitamin and mineral percentages are rounded under (c)(8)(iii) — the engine's own source comment names both;
 the GS1 bar-height, quiet-zone and magnification rules cite figures of GenSpecs 25.0 that are numbered differently in
-26.0 (correct for the release cited, but worth moving with it); and the Digital Link field `domain` describes nothing,
-so every model's first Digital Link carried a host name with no scheme, which the rule rightly refuses. A
-`.describe()` saying it is the whole `https://` origin would have saved Sonnet two calls in each run; it would not
-have saved Haiku's two misses, which also left out `useConvenienceAlphas`.
+26.0 (correct for the release cited, but worth moving with it); and the Digital Link field `domain` described nothing,
+so every model's first Digital Link carried a host name with no scheme, which the rule rightly refuses — described
+since 2026-10-11, with `capacityL`, `containsStatement`, `pictogramSideMm`, `smallContainerLabelling` and the
+margin; whether that saves the calls is for the next evaluation to show.
 
 ## From the MCP server, 2026-10-10
 
@@ -120,12 +121,13 @@ editor judges all four and the rules report them. This is decision 4 of the MCP 
 server refuses what the export routes refuse — and each refusal names its field, so it is a note rather than
 work. It does mean `FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED` can be reached only from the editor.
 
-**A misspelt field is dropped, not refused.** Zod strips keys a schema does not list, everywhere in this
+**A misspelt field inside `data` is dropped, not refused.** Zod strips keys a schema does not list, everywhere in this
 project, so a model sending `containsStatment` gets a label with no contains statement and a finding about that,
-rather than an error naming the typo. The finding is not a false clearance — a dropped field takes information
-away — but it is a worse answer than a refusal. Refusing unknown keys on the server alone would break decision 4;
-refusing them everywhere changes what the saved-label and export routes accept. Stage 19's evaluation will show
-whether models actually make the mistake before either is worth doing.
+rather than an error naming the typo. The finding is not a false clearance — a dropped field takes information away
+— but it is a worse answer than a refusal. **The check request's top level and its `stock` are strict since
+2026-10-11** (`stok`, `marginMM`), which touches no shape the other routes share. Inside `data` it stays: refusing
+there on the server alone would break decision 4, refusing everywhere changes what the saved-label and export routes
+accept, and the 2026-10-10 evaluation found no model misspelling a key there.
 
 **Anyone with an Anthropic API key can spend claude.ai's shared allowance.** The tier for Anthropic's outbound
 range exists because every claude.ai user arrives from it, but the Messages API's MCP connector calls out from
@@ -140,12 +142,6 @@ line for each refusal is the alarm.
 `initialize`, `tools/list` and malformed bodies cost the caller nothing, and each builds a server and parses up to
 256 kB. That is the status of every route here but the exports and the audit, and it is the phase 8 edge limit's
 to refuse; the expensive part of `tools/list`, converting the label schema, is now done once per process.
-
-**The model sees field names, not their meaning.** `check_label`'s advertised schema is the label schema's
-structure, with a sentence on `labelType`, `data` and `stock` and none on the fields inside. Names like
-`netQuantityFontSizeMm` carry their units, but not, say, that `capacityL` selects the CLP Table 1.3 band. Adding
-`.describe()` to the shared schema is cheap and changes nothing it accepts; stage 19 will show which fields
-models get wrong.
 
 ## From the shared schema, 2026-10-10
 
