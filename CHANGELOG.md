@@ -10,6 +10,28 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **A label checked through `/mcp` or audited from a photograph is no longer judged on Packwright's drawing of
+  it.** The 2026-10-10 evaluation found two false findings about users' own labels, both facts the input cannot
+  carry being read off the engine's reconstruction. Packwright draws no pictogram artwork, so
+  `GHS_PICTOGRAM_SYMBOL_MISSING` fired on every GHS label — blocking under OSHA — and the evaluation's Haiku
+  relayed it as a defect in all 18 of its GHS answers. And a GHS document carries no type sizes, so text set at the
+  engine's defaults that ran off a small label was reported "not printed": every answer on case 03 told its user
+  that statements printed on their label were missing. The judge now takes a `subject` (`LabelSubject`):
+  `drawing`, the default, for the editor and the exporter, and `described` for `check_label` and the photo audit.
+  On a described label `ghs/pictogram-integrity` gives no verdict and stands down as a limit of the tool, citing
+  C.2.3.1 or CLP Annex I 1.2.1.2; the layout's omissions carry a second wording, written by the engine
+  (`LayoutOmission.whenDescribed`), which says the symbol is not checked and that an overrun is a fact about
+  Packwright's layout at its default type sizes, and the judge picks it. Only words and one rule's verdict
+  change: the omissions still stand, so every pass on an element that did not fit is still withheld, and a test
+  holds every GHS fixture's described findings to its drawing's, less the missing-symbol finding. Pictograms
+  that run off the label get the same treatment, as Packwright's arrangement — one row, its own gap — which the
+  document does not carry either; a pictogram whose own box is larger than the label is reported as not fitting,
+  which no arrangement could change. The editor and the export are unchanged — their empty frame is on the PDF.
+  `docs/WHAT-IS-NOT-CHECKED.md` says all of this, and that no rule checks a GHS label's type size; CLP gains a
+  minimum x-height on 1 January 2028 (Regulation (EU) 2024/2865 Annex I (2)–(3), deferred by 2025/2439), which
+  is now a dated entry in the backlog. OSHA's C.2.3.1 and C.2.3.2 were re-read from the eCFR, and the CLP texts
+  from the EU Publications Office, on 2026-10-11.
+
 - **An address with no page is answered 404, not 200.** The server handed the client's `index.html` to every
   address it did not reserve, so `/labels/abc/edit` came back 200 and only the page said there was nothing there —
   a crawler, a link checker or an uptime monitor reads the status, and took a mistyped address for a working one.

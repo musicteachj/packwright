@@ -91,6 +91,96 @@ export const SYMBOL_NOT_DRAWN_BECAUSE: Readonly<Record<GhsLabelData['regime'], s
     'compliant without being so.',
 }
 
+/**
+ * The shared half of every overrun's second wording — see `LayoutOmission.whenDescribed`.
+ *
+ * A GHS document carries no type sizes, so every block is set at `GHS_TYPE_DEFAULT`
+ * and everything below the first block sits where those sizes put it. An overrun is
+ * then a fact about this engine's layout, and on a label printed elsewhere it says
+ * nothing about whether that label's text fits. The words say whose layout it was.
+ *
+ * Exported so a test can find these omissions by exact equality, as
+ * `SYMBOL_NOT_DRAWN_BECAUSE` is.
+ */
+export const LAID_OUT_AT_DEFAULT_TYPE_SIZES =
+  'The label’s type sizes were not given, so Packwright set its text at its own default ' +
+  'sizes. This is a fact about that layout, not about your label: whether your label prints ' +
+  'all of it is not checked.'
+
+/**
+ * The second wording of a missing pictogram symbol, on a label printed elsewhere.
+ *
+ * `SYMBOL_NOT_DRAWN_BECAUSE` explains why this engine's frame is empty, which is
+ * true of its drawing and of nothing a user printed. Exported for the same reason.
+ */
+export const SYMBOL_NOT_SEEN_BECAUSE: Readonly<Record<GhsLabelData['regime'], string>> = {
+  // Said per regime because the second sentence is true only under CLP: OSHA sets no
+  // minimum pictogram size, so `ghs/pictogram-size` does not run on a US label, and
+  // telling a US user a size check still ran would read its silence as a clearance.
+  // Found by review.
+  'eu-clp':
+    'Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so ' +
+    'it gives no verdict on it. A pictogram smaller than CLP’s minimum is still reported.',
+  'us-osha':
+    'Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so ' +
+    'it gives no verdict on it.',
+}
+
+/** A second wording in two halves, the second shared — built as `explainedOmission` builds the first. */
+function shared(what: string, why: string): NonNullable<LayoutOmission['whenDescribed']> {
+  return { reason: `${what} ${why}`, explanation: { what, why } }
+}
+
+/**
+ * The same for a pictogram that runs off the label.
+ *
+ * Where a pictogram sits is this engine's choice twice over: the text above it is
+ * at the default type sizes, and every pictogram goes in one row with the default
+ * gap between them. A label printed elsewhere may set four pictograms in a square,
+ * so running off the edge of this engine's row says nothing about that label.
+ */
+export const LAID_OUT_IN_PACKWRIGHTS_ARRANGEMENT =
+  'The label’s arrangement was not given, so Packwright set its text at its own default ' +
+  'sizes and its pictograms in one row. This is a fact about that layout, not about your ' +
+  'label: whether your label fits them is not checked.'
+
+/**
+ * Which of this engine's own choices put an element past the edge — or, for a
+ * pictogram whose own box is larger than the label, the one fact that is true of
+ * any label the document could describe: it does not fit, however it is arranged.
+ * Where the engine's row put it is still the engine's choice, so even then the
+ * sentence is about the size and not about where the drawing ran out. Found by
+ * review, twice.
+ */
+type OverrunCause = 'type sizes' | 'arrangement' | { readonly tooLarge: string }
+
+const OVERRUN_BECAUSE: Readonly<
+  Record<Extract<OverrunCause, string>, { lead: string; why: string }>
+> = {
+  'type sizes': {
+    lead: 'At Packwright’s default type sizes',
+    why: LAID_OUT_AT_DEFAULT_TYPE_SIZES,
+  },
+  arrangement: { lead: 'In Packwright’s arrangement', why: LAID_OUT_IN_PACKWRIGHTS_ARRANGEMENT },
+}
+
+/** The second wording, or nothing where the overrun is not this engine's doing. */
+function whenDescribedFor(
+  cause: OverrunCause | undefined,
+  label: string,
+  wouldHappen: string,
+): Pick<LayoutOmission, 'whenDescribed'> {
+  if (cause === undefined) return {}
+  if (typeof cause === 'object') return { whenDescribed: { reason: cause.tooLarge } }
+  const { lead, why } = OVERRUN_BECAUSE[cause]
+  return { whenDescribed: shared(`${lead}, ${inSentence(label)} would ${wouldHappen}.`, why) }
+}
+
+/** "Precautionary statements" → "precautionary statements"; "The GHS02 pictogram" → "the GHS02 pictogram". */
+function inSentence(label: string): string {
+  return label.charAt(0).toLowerCase() + label.slice(1)
+}
+
 export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
   const { data, stock } = request
 
@@ -135,6 +225,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     label: string,
     topMm: number,
     bottomMm: number,
+    cause: OverrunCause | undefined,
   ): boolean {
     if (topMm >= stock.heightMm) {
       omissions.push({
@@ -143,6 +234,11 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
           `${label} begins ${mmText(topMm)} down a ${mmText(stock.heightMm)} label, past its ` +
           'bottom edge, so none of it is printed.',
         scope: 'element',
+        ...whenDescribedFor(
+          cause,
+          label,
+          `begin ${mmText(topMm)} down a ${mmText(stock.heightMm)} label, past its bottom edge`,
+        ),
       })
       // Absent, so there is nothing across to measure. Checking the right edge as
       // well gave one element "none of it is printed" beside "part of it is not".
@@ -155,6 +251,12 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
           `${label} runs ${mmText(bottomMm - stock.heightMm)} past the bottom of a ` +
           `${mmText(stock.heightMm)} label, so part of it is not printed.`,
         scope: 'detail',
+        ...whenDescribedFor(
+          cause,
+          label,
+          `run ${mmText(bottomMm - stock.heightMm)} past the bottom of a ` +
+            `${mmText(stock.heightMm)} label`,
+        ),
       })
     }
     return false
@@ -173,6 +275,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     label: string,
     leftMm: number,
     rightMm: number,
+    cause: OverrunCause | undefined,
   ): void {
     if (leftMm >= stock.widthMm) {
       omissions.push({
@@ -181,6 +284,11 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
           `${label} begins ${mmText(leftMm)} across a ${mmText(stock.widthMm)} label, past its ` +
           'right edge, so none of it is printed.',
         scope: 'element',
+        ...whenDescribedFor(
+          cause,
+          label,
+          `begin ${mmText(leftMm)} across a ${mmText(stock.widthMm)} label, past its right edge`,
+        ),
       })
     } else if (rightMm > stock.widthMm) {
       omissions.push({
@@ -189,6 +297,12 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
           `${label} runs ${mmText(rightMm - stock.widthMm)} past the right edge of a ` +
           `${mmText(stock.widthMm)} label, so part of it is not printed.`,
         scope: 'detail',
+        ...whenDescribedFor(
+          cause,
+          label,
+          `run ${mmText(rightMm - stock.widthMm)} past the right edge of a ` +
+            `${mmText(stock.widthMm)} label`,
+        ),
       })
     }
   }
@@ -239,12 +353,15 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       label,
       box: { xMm: panel.xMm, yMm: startYMm, widthMm: panel.widthMm, heightMm: boxHeightMm },
     })
-    if (!recordOverrun(elementId, label, startYMm, startYMm + boxHeightMm)) {
+    // Every block sits where the default type sizes of the blocks above it put it, and
+    // is as tall and as wide as its own make it.
+    if (!recordOverrun(elementId, label, startYMm, startYMm + boxHeightMm, 'type sizes')) {
       recordRightOverrun(
         elementId,
         label,
         panel.xMm,
         panel.xMm + widestLineMm(lines, fontSizeMm, bold),
+        'type sizes',
       )
     }
     cursorYMm = startYMm + boxHeightMm + type.blockGapMm
@@ -336,8 +453,8 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
         glyphDrawn: false,
       })
 
-      omissions.push(
-        explainedOmission({
+      omissions.push({
+        ...explainedOmission({
           elementId,
           scope: 'detail',
           what: `The ${code} symbol (${symbolName}) is not drawn.`,
@@ -346,14 +463,45 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
           // when several are listed above it. Found by review.
           why: SYMBOL_NOT_DRAWN_BECAUSE[data.regime],
         }),
-      )
+        whenDescribed: shared(
+          `The ${code} symbol (${symbolName}) is not checked.`,
+          SYMBOL_NOT_SEEN_BECAUSE[data.regime],
+        ),
+      })
 
       // Recorded after the glyph, which every pictogram carries. A strip is one
       // row, so it can run off the right as well as the bottom — a label with more
       // pictograms than its width holds draws the last of them past the edge.
       const pictogramLabel = `The ${code} pictogram`
-      if (!recordOverrun(elementId, pictogramLabel, cursorYMm, cursorYMm + boxMm)) {
-        recordRightOverrun(elementId, pictogramLabel, xMm, xMm + boxMm)
+      // A pictogram sits where this engine's row and the text above it put it — unless
+      // its own box is larger than the label either way, which no arrangement could
+      // fit. Decided for the pictogram, not per edge: only one edge is recorded, and a
+      // box too wide for the label pushed off the bottom first would otherwise be
+      // blamed on the row. Found by review.
+      const tooWide = boxMm > stock.widthMm
+      const tooTall = boxMm > stock.heightMm
+      const cause: OverrunCause =
+        tooWide || tooTall
+          ? {
+              // Where the document gave no side, the side is this engine's default — the
+              // band's minimum — and a label printed elsewhere may carry another, so the
+              // sentence says whose size it is. Not "the smallest CLP allows": on a US
+              // label CLP does not apply. Found by review.
+              tooLarge:
+                (data.pictogramSideMm === undefined
+                  ? `At the size Packwright draws it when none is given, the ${code} ` +
+                    `pictogram, set at a point, is ${mmText(boxMm)} across — `
+                  : `The ${code} pictogram, set at a point, is ${mmText(boxMm)} across — `) +
+                (tooWide && tooTall
+                  ? `larger than a ${mmText(stock.widthMm)} by ${mmText(stock.heightMm)} label`
+                  : tooWide
+                    ? `wider than a ${mmText(stock.widthMm)} label`
+                    : `taller than a ${mmText(stock.heightMm)} label`) +
+                ', so it does not fit on the label however the label is arranged.',
+            }
+          : 'arrangement'
+      if (!recordOverrun(elementId, pictogramLabel, cursorYMm, cursorYMm + boxMm, cause)) {
+        recordRightOverrun(elementId, pictogramLabel, xMm, xMm + boxMm, cause)
       }
     })
 
@@ -428,8 +576,8 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
         heightMm: cursorYMm - startYMm,
       },
     })
-    if (!recordOverrun(elementId, label, startYMm, cursorYMm)) {
-      recordRightOverrun(elementId, label, panel.xMm, panel.xMm + widestMm)
+    if (!recordOverrun(elementId, label, startYMm, cursorYMm, 'type sizes')) {
+      recordRightOverrun(elementId, label, panel.xMm, panel.xMm + widestMm, 'type sizes')
     }
     cursorYMm += type.blockGapMm
   }

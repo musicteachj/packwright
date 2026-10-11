@@ -184,11 +184,14 @@ const documents: Array<{ name: string; labelType: string; data: unknown; stock: 
 ]
 
 /** The judge on a document exactly as the editor holds it — no schema, no canonicalising. */
-const judgeAsTheEditorDoes = (document: (typeof documents)[number]) =>
+// The editor's judge, told what `check_label` tells it: that the label was printed
+// elsewhere. See `LabelSubject`.
+const judgeAsCheckLabelShould = (document: (typeof documents)[number]) =>
   judgeLabel({
     labelType: document.labelType,
     data: document.data,
     stock: document.stock,
+    subject: 'described',
     ...(document.labelType === 'gs1-retail' ? { barcode: bwip } : {}),
   } as JudgeRequest)
 
@@ -217,10 +220,10 @@ describe('check_label on every document the judge is tested against', () => {
         return
       }
       // Judged as the editor judges it: what the server says about a label is
-      // what the website says about the same label.
+      // what the website says about the same label, printed elsewhere.
       expect(result.isError).toBeFalsy()
       expect(result.structuredContent).toEqual(
-        checkLabelOutput(parsed.data.labelType, judgeAsTheEditorDoes(document), {
+        checkLabelOutput(parsed.data.labelType, judgeAsCheckLabelShould(document), {
           ...document.stock,
           marginAssumed: false,
         }),
@@ -317,6 +320,40 @@ describe('check_label, refusing', () => {
     // for a 5 L package, which a borrowed 74 × 105 mm used to pass.
     const { findings } = result.structuredContent as { findings: Array<{ code: string }> }
     expect(findings.map((finding) => finding.code)).toContain('GHS_LABEL_BELOW_MINIMUM_SIZE')
+  })
+
+  it('judges a label printed elsewhere, not Packwright’s drawing of it', async () => {
+    // The two false findings of the 2026-10-10 evaluation, on case 03's shape: every
+    // pictogram reported as having no symbol, and text set at the engine's own type
+    // sizes reported "not printed". Neither is a fact about the user's label.
+    const result = await (
+      await connect()
+    ).callTool({
+      name: 'check_label',
+      arguments: {
+        labelType: 'ghs-chemical',
+        data: {
+          ...GHS_CONFORMANT.data,
+          precautionaryStatementCodes: ['P210', 'P233', 'P240', 'P403+P235'],
+        },
+        stock: { widthMm: 50, heightMm: 70, marginMm: 4 },
+      },
+    })
+    const answer = result.structuredContent as {
+      findings: Array<{ code: string }>
+      declined: Array<{ ruleId: string; limit?: true }>
+      uncheckable: Array<{ reasons: string[] }>
+    }
+    expect(result.isError).toBeFalsy()
+    expect(answer.findings.map((finding) => finding.code)).not.toContain(
+      'GHS_PICTOGRAM_SYMBOL_MISSING',
+    )
+    expect(answer.declined).toContainEqual(
+      expect.objectContaining({ ruleId: 'ghs/pictogram-integrity', limit: true }),
+    )
+    const reasons = answer.uncheckable.flatMap((one) => one.reasons)
+    expect(reasons.length).toBeGreaterThan(0)
+    expect(reasons.filter((reason) => reason.includes('not printed'))).toEqual([])
   })
 
   it('refuses a label type it does not know', async () => {

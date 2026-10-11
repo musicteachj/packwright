@@ -67,8 +67,11 @@ export function auditReport(
   confirmed: ReadonlySet<ReadingKey>,
 ): AuditReport | AuditRefusal {
   // The judge the editor and the MCP server share, so an audited label is told
-  // exactly what the editor would tell the same document.
-  const judged = judgeLabel({ labelType: 'ghs-chemical', data, stock })
+  // what the editor would tell the same document — except about what a photograph's
+  // reading cannot carry. The label is one printed elsewhere, so its pictogram
+  // symbols and its type sizes are not judged from Packwright's reconstruction of
+  // it, as `check_label` does not. See `LabelSubject`.
+  const judged = judgeLabel({ labelType: 'ghs-chemical', data, stock, subject: 'described' })
   // The engine declines input that describes no drawing at all — a capacity of
   // zero, a stock with no area. That is a refusal with a reason, not a crash,
   // and the reason is already written as a sentence for a reader.

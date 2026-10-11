@@ -117,7 +117,10 @@ describe('what the report says it did not judge', () => {
     const rules = result.declined.map((one) => one.ruleId)
     expect(rules).toContain('ghs/pictogram-set')
     expect(rules).toContain('ghs/pictogram-precedence')
-    for (const declined of result.declined) {
+    const classification = result.declined.filter(
+      (one) => one.ruleId === 'ghs/pictogram-set' || one.ruleId === 'ghs/pictogram-precedence',
+    )
+    for (const declined of classification) {
       expect(declined.reason).toContain('hazard classification')
       // Regime-neutral: the citation says which regulation, and on a us-osha label
       // it is not the EU one. Prose naming CLP under an OSHA citation was the
@@ -129,6 +132,20 @@ describe('what the report says it did not judge', () => {
       expect(declined.reason).toContain('classify the substance')
       expect(declined.reason).not.toContain('docs/')
     }
+  })
+
+  it('gives no verdict on pictogram symbols it cannot see in a photograph', () => {
+    // A photographed label is one printed elsewhere: its symbols are on the paper,
+    // and this engine's empty frame is a reconstruction. Reporting the empty frame
+    // blocked every US audit on a defect the photograph did not have.
+    const result = report({ ...A_LABEL, regime: 'us-osha', pictograms: ['GHS02'] })
+    if (result.outcome !== 'reported') throw new Error('expected a report')
+
+    expect(result.findings.map((one) => one.code)).not.toContain('GHS_PICTOGRAM_SYMBOL_MISSING')
+    expect(result.findings.map((one) => one.code)).not.toContain('GHS_PICTOGRAM_COMPLETE')
+    const integrity = result.declined.find((one) => one.ruleId === 'ghs/pictogram-integrity')
+    expect(integrity?.limit).toBe(true)
+    expect(integrity?.citation.reference).toContain('1910.1200')
   })
 
   it('cites the regulation the label is judged under, not the other one', () => {

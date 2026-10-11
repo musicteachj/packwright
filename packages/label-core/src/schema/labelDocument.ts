@@ -1034,6 +1034,11 @@ export function checkedStock(request: LabelCheckRequest): {
  *
  * The encoder is the caller's, as `JudgeRequest` requires: `label-core` does not
  * import bwip-js.
+ *
+ * **Always `described`.** A check request is somebody's account of a label that
+ * already exists, so the drawing is a reconstruction, and what the request cannot
+ * carry — pictogram artwork, GHS type sizes — is not judged from it. See
+ * `LabelSubject`.
  */
 export function toJudgeRequest(request: LabelCheckRequest, barcode: BarcodeEncoder): JudgeRequest {
   switch (request.labelType) {
@@ -1043,18 +1048,21 @@ export function toJudgeRequest(request: LabelCheckRequest, barcode: BarcodeEncod
         data: toUpcALabelData(request.data),
         stock: checkedStock(request).stock,
         barcode,
+        subject: 'described',
       }
     case 'ghs-chemical':
       return {
         labelType: 'ghs-chemical',
         data: toGhsLabelData(request.data),
         stock: checkedStock(request).stock,
+        subject: 'described',
       }
     case 'us-food':
       return {
         labelType: 'us-food',
         data: toUsFoodLabelData(request.data),
         stock: checkedStock(request).stock,
+        subject: 'described',
       }
   }
 }

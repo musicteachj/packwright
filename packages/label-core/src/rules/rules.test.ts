@@ -22,6 +22,7 @@ import {
   compareSeverity,
   type Decline,
   type DeclinedFact,
+  type LabelSubject,
   type RuleContext,
 } from './types'
 import type { GhsLabelData } from '../templates/ghs'
@@ -698,19 +699,26 @@ describe('a check that stood down names what would let it run', () => {
     }),
   ]
 
-  const contextOf = (labelType: 'us-food' | 'ghs-chemical', data: unknown, stock: LabelStock) =>
+  const contextOf = (
+    labelType: 'us-food' | 'ghs-chemical',
+    data: unknown,
+    stock: LabelStock,
+    subject: LabelSubject = 'drawing',
+  ) =>
     labelType === 'us-food'
       ? ({
           labelType,
           data: data as UsFoodLabelData,
           stock,
           layout: layOutUsFoodLabel({ data: data as UsFoodLabelData, stock }),
+          subject,
         } satisfies RuleContext)
       : ({
           labelType,
           data: data as GhsLabelData,
           stock,
           layout: layOutGhsLabel({ data: data as GhsLabelData, stock }),
+          subject,
         } satisfies RuleContext)
 
   const cases = [
@@ -727,7 +735,22 @@ describe('a check that stood down names what would let it run', () => {
       data: f.data as unknown,
       stock: f.stock,
     })),
-  ]
+    // And as `check_label` judges them: a label printed elsewhere, where the
+    // pictogram rule stands down as a limit of the tool.
+    ...GHS_FIXTURES.map((f) => ({
+      name: `${f.name}, described`,
+      labelType: 'ghs-chemical' as const,
+      data: f.data as unknown,
+      stock: f.stock,
+      subject: 'described' as LabelSubject,
+    })),
+  ] as Array<{
+    name: string
+    labelType: 'us-food' | 'ghs-chemical'
+    data: unknown
+    stock: LabelStock
+    subject?: LabelSubject
+  }>
 
   /** Whether the label has already stated a fact — never asked for twice. */
   const stated = (data: unknown, fact: DeclinedFact): boolean => {
@@ -800,7 +823,7 @@ describe('a check that stood down names what would let it run', () => {
 
   it('names at least one fact, and never one the label already states', () => {
     for (const one of cases) {
-      const context = contextOf(one.labelType, one.data, one.stock)
+      const context = contextOf(one.labelType, one.data, one.stock, one.subject)
       for (const declined of declinedChecks(context)) {
         // A limit of the tool names nothing, because there is nothing to state — and
         // says whose limit it is, so the silence beside it is not read as the label's.
@@ -833,7 +856,9 @@ describe('a check that stood down names what would let it run', () => {
     // decline that asked for nothing passed by never entering the loop — which
     // is exactly the decline that cannot be followed.
     for (const one of cases) {
-      for (const first of declinedChecks(contextOf(one.labelType, one.data, one.stock)).filter(
+      for (const first of declinedChecks(
+        contextOf(one.labelType, one.data, one.stock, one.subject),
+      ).filter(
         // A limit of the tool promises nothing to follow; the test above holds it to that.
         (declined) => declined.limit !== true,
       )) {
@@ -844,11 +869,11 @@ describe('a check that stood down names what would let it run', () => {
           for (const fact of asked) data = state(data, fact)
           path.push(asked.join(' + '))
           asked =
-            declinedChecks(contextOf(one.labelType, data, one.stock)).find(
+            declinedChecks(contextOf(one.labelType, data, one.stock, one.subject)).find(
               (d) => d.ruleId === first.ruleId,
             )?.wants ?? []
         }
-        const still = declinedChecks(contextOf(one.labelType, data, one.stock)).find(
+        const still = declinedChecks(contextOf(one.labelType, data, one.stock, one.subject)).find(
           (d) => d.ruleId === first.ruleId,
         )
         expect(
@@ -881,7 +906,9 @@ describe('a check that stood down names what would let it run', () => {
   it('reaches every rule that can stand down, so neither property above passes for want of a case', () => {
     const reached = new Set(
       cases.flatMap((one) =>
-        declinedChecks(contextOf(one.labelType, one.data, one.stock)).map((d) => d.ruleId),
+        declinedChecks(contextOf(one.labelType, one.data, one.stock, one.subject)).map(
+          (d) => d.ruleId,
+        ),
       ),
     )
     const declaring = [...US_FOOD_RULES, ...GHS_RULES]

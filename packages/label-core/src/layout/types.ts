@@ -286,6 +286,22 @@ export interface LayoutOmission {
    * drift. Absent on omissions whose explanation is their own.
    */
   explanation?: { what: string; why: string }
+  /**
+   * What this omission says when the label is one printed elsewhere — present only
+   * where it rests on something the document cannot carry.
+   *
+   * `reason` is about this engine's drawing, and on a drawing it is exactly right.
+   * Said about a user's own label it is wrong: a GHS document carries no type
+   * sizes, so its text is laid out at `GHS_TYPE_DEFAULT`, and "Precautionary
+   * statements runs 10.76 mm past the bottom of a 70.00 mm label, so part of it is
+   * not printed" reached every answer the 2026-10-10 evaluation graded on case 03,
+   * about a label whose every line was printed. Written here, by the engine, so the
+   * judge chooses between two sentences it was handed rather than rewriting one.
+   *
+   * Picking it changes the words and nothing else: the omission still stands, so
+   * every pass on the element is still withheld. See `LabelSubject`.
+   */
+  whenDescribed?: { reason: string; explanation?: { what: string; why: string } }
 }
 
 /**

@@ -17,6 +17,15 @@
  * export a label the regulation prohibits while the rail reported nothing, so
  * the rule says it out loud.
  *
+ * **On a label printed elsewhere it stands down instead** (`LabelSubject`). There
+ * the empty frame is this engine's reconstruction, not the user's ink, and the
+ * finding was a false one about their label: the 2026-10-10 evaluation's Haiku
+ * relayed it as a defect in all 18 of its GHS answers. The rule declines as a
+ * limit of the tool and gives no verdict either way — never a pass, since nothing
+ * was seen — and the layout's omission says the same per pictogram, in words
+ * about the user's label. Read again from the eCFR on 2026-10-11 (title 29 as of
+ * 2026-10-01): C.2.3.1 and C.2.3.2 are as quoted above.
+ *
  * CLP reaches the same place by a different route — Annex I 1.2.1.2 requires a
  * black symbol on a white background — but does not spell out that a frame alone
  * is forbidden. The severity differs accordingly: blocking where the text is
@@ -26,7 +35,7 @@
 import { isPictogramRecognised, type GhsPictogramCode } from '../../ghs/pictograms'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
-import type { GhsChemicalContext, GhsChemicalRule } from '../types'
+import type { Decline, GhsChemicalContext, GhsChemicalRule } from '../types'
 
 export const GHS_PICTOGRAM_SYMBOL_MISSING = 'GHS_PICTOGRAM_SYMBOL_MISSING'
 export const GHS_PICTOGRAM_NOT_RECOGNISED = 'GHS_PICTOGRAM_NOT_RECOGNISED'
@@ -68,7 +77,7 @@ export const ghsPictogramIntegrityRule: GhsChemicalRule = {
   },
   appliesTo: 'ghs-chemical',
 
-  check({ data, layout }: GhsChemicalContext): Finding[] {
+  check({ data, layout, subject }: GhsChemicalContext): Finding[] {
     const isUs = data.regime === 'us-osha'
     const findings: Finding[] = []
 
@@ -91,6 +100,9 @@ export const ghsPictogramIntegrityRule: GhsChemicalRule = {
       }
 
       if (!pictogram.glyphDrawn) {
+        // Nothing to say about a frame whose symbol is on a label this engine cannot
+        // see — and in particular no pass. `declines` says why.
+        if (subject === 'described') continue
         findings.push(
           finding(ghsPictogramIntegrityRule, {
             code: GHS_PICTOGRAM_SYMBOL_MISSING,
@@ -123,5 +135,31 @@ export const ghsPictogramIntegrityRule: GhsChemicalRule = {
     }
 
     return findings
+  },
+
+  declines({ data, layout, subject }: GhsChemicalContext): Decline | undefined {
+    if (subject !== 'described') return undefined
+    const unseen = layout.pictograms.filter(
+      (pictogram) =>
+        !pictogram.glyphDrawn &&
+        isPictogramRecognised(data.regime, pictogram.code as GhsPictogramCode),
+    )
+    if (unseen.length === 0) return undefined
+    // A rule that judged has not stood down — `declinesOf` drops this when `check`
+    // reported an unrecognised pictogram. The omission on each frame still says the
+    // symbol went unchecked.
+    return {
+      reason:
+        'Packwright draws no pictogram artwork and cannot see the symbols on your label, so it ' +
+        'gives no verdict on whether each pictogram carries its hazard symbol. That is a limit ' +
+        'of this tool, not a fault found in your label.' +
+        // OSHA sets no minimum size, so on a US label no size check runs to mention.
+        (data.regime === 'eu-clp'
+          ? ' A pictogram smaller than CLP’s minimum is still reported.'
+          : ''),
+      citation: data.regime === 'us-osha' ? US : EU,
+      wants: [],
+      limit: true,
+    }
   },
 }

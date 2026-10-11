@@ -53,10 +53,11 @@ which cost four review rounds on one pull request.
 
 ## Worth doing before deployment
 
-**Two, found by the MCP evaluation of 2026-10-10**, under "From the MCP evaluation": the pictogram-symbol and
-type-size findings `check_label` makes about Packwright's drawing rather than the user's label. They are false
-alarms rather than false clearances, and matter only through `/mcp`. The evaluation's two must-fix findings were
-fixed on 2026-10-10.
+**None outstanding.** The last two, found by the MCP evaluation of 2026-10-10 — `check_label` reporting every
+pictogram as having no symbol, and text set at Packwright's own type sizes as "not printed", both about
+Packwright's drawing rather than the user's label — were fixed on 2026-10-11: a label checked through `/mcp` or
+audited from a photograph is judged as one printed elsewhere (`LabelSubject`, `CHANGELOG.md`). The evaluation's
+two must-fix findings were fixed on 2026-10-10.
 
 The five pinned on 2026-10-08 were fixed in PRs #71 to #73: `ghs/pictogram-set` citing the EU on US labels, the
 assortment order check, the hand-set type size, the "exempt" status beside a printed panel, and statement codes
@@ -73,20 +74,26 @@ recorded beside it (2026-10-11). Unknown routes answered 200 was fixed on 2026-1
 Found by grading 144 answers in `docs/experiments/2026-10-10-mcp-with-and-without/`, and each confirmed by the lead
 against the code and the record. Two were must-fix and were fixed on 2026-10-10 — `check_label` now refuses a
 label whose size it is not told, and `GHS_PICTOGRAM_NOT_REQUIRED` cites Article 26 where Article 26 is the reason —
-and their history is in `CHANGELOG.md`. What is left are false findings the tool gives about a user's label.
+and the two false findings about a user's label, the empty pictogram frame and text "not printed" at Packwright's
+own type sizes, were fixed on 2026-10-11. Their history is in `CHANGELOG.md`. What is left is below.
 
-**Every GHS pictogram is reported as having no symbol.** Packwright has no verified pictogram artwork, draws empty
-frames, and `GHS_PICTOGRAM_SYMBOL_MISSING` fires on every GHS label it checks — a violation under CLP, blocking under
-OSHA. On the website that is true of the PDF Packwright exports; through `check_label`, where a user describes their
-own printed label, it is a false finding about their label, and the evaluation's Haiku relayed it as one in all 18
-of its GHS answers. The report already lists the symbol as not drawn; the finding should not also be scored.
-Whether the check request should say "the pictograms are printed with their symbols", or the rule should stand down
-where the engine drew no artwork, is a design decision for the stage that fixes it.
+**CLP gains a minimum type size on 1 January 2028, and nothing can check it yet.** Regulation (EU) 2024/2865,
+Annex I point (2), replaces Table 1.3 with one carrying a minimum x-height by package capacity (1.2 mm up to 0.5 L,
+1.4 mm to 3 L, 1.8 mm to 50 L, 2.0 mm above), and point (3) adds 1.2.1.5: lines at least 120% of the font size
+apart, one easily legible sans-serif face, black on white. Regulation (EU) 2025/2439, Article 1(c), inserted
+2024/2865 Article 2(3a), putting both back to 1 January 2028. All three read from the EU Publications Office on
+2026-10-11. A GHS document carries no type sizes and Packwright sets its own, so neither the editor nor
+`check_label` can judge this today. **Before 2028-01-01**, add type sizes to the GHS document and a rule on them,
+with the 120% line spacing (`GHS_TYPE_DEFAULT.lineHeight` is 1.35) and the ≤0.5 L band split that the new table
+introduces and the current one does not have. `docs/WHAT-IS-NOT-CHECKED.md` says so meanwhile.
 
-**Text at the engine's own type size is reported "not printed".** A GHS label's input carries no type sizes, so the
-engine lays its text out at a default and records what overruns as not printed. Case 03's statements and supplier
-were reported missing from a label whose prompt says every line is printed, and every "with" answer told the user
-so. The same question as the pictograms: a fact the input cannot carry is being judged from Packwright's drawing.
+**The evaluation harness still judges each case as a drawing.** `judgeCase` (`apps/api/src/experiments/withoutTool/
+prompt.ts`) calls the judge without a subject, which is right for what it does — each case's printed text is read
+off the engine's own layout — and `engine.json` keeps the findings the 2026-10-10 answers were graded against. But
+`check_label` now judges what it is sent as a label printed elsewhere, so on the GHS cases it no longer reports the
+empty pictogram frame or text "not printed" at the default type sizes. Before the evaluation is run again, decide
+whether the record should be the drawing's or `check_label`'s, and regenerate it with `describe.ts`, which says when
+the engine now reports differently. Found by `/code-review medium` on stage 22.
 
 **An assumed margin can refuse a small label in words that blame the user.** `check_label` needs a size but not
 a margin, and uses the label type's default margin where none is given — saying so in `stockUsed.marginAssumed`.

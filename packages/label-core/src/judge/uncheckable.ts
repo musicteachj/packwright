@@ -13,8 +13,13 @@
  * part of its explanation is shared with other elements, that is passed through
  * too, so the findings rail can say the shared part once — grouping on a whole
  * string it was handed, rather than taking the engine's sentence apart.
+ *
+ * **On a label printed elsewhere, the engine's second wording is chosen where it
+ * wrote one** (`LayoutOmission.whenDescribed`). Still the engine's words, chosen
+ * whole: this module picks between two sentences and writes neither.
  */
 import type { LayoutOmission, ResolvedLayout } from '../layout/types'
+import type { LabelSubject } from '../rules/types'
 
 export interface UncheckableReason {
   /** The whole sentence, exactly as the engine wrote it. */
@@ -28,7 +33,10 @@ export interface Uncheckable {
   reasons: UncheckableReason[]
 }
 
-export function uncheckableIn(layout: ResolvedLayout | null): Uncheckable[] {
+export function uncheckableIn(
+  layout: ResolvedLayout | null,
+  subject: LabelSubject = 'drawing',
+): Uncheckable[] {
   const byElement = new Map<string, UncheckableReason[]>()
   const add = (elementId: string, reason: UncheckableReason) => {
     const existing = byElement.get(elementId)
@@ -50,9 +58,13 @@ export function uncheckableIn(layout: ResolvedLayout | null): Uncheckable[] {
   }
 
   for (const omission of layout?.omissions ?? []) {
+    const words =
+      subject === 'described' && omission.whenDescribed !== undefined
+        ? omission.whenDescribed
+        : omission
     add(omission.elementId, {
-      text: omission.reason,
-      ...(omission.explanation === undefined ? {} : { explanation: omission.explanation }),
+      text: words.reason,
+      ...(words.explanation === undefined ? {} : { explanation: words.explanation }),
     })
   }
 

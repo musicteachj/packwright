@@ -18,7 +18,12 @@ import * as bwip from 'bwip-js/generic'
 import type { CaseLabel, ExperimentCase } from './cases'
 
 /**
- * The case judged by the judge the editor and the MCP server share.
+ * The case judged by the judge the editor and the MCP server share — as a drawing,
+ * which is what each case is: its printed text is read off this layout. `check_label`
+ * now judges what it is sent as a label printed elsewhere (`LabelSubject`), so on GHS
+ * cases it no longer reports the empty pictogram frame or text "not printed" at the
+ * default type sizes that `engine.json` records. That record is kept as it was graded;
+ * see `docs/BACKLOG.md` before rerunning the evaluation.
  *
  * One call instead of this file's own switch from label type to layout function and
  * a cast to the rules' context. A case the judge refuses is a broken case, not a

@@ -32,10 +32,32 @@ import type { Citation, Finding, Severity } from '../types/index'
 export const LABEL_TYPES = ['gs1-retail', 'ghs-chemical', 'us-food'] as const
 export type LabelType = (typeof LABEL_TYPES)[number]
 
+/**
+ * What a judgement is about: the label this engine drew, or one printed elsewhere.
+ *
+ * **`drawing`**, the default, is the editor and the exporter: the layout is the
+ * artefact a user will print, so a pictogram frame with no symbol in it is a frame
+ * with no symbol on the label. **`described`** is `check_label` and the photo
+ * audit: the document describes a label that already exists, and the layout is
+ * this engine's reconstruction of it. There, a fact the document cannot carry —
+ * the pictogram artwork, the type sizes of a GHS label — is not judged from the
+ * reconstruction, because the reconstruction made it up. The 2026-10-10
+ * evaluation found both being reported about users' own labels:
+ * `GHS_PICTOGRAM_SYMBOL_MISSING` on every GHS label, and statements "not printed"
+ * that had been laid out at this engine's own default size.
+ *
+ * Only what the document cannot carry changes meaning. Everything it does carry —
+ * the stock, the pictogram side, the statement codes — is judged the same either
+ * way, and no rule may issue a pass on `described` that it would not on `drawing`.
+ */
+export type LabelSubject = 'drawing' | 'described'
+
 interface RuleContextBase {
   stock: LabelStock
   /** The label as drawn. Most rules measure this one. */
   layout: ResolvedLayout
+  /** What the judgement is about. Absent means `drawing`. See `LabelSubject`. */
+  subject?: LabelSubject
 }
 
 export interface Gs1RetailContext extends RuleContextBase {
