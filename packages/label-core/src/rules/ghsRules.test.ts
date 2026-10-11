@@ -100,6 +100,88 @@ describe('precedence needs the classification, not the pictogram codes', () => {
   })
 })
 
+describe('a pictogram outside the required set says why', () => {
+  const stock = GHS_CONFORMANT.stock
+  const eyeDamageAndIrritation = (pictograms: GhsLabelData['pictograms']) =>
+    findingsFor(
+      {
+        regime: 'eu-clp',
+        productIdentifier: 'X',
+        capacityL: 5,
+        hazards: [HAZARDS.seriousEyeDamage, HAZARDS.skinIrritation],
+        ...(pictograms === undefined ? {} : { pictograms }),
+      },
+      stock,
+    )
+  const notRequired = (findings: ReturnType<typeof findingsFor>) =>
+    findings.filter((f) => f.code === 'GHS_PICTOGRAM_NOT_REQUIRED')
+
+  it('leaves a pictogram the precedence rule already reports to that rule', () => {
+    // GHS05 and GHS07 both drawn: `ghs/pictogram-precedence` reports GHS07 under
+    // Article 26(1)(c). This rule used to report it again as "no hazard class
+    // declared … requires it" under Annex V, which assigns GHS07 to the skin
+    // irritation — a reason its own citation contradicts.
+    const findings = eyeDamageAndIrritation(['GHS05', 'GHS07'])
+    expect(findings.filter((f) => f.code === 'GHS_PICTOGRAM_PRECEDENCE_VIOLATED')).toHaveLength(1)
+    expect(notRequired(findings)).toEqual([])
+  })
+
+  it('still reports one Article 26 removes when nothing else does, citing the clause', () => {
+    // GHS05 applies and is not drawn, so the precedence rule is silent. Dropping
+    // the finding here would leave GHS07 on the label with no violation at all.
+    const findings = eyeDamageAndIrritation(['GHS07'])
+    expect(findings.filter((f) => f.code === 'GHS_PICTOGRAM_PRECEDENCE_VIOLATED')).toEqual([])
+    const [finding, ...rest] = notRequired(findings)
+    expect(rest).toEqual([])
+    expect(finding!.severity).toBe('violation')
+    expect(finding!.citation.reference).toBe('Regulation (EC) No 1272/2008 (CLP), Article 26(1)')
+    expect(finding!.message).toContain('Article 26(1)(c)')
+    expect(finding!.message).not.toContain('no hazard class declared')
+  })
+
+  it('keeps Annex V for a pictogram no declared hazard calls for', () => {
+    const findings = eyeDamageAndIrritation(['GHS05', 'GHS02'])
+    const [finding, ...rest] = notRequired(findings)
+    expect(rest).toEqual([])
+    expect(finding!.citation.reference).toBe('Regulation (EC) No 1272/2008 (CLP), Annex V')
+    expect(finding!.message).toContain('no hazard class declared')
+  })
+})
+
+describe('an exclamation mark needed for a hazard the precedence clause does not name', () => {
+  // Article 26(1)(c) removes GHS07 beside GHS05 only "for skin or eye irritation".
+  // Here acute toxicity 4 needs it too, so it stays: a label carrying it is not in
+  // breach of precedence, and a label leaving it off is missing a pictogram. Before
+  // the precedence fix the second drew no finding — the derivation had removed it.
+  const stock = GHS_CONFORMANT.stock
+  const withPictograms = (pictograms: GhsLabelData['pictograms']) =>
+    findingsFor(
+      {
+        regime: 'eu-clp',
+        productIdentifier: 'X',
+        capacityL: 5,
+        hazards: [
+          HAZARDS.seriousEyeDamage,
+          HAZARDS.skinIrritation,
+          '3.1/acute-toxicity-oral-dermal-inhalation-4',
+        ],
+        ...(pictograms === undefined ? {} : { pictograms }),
+      },
+      stock,
+    )
+
+  it('is not a precedence violation when drawn', () => {
+    const findings = withPictograms(['GHS05', 'GHS07'])
+    expect(findings.filter((f) => f.code === 'GHS_PICTOGRAM_PRECEDENCE_VIOLATED')).toEqual([])
+    expect(findings.filter((f) => f.code === 'GHS_PICTOGRAM_NOT_REQUIRED')).toEqual([])
+  })
+
+  it('is reported missing when left off', () => {
+    const missing = withPictograms(['GHS05']).filter((f) => f.code === 'GHS_PICTOGRAM_MISSING')
+    expect(missing.map((f) => f.message).join(' ')).toContain('GHS07')
+  })
+})
+
 describe('rules that only one regime sets', () => {
   it('measures no dimension on a US label, because OSHA sets none', () => {
     const findings = findingsFor(

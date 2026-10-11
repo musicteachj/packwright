@@ -9,6 +9,8 @@ const RESPIRATORY = '3.4/respiratory-sensitisation-1-1a-1b'
 const ACUTE_TOX = '3.1/acute-toxicity-oral-dermal-inhalation-1-2-3'
 const FLAMMABLE = '2.6/flammable-liquids-1-2-3'
 const EXPLOSIVE = '2.1/unstable-explosives-explosives-of-divisions-1-1-1-2-1-3'
+const ACUTE_TOX_4 = '3.1/acute-toxicity-oral-dermal-inhalation-4'
+const STOT_SE_3 = '3.8/specific-target-organ-toxicity-single-exposure-3-respira'
 
 describe('Article 26 applied, not merely reported', () => {
   /**
@@ -46,6 +48,69 @@ describe('Article 26 applied, not merely reported', () => {
     // No hazards means no "why", and every conditional clause is unanswerable.
     expect(precedenceSuppressions(['GHS05', 'GHS07'], [], 'eu-clp')).toEqual([])
     expect(applyPrecedence(['GHS05', 'GHS07'], [], 'eu-clp')).toEqual(['GHS05', 'GHS07'])
+  })
+})
+
+describe('a clause removes the exclamation mark only for the hazards it names', () => {
+  // Article 26(1)(c) and (d) take GHS07 off "for" skin or eye irritation and
+  // sensitisation, and OSHA C.2.1.2 to C.2.1.4 "where it is used for" them. A label
+  // that needs GHS07 for something else as well keeps it. Written with `some`, the
+  // clauses removed it — and a label then missing it drew no finding at all.
+  it.each([
+    ['acute toxicity 4', ACUTE_TOX_4],
+    ['respiratory tract irritation (STOT SE 3)', STOT_SE_3],
+  ])('keeps it beside corrosion when it is also there for %s', (_name, other) => {
+    const hazards = [EYE_DAMAGE, SKIN_IRRITATION, other]
+    for (const regime of ['eu-clp', 'us-osha'] as const) {
+      expect(applyPrecedence(requiredPictograms(hazards), hazards, regime), regime).toEqual([
+        'GHS05',
+        'GHS07',
+      ])
+    }
+  })
+
+  it('keeps it beside the respiratory health hazard when it is also there for acute toxicity', () => {
+    const hazards = [RESPIRATORY, SKIN_SENSITISATION, ACUTE_TOX_4]
+    expect(applyPrecedence(requiredPictograms(hazards), hazards, 'eu-clp')).toContain('GHS07')
+  })
+
+  it('removes it under OSHA when two clauses between them bar every use of it', () => {
+    // C.2.1.2 bars the exclamation mark for acute toxicity beside the skull and
+    // crossbones; C.2.1.3 bars it for irritation beside corrosion. Needed for both,
+    // with both pictograms present, it may not appear — though neither clause alone
+    // covers every use. Requiring one clause to cover all of them kept it.
+    const hazards = [ACUTE_TOX, ACUTE_TOX_4, EYE_DAMAGE, SKIN_IRRITATION]
+    const required = requiredPictograms(hazards)
+    expect(required).toContain('GHS07')
+    expect(applyPrecedence(required, hazards, 'us-osha')).not.toContain('GHS07')
+    expect(
+      precedenceSuppressions(required, hazards, 'us-osha')
+        .map((suppression) => suppression.clause)
+        .sort(),
+    ).toEqual(['C.2.1.2', 'C.2.1.3'])
+  })
+
+  it('keeps it under OSHA when one of its uses is barred by nothing present', () => {
+    // No corrosion pictogram, so nothing bars the irritation use.
+    const hazards = [ACUTE_TOX, ACUTE_TOX_4, SKIN_IRRITATION]
+    expect(applyPrecedence(requiredPictograms(hazards), hazards, 'us-osha')).toContain('GHS07')
+  })
+
+  it('lets only the outright clause speak for an exclamation mark nothing calls for', () => {
+    // Drawn with no hazard that needs it: 26(1)(b) bars it whatever its use, but
+    // 26(1)(c) would claim a use for skin or eye irritation the label does not have.
+    const hazards = [ACUTE_TOX, EYE_DAMAGE]
+    const drawn = ['GHS05', 'GHS06', 'GHS07'] as const
+    expect(
+      precedenceSuppressions([...drawn], hazards, 'eu-clp').map(
+        (suppression) => suppression.clause,
+      ),
+    ).toEqual(['Article 26(1)(b)'])
+  })
+
+  it('still removes it when every reason for it is one the clause names', () => {
+    const hazards = [EYE_DAMAGE, SKIN_IRRITATION, '3.3/eye-irritation-2']
+    expect(applyPrecedence(requiredPictograms(hazards), hazards, 'eu-clp')).toEqual(['GHS05'])
   })
 })
 

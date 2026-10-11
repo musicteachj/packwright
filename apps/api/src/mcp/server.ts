@@ -150,10 +150,23 @@ const FindingOutput = z.object({
   certifies: z.enum(['artwork', 'document']).optional(),
 })
 
+/**
+ * The size the label was judged at, said back. A wrong size is the one input
+ * error that moves every size and placement finding, so it is shown where a user
+ * reading the answer can see it — and an assumed margin says it was assumed.
+ */
+const JudgedOn = z.object({
+  stock: z.object({ widthMm: z.number(), heightMm: z.number(), marginMm: z.number() }),
+  marginAssumed: z.boolean(),
+})
+
+export type JudgedOn = z.infer<typeof JudgedOn>
+
 const CheckLabelOutput = z.discriminatedUnion('outcome', [
   z.object({
     outcome: z.literal('judged'),
     labelType: z.enum(LABEL_TYPES),
+    judgedOn: JudgedOn,
     summary: z.object({
       blocking: z.boolean(),
       failures: z.number(),
@@ -179,6 +192,7 @@ const CheckLabelOutput = z.discriminatedUnion('outcome', [
   z.object({
     outcome: z.literal('refused'),
     labelType: z.enum(LABEL_TYPES),
+    judgedOn: JudgedOn,
     reason: z.string(),
     notice: z.string(),
     whatIsNotChecked: z.string(),
@@ -274,11 +288,13 @@ const findingOf = (finding: Finding): z.infer<typeof FindingOutput> => ({
 export function checkLabelOutput(
   labelType: (typeof LABEL_TYPES)[number],
   judgement: LabelJudgement,
+  judgedOn: JudgedOn,
 ): CheckLabelOutput {
   if (judgement.outcome === 'refused') {
     return {
       outcome: 'refused',
       labelType,
+      judgedOn,
       reason: judgement.reason,
       notice: NOT_JUDGED,
       whatIsNotChecked: WHAT_IS_NOT_CHECKED_URL,
@@ -287,6 +303,7 @@ export function checkLabelOutput(
   return {
     outcome: 'judged',
     labelType,
+    judgedOn,
     summary: {
       blocking: judgement.blocking,
       failures: judgement.failures.length,
@@ -408,14 +425,23 @@ export function createPackwrightMcpServer(): McpServer {
         'checks that did not run and what each needs; what could not be drawn or judged; and a ' +
         'notice that no failures is not a statement of compliance. A label the engine cannot ' +
         'draw is answered `refused`, with the reason and a notice that it was not judged. ' +
-        '`labelType` selects the shape of `data`; `stock` is the label size in millimetres and ' +
-        'defaults per label type.',
+        '`labelType` selects the shape of `data`. `stock` — the printed label’s width and height ' +
+        'in millimetres — is required: if the user has not said how big the label is, ask them ' +
+        'rather than guess, because every size and placement finding is measured against it. ' +
+        'The answer’s `judgedOn` says the size used, and whether the margin was assumed.',
       inputSchema: CheckLabelInput,
       outputSchema: CheckLabelOutput,
       annotations: READ_ONLY,
     },
-    async (request) =>
-      answer(checkLabelOutput(request.labelType, judgeLabel(toJudgeRequest(request, bwip)))),
+    async (request) => {
+      const judging = toJudgeRequest(request, bwip)
+      return answer(
+        checkLabelOutput(request.labelType, judgeLabel(judging), {
+          stock: { ...judging.stock },
+          marginAssumed: request.stock.marginMm === undefined,
+        }),
+      )
+    },
   )
 
   server.registerTool(

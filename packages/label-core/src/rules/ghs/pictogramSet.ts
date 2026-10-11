@@ -32,7 +32,8 @@
  * `ghs/pictogram-integrity` still judge US labels under OSHA's own text.
  */
 
-import { derivedPictograms } from '../../ghs/precedence'
+import { requiredPictograms } from '../../ghs/classification'
+import { derivedPictograms, precedenceSuppressions } from '../../ghs/precedence'
 import type { GhsPictogramCode } from '../../ghs/pictograms'
 import { GHS_PICTOGRAM_SYMBOLS } from '../../ghs/pictograms'
 import { wasFullyDrawn } from '../../layout/omissions'
@@ -50,6 +51,21 @@ const CITATION: Citation = {
   authority: 'EU',
   reference: 'Regulation (EC) No 1272/2008 (CLP), Annex V',
   title: 'Hazard pictograms required by hazard class and category',
+}
+
+/**
+ * For a pictogram the classification calls for and Article 26 then removes.
+ *
+ * Its own citation because Annex V says the opposite of the finding there: it
+ * *assigns* the pictogram. What takes it off the label is a clause of Article
+ * 26(1), read from the 2026-07-01 consolidation (02008R1272-20260701, EU
+ * Publications Office) on 2026-10-10 — (b), (c) and (d) say it "shall not
+ * appear". The same reference `ghs/pictogram-precedence` cites.
+ */
+const PRECEDENCE_CITATION: Citation = {
+  authority: 'EU',
+  reference: 'Regulation (EC) No 1272/2008 (CLP), Article 26(1)',
+  title: 'Principles of precedence for hazard pictograms',
 }
 
 /** What a US label's pictograms answer to, which this rule cannot judge. See the note above. */
@@ -95,6 +111,7 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
   id: 'ghs/pictogram-set',
   title: 'On an EU label, every pictogram is one the classification requires.',
   citation: CITATION,
+  citations: [CITATION, PRECEDENCE_CITATION],
   codes: {
     [GHS_PICTOGRAM_NOT_REQUIRED]: ['violation'],
     [GHS_PICTOGRAM_MISSING]: ['advisory'],
@@ -144,18 +161,51 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
     }))
     const drawnCodes = new Set(drawn.map((p) => p.code))
 
+    // **A pictogram outside the required set is one of two things, and they are
+    // not the same finding.** Either no declared hazard calls for it at all — what
+    // Annex V answers — or one does and Article 26 takes it off again. Both used
+    // to be "no hazard class declared for this product requires it", under Annex
+    // V, which for the second is false: Annex V assigns GHS07 to skin irritation,
+    // and Article 26(1)(c) is what removes it beside GHS05 (found by grading the
+    // MCP evaluation, docs/experiments/2026-10-10-mcp-with-and-without/).
+    //
+    // `removedByPrecedence` is what the derivation removed from the *required*
+    // set; `reportedByPrecedence` is what `ghs/pictogram-precedence` reports from
+    // the *drawn* one. Where the displacing pictogram is drawn as well, that rule
+    // already reports this one as a violation, under the clause, and repeating it
+    // here would say the same thing twice. Where it is not drawn, that rule is
+    // silent — it reads "applies" from the artwork — and this is the only finding
+    // that says the pictogram must go, so it is never dropped, only worded true.
+    const mandatory = (suppressions: ReturnType<typeof precedenceSuppressions>) =>
+      suppressions.filter((suppression) => suppression.kind === 'mandatory')
+    const removedByPrecedence = mandatory(
+      precedenceSuppressions(requiredPictograms(hazards), hazards, data.regime),
+    )
+    const reportedByPrecedence = new Set(
+      mandatory(precedenceSuppressions([...drawnCodes], hazards, data.regime)).map(
+        (suppression) => suppression.code,
+      ),
+    )
+
     const findings: Finding[] = []
 
     for (const pictogram of drawn) {
       if (required.has(pictogram.code)) continue
+      const symbol = GHS_PICTOGRAM_SYMBOLS[pictogram.code]
+      const removal = removedByPrecedence.find((suppression) => suppression.code === pictogram.code)
+      if (removal !== undefined && reportedByPrecedence.has(pictogram.code)) continue
       findings.push(
         finding(ghsPictogramSetRule, {
           code: GHS_PICTOGRAM_NOT_REQUIRED,
           severity: 'violation',
           message:
-            `${pictogram.code} (${GHS_PICTOGRAM_SYMBOLS[pictogram.code]}) is on the label, but no ` +
-            'hazard class declared for this product requires it.',
+            removal === undefined
+              ? `${pictogram.code} (${symbol}) is on the label, but no hazard class declared for ` +
+                'this product requires it.'
+              : `${pictogram.code} (${symbol}) is on the label, but ${removal.clause} takes it off: ` +
+                `${removal.reason}`,
           elementId: pictogram.elementId,
+          ...(removal === undefined ? {} : { citation: PRECEDENCE_CITATION }),
         }),
       )
     }

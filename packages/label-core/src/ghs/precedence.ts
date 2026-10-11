@@ -84,69 +84,88 @@ export function precedenceSuppressions(
   const isUs = regime === 'us-osha'
   const out: PrecedenceSuppression[] = []
 
-  // Skull and crossbones over the exclamation mark.
-  if (has('GHS06') && has('GHS07')) {
-    if (isUs) {
-      if (why07.some((entry) => isAcuteToxicity(entry.description))) {
-        out.push({
-          code: 'GHS07',
-          kind: 'mandatory',
+  // **The exclamation mark goes only when every reason for it is barred.**
+  // Article 26(1)(c) and (d) remove GHS07 "for" the hazards they name, and C.2.1.2
+  // to C.2.1.4 "where it is used for" them — both read from the primary texts on
+  // 2026-10-10. Only 26(1)(b), the skull and crossbones, removes it outright.
+  //
+  // So the question is asked of the reasons, not of each clause alone. Asked per
+  // clause with `some`, a label needing GHS07 for acute toxicity 4 as well as skin
+  // irritation lost it beside corrosion: the derivation left it out and a label
+  // missing it drew no finding. Asked per clause with `every`, an OSHA label
+  // needing it for acute toxicity *and* irritation, beside both the skull and
+  // crossbones and corrosion, kept it — though C.2.1.2 bars the one use and C.2.1.3
+  // the other. It goes when each reason is barred by some clause that applies, and
+  // each such clause is reported with its own reason.
+  //
+  // `has('GHS07')` is load-bearing and was missing when this logic lived inside
+  // the rule: without it a clause fired whenever a *classification* would have
+  // required the exclamation mark, even on a label that correctly left it off.
+  const respiratory = why08.some((entry) => isRespiratorySensitisation(entry.description))
+  const sensitisationOrIrritation = (description: string) =>
+    isSkinSensitisation(description) || isSkinOrEyeIrritation(description)
+  const ghs07Clauses: Array<{
+    applies: boolean
+    /** Which uses of GHS07 the clause bars; `'all'` for 26(1)(b), which bars it whatever its use. */
+    bars: 'all' | ((description: string) => boolean)
+    clause: string
+    reason: string
+  }> = [
+    isUs
+      ? {
+          applies: has('GHS06'),
+          bars: isAcuteToxicity,
           clause: 'C.2.1.2',
           reason:
             'The skull and crossbones pictogram is present, so the exclamation mark may not ' +
             'appear where it is used for acute toxicity.',
-        })
-      }
-    } else {
-      out.push({
-        code: 'GHS07',
-        kind: 'mandatory',
-        clause: 'Article 26(1)(b)',
-        reason: 'The GHS06 pictogram applies, so GHS07 may not appear on the label.',
-      })
-    }
-  }
-
-  // Corrosion over the exclamation mark, for skin or eye irritation only.
-  //
-  // `has('GHS07')` is load-bearing and was missing when this logic lived inside
-  // the rule: without it the clause fired whenever a *classification* would have
-  // required the exclamation mark, even on a label that correctly left it off —
-  // telling a user the exclamation mark may not appear on a label where it does
-  // not appear.
-  if (
-    has('GHS05') &&
-    has('GHS07') &&
-    why07.some((entry) => isSkinOrEyeIrritation(entry.description))
-  ) {
-    out.push({
-      code: 'GHS07',
-      kind: 'mandatory',
+        }
+      : {
+          applies: has('GHS06'),
+          bars: 'all',
+          clause: 'Article 26(1)(b)',
+          reason: 'The GHS06 pictogram applies, so GHS07 may not appear on the label.',
+        },
+    {
+      applies: has('GHS05'),
+      bars: isSkinOrEyeIrritation,
       clause: isUs ? 'C.2.1.3' : 'Article 26(1)(c)',
       reason:
         'The corrosion pictogram applies, so the exclamation mark may not appear for skin or ' +
         'eye irritation.',
-    })
-  }
-
-  // Health hazard for respiratory sensitisation, over the exclamation mark used
-  // for skin sensitisation or skin and eye irritation.
-  if (
-    has('GHS08') &&
-    has('GHS07') &&
-    why08.some((entry) => isRespiratorySensitisation(entry.description)) &&
-    why07.some(
-      (entry) => isSkinSensitisation(entry.description) || isSkinOrEyeIrritation(entry.description),
-    )
-  ) {
-    out.push({
-      code: 'GHS07',
-      kind: 'mandatory',
+    },
+    {
+      applies: has('GHS08') && respiratory,
+      bars: sensitisationOrIrritation,
       clause: isUs ? 'C.2.1.4' : 'Article 26(1)(d)',
       reason:
         'The health hazard pictogram applies for respiratory sensitisation, so the exclamation ' +
         'mark may not appear for skin sensitisation or skin and eye irritation.',
-    })
+    },
+  ]
+  if (has('GHS07')) {
+    const applicable = ghs07Clauses.filter((clause) => clause.applies)
+    const barredBy = (description: string) =>
+      applicable.filter((clause) => clause.bars === 'all' || clause.bars(description))
+    const everyUseBarred = why07.every((entry) => barredBy(entry.description).length > 0)
+    if (everyUseBarred) {
+      for (const clause of applicable) {
+        // A clause is reported where it bars a use the label has, or bars every use.
+        // With no reason for GHS07 at all, only 26(1)(b) can speak — the others
+        // would name a use the label does not have.
+        const speaks =
+          clause.bars === 'all' ||
+          why07.some((entry) => (clause.bars as (d: string) => boolean)(entry.description))
+        if (speaks) {
+          out.push({
+            code: 'GHS07',
+            kind: 'mandatory',
+            clause: clause.clause,
+            reason: clause.reason,
+          })
+        }
+      }
+    }
   }
 
   // The two CLP clauses with no OSHA equivalent, which permit rather than forbid.

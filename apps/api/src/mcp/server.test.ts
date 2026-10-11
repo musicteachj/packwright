@@ -14,6 +14,7 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import { createMcpHandler } from '@modelcontextprotocol/server'
 import {
   EU_CLP_HAZARD_STATEMENTS,
+  DEFAULT_GHS_STOCK,
   EU_CLP_PRECAUTIONARY_STATEMENTS,
   SEVERITY_ORDER,
   judgeLabel,
@@ -141,6 +142,7 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
         data: US_FOOD_CONFORMANT.data,
         stock: US_FOOD_CONFORMANT.stock,
       }),
+      { stock: US_FOOD_CONFORMANT.stock, marginAssumed: false },
     )
     expect(result.isError).toBeFalsy()
     expect(result.structuredContent).toEqual(expected)
@@ -218,7 +220,10 @@ describe('check_label on every document the judge is tested against', () => {
       // what the website says about the same label.
       expect(result.isError).toBeFalsy()
       expect(result.structuredContent).toEqual(
-        checkLabelOutput(parsed.data.labelType, judgeAsTheEditorDoes(document)),
+        checkLabelOutput(parsed.data.labelType, judgeAsTheEditorDoes(document), {
+          stock: document.stock,
+          marginAssumed: false,
+        }),
       )
       // Said apart from the comparison above, which runs `checkLabelOutput` on
       // both sides: the findings come most severe first, as the findings rail
@@ -275,6 +280,41 @@ describe('check_label, refusing', () => {
     }>) {
       expect(textOf(checked)).toContain(`data.${path}: ${message}`)
     }
+  })
+
+  it('refuses a label whose size it was not told, rather than judging one it assumed', async () => {
+    // The evaluation of 2026-10-10: with no size given, the tool judged a 74 × 105 mm
+    // label of its own and passed the size rule on it — and case 03's label, too
+    // small for its 5 L package, passed with it.
+    const result = await (
+      await connect()
+    ).callTool({
+      name: 'check_label',
+      arguments: { labelType: 'ghs-chemical', data: GHS_CONFORMANT.data },
+    })
+    expect(result.isError).toBe(true)
+    expect(textOf(result)).toContain('`stock` is required')
+  })
+
+  it('says it assumed the margin when it was given only the size', async () => {
+    const result = await (
+      await connect()
+    ).callTool({
+      name: 'check_label',
+      arguments: {
+        labelType: 'ghs-chemical',
+        data: GHS_CONFORMANT.data,
+        stock: { widthMm: 50, heightMm: 70 },
+      },
+    })
+    expect((result.structuredContent as { judgedOn: unknown }).judgedOn).toEqual({
+      stock: { widthMm: 50, heightMm: 70, marginMm: DEFAULT_GHS_STOCK.marginMm },
+      marginAssumed: true,
+    })
+    // And it judged the size it was given: 50 × 70 mm is below the CLP minimum
+    // for a 5 L package, which a borrowed 74 × 105 mm used to pass.
+    const { findings } = result.structuredContent as { findings: Array<{ code: string }> }
+    expect(findings.map((finding) => finding.code)).toContain('GHS_LABEL_BELOW_MINIMUM_SIZE')
   })
 
   it('refuses a label type it does not know', async () => {
