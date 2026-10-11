@@ -15,7 +15,7 @@ assistant does the explaining, on your own plan.
 
 | Tool | What it does |
 |---|---|
-| `check_label` | Checks a GS1 retail (UPC-A), GHS chemical or US food label from its details. Answers with each finding — severity, message, measurement and citation — the checks that did not run and what each needs, and what could not be drawn. |
+| `check_label` | Checks a GS1 retail (UPC-A), GHS chemical or US food label from its details and its printed size, which it needs — your assistant will ask if you have not said. Answers with each finding — severity, message, measurement and citation — the checks that did not run and what each needs, and what could not be drawn. |
 | `list_rules` | Every rule Packwright implements, with the provisions it cites. |
 | `ghs_statement_text` | The exact text of a GHS hazard or precautionary statement, from the verified tables — or a plain "no verified text". Never generated. |
 | `check_gtin` | Whether a GTIN-8, -12, -13 or -14 has the right check digit, and the right one if not. |

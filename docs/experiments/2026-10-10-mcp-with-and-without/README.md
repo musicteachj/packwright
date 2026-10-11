@@ -151,6 +151,10 @@ All four confirmed by the lead against the code and the record; each is in `docs
    requires it", under Annex V — but Annex V assigns GHS07 to the declared skin irritation; Article 26 precedence
    is what removes it. The website shows the same finding.
 
+**Fixed since, on 2026-10-10:** 1 and 4. `check_label` now refuses a label whose size it is not told, and says back
+the size it judged; `GHS_PICTOGRAM_NOT_REQUIRED` cites the Article 26 clause where that is the reason. The answers
+above were given before either change. 2 and 3 are open, in `docs/BACKLOG.md`.
+
 ### Corrections made in grading
 
 - **One grader's F was wrong.** "Annex IV (Table 1.2)" was graded F as not existing; Annex IV Part 2 does have a

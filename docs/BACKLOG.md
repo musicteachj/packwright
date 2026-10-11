@@ -24,10 +24,10 @@ piece, that piece stayed, as an entry of its own. What remains is open.
 The entries fall into four kinds:
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. **Two outstanding, found by the MCP evaluation of
-2026-10-10:** `check_label` passes a label size nobody gave it, and `GHS_PICTOGRAM_NOT_REQUIRED` gives a reason its
-citation does not support. Both are under "From the MCP evaluation, 2026-10-10". The one before them,
-`ghs/pictogram-set` citing CLP Annex V on US OSHA labels, was closed on 2026-10-09 by standing it down on US labels.
+provision that does not say what the finding claims. **None outstanding.** The MCP evaluation of 2026-10-10
+found two — `check_label` passing a label size nobody gave it, and `GHS_PICTOGRAM_NOT_REQUIRED` giving a reason its
+citation contradicted — and both were fixed the same day (`CHANGELOG.md`). The one before them, `ghs/pictogram-set`
+citing CLP Annex V on US OSHA labels, was closed on 2026-10-09 by standing it down on US labels.
 
 **Requirements nothing checks, and the findings say so.** Real regulatory ground the engine does not cover,
 where every pass it issues admits the gap in its own message. Schedulable, and safe to leave: the reference
@@ -53,10 +53,10 @@ which cost four review rounds on one pull request.
 
 ## Worth doing before deployment
 
-**Four, found by the MCP evaluation of 2026-10-10**, all under "From the MCP evaluation": the label size
-`check_label` passes without being given one and the misstated `GHS_PICTOGRAM_NOT_REQUIRED` (both must-fix), and
-the pictogram-symbol and type-size findings `check_label` makes about Packwright's drawing rather than the user's
-label. The first and the last two matter only through `/mcp`, so they gate its launch rather than the website's.
+**Two, found by the MCP evaluation of 2026-10-10**, under "From the MCP evaluation": the pictogram-symbol and
+type-size findings `check_label` makes about Packwright's drawing rather than the user's label. They are false
+alarms rather than false clearances, and matter only through `/mcp`. The evaluation's two must-fix findings were
+fixed on 2026-10-10.
 
 The five pinned on 2026-10-08 were fixed in PRs #71 to #73: `ghs/pictogram-set` citing the EU on US labels, the
 assortment order check, the hand-set type size, the "exempt" status beside a printed panel, and statement codes
@@ -70,24 +70,9 @@ migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phas
 ## From the MCP evaluation, 2026-10-10
 
 Found by grading 144 answers in `docs/experiments/2026-10-10-mcp-with-and-without/`, and each confirmed by the lead
-against the code and the record. The first two are **must fix before this ships**; the next two are false findings
-the tool gives about a user's label, and decide how far the tool can be trusted before launch.
-
-**`check_label` passes a label size nobody gave it.** With no `stock`, `toJudgeRequest` uses the label type's
-default — the stock an export would draw on. For an export that is true: the PDF *is* that size. For a check it
-invents a fact about the user's label, and the size rule then passes it: all 18 EU calls without `stock` got
-`GHS_LABEL_SIZE_MET`, "The label is 74.00 mm × 105.00 mm", and case 03's 50 × 70 mm label, sent without its size,
-passes where with it the planted `GHS_LABEL_BELOW_MINIMUM_SIZE` fires. A rule clearing what it never measured. The
-schema's own comment on `capacityL` names this — defaulting "would invent a requirement the caller never stated".
-The fix is for the check request either to require `stock`, or to judge without one by standing down every rule
-that measures the stock, with a `Decline` that asks for it. The second is the more honest and touches `rules/`.
-
-**`GHS_PICTOGRAM_NOT_REQUIRED` says no declared hazard requires a pictogram that one does.** `ghs/pictogram-set`
-compares the drawn pictograms with the set *after* Article 26 precedence and words the difference as "no hazard
-class declared for this product requires it", under its Annex V citation. On case 01 Annex V assigns GHS07 to the
-declared skin irritation; Article 26(1)(c) is what removes it beside GHS05. The conclusion — take GHS07 off — is
-right; the reason and the citation are not. It needs to say which pictogram displaced it, citing Article 26. The
-website shows the same finding.
+against the code and the record. Two were must-fix and were fixed on 2026-10-10 — `check_label` now refuses a
+label whose size it is not told, and `GHS_PICTOGRAM_NOT_REQUIRED` cites Article 26 where Article 26 is the reason —
+and their history is in `CHANGELOG.md`. What is left are false findings the tool gives about a user's label.
 
 **Every GHS pictogram is reported as having no symbol.** Packwright has no verified pictogram artwork, draws empty
 frames, and `GHS_PICTOGRAM_SYMBOL_MISSING` fires on every GHS label it checks — a violation under CLP, blocking under
@@ -101,6 +86,13 @@ where the engine drew no artwork, is a design decision for the stage that fixes 
 engine lays its text out at a default and records what overruns as not printed. Case 03's statements and supplier
 were reported missing from a label whose prompt says every line is printed, and every "with" answer told the user
 so. The same question as the pictograms: a fact the input cannot carry is being judged from Packwright's drawing.
+
+**An assumed margin can refuse a small label in words that blame the user.** `check_label` needs a size but not
+a margin, and uses the label type's default margin where none is given — saying so in `stockUsed.marginAssumed`.
+On a very small label that default can leave no panel, and the engine's refusal then reads "A 6 mm margin leaves
+no panel on 12 × 40 mm stock", about a margin the user never gave. A refusal rather than a false verdict, and the
+answer says the margin was assumed; but a better default for an unstated margin — zero, or one scaled to the label
+— is a design choice worth making on purpose. Found by `/code-review high` on #84.
 
 **Smaller, from the same grading:** the %DV pass (`FDA_NUTRITION_PERCENT_DV_MET`) cites only 101.9(d)(7)(ii), where
 the four vitamin and mineral percentages are rounded under (c)(8)(iii) — the engine's own source comment names both;

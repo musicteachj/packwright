@@ -187,6 +187,28 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
     },
   },
   {
+    // Annex V assigns GHS07 to the skin irritation; Article 26(1)(c) is what takes it
+    // off, because GHS05 applies. With GHS05 left off the label as well, the
+    // precedence rule — which reads "applies" from the drawn set — is silent, so this
+    // is the only finding that says GHS07 must go, and it has to cite the clause
+    // that says so rather than Annex V, which says the opposite.
+    name: 'an exclamation mark the corrosion pictogram removes, with corrosion left off',
+    defect:
+      'Serious eye damage calls for GHS05, which under Article 26(1)(c) removes the GHS07 the ' +
+      'skin irritation would carry; the label draws GHS07 and not GHS05.',
+    data: {
+      ...BASE,
+      hazards: [HAZARDS.seriousEyeDamage, HAZARDS.skinIrritation],
+      pictograms: ['GHS07'],
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: GHS_PICTOGRAM_NOT_REQUIRED,
+      severity: 'violation',
+      citation: 'Regulation (EC) No 1272/2008 (CLP), Article 26(1)',
+    },
+  },
+  {
     name: 'a pictogram the classification requires but the label omits',
     defect:
       'Flammable liquids require GHS02 and the label draws only GHS07, which no precedence rule ' +

@@ -1,6 +1,7 @@
 export {
   Artwork,
   COVERS_ONLY_LISTED_INGREDIENTS,
+  CheckStockSchema,
   ContainerSchema,
   DigitalLink,
   GTIN_LENGTH,
@@ -20,6 +21,7 @@ export {
   UpcARequest,
   UsFoodRequest,
   UsFoodRequestBase,
+  checkedStock,
   coversOnlyListedIngredients,
   toArtwork,
   toColumns,

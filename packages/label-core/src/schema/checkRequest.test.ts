@@ -215,7 +215,35 @@ describe('every field the schema keeps reaches the engine', () => {
 })
 
 describe('LabelCheckRequest', () => {
-  it('accepts each label type without a stock', () => {
+  it('refuses a check that does not say how big the label is', () => {
+    // An export borrows a default stock and draws at it, so the default is true of
+    // the PDF. A check judges a label that exists already, and a borrowed size made
+    // the size rule pass labels nobody measured. Refused, saying what to send.
+    const checked = LabelCheckRequest.safeParse({
+      labelType: 'ghs-chemical',
+      data: { regime: 'eu-clp', productIdentifier: 'X', capacityL: 5 },
+    })
+    expect(checked.success).toBe(false)
+    expect(checked.error?.issues.map((issue) => issue.path.join('.'))).toEqual(['stock'])
+    expect(checked.error?.issues[0]?.message).toContain('`stock` must be the printed label’s size')
+    // Sent in the wrong shape, it is told the shape, not merely told to ask.
+    const asText = LabelCheckRequest.safeParse({
+      labelType: 'ghs-chemical',
+      data: { regime: 'eu-clp', productIdentifier: 'X', capacityL: 5 },
+      stock: '50 x 70 mm',
+    })
+    expect(asText.error?.issues[0]?.message).toContain('an object with widthMm and heightMm')
+    // Width and height are the size; a stock missing either is not one.
+    expect(
+      LabelCheckRequest.safeParse({
+        labelType: 'ghs-chemical',
+        data: { regime: 'eu-clp', productIdentifier: 'X', capacityL: 5 },
+        stock: { widthMm: 74 },
+      }).success,
+    ).toBe(false)
+  })
+
+  it('accepts each label type with a size and no margin', () => {
     for (const [labelType, data] of [
       ['gs1-retail', { gtin: '036000291452' }],
       ['ghs-chemical', { regime: 'eu-clp', productIdentifier: 'X', capacityL: 1 }],
@@ -228,7 +256,11 @@ describe('LabelCheckRequest', () => {
         },
       ],
     ] as const) {
-      expect(LabelCheckRequest.safeParse({ labelType, data }).success, labelType).toBe(true)
+      expect(
+        LabelCheckRequest.safeParse({ labelType, data, stock: { widthMm: 74, heightMm: 105 } })
+          .success,
+        labelType,
+      ).toBe(true)
     }
   })
 
@@ -241,9 +273,13 @@ describe('LabelCheckRequest', () => {
       data: { gtin: '036000291452', stock },
     })
     expect(checked.success).toBe(false)
-    expect(checked.error?.issues.map((issue) => [issue.path.join('.'), issue.message])).toEqual([
-      ['data.stock', '`stock` goes beside `data` in a check request, not inside it'],
+    // Both said: where the size went, and that it is needed where it belongs.
+    const issues = checked.error?.issues.map((issue) => [issue.path.join('.'), issue.message])
+    expect(issues).toContainEqual([
+      'data.stock',
+      '`stock` goes beside `data` in a check request, not inside it',
     ])
+    expect(issues?.map(([path]) => path).sort()).toEqual(['data.stock', 'stock'])
   })
 
   it('refuses a label type it does not know', () => {
@@ -275,7 +311,7 @@ describe('LabelCheckRequest', () => {
       ],
     ] as const
     for (const [labelType, data] of malformed) {
-      const checked = LabelCheckRequest.safeParse({ labelType, data })
+      const checked = LabelCheckRequest.safeParse({ labelType, data, stock: DEFAULT_UPC_A_STOCK })
       const saved = LabelDocumentInput.safeParse({
         name: 'A label',
         labelType,
@@ -294,20 +330,24 @@ describe('toJudgeRequest', () => {
     render: (_options, drawing) => drawing.end(),
   }
 
-  it('borrows the label type’s default stock, as an export does', () => {
+  it('judges at the stated size, borrowing only the label type’s default margin', () => {
+    const size = { widthMm: 50, heightMm: 70 }
     const judge = (labelType: string, data: object) =>
-      toJudgeRequest(LabelCheckRequest.parse({ labelType, data }), encoder)
-    expect(judge('gs1-retail', { gtin: '036000291452' }).stock).toBe(DEFAULT_UPC_A_STOCK)
+      toJudgeRequest(LabelCheckRequest.parse({ labelType, data, stock: size }), encoder)
+    expect(judge('gs1-retail', { gtin: '036000291452' }).stock).toEqual({
+      ...size,
+      marginMm: DEFAULT_UPC_A_STOCK.marginMm,
+    })
     expect(
       judge('ghs-chemical', { regime: 'eu-clp', productIdentifier: 'X', capacityL: 1 }).stock,
-    ).toBe(DEFAULT_GHS_STOCK)
+    ).toEqual({ ...size, marginMm: DEFAULT_GHS_STOCK.marginMm })
     expect(
       judge('us-food', {
         statementOfIdentity: 'X',
         netQuantity: { inchPound: '1 oz' },
         container: { shape: 'rectangular', widthMm: 50, heightMm: 50 },
       }).stock,
-    ).toBe(DEFAULT_US_FOOD_STOCK)
+    ).toEqual({ ...size, marginMm: DEFAULT_US_FOOD_STOCK.marginMm })
   })
 
   it('keeps a stock the request states, and hands a UPC-A label its encoder', () => {

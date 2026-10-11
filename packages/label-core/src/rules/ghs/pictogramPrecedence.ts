@@ -95,19 +95,32 @@ export const ghsPictogramPrecedenceRule: GhsChemicalRule = {
     const suppressions = precedenceSuppressions(drawn, hazards, data.regime)
     const findings: Finding[] = []
 
+    // **One finding per pictogram, naming every clause.** Two clauses can bar the
+    // uses of one exclamation mark between them — C.2.1.2 its acute-toxicity use and
+    // C.2.1.3 its irritation use — and a finding per clause counted one defect twice
+    // (`/code-review high` on #84).
+    const grouped = new Map<string, typeof suppressions>()
     for (const suppression of suppressions) {
-      const elementId = elementOf(suppression.code)
+      const key = `${suppression.code}|${suppression.kind}`
+      grouped.set(key, [...(grouped.get(key) ?? []), suppression])
+    }
+
+    for (const group of grouped.values()) {
+      const [first] = group
+      const elementId = elementOf(first!.code)
       findings.push(
         finding(ghsPictogramPrecedenceRule, {
           code:
-            suppression.kind === 'mandatory'
+            first!.kind === 'mandatory'
               ? GHS_PICTOGRAM_PRECEDENCE_VIOLATED
               : GHS_PICTOGRAM_PRECEDENCE_OPTIONAL,
           // "Shall be optional" is not "shall not appear". Reporting the second
           // as a violation would misstate the regulation in the stricter
           // direction, which is no more correct than missing it.
-          severity: suppression.kind === 'mandatory' ? 'violation' : 'guidance',
-          message: `${suppression.reason} (${suppression.clause})`,
+          severity: first!.kind === 'mandatory' ? 'violation' : 'guidance',
+          message:
+            group.map((suppression) => suppression.reason).join(' ') +
+            ` (${group.map((suppression) => suppression.clause).join(', ')})`,
           ...(elementId === undefined ? {} : { elementId }),
           citation,
         }),

@@ -56,7 +56,7 @@ import {
   type GhsLabelData,
   type GhsSupplier,
 } from '../templates/ghs'
-import { ANCHORS, type ArtworkBlock } from '../templates/stock'
+import { ANCHORS, type ArtworkBlock, type LabelStock } from '../templates/stock'
 import { DEFAULT_UPC_A_STOCK, type DigitalLinkData, type UpcALabelData } from '../templates/upcA'
 import {
   DEFAULT_US_FOOD_STOCK,
@@ -796,26 +796,56 @@ const STOCK_BESIDE_DATA = z
   .optional()
 
 /**
- * A request to check a label: its type, its fields, and optionally its stock.
+ * The size of the label being checked, which the request must state.
  *
- * The saved-label shape without a name, and with the stock optional, as the export
- * requests have it — a check borrows the label type's default stock exactly as an
- * export does. Built from the same parts as `LabelDocumentInput`, and refined the
- * same way, so a document the exporter or the saved-label routes refuse is refused
- * here too, with the same issues. The one addition is `STOCK_BESIDE_DATA`.
+ * **Required, where an export defaults it.** An export draws the label, so the
+ * stock it borrows is the true size of the PDF. A check judges a label that
+ * already exists, and a borrowed size is a fact about some other label: with
+ * none given, the size rule passed "The label is 74.00 mm × 105.00 mm" on labels
+ * nobody had measured, and a 50 × 70 mm label too small for its package passed
+ * with it (the MCP evaluation of 2026-10-10). Leaving it out is refused, with a
+ * sentence saying what to send — and, for an assistant, to ask rather than guess.
+ *
+ * **The margin is optional**, because a person knows their label's size and
+ * rarely its unprinted border. Absent, the label type's default margin is used,
+ * and the answer says so (`checkedStock`, and `stockUsed` in the MCP server's
+ * answer), so the assumption is stated rather than hidden.
+ */
+export const CheckStockSchema = z.object(
+  // `StockSchema`'s own fields, the margin made optional — derived rather than
+  // restated, so a bound added there reaches the check request too.
+  { ...StockSchema.shape, marginMm: StockSchema.shape.marginMm.optional() },
+  {
+    // Said for a stock sent in the wrong shape as well as for none at all, so an
+    // assistant that sent "50 x 70 mm" is told the shape rather than told to ask.
+    error:
+      '`stock` must be the printed label’s size: an object with widthMm and heightMm in ' +
+      'millimetres, and marginMm if known. If the user has not said how big the label is, ' +
+      'ask rather than guess — every size and placement finding is measured against it.',
+  },
+)
+
+/**
+ * A request to check a label: its type, its fields, and its stock.
+ *
+ * The saved-label shape without a name. Built from the same parts as
+ * `LabelDocumentInput`, and refined the same way, so a document the exporter or the
+ * saved-label routes refuse is refused here too, with the same issues. Two
+ * additions: `STOCK_BESIDE_DATA`, and a stock that is required (`CheckStockSchema`)
+ * where the export requests default it.
  */
 export const LabelCheckRequest = z.discriminatedUnion('labelType', [
   z.object({
     labelType: z.literal('gs1-retail'),
     data: UpcARequest.extend({ stock: STOCK_BESIDE_DATA }),
-    stock: StockSchema.optional(),
+    stock: CheckStockSchema,
   }),
   z.object({
     labelType: z.literal('ghs-chemical'),
     data: GhsRequestShape.extend({ stock: STOCK_BESIDE_DATA }).superRefine(
       statementCodesMatchRegime,
     ),
-    stock: StockSchema.optional(),
+    stock: CheckStockSchema,
   }),
   z.object({
     labelType: z.literal('us-food'),
@@ -823,7 +853,7 @@ export const LabelCheckRequest = z.discriminatedUnion('labelType', [
       coversOnlyListedIngredients,
       COVERS_ONLY_LISTED_INGREDIENTS,
     ),
-    stock: StockSchema.optional(),
+    stock: CheckStockSchema,
   }),
 ])
 
@@ -854,8 +884,11 @@ export const LabelCheckRequestOutline = z.object({
       "The label's fields, in the form `labelType` selects: the first for gs1-retail, the " +
         'second for ghs-chemical, the third for us-food.',
     ),
-  stock: StockSchema.optional().describe(
-    'The label stock in millimetres. Beside `data`, not inside it; defaults per label type.',
+  stock: CheckStockSchema.describe(
+    'Required: the printed label’s size in millimetres — widthMm and heightMm, and marginMm ' +
+      'if known (the unprinted border; the label type’s default is used and said so if not). ' +
+      'Beside `data`, not inside it. If the user has not said how big the label is, ask them: ' +
+      'every size and placement finding is measured against this.',
   ),
 })
 
@@ -971,9 +1004,33 @@ export function toUsFoodLabelData(
   }
 }
 
+const DEFAULT_STOCKS: Record<LabelCheckRequest['labelType'], LabelStock> = {
+  'gs1-retail': DEFAULT_UPC_A_STOCK,
+  'ghs-chemical': DEFAULT_GHS_STOCK,
+  'us-food': DEFAULT_US_FOOD_STOCK,
+}
+
 /**
- * A parsed check request as the judge's input, on the label type's default stock
- * where it names none — the stock an export of the same request is drawn on.
+ * The stock a check is judged on, and whether its margin was assumed.
+ *
+ * The one place that says so: `toJudgeRequest` draws on it, and a caller telling
+ * the user what was judged reads `marginAssumed` here rather than working it out
+ * again from the request.
+ */
+export function checkedStock(request: LabelCheckRequest): {
+  stock: LabelStock
+  marginAssumed: boolean
+} {
+  const { widthMm, heightMm, marginMm } = request.stock
+  return {
+    stock: { widthMm, heightMm, marginMm: marginMm ?? DEFAULT_STOCKS[request.labelType].marginMm },
+    marginAssumed: marginMm === undefined,
+  }
+}
+
+/**
+ * A parsed check request as the judge's input, on the stock the request states,
+ * with the label type's default margin where it states none.
  *
  * The encoder is the caller's, as `JudgeRequest` requires: `label-core` does not
  * import bwip-js.
@@ -984,20 +1041,20 @@ export function toJudgeRequest(request: LabelCheckRequest, barcode: BarcodeEncod
       return {
         labelType: 'gs1-retail',
         data: toUpcALabelData(request.data),
-        stock: request.stock ?? DEFAULT_UPC_A_STOCK,
+        stock: checkedStock(request).stock,
         barcode,
       }
     case 'ghs-chemical':
       return {
         labelType: 'ghs-chemical',
         data: toGhsLabelData(request.data),
-        stock: request.stock ?? DEFAULT_GHS_STOCK,
+        stock: checkedStock(request).stock,
       }
     case 'us-food':
       return {
         labelType: 'us-food',
         data: toUsFoodLabelData(request.data),
-        stock: request.stock ?? DEFAULT_US_FOOD_STOCK,
+        stock: checkedStock(request).stock,
       }
   }
 }
