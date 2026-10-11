@@ -62,8 +62,9 @@ The five pinned on 2026-10-08 were fixed in PRs #71 to #73: `ghs/pictogram-set` 
 assortment order check, the hand-set type size, the "exempt" status beside a printed panel, and statement codes
 kept through a change of market. Their history is in `CHANGELOG.md`.
 
-The deployment checklist (unknown routes answered 200, pre-#65 seeded zeros, the first schema change needing a
-migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phase 8.
+The deployment checklist (pre-#65 seeded zeros, the first schema change needing a migration, per-process quotas,
+edge-level limits, `/mcp`'s configuration) is in `docs/DESIGN.md` § Phase 8, with James's decision on each
+recorded beside it (2026-10-11). Unknown routes answered 200 was fixed on 2026-10-11.
 
 ---
 
@@ -688,15 +689,6 @@ itself containing the capitalised word. It is load-bearing today — mutation-te
 pinned by the fixture rather than by the markup. The error has its own element now, `[data-labels-error]`,
 from the saved-labels stage, but the assertion still reads its whole text; asserting the `<span>` that
 carries the word would pin the markup instead.
-
-## Serving the client
-
-**An address with no page is answered 200.** The client has a 404 route now, inside the shell, but the server
-cannot know which paths the client routes: `app.ts` hands `index.html` to any GET that is not reserved and has
-no dot, so `/labels/abc/edit` arrives with status 200 and the client says "There is no page here". A crawler
-or a link checker reads a page. The fix is the server knowing the client's route table — a second copy of it,
-or one exported from the web app and read at build time — which is a deployment question for phase 8 rather
-than a shell one. Noted when the 404 route was added.
 
 ---
 

@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import morgan from 'morgan'
 import { join } from 'node:path'
 import { createAuditRouter, type AuditLimits } from './audit/routes'
+import { loadClientPages, matchesClientPage } from './clientPages'
 import { createLabelDocumentRouter } from './labels/labelDocumentRoutes'
 import { createLabelRouter, type ExportLimit } from './labels/routes'
 import { createMcpRouter, type McpRouterOptions } from './mcp/routes'
@@ -328,6 +329,10 @@ export function createApp(options: AppOptions = {}): Express {
    * the 404 it would never be reached.
    */
   if (webRoot !== undefined) {
+    // Read once, at construction: a build without its page list refuses to start
+    // rather than answer every address one way or the other. See `clientPages.ts`.
+    const pages = loadClientPages(webRoot)
+
     // Vite fingerprints everything under `assets/`, so the filename changes
     // whenever the bytes do and the old name is never requested again. That is
     // what makes a year-long immutable cache safe, and serving them at the
@@ -361,7 +366,12 @@ export function createApp(options: AppOptions = {}): Express {
       const lastSegment = request.path.slice(request.path.lastIndexOf('/') + 1)
       if (lastSegment.includes('.')) return next()
 
-      response.sendFile(join(webRoot, 'index.html'))
+      // A page answers 200. Any other address gets the client too — so the browser
+      // shows its own "page not found", inside the shell — but with a 404, so
+      // whatever reads the status rather than the page is told the truth.
+      response
+        .status(matchesClientPage(request.path, pages) ? 200 : 404)
+        .sendFile(join(webRoot, 'index.html'))
     })
   }
 

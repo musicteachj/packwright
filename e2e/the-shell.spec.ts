@@ -52,14 +52,17 @@ test('the skip link brings the page into view when used from far down it', async
 })
 
 test('an address with no page reaches the 404, inside the shell', async ({ page }) => {
-  await page.goto('/labels/abc/edit')
+  // And says so in its status, not only on the page: a crawler, a link checker or
+  // a monitor reads the status, and used to be told 200.
+  const response = await page.goto('/labels/abc/edit')
+  expect(response?.status()).toBe(404)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('There is no page here')
   await expect(page.locator('header nav[aria-label="Sections"]')).toBeVisible()
   await expect(page).toHaveTitle('Page not found — packwright')
 })
 
 test('each route names the window', async ({ page }) => {
-  await page.goto('/rules')
+  expect((await page.goto('/rules'))?.status()).toBe(200)
   await expect(page).toHaveTitle('Rules — packwright')
   await page.getByRole('link', { name: 'Saved', exact: true }).click()
   await expect(page).toHaveTitle('Saved labels — packwright')
