@@ -10,6 +10,18 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The with/without evaluation, graded: the tools work, and they have two failures to fix before launch.** With
+  Packwright's tools Sonnet 5.5 caught the planted defect in all 30 answers and cleared no defective label (27 and 2
+  without); answers with a wrong citation fell from 33 of 36 to 20, and with a nonexistent one from 14 to 5. Haiku
+  4.5 went from 5 caught to 21, and from 10 false clearances to 5. The tools' own failures: a model has to describe
+  the label to `check_label`, and Haiku misdescribed it in 30 of 36 answers — inventing an allergen statement on case
+  09 and so earning three false clearances the tool, correctly for what it was sent, gave — and the engine judges
+  its own drawing where the input cannot carry a fact. It passes a label size nobody gave it, reports every GHS
+  pictogram as having no symbol, and reports text laid out at its own type size as not printed. Those, with a
+  `GHS_PICTOGRAM_NOT_REQUIRED` whose reason its citation does not support, are pinned in `docs/BACKLOG.md`; two are
+  must-fix. Six graders worked on a rubric written before any answer was read; the lead re-read every distinct
+  nonexistent-citation verdict and a sample of the rest, corrected one grader's F to M, and found two wrong verdicts
+  in the 2026-10-09 grading, now in an erratum there. Results in `docs/experiments/2026-10-10-mcp-with-and-without/`.
 - **The with/without evaluation of Packwright's MCP tools, run and recorded.** `npm run experiment:mcp` puts the
   twelve labels of the 2026-10-09 experiment to the same two models with the same question, in two halves: without
   tools, exactly as before, and with the four tools as an MCP client hands them — `tools/list` and the server's

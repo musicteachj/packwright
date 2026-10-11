@@ -155,6 +155,15 @@ what was not checked — and two are findings about Packwright, now in `docs/BAC
 $2.11 in API usage: Sonnet 5.5 $2.02, Haiku 4.5 $0.09 (36 calls each), from each response's `usage` at $2/$10
 and $1/$5 per million tokens. Sonnet's calls ran from $0.02 to $0.10, most of it thinking. The script's cap was $6.
 
+## Erratum, 2026-10-10
+
+Two citation verdicts in `grading.md` are wrong. Sonnet's "Art. 4" citations on C1, runs 2 and 3, are graded M on
+the ground that "Art. 4 says nothing about establishment"; Article 4(11) of the 2026-07-01 consolidation reads "a
+supplier established in the Union, which shall be identified on the label". They should be V. Both answers carry
+other M citations, so no figure in § Results about answers changes; the citation counts move by two, from M to V.
+Found while grading `../2026-10-10-mcp-with-and-without/`, and re-read by the lead. The grades are left as they were
+graded.
+
 ## Re-running
 
 `npm run experiment:without --workspace @packwright/api -- --describe` is free and rewrites `cases.md` and

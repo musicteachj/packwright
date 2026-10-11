@@ -1,0 +1,639 @@
+{
+  "caseId": "06-gs1-check-digit",
+  "answers": [
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "21 CFR 101.1 (and \"FTC Guidelines\")",
+          "claim": "net quantity must be declared in both metric and US customary units, in a specific location and minimum type size",
+          "verdict": "M",
+          "evidence": "21 CFR 101.1 (eCFR, fetched 2026-10-10) \"Principal display panel of package form food\": defines the PDP and says it \"shall be large enough to accommodate all the mandatory label information required to be placed thereon by this part\"; it defines the PDP area \"For the purpose of obtaining uniform type size in declaring the quantity of contents\", but imposes no net quantity declaration, no unit requirement and no location. The declaration is 101.7(a): \"The principal display panel of a food in package form shall bear a declaration of the net quantity of contents.\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.3",
+          "claim": "the principal display panel must identify what the product is",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a) (eCFR, current): \"The principal display panel of a food in package form shall bear as one of its principal features a statement of the identity of the commodity.\"",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.5",
+          "claim": "label must give name and address of manufacturer, packer or distributor",
+          "verdict": "V",
+          "evidence": "21 CFR 101.5 (eCFR, current) \"Food; name and place of business of manufacturer, packer, or distributor\"; the place of business includes \"street address, city, State, and ZIP code; however, the street address may be omitted if it is shown in a current city directory or telephone directory\".",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "ingredient list for most products; food in descending order by weight, cosmetics/OTC drugs similar",
+          "verdict": "M",
+          "evidence": "21 CFR 101.4 is \"Food; designation of ingredients\" — food only; cosmetics and OTC drugs are not covered by it.",
+          "reused": true
+        },
+        {
+          "ref": "FALCPA",
+          "claim": "major allergens must be declared",
+          "verdict": "V",
+          "evidence": "FDCA 403(w), 21 USC 343(w) (enacted by FALCPA): \"Major food allergen labeling requirements\".",
+          "reused": true
+        },
+        {
+          "ref": "21 CFR 101.36",
+          "claim": "Nutrition Facts panel required for most food",
+          "verdict": "M",
+          "evidence": "21 CFR 101.36 is \"Nutrition labeling of dietary supplements\" (Supplement Facts); it does not require a statement of identity or Nutrition Facts for conventional food (those are 101.3 and 101.9).",
+          "reused": true
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "missing statement of identity / net quantity / manufacturer name and address / ingredients / allergen declaration / Nutrition Facts",
+          "grade": "unclear"
+        },
+        {
+          "claim": "a UPC barcode label alone is insufficient for retail compliance",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "Never examines the barcode digits; treats the barcode label as a food label. Does not state the GTIN is valid, so no false clearance. \"FTC Guidelines\" is a bare reference and not graded. The 101.1 M is a near-miss: 101.1 does define the PDP area used to size the net quantity type, but neither the declaration duty nor dual units nor location is there."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "21 CFR 101.2 (and \"FTC regulations\")",
+          "claim": "net quantity must be displayed in both metric and US customary units",
+          "verdict": "M",
+          "evidence": "21 CFR 101.2(b) (eCFR, current), \"Information panel of package form food\": \"All information required to appear on the label of any package of food under §§ 101.4, 101.5, 101.8, 101.9, 101.13, 101.17, 101.36, subpart D of part 101, and part 105 of this chapter shall appear either on the principal display panel or on the information panel\" — 101.7 (net quantity) is not among them; net quantity is 101.7(a), on the PDP.",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.1",
+          "claim": "principal display panel must clearly identify the product type",
+          "verdict": "M",
+          "evidence": "21 CFR 101.1 defines the principal display panel of package-form food and says it \"shall be large enough to accommodate all the mandatory label information\"; the identity requirement is 101.3(a) (\"The principal display panel ... shall bear ... a statement of the identity\") and net quantity is 101.7.",
+          "reused": true
+        },
+        {
+          "ref": "21 CFR 101.5",
+          "claim": "name and address of manufacturer, packer or distributor, including city, state and ZIP code",
+          "verdict": "V",
+          "evidence": "21 CFR 101.5 (eCFR, current) \"Food; name and place of business of manufacturer, packer, or distributor\"; the place of business includes \"street address, city, State, and ZIP code; however, the street address may be omitted if it is shown in a current city directory or telephone directory\".",
+          "reused": false
+        },
+        {
+          "ref": "21 CFR 101.4",
+          "claim": "ingredient list in descending order by weight",
+          "verdict": "V",
+          "evidence": "21 CFR 101.4(a)(1) (eCFR, current), \"Food; designation of ingredients\": ingredients \"shall be listed by common or usual name in descending order of predominance by weight\".",
+          "reused": false
+        },
+        {
+          "ref": "GS1 US guidelines",
+          "claim": "barcode should ideally be on the lower right corner of the principal display panel, alternatives allowed with justification",
+          "verdict": "U",
+          "evidence": "GS1 US guidance / membership and licence terms not fetched in this session; not verified. For comparison only: GenSpecs 26.0 §6.3.3.1 puts the preferred placement on \"the lower right quadrant of the back\", not the front/PDP.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "missing statement of identity / net quantity / manufacturer name and address / ingredients / allergen declaration / Nutrition Facts",
+          "grade": "unclear"
+        },
+        {
+          "claim": "\"The UPC-A barcode format and GTIN are properly formatted\"",
+          "grade": "not-real",
+          "reason": "the printed GTIN 036000291453 has check digit 3; GenSpecs 26.0 §7.9.1 / Table 7-8 gives 2 (sum 58, 60-58=2)"
+        }
+      ],
+      "tool": null,
+      "notes": "False clearance: \"What you have is correct: The UPC-A barcode format and GTIN are properly formatted.\" The check digit is wrong. 101.4 graded V although the answer says \"most products\"; 101.4 is food-only, but the descending-order claim it attaches is what 101.4(a)(1) says."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "missed",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "FDA regulations (21 CFR 101)",
+          "claim": "principal display panel must include product identity and net quantity",
+          "verdict": "V",
+          "evidence": "21 CFR 101.3(a) (eCFR, current): \"The principal display panel of a food in package form shall bear as one of its principal features a statement of the identity of the commodity.\" 21 CFR 101.7(a) (eCFR, current): \"The principal display panel of a food in package form shall bear a declaration of the net quantity of contents.\"",
+          "reused": false
+        },
+        {
+          "ref": "FTC Act Section 5",
+          "claim": "requires clear identification of the product",
+          "verdict": "M",
+          "evidence": "15 USC 45(a)(1) (govinfo USCODE-2023, fetched 2026-10-10): \"Unfair methods of competition in or affecting commerce, and unfair or deceptive acts or practices in or affecting commerce, are hereby declared unlawful.\" A prohibition of deception; it imposes no product-identity labeling requirement.",
+          "reused": false
+        },
+        {
+          "ref": "NIST Handbook 130 - Uniform Packaging and Labeling Regulations",
+          "claim": "package must carry product identity and net quantity",
+          "verdict": "V",
+          "evidence": "NIST HB 130-2026 Section IV.A (UPLR; nist.gov PDF fetched 2026-10-10) §3.1: \"A separate declaration of identity ... on a consumer package shall appear on the principal display panel\"; §6.1: \"appropriate units of both systems shall be presented in a declaration of quantity\". (A model regulation, binding where a state adopts it.)",
+          "reused": false
+        },
+        {
+          "ref": "GS1 US General Specifications",
+          "claim": "barcode should be placed on the lower right corner of the principal display panel, or an alternative location",
+          "verdict": "M",
+          "evidence": "GenSpecs 26.0 p.464 (rendered) §6.3.3.1 \"Preferred placement\": \"Preferred barcode placement is on the lower right quadrant of the back\"; p.465 §6.3.3.2 \"Alternative placement\": \"the lower right quadrant of any surface of the container other than the back.\" (The back is defined in §6.3.2 as \"directly opposite the front\", the front being \"the primary trading/advertising area\".) (The General Specifications are GS1's global standard; there is no \"GS1 US\" edition.)",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "missing statement of identity / net quantity / manufacturer name and address / ingredients / allergen declaration / Nutrition Facts",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "Never examines the check digit; no statement that the GTIN is valid, so no false clearance. Prior grading gave \"FTC Act Section 5\" U for want of a source; here 15 USC 45 was fetched and the verdict is M."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications, mod-10 algorithm",
+          "claim": "check digit for 0 36000 29145 is 2, not 3",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 US membership and licensing terms",
+          "claim": "using a GTIN outside your licensed prefix violates them",
+          "verdict": "U",
+          "evidence": "GS1 US terms not among sources.",
+          "reused": true
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "human-readable digits under the bars (required; present)",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.308 (rendered) §4.14.2 \"General retail consumer trade item human readable text rules\": \"For EAN/UPC barcodes the HRI SHALL show the GTIN-8, GTIN-12, or GTIN-13 and SHALL be placed below the barcode.\"",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "quiet zones at least 9 modules each side",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.280 (rendered) §5.2.3.4 \"Quiet Zone\", Figure 5.2.3.4-1 \"Quiet Zone widths by version\": UPC-A left 9 modules / 2.97 mm, right 9 modules / 2.97 mm (\"* This is an example using an X-dimension of 0.330 millimetres\"). Same 9/9 modules for UPC-A in GenSpecs 26.0 Table 5-11.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15420",
+          "claim": "quiet zones of at least 9 modules",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "size 80%-200% of nominal",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15416",
+          "claim": "print quality grade 1.5 (C) or better typically at POS",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not among sources; not verified. (GenSpecs Table 5-44 does specify minimum quality 1.5/06/660.)",
+          "reused": true
+        },
+        {
+          "ref": "GS1 US guidelines",
+          "claim": "placement avoiding seams, curves, folds",
+          "verdict": "U",
+          "evidence": "GS1 US guidance / membership and licence terms not fetched in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "Fair Packaging and Labeling Act, 15 U.S.C. §1451 ff.",
+          "claim": "identity, net quantity and name and place of business for consumer commodities",
+          "verdict": "V",
+          "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\".",
+          "reused": true
+        },
+        {
+          "ref": "19 U.S.C. §1304",
+          "claim": "country-of-origin marking for imports",
+          "verdict": "V",
+          "evidence": "19 USC 1304(a) (govinfo USCODE-2023, fetched 2026-10-10): \"every article of foreign origin (or its container ...) imported into the United States shall be marked in a conspicuous place ... to indicate to an ultimate purchaser in the United States the English name of the country of origin of the article.\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "prefix 0 36000 is publicly associated with another company; confirm the number is yours",
+          "grade": "unclear"
+        },
+        {
+          "claim": "other legally required content depends on product category",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "Correct worked calculation (sum 58, check digit 2). \"FDA (21 CFR Part 101)\" and \"CPSC rules\" are bare and not graded."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications, Section 7.9.1",
+          "claim": "check digit for 0 36000 29145 is 2, not 3",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15420",
+          "claim": "mod-10 check digit calculation",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 US licensing rules",
+          "claim": "a number from another company's prefix would violate them",
+          "verdict": "U",
+          "evidence": "GS1 US guidance / membership and licence terms not fetched in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "quiet zones 9 modules each side; magnification 80%-200%; contrast; grade 1.5 (C)",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15416",
+          "claim": "print quality grading",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not among sources; not verified.",
+          "reused": true
+        },
+        {
+          "ref": "ISO/IEC 15420",
+          "claim": "human-readable digits must match the encoded data in standard positions",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "prefix 0 36000 belongs to another company (Kimberly-Clark)",
+          "grade": "unclear"
+        },
+        {
+          "claim": "other labeling depends on product category",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "Caught with correct arithmetic. \"FD&C Act, FPLA, 21 CFR\", \"FTC and CPSC\" and \"Textile Act\" are bare and not graded."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "check digit calculation for GTIN-12: last digit should be 2",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15420",
+          "claim": "defines the UPC-A/EAN symbology",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not among sources; not verified.",
+          "reused": true
+        },
+        {
+          "ref": "GS1 US membership and licensing terms",
+          "claim": "using a prefix you were not issued violates them",
+          "verdict": "U",
+          "evidence": "GS1 US guidance / membership and licence terms not fetched in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "GS1 General Specifications",
+          "claim": "quiet zones, X-dimension 80-200% of nominal, minimum grade 1.5/C",
+          "verdict": "V",
+          "evidence": "GenSpecs 25.0 p.356 (rendered) §5.12.3.1, Figure 5.12.3.1-1 \"GS1 symbol specification table 1\": UPC-A X-dimension minimum 0.264 mm, target 0.330 mm, maximum 0.660 mm (0.80x-2.00x of the 0.330 mm nominal); minimum symbol height 18.28 / 22.85 / 45.70 mm; Quiet Zone 9X left, 9X right; minimum quality 1.5/06/660.",
+          "reused": false
+        },
+        {
+          "ref": "ISO/IEC 15416",
+          "claim": "verification grade",
+          "verdict": "U",
+          "evidence": "ISO/IEC standard not available to fetch in this session; not verified.",
+          "reused": false
+        },
+        {
+          "ref": "Fair Packaging and Labeling Act (15 U.S.C. §1451 et seq.) and 16 CFR Part 500",
+          "claim": "identity, net quantity, name and place of business",
+          "verdict": "V",
+          "evidence": "15 USC 1453(a)(1): \"The commodity shall bear a label specifying the identity of the commodity and the name and place of business of the manufacturer, packer, or distributor\"; (a)(2): net quantity \"separately and accurately stated in a uniform location upon the principal display panel ... using the most appropriate units of both the customary inch/pound system ... and ... the SI metric system\"; 16 CFR 500.1: Part 500 \"establish[es] requirements for labeling of consumer commodities ... with respect to identity ..., the name and place of business ..., the net quantity of contents\".",
+          "reused": true
+        },
+        {
+          "ref": "21 CFR Part 101",
+          "claim": "food requires Nutrition Facts and ingredients",
+          "verdict": "V",
+          "evidence": "21 CFR 101.9 and 21 CFR 101.4(a)(1): ingredients \"shall be listed by common or usual name in descending order of predominance by weight\".",
+          "reused": true
+        },
+        {
+          "ref": "21 CFR Part 101",
+          "claim": "food requires allergen declarations",
+          "verdict": "M",
+          "evidence": "No allergen-declaration requirement in Part 101 (sources 101.2-101.100 contain no \"allergen\"); it is FDCA 403(w), 21 USC 343(w) (enacted by FALCPA): \"Major food allergen labeling requirements\".",
+          "reused": true
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "prefix 036000 registered to another company",
+          "grade": "unclear"
+        },
+        {
+          "claim": "other label content depends on category",
+          "grade": "unclear"
+        }
+      ],
+      "tool": null,
+      "notes": "Caught with a correct table and sum. The two Part 101 verdicts are reused from the 2026-10-09 grading of the identical reference and claims (07, Sonnet run 3)."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications 26.0 §7.9.1",
+          "claim": "standard check digit calculation applies to all GS1 data structures incl. UPC-A; the correct check digit is 2",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": false
+        },
+        "errorSources": []
+      },
+      "notes": "Also called check_gtin (valid:false, expected 2). Says nothing about what the tool does not check, and does not mention that the symbol checks could not run."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications 26.0 §7.9.1",
+          "claim": "standard check digit calculations; correct digit is 2",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "data.symbolPlacement",
+            "labelSays": "not stated",
+            "sent": "centre",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.magnification",
+            "labelSays": "not stated",
+            "sent": "1",
+            "changedPlantedVerdict": false
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Two invented layout facts; harmless here because no symbol was drawn. Notice is vague (\"some compliance aspects are not automatically checked\") but present."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications 26.0 §7.9.1",
+          "claim": "standard check digit calculations; correct digit is 2",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "data.barHeightMm",
+            "labelSays": "not stated",
+            "sent": "25.4",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "data.symbolPlacement",
+            "labelSays": "not stated",
+            "sent": "centre",
+            "changedPlantedVerdict": false
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": false
+        },
+        "errorSources": []
+      },
+      "notes": "Two invented layout facts, harmless because no symbol was drawn. No notice of what was not checked."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications 26.0 §7.9.1",
+          "claim": "\"Standard check digit calculations for GS1 data structures\": the check digit should be 2, not 3",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Faithful relay; says symbol checks did not run, that the tool checks arithmetic only (not allocation/licensing), and that a clean report is not compliance. Lists \"print contrast\" among checks that did not run because no symbol was drawn; the tool has no contrast check at all - a small misstatement, not a label claim."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications 26.0 §7.9.1",
+          "claim": "\"Standard check digit calculations for GS1 data structures\": the check digit should be 2, not 3",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Faithful relay; says symbol checks did not run, that the tool checks arithmetic only (not allocation/licensing), and that a clean report is not compliance."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "GS1 General Specifications 26.0 §7.9.1",
+          "claim": "\"Standard check digit calculations for GS1 data structures\": the check digit should be 2, not 3",
+          "verdict": "V",
+          "evidence": "GenSpecs 26.0 p.544 (rendered and read) §7.9.1 \"Standard check digit calculations for GS1 data structures\": \"This algorithm is identical for all fixed length numeric GS1 data structures (including GDTI, GLN, GRAI, etc.) that require a check digit.\" Table 7-8: GTIN-12 positions N1..N12, multipliers x3,x1,...; \"Subtract sum from nearest equal or higher multiple of ten = check digit\". By hand for 03600029145: 3x(0+6+0+2+1+5)=42, +(3+0+0+9+4)=16, sum 58, 60-58 = 2.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Faithful relay; says symbol checks did not run, that the tool checks arithmetic only (not allocation/licensing), and that a clean report is not compliance."
+    }
+  ],
+  "sourcesFetched": [
+    "https://ref.gs1.org/standards/genspecs/ (GS1 General Specifications 26.0 PDF; pp.145, 308, 309, 410, 464, 544 rendered and read) — check digit §7.9.1, HRI §4.14.2, §2.4.2, placement §6.3.3.1; saved /tmp/s19/sources/gs1-genspecs-26.0.pdf",
+    "https://ref.gs1.org/standards/genspecs/25.0.0/ (GenSpecs 25.0 PDF; pp.279, 280, 356 rendered) — engine's bar-height, quiet-zone and magnification citations; saved gs1-genspecs-25.0.pdf",
+    "https://ref.gs1.org/standards/genspecs/21.0.1/ (GenSpecs 21.0.1 PDF; p.77 rendered, p.76 text) — Haiku 07-without run 3's citation; and https://ref.gs1.org/standards/genspecs/archive/ for its existence",
+    "https://ref.gs1.org/standards/digital-link/uri-syntax/ (GS1 Digital Link URI Syntax 1.7.0 HTML) — §2, §4.1, §4.11, §4.12; saved gs1-dl-uri-syntax-1.7.0.html",
+    "eCFR 21 CFR 101.1 (renderer API, fetched this session) — 101.1 citations; 101.2, 101.3, 101.4, 101.5, 101.7, 101.36 read from eCFR files saved under /tmp/s19/sources by other graders this session",
+    "eCFR 16 CFR Part 255 — FTC Endorsement Guides citation",
+    "govinfo USCODE-2023 15 USC 45 — FTC Act §5 citation",
+    "govinfo USCODE-2023 19 USC 1304 — country-of-origin citation",
+    "https://www.rfc-editor.org/rfc/rfc2606.txt — example.com reservation",
+    "https://www.nist.gov/document/2026-hb-130-section-iv (NIST HB 130-2026 UPLR) — §3.1 identity, §6.1 dual units",
+    "Web search: 'ISO/IEC 24047' (nothing found; iso.org 403) and ISO/IEC 18975 (the standard the DL spec names); 'reasonable interpretation declaration' (nothing found)",
+    "Local reproduction (not a source): label-core judgeLabel run via tsx on Haiku 07-with run 3's arguments, to check the right-quiet-zone measurement"
+  ]
+}

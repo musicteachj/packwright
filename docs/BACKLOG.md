@@ -24,8 +24,10 @@ piece, that piece stayed, as an entry of its own. What remains is open.
 The entries fall into four kinds:
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. **None outstanding.** The last, `ghs/pictogram-set`
-citing CLP Annex V on US OSHA labels, was closed on 2026-10-09 by standing it down on US labels.
+provision that does not say what the finding claims. **Two outstanding, found by the MCP evaluation of
+2026-10-10:** `check_label` passes a label size nobody gave it, and `GHS_PICTOGRAM_NOT_REQUIRED` gives a reason its
+citation does not support. Both are under "From the MCP evaluation, 2026-10-10". The one before them,
+`ghs/pictogram-set` citing CLP Annex V on US OSHA labels, was closed on 2026-10-09 by standing it down on US labels.
 
 **Requirements nothing checks, and the findings say so.** Real regulatory ground the engine does not cover,
 where every pass it issues admits the gap in its own message. Schedulable, and safe to leave: the reference
@@ -51,14 +53,62 @@ which cost four review rounds on one pull request.
 
 ## Worth doing before deployment
 
-**All done, as of 2026-10-09.** The five pinned on 2026-10-08 were fixed in PRs #71 to #73: `ghs/pictogram-set`
-citing the EU on US labels, the assortment order check, the hand-set type size, the "exempt" status beside a
-printed panel, and statement codes kept through a change of market. Their history is in `CHANGELOG.md`.
+**Four, found by the MCP evaluation of 2026-10-10**, all under "From the MCP evaluation": the label size
+`check_label` passes without being given one and the misstated `GHS_PICTOGRAM_NOT_REQUIRED` (both must-fix), and
+the pictogram-symbol and type-size findings `check_label` makes about Packwright's drawing rather than the user's
+label. The first and the last two matter only through `/mcp`, so they gate its launch rather than the website's.
+
+The five pinned on 2026-10-08 were fixed in PRs #71 to #73: `ghs/pictogram-set` citing the EU on US labels, the
+assortment order check, the hand-set type size, the "exempt" status beside a printed panel, and statement codes
+kept through a change of market. Their history is in `CHANGELOG.md`.
 
 The deployment checklist (unknown routes answered 200, pre-#65 seeded zeros, the first schema change needing a
 migration, per-process quotas, edge-level limits) is in `docs/DESIGN.md` § Phase 8.
 
 ---
+
+## From the MCP evaluation, 2026-10-10
+
+Found by grading 144 answers in `docs/experiments/2026-10-10-mcp-with-and-without/`, and each confirmed by the lead
+against the code and the record. The first two are **must fix before this ships**; the next two are false findings
+the tool gives about a user's label, and decide how far the tool can be trusted before launch.
+
+**`check_label` passes a label size nobody gave it.** With no `stock`, `toJudgeRequest` uses the label type's
+default — the stock an export would draw on. For an export that is true: the PDF *is* that size. For a check it
+invents a fact about the user's label, and the size rule then passes it: all 18 EU calls without `stock` got
+`GHS_LABEL_SIZE_MET`, "The label is 74.00 mm × 105.00 mm", and case 03's 50 × 70 mm label, sent without its size,
+passes where with it the planted `GHS_LABEL_BELOW_MINIMUM_SIZE` fires. A rule clearing what it never measured. The
+schema's own comment on `capacityL` names this — defaulting "would invent a requirement the caller never stated".
+The fix is for the check request either to require `stock`, or to judge without one by standing down every rule
+that measures the stock, with a `Decline` that asks for it. The second is the more honest and touches `rules/`.
+
+**`GHS_PICTOGRAM_NOT_REQUIRED` says no declared hazard requires a pictogram that one does.** `ghs/pictogram-set`
+compares the drawn pictograms with the set *after* Article 26 precedence and words the difference as "no hazard
+class declared for this product requires it", under its Annex V citation. On case 01 Annex V assigns GHS07 to the
+declared skin irritation; Article 26(1)(c) is what removes it beside GHS05. The conclusion — take GHS07 off — is
+right; the reason and the citation are not. It needs to say which pictogram displaced it, citing Article 26. The
+website shows the same finding.
+
+**Every GHS pictogram is reported as having no symbol.** Packwright has no verified pictogram artwork, draws empty
+frames, and `GHS_PICTOGRAM_SYMBOL_MISSING` fires on every GHS label it checks — a violation under CLP, blocking under
+OSHA. On the website that is true of the PDF Packwright exports; through `check_label`, where a user describes their
+own printed label, it is a false finding about their label, and the evaluation's Haiku relayed it as one in all 18
+of its GHS answers. The report already lists the symbol as not drawn; the finding should not also be scored.
+Whether the check request should say "the pictograms are printed with their symbols", or the rule should stand down
+where the engine drew no artwork, is a design decision for the stage that fixes it.
+
+**Text at the engine's own type size is reported "not printed".** A GHS label's input carries no type sizes, so the
+engine lays its text out at a default and records what overruns as not printed. Case 03's statements and supplier
+were reported missing from a label whose prompt says every line is printed, and every "with" answer told the user
+so. The same question as the pictograms: a fact the input cannot carry is being judged from Packwright's drawing.
+
+**Smaller, from the same grading:** the %DV pass (`FDA_NUTRITION_PERCENT_DV_MET`) cites only 101.9(d)(7)(ii), where
+the four vitamin and mineral percentages are rounded under (c)(8)(iii) — the engine's own source comment names both;
+the GS1 bar-height, quiet-zone and magnification rules cite figures of GenSpecs 25.0 that are numbered differently in
+26.0 (correct for the release cited, but worth moving with it); and the Digital Link field `domain` describes nothing,
+so every model's first Digital Link carried a host name with no scheme, which the rule rightly refuses. A
+`.describe()` saying it is the whole `https://` origin would have saved Sonnet two calls in each run; it would not
+have saved Haiku's two misses, which also left out `useConvenienceAlphas`.
 
 ## From the MCP server, 2026-10-10
 

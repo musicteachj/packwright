@@ -1,0 +1,1052 @@
+{
+  "caseId": "05-osha-small-container-no-phone",
+  "answers": [
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "missed",
+      "falseClearance": true,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(4) and Appendix C",
+          "claim": "hazard statement H225 'Highly flammable liquid and vapor' must be on the small container",
+          "verdict": "M",
+          "evidence": "(f)(4) is \"Solid materials\": \"(i) For solid metal (such as a steel beam or a metal casting), solid wood, or plastic items ... or shipments of whole grain, the required label may be transmitted to the customer at the time of the initial shipment ...; (ii) The label may be transmitted with the initial shipment itself, or with the safety data sheet ...\" Nothing on hazard or precautionary statements. Wording matches App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\". but (f)(12)(ii) does not require hazard statements on a <=100 ml label.",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(4) and Appendix C",
+          "claim": "precautionary statements must be on the small container",
+          "verdict": "M",
+          "evidence": "(f)(4) is \"Solid materials\": \"(i) For solid metal (such as a steel beam or a metal casting), solid wood, or plastic items ... or shipments of whole grain, the required label may be transmitted to the customer at the time of the initial shipment ...; (ii) The label may be transmitted with the initial shipment itself, or with the safety data sheet ...\" Nothing on hazard or precautionary statements.",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(1)",
+          "claim": "supplemental hazard information may be required",
+          "verdict": "M",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" Supplementary information is App. C C.3 and is optional (C.3.2 'Where the chemical manufacturer ... chooses to add supplementary information').",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "hazard and precautionary statements must appear on the 50 ml can itself",
+          "grade": "not-real",
+          "reason": "(f)(12)(ii) minimum for <=100 ml: product identifier, pictogram, signal word, manufacturer's name and phone, outer-package statement."
+        },
+        {
+          "claim": "adding H225 and P-statements makes the label compliant",
+          "grade": "not-real",
+          "reason": "The phone number required by (f)(12)(ii)(D) is missing."
+        }
+      ],
+      "tool": null,
+      "notes": "Misses the phone number. False clearance: the summary says the label needs 'at least' H and P statements 'to be compliant' and treats the rest as fine."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "missed",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(4)(i)",
+          "claim": "hazard statement H225 required; cannot be omitted even on a small-container label",
+          "verdict": "M",
+          "evidence": "(f)(4) is \"Solid materials\": \"(i) For solid metal (such as a steel beam or a metal casting), solid wood, or plastic items ... or shipments of whole grain, the required label may be transmitted to the customer at the time of the initial shipment ...; (ii) The label may be transmitted with the initial shipment itself, or with the safety data sheet ...\" Nothing on hazard or precautionary statements.",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(4)(ii)",
+          "claim": "precautionary statements (P210) required",
+          "verdict": "M",
+          "evidence": "(f)(4) is \"Solid materials\": \"(i) For solid metal (such as a steel beam or a metal casting), solid wood, or plastic items ... or shipments of whole grain, the required label may be transmitted to the customer at the time of the initial shipment ...; (ii) The label may be transmitted with the initial shipment itself, or with the safety data sheet ...\" Nothing on hazard or precautionary statements.",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(6)",
+          "claim": "permits smaller pictograms on small containers",
+          "verdict": "M",
+          "evidence": "(f)(6) is \"Workplace labeling\": \"the employer shall ensure that each container of hazardous chemicals in the workplace is labeled, tagged or marked with either: (i) The information specified under paragraphs (f)(1)(i) through (v) of this section for labels on shipped containers; or, (ii) Product identifier and words, pictures, symbols, or combination thereof ...\" It has only (i) and (ii) and no small-container, reduced-label or pictogram-size provision; the small-container rule is (f)(12). No minimum pictogram size appears anywhere in 1910.1200 (no mm/cm figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets shape and colour only.",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(1)",
+          "claim": "outer carton must carry complete label information",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" ((f)(12)(iv)(A) requires the full (f)(1) label on the immediate outer package.)",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "hazard statement cannot be omitted even on a small-container label",
+          "grade": "not-real",
+          "reason": "(f)(12)(ii) does not list hazard statements."
+        },
+        {
+          "claim": "precautionary statements mandatory on the small container",
+          "grade": "not-real",
+          "reason": "(f)(12)(ii) does not list precautionary statements."
+        },
+        {
+          "claim": "OSHA does not explicitly require the 'full label information is on the outer package' statement",
+          "grade": "not-real",
+          "reason": "(f)(12)(ii)(E) requires it."
+        },
+        {
+          "claim": "10 mm pictogram is acceptable",
+          "grade": "real"
+        }
+      ],
+      "tool": null,
+      "notes": "Misses the phone number. Not graded a false clearance: it never calls the supplier line or the label compliant, only omits it."
+    },
+    {
+      "arm": "without",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "missed",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(1)(i)",
+          "claim": "product identifier must be the same as on the SDS",
+          "verdict": "V",
+          "evidence": "(c): \"Product identifier means the name or number used for a hazardous chemical on a label or in the SDS ... The product identifier used shall permit cross-references to be made among the list of hazardous chemicals required in the written hazard communication program, the label and the SDS.\" App. D Table D.1 Section 1(a): \"Product identifier used on the label\".",
+          "reused": true
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(1)(iv)",
+          "claim": "hazard statements required; Cat 2 H225 'Highly flammable liquid and vapor'",
+          "verdict": "M",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" (f)(1)(iv) is Pictogram(s); hazard statements are (f)(1)(iii).",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(1)(v)",
+          "claim": "precautionary statements required (P210, P233, P403+P235)",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(1)(ii)",
+          "claim": "pictograms at least 1 cm (10 mm) on a side",
+          "verdict": "M",
+          "evidence": "(f)(1)(ii) is \"Signal word;\". No minimum pictogram size appears anywhere in 1910.1200 (no mm/cm figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets shape and colour only.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "product identifier missing / not distinct",
+          "grade": "not-real",
+          "reason": "'Example solvent' is printed as the product identifier; no separate-identifier requirement."
+        },
+        {
+          "claim": "hazard and precautionary statements must appear on the small container label",
+          "grade": "not-real",
+          "reason": "(f)(12)(ii) does not list them."
+        },
+        {
+          "claim": "small container needs at least a reference or abbreviated hazard statement",
+          "grade": "not-real",
+          "reason": "(f)(12)(ii)(E) requires only the outer-package statement, which is printed."
+        },
+        {
+          "claim": "10 mm pictogram may be too small; OSHA guidance recommends ~1 inch",
+          "grade": "not-real",
+          "reason": "No minimum pictogram size appears anywhere in 1910.1200 (no mm/cm figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets shape and colour only."
+        }
+      ],
+      "tool": null,
+      "notes": "Misses the phone number; invents a 1 cm minimum. Not graded a false clearance: no statement that the label or supplier line is compliant."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "1910.1200(f)(1)",
+          "claim": "each container leaving the workplace must carry the full label; a pointer to the carton does not satisfy",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" (But see (f)(12), which the answer denies.)",
+          "reused": true
+        },
+        {
+          "ref": "1910.1200(f)(1)(iii); Appendix C, Table C.4",
+          "claim": "Cat 2 hazard statement 'Highly flammable liquid and vapor' (H225)",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(f)(1)(v); Appendix C, Table C.4",
+          "claim": "precautionary statements (prevention, response, storage, disposal) required",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(f)(1)(vi)",
+          "claim": "telephone number required",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" Small-container equivalent: (f)(12)(ii)(D) 'Chemical manufacturer's name and phone number'.",
+          "reused": true
+        },
+        {
+          "ref": "1910.1200(f)(1)(iv); Appendix C, C.2 and C.4",
+          "claim": "black symbol on white inside red diamond; no minimum size",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\" No minimum pictogram size appears anywhere in 1910.1200 (no mm/cm figure for pictograms); (f)(1)(iv) reads only \"Pictogram(s);\" and C.2.3.1 sets shape and colour only.",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, Table C.4",
+          "claim": "'Danger' correct for Cat 2",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(f)(1)(i) and (f)(4)",
+          "claim": "product identifier must be consistent with the SDS",
+          "verdict": "V",
+          "evidence": "(c): \"Product identifier means the name or number used for a hazardous chemical on a label or in the SDS ... The product identifier used shall permit cross-references to be made among the list of hazardous chemicals required in the written hazard communication program, the label and the SDS.\" App. D Table D.1 Section 1(a): \"Product identifier used on the label\". (f)(4) is Solid materials and adds nothing; graded on (f)(1)(i) as on 2026-10-09.",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(d)",
+          "claim": "classification under Appendix A and B and mixture rules",
+          "verdict": "V",
+          "evidence": "(d)(2): \"Appendix A ... shall be consulted for classification of health hazards, and Appendix B ... for the classification of physical hazards.\" (d)(3) Mixtures: follow appendices A and B.",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(f)(9) and (f)(10)",
+          "claim": "label legible, in English, prominently displayed and durable",
+          "verdict": "M",
+          "evidence": "(f)(9): \"The employer shall not remove or deface existing labels on incoming containers of hazardous chemicals, unless the container is immediately marked with the required information.\" (f)(10): \"The employer shall ensure that workplace labels or other forms of warning are legible, in English, and prominently displayed on the container, or readily available in the work area throughout each work shift.\" An employer's duty for workplace labels; for shipped containers English/prominence is (f)(2). No durability requirement anywhere.",
+          "reused": false
+        },
+        {
+          "ref": "49 CFR Parts 172 and 173",
+          "claim": "DOT hazmat marking and labeling apply separately",
+          "verdict": "V",
+          "evidence": "49 CFR 172.400(b) table: \"3 Flammable Liquid ... FLAMMABLE LIQUID ... 172.419\"; 173.150(b): \"Limited quantities of flammable liquids (Class 3) and combustible liquids are excepted from labeling requirements, unless the material is offered for transportation or transported by aircraft\"; 172.315(a): a limited-quantity package offered by a mode other than air \"must display the limited quantity marking\".",
+          "reused": false
+        },
+        {
+          "ref": "CPSC FHSA",
+          "claim": "consumer products: FHSA labeling applies",
+          "verdict": "V",
+          "evidence": "16 CFR 1500.121(a)(1): \"Section 2(p)(1) of the Federal Hazardous Substances Act ... requires that hazardous substances bear certain cautionary statements on their labels\"; 1500.3: \"Misbranded hazardous substance means a hazardous substance ... intended, or packaged in a form suitable, for use in the household\". OSHA (b)(5)(v) carves such products out of HazCom labeling.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "OSHA did not adopt a small-container reduction",
+          "grade": "not-real",
+          "reason": "(f)(12) (added 2024) is that provision."
+        },
+        {
+          "claim": "hazard statement missing",
+          "grade": "unclear",
+          "reason": "Required only if (f)(12) does not apply; whether the (f)(12)(i) infeasibility condition is met is not stated."
+        },
+        {
+          "claim": "precautionary statements missing",
+          "grade": "unclear",
+          "reason": "As above."
+        },
+        {
+          "claim": "telephone number missing",
+          "grade": "real"
+        },
+        {
+          "claim": "pictogram format needs checking",
+          "grade": "unclear",
+          "reason": "Prompt says '10 mm square'."
+        },
+        {
+          "claim": "outer carton needs HazCom labeling too",
+          "grade": "real",
+          "reason": "(f)(12)(iv)(A)."
+        }
+      ],
+      "tool": null,
+      "notes": "Caught the missing phone via (f)(1)(vi) on the false premise that OSHA has no small-container provision (same pattern as 2026-10-09)."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "1910.1200(f)(1)(i)",
+          "claim": "product identifier present",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\"",
+          "reused": false
+        },
+        {
+          "ref": "(f)(2)",
+          "claim": "product identifier must match the SDS",
+          "verdict": "M",
+          "evidence": "(f)(2): information under (f)(1)(i) through (v) shall be \"in accordance with Appendix C to § 1910.1200, for each hazard class and associated hazard category for the hazardous chemical, prominently displayed, and in English (other languages may also be included if appropriate).\" Nothing about matching the SDS.",
+          "reused": true
+        },
+        {
+          "ref": "Appendix C, Table C.4.x",
+          "claim": "'Danger' correct for Cat 2",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(f)(1), Appendix C.4",
+          "claim": "pictogram black symbol on white inside red diamond; no minimum size",
+          "verdict": "M",
+          "evidence": "App. C C.4 \"Requirements for Signal Words, Hazard Statements, Pictograms, and Precautionary Statements\" — the class tables; flammable liquids are C.4.19. The tables name the pictogram (\"Flame\"); the shape/colour rule is C.2.3.1. App. C C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "(f)(10)",
+          "claim": "label must be legible",
+          "verdict": "M",
+          "evidence": "(f)(10): \"The employer shall ensure that workplace labels or other forms of warning are legible, in English, and prominently displayed on the container, or readily available in the work area throughout each work shift.\" An employer's duty for workplace labels; for shipped containers English/prominence is (f)(2). No durability requirement anywhere.",
+          "reused": false
+        },
+        {
+          "ref": "(f)(1)(vi)",
+          "claim": "supplier name and address present; phone required",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\"",
+          "reused": true
+        },
+        {
+          "ref": "1910.1200(f)(1)(iii) and Appendix C",
+          "claim": "hazard statement H225 'Highly flammable liquid and vapor'",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": true
+        },
+        {
+          "ref": "1910.1200(f)(1)(v) and Appendix C (C.2 and the Cat 2 flammable liquid table)",
+          "claim": "precautionary statements required",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(f)(1)",
+          "claim": "label elements on each shipped container",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\"",
+          "reused": false
+        },
+        {
+          "ref": "EU CLP",
+          "claim": "reduced labels for small packages exist there",
+          "verdict": "V",
+          "evidence": "CLP consolidated 02008R1272-20260701 (Publications Office XHTML, saved in /tmp/s19/sources) Art. 29(2): \"If the full label information cannot be provided in the way specified in paragraph 1 the label information may be reduced in accordance with section 1.5.2 of Annex I.\"",
+          "reused": false
+        },
+        {
+          "ref": "(f)(2) and (g)",
+          "claim": "SDS must be consistent with the label",
+          "verdict": "V",
+          "evidence": "App. D Table D.1 (91 FR 595, rendered): Section 2(b) \"Signal word, hazard statement(s), symbol(s) and precautionary statement(s) in accordance with paragraph (f) of §1910.1200\"; (g)(2)(xvi): \"Section 16, Other information, including date of preparation or last revision.\" (Supported by (g); (f)(2) alone does not say it.)",
+          "reused": false
+        },
+        {
+          "ref": "49 CFR 172/173",
+          "claim": "DOT marking/labeling, limited quantity",
+          "verdict": "V",
+          "evidence": "49 CFR 172.400(b) table: \"3 Flammable Liquid ... FLAMMABLE LIQUID ... 172.419\"; 173.150(b): \"Limited quantities of flammable liquids (Class 3) and combustible liquids are excepted from labeling requirements, unless the material is offered for transportation or transported by aircraft\"; 172.315(a): a limited-quantity package offered by a mode other than air \"must display the limited quantity marking\".",
+          "reused": false
+        },
+        {
+          "ref": "CPSC/FHSA",
+          "claim": "consumer product labeling may apply",
+          "verdict": "V",
+          "evidence": "16 CFR 1500.121(a)(1): \"Section 2(p)(1) of the Federal Hazardous Substances Act ... requires that hazardous substances bear certain cautionary statements on their labels\"; 1500.3: \"Misbranded hazardous substance means a hazardous substance ... intended, or packaged in a form suitable, for use in the household\". OSHA (b)(5)(v) carves such products out of HazCom labeling.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "HazCom has no small-container exemption",
+          "grade": "not-real",
+          "reason": "(f)(12)."
+        },
+        {
+          "claim": "hazard statement missing",
+          "grade": "unclear",
+          "reason": "Depends on (f)(12)(i)."
+        },
+        {
+          "claim": "precautionary statements missing",
+          "grade": "unclear",
+          "reason": "Depends on (f)(12)(i)."
+        },
+        {
+          "claim": "telephone number missing",
+          "grade": "real"
+        }
+      ],
+      "tool": null,
+      "notes": "Caught the phone via (f)(1)(vi); denies (f)(12) exists, attributing reduced labels to UN GHS / CLP."
+    },
+    {
+      "arm": "without",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "1910.1200(f)(1)",
+          "claim": "all six elements on every container leaving the workplace",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\"",
+          "reused": true
+        },
+        {
+          "ref": "UN GHS section 1.4.10.5",
+          "claim": "reduced small-container labelling",
+          "verdict": "U",
+          "evidence": "Not read: the UNECE GHS Rev.10 PDF and the Rev.7/Rev.9 chapter PDFs returned a Cloudflare challenge page to curl and HTTP 403 to WebFetch on 2026-10-10.",
+          "reused": false
+        },
+        {
+          "ref": "EU CLP",
+          "claim": "reduced small-container labelling exists",
+          "verdict": "V",
+          "evidence": "CLP consolidated 02008R1272-20260701 (Publications Office XHTML, saved in /tmp/s19/sources) Art. 29(2): \"If the full label information cannot be provided in the way specified in paragraph 1 the label information may be reduced in accordance with section 1.5.2 of Annex I.\"",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(f)(1)(iii); Appendix C, C.4",
+          "claim": "Cat 2 hazard statement 'Highly flammable liquid and vapor' (H225)",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(f)(1)(iv); Appendix C, C.2.3 and the C.4 tables",
+          "claim": "precautionary statements P210 ... P501",
+          "verdict": "M",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\" (f)(1)(iv) is Pictogram(s); C.2.3 is 'Pictograms'. Precautionary statements are (f)(1)(v) and C.2.4.",
+          "reused": false
+        },
+        {
+          "ref": "1910.1200(f)(1)(vi)",
+          "claim": "supplier phone required",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\"",
+          "reused": true
+        },
+        {
+          "ref": "1910.1200(f)(1)(ii) and Appendix C, C.3",
+          "claim": "black flame on white in red diamond",
+          "verdict": "M",
+          "evidence": "(f)(1)(ii) is \"Signal word;\". App. C C.3 is \"Supplementary Hazard Information\" (C.3.1-C.3.3: optional supplementary information, unknown-acute-toxicity statement); the pictogram shape/colour rule is C.2.3.1. App. C C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "(f)(2) and (g)(2)(i)",
+          "claim": "product identifier must match the SDS",
+          "verdict": "V",
+          "evidence": "(c): \"Product identifier means the name or number used for a hazardous chemical on a label or in the SDS ... The product identifier used shall permit cross-references to be made among the list of hazardous chemicals required in the written hazard communication program, the label and the SDS.\" App. D Table D.1 Section 1(a): \"Product identifier used on the label\". (g)(2)(i) 'Section 1, Identification'. ((f)(2) alone does not say it.)",
+          "reused": false
+        },
+        {
+          "ref": "(f)(10) and (f)(9)",
+          "claim": "label prominent, conspicuous, in English and durable",
+          "verdict": "M",
+          "evidence": "(f)(10): \"The employer shall ensure that workplace labels or other forms of warning are legible, in English, and prominently displayed on the container, or readily available in the work area throughout each work shift.\" An employer's duty for workplace labels; for shipped containers English/prominence is (f)(2). No durability requirement anywhere. (f)(9): \"The employer shall not remove or deface existing labels on incoming containers of hazardous chemicals, unless the container is immediately marked with the required information.\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.4",
+          "claim": "'Danger' right for Cat 1 and 2",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        },
+        {
+          "ref": "Appendix B",
+          "claim": "label must agree with classification",
+          "verdict": "V",
+          "evidence": "(d)(2): \"Appendix A ... shall be consulted for classification of health hazards, and Appendix B ... for the classification of physical hazards.\" (d)(3) Mixtures: follow appendices A and B.",
+          "reused": false
+        },
+        {
+          "ref": "49 CFR 172",
+          "claim": "DOT hazmat; limited quantity at 50 ml",
+          "verdict": "V",
+          "evidence": "49 CFR 172.400(b) table: \"3 Flammable Liquid ... FLAMMABLE LIQUID ... 172.419\"; 173.150(b): \"Limited quantities of flammable liquids (Class 3) and combustible liquids are excepted from labeling requirements, unless the material is offered for transportation or transported by aircraft\"; 172.315(a): a limited-quantity package offered by a mode other than air \"must display the limited quantity marking\".",
+          "reused": false
+        },
+        {
+          "ref": "CPSC/FHSA",
+          "claim": "consumer labelling applies",
+          "verdict": "V",
+          "evidence": "16 CFR 1500.121(a)(1): \"Section 2(p)(1) of the Federal Hazardous Substances Act ... requires that hazardous substances bear certain cautionary statements on their labels\"; 1500.3: \"Misbranded hazardous substance means a hazardous substance ... intended, or packaged in a form suitable, for use in the household\". OSHA (b)(5)(v) carves such products out of HazCom labeling.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "the standard has no small-container exemption or reduced-label provision",
+          "grade": "not-real",
+          "reason": "(f)(12)."
+        },
+        {
+          "claim": "hazard statement missing",
+          "grade": "unclear",
+          "reason": "Depends on (f)(12)(i)."
+        },
+        {
+          "claim": "precautionary statements missing",
+          "grade": "unclear",
+          "reason": "Depends on (f)(12)(i)."
+        },
+        {
+          "claim": "supplier phone number missing",
+          "grade": "real"
+        },
+        {
+          "claim": "mixture ingredients are not required on an OSHA label",
+          "grade": "real"
+        },
+        {
+          "claim": "pictogram may not be a red-bordered diamond",
+          "grade": "unclear",
+          "reason": "Prompt says '10 mm square'."
+        }
+      ],
+      "tool": null,
+      "notes": "Caught the phone via (f)(1)(vi); denies (f)(12). UN GHS 1.4.10.5 could not be fetched (U)."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200, Appendix C, C.2.3.1 (linked to osha.gov/dsg/hazcom/hazard-classification-pictograms.html)",
+          "claim": "a frame without a hazard symbol is not a pictogram",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\" The linked osha.gov page returned HTTP 403 to curl; the URL itself is unverified.",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(12) (linked to law.cornell.edu/cfr/text/29/1910.1200)",
+          "claim": "small container must still carry the manufacturer's phone number",
+          "verdict": "V",
+          "evidence": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1) of this section.\" (ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\" (iii): \"For a container less than or equal to 3 ml capacity ... no label is required, but the container must bear, at a minimum, the product identifier.\" The Cornell LII URL resolves (HTTP 200, title '29 CFR § 1910.1200 - Hazard communication').",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200 Appendix C, Table C.4.2",
+          "claim": "table giving the H and P statements for flammable liquid Category 2",
+          "verdict": "M",
+          "evidence": "The flammable-liquids table is C.4.19 (eCFR heading 'C.4.19 FLAMMABLE LIQUIDS (Classified in Accordance with Appendix B.6 of this section)'; 91 FR 585-586), not C.4.2.",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "you have drawn a red frame for GHS02 but the flame symbol is missing (blocking)",
+          "grade": "not-real",
+          "reason": "The prompt lists 'Hazard pictogram GHS02 (flame), 10 mm square' as printed; nothing says the flame is missing. The finding comes from the engine's own empty-frame drawing."
+        },
+        {
+          "claim": "phone number missing",
+          "grade": "real"
+        },
+        {
+          "claim": "the small-container declaration approach is acceptable once the phone number is added",
+          "grade": "unclear",
+          "reason": "The tool did not judge this; (f)(12)(i) also needs the infeasibility showing, which the prompt does not state."
+        },
+        {
+          "claim": "H and P statements are mandatory for this label (not checked by the tool)",
+          "grade": "unclear",
+          "reason": "Not required on a <=100 ml label if (f)(12) applies; framed as unchecked rather than as a finding."
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "Tells the user the flame symbol is missing from their pictogram (blocking)",
+            "source": "engine",
+            "why": "check_label was sent pictograms [\"GHS02\"], i.e. a printed GHS02 pictogram, and returned GHS_PICTOGRAM_SYMBOL_MISSING (blocking) because the engine itself has no verified flame artwork and draws an empty frame, then judges its own drawing. C.2.3.1 is quoted correctly, but the label described has the flame; the finding is about the engine's render, not the label (the 2026-10-09 cases.md says the same). The tool does list the symbol as 'not drawn' under uncheckable."
+          },
+          {
+            "conclusion": "Cites Appendix C Table C.4.2 for flammable liquid H/P statements",
+            "source": "model",
+            "why": "The tool cited no C.4 table; flammable liquids are C.4.19."
+          }
+        ]
+      },
+      "notes": "Transcription faithful. 'What was not checked' names a limit (H/P statements), so notice=true, though it omits the declined pictogram-set check."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(12)",
+          "claim": "a small container relying on the provision must carry the manufacturer's phone number",
+          "verdict": "V",
+          "evidence": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1) of this section.\" (ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\" (iii): \"For a container less than or equal to 3 ml capacity ... no label is required, but the container must bear, at a minimum, the product identifier.\"",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200, Appendix C, C.2.3.1",
+          "claim": "GHS02 must show the flame inside the red frame; frame alone not permitted",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(12)",
+          "claim": "the 'Full label information is on the outer package' statement is required",
+          "verdict": "V",
+          "evidence": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1) of this section.\" (ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\" (iii): \"For a container less than or equal to 3 ml capacity ... no label is required, but the container must bear, at a minimum, the product identifier.\"",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200, Appendix C, Section C.4",
+          "claim": "where to confirm GHS02 for the classification",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "pictogram symbol missing; you must include the actual hazard symbol artwork",
+          "grade": "not-real",
+          "reason": "The prompt lists 'Hazard pictogram GHS02 (flame), 10 mm square' as printed; nothing says the flame is missing. The finding comes from the engine's own empty-frame drawing."
+        },
+        {
+          "claim": "manufacturer's phone number missing",
+          "grade": "real"
+        },
+        {
+          "claim": "the outer-package statement is correctly included",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "hazards",
+            "labelSays": "Classification: flammable liquid, category 2",
+            "sent": "(omitted)",
+            "changedPlantedVerdict": false
+          },
+          {
+            "field": "outerPackageStatement",
+            "labelSays": "Printed: 'Full label information is on the outer package.'",
+            "sent": "(omitted)",
+            "changedPlantedVerdict": false
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "Reports the pictogram symbol as missing from the label",
+            "source": "engine",
+            "why": "check_label was sent pictograms [\"GHS02\"], i.e. a printed GHS02 pictogram, and returned GHS_PICTOGRAM_SYMBOL_MISSING (blocking) because the engine itself has no verified flame artwork and draws an empty frame, then judges its own drawing. C.2.3.1 is quoted correctly, but the label described has the flame; the finding is about the engine's render, not the label (the 2026-10-09 cases.md says the same). The tool does list the symbol as 'not drawn' under uncheckable."
+          }
+        ]
+      },
+      "notes": "Sent no classification and no outer-package statement. The first made the tool decline the precedence check; the second made the tool's INCOMPLETE finding also demand the outer-package statement. The answer relays the phone half faithfully and (correctly, from the prompt) overrides the statement half — relay graded faithful on the phone, which is the planted part. Names the declined pictogram-set check."
+    },
+    {
+      "arm": "with",
+      "model": "claude-haiku-4-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200, Appendix C, C.2.3.1 and C.2.3.2",
+          "claim": "each pictogram must display one of the standard symbols; frame alone not permitted",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\" App. C C.2.3.2: \"One of eight standard hazard symbols shall be used in each pictogram. The eight hazard symbols are depicted in Figure C.1.\"",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(12)",
+          "claim": "small container must carry the manufacturer's phone number and the outer-package statement",
+          "verdict": "V",
+          "evidence": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1) of this section.\" (ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\" (iii): \"For a container less than or equal to 3 ml capacity ... no label is required, but the container must bear, at a minimum, the product identifier.\"",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200, Appendix C, Section C.4",
+          "claim": "the hazard-class tables to consult for H and P statements",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "your label shows only a red frame; the flame must be drawn inside it (blocking)",
+          "grade": "not-real",
+          "reason": "The prompt lists 'Hazard pictogram GHS02 (flame), 10 mm square' as printed; nothing says the flame is missing. The finding comes from the engine's own empty-frame drawing."
+        },
+        {
+          "claim": "manufacturer's phone number missing",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [
+          {
+            "field": "outerPackageStatement",
+            "labelSays": "Printed: 'Full label information is on the outer package.'",
+            "sent": "(omitted)",
+            "changedPlantedVerdict": false
+          }
+        ],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": [
+          {
+            "conclusion": "Reports the label as showing only a red frame with no flame",
+            "source": "engine",
+            "why": "check_label was sent pictograms [\"GHS02\"], i.e. a printed GHS02 pictogram, and returned GHS_PICTOGRAM_SYMBOL_MISSING (blocking) because the engine itself has no verified flame artwork and draws an empty frame, then judges its own drawing. C.2.3.1 is quoted correctly, but the label described has the flame; the finding is about the engine's render, not the label (the 2026-10-09 cases.md says the same). The tool does list the symbol as 'not drawn' under uncheckable."
+          }
+        ]
+      },
+      "notes": "Omitted the printed outer-package statement, so the tool also demanded it; the answer correctly says the statement is present and the phone is missing. Notice: says the tool cannot access the US tables (a named limit); does not say a clean result is not compliance."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 1,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(12)",
+          "claim": "a small container relying on the provision must carry the manufacturer's phone number",
+          "verdict": "V",
+          "evidence": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1) of this section.\" (ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\" (iii): \"For a container less than or equal to 3 ml capacity ... no label is required, but the container must bear, at a minimum, the product identifier.\"",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200, Appendix C, C.2.3.1",
+          "claim": "a red frame without a hazard symbol is not a pictogram",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.2.3.2 / Figure C.1",
+          "claim": "each pictogram must use one of eight standard symbols in Figure C.1",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.2: \"One of eight standard hazard symbols shall be used in each pictogram. The eight hazard symbols are depicted in Figure C.1.\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.2.1.1",
+          "claim": "single signal word 'Danger' (pass)",
+          "verdict": "V",
+          "evidence": "App. C C.2.1 \"Precedence of Hazard Information\"; C.2.1.1: \"If the signal word 'Danger' is included, the signal word 'Warning' shall not appear;\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.2.1",
+          "claim": "pictogram set consistent with precedence rules (pass)",
+          "verdict": "V",
+          "evidence": "App. C C.2.1 \"Precedence of Hazard Information\"; C.2.1.1: \"If the signal word 'Danger' is included, the signal word 'Warning' shall not appear;\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.4",
+          "claim": "where to check that GHS02 is right for flammable liquid Cat 2",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200(f)(1)",
+          "claim": "label elements: product identifier, signal word, hazard statement(s), pictogram(s), precautionary statement(s), supplier identification",
+          "verdict": "V",
+          "evidence": "(f)(1): \"each container of hazardous chemicals leaving the workplace is labeled, tagged or marked ... the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number of the chemical manufacturer, importer, or other responsible party.\"",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "phone number missing",
+          "grade": "real"
+        },
+        {
+          "claim": "the GHS02 'empty frame' finding is probably an artefact of the tool's drawing",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Clean relay; explicitly says it cannot confirm whether the reduced label lets H/P statements be omitted and asks the user to check."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 2,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(12)",
+          "claim": "a small container relying on the provision must carry the manufacturer's phone number",
+          "verdict": "V",
+          "evidence": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1) of this section.\" (ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\" (iii): \"For a container less than or equal to 3 ml capacity ... no label is required, but the container must bear, at a minimum, the product identifier.\"",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200, Appendix C, C.2.3.1",
+          "claim": "a red frame without a hazard symbol is not a pictogram",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.2.3.2 / Figure C.1",
+          "claim": "each pictogram must use one of eight standard symbols in Figure C.1",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.2: \"One of eight standard hazard symbols shall be used in each pictogram. The eight hazard symbols are depicted in Figure C.1.\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.2.1.1",
+          "claim": "single signal word 'Danger' (pass)",
+          "verdict": "V",
+          "evidence": "App. C C.2.1 \"Precedence of Hazard Information\"; C.2.1.1: \"If the signal word 'Danger' is included, the signal word 'Warning' shall not appear;\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.2.1",
+          "claim": "pictogram set consistent with precedence rules (pass)",
+          "verdict": "V",
+          "evidence": "App. C C.2.1 \"Precedence of Hazard Information\"; C.2.1.1: \"If the signal word 'Danger' is included, the signal word 'Warning' shall not appear;\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.4",
+          "claim": "where to check that GHS02 is right for flammable liquid Cat 2",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "phone number missing",
+          "grade": "real"
+        },
+        {
+          "claim": "the GHS02 'empty frame' finding is probably an artefact of the tool's drawing",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Says the tool 'did not check that your 50 ml can qualifies' — the engine does check capacity against 0.1 L (that is case 04's rule); it does not check the (f)(12)(i) infeasibility condition. A small misdescription of the tool, not of the law."
+    },
+    {
+      "arm": "with",
+      "model": "claude-sonnet-5-5",
+      "run": 3,
+      "planted": "caught",
+      "falseClearance": false,
+      "citations": [
+        {
+          "ref": "29 CFR 1910.1200(f)(12)",
+          "claim": "a small container relying on the provision must carry the manufacturer's phone number",
+          "verdict": "V",
+          "evidence": "(f)(12)(i): \"This paragraph applies where the chemical manufacturer, importer, or distributor can demonstrate that it is not feasible to use pull-out labels, fold-back labels, or tags containing the full label information required by paragraph (f)(1) of this section.\" (ii): \"For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\" (iii): \"For a container less than or equal to 3 ml capacity ... no label is required, but the container must bear, at a minimum, the product identifier.\"",
+          "reused": false
+        },
+        {
+          "ref": "29 CFR 1910.1200, Appendix C, C.2.3.1",
+          "claim": "a red frame without a hazard symbol is not a pictogram",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.1: \"Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.2.3.2 / Figure C.1",
+          "claim": "each pictogram must use one of eight standard symbols in Figure C.1",
+          "verdict": "V",
+          "evidence": "App. C C.2.3.2: \"One of eight standard hazard symbols shall be used in each pictogram. The eight hazard symbols are depicted in Figure C.1.\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.2.1.1",
+          "claim": "single signal word 'Danger' (pass)",
+          "verdict": "V",
+          "evidence": "App. C C.2.1 \"Precedence of Hazard Information\"; C.2.1.1: \"If the signal word 'Danger' is included, the signal word 'Warning' shall not appear;\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.2.1",
+          "claim": "pictogram set consistent with precedence rules (pass)",
+          "verdict": "V",
+          "evidence": "App. C C.2.1 \"Precedence of Hazard Information\"; C.2.1.1: \"If the signal word 'Danger' is included, the signal word 'Warning' shall not appear;\"",
+          "reused": false
+        },
+        {
+          "ref": "Appendix C, C.4",
+          "claim": "where to check that GHS02 is right for flammable liquid Cat 2",
+          "verdict": "V",
+          "evidence": "App. C table C.4.19 FLAMMABLE LIQUIDS, read from the rendered page 91 FR 586 (FR Doc. 2026-00147, 2026-01-08, govinfo PDF): Category 1 Danger \"Extremely flammable liquid and vapor\"; Category 2 Danger \"Highly flammable liquid and vapor\"; Category 3 Warning \"Flammable liquid and vapor\"; pictogram Flame. Precautionary: Prevention \"Keep away from heat, hot surfaces, sparks, open flames and other ignition sources. No smoking.\" / \"Keep container tightly closed.\" / \"Ground and bond container and receiving equipment.\" / \"Use explosion-proof [electrical/ventilating/lighting/.../] equipment.\" / \"Use non-sparking tools.\" / \"Take action to prevent static discharge.\" / \"Wear protective gloves/protective clothing/eye protection/face protection/hearing protection/...\"; Response \"If on skin (or hair): Take off immediately all contaminated clothing. Rinse skin with water [or shower].\" / \"In case of fire: Use ... to extinguish.\"; Storage \"Store in a well-ventilated place. Keep cool.\"; Disposal \"Dispose of contents/container to...\".",
+          "reused": false
+        }
+      ],
+      "otherClaims": [
+        {
+          "claim": "phone number missing",
+          "grade": "real"
+        },
+        {
+          "claim": "the GHS02 'empty frame' finding is probably an artefact of the tool's drawing",
+          "grade": "real"
+        }
+      ],
+      "tool": {
+        "checkLabelCalls": 1,
+        "schemaRefusals": 0,
+        "transcriptionErrors": [],
+        "relay": {
+          "findings": [
+            {
+              "code": "GHS_PICTOGRAM_SYMBOL_MISSING",
+              "relayed": "faithful"
+            },
+            {
+              "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+              "relayed": "faithful"
+            }
+          ],
+          "notice": true
+        },
+        "errorSources": []
+      },
+      "notes": "Cites the WHAT-IS-NOT-CHECKED URL (tool document; not graded as a regulatory citation)."
+    }
+  ],
+  "sourcesFetched": [
+    "https://www.ecfr.gov/api/versioner/v1/full/2026-10-01/title-29.xml?part=1910&section=1910.1200 — 29 CFR 1910.1200 text: (b), (c), (d), (f)(1)-(f)(12), (g)(2), Appendix C text (C.1-C.4 headings), Appendix D intro",
+    "https://www.govinfo.gov/content/pkg/FR-2026-01-08/pdf/2026-00147.pdf — 91 FR 562 (HCS corrections); pages 585-586 rendered and read for App. C table C.4.19 Flammable Liquids; pages 595-597 for App. D Table D.1 (eCFR table images at ecfr.gov/graphics returned a Federal Register 'Request Access' page)",
+    "https://www.federalregister.gov/api/v1/documents.json (2024-05-20 and 2026-01-08, OSHA) — 89 FR 44144 citation and effective date July 19, 2024; 91 FR 562 document number",
+    "https://www.govinfo.gov/content/pkg/CFR-2023-title29-vol6/xml/CFR-2023-title29-vol6-sec1910-1200.xml — 2023 annual CFR: no (f)(12) before the 2024 rule",
+    "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-49?part=172&section=172.400 / 172.315 / 172.419 and part=173&section=173.150 — DOT Class 3 label and limited quantities",
+    "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-16?part=1500&section=1500.121 / 1500.3 — FHSA labeling scope",
+    "http://publications.europa.eu/resource/celex/02008R1272-20260701 (saved by another grader in /tmp/s19/sources) — CLP Art. 29(2)",
+    "https://unece.org/sites/default/files/2023-07/GHS%20Rev10e.pdf and Rev.7/Rev.9 chapter PDFs — FAILED (Cloudflare challenge / HTTP 403); UN GHS claims graded U",
+    "https://www.law.cornell.edu/cfr/text/29/1910.1200 — HTTP 200 (URL cited in an answer); https://www.osha.gov/dsg/hazcom/hazard-classification-pictograms.html — HTTP 403, unverified"
+  ]
+}
