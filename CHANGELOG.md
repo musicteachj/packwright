@@ -10,6 +10,19 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The %DV pass and four GS1 rules cite what they rest on, in the release they rest on.** The percent Daily Value
+  pass cited only 21 CFR 101.9(d)(7)(ii), which rounds a nutrient with a DRV to the whole percent, while clearing
+  vitamin D, calcium, iron and potassium, which (c)(8)(iii) rounds in 2, 5 and 10 percent steps; it now cites the
+  paragraph that governs what it cleared, or both. Both read from the eCFR on 2026-10-12. The bar-height,
+  magnification and quiet-zone rules cited "figure 5.12.3.1-1" and "figure 5.2.3.4-1" of GS1 General
+  Specifications 25.0, identifiers that do not exist in Release 26.0, which numbers them as tables 5-44 and 5-11;
+  `geometry/symbol.ts` had recorded the renumbering since 2026-09-17 and the rules never followed. The
+  human-readable rule named no release at all. All four now cite 26.0 — §5.2.3.2 and table 5-44, §5.12.3.1 and
+  table 5-44, §5.2.3.4 and table 5-11, and §4.14.2 under its own heading — each read from the rendered page on
+  2026-10-12, where every figure the engine uses (the 0.264–0.660 mm X-dimension, the 18.28/22.85/45.70 mm heights,
+  the 9X quiet zones, "the height of the bars only") matched. The landing page's figures card cited the same two 25.0 figures for the quiet zone and the symbol
+  length, and now cites tables 5-11 and 5-12. Found by grading the MCP evaluation of 2026-10-10.
+
 - **What `/code-review high` found on #87, answered.** The three barcode fields `check_label` now asks for carry
   descriptions, and the magnification is asked for as a factor ("1 or 0.8"): the decline said "100%", which invited
   `magnification: 100` — a hundredfold symbol and a violation about nobody's label. The bar-height request names

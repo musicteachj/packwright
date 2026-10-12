@@ -144,13 +144,11 @@ label's real margin could then fit and pass on geometry the label may not have. 
 does, the answer now says the margin was assumed and asks for the real one (`assumedMarginNotice`), rather than
 reading "A 6 mm margin leaves no panel" about a margin the user never gave. Found by `/code-review high` on #84.
 
-**Smaller, from the same grading:** the %DV pass (`FDA_NUTRITION_PERCENT_DV_MET`) cites only 101.9(d)(7)(ii), where
-the four vitamin and mineral percentages are rounded under (c)(8)(iii) — the engine's own source comment names both;
-the GS1 bar-height, quiet-zone and magnification rules cite figures of GenSpecs 25.0 that are numbered differently in
-26.0 (correct for the release cited, but worth moving with it); and the Digital Link field `domain` described nothing,
-so every model's first Digital Link carried a host name with no scheme, which the rule rightly refuses — described
-since 2026-10-11, with `capacityL`, `containsStatement`, `pictogramSideMm`, `smallContainerLabelling` and the
-margin; whether that saves the calls is for the next evaluation to show.
+**Smaller, from the same grading:** the Digital Link field `domain` described nothing, so every model's first Digital
+Link carried a host name with no scheme, which the rule rightly refuses — described since 2026-10-11, with `capacityL`,
+`containsStatement`, `pictogramSideMm`, `smallContainerLabelling` and the margin; whether that saves the calls is for
+the next evaluation to show. The two citation findings beside it — the %DV pass citing only 101.9(d)(7)(ii), and the
+GS1 rules citing 25.0's figure numbers — were fixed on 2026-10-12 (`CHANGELOG.md`).
 
 ## From the MCP server, 2026-10-10
 

@@ -4702,3 +4702,35 @@ describe('the second column, reported in the right direction', () => {
     expect(match!.message).toMatch(/first column only — Iron/)
   })
 })
+
+describe('the percent Daily Value pass cites the paragraph that rounds what it cleared', () => {
+  // (d)(7)(ii) rounds a nutrient with a DRV to the whole percent; (c)(8)(iii) rounds
+  // vitamins and minerals in 2, 5 and 10 percent steps. The pass cited only the first,
+  // over a column holding vitamin D, calcium, iron and potassium. Found by grading the
+  // MCP evaluation of 2026-10-10; both paragraphs read from the eCFR on 2026-10-12.
+  const passFor = (declaredPercentDv: Record<string, number>) => {
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!, declaredPercentDv },
+    }
+    return findingsFor(data, US_FOOD_CONFORMANT.stock).find(
+      (f) => f.code === 'FDA_NUTRITION_PERCENT_DV_MET',
+    )
+  }
+  const all = US_FOOD_CONFORMANT.data.nutritionFacts!.declaredPercentDv!
+
+  it('cites both where the column holds both kinds', () => {
+    expect(passFor({ ...all })?.citation.reference).toBe('21 CFR 101.9(d)(7)(ii) and (c)(8)(iii)')
+  })
+
+  it('cites (d)(7)(ii) alone where only nutrients with a DRV are given', () => {
+    const { 'vitamin-d': _d, calcium: _c, iron: _i, potassium: _p, ...drvOnly } = all
+    expect(passFor(drvOnly)?.citation.reference).toBe('21 CFR 101.9(d)(7)(ii)')
+  })
+
+  it('cites (c)(8)(iii) alone where only vitamins and minerals are given', () => {
+    const { 'vitamin-d': d, calcium: c, iron: i, potassium: p } = all
+    const vitaminsOnly = { 'vitamin-d': d!, calcium: c!, iron: i!, potassium: p! }
+    expect(passFor(vitaminsOnly)?.citation.reference).toBe('21 CFR 101.9(c)(8)(iii)')
+  })
+})

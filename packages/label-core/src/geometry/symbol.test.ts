@@ -26,7 +26,7 @@ describe('quietZoneFor', () => {
   })
 
   it('requires 11X on the left of an EAN-13', () => {
-    // GenSpec figure 5.2.3.4-1. The general 7X floor is 4X short here, and the
+    // GenSpec 26.0 table 5-11. The general 7X floor is 4X short here, and the
     // shortfall is invisible: the symbol looks correctly margined and fails at
     // the till. This is the case that makes the floor unsafe as a default.
     expect(quietZoneFor('EAN-13')).toEqual({ leftX: 11, rightX: 7 })
@@ -109,7 +109,7 @@ describe('barPatternWidthMm', () => {
     ['EAN-8', 67],
     ['UPC-E', 51],
   ] as const)('%s bar pattern is %i modules', (symbology, modules) => {
-    // GenSpec figure 5.2.3.5-1 tabulates the total *including* quiet zones, so
+    // GenSpec 26.0 table 5-12 tabulates the total *including* quiet zones, so
     // the bar pattern is that total minus both zones. UPC-A: 113 − 9 − 9 = 95.
     // EAN-13 lands on the same 95 from a different split, 113 − 11 − 7, which is
     // a useful coincidence: both carry twelve data digits plus guards.
@@ -165,7 +165,7 @@ describe('nominalBarHeightMm', () => {
     [1, 22.85],
     [2, 45.7],
   ])('a UPC-A at %fx is %f mm tall', (magnification, expected) => {
-    // GenSpec figure 5.12.3.1-1 tabulates minimum symbol height against each
+    // GenSpec 26.0 table 5-44 tabulates minimum symbol height against each
     // X-dimension: 18.28 mm at X = 0.264, 22.85 at 0.330, 45.70 at 0.660. Those
     // are the specification's own numbers, and they are exactly 22.85 x the
     // magnification — so height scales with the symbol rather than being fixed.

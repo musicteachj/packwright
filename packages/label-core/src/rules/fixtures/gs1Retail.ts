@@ -69,7 +69,7 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     expected: {
       code: GS1_MAGNIFICATION_OUT_OF_RANGE,
       severity: 'violation',
-      citation: 'GS1 General Specifications 25.0, figure 5.12.3.1-1',
+      citation: 'GS1 General Specifications 26.0, §5.12.3.1, table 5-44',
     },
   },
   {
@@ -80,7 +80,7 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     expected: {
       code: GS1_BAR_HEIGHT_BELOW_MINIMUM,
       severity: 'violation',
-      citation: 'GS1 General Specifications 25.0, §5.2.3.2 and figure 5.12.3.1-1',
+      citation: 'GS1 General Specifications 26.0, §5.2.3.2 and table 5-44',
     },
   },
   {
@@ -96,7 +96,7 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     expected: {
       code: GS1_QUIET_ZONE_TOO_NARROW,
       severity: 'violation',
-      citation: 'GS1 General Specifications 25.0, figure 5.2.3.4-1',
+      citation: 'GS1 General Specifications 26.0, §5.2.3.4, table 5-11',
     },
   },
   {
@@ -107,7 +107,7 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     expected: {
       code: GS1_QUIET_ZONE_TOO_NARROW,
       severity: 'violation',
-      citation: 'GS1 General Specifications 25.0, figure 5.2.3.4-1',
+      citation: 'GS1 General Specifications 26.0, §5.2.3.4, table 5-11',
     },
   },
   {
@@ -118,7 +118,7 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     expected: {
       code: GS1_HRI_MISSING,
       severity: 'violation',
-      citation: 'GS1 General Specifications §4.14.2',
+      citation: 'GS1 General Specifications 26.0, §4.14.2',
     },
   },
   {

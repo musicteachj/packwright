@@ -240,6 +240,21 @@ const VITAMIN_PERCENT: Citation = {
   title: 'Percentages for vitamins and minerals, in 2, 5 and 10 percent increments',
 }
 
+/**
+ * Both, for a pass over a column holding both kinds of percentage. (d)(7)(ii) rounds
+ * a nutrient with a DRV "to the nearest whole percent"; (c)(8)(iii) rounds vitamins and
+ * minerals "to the nearest 2-percent increment up to and including the 10-percent
+ * level" and coarser above. Both read from the eCFR on 2026-10-12. The pass cited only
+ * the first, and on a panel declaring vitamin D, calcium, iron and potassium it was
+ * certifying four figures under a paragraph that does not round them — found by grading
+ * the MCP evaluation of 2026-10-10.
+ */
+const PERCENT_AND_VITAMIN_PERCENT: Citation = {
+  authority: 'FDA',
+  reference: '21 CFR 101.9(d)(7)(ii) and (c)(8)(iii)',
+  title: 'The percent Daily Value column, and the increments for vitamins and minerals',
+}
+
 /** The panel, where the label carries one worth measuring. */
 function panelOf(data: UsFoodContext['data']): UsFoodNutritionFacts | undefined {
   return data.nutritionFacts
@@ -845,7 +860,7 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
   id: 'us-food/nutrition-percent-dv',
   title: 'The percent Daily Value column is computed and rounded as 21 CFR 101.9 requires.',
   citation: PERCENT,
-  citations: [PERCENT, VITAMIN_PERCENT],
+  citations: [PERCENT, VITAMIN_PERCENT, PERCENT_AND_VITAMIN_PERCENT],
   codes: {
     [FDA_NUTRITION_PERCENT_DV_WRONG]: ['violation'],
     [FDA_NUTRITION_PERCENT_DV_MET]: ['pass'],
@@ -1024,14 +1039,19 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
       )
     }
 
+    // Cited under the paragraph that rounds what was cleared: (d)(7)(ii) for nutrients
+    // with a DRV, (c)(8)(iii) for vitamins and minerals, both where the column held both.
+    const vitamins = measured.some(({ entry }) => entry.dailyValue!.kind === 'rdi')
+    const others = measured.some(({ entry }) => entry.dailyValue!.kind !== 'rdi')
     return [
-      // (d)(7)(ii) governs the percentages the panel shows: the artwork.
+      // (d)(7)(ii) and (c)(8)(iii) govern the percentages the panel shows: the artwork.
       passedOnArtwork(
         usFoodNutritionPercentDvRule,
         FDA_NUTRITION_PERCENT_DV_MET,
         `${measured.length} percentage${measured.length === 1 ? '' : 's'} match the Daily Values, ` +
           'rounded as each nutrient’s own paragraph requires.',
         US_FOOD_ELEMENTS.nutritionPanel,
+        vitamins && others ? PERCENT_AND_VITAMIN_PERCENT : vitamins ? VITAMIN_PERCENT : PERCENT,
       ),
     ]
   },

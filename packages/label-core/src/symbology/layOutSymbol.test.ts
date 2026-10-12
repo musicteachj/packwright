@@ -8,7 +8,7 @@ import { SymbolLayoutError, layOutSymbol } from './layOutSymbol'
  *
  * Every expected millimetre below comes from the General Specifications, not
  * from running the adapter: a UPC-A is 113 modules including both 9X quiet
- * zones (figure 5.2.3.5-1), so 95 modules of bars, and the nominal X-dimension
+ * zones (GenSpec 26.0 table 5-12), so 95 modules of bars, and the nominal X-dimension
  * is 0.330 mm (§5.2.3.1). 95 x 0.33 = 31.35 mm of bars, 113 x 0.33 = 37.29 mm
  * of footprint. Bar height is the nominal 22.85 mm from §5.2.3.2.
  *
@@ -60,7 +60,7 @@ describe('layOutSymbol calibration', () => {
   })
 
   it('scales linearly with magnification', () => {
-    // 0.8x and 2.0x are the bounds GenSpec figure 5.12.3.1-1 permits.
+    // 0.8x and 2.0x are the bounds GenSpec 26.0 table 5-44 permits.
     for (const magnification of [0.8, 1, 2]) {
       const xDimensionMm = magnificationToXDimensionMm(magnification)
       const { symbol, footprintWidthMm } = layOut({ xDimensionMm })

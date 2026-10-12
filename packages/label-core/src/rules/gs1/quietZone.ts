@@ -21,10 +21,14 @@ import { noVerdictOnADescribedLabel } from '../described'
 export const GS1_QUIET_ZONE_TOO_NARROW = 'GS1_QUIET_ZONE_TOO_NARROW'
 export const GS1_QUIET_ZONE_CLEAR = 'GS1_QUIET_ZONE_CLEAR'
 
+// GS1 General Specifications Release 26.0 (Ratified Jan 26), read from the rendered
+// pages at https://ref.gs1.org/standards/genspecs/ on 2026-10-12. 25.0's "figure
+// 5.x-1" identifiers do not exist in 26.0, which numbers the tables; the figures
+// themselves are unchanged (`geometry/symbol.ts`).
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 General Specifications 25.0, figure 5.2.3.4-1',
-  title: 'Minimum quiet zone requirements for EAN/UPC symbols',
+  reference: 'GS1 General Specifications 26.0, §5.2.3.4, table 5-11',
+  title: 'Quiet Zone widths by version',
 }
 
 const judgedAsDrawn: Gs1RetailRule = {
@@ -74,7 +78,7 @@ const judgedAsDrawn: Gs1RetailRule = {
         if (side.actualMm >= side.requiredMm - MEASUREMENT_TOLERANCE_MM) {
           if (!certifiable) continue
           findings.push(
-            // Figure 5.2.3.4-1 is about blank space either side on the printed label: the artwork.
+            // Table 5-11 is about blank space either side on the printed label: the artwork.
             passedOnArtwork(
               quietZoneRule,
               GS1_QUIET_ZONE_CLEAR,

@@ -21,10 +21,15 @@ import { verdictWaitsOnADescribedLabel } from '../described'
 export const GS1_MAGNIFICATION_OUT_OF_RANGE = 'GS1_MAGNIFICATION_OUT_OF_RANGE'
 export const GS1_MAGNIFICATION_IN_RANGE = 'GS1_MAGNIFICATION_IN_RANGE'
 
+// GS1 General Specifications Release 26.0 (Ratified Jan 26), read from the rendered
+// pages at https://ref.gs1.org/standards/genspecs/ on 2026-10-12. 25.0's "figure
+// 5.x-1" identifiers do not exist in 26.0, which numbers the tables; the figures
+// themselves are unchanged (`geometry/symbol.ts`).
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 General Specifications 25.0, figure 5.12.3.1-1',
-  title: 'Symbol specification table 1 — EAN/UPC X-dimension range',
+  reference: 'GS1 General Specifications 26.0, §5.12.3.1, table 5-44',
+  // Table 5-44's own caption: "GS1 symbol specification table 1".
+  title: 'GS1 symbol specification table 1 — EAN/UPC X-dimension range',
 }
 
 const RANGE = `${MIN_MAGNIFICATION.toFixed(2)}x–${MAX_MAGNIFICATION.toFixed(2)}x`
@@ -45,7 +50,7 @@ const judgedAsDrawn: Gs1RetailRule = {
       const actual = `${magnification.toFixed(2)}x (X = ${xDimensionMm(symbol.xDimensionMm)})`
 
       if (isMagnificationInRange(magnification)) {
-        // Figure 5.12.3.1-1 bounds the X-dimension the bars are printed at: the artwork.
+        // Table 5-44 bounds the X-dimension the bars are printed at: the artwork.
         return passedOnArtwork(
           magnificationRule,
           GS1_MAGNIFICATION_IN_RANGE,
