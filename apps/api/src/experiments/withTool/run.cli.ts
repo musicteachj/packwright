@@ -9,6 +9,14 @@
  *   --pilot     four calls: case 08 once, on each model, in each half
  *   --full      every case, three runs, both models, both halves
  *
+ * And the re-check of 2026-10-12 (`docs/experiments/2026-10-12-mcp-recheck/`), which
+ * asks whether stages 20–24 changed what models make of `check_label`'s answers. The
+ * "with" half only — nothing the "without" half sees has changed — into its own
+ * record, under its own cap, with `engine.json` recording what `check_label`
+ * answers rather than the drawing:
+ *
+ *   --recheck-describe, --recheck-pilot, --recheck  as above, for that record
+ *
  * **Both halves run afresh** (`docs/plans/2026-10-10-mcp.md`, stage 19). Since
  * 2026-10-09 the engine prints "Includes 0g Added Sugars", so today's food prompts
  * differ from the ones the "without" experiment sent, and pairing new "with"
@@ -44,6 +52,7 @@ import {
   type Arm,
   type Recorded,
 } from '../withoutTool/records'
+import type { LabelSubject } from '@packwright/label-core'
 import { ConversationFailed, converse } from './converse'
 import { connectMcpTools, type McpTools } from './mcpTools'
 
@@ -57,7 +66,6 @@ const MODELS = [
   { id: 'claude-haiku-4-5', inputPerMTok: 1, outputPerMTok: 5 },
 ] as const
 
-const ARMS: readonly Arm[] = ['without', 'with']
 const RUNS = 3
 const MAX_TOKENS = 16_000
 /**
@@ -68,13 +76,76 @@ const MAX_TOKENS = 16_000
  */
 const MAX_ROUNDS = 10
 const CONCURRENCY = 4
-/** Stop starting conversations once recorded spend reaches this, in USD — the plan's cap. */
-const SPEND_CAP_USD = 8
-
-const OUT = resolve(
+const EXPERIMENTS = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  '../../../../../docs/experiments/2026-10-10-mcp-with-and-without',
+  '../../../../../docs/experiments',
 )
+
+/** Which record a mode writes, and what it holds. */
+interface Study {
+  out: string
+  arms: readonly Arm[]
+  /** Stop starting conversations once recorded spend reaches this, in USD. */
+  capUsd: number
+  subject: LabelSubject
+  /** The mode that writes this record's `cases.md`, as it names itself there. */
+  describeMode: string
+  /** What `cases.md` says was sent around each prompt. */
+  sentWith: string
+  /**
+   * A record whose prompts this one must send unchanged, or not run. A re-check
+   * compares answers to the same labels; a prompt that drifted would compare two.
+   */
+  samePromptsAs?: string
+}
+
+/** Stage 19's evaluation of 2026-10-10, under the plan's cap. */
+const STAGE_19: Study = {
+  out: join(EXPERIMENTS, '2026-10-10-mcp-with-and-without'),
+  arms: ['without', 'with'],
+  capUsd: 8,
+  subject: 'drawing',
+  describeMode: '--describe',
+  sentWith:
+    'Each prompt is the first message of its conversation. In the\n' +
+    '"without" half it is the only message: no system prompt, no tools. In the "with" half the\n' +
+    "request also carries the MCP server's instructions as the system prompt and its four tools,\n" +
+    'as `tools/list` gives them; the conversation goes on through the tool calls.',
+}
+
+/** The re-check of 2026-10-12: the cap James approved, and the view its models saw. */
+const RECHECK: Study = {
+  out: join(EXPERIMENTS, '2026-10-12-mcp-recheck'),
+  arms: ['with'],
+  capUsd: 6,
+  subject: 'described',
+  describeMode: '--recheck-describe',
+  // Only the "with" half runs here; saying a "without" half was sent misdescribed the
+  // record. Found by review.
+  sentWith:
+    'Each prompt is the first message of its conversation, sent with the\n' +
+    "MCP server's instructions as the system prompt and its four tools as `tools/list` gives\n" +
+    'them; the conversation goes on through the tool calls. There is no "without" half here.',
+  samePromptsAs: STAGE_19.out,
+}
+
+const MODES = {
+  '--describe': { study: STAGE_19, run: 'describe' },
+  '--pilot': { study: STAGE_19, run: 'pilot' },
+  '--full': { study: STAGE_19, run: 'full' },
+  '--recheck-describe': { study: RECHECK, run: 'describe' },
+  '--recheck-pilot': { study: RECHECK, run: 'pilot' },
+  '--recheck': { study: RECHECK, run: 'full' },
+} as const
+
+// Own keys only: `toString` is on every object, and fell through to a billed run of
+// the stage 19 study instead of the usage message. Found by review.
+const arg = process.argv[2] ?? ''
+const chosen: (typeof MODES)[keyof typeof MODES] | undefined = Object.hasOwn(MODES, arg)
+  ? MODES[arg as keyof typeof MODES]
+  : undefined
+const STUDY: Study = chosen?.study ?? STAGE_19
+const OUT = STUDY.out
 const RESPONSES = join(OUT, 'responses.jsonl')
 /**
  * What conversations that failed partway cost, one line each. Kept apart from
@@ -147,22 +218,24 @@ async function hold(
 }
 
 async function main(): Promise<void> {
-  const mode = process.argv[2]
-  if (mode !== '--describe' && mode !== '--pilot' && mode !== '--full') {
-    console.error('Usage: run.cli.ts --describe | --pilot | --full')
+  if (chosen === undefined) {
+    console.error(`Usage: run.cli.ts ${Object.keys(MODES).join(' | ')}`)
     process.exit(1)
   }
+  const mode = chosen.run
 
   const prompts = describeCases(
     OUT,
     new Set(readRecorded().map((record) => record.caseId)),
-    'Each prompt is the first message of its conversation. In the\n' +
-      '"without" half it is the only message: no system prompt, no tools. In the "with" half the\n' +
-      "request also carries the MCP server's instructions as the system prompt and its four tools,\n" +
-      'as `tools/list` gives them; the conversation goes on through the tool calls.',
+    STUDY.sentWith,
+    STUDY.subject,
+    `run.cli.ts ${STUDY.describeMode}`,
+    STUDY.samePromptsAs,
   )
   console.log(`Described ${CASES.length} cases in ${OUT}`)
-  if (mode === '--describe') return
+  if (STUDY.samePromptsAs !== undefined)
+    console.log(`Every prompt is byte for byte the one ${STUDY.samePromptsAs} sent.`)
+  if (mode === 'describe') return
 
   loadDotenv()
   const apiKey = process.env.ANTHROPIC_API_KEY
@@ -186,12 +259,12 @@ async function main(): Promise<void> {
   let spent = recorded.reduce((sum, r) => sum + costOf(r), 0) + lostSoFar()
 
   const pending: { item: ExperimentCase; model: ModelSpec; run: number; arm: Arm }[] = []
-  const runs = mode === '--pilot' ? [1] : Array.from({ length: RUNS }, (_, i) => i + 1)
-  const cases = mode === '--pilot' ? CASES.filter((c) => c.id.startsWith('08-')) : CASES
+  const runs = mode === 'pilot' ? [1] : Array.from({ length: RUNS }, (_, i) => i + 1)
+  const cases = mode === 'pilot' ? CASES.filter((c) => c.id.startsWith('08-')) : CASES
   for (const run of runs)
     for (const item of cases)
       for (const model of MODELS)
-        for (const arm of ARMS)
+        for (const arm of STUDY.arms)
           if (!done.has(keyOf(item.id, model.id, run, arm))) pending.push({ item, model, run, arm })
 
   console.log(`${done.size} already recorded ($${spent.toFixed(4)}); ${pending.length} to hold`)
@@ -238,7 +311,7 @@ async function main(): Promise<void> {
             `${input_tokens} in / ${output_tokens} out, $${cost.toFixed(4)} (total $${spent.toFixed(4)})`,
         )
       },
-      { concurrency: CONCURRENCY, shouldStop: () => spent >= SPEND_CAP_USD },
+      { concurrency: CONCURRENCY, shouldStop: () => spent >= STUDY.capUsd },
     )
 
     for (const { job, error } of failed) {
@@ -248,7 +321,7 @@ async function main(): Promise<void> {
     }
     if (notStarted.length > 0)
       console.error(
-        `Stopped at the $${SPEND_CAP_USD} cap with ${notStarted.length} conversations not held.`,
+        `Stopped at the $${STUDY.capUsd} cap with ${notStarted.length} conversations not held.`,
       )
     console.log(`Recorded spend: $${spent.toFixed(4)}`)
     if (failed.length > 0) {

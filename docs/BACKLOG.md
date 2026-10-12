@@ -128,13 +128,20 @@ magnification. It is withheld today only because every pictogram carries the uns
 pictogram artwork is drawn, it becomes a false clearance through `check_label`. The fix is
 `verdictWaitsOnADescribedLabel` with a new `DeclinedFact`, which needs an editor field for the side — the GHS form has none.
 
-**The evaluation harness still judges each case as a drawing.** `judgeCase` (`apps/api/src/experiments/withoutTool/
-prompt.ts`) calls the judge without a subject, which is right for what it does — each case's printed text is read
-off the engine's own layout — and `engine.json` keeps the findings the 2026-10-10 answers were graded against. But
-`check_label` now judges what it is sent as a label printed elsewhere, so on the GHS cases it no longer reports the
-empty pictogram frame or text "not printed" at the default type sizes. Before the evaluation is run again, decide
-whether the record should be the drawing's or `check_label`'s, and regenerate it with `describe.ts`, which says when
-the engine now reports differently. Found by `/code-review medium` on stage 22.
+**Requiring the label's size stops a check before it starts — a decision for James.** The re-check of 2026-10-12
+(`docs/experiments/2026-10-12-mcp-recheck/`) found stage 20's required `stock` and its instruction to ask rather than
+guess followed exactly: in every case whose prompt gave no size, almost every answer asked for one and ran no check —
+43 of 72 answers, against none on 2026-10-10 — so a wrong check digit, two signal words, a precedence breach and a
+small-container claim went unchecked in that turn. In a real conversation the user answers; a one-message test cannot
+tell how often they do. The alternative is the shape stage 23 already uses: `check_label` judges everything that does
+not depend on the size, and the size-dependent checks — label dimensions, placement, anything measured against the
+panel — wait for `stock` under "checks that did not run". That keeps the false clearance stage 20 closed (no size is
+assumed and passed) while answering the rest at once. It needs a decision on whether a check request may omit the
+size, and every size-dependent rule wrapped as the barcode rules are.
+
+**The evaluation harness's records each judge their own view.** The records of 2026-10-09 and 2026-10-10 judge the
+drawing, as they were graded; the re-check of 2026-10-12 (`--recheck` modes) records what `check_label` answers, by
+James's decision that day. A future evaluation should do as the re-check does.
 
 **An assumed margin keeps the label type's default, on purpose (decided 2026-10-11).** `check_label` needs a size but
 not a margin, and uses the label type's default where none is given, saying so in `stockUsed.marginAssumed`. A

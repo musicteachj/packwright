@@ -1,0 +1,769 @@
+[
+  {
+    "caseId": "08-fda-ingredient-order",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 6,
+      "omitted": 1,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "ingredients[].percentByWeight",
+        "labelSays": "Recipe by weight: rolled oats 97%, sugar 2%, salt 0.7% (stated in the prompt)",
+        "sent": "omitted for all three ingredients",
+        "changedVerdict": true
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Percentages omitted, so the tool declined us-food/ingredient-order (wants ingredients.percentByWeight) instead of finding FDA_INGREDIENTS_OUT_OF_ORDER. The answer lists six declined checks but never mentions ingredient order; it opens \"Good news: no failures were found. The label passed all 9 checks that ran.\" Not an explicit compliance claim, but the planted defect is silently unreported. Did not say the order check did not run."
+  },
+  {
+    "caseId": "08-fda-ingredient-order",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": true,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 6,
+      "omitted": 0,
+      "contradicted": 1,
+      "contradictedNames": ["us-food/ingredient-order"]
+    },
+    "transcriptionErrors": [
+      {
+        "field": "ingredients[].percentByWeight",
+        "labelSays": "Recipe by weight: rolled oats 97%, sugar 2%, salt 0.7% (stated in the prompt)",
+        "sent": "omitted for all three ingredients",
+        "changedVerdict": true
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Percentages omitted -> ingredient-order declined. The answer does say the order check did not run, then contradicts it: it lists the recipe (oats 97%, sugar 2%, salt 0.7%) and says \"This order **is correct** by weight\" -- reading the recipe order as the printed order. The printed list puts salt before sugar. False clearance of the planted defect."
+  },
+  {
+    "caseId": "08-fda-ingredient-order",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "caught",
+    "falseClearance": true,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 5,
+      "omitted": 1,
+      "contradicted": 1,
+      "contradictedNames": ["us-food/ingredient-order"]
+    },
+    "transcriptionErrors": [
+      {
+        "field": "ingredients[].percentByWeight",
+        "labelSays": "Recipe by weight: rolled oats 97%, sugar 2%, salt 0.7% (stated in the prompt)",
+        "sent": "omitted for all three ingredients",
+        "changedVerdict": true
+      },
+      {
+        "field": "nutritionFacts.declaredPercentDv.trans-fat",
+        "labelSays": "\"Trans Fat 0g\" with no %DV printed",
+        "sent": "0",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Percentages omitted -> ingredient-order declined. Self-contradictory: the summary of passes says \"✓ Complete ingredient statement in descending order\" (the tool said no such thing; its FDA_INGREDIENT_STATEMENT_MET message says \"Their order is judged on its own\"), then under \"could not run\" the model works the order out itself from the recipe and says \"This is wrong. Sugar should come before salt\", and makes it action item 1. Graded caught (the model, not the tool) with a false-clearance line in the same answer. Dual-column decline omitted. Its gloss on the tool's 101.2(c) (\"though principal display panel text can be smaller in proportion to prominence\") is not in 101.2(c); not graded as an added citation because the citation is the tool's."
+  },
+  {
+    "caseId": "08-fda-ingredient-order",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 6,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.9(c)(4)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(4), fetched 2026-10-12: sodium \"expressed as zero when the serving contains less than 5 milligrams of sodium\"."
+      },
+      {
+        "citation": "21 CFR 101.9(c)(6)(iii)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(6)(iii), fetched 2026-10-12: added sugars \"include sugars (free, mono and disaccharides)\"; \"It shall be expressed to the nearest gram, except that ... if the serving contains less than 0.5 gram, the content may be expressed as zero.\""
+      },
+      {
+        "citation": "21 CFR 101.9(b)(8)(i)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\" Answer hedged (\"probably needs “about 8” ... Treat this as a probable fix\"), though it labels the paragraph a \"Requirement\" where the source says \"should\"."
+      }
+    ],
+    "notes": "Percentages sent; tool found the planted violation and the answer relays it with the fix. Also cites the tool's 21 CFR 101.5(a) for the \"Distributed by\" qualifying phrase, which is 101.5(c) (not graded as added: the citation string is the tool's, but it is misapplied). \"101.9(d)(7)\" is the parent of the tool's (d)(7)(ii); not graded. Its 101.7(i) arithmetic (44.6 sq in -> 3/16 inch) is the model's own, on the tool's citation."
+  },
+  {
+    "caseId": "08-fda-ingredient-order",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 6,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "responsibleFirm.isManufacturer",
+        "labelSays": "no qualifying phrase printed (unstated; under 101.5(c) an unqualified name reads as the manufacturer)",
+        "sent": "false (assumed, disclosed to the user)",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.9(c)(6)(iii)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(6)(iii), fetched 2026-10-12: added sugars \"include sugars (free, mono and disaccharides)\"; \"It shall be expressed to the nearest gram, except that ... if the serving contains less than 0.5 gram, the content may be expressed as zero.\""
+      },
+      {
+        "citation": "21 CFR 101.9(b)(8)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\" Answer: \"Make sure “8 servings per container” is stated as 21 CFR 101.9(b)(8) allows. Rounding or an “about” may be needed.\""
+      }
+    ],
+    "notes": "Caught. isManufacturer sent false, producing a second violation (FDA_RESPONSIBLE_FIRM_UNQUALIFIED, 101.5(c)); the answer relays it but says plainly that it rests on the model's assumption and does not apply if Example Foods is the manufacturer."
+  },
+  {
+    "caseId": "08-fda-ingredient-order",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 6,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.9(c)(4)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(4), fetched 2026-10-12: sodium \"expressed as zero when the serving contains less than 5 milligrams of sodium\"."
+      },
+      {
+        "citation": "21 CFR 101.9(c)(6)(iii)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(6)(iii), fetched 2026-10-12: added sugars \"include sugars (free, mono and disaccharides)\"; \"It shall be expressed to the nearest gram, except that ... if the serving contains less than 0.5 gram, the content may be expressed as zero.\""
+      },
+      {
+        "citation": "21 CFR 101.9(b)(8)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\""
+      },
+      {
+        "citation": "21 CFR 101.9(g)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(g), fetched 2026-10-12: \"Compliance with this section shall be determined as follows\" -- lot sampling, composite analysis, Class I/II nutrient tolerances."
+      },
+      {
+        "citation": "21 CFR 101.5(a)(2)",
+        "grade": "F",
+        "evidence": "eCFR 21 CFR 101.5, fetched 2026-10-12: paragraph (a) is a single sentence with no subparagraphs -- \"The label of a food in packaged form shall specify conspicuously the name and place of business of the manufacturer, packer, or distributor.\" There is no 101.5(a)(2). The qualifying phrase is 101.5(c)."
+      }
+    ],
+    "notes": "Caught. Sent packageContent 340 (from the net weight) and format vertical (assumed, disclosed). \"21 CFR 101.9(b)(12)\" is the parent of the tool's (b)(12)(i); not graded. Claims \"Oats are not one of the nine major allergens\" with no citation."
+  },
+  {
+    "caseId": "09-fda-tree-nut-type",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": true,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 8,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "containsStatement",
+        "labelSays": "no \"Contains\" line printed",
+        "sent": "[\"tree-nuts\"]",
+        "changedVerdict": true
+      },
+      {
+        "field": "ingredients / ingredientThreshold",
+        "labelSays": "\"... nut pieces. Contains 2 percent or less of sugar, salt.\"",
+        "sent": "sugar and salt omitted; no ingredientThreshold",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Invented a Contains statement the label does not have; with allergenSpecificType \"almonds\" the tool then passed FDA_ALLERGEN_DECLARED_MET (403(w)(1)) and raised no allergen finding. Answer: \"your label passes all the checks that could be run. There are no failures and no compliance problems detected.\" Every declined check is reported as not run."
+  },
+  {
+    "caseId": "09-fda-tree-nut-type",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 7,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "ingredientThreshold.count",
+        "labelSays": "\"Contains 2 percent or less of sugar, salt\" (2 ingredients behind the statement)",
+        "sent": "3 (puts nut pieces inside the 2% group)",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Tool returned FDA_ALLERGEN_NOT_DECLARED (403(w)(1)); answer says \"The regulation requires you to name the specific tree nut\" and gives the fix \"almond pieces\" or \"(almonds)\", so caught on the case note's standard. Tells the user \"sugar, salt, and “nut pieces” are each 2% or less\", from its own transcription error. Ends \"Everything else is compliant\", followed by a list of the tool's passes only."
+  },
+  {
+    "caseId": "09-fda-tree-nut-type",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 6,
+      "omitted": 0,
+      "contradicted": 1,
+      "contradictedNames": ["us-food/ingredient-order"]
+    },
+    "transcriptionErrors": [
+      {
+        "field": "ingredients[].percentByWeight",
+        "labelSays": "\"Contains 2 percent or less of sugar, salt\" -- no figures",
+        "sent": "sugar 2, salt 1 (invented)",
+        "changedVerdict": false
+      },
+      {
+        "field": "ingredientThreshold",
+        "labelSays": "\"Contains 2 percent or less of\" statement printed",
+        "sent": "omitted",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Caught: fix is \"Contains: Almonds\" or \"nut pieces (almonds)\". The pass list includes \"✓ Complete ingredient list with proper naming and order\"; the tool declined ingredient-order for want of percentages. Ends \"Fix the almond allergen declaration and your label will comply with the checks this tool can verify.\""
+  },
+  {
+    "caseId": "09-fda-tree-nut-type",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 8,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "responsibleFirm.isManufacturer",
+        "labelSays": "no qualifying phrase printed (unstated; under 101.5(c) an unqualified name reads as the manufacturer)",
+        "sent": "false (assumed, disclosed to the user)",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "FD&C Act §403(w)(1)",
+        "grade": "V",
+        "evidence": "govinfo 21 U.S.C. 343(w)(1) (USCODE-2023), fetched 2026-10-12: misbranded unless \"(A) the word “Contains”, followed by the name of the food source ... is printed immediately after or is adjacent to the list of ingredients ...; or (B) the common or usual name of the major food allergen in the list of ingredients ... is followed in parentheses by the name of the food source ... except that the name of the food source is not required when (i) the common or usual name of the ingredient uses the name of the food source\"."
+      }
+    ],
+    "notes": "Sent nut pieces as tree-nuts with no specific type; the tool returned exactly the planted FDA_ALLERGEN_SOURCE_NOT_SPECIFIC (403(w)(2)). Answer: change \"nut pieces\" to \"almonds\". isManufacturer false -> extra 101.5(c) violation, disclosed as the model's assumption."
+  },
+  {
+    "caseId": "09-fda-tree-nut-type",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 8,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "responsibleFirm.isManufacturer",
+        "labelSays": "no qualifying phrase printed (unstated; under 101.5(c) an unqualified name reads as the manufacturer)",
+        "sent": "false (assumed, disclosed to the user)",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.9(b)(8)",
+        "grade": "M",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\" Answer: \"21 CFR 101.9(b)(8) requires “about 8” when servings are not equal\" -- the source says rounding \"should\" be indicated by \"about\", and 8.5 rounds to a whole number."
+      },
+      {
+        "citation": "21 CFR 101.9(c)(6)(iii)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(6)(iii), fetched 2026-10-12: added sugars \"include sugars (free, mono and disaccharides)\"; \"It shall be expressed to the nearest gram, except that ... if the serving contains less than 0.5 gram, the content may be expressed as zero.\""
+      }
+    ],
+    "notes": "Caught: \"The type of tree nut has to be named.\" isManufacturer false -> extra 101.5(c) violation, disclosed. \"101.9(b)(12)\" is the parent of the tool's (b)(12)(i); not graded."
+  },
+  {
+    "caseId": "09-fda-tree-nut-type",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 8,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.5(d)",
+        "grade": "M",
+        "evidence": "eCFR 21 CFR 101.5(d), fetched 2026-10-12: \"The statement of the place of business shall include the street address, city, State, and ZIP code ...\" -- (d) is the address; the qualifying phrase is (c): \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase that reveals the connection ...\"."
+      }
+    ],
+    "notes": "Caught: \"Name the specific nut\" with almonds fixes. Notes the tool accepted potassium 6% for 235 mg (exactly 5% of 4,700 mg)."
+  },
+  {
+    "caseId": "10-fpla-metric-missing",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 6,
+      "omitted": 1,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "ingredients[almonds].allergenSpecificType",
+        "labelSays": "\"almonds (almonds)\" and \"Contains: almonds.\"",
+        "sent": "omitted (tree-nuts with no specific type)",
+        "changedVerdict": false
+      },
+      {
+        "field": "ingredientThreshold",
+        "labelSays": "\"Contains 2 percent or less of sugar, salt\"",
+        "sent": "omitted",
+        "changedVerdict": false
+      },
+      {
+        "field": "nutritionFacts.declaredPercentDv.trans-fat",
+        "labelSays": "\"Trans Fat 0g\" with no %DV printed",
+        "sent": "0",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Metric violation relayed with 15 U.S.C. 1453(a)(2). Its own transcription produced a spurious FDA_ALLERGEN_SOURCE_NOT_SPECIFIC, which it relays as violation 2 against a label that names almonds, then says the \"Contains: almonds\" statement is correct -- a false accusation it half-retracts. Nutrition Facts type-size decline omitted."
+  },
+  {
+    "caseId": "10-fpla-metric-missing",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 7,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "ingredients[almonds].allergenSpecificType",
+        "labelSays": "\"almonds (almonds)\" and \"Contains: almonds.\"",
+        "sent": "omitted (tree-nuts with no specific type)",
+        "changedVerdict": false
+      },
+      {
+        "field": "ingredientThreshold",
+        "labelSays": "\"Contains 2 percent or less of sugar, salt\"",
+        "sent": "omitted",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Metric violation relayed. Relays the spurious allergen violation from its own transcription, then says the Contains statement \"is actually correct as printed\" -- a false accusation it half-retracts."
+  },
+  {
+    "caseId": "10-fpla-metric-missing",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "partly",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No tool call. Asked clarifying questions, including whether the label size is the printed label or the panel (both were given), and whether \"NET WT 12 OZ\" is the only net quantity statement \"(lacking a metric equivalent like “340g”)\". It notices the missing metric but neither calls it a defect nor cites anything: partly."
+  },
+  {
+    "caseId": "10-fpla-metric-missing",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 9,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.9(c)(6)(iii)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(6)(iii), fetched 2026-10-12: added sugars \"include sugars (free, mono and disaccharides)\"; \"It shall be expressed to the nearest gram, except that ... if the serving contains less than 0.5 gram, the content may be expressed as zero.\""
+      },
+      {
+        "citation": "21 CFR 101.9(c)(4)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(4), fetched 2026-10-12: sodium \"expressed as zero when the serving contains less than 5 milligrams of sodium\"."
+      },
+      {
+        "citation": "21 CFR 101.9(d)(9)",
+        "grade": "M",
+        "evidence": "eCFR 21 CFR 101.9(d)(9), fetched 2026-10-12: \"The footnote shall state: “*The % Daily Value tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.”\" -- no \"(DV)\"; the label's footnote matches the regulation word for word. Answer: \"as I recall, the standard footnote in 21 CFR 101.9(d)(9) reads “The % Daily Value (DV) tells you…”. Yours omits “(DV)”.\" Hedged, but it is a false accusation against a correct footnote."
+      },
+      {
+        "citation": "21 CFR 101.9(b)(8)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\""
+      }
+    ],
+    "notes": "Caught. Also cites the tool's 21 CFR 101.5(a) for the \"Distributed by\" qualifying phrase (that is 101.5(c)); not graded as added."
+  },
+  {
+    "caseId": "10-fpla-metric-missing",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 9,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.5(d)",
+        "grade": "M",
+        "evidence": "eCFR 21 CFR 101.5(d), fetched 2026-10-12: \"The statement of the place of business shall include the street address, city, State, and ZIP code ...\" -- (d) is the address; the qualifying phrase is (c): \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase that reveals the connection ...\"."
+      },
+      {
+        "citation": "21 CFR 101.9(b)(8)(i)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\" Answer: \"calls for “about 8” servings when the servings are not exactly equal.\""
+      },
+      {
+        "citation": "FD&C Act §403(w)",
+        "grade": "M",
+        "evidence": "govinfo 21 U.S.C. 343(w)(2) (USCODE-2023), fetched 2026-10-12: \"in the case of a tree nut ... the term “name of the food source from which the major food allergen is derived” means the name of the specific type of nut\". Nothing in 403(w) asks for the category word \"tree nuts\" to be declared; \"Contains: almonds\" satisfies (w)(1)(A). Answer: \"FD&C Act §403(w) asks for the major allergen to be declared as “tree nuts” and the specific nut named.\" (The tool returned 403(w)(1) and (w)(1)(A), for other propositions.)"
+      }
+    ],
+    "notes": "Caught. Offered \"Contains: tree nuts (almonds)\" as advice, flagged as not a finding."
+  },
+  {
+    "caseId": "10-fpla-metric-missing",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 9,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.5(d) (cited as \"21 CFR 101.5(a) and (d) require a qualifying phrase\")",
+        "grade": "M",
+        "evidence": "eCFR 21 CFR 101.5(d), fetched 2026-10-12: \"The statement of the place of business shall include the street address, city, State, and ZIP code ...\" -- (d) is the address; the qualifying phrase is (c): \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase that reveals the connection ...\"."
+      },
+      {
+        "citation": "21 CFR 101.9(c)(4)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(4), fetched 2026-10-12: sodium \"expressed as zero when the serving contains less than 5 milligrams of sodium\"."
+      },
+      {
+        "citation": "21 CFR 101.9(b)(8)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\""
+      }
+    ],
+    "notes": "Caught."
+  },
+  {
+    "caseId": "C2-fda-control",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No tool call. Asked for the panel area in square inches, although 120 x 240 mm was given. No accusation, no clearance."
+  },
+  {
+    "caseId": "C2-fda-control",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 8,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "ingredients",
+        "labelSays": "\"whole grain rolled oats, almonds (almonds). Contains 2 percent or less of sugar, salt.\"",
+        "sent": "sugar and salt omitted; no ingredientThreshold",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "No false accusation. Order and dual-column declines given as \"optional information for additional checks\". Ends \"Bottom line: The label content is correct.\" -- a broader clearance than the tool gave."
+  },
+  {
+    "caseId": "C2-fda-control",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 6,
+      "omitted": 1,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "ingredients[almonds].allergenSpecificType",
+        "labelSays": "\"almonds (almonds)\" and \"Contains: almonds.\"",
+        "sent": "omitted (tree-nuts with no specific type)",
+        "changedVerdict": false
+      },
+      {
+        "field": "ingredientThreshold.count",
+        "labelSays": "2 (sugar, salt)",
+        "sent": "0",
+        "changedVerdict": false
+      },
+      {
+        "field": "nutritionFacts.declaredPercentDv.trans-fat",
+        "labelSays": "\"Trans Fat 0g\" with no %DV printed",
+        "sent": "0",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Its transcription made the tool raise a spurious FDA_ALLERGEN_SOURCE_NOT_SPECIFIC. The answer heads \"one compliance violation\", then calls it \"a false positive\" and the label \"compliant on this point\"; it ends \"passes all checks that could be performed\" though the tool reported a failure. Net: a false accusation raised and withdrawn in the same answer. Ingredient-order decline omitted."
+  },
+  {
+    "caseId": "C2-fda-control",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 9,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.9(c)(4)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(4), fetched 2026-10-12: sodium \"expressed as zero when the serving contains less than 5 milligrams of sodium\"."
+      },
+      {
+        "citation": "21 CFR 101.9(b)(8)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\" Answer: \"That section covers rounding and the word “about”.\""
+      },
+      {
+        "citation": "21 CFR 101.5(d) (cited as \"21 CFR 101.5(a) and (d) require a phrase such as “Distributed by”\")",
+        "grade": "M",
+        "evidence": "eCFR 21 CFR 101.5(d), fetched 2026-10-12: \"The statement of the place of business shall include the street address, city, State, and ZIP code ...\" -- (d) is the address; the qualifying phrase is (c): \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase that reveals the connection ...\"."
+      }
+    ],
+    "notes": "No false accusation; sodium, servings and serving size are raised as things to verify, not violations."
+  },
+  {
+    "caseId": "C2-fda-control",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 9,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.9(b)(8)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\" Answer: \"“about 8” may be needed.\""
+      },
+      {
+        "citation": "21 CFR 101.5",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.5(c), fetched 2026-10-12: \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase that reveals the connection ... such as “Manufactured for ______”, “Distributed by ______”\"."
+      }
+    ],
+    "notes": "No false accusation."
+  },
+  {
+    "caseId": "C2-fda-control",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 8,
+      "omitted": 1,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "21 CFR 101.5(d) (cited as \"21 CFR 101.5(a) and (d) require a qualifying phrase\")",
+        "grade": "M",
+        "evidence": "eCFR 21 CFR 101.5(d), fetched 2026-10-12: \"The statement of the place of business shall include the street address, city, State, and ZIP code ...\" -- (d) is the address; the qualifying phrase is (c): \"Where the food is not manufactured by the person whose name appears on the label, the name shall be qualified by a phrase that reveals the connection ...\"."
+      },
+      {
+        "citation": "21 CFR 101.9(c)(4)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(c)(4), fetched 2026-10-12: sodium \"expressed as zero when the serving contains less than 5 milligrams of sodium\"."
+      },
+      {
+        "citation": "21 CFR 101.9(b)(8)",
+        "grade": "V",
+        "evidence": "eCFR 21 CFR 101.9(b)(8)(i), fetched 2026-10-12: \"The number of servings shall be rounded to the nearest whole number except for the number of servings between 2 and 5 servings and random weight products. ... Rounding should be indicated by the use of the term about (e.g., about 2 servings, about 3.5 servings).\""
+      }
+    ],
+    "notes": "No false accusation. Net-quantity separation decline omitted (placement and type size named). Notes the tool accepted potassium 6% for 235 mg (exactly 5% of 4,700 mg)."
+  }
+]

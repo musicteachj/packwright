@@ -8,6 +8,17 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **A re-check of the MCP evaluation, 2026-10-12** (`docs/experiments/2026-10-12-mcp-recheck/`): the "with tools" half
+  only, the same twelve labels and byte-identical prompts, 72 conversations for $2.58. Where `check_label` ran, Sonnet
+  caught every planted defect and no answer was misled by the tool — no pictogram "with no symbol", no text "not
+  printed", no pass on a value nobody gave. But requiring the label's size made 43 of the 72 answers ask for it and
+  run no check, so defects unrelated to size went unchecked in that turn; whether to judge the rest and withhold only
+  the size-dependent checks is in `docs/BACKLOG.md` for James. The harness gained `--recheck-describe`,
+  `--recheck-pilot` and `--recheck`, which write their own record, run the "with" half only under a $6 cap, record
+  the engine's view as `check_label` gives it, and refuse to run if any prompt differs from 2026-10-10's.
+
 ### Fixed
 
 - **The %DV pass and four GS1 rules cite what they rest on, in the release they rest on.** The percent Daily Value

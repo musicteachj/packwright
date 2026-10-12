@@ -1,0 +1,610 @@
+[
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Also asks which H-codes are printed, asserting \"Under US OSHA HCS, you must include hazard statements\" - true for a 500 ml can only because (f)(12) is unavailable, which the answer never says. The H225 wording it quotes is correct. No citation."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "Called list_rules only (no check_label), then asked for the label size and stopped. Says it will check \"whether the small-container provision, 29 CFR 1910.1200(f)(12), is available\" but never notes that 500 ml exceeds the 100 ml threshold. The (f)(12) citation came from list_rules output, so it is the tool's and not graded. Its 'won't cover' list (pictogram artwork, type sizes) is framed as limits, not findings."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(12)",
+        "grade": "V",
+        "evidence": "eCFR, fetched 2026-10-12: \"(12) Small container labelling. (i) This paragraph applies where ... it is not feasible to use pull-out labels, fold-back labels, or tags ... (ii) For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, ... (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information ... is provided on the immediate outer package.\" The answer names it as the small-container provision, which it is."
+      }
+    ],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Lists 'Small-container provision: relied on, which is 29 CFR 1910.1200(f)(12)' among the inputs without questioning eligibility at 500 ml."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(12)",
+        "grade": "V",
+        "evidence": "eCFR, fetched 2026-10-12: \"(12) Small container labelling. (i) This paragraph applies where ... it is not feasible to use pull-out labels, fold-back labels, or tags ... (ii) For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, ... (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information ... is provided on the immediate outer package.\" The answer names it as the small-container provision, which it is."
+      }
+    ],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Closest of the set: \"You rely on 29 CFR 1910.1200(f)(12) for a 500 ml can ... I'll check whether the label meets that provision. I won't assume it does\" - suspicion, but the 100 ml threshold is never stated, so not graded partly. Says the check will probably flag the missing H225; for a 500 ml can (not eligible) the full label does apply, so that expectation is not false here."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Volunteers a false finding before any check: hazard statements \"are **missing** from your label. The regulation requires at least one hazard statement for the classification\" (H225). No section cited, so not graded as a citation, but wrong for this label: 29 CFR 1910.1200(f)(12)(ii), eCFR fetched 2026-10-12, lists the minimum for a container of 100 ml or less as \"(A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information ... is provided on the immediate outer package\" - no hazard or precautionary statement. Does not mention the missing phone number."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Claims \"small-container provisions have specific minimums (for example, pictogram size cannot fall below a certain threshold even on reduced labels)\" - no citation; 1910.1200(f)(12) sets no pictogram size."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "partly",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(12)",
+        "grade": "V",
+        "evidence": "eCFR, fetched 2026-10-12: \"(12) Small container labelling. (i) This paragraph applies where ... it is not feasible to use pull-out labels, fold-back labels, or tags ... (ii) For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, ... (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information ... is provided on the immediate outer package.\" The answer names it as the small-container provision, which it is."
+      }
+    ],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Under 'Gaps I can already see': \"You listed no supplier telephone number. If it isn't printed, it will likely be flagged as missing.\" Identifies the planted defect but hedged, with no check run and no provision tied to it - partly. Also lists the absent hazard and precautionary statements as a gap, which (f)(12)(ii) does not require for a 50 ml container: 29 CFR 1910.1200(f)(12)(ii), eCFR fetched 2026-10-12, lists the minimum for a container of 100 ml or less as \"(A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information ... is provided on the immediate outer package\" - no hazard or precautionary statement."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(12)",
+        "grade": "V",
+        "evidence": "eCFR, fetched 2026-10-12: \"(12) Small container labelling. (i) This paragraph applies where ... it is not feasible to use pull-out labels, fold-back labels, or tags ... (ii) For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, ... (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information ... is provided on the immediate outer package.\" The answer names it as the small-container provision, which it is."
+      }
+    ],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Records 'No telephone number is printed' among the inputs but does not call it a problem, and says \"The hazard and precautionary statements are the ones I expect the check to raise\" - the wrong expectation for a 50 ml (f)(12)(ii) label: 29 CFR 1910.1200(f)(12)(ii), eCFR fetched 2026-10-12, lists the minimum for a container of 100 ml or less as \"(A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information ... is provided on the immediate outer package\" - no hazard or precautionary statement."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(12)",
+        "grade": "V",
+        "evidence": "eCFR, fetched 2026-10-12: \"(12) Small container labelling. (i) This paragraph applies where ... it is not feasible to use pull-out labels, fold-back labels, or tags ... (ii) For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, ... (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information ... is provided on the immediate outer package.\" The answer names it as the small-container provision, which it is."
+      }
+    ],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Records 'No telephone number is printed' among the inputs but never calls it a defect. Lists pictogram artwork and type sizes as limits, not findings."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Says it will check the check digit once given the size; never computes it."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Asks for magnification correctly as a factor ('100% = 1.0'), bar height and placement."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "GS1 General Specifications, check-digit calculation (no section number given)",
+        "grade": "V",
+        "evidence": "GS1 General Specifications Release 26.0 (Jan 26), fetched from ref.gs1.org/standards/genspecs/ 2026-10-12, page 544 rendered and read: \"7.9 Check digit/character calculations\" / \"7.9.1 Standard check digit calculations for GS1 data structures\", Table 7-8 \"Check digit algorithm\" covering GTIN-12."
+      },
+      {
+        "citation": "ISO/IEC 15416 (print/scan quality grading)",
+        "grade": "V",
+        "evidence": "ISO's own page was bot-blocked (JavaScript challenge), so verified through GS1 General Specifications 26.0, fetched 2026-10-12, page 321 rendered and read, §5.1.2: \"ISO/IEC 15416: Information technology; automatic identification and data capture techniques; bar code print quality test specification; linear symbols.\" and §5.12.5.3: \"Symbol Grading for linear symbols ... is found in section 6 of ISO/IEC 15416\"."
+      }
+    ],
+    "notes": "check_gtin only (036000291453 sent correctly; tool: valid false, expected 2). Reports the check digit should be 2, with the right caveat that check_gtin tests arithmetic only. Then asks for the label size. Mentions quiet zones are not checked (from the tool description; no check_label ran, so no declined list to grade)."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "GS1 General Specifications, check-digit calculation (no section number given)",
+        "grade": "V",
+        "evidence": "GS1 General Specifications Release 26.0 (Jan 26), fetched from ref.gs1.org/standards/genspecs/ 2026-10-12, page 544 rendered and read: \"7.9 Check digit/character calculations\" / \"7.9.1 Standard check digit calculations for GS1 data structures\", Table 7-8 \"Check digit algorithm\" covering GTIN-12."
+      }
+    ],
+    "notes": "check_gtin only. Reports the check digit should be 2 and that another digit may be the wrong one. Asks magnification as a factor (1.0 = 100%). Says quiet zones are a limit of the tool."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "GS1 General Specifications, check-digit calculation (no section number given)",
+        "grade": "V",
+        "evidence": "GS1 General Specifications Release 26.0 (Jan 26), fetched from ref.gs1.org/standards/genspecs/ 2026-10-12, page 544 rendered and read: \"7.9 Check digit/character calculations\" / \"7.9.1 Standard check digit calculations for GS1 data structures\", Table 7-8 \"Check digit algorithm\" covering GTIN-12."
+      }
+    ],
+    "notes": "check_gtin only. Reports the check digit should be 2. Also mentions FDA food label rules as a separate check 'only if the product is a food' - not a specific citation, not graded."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No tool called; the answer asks for the label size (now required) and stops, so check_label never ran and nothing was declined. Promises to check 'whether the Digital Link URI is properly formatted' later."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "missed",
+    "falseClearance": true,
+    "oldFalseFindingsRelayed": [
+      "size/placement/magnification/bar-height/quiet-zone/digits pass on an unstated value"
+    ],
+    "toolSaidOldFinding": true,
+    "declined": {
+      "said": 2,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "stock",
+        "labelSays": "not stated",
+        "sent": "{widthMm: 100, heightMm: 50}",
+        "changedVerdict": false
+      },
+      {
+        "field": "data.symbolPlacement",
+        "labelSays": "not stated",
+        "sent": "top-left",
+        "changedVerdict": false
+      },
+      {
+        "field": "data.magnification",
+        "labelSays": "not stated",
+        "sent": "1",
+        "changedVerdict": false
+      },
+      {
+        "field": "data.digitalLink.serial",
+        "labelSays": "no serial; the URI carries only the GTIN (/gtin/00036000291452)",
+        "sent": "00036000291452",
+        "changedVerdict": false
+      },
+      {
+        "field": "data.digitalLink.useConvenienceAlphas",
+        "labelSays": "the URI writes /gtin/ (should be true)",
+        "sent": "omitted (defaults to false)",
+        "changedVerdict": true
+      }
+    ],
+    "stockSent": true,
+    "domainHasScheme": true,
+    "magnificationSentAs": "factor",
+    "addedCitations": [],
+    "notes": "The only answer in these four cases that ran check_label. It invented the label size, placement and magnification 1, put the GTIN in as a serial (AI 21), and left out useConvenienceAlphas, so the tool built https://id.example.com/01/00036000291452/21/00036000291452 and returned GS1_DIGITAL_LINK_VALID. The answer then told the user \"the barcode and Digital Link are both compliant\" and \"GS1 Digital Link is correctly formatted\" - a false clearance of the planted defect. It also relayed \"At 1.00x magnification, it falls within the permitted 0.80x-2.00x range\": the tool did return GS1_MAGNIFICATION_IN_RANGE, but only because the model sent magnification 1 that the user never gave. That is the model fabricating the input; the stage-23 decline would have fired otherwise, so it is not a fix failure. Both declined checks in its output (gs1/bar-height wanting barHeightMm, gs1/quiet-zone limit) are listed as not verified. Domain sent with its scheme; magnification sent as a factor. All citations in the answer came from the tool's output."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "GS1 Digital Link URI Syntax 1.3.0 removed the convenience alphas (/gtin/ in place of /01/)",
+        "grade": "V",
+        "evidence": "GS1 Digital Link Standard: URI Syntax, Release 1.7.0 (Aug 2026), ref.gs1.org/standards/digital-link/uri-syntax/ fetched 2026-10-12, §4.1: \"For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\" Not in any tool output this answer saw; the 1.3.0 fact is in the check_label schema's useConvenienceAlphas field description (tools/list)."
+      }
+    ],
+    "notes": "check_gtin only (valid). Then asks for the label size, but flags the /gtin/ convenience alpha as 'one problem already visible', gives the /01/ fix and cites Digital Link URI Syntax 1.3.0. Says it will treat the domain as https://id.example.com (with scheme) but check_label was never sent, so domainHasScheme is null. Asks magnification as a factor."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "GS1 Digital Link URI Syntax 1.3.0 removed the convenience alphas (/gtin/ in place of /01/)",
+        "grade": "V",
+        "evidence": "GS1 Digital Link Standard: URI Syntax, Release 1.7.0 (Aug 2026), ref.gs1.org/standards/digital-link/uri-syntax/ fetched 2026-10-12, §4.1: \"For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\" Not in any tool output this answer saw; the 1.3.0 fact is in the check_label schema's useConvenienceAlphas field description (tools/list)."
+      }
+    ],
+    "notes": "check_gtin only. Flags /gtin/ as 'one likely problem', removed in Digital Link URI Syntax 1.3.0, with the /01/ fix. Asks magnification as a factor and says unstated magnification and bar height will be listed 'as unchecked, not as passed'."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "domainHasScheme": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "GS1 Digital Link URI Syntax 1.3.0 removed the convenience alphas (/gtin/ in place of /01/)",
+        "grade": "V",
+        "evidence": "GS1 Digital Link Standard: URI Syntax, Release 1.7.0 (Aug 2026), ref.gs1.org/standards/digital-link/uri-syntax/ fetched 2026-10-12, §4.1: \"For example, '01' could be replaced by 'gtin' ... Convenience alphas were marked as deprecated in version 1.2 of the standard and have been removed completely as of version 1.3.0.\" Not in any tool output this answer saw; the 1.3.0 fact is in the check_label schema's useConvenienceAlphas field description (tools/list)."
+      }
+    ],
+    "notes": "check_gtin only. Flags /gtin/ as the removed 1.3.0 form and asks the user to confirm it is what is printed; also correctly notes the 14-digit GTIN is the normal form (Digital Link 1.4.0 SHALL). Intended domain https://id.example.com (with scheme), never sent. Asks magnification as a factor."
+  }
+]
