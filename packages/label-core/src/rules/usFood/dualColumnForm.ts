@@ -415,11 +415,13 @@ const judgedAsDrawn: UsFoodRule = {
 
 /** The rule as drawn, with what it cannot judge on a label printed elsewhere set aside — see `rules/described.ts`. */
 export const usFoodDualColumnFormRule: UsFoodRule = someFindingsGoOnADescribedLabel(judgedAsDrawn, {
-  // Its pass certifies the separating line and equal prominence too, which on a label
-  // printed elsewhere are this engine's defaults unless stated, and equal prominence a
-  // matter of type size. Its violations rest on what the request states, and stay.
+  // Its pass also certifies the line between the columns and their equal prominence,
+  // which on a label printed elsewhere a request can declare and nobody here can see.
+  // A difference the request itself states — a second column scaled smaller, or no line
+  // — is a fact about the label in the regulation's own relative terms, and stays.
   goes: (one) => one.code === FDA_DUAL_COLUMN_FORM_MET,
   why:
-    'Whether the two columns are separated and given equal prominence is a question of the ' +
-    'printed lines and type sizes, which Packwright cannot see.',
+    'Its pass would also certify that the two columns are printed with a line between them ' +
+    'and at equal prominence, which a request can say but Packwright cannot see on a panel ' +
+    'it did not draw. A difference the request itself states is still reported.',
 })

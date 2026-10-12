@@ -72,13 +72,3 @@ export const DECLINED_FACT_FIELDS: Readonly<Record<DeclinedFact, FactField>> = {
   barHeightMm: { fieldId: 'field-bar-height', name: 'Bar height' },
   omitHri: { fieldId: 'field-omit-hri', name: 'Omit the human-readable digits' },
 }
-
-/**
- * The facts only a label printed elsewhere asks for. The editor judges its own drawing,
- * where the engine's defaults are what prints, so no check here waits on these.
- */
-export const DESCRIBED_ONLY_FACTS: readonly DeclinedFact[] = [
-  'magnification',
-  'barHeightMm',
-  'omitHri',
-]

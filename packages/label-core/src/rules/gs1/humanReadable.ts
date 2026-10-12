@@ -74,8 +74,8 @@ const judgedAsDrawn: Gs1RetailRule = {
 /** The rule as drawn, its verdict waiting on a label printed elsewhere — see `rules/described.ts`. */
 export const humanReadableRule: Gs1RetailRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
   unstated: ({ data }) => (data.omitHri === undefined ? ['omitHri'] : []),
-  reason:
+  reason: () =>
     'This label is described rather than drawn here, and Packwright cannot see whether the ' +
     'digits are printed beneath its barcode; it draws them unless told not to. Say whether ' +
-    'they are printed and this check will run.',
+    'they are printed (omitHri false if they are) and this check will run.',
 })

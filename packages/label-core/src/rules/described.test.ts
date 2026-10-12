@@ -20,7 +20,10 @@ import { CONFORMANT_FIXTURE, GS1_RETAIL_FIXTURES } from './fixtures/gs1Retail'
 import { PERMISSION_PATHS } from './fixtures/sweep'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES } from './fixtures/usFood'
 import { US_FOOD_RULES } from './registry'
-import { codesOf, type LabelSubject } from './types'
+import { someFindingsGoOnADescribedLabel } from './described'
+import { codesOf, type LabelSubject, type UsFoodContext } from './types'
+
+const CITE = { authority: 'FDA', reference: 'x', title: 'x' } as const
 
 function judged(request: JudgeRequest): Judgement {
   const result = judgeLabel(request)
@@ -132,6 +135,11 @@ describe('a barcode described rather than drawn', () => {
     const short = upcA({ ...gtinOnly, barHeightMm: 20 }, stock, 'described')
     expect(codes(short)).not.toContain('GS1_BAR_HEIGHT_BELOW_MINIMUM')
     expect(declinedBy(short, 'gs1/bar-height')?.wants).toEqual(['magnification'])
+    // Asked only for what is missing, in words that do not deny what was given.
+    const heightless = upcA({ ...gtinOnly, magnification: 0.8 }, stock, 'described')
+    const asked = declinedBy(heightless, 'gs1/bar-height')!
+    expect(asked.wants).toEqual(['barHeightMm'])
+    expect(asked.reason).not.toContain('magnification')
     const atEighty = upcA({ ...gtinOnly, barHeightMm: 20, magnification: 0.8 }, stock, 'described')
     expect(codes(atEighty)).toContain('GS1_BAR_HEIGHT_SUFFICIENT')
   })
@@ -253,10 +261,39 @@ describe('a food label described rather than drawn', () => {
     const described = food(small.data, small.stock, 'described')
     expect(codes(described)).not.toContain('FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL')
     expect(declinedBy(described, 'us-food/nutrition-completeness')?.limit).toBe(true)
+    // Under its own provision, not the completeness rule's 101.9(c).
+    expect(declinedBy(described, 'us-food/nutrition-completeness')?.citation.reference).toBe(
+      '21 CFR 101.9(j)(15)(iii)',
+    )
 
     // At the default size it passes on the drawing; described, the pass goes too.
     const { informationPanelFontSizeMm: _size, ...defaultSize } = small.data
     expect(codes(food(defaultSize, small.stock))).toContain('FDA_NUTRITION_EXEMPT')
     expect(codes(food(defaultSize, small.stock, 'described'))).not.toContain('FDA_NUTRITION_EXEMPT')
+  })
+})
+
+describe('a rule some of whose findings go', () => {
+  // Held directly: the two rules that use it today only ever lose their only finding,
+  // so nothing above reaches a rule that loses one finding and keeps another.
+  const { declines: _declines, ...base } = US_FOOD_RULES[0]!
+  const rule = someFindingsGoOnADescribedLabel<UsFoodContext>(
+    {
+      ...base,
+      check: () => [
+        { code: 'GOES', severity: 'pass', certifies: 'artwork', message: '', citation: CITE },
+        { code: 'STAYS', severity: 'violation', message: '', citation: CITE },
+      ],
+    },
+    { goes: (one) => one.code === 'GOES', why: 'Why.' },
+  )
+  const context = {
+    labelType: 'us-food',
+    subject: 'described',
+  } as unknown as UsFoodContext
+
+  it('keeps what does not go, and does not claim to have stood down beside it', () => {
+    expect(rule.check(context).map((one) => one.code)).toEqual(['STAYS'])
+    expect(rule.declines!(context)).toBeUndefined()
   })
 })

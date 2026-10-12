@@ -10,6 +10,18 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **What `/code-review high` found on #87, answered.** The three barcode fields `check_label` now asks for carry
+  descriptions, and the magnification is asked for as a factor ("1 or 0.8"): the decline said "100%", which invited
+  `magnification: 100` — a hundredfold symbol and a violation about nobody's label. The bar-height request names
+  only what is missing, so a request that gave its magnification is not told Packwright cannot see it. The
+  unit-container stand-down cites 101.9(j)(15)(iii), its own provision, rather than the completeness rule's
+  101.9(c). The dual-column form's limit says what it actually withholds — a pass that would certify the line
+  between the columns and equal prominence — and that a difference the request states is still reported. The
+  helper that drops some findings declines only when nothing is left, and no longer re-runs a rule on every
+  drawing judgement. Two findings are recorded in `docs/BACKLOG.md` instead: overrun omissions that still rest on the
+  engine's defaults for barcodes and food (an accusation, not a clearance), and a stated Contains gap, which the
+  engine adds to its own rather than prints as given.
+
 - **`check_label` no longer passes what Packwright filled in.** `/code-review high` on #86 found every optional
   field a check request left out being filled in by the engine and then passed: a request carrying only a GTIN
   came back with its magnification, bar height, digits and quiet zones cleared, and a food label stating no type

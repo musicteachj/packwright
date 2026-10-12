@@ -106,7 +106,21 @@ stated.** §403(w)(1)(A) compares the two sizes rather than setting a letter hei
 that comparison whatever the face — so a request stating both `containsStatementFontSizeMm` and
 `informationPanelFontSizeMm` could have the size half judged. The rule stands down whole on a described label today,
 because its other half, the gap to the list, is where the engine stacked the two. Splitting it is small; it would
-bring back the fixture's "Contains at 2 mm" violation through `check_label`.
+bring back the fixture's "Contains at 2 mm" violation through `check_label`. The gap half cannot follow from a
+stated `containsStatementGapMm` as things stand: the engine adds it *on top of* its own gap (the smaller of its block
+gap and one line of the list), so the stated figure is never the distance printed. `/code-review high` on #87 read
+it as the absolute gap; making it one is the change that would let the gap be judged too.
+
+**On a label printed elsewhere, the layout's overrun omissions still rest on the engine's defaults for barcodes and
+food.** Stage 22 gave the GHS overruns a second wording (`LayoutOmission.whenDescribed`) because a GHS document
+carries no type sizes. The same is true of a UPC-A symbol drawn at the default magnification, bar height and digit
+band, and of US food blocks stacked at default ems: on a small stated stock, `check_label`'s `uncheckable` can say
+"the UPC-A symbol runs N mm past the top … so part of its bars or digits is not printed" about a label whose barcode
+is whatever size it is. It is the accusing direction — the omission withholds passes, never grants one — so it is not
+a false clearance, but it is a false statement about the user's label. Found by `/code-review high` on #87. The
+general fix is for the layout to record which values it defaulted and the omissions built from them to carry the
+described wording, as the GHS ones do; worth doing with the measured-letter-height work, which touches the same
+inputs.
 
 **`GHS_PICTOGRAM_SIZE_MET` will need to wait for `pictogramSideMm` on a described label.** The engine draws the
 band's minimum where no side is stated, so the pass is compliant by construction, the same shape as the barcode's

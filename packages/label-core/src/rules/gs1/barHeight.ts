@@ -80,8 +80,19 @@ export const barHeightRule: Gs1RetailRule = verdictWaitsOnADescribedLabel(judged
     ...(data.barHeightMm === undefined ? (['barHeightMm'] as const) : []),
     ...(data.magnification === undefined ? (['magnification'] as const) : []),
   ],
-  reason:
-    'This label is described rather than drawn here, and Packwright cannot see how tall its ' +
-    'bars are printed, or at what magnification; its own defaults would pass by construction. ' +
-    'State them and this check will run.',
+  // Names only what is missing: a request that gave its magnification was told
+  // Packwright could not see it. Found by `/code-review high` on #87.
+  reason: (wants) => {
+    const missing = [
+      ...(wants.includes('barHeightMm') ? ['how tall its bars are printed'] : []),
+      ...(wants.includes('magnification')
+        ? ['the magnification the minimum is set by, as a factor such as 1 or 0.8']
+        : []),
+    ].join(', or ')
+    return (
+      `This label is described rather than drawn here, and Packwright cannot see ${missing}; ` +
+      `its own ${wants.length > 1 ? 'defaults' : 'default'} would decide the verdict. State ` +
+      `${wants.length > 1 ? 'them' : 'it'} and this check will run.`
+    )
+  },
 })

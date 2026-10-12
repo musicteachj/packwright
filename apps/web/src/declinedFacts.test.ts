@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import type { DeclinedFact } from '@packwright/label-core'
-import { DECLINED_FACT_FIELDS, DESCRIBED_ONLY_FACTS, factLabel } from './declinedFacts'
+import { DECLINED_FACT_FIELDS, factLabel } from './declinedFacts'
 import { useLabelDocumentStore } from './stores/labelDocument'
 import EditorView from './views/EditorView.vue'
 import { testRouter } from './views/editorTestRouter'
@@ -18,6 +18,13 @@ import { testRouter } from './views/editorTestRouter'
  * decline does not share, is a link to nowhere — and `stateFact` would quietly
  * do nothing.
  */
+
+/**
+ * The facts only a label printed elsewhere asks for — `check_label`'s, never the
+ * editor's, which judges its own drawing. Kept here, where it is used, rather than
+ * exported beside the map as if it were authoritative. Found by `/code-review high` on #87.
+ */
+const DESCRIBED_ONLY_FACTS: readonly DeclinedFact[] = ['magnification', 'barHeightMm', 'omitHri']
 
 Element.prototype.scrollIntoView = vi.fn()
 

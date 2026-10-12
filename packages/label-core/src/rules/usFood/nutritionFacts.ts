@@ -378,6 +378,9 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = someFindingsGoOnADesc
       one.elementId === US_FOOD_ELEMENTS.unitContainerStatement &&
       (one.code === FDA_NUTRITION_EXEMPT || one.code === FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL),
     why: `The unit container statement must be printed 1/16 inch tall. ${TYPE_SIZE_IS_THE_TYPEFACES}`,
+    // Its own provision, not the rule's primary 101.9(c), which says nothing of it. Found by
+    // `/code-review high` on #87.
+    citation: UNIT_CONTAINER_STATEMENT,
   },
 )
 

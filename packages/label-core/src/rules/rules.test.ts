@@ -935,7 +935,11 @@ describe('a check that stood down names what would let it run', () => {
         // whose pass also rests on type sizes nobody can state — which promises
         // nothing to follow and is held to saying so above.
         expect(
-          still?.limit === true && first.ruleId === 'us-food/dual-column-form' ? undefined : still,
+          still?.limit === true &&
+            first.ruleId === 'us-food/dual-column-form' &&
+            still.reason.includes('a line between them and at equal prominence')
+            ? undefined
+            : still,
           `${first.ruleId} on ${one.name} still stands down after ${path.join(' then ') || 'being asked for nothing'}`,
         ).toBeUndefined()
       }

@@ -68,8 +68,11 @@ const judgedAsDrawn: Gs1RetailRule = {
 /** The rule as drawn, its verdict waiting on a label printed elsewhere — see `rules/described.ts`. */
 export const magnificationRule: Gs1RetailRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
   unstated: ({ data }) => (data.magnification === undefined ? ['magnification'] : []),
-  reason:
+  // A factor, said as one: "100%" invited `magnification: 100`, a hundredfold symbol.
+  // Found by `/code-review high` on #87.
+  reason: () =>
     'This label is described rather than drawn here, and Packwright cannot see the ' +
-    'magnification its barcode is printed at; its own default of 100% would pass by ' +
-    'construction. State the magnification and this check will run.',
+    'magnification its barcode is printed at; its own default of 1 (100%) would pass by ' +
+    'construction. State the magnification, as a factor such as 1 or 0.8, and this check ' +
+    'will run.',
 })

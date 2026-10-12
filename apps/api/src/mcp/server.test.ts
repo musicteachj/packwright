@@ -143,6 +143,8 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
     expect(schema.properties.stock!.additionalProperties).toBe(false)
     const advertised = JSON.stringify(schema)
     expect(advertised).toContain('scheme included')
+    // A factor, not a percentage: "100%" would have read as `magnification: 100`.
+    expect(advertised).toContain('not a percentage')
     expect(advertised).toContain('not the size of the label')
     expect(advertised).toContain('Leave it out entirely if the label has no')
     expect(advertised).toContain(`${DEFAULT_US_FOOD_STOCK.marginMm} mm for us-food`)

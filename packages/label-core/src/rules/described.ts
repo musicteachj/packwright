@@ -81,7 +81,11 @@ export function noVerdictOnADescribedLabel<TContext extends RuleContext>(
  */
 export function verdictWaitsOnADescribedLabel<TContext extends RuleContext>(
   rule: Rule<TContext>,
-  wait: { unstated: (context: TContext) => readonly DeclinedFact[]; reason: string },
+  wait: {
+    unstated: (context: TContext) => readonly DeclinedFact[]
+    /** Said for the fields actually missing, so a field the request gave is not asked for. */
+    reason: (wants: readonly DeclinedFact[]) => string
+  },
 ): Rule<TContext> {
   const waiting = (context: TContext) =>
     context.subject === 'described' ? wait.unstated(context) : []
@@ -94,7 +98,7 @@ export function verdictWaitsOnADescribedLabel<TContext extends RuleContext>(
     declines: (context): Decline | undefined => {
       const wants = waiting(context)
       if (wants.length === 0) return rule.declines?.(context)
-      return rule.check(context).length > 0 ? { reason: wait.reason, wants } : undefined
+      return rule.check(context).length > 0 ? { reason: wait.reason(wants), wants } : undefined
     },
   }
 }
@@ -122,8 +126,12 @@ export function someFindingsGoOnADescribedLabel<TContext extends RuleContext>(
     check: (context) => rule.check(context).filter((one) => !goes(one, context)),
     declines: (context): Decline | undefined => {
       const own = rule.declines?.(context)
-      if (own !== undefined) return own
-      if (!rule.check(context).some((one) => goes(one, context))) return undefined
+      if (own !== undefined || context.subject !== 'described') return own
+      // A limit only where nothing is left: a rule that still judged has not stood down,
+      // whatever `declinesOf` would drop. Found by `/code-review high` on #87.
+      const findings = rule.check(context)
+      if (!findings.some((one) => goes(one, context))) return undefined
+      if (findings.some((one) => !goes(one, context))) return undefined
       return {
         reason:
           `${go.why} So it gives no verdict on that on a label it did not draw. That is a ` +
