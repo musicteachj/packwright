@@ -30,8 +30,9 @@ control that does not exist. Those limits are in this document instead, which is
 There is one exception, and the report marks it as one. Where a regulation plainly reaches your label and this
 tool cannot represent an answer to it, staying silent would read as a pass and reporting a violation would blame
 your label for the tool's limit. That entry appears under "checks that did not run" with nothing to fill in, and
-says in so many words that the limit is this tool's. Today there is exactly one: the package owing both second
-columns, below.
+says in so many words that the limit is this tool's. Today there are three, all below: the package owing both
+second columns; whether a US label's pictograms are the ones its classification requires; and, on a label you
+describe or photograph rather than draw here, whether each pictogram carries its symbol.
 
 ---
 
@@ -230,6 +231,38 @@ classification, it leaves out the environment pictogram, which is not among OSHA
 which this tool reports if a US label prints it, and it works out the rest
 from CLP's table. That table has not been checked against C.4, so on a US label check each pictogram the tool
 draws against C.4 yourself. The editor says so beside the classification.
+
+### On a label you describe or photograph: pictogram symbols and type sizes
+
+Packwright draws no pictogram artwork. No verified copy of the specimen symbols was available, and an
+approximation would look compliant without being so, so every pictogram it draws is an empty frame. **On a label
+this tool draws, that is reported**: an empty frame is what an exported PDF carries, OSHA forbids one outright
+(29 CFR 1910.1200 Appendix C.2.3.1, "A square red frame set at a point without a hazard symbol is not a pictogram
+and is not permitted on the label"), and CLP requires the symbol (Annex I, 1.2.1.2).
+
+**On a label printed elsewhere, it is not.** Checking a label through the `check_label` tool, or auditing one from
+a photograph, judges a label that already exists, and Packwright's drawing of it is a reconstruction. The symbols
+are on your label, where this tool cannot see them, so the symbol check gives no verdict either way. Each pictogram
+is listed under "cannot be checked", and the check itself appears under "checks that did not run" as a limit of
+this tool — unless the label also carries a pictogram its regime does not recognise, which is reported, and then
+the "cannot be checked" list is where it says so. A small container's check stands down the same way where the
+unseen symbols are all it cannot confirm. On an EU label, a pictogram smaller than CLP's minimum is still reported, though none is passed for its size,
+since a pictogram whose symbol nobody has seen is not one this tool can clear. OSHA sets no minimum.
+
+**Type sizes are the same kind of gap.** A GHS label's description carries no type sizes, so Packwright sets its
+text at sizes of its own choosing. On a label it draws, text that runs off the edge at those sizes is reported as
+not printed, because on the export it is not. On a label printed elsewhere it is listed as a fact about
+Packwright's layout instead, and whether your own text fits your label is not checked. Pictograms are treated
+the same way, because Packwright sets them in one row of its own spacing and your label may not — except a
+pictogram larger than the label itself, which is listed as not fitting, since no arrangement could fit it.
+
+**And no rule checks a GHS label's type size.** CLP sets no minimum today. Regulation (EU) 2024/2865 replaces
+Table 1.3 with one that adds a minimum x-height, from 1.2 mm on a package of up to 0.5 litres to 2.0 mm above 50
+litres, and adds Annex I section 1.2.1.5 on line spacing, typeface and colour. Regulation (EU) 2025/2439 put both
+back to **1 January 2028**. This tool will not check them before then, and on a label you describe it could not
+check them at all until the description can carry type sizes. Read from the EU Publications Office on 2026-10-11:
+the consolidated CLP text in force (02008R1272-20260701), 2024/2865 Annex I points (2) and (3), and 2025/2439
+Article 1(c).
 
 ### Whether an EU label's supplier is established in the Union
 

@@ -25,6 +25,7 @@ export type {
   GhsChemicalRule,
   Gs1RetailContext,
   Gs1RetailRule,
+  LabelSubject,
   LabelType,
   Rule,
   RuleContext,

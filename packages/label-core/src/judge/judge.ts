@@ -25,7 +25,13 @@ import { layOutGhsLabel } from '../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import type { ResolvedLayout } from '../layout/types'
 import { declinedChecks, runRules } from '../rules/registry'
-import { LABEL_TYPES, compareSeverity, type DeclinedCheck, type RuleContext } from '../rules/types'
+import {
+  LABEL_TYPES,
+  compareSeverity,
+  type DeclinedCheck,
+  type LabelSubject,
+  type RuleContext,
+} from '../rules/types'
 import { SymbolLayoutError, type BarcodeEncoder } from '../symbology/layOutSymbol'
 import type { GhsLabelData } from '../templates/ghs'
 import type { LabelStock } from '../templates/stock'
@@ -39,11 +45,15 @@ import { uncheckableIn, type Uncheckable } from './uncheckable'
  *
  * **A UPC-A label carries its barcode encoder**, required by the type so a caller
  * cannot forget it. `label-core` does not import bwip-js; the caller hands one in.
+ *
+ * **`subject` says whether the label is this engine's drawing or one printed
+ * elsewhere**, and is absent for the first. See `LabelSubject`.
  */
-export type JudgeRequest =
+export type JudgeRequest = (
   | { labelType: 'gs1-retail'; data: UpcALabelData; stock: LabelStock; barcode: BarcodeEncoder }
   | { labelType: 'ghs-chemical'; data: GhsLabelData; stock: LabelStock }
   | { labelType: 'us-food'; data: UsFoodLabelData; stock: LabelStock }
+) & { subject?: LabelSubject }
 
 /**
  * A judged label, in the order and the words the editor shows.
@@ -97,7 +107,7 @@ export function judgeLayout(context: RuleContext): Judgement {
     failures: findings.filter((finding) => finding.severity !== 'pass'),
     passes: findings.filter((finding) => finding.severity === 'pass'),
     blocking: findings.some((finding) => finding.severity === 'blocking'),
-    uncheckable: uncheckableIn(context.layout),
+    uncheckable: uncheckableIn(context.layout, context.subject),
   }
 }
 
@@ -124,6 +134,13 @@ export function layOutLabel(request: JudgeRequest): ResolvedLayout {
 
 /** The rules' view of a request and its layout — the request without its encoder. */
 function contextOf(request: JudgeRequest, layout: ResolvedLayout): RuleContext {
+  const context = withoutEncoder(request, layout)
+  // Attached once, after the switch, so a label type added there cannot be judged as a
+  // drawing for want of a line.
+  return request.subject === undefined ? context : { ...context, subject: request.subject }
+}
+
+function withoutEncoder(request: JudgeRequest, layout: ResolvedLayout): RuleContext {
   switch (request.labelType) {
     case 'gs1-retail':
       return { labelType: 'gs1-retail', data: request.data, stock: request.stock, layout }

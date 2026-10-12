@@ -1,7 +1,13 @@
 export { LayoutError, assertMarginLeavesPanel, layOutUpcALabel } from './engine'
 export type { UpcALayoutRequest } from './engine'
 
-export { layOutGhsLabel, SYMBOL_NOT_DRAWN_BECAUSE } from './ghsEngine'
+export {
+  LAID_OUT_AT_DEFAULT_TYPE_SIZES,
+  LAID_OUT_IN_PACKWRIGHTS_ARRANGEMENT,
+  layOutGhsLabel,
+  SYMBOL_NOT_DRAWN_BECAUSE,
+  SYMBOL_NOT_SEEN_BECAUSE,
+} from './ghsEngine'
 export type { GhsLayoutRequest } from './ghsEngine'
 
 export { layOutUsFoodLabel } from './usFoodEngine'

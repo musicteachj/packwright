@@ -10,6 +10,57 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **What `/code-review high` found on #86, answered.** On a label printed elsewhere, `ghs/small-container`'s pass
+  never came — every pictogram carries the unseen-symbol omission — and with the missing-symbol finding gone,
+  nothing beside the silence said why; it now stands down as a limit of the tool where the unseen symbols are all
+  it cannot confirm, and keeps its silence where anything else did not print. Text below the pictogram row that
+  runs off the label is blamed on Packwright's arrangement, which names the row as well as the type sizes, rather
+  than on the type sizes alone. The tool description and `docs/WHAT-IS-NOT-CHECKED.md` no longer promise the
+  symbol check always appears under `declined`, which it does not when an unrecognised pictogram is reported. The
+  server decides an assumed margin caused a refusal from the panel itself rather than by catching whatever the
+  engine's assertion throws, the judge attaches the subject in one place, and the default margins a model is
+  told are read from the map `checkedStock` applies. The review's largest finding — `check_label` passing type
+  sizes, placements and barcode geometry the engine chose itself — is pinned in `docs/BACKLOG.md` as must-fix and
+  gating the `/mcp` launch, for a design decision.
+
+- **`check_label` tells a model what its fields mean, refuses a key it does not know, and says when a margin
+  it refused was its own assumption.** The 2026-10-10 evaluation found models reading field names without their
+  meaning: every model's first Digital Link sent a bare host name, which the rule rightly refuses. The shared schema
+  now describes the fields the evaluation and the backlog named — the Digital Link's `domain` as the whole
+  `https://` origin and its three Application Identifiers, `capacityL` as the package's capacity selecting the CLP
+  Table 1.3 band, `containsStatement` as the allergens the printed statement names under FD&C Act §403(w)(1)(A),
+  `pictogramSideMm`, `smallContainerLabelling` and the margin with each label type's default — and the
+  descriptions reach the advertised schema without changing anything accepted. The request's top level and its
+  `stock` are strict: `stok` or `marginMM` is refused by name, where it used to be dropped and the request refused
+  for the wrong reason or judged at the default margin. Inside `data` keys are still stripped, as the exporter and
+  the saved-label routes strip them. An unstated margin keeps the label type's default on purpose, since a smaller
+  one could let content that overruns the real margin pass; where that default leaves no panel, the refusal now
+  says the margin was assumed and asks for the real one. The tool's description says a GHS check cannot see
+  pictogram artwork or the label's type sizes. The provisions named were read on 2026-10-11 from govinfo, the eCFR
+  and the EU Publications Office.
+
+- **A label checked through `/mcp` or audited from a photograph is no longer judged on Packwright's drawing of
+  it.** The 2026-10-10 evaluation found two false findings about users' own labels, both facts the input cannot
+  carry being read off the engine's reconstruction. Packwright draws no pictogram artwork, so
+  `GHS_PICTOGRAM_SYMBOL_MISSING` fired on every GHS label — blocking under OSHA — and the evaluation's Haiku
+  relayed it as a defect in all 18 of its GHS answers. And a GHS document carries no type sizes, so text set at the
+  engine's defaults that ran off a small label was reported "not printed": every answer on case 03 told its user
+  that statements printed on their label were missing. The judge now takes a `subject` (`LabelSubject`):
+  `drawing`, the default, for the editor and the exporter, and `described` for `check_label` and the photo audit.
+  On a described label `ghs/pictogram-integrity` gives no verdict and stands down as a limit of the tool, citing
+  C.2.3.1 or CLP Annex I 1.2.1.2; the layout's omissions carry a second wording, written by the engine
+  (`LayoutOmission.whenDescribed`), which says the symbol is not checked and that an overrun is a fact about
+  Packwright's layout at its default type sizes, and the judge picks it. Only words and one rule's verdict
+  change: the omissions still stand, so every pass on an element that did not fit is still withheld, and a test
+  holds every GHS fixture's described findings to its drawing's, less the missing-symbol finding. Pictograms
+  that run off the label get the same treatment, as Packwright's arrangement — one row, its own gap — which the
+  document does not carry either; a pictogram whose own box is larger than the label is reported as not fitting,
+  which no arrangement could change. The editor and the export are unchanged — their empty frame is on the PDF.
+  `docs/WHAT-IS-NOT-CHECKED.md` says all of this, and that no rule checks a GHS label's type size; CLP gains a
+  minimum x-height on 1 January 2028 (Regulation (EU) 2024/2865 Annex I (2)–(3), deferred by 2025/2439), which
+  is now a dated entry in the backlog. OSHA's C.2.3.1 and C.2.3.2 were re-read from the eCFR, and the CLP texts
+  from the EU Publications Office, on 2026-10-11.
+
 - **An address with no page is answered 404, not 200.** The server handed the client's `index.html` to every
   address it did not reserve, so `/labels/abc/edit` came back 200 and only the page said there was nothing there —
   a crawler, a link checker or an uptime monitor reads the status, and took a mistyped address for a working one.

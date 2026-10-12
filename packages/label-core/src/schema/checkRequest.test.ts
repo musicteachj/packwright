@@ -359,4 +359,30 @@ describe('toJudgeRequest', () => {
     expect(request.stock).toEqual(stock)
     expect(request.labelType === 'gs1-retail' && request.barcode).toBe(encoder)
   })
+
+  it('marks every label type as printed elsewhere', () => {
+    // A check request is an account of a label that exists, whatever its type — so
+    // a rule that one day reads the subject on a UPC-A label finds it set, rather
+    // than finding the default and judging the drawing. See `LabelSubject`.
+    const size = { widthMm: 74, heightMm: 105 }
+    const subjects = [
+      { labelType: 'gs1-retail', data: { gtin: '036000291452' } },
+      {
+        labelType: 'ghs-chemical',
+        data: { regime: 'eu-clp', productIdentifier: 'X', capacityL: 1 },
+      },
+      {
+        labelType: 'us-food',
+        data: {
+          statementOfIdentity: 'X',
+          netQuantity: { inchPound: '1 oz' },
+          container: { shape: 'rectangular', widthMm: 50, heightMm: 50 },
+        },
+      },
+    ].map(
+      (request) =>
+        toJudgeRequest(LabelCheckRequest.parse({ ...request, stock: size }), encoder).subject,
+    )
+    expect(subjects).toEqual(['described', 'described', 'described'])
+  })
 })

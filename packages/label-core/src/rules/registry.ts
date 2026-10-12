@@ -269,7 +269,8 @@ function declinesOf<TContext extends RuleContext>(
     // passed *and* did not run is worse than either on its own, and the review
     // that found it reproduced exactly that: `FDA_PROTEIN_PERCENT_MET` beside
     // "this check did not run". Structural beats conventional, and the extra
-    // `check` runs only for the three rules that declare a `declines` at all.
+    // `check` runs only for the rules that declare a `declines` at all, a set that has
+    // grown well past the three this once counted: `rules.test.ts` lists them.
     if (rule.check(context).length > 0) return []
     return [
       {
