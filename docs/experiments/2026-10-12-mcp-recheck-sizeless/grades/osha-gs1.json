@@ -1,0 +1,491 @@
+[
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200, Appendix C, C.2.3.1 (as the source of a \"minimum pictogram size\")",
+        "grade": "M",
+        "evidence": "29 CFR 1910.1200 read from the eCFR renderer API (current), fetched 2026-10-12, Appendix C: \"C.2.3.1 Pictograms shall be in the shape of a square set at a point and shall include a black hazard symbol on a white background with a red frame sufficiently wide to be clearly visible. A square red frame set at a point without a hazard symbol is not a pictogram and is not permitted on the label.\" Nothing in C.2.3 sets a minimum pictogram size. The tool cited C.2.3.1 only for the pictogram-symbol limit; the answer re-attached it to a size requirement."
+      }
+    ],
+    "notes": "Called check_label without stock; relayed GHS_SMALL_CONTAINER_NOT_ELIGIBLE (0.5 L vs 0.1 L) with (f)(12). Says fit was not checked and asks for width and height. Invents a size-dependent check the tool never had (\"Minimum pictogram size\", under C.2.3.1). Lists \"Pictogram GHS02 (flame) is the right choice for this hazard class\" and \"Supplier information is present\" under What Passed - the tool gave no pictogram-set verdict (declined, limit) and no supplier finding - then contradicts the first by listing the OSHA pictogram choice as unchecked. Not the planted defect, so not a false clearance."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No stock sent. Caught the planted defect with (f)(12). Lists fit as not checked and asks for the dimensions. \"Signal word ... correct\" and \"Pictogram precedence is correct\" relay the tool passes. Says the hazard and precautionary statements are not covered by Packwright and that OSHA requires them for cat 2 (no citation given). No added citations."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "checked": true,
+    "stockSent": true,
+    "inventedSize": true,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": null,
+    "fitSaid": null,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "Sent stock 50 x 50 mm, which the prompt does not give (invented). The tool judged at that size and returned an uncheckable note that, in its own layout, supplier identification ran 5.03 mm past the bottom of the 50 mm label; the answer does not relay it. It half-discloses the guess (\"since I estimated your label size; if you can specify the actual printed dimensions, I can check this\") but never states the 50 x 50 figure. Caught the planted defect with (f)(12) and lists hazard and precautionary statements as MISSING for the full label, with no citation. No added citations."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(1) (a full label needs a hazard statement and precautionary statements)",
+        "grade": "V",
+        "evidence": "29 CFR 1910.1200 read from the eCFR renderer API (current), fetched 2026-10-12: \"(f)(1) ... Where the chemical manufacturer, importer, or distributor is required to label, tag or mark the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number ...\" and (f)(2): the information under (f)(1)(i) through (v) \"is in accordance with Appendix C to § 1910.1200\"."
+      }
+    ],
+    "notes": "No stock sent. Caught the planted defect; says plainly that the (f)(1) citation is its own reading, not the tool's. Fit listed as not checked with a request for width and height. Relays both declined limits (C.2.3.1 artwork, C.2 / C.4 tables)."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(1) and Appendix C (a full label needs a hazard statement and precautionary statements)",
+        "grade": "V",
+        "evidence": "29 CFR 1910.1200 read from the eCFR renderer API (current), fetched 2026-10-12: \"(f)(1) ... Where the chemical manufacturer, importer, or distributor is required to label, tag or mark the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number ...\" and (f)(2): the information under (f)(1)(i) through (v) \"is in accordance with Appendix C to § 1910.1200\". eCFR Appendix C to 1910.1200, table C.4.19 \"FLAMMABLE LIQUIDS\" (an image, ER08JA26.024, fetched from img.federalregister.gov 2026-10-12 and read): Category 2, signal word \"Danger\", hazard statement \"Highly flammable liquid and vapor\", pictogram \"Flame\"."
+      }
+    ],
+    "notes": "No stock sent. Caught; flags its own additions as its own knowledge. Gives the cat 2 hazard statement as \"highly flammable liquid and vapor\", which matches table C.4.19. Fit listed as not checked (\"I left it out rather than guess\") with a request for the size. Sent hazardStatementCodes and precautionaryStatementCodes as empty arrays."
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(1) and Appendix C (general label requirements for a full label)",
+        "grade": "V",
+        "evidence": "29 CFR 1910.1200 read from the eCFR renderer API (current), fetched 2026-10-12: \"(f)(1) ... Where the chemical manufacturer, importer, or distributor is required to label, tag or mark the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number ...\" and (f)(2): the information under (f)(1)(i) through (v) \"is in accordance with Appendix C to § 1910.1200\"."
+      },
+      {
+        "citation": "Appendix C.4 (gives the exact wording of the cat 2 hazard statement)",
+        "grade": "V",
+        "evidence": "eCFR Appendix C to 1910.1200, table C.4.19 \"FLAMMABLE LIQUIDS\" (an image, ER08JA26.024, fetched from img.federalregister.gov 2026-10-12 and read): Category 2, signal word \"Danger\", hazard statement \"Highly flammable liquid and vapor\", pictogram \"Flame\"."
+      },
+      {
+        "citation": "29 CFR 1910.1200(f)(1)(iv) (precautionary statements required)",
+        "grade": "M",
+        "evidence": "29 CFR 1910.1200 read from the eCFR renderer API (current), fetched 2026-10-12: \"(iv) Pictogram(s); (v) Precautionary statement(s);\" - precautionary statements are (f)(1)(v), not (iv)."
+      }
+    ],
+    "notes": "No stock sent. Caught the planted defect. Also called ghs_statement_text for H225 and relayed that the build holds no verified US wording. Says fit was not checked and asks for width and height; also notes the 10 mm pictogram size was not judged. One wrong paragraph number: (f)(1)(iv) for precautionary statements, which are (f)(1)(v)."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200 Appendix C, Table C.4.1 (whether GHS02 is the pictogram for flammable liquid cat 2)",
+        "grade": "M",
+        "evidence": "eCFR Appendix C to 1910.1200, table image ER20MY24.234 (fetched 2026-10-12 and read): \"C.4.1 ACUTE TOXICITY – ORAL (Classified in Accordance with Appendix A.1 of this section)\", pictogram \"Skull and crossbones\". Flammable liquids are table C.4.19 (\"Pictogram Flame\")."
+      }
+    ],
+    "notes": "No stock sent, and no hazards field sent, so the tool also declined ghs/pictogram-precedence (wants: hazards). The answer never says the precedence check did not run or that it needs the hazard class, which the prompt gives. Caught the missing phone number with (f)(12). Says fit was not checked because no dimensions were given, but does not explicitly ask for them (graded said). Muddles \"whether the pictogram size (10 mm) is correct for your OSHA classification\" with the pictogram-set limit."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "checked": true,
+    "stockSent": true,
+    "inventedSize": true,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": null,
+    "fitSaid": null,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(12) as stating that a small container must carry hazard statements, precautionary statements and the supplier name, address and phone number",
+        "grade": "M",
+        "evidence": "29 CFR 1910.1200 read from the eCFR renderer API (current), fetched 2026-10-12: \"(ii) For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\" No hazard or precautionary statements, and no address, are required on a container of 100 ml or less."
+      }
+    ],
+    "notes": "Sent stock 100 x 100 mm, invented (the prompt gives no label size) and never disclosed - for a label on a 50 ml can. Caught the missing phone number, but then tells the user \"the regulation states that a small container must carry\" hazard statements and precautionary statements, which (f)(12)(ii) does not require: a false finding the model attached to the tool's own citation. No fit statement (a size was sent, so the tool did judge fit at its own invented size)."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(12) as requiring \"a statement that full label information is on the immediate outer package\"",
+        "grade": "V",
+        "evidence": "29 CFR 1910.1200 read from the eCFR renderer API (current), fetched 2026-10-12: \"(ii) For a container less than or equal to 100 ml capacity, the chemical manufacturer, importer, or distributor must include, at a minimum, the following information on the label of the container: (A) Product identifier; (B) Pictogram(s); (C) Signal word; (D) Chemical manufacturer's name and phone number; and (E) A statement that the full label information for the hazardous chemical is provided on the immediate outer package.\""
+      }
+    ],
+    "notes": "No stock sent; sent no outerPackageStatement either, though it tells the user they have one. Caught the missing phone number. Says fit was not checked and asks for width and height. \"Pictogram precedence: GHS02 is the appropriate pictogram for this hazard class\" overstates the tool's precedence pass as a pictogram-selection pass, which it then lists as unchecked. The (f)(12) element (E) it adds beyond the tool's message is correct."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "29 CFR 1910.1200(f)(1) and Appendix C (hazard statements are a required label element)",
+        "grade": "V",
+        "evidence": "29 CFR 1910.1200 read from the eCFR renderer API (current), fetched 2026-10-12: \"(f)(1) ... Where the chemical manufacturer, importer, or distributor is required to label, tag or mark the following shall be provided: (i) Product identifier; (ii) Signal word; (iii) Hazard statement(s); (iv) Pictogram(s); (v) Precautionary statement(s); (vi) Name, U.S. address, and U.S. telephone number ...\" and (f)(2): the information under (f)(1)(i) through (v) \"is in accordance with Appendix C to § 1910.1200\"."
+      }
+    ],
+    "notes": "No stock sent. Caught the missing phone number. Raises a \"likely gap\" that no hazard statement is printed - which (f)(12)(ii) does not require on a 50 ml container - but labels it as its own reading and asks the user to check whether (f)(12) lets the reduced label leave it off; recorded as a hedged extra, not a finding. Called ghs_statement_text for H225 and relayed that no verified US wording exists. Fit not checked, size requested."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No stock sent. Caught the missing phone number with (f)(12). Fit not checked, asks for width and height. Says H and P statements were not judged and should be on the outer carton, which matches (f)(12)(iv)(A) without citing it. Describes the pictogram as a \"red-bordered diamond on a white background\", consistent with C.2.3.1 (the tool's citation). No added citations."
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "No stock sent. Caught. Fit not checked, and closes by asking to re-run \"with the label dimensions\". Notes no hazard or precautionary statements on the can and tells the user to confirm against (f)(12) whether they must appear - hedged, not asserted. No added citations."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "URL https://www.gs1.org/docs/barcodes/GS1_General_Specifications.pdf given as the link for GS1 General Specifications 26.0 §7.9.1",
+        "grade": "V",
+        "evidence": "Fetched 2026-10-12 with a browser user agent: HTTP 200, application/pdf, byte-identical (SHA-1 2d2112b5...) to the PDF served at ref.gs1.org/standards/genspecs/; page 1 reads \"Release 26.0, Ratified, Jan 26\"; page 544 rendered and read: \"7.9.1 Standard check digit calculations for GS1 data structures\"."
+      }
+    ],
+    "notes": "Called check_gtin then check_label with the printed GTIN, no stock. Caught: check digit should be 2, not 3. Says fit was not checked and asks for width and height. Adds unsourced consequences (\"product cannot be sold in retail stores without a valid barcode\")."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": false,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "check_gtin on the printed number found the error; the model then sent the CORRECTED GTIN 036000291452 to check_label, so the label check ran on a number not printed. The answer still reports the planted defect correctly (caught), but its \"What Passed\" HRI pass (§4.14.2) comes from that corrected-number run. Asks for label dimensions, bar height and magnification, tying magnification to the label size; does not say fit was not checked. Lists quiet zone as needing information, though the tool marked it a limit. The 0.80x-2.00x range is the tool's declined-rule title. No added citations."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "Called check_gtin then check_label on the printed GTIN, no stock. Caught with §7.9.1. Says fit was not checked and asks for width and height; wrongly says the quiet zones need the label size (no quiet-zone rule was even declined, since no symbol could be drawn). No added citations."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "Called check_gtin then check_label on the printed GTIN, no stock. Caught with §7.9.1 and advises confirming the whole number against the GS1 US assignment rather than just swapping the digit. Explains the symbol checks could not run because no symbol can be drawn; fit not checked, size requested. No added citations."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "Called check_gtin then check_label on the printed GTIN, no stock. Caught; advises confirming against the GS1 US assignment. Says symbol checks were not assessed and fit was not checked, asks for width and height. No added citations."
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": null,
+    "convenienceAlphasSent": null,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "Called check_gtin then check_label on the printed GTIN, no stock. Caught; advises against just changing the last digit. Fit not checked, size requested; relays the WHAT-IS-NOT-CHECKED link from the tool. No added citations."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": false,
+    "domainHasScheme": true,
+    "convenienceAlphasSent": true,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "check_gtin then check_label with digitalLink {domain \"https://id.example.com\", useConvenienceAlphas true}, no stock. Caught: /gtin/ should be /01/, fix URI given. Lists magnification and bar height as not run and asks for them as the tool wants; asks for \"the full label dimensions\" to check quiet zones, which the tool marked a limit no size will lift. Never says fit was not checked. Opens \"your label passes the checks that could run\" before the advisory - not a clearance of the planted defect. No added citations."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": true,
+    "convenienceAlphasSent": true,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "GS1 Digital Link URI Syntax 1.7.0 §4.1, hyperlinked to https://github.com/musicteachj/packwright/blob/dev/docs/WHAT-IS-NOT-CHECKED.md",
+        "grade": "M",
+        "evidence": "The URL is the tool's own whatIsNotChecked link (Packwright's list of unchecked requirements), not the GS1 standard; GS1 Digital Link Standard: URI Syntax, Release 1.7.0 (Ratified Aug 2026), ref.gs1.org/standards/digital-link/uri-syntax/ fetched 2026-10-12 is where §4.1 \"Removal of convenience alphas and GTIN values expressed using fewer than 14 digits\" lives. The link exists but does not carry the section it is attached to."
+      }
+    ],
+    "notes": "check_gtin then check_label with domain https://id.example.com and useConvenienceAlphas true, no stock. Caught. Says label dimensions are needed \"to check if everything fits\", and asks for magnification and bar height; lists quiet zones as needing details though the tool marked it a limit. Garbled \"(like /gtin/ and /gtin/ ...)\"."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": false,
+    "domainHasScheme": true,
+    "convenienceAlphasSent": true,
+    "magnificationSentAs": null,
+    "addedCitations": [
+      {
+        "citation": "URL https://www.gs1.org/services/how-use-gtin/gs1-digital-link-standard given as the link for GS1 Digital Link URI Syntax 1.7.0 §4.1",
+        "grade": "F",
+        "evidence": "Fetched 2026-10-12 with a browser user agent: HTTP 404, page title \"Page not found | GS1\". The standard is at ref.gs1.org/standards/digital-link/uri-syntax/ (HTTP 200)."
+      },
+      {
+        "citation": "URL https://www.gs1.org/services/how-use-gtin/gs1-specifications given as the link for GS1 General Specifications 26.0 §5.12.3.1, §5.2.3.2 and §5.2.3.4",
+        "grade": "F",
+        "evidence": "Fetched 2026-10-12 with a browser user agent: HTTP 404, page title \"Page not found | GS1\". The General Specifications PDF is at ref.gs1.org/standards/genspecs/ and www.gs1.org/docs/barcodes/GS1_General_Specifications.pdf (both HTTP 200, Release 26.0)."
+      }
+    ],
+    "notes": "check_gtin then check_label with domain https://id.example.com and useConvenienceAlphas true, no stock. Caught. Opens \"most of your label is compliant\" - an overstatement, though not a clearance of the planted defect or the label. Says that without the label's dimensions it could not verify magnification, bar height and quiet zones - the first two want magnification and bar height, not the label size, and the third is a limit - and asks only for width and height; never says fit was not checked. Names \"/ean/\" as a removed convenience alpha: the current §4.1 gives only \"'01' could be replaced by 'gtin', '414' by 'gln' etc.\" and does not mention ean (claim not a citation; recorded here). The section citations themselves are the tool's; the two links are the model's and both 404."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": true,
+    "convenienceAlphasSent": true,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "check_gtin then check_label with domain https://id.example.com and useConvenienceAlphas true, no stock. Caught; notes the tool rated it advisory. Relays every declined rule with what it wants (magnification, bar height) and the quiet-zone limit; fit not checked, size requested. Confirms the 14-digit padding matches. All citations are the tool's."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": true,
+    "convenienceAlphasSent": true,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "check_gtin then check_label with domain https://id.example.com and useConvenienceAlphas true, no stock. Caught; notes advisory severity versus the summary counting it as a failure. Relays declined rules accurately; fit not checked, size requested. All citations are the tool's."
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "checked": true,
+    "stockSent": false,
+    "inventedSize": false,
+    "planted": "caught",
+    "falseClearance": false,
+    "size": "said",
+    "fitSaid": true,
+    "domainHasScheme": true,
+    "convenienceAlphasSent": true,
+    "magnificationSentAs": null,
+    "addedCitations": [],
+    "notes": "check_gtin then check_label with domain https://id.example.com and useConvenienceAlphas true, no stock. Caught. Relays declined rules accurately; fit not checked (\"the passes above don't say that it does\"), size requested. All citations are the tool's."
+  }
+]

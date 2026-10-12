@@ -73,6 +73,25 @@ recorded beside it (2026-10-11). Unknown routes answered 200 was fixed on 2026-1
 
 ---
 
+## From the re-checks of 2026-10-12
+
+**CLP gives P103 two English texts, and Packwright prints the older — a decision for James.** Annex IV Part 1,
+Table 6.1 reads "P103 Read carefully and follow all instructions." since Commission Regulation (EU) 2019/521 replaced
+that entry; Part 2's English wording, which the same act did not amend, still reads "Read label before use."
+`ghs/statements.ts` takes its P-statement texts from Part 2, by design (its module note), so an EU consumer label that
+needs P103 is printed with the Part 2 wording. Both texts are the regulation's own, so neither is a paraphrase; which
+one a label should carry is the question, and it is the kind this project does not settle by guessing. Read on
+2026-10-12 from the consolidated text in force (02008R1272-20260701) and from 2019/521. Found by a grader of the
+second re-check (`docs/experiments/2026-10-12-mcp-recheck-sizeless/`). **Worth doing with it:** compare every
+P-statement's Part 1 text with its Part 2 English wording in the text in force, since the engine reads Part 2 —
+P201 and P202, amended by the same act, were checked and agree; the rest were not.
+
+**A model can still invent a label size.** With the size optional, Haiku 4.5 still made one up in 3 of 21 answers in
+the second re-check, twice without telling the user, and in one the tool, given it, reported the label below CLP's
+minimum about a size nobody stated. No check can tell an invented size from a stated one. The tool description
+already says to leave the size out rather than guess; the server's `instructions`, which a client sends as the system
+prompt, could say it too, and the next evaluation would show whether it helps.
+
 ## From the MCP evaluation, 2026-10-10
 
 Found by grading 144 answers in `docs/experiments/2026-10-10-mcp-with-and-without/`, and each confirmed by the lead

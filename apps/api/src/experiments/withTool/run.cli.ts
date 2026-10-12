@@ -17,6 +17,12 @@
  *
  *   --recheck-describe, --recheck-pilot, --recheck  as above, for that record
  *
+ * And its follow-up after stage 26 made the size optional
+ * (`docs/experiments/2026-10-12-mcp-recheck-sizeless/`): the seven cases with no stated
+ * size only, under a $3 cap.
+ *
+ *   --sizeless-describe, --sizeless
+ *
  * **Both halves run afresh** (`docs/plans/2026-10-10-mcp.md`, stage 19). Since
  * 2026-10-09 the engine prints "Includes 0g Added Sugars", so today's food prompts
  * differ from the ones the "without" experiment sent, and pairing new "with"
@@ -97,6 +103,8 @@ interface Study {
    * compares answers to the same labels; a prompt that drifted would compare two.
    */
   samePromptsAs?: string
+  /** The cases it runs, where not all of them. `cases.md` still records every prompt. */
+  caseIds?: readonly string[]
 }
 
 /** Stage 19's evaluation of 2026-10-10, under the plan's cap. */
@@ -129,6 +137,27 @@ const RECHECK: Study = {
   samePromptsAs: STAGE_19.out,
 }
 
+/**
+ * The second re-check of 2026-10-12, after stage 26 made the size optional: only the
+ * seven cases whose prompts give no size, which the first re-check found asking for
+ * one and checking nothing. Under the $3 James approved for it.
+ */
+const SIZELESS: Study = {
+  ...RECHECK,
+  out: join(EXPERIMENTS, '2026-10-12-mcp-recheck-sizeless'),
+  capUsd: 3,
+  describeMode: '--sizeless-describe',
+  caseIds: [
+    '01-clp-pictogram-precedence',
+    '02-clp-both-signal-words',
+    '04-osha-small-container-too-large',
+    '05-osha-small-container-no-phone',
+    '06-gs1-check-digit',
+    '07-gs1-digital-link-alphas',
+    'C1-clp-control',
+  ],
+}
+
 const MODES = {
   '--describe': { study: STAGE_19, run: 'describe' },
   '--pilot': { study: STAGE_19, run: 'pilot' },
@@ -136,6 +165,8 @@ const MODES = {
   '--recheck-describe': { study: RECHECK, run: 'describe' },
   '--recheck-pilot': { study: RECHECK, run: 'pilot' },
   '--recheck': { study: RECHECK, run: 'full' },
+  '--sizeless-describe': { study: SIZELESS, run: 'describe' },
+  '--sizeless': { study: SIZELESS, run: 'full' },
 } as const
 
 // Own keys only: `toString` is on every object, and fell through to a billed run of
@@ -224,6 +255,13 @@ async function main(): Promise<void> {
   }
   const mode = chosen.run
 
+  // A study naming a case that does not exist would skip it in silence, and its record
+  // would answer fewer cases than its README says. Found by review.
+  const unknown = (STUDY.caseIds ?? []).filter((id) => !CASES.some((item) => item.id === id))
+  if (unknown.length > 0) {
+    console.error(`No such case: ${unknown.join(', ')}. Nothing was written or sent.`)
+    process.exit(1)
+  }
   const prompts = describeCases(
     OUT,
     new Set(readRecorded().map((record) => record.caseId)),
@@ -260,7 +298,12 @@ async function main(): Promise<void> {
 
   const pending: { item: ExperimentCase; model: ModelSpec; run: number; arm: Arm }[] = []
   const runs = mode === 'pilot' ? [1] : Array.from({ length: RUNS }, (_, i) => i + 1)
-  const cases = mode === 'pilot' ? CASES.filter((c) => c.id.startsWith('08-')) : CASES
+  const cases =
+    mode === 'pilot'
+      ? CASES.filter((c) => c.id.startsWith('08-'))
+      : STUDY.caseIds === undefined
+        ? CASES
+        : CASES.filter((c) => STUDY.caseIds!.includes(c.id))
   for (const run of runs)
     for (const item of cases)
       for (const model of MODELS)

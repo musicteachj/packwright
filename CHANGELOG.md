@@ -8,6 +8,16 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **A second re-check, after stage 26** (`docs/experiments/2026-10-12-mcp-recheck-sizeless/`): the seven cases whose
+  prompts give no label size, the "with tools" half, 42 conversations for $1.73. Models now check first and ask
+  second: 41 of 42 answers ran `check_label`, against 1 of 42 before; Sonnet caught all 18 planted defects (7 before)
+  and Haiku 17 (none before), with no false clearance. Haiku still invented a size in 3 answers. A grader found CLP
+  giving P103 two English texts — Annex IV Part 1 as 2019/521 replaced it, and Part 2, which Packwright prints — now a
+  decision in `docs/BACKLOG.md`. The harness gained `--sizeless-describe` and `--sizeless`, which run a subset of the
+  cases under their own record and a $3 cap.
+
 ### Fixed
 
 - **`check_label` judges a label it was not told the size of, and waits only where the size matters.** Stage 20 made
