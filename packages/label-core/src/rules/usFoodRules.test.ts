@@ -121,7 +121,9 @@ describe('the conformant control', () => {
     // it and there is no entitlement to judge. A pass there would be a check
     // that clears every label carrying the default. So does the protein
     // percentage rule on a food for adults, which (c)(7)(i) permits to omit it.
-    expect(passes).toHaveLength(US_FOOD_RULES.length - 4)
+    // Plus one: the %DV rule passes its DRV and its vitamin percentages separately, each
+    // under the paragraph that rounds it.
+    expect(passes).toHaveLength(US_FOOD_RULES.length - 4 + 1)
     expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_FORMAT_MET')
   })
 
@@ -2408,6 +2410,26 @@ describe('a second column may state its own percentages', () => {
     ).toContain('FDA_NUTRITION_PERCENT_DV_MET')
   })
 
+  it('cites (c)(8)(iii) for vitamins cleared in the second column alone', () => {
+    // The first column states only percentages with a DRV, the second only calcium's:
+    // the vitamin pass comes from the second column, and must still cite its paragraph.
+    const {
+      'vitamin-d': _d,
+      calcium: _c,
+      iron: _i,
+      potassium: _p,
+      ...drvOnly
+    } = panel.declaredPercentDv!
+    const passes = findingsFor(
+      dual({ secondPercentDv: { calcium: 50 } }, { declaredPercentDv: drvOnly }),
+      stock,
+    ).filter((f) => f.code === 'FDA_NUTRITION_PERCENT_DV_MET')
+    expect(passes.map((f) => f.citation.reference).sort()).toEqual([
+      '21 CFR 101.9(c)(8)(iii)',
+      '21 CFR 101.9(d)(7)(ii)',
+    ])
+  })
+
   it('lets a food for children 1 through 3 comply on a dual-column panel', () => {
     // The gap this field closes: (c)(7)(i) requires the protein percentage, the second
     // column could not state one, and the engine derives none for protein.
@@ -3240,12 +3262,14 @@ describe('findings from the stage 5 review', () => {
     // A declared percentage with no amount behind it is neither reported nor
     // checked, and the pass counted it anyway.
     const { calcium: _drop, ...amounts } = panel.amounts
-    const pass = withPanel({
+    // Counted across the two passes, one per paragraph: seven with a DRV, and three of
+    // the four vitamins and minerals, calcium having no amount.
+    const passes = withPanel({
       amounts,
       declaredAmounts: { ...panel.declaredAmounts },
       declaredPercentDv: { ...panel.declaredPercentDv },
-    }).find((f) => f.code === 'FDA_NUTRITION_PERCENT_DV_MET')
-    expect(pass!.message).toContain('10 percentages')
+    }).filter((f) => f.code === 'FDA_NUTRITION_PERCENT_DV_MET')
+    expect(passes.map((f) => f.message.match(/^\d+/)![0])).toEqual(['7', '3'])
   })
 
   it('does not report the heading of a panel scaled in proportion', () => {
@@ -4700,5 +4724,38 @@ describe('the second column, reported in the right direction', () => {
     const match = incompleteFinding(data)
     expect(match, 'a row declared in one column only must be reported').toBeDefined()
     expect(match!.message).toMatch(/first column only — Iron/)
+  })
+})
+
+describe('the percent Daily Value pass cites the paragraph that rounds what it cleared', () => {
+  // (d)(7)(ii) rounds a nutrient with a DRV to the whole percent; (c)(8)(iii) rounds
+  // vitamins and minerals in 2, 5 and 10 percent steps. The pass cited only the first,
+  // over a column holding vitamin D, calcium, iron and potassium. Found by grading the
+  // MCP evaluation of 2026-10-10; both paragraphs read from the eCFR on 2026-10-12.
+  const passesFor = (declaredPercentDv: Record<string, number>) => {
+    const data: UsFoodLabelData = {
+      ...US_FOOD_CONFORMANT.data,
+      nutritionFacts: { ...US_FOOD_CONFORMANT.data.nutritionFacts!, declaredPercentDv },
+    }
+    return findingsFor(data, US_FOOD_CONFORMANT.stock)
+      .filter((f) => f.code === 'FDA_NUTRITION_PERCENT_DV_MET')
+      .map((f) => f.citation.reference)
+      .sort()
+  }
+  const all = US_FOOD_CONFORMANT.data.nutritionFacts!.declaredPercentDv!
+
+  it('passes each kind under its own paragraph where the column holds both', () => {
+    expect(passesFor({ ...all })).toEqual(['21 CFR 101.9(c)(8)(iii)', '21 CFR 101.9(d)(7)(ii)'])
+  })
+
+  it('cites (d)(7)(ii) alone where only nutrients with a DRV are given', () => {
+    const { 'vitamin-d': _d, calcium: _c, iron: _i, potassium: _p, ...drvOnly } = all
+    expect(passesFor(drvOnly)).toEqual(['21 CFR 101.9(d)(7)(ii)'])
+  })
+
+  it('cites (c)(8)(iii) alone where only vitamins and minerals are given', () => {
+    const { 'vitamin-d': d, calcium: c, iron: i, potassium: p } = all
+    const vitaminsOnly = { 'vitamin-d': d!, calcium: c!, iron: i!, potassium: p! }
+    expect(passesFor(vitaminsOnly)).toEqual(['21 CFR 101.9(c)(8)(iii)'])
   })
 })

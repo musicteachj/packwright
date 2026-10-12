@@ -164,8 +164,10 @@ describe('a rule never certifies what the engine did not print', () => {
       'withholding must not cost a clean label any of its passes',
     ).toBe(true)
     // 19 since the ingredient order became a rule of its own: the list rule now passes the
-    // statement itself (`FDA_INGREDIENT_STATEMENT_MET`) beside the order rule's pass.
-    expect(findings).toHaveLength(19)
+    // statement itself (`FDA_INGREDIENT_STATEMENT_MET`) beside the order rule's pass. 20
+    // since the %DV rule passes its DRV and its vitamin percentages separately, each under
+    // the paragraph that rounds it (stage 24).
+    expect(findings).toHaveLength(20)
   })
 
   it('keeps an entitlement that rests on the document, not on the artwork', () => {

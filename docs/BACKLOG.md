@@ -144,13 +144,22 @@ label's real margin could then fit and pass on geometry the label may not have. 
 does, the answer now says the margin was assumed and asks for the real one (`assumedMarginNotice`), rather than
 reading "A 6 mm margin leaves no panel" about a margin the user never gave. Found by `/code-review high` on #84.
 
-**Smaller, from the same grading:** the %DV pass (`FDA_NUTRITION_PERCENT_DV_MET`) cites only 101.9(d)(7)(ii), where
-the four vitamin and mineral percentages are rounded under (c)(8)(iii) — the engine's own source comment names both;
-the GS1 bar-height, quiet-zone and magnification rules cite figures of GenSpecs 25.0 that are numbered differently in
-26.0 (correct for the release cited, but worth moving with it); and the Digital Link field `domain` described nothing,
-so every model's first Digital Link carried a host name with no scheme, which the rule rightly refuses — described
-since 2026-10-11, with `capacityL`, `containsStatement`, `pictogramSideMm`, `smallContainerLabelling` and the
-margin; whether that saves the calls is for the next evaluation to show.
+**Whether a vitamin's %DV may be computed from the actual amount is open.** `us-food/nutrition-percent-dv` accepts a
+printed percentage computed from either the declared amount or the actual one before rounding, for every nutrient.
+That permission is 101.9(d)(7)(ii)'s — "dividing either the amount declared on the label for each nutrient or the
+actual amount of each nutrient (i.e., before rounding) by the DRV" — and it is scoped to nutrients "for which a DRV has
+been established". For vitamins and minerals, (c)(8)(ii) says only "the amount per serving … calculated as a percent
+of the RDI", naming neither basis (both read from the eCFR on 2026-10-12). Accepting both is the reading that cannot
+report a label for the basis it chose; if FDA requires one, the rule is clearing figures the other basis produces. FDA's
+"Questions and Answers Related to the Compliance Date, Added Sugars, and Declaration of Quantitative Amounts of
+Vitamins and Minerals" guidance (2018, revised 2019) is the likely place it is answered — guidance, not regulation,
+so at most it would make the rule's message say which basis FDA expects. Found by `/code-review high` on #88.
+
+**Smaller, from the same grading:** the Digital Link field `domain` described nothing, so every model's first Digital
+Link carried a host name with no scheme, which the rule rightly refuses — described since 2026-10-11, with `capacityL`,
+`containsStatement`, `pictogramSideMm`, `smallContainerLabelling` and the margin; whether that saves the calls is for
+the next evaluation to show. The two citation findings beside it — the %DV pass citing only 101.9(d)(7)(ii), and the
+GS1 rules citing 25.0's figure numbers — were fixed on 2026-10-12 (`CHANGELOG.md`).
 
 ## From the MCP server, 2026-10-10
 
@@ -327,6 +336,12 @@ document, not a correctness fix.
 ## Saved labels
 
 ## The API's tests
+
+**`apps/api/src/labels/routes.test.ts` fails now and then under the full suite's load, and never alone.** Seen
+twice on 2026-10-11 and 2026-10-12 — "takes an assortment with its statement, and prints it" once, "accepts every
+id it does define" once — each passing in three isolated runs and on the next full run. Both export a PDF, so a
+timeout under contention is the likely cause; not yet confirmed from the error, which is worth capturing the next time
+it happens rather than re-running past it.
 
 **`loadEnv` is tested twice, in two files.** `apps/api/src/env.test.ts` and a `describe('loadEnv')` block
 inside `apps/api/src/app.test.ts` cover overlapping ground — defaults, port coercion, a rejected `NODE_ENV`,

@@ -72,8 +72,8 @@ export interface UpcALabelData {
    */
   gtin: string
   /**
-   * Symbol size as a multiple of the nominal X-dimension. GenSpec figure
-   * 5.12.3.1-1 permits 0.8 to 2.0 for the EAN/UPC family — a value outside that
+   * Symbol size as a multiple of the nominal X-dimension. GenSpec 26.0 table
+   * 5-44 permits 0.8 to 2.0 for the EAN/UPC family — a value outside that
    * range is drawn as asked and reported by the rules, not refused here.
    */
   magnification?: number

@@ -1,7 +1,7 @@
 /**
  * A symbol's bars must be at least the specification's height for its size.
  *
- * The failure this catches is quiet in every sense. GenSpec figure 5.12.3.1-1
+ * The failure this catches is quiet in every sense. GenSpec 26.0 table 5-44
  * tabulates a minimum symbol height against each X-dimension, and that minimum
  * scales: 22.85 mm at nominal, 45.70 mm at 2x. A symbol drawn at 2x with the
  * nominal height has bars of the right width and quiet zones of the right size,
@@ -18,9 +18,13 @@ import { verdictWaitsOnADescribedLabel } from '../described'
 export const GS1_BAR_HEIGHT_BELOW_MINIMUM = 'GS1_BAR_HEIGHT_BELOW_MINIMUM'
 export const GS1_BAR_HEIGHT_SUFFICIENT = 'GS1_BAR_HEIGHT_SUFFICIENT'
 
+// GS1 General Specifications Release 26.0 (Ratified Jan 26), read from the rendered
+// pages at https://ref.gs1.org/standards/genspecs/ on 2026-10-12. 25.0's "figure
+// 5.x-1" identifiers do not exist in 26.0, which numbers the tables; the figures
+// themselves are unchanged (`geometry/symbol.ts`).
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 General Specifications 25.0, §5.2.3.2 and figure 5.12.3.1-1',
+  reference: 'GS1 General Specifications 26.0 §5.2.3.2 and table 5-44',
   title: 'EAN/UPC symbol height at nominal size, and the minimum by X-dimension',
 }
 
@@ -44,7 +48,7 @@ const judgedAsDrawn: Gs1RetailRule = {
 
       if (symbol.barHeightMm >= requiredMm - MEASUREMENT_TOLERANCE_MM) {
         findings.push(
-          // §5.2.3.2 and figure 5.12.3.1-1 set the height of the printed bars: the artwork.
+          // §5.2.3.2 and table 5-44 set the height of the printed bars: the artwork.
           passedOnArtwork(
             barHeightRule,
             GS1_BAR_HEIGHT_SUFFICIENT,

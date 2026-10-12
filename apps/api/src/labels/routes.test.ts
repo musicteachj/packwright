@@ -33,7 +33,7 @@ describe('POST /api/labels/upc-a/export', () => {
   })
 
   it('exports a non-compliant label rather than refusing it', async () => {
-    // 2.5x is outside the 0.8–2.0 GenSpec figure 5.12.3.1-1 permits, and a 2x
+    // 2.5x is outside the 0.8–2.0 GenSpec 26.0 table 5-44 permits, and a 2x
     // symbol does not fit 40 x 30 mm stock. Both are findings the client has
     // already shown the user; neither is a malformed request. Refusing here
     // would mean the export path disagreed with the preview about what a label

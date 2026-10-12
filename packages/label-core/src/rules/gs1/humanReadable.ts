@@ -26,10 +26,13 @@ import { verdictWaitsOnADescribedLabel } from '../described'
 export const GS1_HRI_MISSING = 'GS1_HRI_MISSING'
 export const GS1_HRI_PRESENT = 'GS1_HRI_PRESENT'
 
+// GS1 General Specifications Release 26.0, §4.14.2, read from the rendered page on
+// 2026-10-12: "For EAN/UPC barcodes the HRI SHALL show the GTIN-8, GTIN-12, or GTIN-13
+// and SHALL be placed below the barcode." The citation named no release until then.
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 General Specifications §4.14.2',
-  title: 'Human readable interpretation for EAN/UPC barcodes',
+  reference: 'GS1 General Specifications 26.0 §4.14.2',
+  title: 'General retail consumer trade item human readable text rules',
 }
 
 const judgedAsDrawn: Gs1RetailRule = {

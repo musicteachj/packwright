@@ -11,7 +11,7 @@
  *
  * 1. At `scale: 1` one bwip-js unit is exactly one module. A UPC-A bar pattern
  *    comes back spanning exactly 95 units, matching the 95 modules implied by
- *    GenSpec figure 5.2.3.5-1. So `mm = units x xDimensionMm`, and the geometry
+ *    GenSpec 26.0 table 5-12. So `mm = units x xDimensionMm`, and the geometry
  *    traces to `EAN_UPC_NOMINAL_X_DIMENSION_MM` rather than a library default.
  *
  * 2. bwip-js's `height` option is in millimetres but converts at 72 units per

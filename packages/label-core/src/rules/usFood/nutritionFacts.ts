@@ -240,6 +240,15 @@ const VITAMIN_PERCENT: Citation = {
   title: 'Percentages for vitamins and minerals, in 2, 5 and 10 percent increments',
 }
 
+/**
+ * The paragraph that rounds a nutrient's percentage: (c)(8)(iii) for a vitamin or
+ * mineral, which has an RDI, and (d)(7)(ii) for the rest. One mapping for the
+ * violation and the pass, so the two cannot cite different paragraphs for one nutrient.
+ */
+function citationFor(entry: { dailyValue?: { kind: string } }): Citation {
+  return entry.dailyValue!.kind === 'rdi' ? VITAMIN_PERCENT : PERCENT
+}
+
 /** The panel, where the label carries one worth measuring. */
 function panelOf(data: UsFoodContext['data']): UsFoodNutritionFacts | undefined {
   return data.nutritionFacts
@@ -963,6 +972,14 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
       // 101.9(d)(7)(ii) permits **either** basis — the declared amount or the
       // actual one before rounding — and they often differ. Accepting only one
       // would report a violation against a label that took the other.
+      //
+      // **That permission is scoped to nutrients "for which a DRV has been
+      // established"**, and it is applied here to vitamins and minerals too. For those,
+      // (c)(8)(ii) says only "the amount per serving … calculated as a percent of the
+      // RDI", naming neither basis — read from the eCFR on 2026-10-12. Accepting both
+      // is the reading that cannot report a label for the basis it chose; whether FDA
+      // allows the actual amount for an RDI nutrient is open (`docs/BACKLOG.md`).
+      // Raised by `/code-review high` on #88.
       const [fromDeclared, fromActual] = column.bases(entry.id)
       const permitted = [
         fromDeclared === undefined
@@ -1019,21 +1036,39 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
           ...(drawnIds.has(nutritionRowElementId(entry.id))
             ? { elementId: nutritionRowElementId(entry.id) }
             : {}),
-          citation: entry.dailyValue!.kind === 'rdi' ? VITAMIN_PERCENT : PERCENT,
+          citation: citationFor(entry),
         }),
       )
     }
 
-    return [
-      // (d)(7)(ii) governs the percentages the panel shows: the artwork.
+    // One pass per paragraph that rounds what was cleared: (d)(7)(ii) for nutrients
+    // with a DRV, (c)(8)(iii) for vitamins and minerals. It cited only the first while
+    // clearing vitamin D, calcium, iron and potassium — found by grading the MCP
+    // evaluation of 2026-10-10. Two passes rather than one under a combined citation,
+    // which `/rules` and `list_rules` counted as a third provision (`/code-review
+    // high` on #88). Both paragraphs read from the eCFR on 2026-10-12.
+    const groups = [
+      {
+        citation: PERCENT,
+        cleared: measured.filter(({ entry }) => citationFor(entry) === PERCENT),
+      },
+      {
+        citation: VITAMIN_PERCENT,
+        cleared: measured.filter(({ entry }) => citationFor(entry) === VITAMIN_PERCENT),
+      },
+    ].filter(({ cleared }) => cleared.length > 0)
+    return groups.map(({ citation, cleared }) =>
+      // (d)(7)(ii) and (c)(8)(iii) govern the percentages the panel shows: the artwork.
       passedOnArtwork(
         usFoodNutritionPercentDvRule,
         FDA_NUTRITION_PERCENT_DV_MET,
-        `${measured.length} percentage${measured.length === 1 ? '' : 's'} match the Daily Values, ` +
-          'rounded as each nutrient’s own paragraph requires.',
+        `${cleared.length} ${citation === VITAMIN_PERCENT ? 'vitamin and mineral ' : ''}` +
+          `percentage${cleared.length === 1 ? '' : 's'} match the Daily Values, rounded as ` +
+          `${citation.reference} requires.`,
         US_FOOD_ELEMENTS.nutritionPanel,
+        citation,
       ),
-    ]
+    )
   },
 }
 

@@ -90,7 +90,7 @@ const gtin = GTIN
         <p class="text-chrome-400 text-xs">
           <span class="text-chrome-200 font-semibold">GS1 retail</span> — check digit, 80–200%
           magnification, quiet zones.
-          <span class="text-chrome-400">GS1 General Specifications §5.2</span>
+          <span class="text-chrome-400">GS1 General Specifications 26.0 §5.2</span>
         </p>
         <LabelCanvas :layout="layout" :title="barcodeTitle" />
       </div>
@@ -139,22 +139,28 @@ const gtin = GTIN
         <div class="border-chrome-700 flex flex-col gap-1 border-l pl-4">
           <dt class="text-chrome-400">X-dimension at nominal size</dt>
           <dd class="numeric text-chrome-100">0.330 mm</dd>
-          <dd class="text-chrome-400 text-xs">GS1 General Specifications §5.2.3.1</dd>
+          <dd class="text-chrome-400 text-xs">GS1 General Specifications 26.0 §5.2.3.1</dd>
         </div>
         <div class="border-chrome-700 flex flex-col gap-1 border-l pl-4">
           <dt class="text-chrome-400">UPC-A quiet zone</dt>
           <dd class="numeric text-chrome-100">9X either side</dd>
-          <dd class="text-chrome-400 text-xs">Figure 5.2.3.4-1</dd>
+          <dd class="text-chrome-400 text-xs">
+            GS1 General Specifications 26.0 §5.2.3.4, table 5-11
+          </dd>
         </div>
         <div class="border-chrome-700 flex flex-col gap-1 border-l pl-4">
           <dt class="text-chrome-400">Symbol length</dt>
           <dd class="numeric text-chrome-100">113 modules — 37.29 mm</dd>
-          <dd class="text-chrome-400 text-xs">Figure 5.2.3.5-1, quiet zones included</dd>
+          <dd class="text-chrome-400 text-xs">
+            GS1 General Specifications 26.0 §5.2.3.5, table 5-12, quiet zones included
+          </dd>
         </div>
         <div class="border-chrome-700 flex flex-col gap-1 border-l pl-4">
           <dt class="text-chrome-400">Bar height at nominal</dt>
           <dd class="numeric text-chrome-100">22.85 mm</dd>
-          <dd class="text-chrome-400 text-xs">§5.2.3.2, scaling with magnification</dd>
+          <dd class="text-chrome-400 text-xs">
+            GS1 General Specifications 26.0 §5.2.3.2 and table 5-44, scaling with magnification
+          </dd>
         </div>
       </dl>
     </section>
