@@ -18,7 +18,7 @@
  */
 
 import { labelingSurfaceFloor } from '../../geometry/pdp'
-import { formatIsPermitted } from '../../fda/nutritionFormats'
+import { SMALL_PACKAGE_ROUTE_REFERENCE, formatIsPermitted } from '../../fda/nutritionFormats'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnDocument, untitled } from '../finding'
@@ -135,9 +135,6 @@ const judgedAsDrawn: UsFoodRule = {
   },
 }
 
-/** The route a size can withdraw: the small-package displays of (j)(13)(ii)(A). */
-const SMALL_PACKAGE_ROUTE = '21 CFR 101.9(j)(13)(ii)(A)'
-
 /** The rule as drawn, waiting for the size on a label described without one — see `rules/described.ts`. */
 export const usFoodNutritionFormatRule: UsFoodRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
   // A format the principal display panel alone denies is denied whatever the label's
@@ -151,7 +148,8 @@ export const usFoodNutritionFormatRule: UsFoodRule = verdictWaitsOnADescribedLab
       .check(context)
       .some(
         (one) =>
-          one.code === FDA_NUTRITION_FORMAT_MET && one.citation.reference === SMALL_PACKAGE_ROUTE,
+          one.code === FDA_NUTRITION_FORMAT_MET &&
+          one.citation.reference === SMALL_PACKAGE_ROUTE_REFERENCE,
       )
       ? ['stock']
       : [],

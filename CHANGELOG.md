@@ -22,7 +22,10 @@ into a version only when there is a reason to.
   1.3, a US food label's reduced format through the small-package route, its small-package exemption, and a second
   column excused under (b)(12)(i)(A), on which the dual-column form and protein-percent checks wait too. A format
   any package may use, under (d)(11)(iii), is judged without the size. The judge refuses an unstated size on a label
-  it is to judge as drawn. The answer's `stockUsed` says plainly when no size was given. James's decision of
+  it is to judge as drawn, and draws a sizeless label edgeless itself whatever stock it is handed.
+  `uncheckable` says that fit was not checked; the protein-percent check reports a missing first-column percentage
+  without the size, only its second-column verdicts waiting; and the references that decide when a check waits are
+  shared with the code that cites them rather than copied. The last four found by `/code-review high` on #90. The answer's `stockUsed` says plainly when no size was given. James's decision of
   2026-10-12.
 
 ### Added

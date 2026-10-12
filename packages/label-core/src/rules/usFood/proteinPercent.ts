@@ -40,7 +40,7 @@ import {
   sizeDecidesTheDuty,
 } from './mandatoryColumns'
 import { smallestOf } from './printedText'
-import { SIZE_UNSTATED_REASON, verdictWaitsOnADescribedLabel } from '../described'
+import { SIZE_UNSTATED_REASON, someFindingsGoOnADescribedLabel } from '../described'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
 export const FDA_PROTEIN_PERCENT_MET = 'FDA_PROTEIN_PERCENT_MET'
@@ -291,12 +291,16 @@ const judgedAsDrawn: UsFoodRule = {
   },
 }
 
-/** The rule as drawn, waiting for the size where it decides the duty — see `sizeDecidesTheDuty`. */
-export const usFoodProteinPercentRule: UsFoodRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
-  // Its verdict on a second column the panel alone excuses rests on the unknown size: a
-  // bigger label could owe the column its own percentage. Raised by review; the cases
-  // tried fell silent rather than passing, and this keeps any that would not from
-  // clearing on a size nobody gave.
-  unstated: (context) => (sizeDecidesTheDuty(context) ? ['stock'] : []),
-  reason: () => SIZE_UNSTATED_REASON,
+/** The rule as drawn, its second-column verdicts waiting for the size where it decides the duty — see `sizeDecidesTheDuty`. */
+export const usFoodProteinPercentRule: UsFoodRule = someFindingsGoOnADescribedLabel(judgedAsDrawn, {
+  // What the duty decides goes: the second column's findings, cited under (e), and the
+  // pass, which would clear the second column too. The first column's (c)(7)(i)
+  // percentage owes nothing to the duty or the size, and stays reported — waiting the
+  // whole rule hid a missing first-column percentage that holds at any size. Found by
+  // `/code-review high` on #90.
+  goes: (one, context) =>
+    sizeDecidesTheDuty(context) &&
+    (one.severity === 'pass' || one.citation.reference !== CITATION.reference),
+  why: SIZE_UNSTATED_REASON,
+  wants: ['stock'],
 })

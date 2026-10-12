@@ -12,7 +12,7 @@
 
 import * as bwip from 'bwip-js/generic'
 import { describe, expect, it } from 'vitest'
-import { judgeLabel, type Judgement, type JudgeRequest } from '../judge/judge'
+import { FIT_NOT_CHECKED, judgeLabel, type Judgement, type JudgeRequest } from '../judge/judge'
 import { EDGELESS_MM } from '../schema/labelDocument'
 import type { LabelStock } from '../templates/stock'
 import type { UpcALabelData } from '../templates/upcA'
@@ -388,6 +388,38 @@ describe('a label described without its size', () => {
     expect(declinedBy(described, 'us-food/dual-column-required')?.wants).toEqual(['stock'])
     const sized = food(small, { widthMm: 100, heightMm: 100, marginMm: 6 }, 'described')
     expect(codes(sized)).toContain('FDA_PROTEIN_PERCENT_MISSING')
+
+    // The first column's percentage owes nothing to the size: missing, it is reported
+    // without one. Waiting the whole rule hid it. Found by `/code-review high` on #90.
+    const { protein: _protein, ...noFirstPercent } = small.nutritionFacts!.declaredPercentDv!
+    const firstMissing = sizeless({
+      ...small,
+      nutritionFacts: { ...small.nutritionFacts!, declaredPercentDv: noFirstPercent },
+    })
+    expect(
+      firstMissing.findings
+        .filter((f) => f.code === 'FDA_PROTEIN_PERCENT_MISSING')
+        .map((f) => f.citation.reference),
+    ).toEqual(['21 CFR 101.9(c)(7)(i)'])
+  })
+
+  it('says fit went unchecked, and lays out on no edge whatever stock it is handed', () => {
+    // A caller handing the judge a sizeless label on a small stock still gets no overrun:
+    // the judge draws it edgeless itself. Found by `/code-review high` on #90.
+    const onSmallStock = judged({
+      labelType: 'us-food',
+      data: US_FOOD_CONFORMANT.data,
+      stock: { widthMm: 40, heightMm: 40, marginMm: 2 },
+      subject: 'described',
+      sizeUnstated: true,
+    })
+    expect(onSmallStock.layout.omissions.filter((o) => /past the|runs off/.test(o.reason))).toEqual(
+      [],
+    )
+    expect(onSmallStock.uncheckable[0]).toEqual({
+      elementId: 'label',
+      reasons: [{ text: FIT_NOT_CHECKED }],
+    })
   })
 
   it('still asks what a second column counts, without the size', () => {

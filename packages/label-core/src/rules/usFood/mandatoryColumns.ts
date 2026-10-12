@@ -17,6 +17,7 @@
 
 import {
   DUAL_COLUMN_BASIS_REFERENCE,
+  SMALL_PACKAGE_EXEMPTION_REFERENCE,
   dualColumnDuty,
   smallPackageRouteApplies,
 } from '../../fda/nutritionFormats'
@@ -129,9 +130,7 @@ export const PROVISION_FOR = (basis: 'per-container' | 'per-unit'): string =>
  */
 export function sizeDecidesTheDuty({ data, stock, sizeUnstated }: UsFoodContext): boolean {
   return (
-    sizeUnstated === true && dualColumnDutyFor(data, stock).exemption === SMALL_PACKAGE_EXEMPTION
+    sizeUnstated === true &&
+    dualColumnDutyFor(data, stock).exemption === SMALL_PACKAGE_EXEMPTION_REFERENCE
   )
 }
-
-/** The exemption a label's size decides: (b)(12)(i)(A), for packages entitled to the small-package displays. */
-export const SMALL_PACKAGE_EXEMPTION = '21 CFR 101.9(b)(12)(i)(A)'

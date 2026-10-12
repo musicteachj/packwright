@@ -133,6 +133,14 @@ found 43 of 72 answers asking for a size and checking nothing. James chose to ju
 sizeless label is drawn edgeless and its rules see a stock of no area, so the size checks wait and nothing is assumed
 (`CHANGELOG.md`). Worth confirming in the next evaluation that models now check first and ask second.
 
+**A sizeless food label's drawn display and its rules' entitlement use two different floors.** The layout is drawn on
+the edgeless stock, so the engine picks the Nutrition Facts display from a floor of about 155,000 in², while the
+rules see a stock of no area and judge entitlement from the principal display panel alone. On a small tabular panel
+the drawing gets the (d)(11)(iii) minimums and a ten-metre-wide panel while the rules treat the package as entitled
+to the small-package route. Nothing judged today reads the difference: the type-size rule, the only one measuring
+display-specific geometry, stands down on a described label. Worth fixing before a rule reads the drawn display of a
+described label — by letting the engine take the panel-only floor too. Found by `/code-review high` on #90.
+
 **The evaluation harness's records each judge their own view.** The records of 2026-10-09 and 2026-10-10 judge the
 drawing, as they were graded; the re-check of 2026-10-12 (`--recheck` modes) records what `check_label` answers, by
 James's decision that day. A future evaluation should do as the re-check does.

@@ -41,6 +41,30 @@ import type { Finding, Severity } from '../types/index'
 import { uncheckableIn, type Uncheckable } from './uncheckable'
 
 /**
+ * The side of the stock a label of unstated size is laid out on: ten metres, so
+ * nothing runs off it.
+ *
+ * The engines need a stock to draw on, and any real size would be a guess, which
+ * the size rules would then judge and the overrun checks would measure against —
+ * "runs 10 mm past the bottom of a 105 mm label" about a label nobody measured.
+ * With no edge in reach, nothing overruns and no sentence is made about fit, which
+ * is the honest model of a label whose size is unknown. The verdicts that turn on
+ * the size wait for it instead (`sizeUnstated`, `rules/described.ts`).
+ */
+export const EDGELESS_MM = 10_000
+
+/**
+ * Said under `uncheckable` for a label of unstated size. Drawn edgeless, nothing on it
+ * overruns, so the passes an overrun would withhold are issued — on what the label is
+ * said to print, never on its fitting. Said beside the findings, where an assistant
+ * looks for what went unchecked, as well as in `stockUsed`. Found by
+ * `/code-review high` on #90.
+ */
+export const FIT_NOT_CHECKED =
+  'No label size was given, so whether each element fits on the label was not checked. ' +
+  'Every pass here is on what the label is said to print, not on its fitting.'
+
+/**
  * A label to judge.
  *
  * **A UPC-A label carries its barcode encoder**, required by the type so a caller
@@ -115,7 +139,13 @@ export function judgeLayout(context: RuleContext): Judgement {
     failures: findings.filter((finding) => finding.severity !== 'pass'),
     passes: findings.filter((finding) => finding.severity === 'pass'),
     blocking: findings.some((finding) => finding.severity === 'blocking'),
-    uncheckable: uncheckableIn(context.layout, context.subject),
+    uncheckable:
+      context.sizeUnstated === true
+        ? [
+            { elementId: 'label', reasons: [{ text: FIT_NOT_CHECKED }] },
+            ...uncheckableIn(context.layout, context.subject),
+          ]
+        : uncheckableIn(context.layout, context.subject),
   }
 }
 
@@ -220,7 +250,21 @@ export function judgeLabel(request: JudgeRequest): LabelJudgement {
   }
   let layout: ResolvedLayout
   try {
-    layout = layOutLabel(request)
+    // A size nobody gave is drawn edgeless here, whatever stock came with it, so no
+    // caller can hand the judge a borrowed size and have overruns measured against it.
+    // Found by `/code-review high` on #90.
+    layout = layOutLabel(
+      request.sizeUnstated === true
+        ? {
+            ...request,
+            stock: {
+              widthMm: EDGELESS_MM,
+              heightMm: EDGELESS_MM,
+              marginMm: request.stock.marginMm,
+            },
+          }
+        : request,
+    )
   } catch (error) {
     // A document that describes no drawing — a stock with no panel, a capacity of
     // zero — or a symbol the encoder could not produce is a refusal with the

@@ -46,7 +46,7 @@ import {
   precautionaryStatementText,
   type GhsRegime,
 } from '../ghs/statements'
-import type { JudgeRequest } from '../judge/judge'
+import { EDGELESS_MM, type JudgeRequest } from '../judge/judge'
 import { LABEL_TYPES } from '../rules/types'
 import { getSymbologyConstraints } from '../symbology/constraints'
 import type { BarcodeEncoder } from '../symbology/layOutSymbol'
@@ -1167,18 +1167,8 @@ export function checkedStock(request: LabelCheckRequest): {
   }
 }
 
-/**
- * The side of the stock a label of unstated size is laid out on: ten metres, so
- * nothing runs off it.
- *
- * The engines need a stock to draw on, and any real size would be a guess, which
- * the size rules would then judge and the overrun checks would measure against —
- * "runs 10 mm past the bottom of a 105 mm label" about a label nobody measured.
- * With no edge in reach, nothing overruns and no sentence is made about fit, which
- * is the honest model of a label whose size is unknown. The verdicts that turn on
- * the size wait for it instead (`sizeUnstated`, `rules/described.ts`).
- */
-export const EDGELESS_MM = 10_000
+// The edgeless side is the judge's, which enforces it; re-exported for the check request.
+export { EDGELESS_MM } from '../judge/judge'
 
 /**
  * A parsed check request as the judge's input, on the stock the request states,
