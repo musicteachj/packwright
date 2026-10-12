@@ -39,12 +39,18 @@
 import { willDrawSecondColumn } from '../../layout/nutritionPanel'
 import { DUAL_COLUMN_BASIS_REFERENCE } from '../../fda/nutritionFormats'
 import type { DualColumnBasis, MandatoryDualColumnBasis } from '../../fda/nutritionFormats'
-import { asDeclinedFacts, dualColumnDutyFor, stateThese } from './mandatoryColumns'
+import {
+  asDeclinedFacts,
+  dualColumnDutyFor,
+  sizeDecidesTheDuty,
+  stateThese,
+} from './mandatoryColumns'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import type { Decline } from '../types'
 import { finding, passedOnArtwork, passedOnDocument, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { SIZE_UNSTATED_REASON, verdictWaitsOnADescribedLabel } from '../described'
 
 export const FDA_DUAL_COLUMN_MISSING = 'FDA_DUAL_COLUMN_MISSING'
 export const FDA_DUAL_COLUMN_MET = 'FDA_DUAL_COLUMN_MET'
@@ -138,7 +144,7 @@ const secondColumnShown = (
       )
     : willDrawSecondColumn(facts)
 
-export const usFoodDualColumnRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/dual-column-required',
   title: 'A package holding 200 to 300 percent of its reference amount carries a second column.',
   citation: CITATION,
@@ -503,3 +509,18 @@ export const usFoodDualColumnRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, waiting for the size on a label described without one — see `rules/described.ts`. */
+export const usFoodDualColumnRule: UsFoodRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
+  // Only exemption (A) reads the size, and only to grant it: denied on the panel alone,
+  // it is denied for any label, and the rule's verdict stands. Granted on the panel
+  // alone, a bigger label could withdraw it — so the verdict waits, as the form and
+  // protein-percent rules' do (`sizeDecidesTheDuty`).
+  //
+  // It waits even where (B) or (C) would excuse the column too. The duty takes (A)
+  // first, so run on the panel alone the rule would pass the column as excused under
+  // (A) — an exemption whose truth is the unknown size. Asking is the honest answer;
+  // raised by review and kept.
+  unstated: (context) => (sizeDecidesTheDuty(context) ? ['stock'] : []),
+  reason: () => SIZE_UNSTATED_REASON,
+})

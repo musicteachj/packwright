@@ -21,7 +21,7 @@ import {
   smallPackageRouteApplies,
 } from '../../fda/nutritionFormats'
 import type { DualColumnDuty, DualColumnFact } from '../../fda/nutritionFormats'
-import type { DeclinedFact } from '../types'
+import type { DeclinedFact, UsFoodContext } from '../types'
 import { labelingSurfaceFloor } from '../../geometry/pdp'
 import type { LabelStock } from '../../templates/stock'
 import type { UsFoodLabelData } from '../../templates/usFood'
@@ -119,3 +119,19 @@ export function stateThese(facts: readonly DualColumnFact[]): string {
  */
 export const PROVISION_FOR = (basis: 'per-container' | 'per-unit'): string =>
   DUAL_COLUMN_BASIS_REFERENCE[basis].replace(/^21 CFR /, '')
+
+/**
+ * Whether a label described without its size has its dual-column duty decided by that
+ * size: the principal display panel alone grants exemption (b)(12)(i)(A), and a bigger
+ * label could withdraw it. The three rules reading the duty — required, form and
+ * protein percent — each wait for the size when this holds, so none of them can give a
+ * verdict on a column whose duty a size nobody gave decides. Raised by review.
+ */
+export function sizeDecidesTheDuty({ data, stock, sizeUnstated }: UsFoodContext): boolean {
+  return (
+    sizeUnstated === true && dualColumnDutyFor(data, stock).exemption === SMALL_PACKAGE_EXEMPTION
+  )
+}
+
+/** The exemption a label's size decides: (b)(12)(i)(A), for packages entitled to the small-package displays. */
+export const SMALL_PACKAGE_EXEMPTION = '21 CFR 101.9(b)(12)(i)(A)'

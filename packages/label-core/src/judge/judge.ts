@@ -53,7 +53,15 @@ export type JudgeRequest = (
   | { labelType: 'gs1-retail'; data: UpcALabelData; stock: LabelStock; barcode: BarcodeEncoder }
   | { labelType: 'ghs-chemical'; data: GhsLabelData; stock: LabelStock }
   | { labelType: 'us-food'; data: UsFoodLabelData; stock: LabelStock }
-) & { subject?: LabelSubject }
+) & {
+  subject?: LabelSubject
+  /**
+   * Set where a label printed elsewhere was described without its size. `stock` is
+   * then edgeless (`EDGELESS_MM`), so the layout makes no claim about fit, and the
+   * rules are told the size is unknown: see `RuleContextBase.sizeUnstated`.
+   */
+  sizeUnstated?: true
+}
 
 /**
  * A judged label, in the order and the words the editor shows.
@@ -137,7 +145,16 @@ function contextOf(request: JudgeRequest, layout: ResolvedLayout): RuleContext {
   const context = withoutEncoder(request, layout)
   // Attached once, after the switch, so a label type added there cannot be judged as a
   // drawing for want of a line.
-  return request.subject === undefined ? context : { ...context, subject: request.subject }
+  const subject = request.subject === undefined ? {} : { subject: request.subject }
+  // An unstated size: the rules see a stock of no area — see `sizeUnstated`.
+  const size =
+    request.sizeUnstated === true
+      ? {
+          sizeUnstated: true as const,
+          stock: { widthMm: 0, heightMm: 0, marginMm: request.stock.marginMm },
+        }
+      : {}
+  return { ...context, ...subject, ...size }
 }
 
 function withoutEncoder(request: JudgeRequest, layout: ResolvedLayout): RuleContext {
@@ -189,6 +206,16 @@ export function judgeLabel(request: JudgeRequest): LabelJudgement {
       reason:
         'A UPC-A label cannot be judged without a barcode encoder: its symbol would not be ' +
         'drawn, and the barcode checks would have nothing printed to measure.',
+    }
+  }
+  if (request.sizeUnstated === true && request.subject !== 'described') {
+    // An unstated size means the label exists elsewhere: a drawing always has the size
+    // it is drawn at, and judging one on a stock of no area would be judging nothing.
+    return {
+      outcome: 'refused',
+      reason:
+        'A label whose size is not given can only be judged as one printed elsewhere ' +
+        '(`subject: described`).',
     }
   }
   let layout: ResolvedLayout

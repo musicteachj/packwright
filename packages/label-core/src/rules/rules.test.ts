@@ -6,6 +6,7 @@ import type { UpcALabelData } from '../templates/upcA'
 import type { Finding } from '../types/index'
 import { CONFORMANT_FIXTURE, GS1_RETAIL_FIXTURES } from './fixtures/gs1Retail'
 import { layOutGhsLabel } from '../layout/ghsEngine'
+import { EDGELESS_MM } from '../schema/labelDocument'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
 import { GHS_CONFORMANT, GHS_FIXTURES, HAZARDS } from './fixtures/ghs'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES } from './fixtures/usFood'
@@ -702,8 +703,25 @@ describe('a check that stood down names what would let it run', () => {
   const contextOf = (
     labelType: 'us-food' | 'ghs-chemical' | 'gs1-retail',
     data: unknown,
-    stock: LabelStock,
+    given: LabelStock,
     subject: LabelSubject = 'drawing',
+    sizeUnstated = false,
+  ): RuleContext => {
+    // As `judgeLabel` builds it for a label described without its size: drawn on an
+    // edgeless stock, judged on one of no area.
+    if (!sizeUnstated) return drawnOn(labelType, data, given, subject)
+    const edgeless = { widthMm: EDGELESS_MM, heightMm: EDGELESS_MM, marginMm: given.marginMm }
+    return {
+      ...drawnOn(labelType, data, edgeless, subject),
+      stock: { widthMm: 0, heightMm: 0, marginMm: given.marginMm },
+      sizeUnstated: true,
+    } as RuleContext
+  }
+  const drawnOn = (
+    labelType: 'us-food' | 'ghs-chemical' | 'gs1-retail',
+    data: unknown,
+    stock: LabelStock,
+    subject: LabelSubject,
   ): RuleContext =>
     labelType === 'gs1-retail'
       ? ({
@@ -769,6 +787,32 @@ describe('a check that stood down names what would let it run', () => {
       stock: f.stock,
       subject: 'described' as LabelSubject,
     })),
+    // Described without a size: the label-dimensions check waits for it, and so does a
+    // small package's tabular display, which its panel alone would permit.
+    {
+      name: 'a small package in the tabular display, described without its size',
+      labelType: 'us-food' as const,
+      data: {
+        ...US_FOOD_CONFORMANT.data,
+        container: { shape: 'rectangular' as const, widthMm: 50, heightMm: 60 },
+        nutritionFacts: {
+          ...US_FOOD_CONFORMANT.data.nutritionFacts!,
+          format: 'tabular' as const,
+          availableSurfaceSqInches: 5,
+        },
+      } as unknown,
+      stock: { widthMm: 60, heightMm: 70, marginMm: 3 },
+      subject: 'described' as LabelSubject,
+      sizeUnstated: true,
+    },
+    {
+      name: 'a GHS label described without its size',
+      labelType: 'ghs-chemical' as const,
+      data: GHS_CONFORMANT.data as unknown,
+      stock: GHS_CONFORMANT.stock,
+      subject: 'described' as LabelSubject,
+      sizeUnstated: true,
+    },
     {
       // Carrying everything the small-container provision lists, but for pictogram
       // symbols no one can see: `ghs/small-container` stands down as a limit.
@@ -784,6 +828,7 @@ describe('a check that stood down names what would let it run', () => {
     data: unknown
     stock: LabelStock
     subject?: LabelSubject
+    sizeUnstated?: boolean
   }>
 
   /** Whether the label has already stated a fact — never asked for twice. */
@@ -800,6 +845,9 @@ describe('a check that stood down names what would let it run', () => {
         return upcA.barHeightMm !== undefined
       case 'omitHri':
         return upcA.omitHri !== undefined
+      // Stated beside the data; the loop below answers it by giving the case its size.
+      case 'stock':
+        return false
       case 'hazards':
         return (ghs.hazards ?? []).length > 0
       case 'ingredients.percentByWeight':
@@ -851,6 +899,8 @@ describe('a check that stood down names what would let it run', () => {
       )
       return { ...label, ingredients }
     }
+    // Stated beside the data; the follow-the-asks loop answers it, never this.
+    if (fact === 'stock') return data
     const panel = label.nutritionFacts!
     const answer: Record<
       Exclude<
@@ -861,6 +911,7 @@ describe('a check that stood down names what would let it run', () => {
         | 'magnification'
         | 'barHeightMm'
         | 'omitHri'
+        | 'stock'
       >,
       object
     > = {
@@ -877,7 +928,7 @@ describe('a check that stood down names what would let it run', () => {
 
   it('names at least one fact, and never one the label already states', () => {
     for (const one of cases) {
-      const context = contextOf(one.labelType, one.data, one.stock, one.subject)
+      const context = contextOf(one.labelType, one.data, one.stock, one.subject, one.sizeUnstated)
       for (const declined of declinedChecks(context)) {
         // A limit of the tool names nothing, because there is nothing to state — and
         // says whose limit it is, so the silence beside it is not read as the label's.
@@ -911,25 +962,31 @@ describe('a check that stood down names what would let it run', () => {
     // is exactly the decline that cannot be followed.
     for (const one of cases) {
       for (const first of declinedChecks(
-        contextOf(one.labelType, one.data, one.stock, one.subject),
+        contextOf(one.labelType, one.data, one.stock, one.subject, one.sizeUnstated),
       ).filter(
         // A limit of the tool promises nothing to follow; the test above holds it to that.
         (declined) => declined.limit !== true,
       )) {
         let data = one.data
+        // The size is stated beside the data, not in it: answering `stock` gives the
+        // case the size it kept.
+        let sizeUnstated = one.sizeUnstated
         let asked: readonly DeclinedFact[] = first.wants
         const path: string[] = []
         for (let step = 0; step < 4 && asked.length > 0; step += 1) {
-          for (const fact of asked) data = state(data, fact)
+          for (const fact of asked) {
+            if (fact === 'stock') sizeUnstated = false
+            else data = state(data, fact)
+          }
           path.push(asked.join(' + '))
           asked =
-            declinedChecks(contextOf(one.labelType, data, one.stock, one.subject)).find(
-              (d) => d.ruleId === first.ruleId,
-            )?.wants ?? []
+            declinedChecks(
+              contextOf(one.labelType, data, one.stock, one.subject, sizeUnstated),
+            ).find((d) => d.ruleId === first.ruleId)?.wants ?? []
         }
-        const still = declinedChecks(contextOf(one.labelType, data, one.stock, one.subject)).find(
-          (d) => d.ruleId === first.ruleId,
-        )
+        const still = declinedChecks(
+          contextOf(one.labelType, data, one.stock, one.subject, sizeUnstated),
+        ).find((d) => d.ruleId === first.ruleId)
         // Asked for nothing more, at least. On a label printed elsewhere a rule can
         // then stand down at a limit of this tool instead — the dual-column form,
         // whose pass also rests on type sizes nobody can state — which promises
@@ -968,9 +1025,9 @@ describe('a check that stood down names what would let it run', () => {
   it('reaches every rule that can stand down, so neither property above passes for want of a case', () => {
     const reached = new Set(
       cases.flatMap((one) =>
-        declinedChecks(contextOf(one.labelType, one.data, one.stock, one.subject)).map(
-          (d) => d.ruleId,
-        ),
+        declinedChecks(
+          contextOf(one.labelType, one.data, one.stock, one.subject, one.sizeUnstated),
+        ).map((d) => d.ruleId),
       ),
     )
     const declaring = [...US_FOOD_RULES, ...GHS_RULES, ...GS1_RETAIL_RULES]

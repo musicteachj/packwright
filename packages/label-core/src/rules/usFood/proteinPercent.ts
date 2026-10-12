@@ -32,8 +32,15 @@ import type { Decline, UsFoodContext, UsFoodRule } from '../types'
 import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
 import type { DualColumnBasis } from '../../fda/nutritionFormats'
-import { asDeclinedFacts, dualColumnDutyFor, PROVISION_FOR, stateThese } from './mandatoryColumns'
+import {
+  asDeclinedFacts,
+  dualColumnDutyFor,
+  PROVISION_FOR,
+  stateThese,
+  sizeDecidesTheDuty,
+} from './mandatoryColumns'
 import { smallestOf } from './printedText'
+import { SIZE_UNSTATED_REASON, verdictWaitsOnADescribedLabel } from '../described'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
 export const FDA_PROTEIN_PERCENT_MET = 'FDA_PROTEIN_PERCENT_MET'
@@ -73,7 +80,7 @@ const PROTEIN_ROW = nutritionRowElementId('protein')
 /** A printed percentage in a row's text: the figure, where one is there. */
 const PERCENT = /(\d+(?:\.\d+)?)\s*%/
 
-export const usFoodProteinPercentRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/protein-percent',
   title: 'A food for children 1 through 3 gives its protein as a percentage of the Daily Value.',
   citation: CITATION,
@@ -283,3 +290,13 @@ export const usFoodProteinPercentRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, waiting for the size where it decides the duty — see `sizeDecidesTheDuty`. */
+export const usFoodProteinPercentRule: UsFoodRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
+  // Its verdict on a second column the panel alone excuses rests on the unknown size: a
+  // bigger label could owe the column its own percentage. Raised by review; the cases
+  // tried fell silent rather than passing, and this keeps any that would not from
+  // clearing on a size nobody gave.
+  unstated: (context) => (sizeDecidesTheDuty(context) ? ['stock'] : []),
+  reason: () => SIZE_UNSTATED_REASON,
+})

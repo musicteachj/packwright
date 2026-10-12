@@ -189,6 +189,17 @@ describe('what the judge refuses', () => {
     expect(judged.outcome).toBe('refused')
   })
 
+  it('refuses an unstated size on a label it is to judge as drawn', () => {
+    // A drawing has the size it is drawn at; only a label printed elsewhere can lack one.
+    const result = judgeLabel({
+      labelType: 'ghs-chemical',
+      data: GHS_CONFORMANT.data,
+      stock: GHS_CONFORMANT.stock,
+      sizeUnstated: true,
+    })
+    expect(result.outcome).toBe('refused')
+  })
+
   it('refuses a label type it does not know, rather than crash in the rules', () => {
     const judged = judgeLabel({
       labelType: 'pharma-leaflet',

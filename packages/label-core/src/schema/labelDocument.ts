@@ -893,15 +893,22 @@ const DEFAULT_MARGINS_TEXT = Object.entries(DEFAULT_STOCKS)
   .join(', ')
 
 /**
- * The size of the label being checked, which the request must state.
+ * The size of the label being checked, where the request states it.
  *
- * **Required, where an export defaults it.** An export draws the label, so the
- * stock it borrows is the true size of the PDF. A check judges a label that
- * already exists, and a borrowed size is a fact about some other label: with
- * none given, the size rule passed "The label is 74.00 mm × 105.00 mm" on labels
- * nobody had measured, and a 50 × 70 mm label too small for its package passed
- * with it (the MCP evaluation of 2026-10-10). Leaving it out is refused, with a
- * sentence saying what to send — and, for an assistant, to ask rather than guess.
+ * **Never borrowed.** An export draws the label, so the stock it borrows is the
+ * true size of the PDF. A check judges a label that already exists, and a
+ * borrowed size is a fact about some other label: with none given, the size rule
+ * passed "The label is 74.00 mm × 105.00 mm" on labels nobody had measured, and a
+ * 50 × 70 mm label too small for its package passed with it (the MCP evaluation
+ * of 2026-10-10).
+ *
+ * **Optional since 2026-10-12.** Stage 20 made it required and told an assistant
+ * to ask rather than guess, and the re-check of 2026-10-12 found that followed so
+ * faithfully that 43 of 72 answers asked and checked nothing — a wrong check digit
+ * left unreported for want of a label size it does not depend on. Left out now,
+ * the label is judged on everything the size does not decide, and every check it
+ * does decide waits for it under "checks that did not run" (`checkedStock`,
+ * `LabelSubject`, James's decision of 2026-10-12). Nothing is assumed and passed.
  *
  * **The margin is optional**, because a person knows their label's size and
  * rarely its unprinted border. Absent, the label type's default margin is used,
@@ -938,7 +945,7 @@ export const CheckStockSchema = z.strictObject(
         ? undefined
         : '`stock` must be the printed label’s size: an object with widthMm and heightMm in ' +
           'millimetres, and marginMm if known. If the user has not said how big the label is, ' +
-          'ask rather than guess — every size and placement finding is measured against it.',
+          'leave `stock` out rather than guess: the checks that depend on it will say so.',
   },
 )
 
@@ -948,12 +955,14 @@ export const CheckStockSchema = z.strictObject(
  * The saved-label shape without a name. Built from the same parts as
  * `LabelDocumentInput`, and refined the same way, so a document the exporter or the
  * saved-label routes refuse is refused here too, with the same issues. Two
- * additions: `STOCK_BESIDE_DATA`, and a stock that is required (`CheckStockSchema`)
- * where the export requests default it.
+ * differences: `STOCK_BESIDE_DATA`, and a stock that is never defaulted — stated,
+ * or left out and then not assumed (`CheckStockSchema`, `checkedStock`), where the
+ * export requests borrow a default. Read the stock through `checkedStock`, not
+ * `request.stock`, which may be absent.
  *
  * **Strict at the top, and only there.** `{ labelType, data, stock }` refuses a key
- * it does not know — a `stok` would otherwise be dropped and the request refused
- * for having no stock, naming the wrong problem. Inside `data` unknown keys are
+ * it does not know — a `stok` would otherwise be dropped and the label judged as
+ * one of unstated size, with the size the caller meant to give ignored in silence. Inside `data` unknown keys are
  * still stripped, as the exporter and the saved-label routes strip them: decision 4
  * of `docs/plans/2026-10-10-mcp.md` is that this door refuses what those refuse,
  * and the evaluation of 2026-10-10 found no model misspelling a key there.
@@ -962,14 +971,14 @@ export const LabelCheckRequest = z.discriminatedUnion('labelType', [
   z.strictObject({
     labelType: z.literal('gs1-retail'),
     data: UpcARequest.extend({ stock: STOCK_BESIDE_DATA }),
-    stock: CheckStockSchema,
+    stock: CheckStockSchema.optional(),
   }),
   z.strictObject({
     labelType: z.literal('ghs-chemical'),
     data: GhsRequestShape.extend({ stock: STOCK_BESIDE_DATA }).superRefine(
       statementCodesMatchRegime,
     ),
-    stock: CheckStockSchema,
+    stock: CheckStockSchema.optional(),
   }),
   z.strictObject({
     labelType: z.literal('us-food'),
@@ -977,7 +986,7 @@ export const LabelCheckRequest = z.discriminatedUnion('labelType', [
       coversOnlyListedIngredients,
       COVERS_ONLY_LISTED_INGREDIENTS,
     ),
-    stock: CheckStockSchema,
+    stock: CheckStockSchema.optional(),
   }),
 ])
 
@@ -1008,11 +1017,12 @@ export const LabelCheckRequestOutline = z.strictObject({
       "The label's fields, in the form `labelType` selects: the first for gs1-retail, the " +
         'second for ghs-chemical, the third for us-food.',
     ),
-  stock: CheckStockSchema.describe(
-    'Required: the printed label’s size in millimetres — widthMm and heightMm, and marginMm ' +
-      'if known (the unprinted border; the label type’s default is used and said so if not). ' +
-      'Beside `data`, not inside it. If the user has not said how big the label is, ask them: ' +
-      'every size and placement finding is measured against this.',
+  stock: CheckStockSchema.optional().describe(
+    'The printed label’s size in millimetres — widthMm and heightMm, and marginMm if known ' +
+      '(the unprinted border; the label type’s default is used and said so if not). Beside ' +
+      '`data`, not inside it. If the user has not said how big the label is, leave it out ' +
+      'rather than guess: everything else is still checked, and the checks that depend on ' +
+      'the size are listed under `declined`, asking for it.',
   ),
 })
 
@@ -1138,13 +1148,37 @@ export function toUsFoodLabelData(
 export function checkedStock(request: LabelCheckRequest): {
   stock: LabelStock
   marginAssumed: boolean
+  /** False where the request stated no size: `stock` is then edgeless — see below. */
+  sizeGiven: boolean
 } {
+  const defaultMarginMm = DEFAULT_STOCKS[request.labelType].marginMm
+  if (request.stock === undefined) {
+    return {
+      stock: { widthMm: EDGELESS_MM, heightMm: EDGELESS_MM, marginMm: defaultMarginMm },
+      marginAssumed: true,
+      sizeGiven: false,
+    }
+  }
   const { widthMm, heightMm, marginMm } = request.stock
   return {
-    stock: { widthMm, heightMm, marginMm: marginMm ?? DEFAULT_STOCKS[request.labelType].marginMm },
+    stock: { widthMm, heightMm, marginMm: marginMm ?? defaultMarginMm },
     marginAssumed: marginMm === undefined,
+    sizeGiven: true,
   }
 }
+
+/**
+ * The side of the stock a label of unstated size is laid out on: ten metres, so
+ * nothing runs off it.
+ *
+ * The engines need a stock to draw on, and any real size would be a guess, which
+ * the size rules would then judge and the overrun checks would measure against —
+ * "runs 10 mm past the bottom of a 105 mm label" about a label nobody measured.
+ * With no edge in reach, nothing overruns and no sentence is made about fit, which
+ * is the honest model of a label whose size is unknown. The verdicts that turn on
+ * the size wait for it instead (`sizeUnstated`, `rules/described.ts`).
+ */
+export const EDGELESS_MM = 10_000
 
 /**
  * A parsed check request as the judge's input, on the stock the request states,
@@ -1159,28 +1193,34 @@ export function checkedStock(request: LabelCheckRequest): {
  * `LabelSubject`.
  */
 export function toJudgeRequest(request: LabelCheckRequest, barcode: BarcodeEncoder): JudgeRequest {
+  const { stock, sizeGiven } = checkedStock(request)
+  // Where no size was stated, the rules are told so and those it decides wait.
+  const size = sizeGiven ? {} : { sizeUnstated: true as const }
   switch (request.labelType) {
     case 'gs1-retail':
       return {
         labelType: 'gs1-retail',
         data: toUpcALabelData(request.data),
-        stock: checkedStock(request).stock,
+        stock,
         barcode,
         subject: 'described',
+        ...size,
       }
     case 'ghs-chemical':
       return {
         labelType: 'ghs-chemical',
         data: toGhsLabelData(request.data),
-        stock: checkedStock(request).stock,
+        stock,
         subject: 'described',
+        ...size,
       }
     case 'us-food':
       return {
         labelType: 'us-food',
         data: toUsFoodLabelData(request.data),
-        stock: checkedStock(request).stock,
+        stock,
         subject: 'described',
+        ...size,
       }
   }
 }

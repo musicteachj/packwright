@@ -128,16 +128,10 @@ magnification. It is withheld today only because every pictogram carries the uns
 pictogram artwork is drawn, it becomes a false clearance through `check_label`. The fix is
 `verdictWaitsOnADescribedLabel` with a new `DeclinedFact`, which needs an editor field for the side — the GHS form has none.
 
-**Requiring the label's size stops a check before it starts — a decision for James.** The re-check of 2026-10-12
-(`docs/experiments/2026-10-12-mcp-recheck/`) found stage 20's required `stock` and its instruction to ask rather than
-guess followed exactly: in every case whose prompt gave no size, almost every answer asked for one and ran no check —
-43 of 72 answers, against none on 2026-10-10 — so a wrong check digit, two signal words, a precedence breach and a
-small-container claim went unchecked in that turn. In a real conversation the user answers; a one-message test cannot
-tell how often they do. The alternative is the shape stage 23 already uses: `check_label` judges everything that does
-not depend on the size, and the size-dependent checks — label dimensions, placement, anything measured against the
-panel — wait for `stock` under "checks that did not run". That keeps the false clearance stage 20 closed (no size is
-assumed and passed) while answering the rest at once. It needs a decision on whether a check request may omit the
-size, and every size-dependent rule wrapped as the barcode rules are.
+**Requiring the label's size stopped a check before it started — fixed on 2026-10-12.** The re-check of that day
+found 43 of 72 answers asking for a size and checking nothing. James chose to judge the rest: `stock` is optional, a
+sizeless label is drawn edgeless and its rules see a stock of no area, so the size checks wait and nothing is assumed
+(`CHANGELOG.md`). Worth confirming in the next evaluation that models now check first and ask second.
 
 **The evaluation harness's records each judge their own view.** The records of 2026-10-09 and 2026-10-10 judge the
 drawing, as they were graded; the re-check of 2026-10-12 (`--recheck` modes) records what `check_label` answers, by

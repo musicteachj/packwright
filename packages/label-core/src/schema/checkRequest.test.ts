@@ -19,6 +19,8 @@ import type { BarcodeEncoder } from '../symbology/layOutSymbol'
 import {
   Artwork,
   ContainerSchema,
+  EDGELESS_MM,
+  checkedStock,
   DigitalLink,
   GhsRequest,
   GhsSupplierSchema,
@@ -215,18 +217,20 @@ describe('every field the schema keeps reaches the engine', () => {
 })
 
 describe('LabelCheckRequest', () => {
-  it('refuses a check that does not say how big the label is', () => {
-    // An export borrows a default stock and draws at it, so the default is true of
-    // the PDF. A check judges a label that exists already, and a borrowed size made
-    // the size rule pass labels nobody measured. Refused, saying what to send.
-    const checked = LabelCheckRequest.safeParse({
+  it('accepts a check that does not say how big the label is, and assumes no size', () => {
+    // Required from stage 20 to 2026-10-12, which made 43 of 72 answers in the re-check
+    // ask for a size and check nothing. Now accepted: the label is laid out with no edge,
+    // and the rules are told the size is unknown — never handed a borrowed one.
+    const checked = LabelCheckRequest.parse({
       labelType: 'ghs-chemical',
       data: { regime: 'eu-clp', productIdentifier: 'X', capacityL: 5 },
     })
-    expect(checked.success).toBe(false)
-    expect(checked.error?.issues.map((issue) => issue.path.join('.'))).toEqual(['stock'])
-    expect(checked.error?.issues[0]?.message).toContain('`stock` must be the printed label’s size')
-    // Sent in the wrong shape, it is told the shape, not merely told to ask.
+    expect(checkedStock(checked)).toEqual({
+      stock: { widthMm: EDGELESS_MM, heightMm: EDGELESS_MM, marginMm: DEFAULT_GHS_STOCK.marginMm },
+      marginAssumed: true,
+      sizeGiven: false,
+    })
+    // Sent in the wrong shape, it is told the shape.
     const asText = LabelCheckRequest.safeParse({
       labelType: 'ghs-chemical',
       data: { regime: 'eu-clp', productIdentifier: 'X', capacityL: 5 },
@@ -273,13 +277,11 @@ describe('LabelCheckRequest', () => {
       data: { gtin: '036000291452', stock },
     })
     expect(checked.success).toBe(false)
-    // Both said: where the size went, and that it is needed where it belongs.
+    // Said where the size went; a size left out where it belongs is no longer an issue.
     const issues = checked.error?.issues.map((issue) => [issue.path.join('.'), issue.message])
-    expect(issues).toContainEqual([
-      'data.stock',
-      '`stock` goes beside `data` in a check request, not inside it',
+    expect(issues).toEqual([
+      ['data.stock', '`stock` goes beside `data` in a check request, not inside it'],
     ])
-    expect(issues?.map(([path]) => path).sort()).toEqual(['data.stock', 'stock'])
   })
 
   it('refuses a label type it does not know', () => {

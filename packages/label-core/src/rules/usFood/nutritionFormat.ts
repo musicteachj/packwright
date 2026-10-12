@@ -23,6 +23,7 @@ import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnDocument, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { SIZE_UNSTATED_REASON, verdictWaitsOnADescribedLabel } from '../described'
 
 export const FDA_NUTRITION_FORMAT_NOT_PERMITTED = 'FDA_NUTRITION_FORMAT_NOT_PERMITTED'
 export const FDA_NUTRITION_FORMAT_MET = 'FDA_NUTRITION_FORMAT_MET'
@@ -39,7 +40,7 @@ const FORMAT_NAME = {
   linear: 'a linear display',
 } as const
 
-export const usFoodNutritionFormatRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/nutrition-format',
   title: 'The nutrition label uses a display the package size entitles it to.',
   citation: CITATION,
@@ -133,3 +134,26 @@ export const usFoodNutritionFormatRule: UsFoodRule = {
     ]
   },
 }
+
+/** The route a size can withdraw: the small-package displays of (j)(13)(ii)(A). */
+const SMALL_PACKAGE_ROUTE = '21 CFR 101.9(j)(13)(ii)(A)'
+
+/** The rule as drawn, waiting for the size on a label described without one — see `rules/described.ts`. */
+export const usFoodNutritionFormatRule: UsFoodRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
+  // A format the principal display panel alone denies is denied whatever the label's
+  // size, since the size can only raise the floor; one it would permit through the
+  // small-package route, (j)(13)(ii)(A), waits, since a bigger label could take the
+  // permission away. One permitted by (d)(11)(iii), which any package of the right
+  // shape may use, does not turn on the size and is judged. Found by review.
+  unstated: (context) =>
+    context.sizeUnstated === true &&
+    judgedAsDrawn
+      .check(context)
+      .some(
+        (one) =>
+          one.code === FDA_NUTRITION_FORMAT_MET && one.citation.reference === SMALL_PACKAGE_ROUTE,
+      )
+      ? ['stock']
+      : [],
+  reason: () => SIZE_UNSTATED_REASON,
+})
