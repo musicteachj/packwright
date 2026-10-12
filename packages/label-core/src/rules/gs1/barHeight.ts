@@ -13,6 +13,7 @@ import { nominalBarHeightMm } from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, xDimensionMm } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
+import { verdictWaitsOnADescribedLabel } from '../described'
 
 export const GS1_BAR_HEIGHT_BELOW_MINIMUM = 'GS1_BAR_HEIGHT_BELOW_MINIMUM'
 export const GS1_BAR_HEIGHT_SUFFICIENT = 'GS1_BAR_HEIGHT_SUFFICIENT'
@@ -23,7 +24,7 @@ const CITATION: Citation = {
   title: 'EAN/UPC symbol height at nominal size, and the minimum by X-dimension',
 }
 
-export const barHeightRule: Gs1RetailRule = {
+const judgedAsDrawn: Gs1RetailRule = {
   id: 'gs1/bar-height',
   title: 'Bar height meets the specification’s minimum for the symbol’s X-dimension.',
   citation: CITATION,
@@ -71,3 +72,16 @@ export const barHeightRule: Gs1RetailRule = {
     return findings
   },
 }
+
+/** The rule as drawn, its verdict waiting on a label printed elsewhere — see `rules/described.ts`. */
+export const barHeightRule: Gs1RetailRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
+  // The minimum is set by the X-dimension, so the magnification is waited for too.
+  unstated: ({ data }) => [
+    ...(data.barHeightMm === undefined ? (['barHeightMm'] as const) : []),
+    ...(data.magnification === undefined ? (['magnification'] as const) : []),
+  ],
+  reason:
+    'This label is described rather than drawn here, and Packwright cannot see how tall its ' +
+    'bars are printed, or at what magnification; its own defaults would pass by construction. ' +
+    'State them and this check will run.',
+})

@@ -475,7 +475,12 @@ export function createPackwrightMcpServer(): McpServer {
         'on a GHS label whether each pictogram carries its symbol, and whether the text fits at ' +
         'the label’s own type sizes, are not checked. The answer lists each under `uncheckable`, ' +
         'element by element, rather than reporting it as a fault; the symbol check is also ' +
-        'under `declined`, unless a pictogram the regime does not recognise was reported.',
+        'under `declined`, unless a pictogram the regime does not recognise was reported. ' +
+        'Nothing is passed on a value the request did not state: a barcode’s magnification, bar ' +
+        'height and digits wait for those fields, and the checks no field can answer — a US food ' +
+        'label’s type sizes and the net quantity’s position, a barcode’s quiet zones — appear ' +
+        'under `declined` as limits of this tool. Say so to the user rather than calling the ' +
+        'label clear on them.',
       inputSchema: CheckLabelInput,
       outputSchema: CheckLabelOutput,
       annotations: READ_ONLY,

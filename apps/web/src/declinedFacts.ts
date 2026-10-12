@@ -65,4 +65,20 @@ export const DECLINED_FACT_FIELDS: Readonly<Record<DeclinedFact, FactField>> = {
     fieldId: 'field-food-nf-basis',
     name: 'What the second column counts',
   },
+  // Asked for only on a label printed elsewhere — `check_label` — so never in this
+  // editor, which judges its own drawing. Mapped all the same, because the union is
+  // closed, and to the UPC-A form's own fields, so a link would land where it says.
+  magnification: { fieldId: 'field-magnification', name: 'Magnification' },
+  barHeightMm: { fieldId: 'field-bar-height', name: 'Bar height' },
+  omitHri: { fieldId: 'field-omit-hri', name: 'Omit the human-readable digits' },
 }
+
+/**
+ * The facts only a label printed elsewhere asks for. The editor judges its own drawing,
+ * where the engine's defaults are what prints, so no check here waits on these.
+ */
+export const DESCRIBED_ONLY_FACTS: readonly DeclinedFact[] = [
+  'magnification',
+  'barHeightMm',
+  'omitHri',
+]

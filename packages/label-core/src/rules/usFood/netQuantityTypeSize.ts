@@ -34,6 +34,7 @@ import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { TYPE_SIZE_IS_THE_TYPEFACES, noVerdictOnADescribedLabel } from '../described'
 
 export const FDA_NET_QUANTITY_TYPE_TOO_SMALL = 'FDA_NET_QUANTITY_TYPE_TOO_SMALL'
 export const FDA_NET_QUANTITY_TYPE_SIZE_MET = 'FDA_NET_QUANTITY_TYPE_SIZE_MET'
@@ -49,7 +50,7 @@ const BASIS_NAME = {
   'lowercase-o': 'the lowercase "o"',
 } as const
 
-export const usFoodNetQuantityTypeSizeRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/net-quantity-type-size',
   title: 'The net quantity declaration meets the minimum type size for the panel area.',
   citation: CITATION,
@@ -108,3 +109,8 @@ export const usFoodNetQuantityTypeSizeRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, giving no verdict on a label printed elsewhere — see `rules/described.ts`. */
+export const usFoodNetQuantityTypeSizeRule: UsFoodRule = noVerdictOnADescribedLabel(judgedAsDrawn, {
+  why: TYPE_SIZE_IS_THE_TYPEFACES,
+})

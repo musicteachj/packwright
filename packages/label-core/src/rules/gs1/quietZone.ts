@@ -16,6 +16,7 @@ import { hasVerifiedQuietZone } from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
+import { noVerdictOnADescribedLabel } from '../described'
 
 export const GS1_QUIET_ZONE_TOO_NARROW = 'GS1_QUIET_ZONE_TOO_NARROW'
 export const GS1_QUIET_ZONE_CLEAR = 'GS1_QUIET_ZONE_CLEAR'
@@ -26,7 +27,7 @@ const CITATION: Citation = {
   title: 'Minimum quiet zone requirements for EAN/UPC symbols',
 }
 
-export const quietZoneRule: Gs1RetailRule = {
+const judgedAsDrawn: Gs1RetailRule = {
   id: 'gs1/quiet-zone',
   title: 'Each side of a symbol keeps its minimum quiet zone clear of other artwork.',
   citation: CITATION,
@@ -110,3 +111,11 @@ export const quietZoneRule: Gs1RetailRule = {
     return findings
   },
 }
+
+/** The rule as drawn, giving no verdict on a label printed elsewhere — see `rules/described.ts`. */
+export const quietZoneRule: Gs1RetailRule = noVerdictOnADescribedLabel(judgedAsDrawn, {
+  why:
+    'A quiet zone is the clear space between the bars and every other mark on the label, and ' +
+    'a request describes only the barcode and one block of artwork, not everything printed ' +
+    'around it.',
+})

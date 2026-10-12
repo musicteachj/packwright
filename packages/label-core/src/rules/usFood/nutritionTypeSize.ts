@@ -42,6 +42,7 @@ import { NUTRITION_ROW_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { noVerdictOnADescribedLabel } from '../described'
 
 export const FDA_NUTRITION_TYPE_TOO_SMALL = 'FDA_NUTRITION_TYPE_TOO_SMALL'
 export const FDA_NUTRITION_TYPE_SIZE_MET = 'FDA_NUTRITION_TYPE_SIZE_MET'
@@ -138,7 +139,7 @@ const TYPE_SIZE_CITATIONS: readonly Citation[] = [
   untitled(CITATION, '21 CFR 101.9(d)(7)(iii)'),
 ]
 
-export const usFoodNutritionTypeSizeRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/nutrition-type-size',
   title: 'The Nutrition Facts panel meets the minimum type sizes 21 CFR 101.9 sets.',
   citation: CITATION,
@@ -228,3 +229,10 @@ export const usFoodNutritionTypeSizeRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, giving no verdict on a label printed elsewhere — see `rules/described.ts`. */
+export const usFoodNutritionTypeSizeRule: UsFoodRule = noVerdictOnADescribedLabel(judgedAsDrawn, {
+  why:
+    'The Nutrition Facts type sizes are Packwright’s own: a request can scale them, but cannot ' +
+    'state the sizes your panel is printed at.',
+})

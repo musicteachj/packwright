@@ -33,6 +33,7 @@ import { glyphHeightMm } from '../../text/measure'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { TYPE_SIZE_IS_THE_TYPEFACES, noVerdictOnADescribedLabel } from '../described'
 
 export const FDA_PANEL_TYPE_TOO_SMALL = 'FDA_PANEL_TYPE_TOO_SMALL'
 export const FDA_PANEL_TYPE_SIZE_MET = 'FDA_PANEL_TYPE_SIZE_MET'
@@ -97,7 +98,7 @@ const insideTheNutritionPanel = (elementId: string): boolean =>
  */
 // Imported rather than written out, for the reason `nutritionTypeSize` gives.
 
-export const usFoodInformationPanelTypeSizeRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/information-panel-type-size',
   title: 'Every letter on the panel is at least one-sixteenth of an inch high.',
   citation: CITATION,
@@ -190,3 +191,9 @@ export const usFoodInformationPanelTypeSizeRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, giving no verdict on a label printed elsewhere — see `rules/described.ts`. */
+export const usFoodInformationPanelTypeSizeRule: UsFoodRule = noVerdictOnADescribedLabel(
+  judgedAsDrawn,
+  { why: TYPE_SIZE_IS_THE_TYPEFACES },
+)

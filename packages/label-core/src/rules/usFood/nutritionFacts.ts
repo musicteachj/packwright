@@ -78,6 +78,7 @@ import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 import { smallestOf } from './printedText'
+import { TYPE_SIZE_IS_THE_TYPEFACES, someFindingsGoOnADescribedLabel } from '../described'
 
 export const FDA_NUTRITION_MISSING = 'FDA_NUTRITION_MISSING'
 export const FDA_NUTRITION_NUTRIENT_MISSING = 'FDA_NUTRITION_NUTRIENT_MISSING'
@@ -252,7 +253,7 @@ function declaredAmount(panel: UsFoodNutritionFacts, id: NutrientId): number | u
   return analysed === undefined ? undefined : roundNutrientAmount(id, analysed)
 }
 
-export const usFoodNutritionCompletenessRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/nutrition-completeness',
   title: 'The nutrition label declares every nutrient 21 CFR 101.9(c) makes mandatory.',
   citation: CONTENT,
@@ -365,6 +366,20 @@ export const usFoodNutritionCompletenessRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, with what it cannot judge on a label printed elsewhere set aside — see `rules/described.ts`. */
+export const usFoodNutritionCompletenessRule: UsFoodRule = someFindingsGoOnADescribedLabel(
+  judgedAsDrawn,
+  {
+    // The unit-container statement's type size, either way: (iii)'s "1/16-inch in height"
+    // is a letter height, and the request carries none. The statement's wording, and
+    // everything else this rule judges, rest on what the request states.
+    goes: (one) =>
+      one.elementId === US_FOOD_ELEMENTS.unitContainerStatement &&
+      (one.code === FDA_NUTRITION_EXEMPT || one.code === FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL),
+    why: `The unit container statement must be printed 1/16 inch tall. ${TYPE_SIZE_IS_THE_TYPEFACES}`,
+  },
+)
 
 /**
  * A finding for each mandatory nutrient the panel does not declare.

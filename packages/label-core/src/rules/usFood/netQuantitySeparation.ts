@@ -32,6 +32,7 @@ import type { TextPrimitive } from '../../layout/types'
 import { NUTRITION_ELEMENT_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
+import { noVerdictOnADescribedLabel } from '../described'
 
 export const FDA_NET_QUANTITY_CROWDED = 'FDA_NET_QUANTITY_CROWDED'
 export const FDA_NET_QUANTITY_SEPARATION_MET = 'FDA_NET_QUANTITY_SEPARATION_MET'
@@ -75,7 +76,7 @@ function gap(aStart: number, aSize: number, bStart: number, bSize: number): numb
   return Math.max(bStart - (aStart + aSize), aStart - (bStart + bSize))
 }
 
-export const usFoodNetQuantitySeparationRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/net-quantity-separation',
   title: 'The net quantity declaration is separated from other printed label information.',
   citation: CITATION,
@@ -153,3 +154,13 @@ export const usFoodNetQuantitySeparationRule: UsFoodRule = {
     )
   },
 }
+
+/** The rule as drawn, giving no verdict on a label printed elsewhere — see `rules/described.ts`. */
+export const usFoodNetQuantitySeparationRule: UsFoodRule = noVerdictOnADescribedLabel(
+  judgedAsDrawn,
+  {
+    why:
+      'How far the net quantity is from the printing around it is where Packwright stacked each ' +
+      'element, not a distance measured on your label.',
+  },
+)

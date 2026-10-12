@@ -53,6 +53,7 @@ import type { DualColumnReference } from './dualColumnParagraphs'
 import type { DualColumnBasis, DualColumnDuty } from '../../fda/nutritionFormats'
 import { asDeclinedFacts, dualColumnDutyFor, PROVISION_FOR, stateThese } from './mandatoryColumns'
 import { MM_PER_POINT } from '../../geometry/units'
+import { someFindingsGoOnADescribedLabel } from '../described'
 
 export const FDA_DUAL_COLUMN_HEADINGS_MISSING = 'FDA_DUAL_COLUMN_HEADINGS_MISSING'
 export const FDA_DUAL_COLUMN_NOT_SEPARATED = 'FDA_DUAL_COLUMN_NOT_SEPARATED'
@@ -97,7 +98,7 @@ const COLUMN_PARAGRAPHS: Record<DualColumnReference, Citation> = {
   },
 }
 
-export const usFoodDualColumnFormRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/dual-column-form',
   title:
     'A dual-column panel declares both forms, heads its columns, separates them and gives both equal prominence.',
@@ -411,3 +412,14 @@ export const usFoodDualColumnFormRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, with what it cannot judge on a label printed elsewhere set aside — see `rules/described.ts`. */
+export const usFoodDualColumnFormRule: UsFoodRule = someFindingsGoOnADescribedLabel(judgedAsDrawn, {
+  // Its pass certifies the separating line and equal prominence too, which on a label
+  // printed elsewhere are this engine's defaults unless stated, and equal prominence a
+  // matter of type size. Its violations rest on what the request states, and stay.
+  goes: (one) => one.code === FDA_DUAL_COLUMN_FORM_MET,
+  why:
+    'Whether the two columns are separated and given equal prominence is a question of the ' +
+    'printed lines and type sizes, which Packwright cannot see.',
+})

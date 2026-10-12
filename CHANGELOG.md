@@ -10,6 +10,25 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **`check_label` no longer passes what Packwright filled in.** `/code-review high` on #86 found every optional
+  field a check request left out being filled in by the engine and then passed: a request carrying only a GTIN
+  came back with its magnification, bar height, digits and quiet zones cleared, and a food label stating no type
+  sizes with its net quantity's size and place, its Contains statement and its panel and Nutrition Facts sizes
+  cleared — each on a default that is compliant by construction. On a label printed elsewhere (`check_label`; the
+  photo audit reads only chemical labels, which none of these reach) a check now gives a verdict only on values the request states in the terms the regulation
+  measures (`rules/described.ts`). A barcode's magnification, bar height and digits wait for those fields, named
+  under "checks that did not run" (three new `DeclinedFact`s), and the whole verdict waits — a bar height
+  measured against the minimum for an unstated magnification is no more the label's than a pass is — then runs on
+  the user's figures, violations included, once they are stated. The checks no field can answer give no verdict either way and say
+  so as limits of the tool: every US food type size, because 101.7(h)(2) and 101.2(c) measure the printed letter
+  and an em size's letters depend on a typeface Packwright cannot see; the net quantity's place and separation,
+  which are where the engine put it; a barcode's quiet zones, which depend on everything printed around the
+  symbol; and the dual-column form's pass. A bound that would have kept "an em too small fails in any typeface"
+  was dropped once checked: type designers make no rule that letters fit their type size. A test holds every GS1
+  and food document's described findings to a subset of its drawing's. The editor and the export are unchanged.
+  The 101.7 and 101.2 wording was read from the eCFR on 2026-10-11; `docs/WHAT-IS-NOT-CHECKED.md` lists all of
+  it, and the measured letter height that would let the type sizes run is in the backlog.
+
 - **What `/code-review high` found on #86, answered.** On a label printed elsewhere, `ghs/small-container`'s pass
   never came — every pictogram carries the unseen-symbol omission — and with the missing-symbol finding gone,
   nothing beside the silence said why; it now stands down as a limit of the tool where the unseen symbols are all

@@ -337,6 +337,42 @@ look like an oversight if it ever became reachable.
 
 ---
 
+## A label you describe rather than draw
+
+When you check a label through the `check_label` tool, Packwright judges a label that already exists from a
+description of it. (The photo audit reads only chemical labels, whose limits are under GHS above.) It draws its own version to measure, filling in anything the
+description leaves out — and **nothing is passed on what it filled in.** Before 2026-10-11 these checks passed on
+Packwright's own defaults, which are compliant by construction: a request carrying only a GTIN came back with
+its magnification, bar height and quiet zones passed.
+
+**Checks that wait for a value you can give.** A barcode's magnification and bar height, and whether its digits
+are printed, are design values you can read off the artwork. Leave one out and its check appears under "checks
+that did not run", naming the field; give it and the check runs on your figure.
+
+**Checks no description can answer.** These appear under "checks that did not run" as limits of this tool, and
+give no verdict either way:
+
+- **The Nutrition Facts type sizes** (21 CFR 101.9(d)). They are given in points, and a description can only
+  scale Packwright's own sizes, not state the ones your panel is printed at.
+- **The "Contains" statement's type size and place** (FD&C Act §403(w)(1)(A)), which the statute measures
+  against the ingredient list beside it: how close the two print is where Packwright stacked them.
+- **Every other US food type size**: the net quantity (101.7(i)), the information panel (101.2(c)) and a unit
+  container's statement. The regulations measure the height of the printed letters — "it is the lower case letter 'o' or its equivalent that shall meet the minimum
+  standards" (101.7(h)(2)) — and how tall a type size's letters print depends on the typeface, which a description
+  does not carry and Packwright measures in its own. A bound was considered and dropped: type designers make no
+  rule that a letter fits within its type size, and some faces exceed it, so not even a very small figure fails in
+  every typeface.
+- **Where the net quantity sits, and how far it is from the printing around it** (both under 101.7(f)): these
+  are positions Packwright chose, not ones measured on your label.
+- **A barcode's quiet zones**: the clear space is measured against every mark printed around the symbol, and a
+  description carries only the barcode and one block of artwork. Check the printed symbol with a barcode
+  verifier.
+- **A dual-column panel's form**: its headings and cells are checked, but its pass also certifies the line
+  between the columns and equal prominence, which are matters of printing and type size.
+
+On a label Packwright draws — the editor and the export — every one of these is checked, because the drawing is
+what prints.
+
 ## Type size measurement
 
 The type-size checks that measure a printed letter height read it together with the typeface it was measured

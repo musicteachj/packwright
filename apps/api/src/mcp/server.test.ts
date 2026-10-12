@@ -157,10 +157,12 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
     })
     const expected = checkLabelOutput(
       'us-food',
+      // As a label printed elsewhere, which is what check_label judges.
       judgeLabel({
         labelType: 'us-food',
         data: US_FOOD_CONFORMANT.data,
         stock: US_FOOD_CONFORMANT.stock,
+        subject: 'described',
       }),
       { ...US_FOOD_CONFORMANT.stock, marginAssumed: false },
     )
@@ -374,6 +376,35 @@ describe('check_label, refusing', () => {
     const reasons = answer.uncheckable.flatMap((one) => one.reasons)
     expect(reasons.length).toBeGreaterThan(0)
     expect(reasons.filter((reason) => reason.includes('not printed'))).toEqual([])
+  })
+
+  it('passes nothing on a barcode’s magnification, bar height or digits it was not told', async () => {
+    // A request carrying only a GTIN used to come back with the magnification, bar
+    // height, digits and quiet zones all passed — measured on Packwright's defaults.
+    const result = await (
+      await connect()
+    ).callTool({
+      name: 'check_label',
+      arguments: {
+        labelType: 'gs1-retail',
+        data: { gtin: '036000291452' },
+        stock: { widthMm: 60, heightMm: 40 },
+      },
+    })
+    const answer = result.structuredContent as {
+      findings: Array<{ code: string; severity: string }>
+      declined: Array<{ ruleId: string; wants: string[]; limit?: true }>
+    }
+    expect(answer.findings.filter((one) => one.severity === 'pass').map((one) => one.code)).toEqual(
+      ['GS1_GTIN_CHECK_DIGIT_VALID'],
+    )
+    expect(answer.declined).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ ruleId: 'gs1/magnification', wants: ['magnification'] }),
+        expect.objectContaining({ ruleId: 'gs1/human-readable', wants: ['omitHri'] }),
+        expect.objectContaining({ ruleId: 'gs1/quiet-zone', limit: true }),
+      ]),
+    )
   })
 
   it('refuses a label type it does not know', async () => {

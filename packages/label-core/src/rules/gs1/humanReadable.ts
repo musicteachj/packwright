@@ -21,6 +21,7 @@
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
+import { verdictWaitsOnADescribedLabel } from '../described'
 
 export const GS1_HRI_MISSING = 'GS1_HRI_MISSING'
 export const GS1_HRI_PRESENT = 'GS1_HRI_PRESENT'
@@ -31,7 +32,7 @@ const CITATION: Citation = {
   title: 'Human readable interpretation for EAN/UPC barcodes',
 }
 
-export const humanReadableRule: Gs1RetailRule = {
+const judgedAsDrawn: Gs1RetailRule = {
   id: 'gs1/human-readable',
   title: 'An EAN/UPC symbol prints its GTIN in human-readable digits below the bars.',
   citation: CITATION,
@@ -69,3 +70,12 @@ export const humanReadableRule: Gs1RetailRule = {
     })
   },
 }
+
+/** The rule as drawn, its verdict waiting on a label printed elsewhere — see `rules/described.ts`. */
+export const humanReadableRule: Gs1RetailRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
+  unstated: ({ data }) => (data.omitHri === undefined ? ['omitHri'] : []),
+  reason:
+    'This label is described rather than drawn here, and Packwright cannot see whether the ' +
+    'digits are printed beneath its barcode; it draws them unless told not to. Say whether ' +
+    'they are printed and this check will run.',
+})
