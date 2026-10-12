@@ -403,9 +403,7 @@
     "run": 2,
     "planted": "caught",
     "falseClearance": false,
-    "oldFalseFindingsRelayed": [
-      "text not printed at engine type size"
-    ],
+    "oldFalseFindingsRelayed": ["text not printed at engine type size"],
     "toolSaidOldFinding": false,
     "declined": {
       "said": 1,

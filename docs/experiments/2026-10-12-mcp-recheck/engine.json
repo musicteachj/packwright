@@ -198,17 +198,12 @@
     "declined": [
       {
         "ruleId": "gs1/magnification",
-        "wants": [
-          "magnification"
-        ],
+        "wants": ["magnification"],
         "reason": "This label is described rather than drawn here, and Packwright cannot see the magnification its barcode is printed at; its own default of 1 (100%) would pass by construction. State the magnification, as a factor such as 1 or 0.8, and this check will run."
       },
       {
         "ruleId": "gs1/bar-height",
-        "wants": [
-          "barHeightMm",
-          "magnification"
-        ],
+        "wants": ["barHeightMm", "magnification"],
         "reason": "This label is described rather than drawn here, and Packwright cannot see how tall its bars are printed, or the magnification the minimum is set by, as a factor such as 1 or 0.8; its own defaults would decide the verdict. State them and this check will run."
       },
       {
@@ -219,9 +214,7 @@
       },
       {
         "ruleId": "gs1/human-readable",
-        "wants": [
-          "omitHri"
-        ],
+        "wants": ["omitHri"],
         "reason": "This label is described rather than drawn here, and Packwright cannot see whether the digits are printed beneath its barcode; it draws them unless told not to. Say whether they are printed (omitHri false if they are) and this check will run."
       }
     ]

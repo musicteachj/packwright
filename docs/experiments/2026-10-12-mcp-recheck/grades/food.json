@@ -37,9 +37,7 @@
       "said": 6,
       "omitted": 0,
       "contradicted": 1,
-      "contradictedNames": [
-        "us-food/ingredient-order"
-      ]
+      "contradictedNames": ["us-food/ingredient-order"]
     },
     "transcriptionErrors": [
       {
@@ -65,9 +63,7 @@
       "said": 5,
       "omitted": 1,
       "contradicted": 1,
-      "contradictedNames": [
-        "us-food/ingredient-order"
-      ]
+      "contradictedNames": ["us-food/ingredient-order"]
     },
     "transcriptionErrors": [
       {
@@ -274,9 +270,7 @@
       "said": 6,
       "omitted": 0,
       "contradicted": 1,
-      "contradictedNames": [
-        "us-food/ingredient-order"
-      ]
+      "contradictedNames": ["us-food/ingredient-order"]
     },
     "transcriptionErrors": [
       {
