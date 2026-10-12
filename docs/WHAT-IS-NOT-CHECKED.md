@@ -370,6 +370,13 @@ give no verdict either way:
 - **A dual-column panel's form**: its headings and cells are checked, but its pass also certifies the line
   between the columns and equal prominence, which are matters of printing and type size.
 
+**A label described without its size.** The size can be left out of a `check_label` request. Nothing is assumed
+in its place: everything that does not depend on it is checked, and every check that does waits for it under "checks
+that did not run". That covers the label's own size against CLP's Table 1.3, and on a US food label any format,
+small-package exemption or excused second column that turns on how big the package is. A claim the principal display
+panel alone already rules out is still reported, since a label can only add area. And **whether the text fits on the
+label is not checked at all**: with no size there is no edge to run off, so nothing is said about fit either way.
+
 On a label Packwright draws — the editor and the export — every one of these is checked, because the drawing is
 what prints.
 

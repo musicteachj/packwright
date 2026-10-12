@@ -12,7 +12,8 @@
 
 import * as bwip from 'bwip-js/generic'
 import { describe, expect, it } from 'vitest'
-import { judgeLabel, type Judgement, type JudgeRequest } from '../judge/judge'
+import { FIT_NOT_CHECKED, judgeLabel, type Judgement, type JudgeRequest } from '../judge/judge'
+import { EDGELESS_MM } from '../schema/labelDocument'
 import type { LabelStock } from '../templates/stock'
 import type { UpcALabelData } from '../templates/upcA'
 import type { UsFoodLabelData } from '../templates/usFood'
@@ -295,5 +296,172 @@ describe('a rule some of whose findings go', () => {
   it('keeps what does not go, and does not claim to have stood down beside it', () => {
     expect(rule.check(context).map((one) => one.code)).toEqual(['STAYS'])
     expect(rule.declines!(context)).toBeUndefined()
+  })
+})
+
+describe('a label described without its size', () => {
+  // As `check_label` judges a request with no `stock`: drawn on an edgeless stock, its
+  // rules told the size is unknown (`sizeUnstated`). The panel alone decides a denial;
+  // a grant waits for the size, since a bigger label could take it away.
+  const sizeless = (data: UsFoodLabelData) =>
+    judged({
+      labelType: 'us-food',
+      data,
+      stock: { widthMm: EDGELESS_MM, heightMm: EDGELESS_MM, marginMm: 6 },
+      subject: 'described',
+      sizeUnstated: true,
+    })
+  const smallBox = { shape: 'rectangular' as const, widthMm: 50, heightMm: 60 }
+  const bigBox = { shape: 'rectangular' as const, widthMm: 120, heightMm: 240 }
+  const panel = US_FOOD_CONFORMANT.data.nutritionFacts!
+  const tabular = (container: typeof smallBox) => ({
+    ...US_FOOD_CONFORMANT.data,
+    container,
+    nutritionFacts: { ...panel, format: 'tabular' as const, availableSurfaceSqInches: 5 },
+  })
+
+  it('waits for the size before granting a format the panel alone would permit', () => {
+    const described = sizeless(tabular(smallBox))
+    expect(codes(described)).not.toContain('FDA_NUTRITION_FORMAT_MET')
+    expect(declinedBy(described, 'us-food/nutrition-format')?.wants).toEqual(['stock'])
+  })
+
+  it('judges a tabular display any package of its shape may use, without the size', () => {
+    // (d)(11)(iii): a package without the continuous vertical space for the standard
+    // display may use the tabular one, whatever its size — so no size is asked for.
+    // Found by review.
+    const tall = {
+      ...US_FOOD_CONFORMANT.data,
+      container: bigBox,
+      nutritionFacts: {
+        ...panel,
+        format: 'tabular' as const,
+        availableSurfaceSqInches: 60,
+        continuousVerticalSpaceInches: 2,
+      },
+    }
+    const described = sizeless(tall)
+    expect(codes(described)).toContain('FDA_NUTRITION_FORMAT_MET')
+    expect(declinedBy(described, 'us-food/nutrition-format')).toBeUndefined()
+  })
+
+  it('denies a format the panel alone rules out, naming the panel', () => {
+    const described = sizeless(tabular(bigBox))
+    const denied = described.findings.find((f) => f.code === 'FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+    expect(denied).toBeDefined()
+    // The panel, never the ten-metre stock a sizeless label is drawn on.
+    expect(denied!.message).not.toContain('155')
+    expect(declinedBy(described, 'us-food/nutrition-format')).toBeUndefined()
+  })
+
+  it('waits before granting the small-package exemption, and denies it where the panel rules it out', () => {
+    const smallPackage = PERMISSION_PATHS.find((p) => p.label === 'small package nutrition exempt')!
+    const claimed = smallPackage.data as UsFoodLabelData
+    const granted = sizeless(claimed)
+    expect(codes(granted)).not.toContain('FDA_NUTRITION_EXEMPT')
+    expect(declinedBy(granted, 'us-food/nutrition-completeness')?.wants).toEqual(['stock'])
+
+    const denied = sizeless({ ...claimed, container: bigBox })
+    const missing = denied.findings.find((f) => f.code === 'FDA_NUTRITION_MISSING')
+    expect(missing?.message).toContain('principal display panel is itself')
+  })
+
+  it('does not pass a second column’s protein percentage on an excuse the size decides', () => {
+    // A food for children 1 through 3 with a per-container column and no protein
+    // percentage in it. On its 50 × 60 mm panel alone, declaring 10 in², the column is
+    // excused under (A); on a 100 × 100 mm label it is owed, and the missing percentage a
+    // violation. Raised by review.
+    const fixture = US_FOOD_FIXTURES.find(
+      (f) =>
+        f.expected.code === 'FDA_PROTEIN_PERCENT_MISSING' &&
+        f.data.nutritionFacts?.columns?.mode === 'dual',
+    )!
+    const small = {
+      ...fixture.data,
+      container: smallBox,
+      nutritionFacts: { ...fixture.data.nutritionFacts!, availableSurfaceSqInches: 10 },
+    } as UsFoodLabelData
+    const described = sizeless(small)
+    // No verdict on the column either way, and the size asked for where it is owed.
+    expect(codes(described)).not.toContain('FDA_PROTEIN_PERCENT_MET')
+    expect(codes(described)).not.toContain('FDA_PROTEIN_PERCENT_MISSING')
+    expect(declinedBy(described, 'us-food/dual-column-required')?.wants).toEqual(['stock'])
+    const sized = food(small, { widthMm: 100, heightMm: 100, marginMm: 6 }, 'described')
+    expect(codes(sized)).toContain('FDA_PROTEIN_PERCENT_MISSING')
+
+    // The first column's percentage owes nothing to the size: missing, it is reported
+    // without one. Waiting the whole rule hid it. Found by `/code-review high` on #90.
+    const { protein: _protein, ...noFirstPercent } = small.nutritionFacts!.declaredPercentDv!
+    const firstMissing = sizeless({
+      ...small,
+      nutritionFacts: { ...small.nutritionFacts!, declaredPercentDv: noFirstPercent },
+    })
+    expect(
+      firstMissing.findings
+        .filter((f) => f.code === 'FDA_PROTEIN_PERCENT_MISSING')
+        .map((f) => f.citation.reference),
+    ).toEqual(['21 CFR 101.9(c)(7)(i)'])
+  })
+
+  it('says fit went unchecked, and lays out on no edge whatever stock it is handed', () => {
+    // A caller handing the judge a sizeless label on a small stock still gets no overrun:
+    // the judge draws it edgeless itself. Found by `/code-review high` on #90.
+    const onSmallStock = judged({
+      labelType: 'us-food',
+      data: US_FOOD_CONFORMANT.data,
+      stock: { widthMm: 40, heightMm: 40, marginMm: 2 },
+      subject: 'described',
+      sizeUnstated: true,
+    })
+    expect(onSmallStock.layout.omissions.filter((o) => /past the|runs off/.test(o.reason))).toEqual(
+      [],
+    )
+    expect(onSmallStock.uncheckable[0]).toEqual({
+      elementId: 'label',
+      reasons: [{ text: FIT_NOT_CHECKED }],
+    })
+  })
+
+  it('still asks what a second column counts, without the size', () => {
+    // The form rule waits on the size here, with nothing of its own to set aside; its
+    // own question about the column's basis must not vanish with it. Found by review.
+    const unstated = US_FOOD_FIXTURES.find((f) =>
+      f.name.includes('second column says nothing about what it counts'),
+    )!
+    const small = {
+      ...unstated.data,
+      container: smallBox,
+      nutritionFacts: {
+        ...unstated.data.nutritionFacts!,
+        availableSurfaceSqInches: 5,
+        cannotAccommodateVertical: true,
+      },
+    } as UsFoodLabelData
+    expect(declinedBy(sizeless(small), 'us-food/dual-column-form')?.wants).toEqual([
+      'nutritionFacts.columns.basis',
+    ])
+  })
+
+  it('waits before excusing a second column under (b)(12)(i)(A)', () => {
+    // 55 g against a 22 g reference amount is 250 percent, so the package owes a second
+    // column unless excused; its panel alone, under 12 in², would excuse it.
+    const owed = {
+      ...US_FOOD_CONFORMANT.data,
+      container: smallBox,
+      nutritionFacts: {
+        ...panel,
+        format: 'tabular' as const,
+        availableSurfaceSqInches: 5,
+        referenceAmount: { amount: 22, unit: 'g', category: 'Snacks' },
+        packageContent: 55,
+        packagedAndSoldIndividually: true,
+      },
+    } as UsFoodLabelData
+    const described = sizeless(owed)
+    expect(codes(described)).not.toContain('FDA_DUAL_COLUMN_EXEMPT')
+    expect(declinedBy(described, 'us-food/dual-column-required')?.wants).toEqual(['stock'])
+    // Told the size, it is judged: on a 120 × 240 mm label the package is too big for (A).
+    const sized = food(owed, { widthMm: 120, heightMm: 240, marginMm: 6 }, 'described')
+    expect(declinedBy(sized, 'us-food/dual-column-required')).toBeUndefined()
   })
 })

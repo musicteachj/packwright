@@ -24,7 +24,12 @@ import { testRouter } from './views/editorTestRouter'
  * editor's, which judges its own drawing. Kept here, where it is used, rather than
  * exported beside the map as if it were authoritative. Found by `/code-review high` on #87.
  */
-const DESCRIBED_ONLY_FACTS: readonly DeclinedFact[] = ['magnification', 'barHeightMm', 'omitHri']
+const DESCRIBED_ONLY_FACTS: readonly DeclinedFact[] = [
+  'magnification',
+  'barHeightMm',
+  'omitHri',
+  'stock',
+]
 
 Element.prototype.scrollIntoView = vi.fn()
 

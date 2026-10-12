@@ -17,6 +17,7 @@ import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
+import { SIZE_UNSTATED_REASON, verdictWaitsOnADescribedLabel } from '../described'
 
 export const GHS_LABEL_BELOW_MINIMUM_SIZE = 'GHS_LABEL_BELOW_MINIMUM_SIZE'
 export const GHS_LABEL_SIZE_MET = 'GHS_LABEL_SIZE_MET'
@@ -27,7 +28,7 @@ const CITATION: Citation = {
   title: 'Minimum dimensions of labels and pictograms',
 }
 
-export const ghsLabelDimensionsRule: GhsChemicalRule = {
+const judgedAsDrawn: GhsChemicalRule = {
   id: 'ghs/label-dimensions',
   title: 'The label is at least the minimum size CLP sets for the package capacity.',
   citation: CITATION,
@@ -89,3 +90,15 @@ export const ghsLabelDimensionsRule: GhsChemicalRule = {
     ]
   },
 }
+
+/** The rule as drawn, waiting for the size on a label described without one — see `rules/described.ts`. */
+export const ghsLabelDimensionsRule: GhsChemicalRule = verdictWaitsOnADescribedLabel(
+  judgedAsDrawn,
+  {
+    // The rule measures the drawn label against Table 1.3, so with no size there is
+    // nothing to measure — and the edgeless stock a sizeless label is drawn on, ten metres
+    // a side, would pass every band. This wait is all that stops that pass. Found by review.
+    unstated: ({ sizeUnstated }) => (sizeUnstated === true ? ['stock'] : []),
+    reason: () => SIZE_UNSTATED_REASON,
+  },
+)

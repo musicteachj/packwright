@@ -41,6 +41,30 @@ import type { Finding, Severity } from '../types/index'
 import { uncheckableIn, type Uncheckable } from './uncheckable'
 
 /**
+ * The side of the stock a label of unstated size is laid out on: ten metres, so
+ * nothing runs off it.
+ *
+ * The engines need a stock to draw on, and any real size would be a guess, which
+ * the size rules would then judge and the overrun checks would measure against —
+ * "runs 10 mm past the bottom of a 105 mm label" about a label nobody measured.
+ * With no edge in reach, nothing overruns and no sentence is made about fit, which
+ * is the honest model of a label whose size is unknown. The verdicts that turn on
+ * the size wait for it instead (`sizeUnstated`, `rules/described.ts`).
+ */
+export const EDGELESS_MM = 10_000
+
+/**
+ * Said under `uncheckable` for a label of unstated size. Drawn edgeless, nothing on it
+ * overruns, so the passes an overrun would withhold are issued — on what the label is
+ * said to print, never on its fitting. Said beside the findings, where an assistant
+ * looks for what went unchecked, as well as in `stockUsed`. Found by
+ * `/code-review high` on #90.
+ */
+export const FIT_NOT_CHECKED =
+  'No label size was given, so whether each element fits on the label was not checked. ' +
+  'Every pass here is on what the label is said to print, not on its fitting.'
+
+/**
  * A label to judge.
  *
  * **A UPC-A label carries its barcode encoder**, required by the type so a caller
@@ -53,7 +77,15 @@ export type JudgeRequest = (
   | { labelType: 'gs1-retail'; data: UpcALabelData; stock: LabelStock; barcode: BarcodeEncoder }
   | { labelType: 'ghs-chemical'; data: GhsLabelData; stock: LabelStock }
   | { labelType: 'us-food'; data: UsFoodLabelData; stock: LabelStock }
-) & { subject?: LabelSubject }
+) & {
+  subject?: LabelSubject
+  /**
+   * Set where a label printed elsewhere was described without its size. `stock` is
+   * then edgeless (`EDGELESS_MM`), so the layout makes no claim about fit, and the
+   * rules are told the size is unknown: see `RuleContextBase.sizeUnstated`.
+   */
+  sizeUnstated?: true
+}
 
 /**
  * A judged label, in the order and the words the editor shows.
@@ -107,7 +139,13 @@ export function judgeLayout(context: RuleContext): Judgement {
     failures: findings.filter((finding) => finding.severity !== 'pass'),
     passes: findings.filter((finding) => finding.severity === 'pass'),
     blocking: findings.some((finding) => finding.severity === 'blocking'),
-    uncheckable: uncheckableIn(context.layout, context.subject),
+    uncheckable:
+      context.sizeUnstated === true
+        ? [
+            { elementId: 'label', reasons: [{ text: FIT_NOT_CHECKED }] },
+            ...uncheckableIn(context.layout, context.subject),
+          ]
+        : uncheckableIn(context.layout, context.subject),
   }
 }
 
@@ -137,7 +175,16 @@ function contextOf(request: JudgeRequest, layout: ResolvedLayout): RuleContext {
   const context = withoutEncoder(request, layout)
   // Attached once, after the switch, so a label type added there cannot be judged as a
   // drawing for want of a line.
-  return request.subject === undefined ? context : { ...context, subject: request.subject }
+  const subject = request.subject === undefined ? {} : { subject: request.subject }
+  // An unstated size: the rules see a stock of no area — see `sizeUnstated`.
+  const size =
+    request.sizeUnstated === true
+      ? {
+          sizeUnstated: true as const,
+          stock: { widthMm: 0, heightMm: 0, marginMm: request.stock.marginMm },
+        }
+      : {}
+  return { ...context, ...subject, ...size }
 }
 
 function withoutEncoder(request: JudgeRequest, layout: ResolvedLayout): RuleContext {
@@ -191,9 +238,33 @@ export function judgeLabel(request: JudgeRequest): LabelJudgement {
         'drawn, and the barcode checks would have nothing printed to measure.',
     }
   }
+  if (request.sizeUnstated === true && request.subject !== 'described') {
+    // An unstated size means the label exists elsewhere: a drawing always has the size
+    // it is drawn at, and judging one on a stock of no area would be judging nothing.
+    return {
+      outcome: 'refused',
+      reason:
+        'A label whose size is not given can only be judged as one printed elsewhere ' +
+        '(`subject: described`).',
+    }
+  }
   let layout: ResolvedLayout
   try {
-    layout = layOutLabel(request)
+    // A size nobody gave is drawn edgeless here, whatever stock came with it, so no
+    // caller can hand the judge a borrowed size and have overruns measured against it.
+    // Found by `/code-review high` on #90.
+    layout = layOutLabel(
+      request.sizeUnstated === true
+        ? {
+            ...request,
+            stock: {
+              widthMm: EDGELESS_MM,
+              heightMm: EDGELESS_MM,
+              marginMm: request.stock.marginMm,
+            },
+          }
+        : request,
+    )
   } catch (error) {
     // A document that describes no drawing — a stock with no panel, a capacity of
     // zero — or a symbol the encoder could not produce is a refusal with the

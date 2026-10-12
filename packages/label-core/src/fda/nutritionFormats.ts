@@ -102,6 +102,17 @@ export const DUAL_COLUMN_BASIS_REFERENCE: Record<DualColumnBasis, string> = {
 }
 
 /**
+ * The two provisions a package's size decides, as the findings cite them: the
+ * small-package displays of (j)(13)(ii)(A), and the second-column exemption (A) that
+ * reaches packages entitled to them. Exported so the rules that wait for a label's
+ * size where it decides these — `us-food/nutrition-format`, and the dual-column rules
+ * through `sizeDecidesTheDuty` — test for the reference this module returns, not for
+ * a copy of it. Found by review.
+ */
+export const SMALL_PACKAGE_ROUTE_REFERENCE = '21 CFR 101.9(j)(13)(ii)(A)'
+export const SMALL_PACKAGE_EXEMPTION_REFERENCE = '21 CFR 101.9(b)(12)(i)(A)'
+
+/**
  * Below this, (j)(13)(i) exempts a package from nutrition labelling altogether —
  * "Provided, That the labels for these foods bear no nutrition claims or other
  * nutrition information" — and (j)(13)(ii)(A) lets any of the displays be used.
@@ -237,7 +248,7 @@ export function formatIsPermitted(
         ? `${area.describe}, which permits a reduced display only where its shape or size ` +
           'cannot accommodate a standard vertical column, and the label does not say so'
         : `${area.describe}, and a reduced display is permitted only at 40 in² or less`,
-      reference: '21 CFR 101.9(j)(13)(ii)(A)',
+      reference: SMALL_PACKAGE_ROUTE_REFERENCE,
     }
   }
 
@@ -247,11 +258,11 @@ export function formatIsPermitted(
       reason:
         'nutrition information may be given in a linear fashion only if the label will not ' +
         'accommodate a tabular display, and the label does not say that it will not',
-      reference: '21 CFR 101.9(j)(13)(ii)(A)',
+      reference: SMALL_PACKAGE_ROUTE_REFERENCE,
     }
   }
 
-  return { permitted: true, reason: '', reference: '21 CFR 101.9(j)(13)(ii)(A)' }
+  return { permitted: true, reason: '', reference: SMALL_PACKAGE_ROUTE_REFERENCE }
 }
 
 /**
@@ -467,7 +478,7 @@ export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
     basis === undefined
       ? undefined
       : input.meetsSmallPackageRequirements === true
-        ? '21 CFR 101.9(b)(12)(i)(A)'
+        ? SMALL_PACKAGE_EXEMPTION_REFERENCE
         : input.rawCommodityVoluntary === true
           ? '21 CFR 101.9(b)(12)(i)(B)'
           : input.variedWeight === true ||

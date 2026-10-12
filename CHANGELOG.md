@@ -8,6 +8,26 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`check_label` judges a label it was not told the size of, and waits only where the size matters.** Stage 20 made
+  the size required and told an assistant to ask rather than guess; the re-check of 2026-10-12 found that followed
+  so faithfully that 43 of 72 answers asked and checked nothing, leaving a wrong check digit, two signal words and a
+  precedence breach unreported for want of a size none of them depends on. `stock` is optional again, and nothing is
+  assumed in its place: the label is drawn on an edgeless stock (`EDGELESS_MM`), so nothing overruns and no sentence
+  is made about fit, and its rules are told the size is unknown (`sizeUnstated`) and see a stock of no area. A floor
+  computed from it is then the principal display panel's alone, which a real label can only raise — so a size
+  threshold the panel already fails is reported, naming the panel, and a grant the panel alone would earn waits for
+  the size, under "checks that did not run" with a new `stock` fact. That covers the GHS label's size against Table
+  1.3, a US food label's reduced format through the small-package route, its small-package exemption, and a second
+  column excused under (b)(12)(i)(A), on which the dual-column form and protein-percent checks wait too. A format
+  any package may use, under (d)(11)(iii), is judged without the size. The judge refuses an unstated size on a label
+  it is to judge as drawn, and draws a sizeless label edgeless itself whatever stock it is handed.
+  `uncheckable` says that fit was not checked; the protein-percent check reports a missing first-column percentage
+  without the size, only its second-column verdicts waiting; and the references that decide when a check waits are
+  shared with the code that cites them rather than copied. The last four found by `/code-review high` on #90. The answer's `stockUsed` says plainly when no size was given. James's decision of
+  2026-10-12.
+
 ### Added
 
 - **A re-check of the MCP evaluation, 2026-10-12** (`docs/experiments/2026-10-12-mcp-recheck/`): the "with tools" half

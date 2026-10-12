@@ -32,8 +32,15 @@ import type { Decline, UsFoodContext, UsFoodRule } from '../types'
 import { DUAL_COLUMN_REFERENCES, eachColumnReference } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
 import type { DualColumnBasis } from '../../fda/nutritionFormats'
-import { asDeclinedFacts, dualColumnDutyFor, PROVISION_FOR, stateThese } from './mandatoryColumns'
+import {
+  asDeclinedFacts,
+  dualColumnDutyFor,
+  PROVISION_FOR,
+  stateThese,
+  sizeDecidesTheDuty,
+} from './mandatoryColumns'
 import { smallestOf } from './printedText'
+import { SIZE_UNSTATED_REASON, someFindingsGoOnADescribedLabel } from '../described'
 
 export const FDA_PROTEIN_PERCENT_MISSING = 'FDA_PROTEIN_PERCENT_MISSING'
 export const FDA_PROTEIN_PERCENT_MET = 'FDA_PROTEIN_PERCENT_MET'
@@ -73,7 +80,7 @@ const PROTEIN_ROW = nutritionRowElementId('protein')
 /** A printed percentage in a row's text: the figure, where one is there. */
 const PERCENT = /(\d+(?:\.\d+)?)\s*%/
 
-export const usFoodProteinPercentRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/protein-percent',
   title: 'A food for children 1 through 3 gives its protein as a percentage of the Daily Value.',
   citation: CITATION,
@@ -283,3 +290,17 @@ export const usFoodProteinPercentRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, its second-column verdicts waiting for the size where it decides the duty — see `sizeDecidesTheDuty`. */
+export const usFoodProteinPercentRule: UsFoodRule = someFindingsGoOnADescribedLabel(judgedAsDrawn, {
+  // What the duty decides goes: the second column's findings, cited under (e), and the
+  // pass, which would clear the second column too. The first column's (c)(7)(i)
+  // percentage owes nothing to the duty or the size, and stays reported — waiting the
+  // whole rule hid a missing first-column percentage that holds at any size. Found by
+  // `/code-review high` on #90.
+  goes: (one, context) =>
+    sizeDecidesTheDuty(context) &&
+    (one.severity === 'pass' || one.citation.reference !== CITATION.reference),
+  why: SIZE_UNSTATED_REASON,
+  wants: ['stock'],
+})

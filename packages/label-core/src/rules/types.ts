@@ -58,6 +58,18 @@ interface RuleContextBase {
   layout: ResolvedLayout
   /** What the judgement is about. Absent means `drawing`. See `LabelSubject`. */
   subject?: LabelSubject
+  /**
+   * Set where a label printed elsewhere was described without its size (James's
+   * decision of 2026-10-12). The layout is then drawn on an edgeless stock, so
+   * nothing in it overruns, and `stock` here has **no area**: a rule computing the
+   * labeling-surface floor gets the principal display panel's alone, which a real
+   * label can only raise (`labelingSurfaceFloor` takes the larger). So a size
+   * threshold the panel alone already fails is failed whatever the size, and a
+   * grant the panel alone would earn — a small-package format, exemption or second
+   * column excused — waits for the size, which could take it away. Every rule that
+   * reads the size is wrapped to say so: `rules/described.ts`.
+   */
+  sizeUnstated?: true
 }
 
 export interface Gs1RetailContext extends RuleContextBase {
@@ -222,6 +234,9 @@ export type DeclinedFact =
   | 'magnification'
   | 'barHeightMm'
   | 'omitHri'
+  // The label's size, which sits beside the data rather than in it. Asked for where a
+  // label printed elsewhere was described without one (`sizeUnstated`).
+  | 'stock'
   | 'ingredients.percentByWeight'
   | 'ingredients.name'
   | 'nutritionFacts.referenceAmount'

@@ -51,9 +51,19 @@ import {
 } from './dualColumnParagraphs'
 import type { DualColumnReference } from './dualColumnParagraphs'
 import type { DualColumnBasis, DualColumnDuty } from '../../fda/nutritionFormats'
-import { asDeclinedFacts, dualColumnDutyFor, PROVISION_FOR, stateThese } from './mandatoryColumns'
+import {
+  asDeclinedFacts,
+  dualColumnDutyFor,
+  PROVISION_FOR,
+  stateThese,
+  sizeDecidesTheDuty,
+} from './mandatoryColumns'
 import { MM_PER_POINT } from '../../geometry/units'
-import { someFindingsGoOnADescribedLabel } from '../described'
+import {
+  SIZE_UNSTATED_REASON,
+  someFindingsGoOnADescribedLabel,
+  verdictWaitsOnADescribedLabel,
+} from '../described'
 
 export const FDA_DUAL_COLUMN_HEADINGS_MISSING = 'FDA_DUAL_COLUMN_HEADINGS_MISSING'
 export const FDA_DUAL_COLUMN_NOT_SEPARATED = 'FDA_DUAL_COLUMN_NOT_SEPARATED'
@@ -414,7 +424,7 @@ const judgedAsDrawn: UsFoodRule = {
 }
 
 /** The rule as drawn, with what it cannot judge on a label printed elsewhere set aside — see `rules/described.ts`. */
-export const usFoodDualColumnFormRule: UsFoodRule = someFindingsGoOnADescribedLabel(judgedAsDrawn, {
+const withoutItsPass: UsFoodRule = someFindingsGoOnADescribedLabel(judgedAsDrawn, {
   // Its pass also certifies the line between the columns and their equal prominence,
   // which on a label printed elsewhere a request can declare and nobody here can see.
   // A difference the request itself states — a second column scaled smaller, or no line
@@ -424,4 +434,14 @@ export const usFoodDualColumnFormRule: UsFoodRule = someFindingsGoOnADescribedLa
     'Its pass would also certify that the two columns are printed with a line between them ' +
     'and at equal prominence, which a request can say but Packwright cannot see on a panel ' +
     'it did not draw. A difference the request itself states is still reported.',
+})
+
+/**
+ * And waiting for the size where it decides the duty (`sizeDecidesTheDuty`): on a column
+ * the panel alone would excuse under (A), this rule falls silent, and a bigger label
+ * could make (e)(6)'s form owed. Found by review.
+ */
+export const usFoodDualColumnFormRule: UsFoodRule = verdictWaitsOnADescribedLabel(withoutItsPass, {
+  unstated: (context) => (sizeDecidesTheDuty(context) ? ['stock'] : []),
+  reason: () => SIZE_UNSTATED_REASON,
 })

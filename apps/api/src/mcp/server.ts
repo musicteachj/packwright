@@ -23,6 +23,7 @@ import {
   GHS_REGIMES,
   LABEL_TYPES,
   SEVERITY_ORDER,
+  type LabelStock,
   GS1_KEY_LENGTHS,
   calculateCheckDigit,
   canonicalStatementCode,
@@ -111,10 +112,20 @@ export function assumedMarginNotice(marginMm: number): string {
  * schema let through, which is what lets it stand for the refusal's cause; the test
  * beside `assumedMarginNotice` holds that a refusal for another reason gets no notice.
  */
-function marginLeavesNoPanel(stock: StockUsed): boolean {
+function marginLeavesNoPanel(stock: LabelStock): boolean {
   const panel = panelFor(stock)
   return panel.widthMm <= 0 || panel.heightMm <= 0
 }
+
+/**
+ * Said in `stockUsed` when the request gave no size. Nothing was assumed in its place;
+ * the checks that need it are under `declined`.
+ */
+export const SIZE_NOT_GIVEN =
+  'No label size was given, and none was assumed. Everything that does not depend on the ' +
+  'size was checked; the checks that do are listed under `declined`, and run once the ' +
+  'label’s width and height are given. Whether everything fits on the label was not ' +
+  'checked at all, and no pass here says it does.'
 
 /**
  * Generous for any real label, and far below what would cost this server anything.
@@ -189,12 +200,22 @@ const FindingOutput = z.object({
  * Named for what was used rather than "judged on", because a refused label
  * carries it too, beside a notice that it was not judged.
  */
-const StockUsed = z.object({
-  widthMm: z.number(),
-  heightMm: z.number(),
-  marginMm: z.number(),
-  marginAssumed: z.boolean(),
-})
+const StockUsed = z.discriminatedUnion('sizeGiven', [
+  z.object({
+    sizeGiven: z.literal(true),
+    widthMm: z.number(),
+    heightMm: z.number(),
+    marginMm: z.number(),
+    marginAssumed: z.boolean(),
+  }),
+  // No size was stated, and none was assumed: the checks that turn on it are under
+  // `declined`, asking for it. Said in so many words, since an assistant reading the
+  // answer has to tell its user so. James's decision of 2026-10-12.
+  z.object({
+    sizeGiven: z.literal(false),
+    notice: z.string(),
+  }),
+])
 
 export type StockUsed = z.infer<typeof StockUsed>
 
@@ -335,7 +356,7 @@ export function checkLabelOutput(
       // assumed margin owes nothing to the margin, and saying so would send the user
       // looking for the wrong figure.
       reason:
-        stockUsed.marginAssumed && marginLeavesNoPanel(stockUsed)
+        stockUsed.sizeGiven && stockUsed.marginAssumed && marginLeavesNoPanel(stockUsed)
           ? `${judgement.reason} ${assumedMarginNotice(stockUsed.marginMm)}`
           : judgement.reason,
       notice: NOT_JUDGED,
@@ -467,10 +488,12 @@ export function createPackwrightMcpServer(): McpServer {
         'checks that did not run and what each needs; what could not be drawn or judged; and a ' +
         'notice that no failures is not a statement of compliance. A label the engine cannot ' +
         'draw is answered `refused`, with the reason and a notice that it was not judged. ' +
-        '`labelType` selects the shape of `data`. `stock` — the printed label’s width and height ' +
-        'in millimetres — is required: if the user has not said how big the label is, ask them ' +
-        'rather than guess, because every size and placement finding is measured against it. ' +
-        'The answer’s `stockUsed` says the size used, and whether the margin was assumed. ' +
+        '`labelType` selects the shape of `data`. `stock` is the printed label’s width and ' +
+        'height in millimetres. If the user has not said how big the label is, leave it out ' +
+        'rather than guess: everything that does not depend on the size is still checked, and ' +
+        'the checks that do are listed under `declined`, asking for it — tell the user, and ' +
+        'check again once they give it. The answer’s `stockUsed` says the size used, and ' +
+        'whether the margin was assumed, or that no size was given. ' +
         'Packwright draws no pictogram artwork and a GHS label’s input carries no type sizes, so ' +
         'on a GHS label whether each pictogram carries its symbol, and whether the text fits at ' +
         'the label’s own type sizes, are not checked. The answer lists each under `uncheckable`, ' +
@@ -486,12 +509,15 @@ export function createPackwrightMcpServer(): McpServer {
       annotations: READ_ONLY,
     },
     async (request) => {
-      const { stock, marginAssumed } = checkedStock(request)
+      const { stock, marginAssumed, sizeGiven } = checkedStock(request)
       return answer(
-        checkLabelOutput(request.labelType, judgeLabel(toJudgeRequest(request, bwip)), {
-          ...stock,
-          marginAssumed,
-        }),
+        checkLabelOutput(
+          request.labelType,
+          judgeLabel(toJudgeRequest(request, bwip)),
+          sizeGiven
+            ? { sizeGiven, ...stock, marginAssumed }
+            : { sizeGiven, notice: SIZE_NOT_GIVEN },
+        ),
       )
     },
   )

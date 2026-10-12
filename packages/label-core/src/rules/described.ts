@@ -98,7 +98,11 @@ export function verdictWaitsOnADescribedLabel<TContext extends RuleContext>(
     declines: (context): Decline | undefined => {
       const wants = waiting(context)
       if (wants.length === 0) return rule.declines?.(context)
-      return rule.check(context).length > 0 ? { reason: wait.reason(wants), wants } : undefined
+      if (rule.check(context).length > 0) return { reason: wait.reason(wants), wants }
+      // Nothing set aside, so nothing to wait on — but the rule's own question, if it
+      // has one, still stands: the dual-column form asking what a second column counts
+      // vanished on a label described without its size. Found by review.
+      return rule.declines?.(context)
     },
   }
 }
@@ -117,7 +121,17 @@ export function verdictWaitsOnADescribedLabel<TContext extends RuleContext>(
  */
 export function someFindingsGoOnADescribedLabel<TContext extends RuleContext>(
   rule: Rule<TContext>,
-  go: { goes: (finding: Finding, context: TContext) => boolean; why: string; citation?: Citation },
+  go: {
+    goes: (finding: Finding, context: TContext) => boolean
+    why: string
+    citation?: Citation
+    /**
+     * What would let the set-aside findings be judged, where something can: the
+     * decline then asks for it, in `why`'s words, instead of standing down at a
+     * limit of the tool.
+     */
+    wants?: readonly DeclinedFact[]
+  },
 ): Rule<TContext> {
   const goes = (one: Finding, context: TContext) =>
     context.subject === 'described' && go.goes(one, context)
@@ -132,6 +146,13 @@ export function someFindingsGoOnADescribedLabel<TContext extends RuleContext>(
       const findings = rule.check(context)
       if (!findings.some((one) => goes(one, context))) return undefined
       if (findings.some((one) => !goes(one, context))) return undefined
+      if (go.wants !== undefined) {
+        return {
+          reason: go.why,
+          ...(go.citation === undefined ? {} : { citation: go.citation }),
+          wants: go.wants,
+        }
+      }
       return {
         reason:
           `${go.why} So it gives no verdict on that on a label it did not draw. That is a ` +
@@ -148,3 +169,8 @@ export function someFindingsGoOnADescribedLabel<TContext extends RuleContext>(
 export const TYPE_SIZE_IS_THE_TYPEFACES =
   'The regulation measures the height of the printed letters, and how tall a type size’s ' +
   'letters print depends on the typeface, which Packwright cannot see.'
+
+/** The decline every size-dependent check gives on a label described without its size. */
+export const SIZE_UNSTATED_REASON =
+  'The label’s size was not given, and this check is measured against it. State the ' +
+  'label’s width and height in millimetres and this check will run.'

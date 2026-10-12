@@ -47,6 +47,7 @@ import {
   NOT_A_STATEMENT_OF_COMPLIANCE,
   NOT_JUDGED,
   WHAT_IS_NOT_CHECKED_URL,
+  SIZE_NOT_GIVEN,
   assumedMarginNotice,
   checkLabelOutput,
   createPackwrightMcpServer,
@@ -166,7 +167,7 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
         stock: US_FOOD_CONFORMANT.stock,
         subject: 'described',
       }),
-      { ...US_FOOD_CONFORMANT.stock, marginAssumed: false },
+      { sizeGiven: true, ...US_FOOD_CONFORMANT.stock, marginAssumed: false },
     )
     expect(result.isError).toBeFalsy()
     expect(result.structuredContent).toEqual(expected)
@@ -248,6 +249,7 @@ describe('check_label on every document the judge is tested against', () => {
       expect(result.isError).toBeFalsy()
       expect(result.structuredContent).toEqual(
         checkLabelOutput(parsed.data.labelType, judgeAsCheckLabelShould(document), {
+          sizeGiven: true,
           ...document.stock,
           marginAssumed: false,
         }),
@@ -309,18 +311,58 @@ describe('check_label, refusing', () => {
     }
   })
 
-  it('refuses a label whose size it was not told, rather than judging one it assumed', async () => {
-    // The evaluation of 2026-10-10: with no size given, the tool judged a 74 × 105 mm
-    // label of its own and passed the size rule on it — and case 03's label, too
-    // small for its 5 L package, passed with it.
+  it('judges a label whose size it was not told, and asks for the size where it matters', async () => {
+    // Required from stage 20 until 2026-10-12, when the re-check found 43 of 72 answers
+    // asking for a size and checking nothing. Now everything the size does not decide is
+    // judged, the size checks wait for it, and no size is assumed — the evaluation of
+    // 2026-10-10 found a borrowed 74 × 105 mm passing a label too small for its package.
     const result = await (
       await connect()
     ).callTool({
       name: 'check_label',
-      arguments: { labelType: 'ghs-chemical', data: GHS_CONFORMANT.data },
+      arguments: {
+        labelType: 'ghs-chemical',
+        data: { ...GHS_CONFORMANT.data, signalWords: ['Danger', 'Warning'] },
+      },
     })
-    expect(result.isError).toBe(true)
-    expect(textOf(result)).toContain('`stock` must be the printed label’s size')
+    expect(result.isError).toBeFalsy()
+    const answer = result.structuredContent as {
+      stockUsed: { sizeGiven: boolean; notice?: string }
+      findings: Array<{ code: string }>
+      declined: Array<{ ruleId: string; wants: string[] }>
+      uncheckable: Array<{ reasons: string[] }>
+    }
+    expect(answer.stockUsed).toEqual({ sizeGiven: false, notice: SIZE_NOT_GIVEN })
+    // And says that fit went unchecked, which `declined` cannot: there is no edge to
+    // run off, so no check of fit ran to decline. Found by review.
+    expect(SIZE_NOT_GIVEN).toContain('fits on the label was not checked')
+    const codes = answer.findings.map((finding) => finding.code)
+    // Judged without a size: the two signal words.
+    expect(codes).toContain('GHS_SIGNAL_WORD_CONFLICT')
+    // Not judged, either way: the label's own size.
+    expect(codes).not.toContain('GHS_LABEL_SIZE_MET')
+    expect(codes).not.toContain('GHS_LABEL_BELOW_MINIMUM_SIZE')
+    expect(answer.declined).toContainEqual(
+      expect.objectContaining({ ruleId: 'ghs/label-dimensions', wants: ['stock'] }),
+    )
+    // And nothing said about fit on a size nobody gave.
+    const reasons = answer.uncheckable.flatMap((one) => one.reasons)
+    expect(reasons.filter((reason) => /past the (bottom|right)|does not fit/.test(reason))).toEqual(
+      [],
+    )
+  })
+
+  it('reports a wrong check digit without being told the size', async () => {
+    // Case 06 of the re-check: every answer asked for a size and the check digit went
+    // unreported in that turn.
+    const result = await (
+      await connect()
+    ).callTool({
+      name: 'check_label',
+      arguments: { labelType: 'gs1-retail', data: { gtin: '036000291453' } },
+    })
+    const { findings } = result.structuredContent as { findings: Array<{ code: string }> }
+    expect(findings.map((finding) => finding.code)).toContain('GS1_GTIN_CHECK_DIGIT_INVALID')
   })
 
   it('says it assumed the margin when it was given only the size', async () => {
@@ -335,6 +377,7 @@ describe('check_label, refusing', () => {
       },
     })
     expect((result.structuredContent as { stockUsed: unknown }).stockUsed).toEqual({
+      sizeGiven: true,
       widthMm: 50,
       heightMm: 70,
       marginMm: DEFAULT_GHS_STOCK.marginMm,
@@ -493,7 +536,13 @@ describe('check_label, refusing', () => {
     // refuses every other drawing the engines decline; held here directly, so a
     // refusal added later is not told to look for a margin.
     const refusal = { outcome: 'refused', reason: 'Some other reason.' } as const
-    const roomy = { widthMm: 60, heightMm: 40, marginMm: 3, marginAssumed: true }
+    const roomy = {
+      sizeGiven: true as const,
+      widthMm: 60,
+      heightMm: 40,
+      marginMm: 3,
+      marginAssumed: true,
+    }
     expect(checkLabelOutput('gs1-retail', refusal, roomy)).toMatchObject({
       reason: 'Some other reason.',
     })

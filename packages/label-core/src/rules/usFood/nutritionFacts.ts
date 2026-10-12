@@ -78,7 +78,11 @@ import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, untitled } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 import { smallestOf } from './printedText'
-import { TYPE_SIZE_IS_THE_TYPEFACES, someFindingsGoOnADescribedLabel } from '../described'
+import {
+  SIZE_UNSTATED_REASON,
+  TYPE_SIZE_IS_THE_TYPEFACES,
+  someFindingsGoOnADescribedLabel,
+} from '../described'
 
 export const FDA_NUTRITION_MISSING = 'FDA_NUTRITION_MISSING'
 export const FDA_NUTRITION_NUTRIENT_MISSING = 'FDA_NUTRITION_NUTRIENT_MISSING'
@@ -376,20 +380,36 @@ const judgedAsDrawn: UsFoodRule = {
   },
 }
 
-/** The rule as drawn, with what it cannot judge on a label printed elsewhere set aside — see `rules/described.ts`. */
+/** The rule as drawn, with the unit-container statement's type size set aside on a label printed elsewhere. */
+const withoutTheUnitStatementsSize: UsFoodRule = someFindingsGoOnADescribedLabel(judgedAsDrawn, {
+  // The unit-container statement's type size, either way: (iii)'s "1/16-inch in height"
+  // is a letter height, and the request carries none. The statement's wording, and
+  // everything else this rule judges, rest on what the request states.
+  goes: (one) =>
+    one.elementId === US_FOOD_ELEMENTS.unitContainerStatement &&
+    (one.code === FDA_NUTRITION_EXEMPT || one.code === FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL),
+  why: `The unit container statement must be printed 1/16 inch tall. ${TYPE_SIZE_IS_THE_TYPEFACES}`,
+  // Its own provision, not the rule's primary 101.9(c), which says nothing of it. Found by
+  // `/code-review high` on #87.
+  citation: UNIT_CONTAINER_STATEMENT,
+})
+
+/**
+ * And the small-package exemption on a label described without its size: a claim the
+ * principal display panel alone already rules out is ruled out whatever the size, and
+ * stays reported; one the panel alone would grant waits, since the label may be big
+ * enough to withdraw it. See `rules/described.ts` and `sizeUnstated`.
+ */
 export const usFoodNutritionCompletenessRule: UsFoodRule = someFindingsGoOnADescribedLabel(
-  judgedAsDrawn,
+  withoutTheUnitStatementsSize,
   {
-    // The unit-container statement's type size, either way: (iii)'s "1/16-inch in height"
-    // is a letter height, and the request carries none. The statement's wording, and
-    // everything else this rule judges, rest on what the request states.
-    goes: (one) =>
-      one.elementId === US_FOOD_ELEMENTS.unitContainerStatement &&
-      (one.code === FDA_NUTRITION_EXEMPT || one.code === FDA_UNIT_CONTAINER_STATEMENT_TOO_SMALL),
-    why: `The unit container statement must be printed 1/16 inch tall. ${TYPE_SIZE_IS_THE_TYPEFACES}`,
-    // Its own provision, not the rule's primary 101.9(c), which says nothing of it. Found by
-    // `/code-review high` on #87.
-    citation: UNIT_CONTAINER_STATEMENT,
+    goes: (one, { data, sizeUnstated }) =>
+      sizeUnstated === true &&
+      data.nutritionExemption?.kind === 'small-package' &&
+      one.code === FDA_NUTRITION_EXEMPT,
+    why: SIZE_UNSTATED_REASON,
+    citation: SMALL_PACKAGE,
+    wants: ['stock'],
   },
 )
 

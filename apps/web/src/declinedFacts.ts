@@ -71,4 +71,7 @@ export const DECLINED_FACT_FIELDS: Readonly<Record<DeclinedFact, FactField>> = {
   magnification: { fieldId: 'field-magnification', name: 'Magnification' },
   barHeightMm: { fieldId: 'field-bar-height', name: 'Bar height' },
   omitHri: { fieldId: 'field-omit-hri', name: 'Omit the human-readable digits' },
+  // The label's size, asked for where a check request left it out. The editor always
+  // has one, so it never asks; its first box is the width.
+  stock: { fieldId: 'field-stock-width', name: 'Width' },
 }

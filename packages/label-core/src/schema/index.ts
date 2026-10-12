@@ -22,6 +22,7 @@ export {
   UsFoodRequest,
   UsFoodRequestBase,
   checkedStock,
+  EDGELESS_MM,
   coversOnlyListedIngredients,
   toArtwork,
   toColumns,
