@@ -1,0 +1,631 @@
+[
+  {
+    "caseId": "01-clp-pictogram-precedence",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. Precedence (GHS07 with GHS05) not mentioned."
+  },
+  {
+    "caseId": "01-clp-pictogram-precedence",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. Precedence (GHS07 with GHS05) not mentioned."
+  },
+  {
+    "caseId": "01-clp-pictogram-precedence",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. Precedence (GHS07 with GHS05) not mentioned."
+  },
+  {
+    "caseId": "01-clp-pictogram-precedence",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. Proposes correct codes H318, H315, P305+P351+P338, P332+P313 for confirmation; precedence not mentioned. Says it will list checks that could not run."
+  },
+  {
+    "caseId": "01-clp-pictogram-precedence",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. Precedence not mentioned. Raises Article 18(3)(b)-style mixture identity without a citation."
+  },
+  {
+    "caseId": "01-clp-pictogram-precedence",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [
+      {
+        "citation": "CLP Annex I Table 1.3 (pictogram minimums for the 5 L band)",
+        "grade": "V",
+        "evidence": "Annex I 1.2.1.4, Table 1.3: greater than 3 litres but not exceeding 50 litres, label at least 74 x 105, each pictogram at least 23 x 23."
+      }
+    ],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. Precedence not mentioned. Pre-announces that pictogram artwork and text fit at actual type sizes will not be checked (correct framing, not a relayed finding)."
+  },
+  {
+    "caseId": "02-clp-both-signal-words",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. The two signal words are not mentioned."
+  },
+  {
+    "caseId": "02-clp-both-signal-words",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. The two signal words are not mentioned."
+  },
+  {
+    "caseId": "02-clp-both-signal-words",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "missed",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. The two signal words are not mentioned."
+  },
+  {
+    "caseId": "02-clp-both-signal-words",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "partly",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. Notes 'the label prints both \"Danger\" and \"Warning\"' and says the report will cite the provision, but does not say it is non-compliant or cite anything."
+  },
+  {
+    "caseId": "02-clp-both-signal-words",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [
+      {
+        "citation": "CLP Article 20 (one signal word)",
+        "grade": "V",
+        "evidence": "Article 20(3): \"Where the signal word 'Danger' is used on the label, the signal word 'Warning' shall not appear on the label.\""
+      },
+      {
+        "citation": "CLP Article 17 (signal word as label element)",
+        "grade": "V",
+        "evidence": "Article 17(1)(e): \"where applicable, signal words in accordance with Article 20;\""
+      },
+      {
+        "citation": "CLP Article 21 ('the signal-word rules in Article 21')",
+        "grade": "M",
+        "evidence": "Article 21 'Hazard statements', 21(1): \"The label shall include the relevant hazard statements in accordance with the classification of the hazardous substance or mixture.\" The signal-word rules are Article 20."
+      },
+      {
+        "citation": "CLP Article 18 (identities of substances in a mixture)",
+        "grade": "V",
+        "evidence": "Article 18(3)(b): identity of substances contributing to classification for acute toxicity, skin corrosion or serious eye damage, CMR, sensitisation, STOT or aspiration hazard."
+      },
+      {
+        "citation": "CLP Article 17 (name, address, telephone of supplier; EU-established)",
+        "grade": "V",
+        "evidence": "Article 17(1)(a): \"the name, address and telephone number of the supplier(s);\" EU establishment follows from the Article 2 definitions of manufacturer, importer, downstream user and distributor (each 'established within the Community')."
+      },
+      {
+        "citation": "CLP Article 28 (P-statement selection/precedence)",
+        "grade": "V",
+        "evidence": "Article 28(3): \"Not more than six precautionary statements shall appear on the label, unless necessary to reflect the nature and the severity of the hazards.\" 28(1) omits redundant statements."
+      },
+      {
+        "citation": "CLP Annex IV P-statement selection rules",
+        "grade": "V",
+        "evidence": "Annex IV Part 1 lists P241, P242, P243, P280, P303+P361+P353, P370+P378 and P501 against Flammable liquids (section 2.6) categories 1, 2, 3 (with conditions of use); Article 22(3) points selection to Part 1 of Annex IV."
+      },
+      {
+        "citation": "CLP Annex I, Table 1.3 (23 mm meets the >3 L to 50 L minimum)",
+        "grade": "V",
+        "evidence": "Annex I 1.2.1.4, Table 1.3: greater than 3 litres but not exceeding 50 litres, label at least 74 x 105, each pictogram at least 23 x 23."
+      }
+    ],
+    "notes": "No check_label call: asked for the label size, but first looked up H225/P210/P233/P240/P403+P235 with ghs_statement_text and gave a pre-check analysis. Calls 'Danger Warning' a likely problem: CLP allows one signal word, remove 'Warning'. Correctly says pictogram symbol and text fit will not be checked. Also raises an EU-established supplier (Leeds address) and possible missing P280/response/disposal statements, hedged. Citations all model-added (no check_label output exists)."
+  },
+  {
+    "caseId": "02-clp-both-signal-words",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "partly",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. States ''Danger Warning' prints both words... takes a single signal word, which should be \"Danger\"' but as a point that 'will probably come up', with no citation, deferring confirmation to the checker."
+  },
+  {
+    "caseId": "03-clp-label-too-small",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 1,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "precautionaryStatementCodes",
+        "labelSays": "P210, P233, P240, P403+P235",
+        "sent": "P210, P233, P241, P242, P243, P403",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "Three check_label calls: first rejected (hazards '2.6/flammable-liquids-1-2'), second rejected (66 P-codes incl. unverified ones), third judged. Final answer misreports the label's own content as 'H225 with P210, P233, P241, P242, P243, P403'. Calls the size 'a blocking issue' though the tool's summary says blocking: false. Declined pictogram-integrity said. Text fit framed as not confirmed. No added citations."
+  },
+  {
+    "caseId": "03-clp-label-too-small",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 1,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "precautionaryStatementCodes",
+        "labelSays": "P210, P233, P240, P403+P235",
+        "sent": "P210, P235, P241, P242, P243, P280, P303, P310, P403",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "First call rejected (hazards '2.6/flammable-liquids-1-2'); second judged. Calls the size 'a blocking issue' (tool: blocking false). Overreads passes: 'Signal word is correct (\"Danger\" for a flammable liquid category 2)' and 'GHS02 is the appropriate pictogram' - the tool certified only a single signal word and a consistent precedence set. Declined pictogram-integrity said. No added citations."
+  },
+  {
+    "caseId": "03-clp-label-too-small",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 1,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [
+      {
+        "field": "precautionaryStatementCodes",
+        "labelSays": "P210, P233, P240, P403+P235",
+        "sent": "P210, P211, P235, P242, P243, P280",
+        "changedVerdict": false
+      }
+    ],
+    "stockSent": true,
+    "addedCitations": [],
+    "notes": "First call rejected (data sent as a string with leaked tool-call markup); second judged. Overreads precedence pass as 'GHS02 is appropriately selected for flammable liquids'. Declined pictogram-integrity said. No added citations."
+  },
+  {
+    "caseId": "03-clp-label-too-small",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 1,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "CLP Annex VIII (UFI on the label of a hazardous mixture)",
+        "grade": "V",
+        "evidence": "Annex VIII Part A 5.1-5.3: the submitter creates a UFI; 5.3: 'Instead of including the UFI in the supplemental information on the label...' (label is the default placement)."
+      },
+      {
+        "citation": "CLP Article 18(3)(b) for nominal quantity",
+        "grade": "M",
+        "evidence": "Article 18(3)(b): \"the identity of all substances in the mixture that contribute to the classification of the mixture as regards acute toxicity, skin corrosion or serious eye damage, ...\" Nominal quantity is Article 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package\"."
+      },
+      {
+        "citation": "CLP Article 17(2) (language)",
+        "grade": "V",
+        "evidence": "Article 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\""
+      },
+      {
+        "citation": "CLP Article 17(1)(a) (EU supplier name, address, telephone)",
+        "grade": "V",
+        "evidence": "Article 17(1)(a): \"the name, address and telephone number of the supplier(s);\" EU establishment follows from the Article 2 definitions of manufacturer, importer, downstream user and distributor (each 'established within the Community')."
+      },
+      {
+        "citation": "Article 18(3)(b) (substance names in a mixture identifier)",
+        "grade": "V",
+        "evidence": "Article 18(3)(b): identity of substances contributing to classification for acute toxicity, skin corrosion or serious eye damage, CMR, sensitisation, STOT or aspiration hazard."
+      }
+    ],
+    "notes": "Correct transcription (H225, P210, P233, P240, P403+P235, 23 mm, 5 L, stock 50x70). Declined pictogram-integrity check reported as 'Checks that did not run'. Relays the uncheckable overrun note with 'This reflects the tool's layout and the label being too small' (mild inference, not counted as relayed). Correctly reads the absence of a pictogram-size finding."
+  },
+  {
+    "caseId": "03-clp-label-too-small",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [
+      "text not printed at engine type size"
+    ],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 1,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "CLP Art. 19(3) (red-bordered diamond)",
+        "grade": "M",
+        "evidence": "Article 19(3): \"The hazard pictogram relevant for each specific classification is set out in the tables indicating the label elements required for each hazard class in Annex I.\" The red frame is Annex I 1.2.1.2: \"a black symbol on a white background with a red frame sufficiently wide to be clearly visible\"."
+      },
+      {
+        "citation": "CLP Art. 17(1)(a) (supplier established in the EU)",
+        "grade": "V",
+        "evidence": "Article 17(1)(a): \"the name, address and telephone number of the supplier(s);\" EU establishment follows from the Article 2 definitions of manufacturer, importer, downstream user and distributor (each 'established within the Community')."
+      },
+      {
+        "citation": "CLP Art. 17(2) (language)",
+        "grade": "V",
+        "evidence": "Article 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\""
+      },
+      {
+        "citation": "CLP Art. 17(1)(c) (nominal quantity)",
+        "grade": "M",
+        "evidence": "Article 17(1)(c): \"product identifiers as specified in Article 18;\" Nominal quantity is 17(1)(b)."
+      },
+      {
+        "citation": "CLP Art. 28 (P-statement selection, maximum six)",
+        "grade": "V",
+        "evidence": "Article 28(3): \"Not more than six precautionary statements shall appear on the label, unless necessary to reflect the nature and the severity of the hazards.\" 28(1) omits redundant statements."
+      },
+      {
+        "citation": "CLP Annex IV, Part 1 (Flam. Liq. 2 lists P241, P242, P243, P280, P303+P361+P353, P370+P378, P501)",
+        "grade": "V",
+        "evidence": "Annex IV Part 1 lists P241, P242, P243, P280, P303+P361+P353, P370+P378 and P501 against Flammable liquids (section 2.6) categories 1, 2, 3 (with conditions of use); Article 22(3) points selection to Part 1 of Annex IV."
+      },
+      {
+        "citation": "CLP Art. 18(3)(b) (only certain hazard classes trigger substance names)",
+        "grade": "V",
+        "evidence": "Article 18(3)(b): identity of substances contributing to classification for acute toxicity, skin corrosion or serious eye damage, CMR, sensitisation, STOT or aspiration hazard."
+      }
+    ],
+    "notes": "Correct transcription (stock 50x70, codes as printed). Declined pictogram-integrity check said. On the uncheckable overrun note it first says 'I can't say your layout overflows' then 'It does show that this much text won't fit on 50 x 70 mm' - an assertion about the user's label from Packwright's default type sizes, which the tool explicitly disclaimed; counted as relayed. Also infers a pictogram-size pass ('23 mm is the minimum for this capacity band') from the absence of a finding - the size was stated by the user, so not an unstated-value pass."
+  },
+  {
+    "caseId": "03-clp-label-too-small",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "caught",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 1,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": true,
+    "addedCitations": [
+      {
+        "citation": "Annex I, 1.5 (small-container provision)",
+        "grade": "V",
+        "evidence": "Annex I 1.5 'Exemptions from labelling and packaging requirements' (1.5.1 via Article 29(1); 1.5.2.1 packages not exceeding 125 ml)."
+      },
+      {
+        "citation": "Art. 17(1)(b) (nominal quantity)",
+        "grade": "V",
+        "evidence": "Article 17(1)(b): \"the nominal quantity of the substance or mixture in the package made available to the general public, unless this quantity is specified elsewhere on the package;\""
+      },
+      {
+        "citation": "Art. 22 (disposal statement for the general public)",
+        "grade": "M",
+        "evidence": "Article 22(1): \"The label shall include the relevant precautionary statements.\" (22(2)-(4) govern selection and wording.) The disposal statement for the general public is Article 28(2), which itself cross-refers to Article 22: \"one precautionary statement addressing the disposal ... shall appear on the label, unless not required under Article 22.\" Borderline: Article 22 is relevant but does not itself call for a disposal statement."
+      },
+      {
+        "citation": "Art. 28 (disposal statement for the general public; six-statement limit)",
+        "grade": "V",
+        "evidence": "Article 28(2): \"Where the substance or mixture is supplied to the general public, one precautionary statement addressing the disposal of that substance or mixture as well as the disposal of packaging shall appear on the label, unless not required under Article 22.\" 28(3): not more than six."
+      },
+      {
+        "citation": "Annex IV (full set of P-statements)",
+        "grade": "V",
+        "evidence": "Annex IV Part 1 lists P241, P242, P243, P280, P303+P361+P353, P370+P378 and P501 against Flammable liquids (section 2.6) categories 1, 2, 3 (with conditions of use); Article 22(3) points selection to Part 1 of Annex IV."
+      },
+      {
+        "citation": "Art. 17(1)(a) (supplier name, address, telephone)",
+        "grade": "V",
+        "evidence": "Article 17(1)(a): \"the name, address and telephone number of the supplier(s);\" EU establishment follows from the Article 2 definitions of manufacturer, importer, downstream user and distributor (each 'established within the Community')."
+      },
+      {
+        "citation": "Art. 4 (supplier must be established in the EU)",
+        "grade": "M",
+        "evidence": "Article 4(4): \"Where a substance or mixture is classified as hazardous, suppliers shall ensure that the substance or mixture is labelled and packaged in accordance with Titles III and IV, before placing it on the market.\" Article 4 says nothing about establishment; that comes from the Article 2 definitions (e.g. 'importer' means any natural or legal person established within the Community who is responsible for import)."
+      },
+      {
+        "citation": "Art. 17(2) (language)",
+        "grade": "V",
+        "evidence": "Article 17(2): \"The label shall be written in the official language(s) of the Member State(s) where the substance or mixture is placed on the market, unless the Member State(s) concerned provide(s) otherwise.\""
+      }
+    ],
+    "notes": "Correct transcription (stock 50x70, codes as printed). Declined pictogram-integrity check said. Overrun note relayed as 'says nothing about your actual layout, but it suggests the text will not fit this label anyway' (hedged inference, not counted). Extends the tool's Annex I 1.2.1.2 citation to the red border, which 1.2.1.2 does say."
+  },
+  {
+    "caseId": "C1-clp-control",
+    "model": "claude-haiku-4-5",
+    "run": 1,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. No accusation."
+  },
+  {
+    "caseId": "C1-clp-control",
+    "model": "claude-haiku-4-5",
+    "run": 2,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. No accusation."
+  },
+  {
+    "caseId": "C1-clp-control",
+    "model": "claude-haiku-4-5",
+    "run": 3,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. No accusation."
+  },
+  {
+    "caseId": "C1-clp-control",
+    "model": "claude-sonnet-5-5",
+    "run": 1,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No check_label call: looked up H225 and four P-codes with ghs_statement_text, tabulated them as matching, then asked for the label size. No false accusation; raises mixture-identity and other-hazard questions as conditional, uncited. No verdict either way."
+  },
+  {
+    "caseId": "C1-clp-control",
+    "model": "claude-sonnet-5-5",
+    "run": 2,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. No accusation. Proposes P403 and P235 as separate codes for the combined line (would have been a transcription error had it been sent)."
+  },
+  {
+    "caseId": "C1-clp-control",
+    "model": "claude-sonnet-5-5",
+    "run": 3,
+    "planted": "n/a (control)",
+    "falseClearance": false,
+    "oldFalseFindingsRelayed": [],
+    "toolSaidOldFinding": false,
+    "declined": {
+      "said": 0,
+      "omitted": 0,
+      "contradicted": 0,
+      "contradictedNames": []
+    },
+    "transcriptionErrors": [],
+    "stockSent": false,
+    "addedCitations": [],
+    "notes": "No verdict: the answer only asks for the label's width and height (stage 20 requires stock; the prompt gives none). check_label was never called, so there is no tool output, no declined check and no transcription to grade. No accusation. Proposes correct codes including P403+P235."
+  }
+]

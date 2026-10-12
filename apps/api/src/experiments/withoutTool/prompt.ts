@@ -11,7 +11,9 @@
 import {
   buildDigitalLinkUri,
   judgeLabel,
+  type JudgeRequest,
   type Judgement,
+  type LabelSubject,
   type ResolvedLayout,
 } from '@packwright/label-core'
 import * as bwip from 'bwip-js/generic'
@@ -31,9 +33,15 @@ import type { CaseLabel, ExperimentCase } from './cases'
  * findings, as `engine.json` has held them since 2026-10-09 — and the full
  * judgement, declined checks included, is stage 19's to record in its new record.
  */
-export function judgeCase(item: ExperimentCase): Judgement {
+export function judgeCase(item: ExperimentCase, subject: LabelSubject = 'drawing'): Judgement {
   const { label } = item
-  const judged = judgeLabel(label.labelType === 'gs1-retail' ? { ...label, barcode: bwip } : label)
+  const judged = judgeLabel({
+    ...(label.labelType === 'gs1-retail' ? { ...label, barcode: bwip } : label),
+    // The re-check of 2026-10-12 records what `check_label` answers — a label printed
+    // elsewhere — since that is what its models saw; the earlier records judged the
+    // drawing, and are kept as they were graded.
+    subject,
+  } as JudgeRequest)
   if (judged.outcome === 'refused') throw new Error(`${item.id}: refused — ${judged.reason}`)
   return judged
 }

@@ -1,0 +1,482 @@
+[
+  {
+    "caseId": "01-clp-pictogram-precedence",
+    "fixtureName": "corrosion alongside an exclamation mark raised by skin irritation",
+    "expected": {
+      "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+      "citation": "Regulation (EC) No 1272/2008 (CLP), Article 26(1)"
+    },
+    "findings": [
+      {
+        "code": "GHS_PICTOGRAM_PRECEDENCE_VIOLATED",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Article 26(1)",
+        "message": "The corrosion pictogram applies, so the exclamation mark may not appear for skin or eye irritation. (Article 26(1)(c))"
+      }
+    ],
+    "uncheckable": [
+      "The GHS05 symbol (corrosion) is not checked. Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so it gives no verdict on it. A pictogram smaller than CLP’s minimum is still reported.",
+      "The GHS07 symbol (exclamation mark) is not checked. Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so it gives no verdict on it. A pictogram smaller than CLP’s minimum is still reported."
+    ],
+    "declined": [
+      {
+        "ruleId": "ghs/pictogram-integrity",
+        "wants": [],
+        "limit": true,
+        "reason": "Packwright draws no pictogram artwork and cannot see the symbols on your label, so it gives no verdict on whether each pictogram carries its hazard symbol. That is a limit of this tool, not a fault found in your label. A pictogram smaller than CLP’s minimum is still reported."
+      }
+    ]
+  },
+  {
+    "caseId": "02-clp-both-signal-words",
+    "fixtureName": "both signal words",
+    "expected": {
+      "code": "GHS_SIGNAL_WORD_CONFLICT",
+      "citation": "Regulation (EC) No 1272/2008 (CLP), Article 20(3)"
+    },
+    "findings": [
+      {
+        "code": "GHS_SIGNAL_WORD_CONFLICT",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Article 20(3)",
+        "message": "The label carries both “Danger” and “Warning”. Where “Danger” is used, “Warning” may not appear."
+      }
+    ],
+    "uncheckable": [
+      "The GHS02 symbol (flame) is not checked. Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so it gives no verdict on it. A pictogram smaller than CLP’s minimum is still reported."
+    ],
+    "declined": [
+      {
+        "ruleId": "ghs/pictogram-integrity",
+        "wants": [],
+        "limit": true,
+        "reason": "Packwright draws no pictogram artwork and cannot see the symbols on your label, so it gives no verdict on whether each pictogram carries its hazard symbol. That is a limit of this tool, not a fault found in your label. A pictogram smaller than CLP’s minimum is still reported."
+      }
+    ]
+  },
+  {
+    "caseId": "03-clp-label-too-small",
+    "fixtureName": "a label smaller than its capacity band allows",
+    "expected": {
+      "code": "GHS_LABEL_BELOW_MINIMUM_SIZE",
+      "citation": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.4, Table 1.3"
+    },
+    "findings": [
+      {
+        "code": "GHS_LABEL_BELOW_MINIMUM_SIZE",
+        "severity": "violation",
+        "citation": "Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.4, Table 1.3",
+        "message": "The label is 50.00 mm × 70.00 mm; a package of greater than 3 litres but not exceeding 50 litres requires 74.00 mm × 105.00 mm."
+      }
+    ],
+    "uncheckable": [
+      "The GHS02 symbol (flame) is not checked. Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so it gives no verdict on it. A pictogram smaller than CLP’s minimum is still reported.",
+      "In Packwright’s arrangement, precautionary statements would run 17.27 mm past the bottom of a 70.00 mm label. The label’s arrangement was not given, so Packwright set its text at its own default sizes and its pictograms in one row. This is a fact about that layout, not about your label: whether your label fits them is not checked.",
+      "In Packwright’s arrangement, supplier identification would begin 89.27 mm down a 70.00 mm label, past its bottom edge. The label’s arrangement was not given, so Packwright set its text at its own default sizes and its pictograms in one row. This is a fact about that layout, not about your label: whether your label fits them is not checked."
+    ],
+    "declined": [
+      {
+        "ruleId": "ghs/pictogram-integrity",
+        "wants": [],
+        "limit": true,
+        "reason": "Packwright draws no pictogram artwork and cannot see the symbols on your label, so it gives no verdict on whether each pictogram carries its hazard symbol. That is a limit of this tool, not a fault found in your label. A pictogram smaller than CLP’s minimum is still reported."
+      }
+    ]
+  },
+  {
+    "caseId": "04-osha-small-container-too-large",
+    "fixtureName": "a container too large for the provision it claims",
+    "expected": {
+      "code": "GHS_SMALL_CONTAINER_NOT_ELIGIBLE",
+      "citation": "29 CFR 1910.1200(f)(12)"
+    },
+    "findings": [
+      {
+        "code": "GHS_SMALL_CONTAINER_NOT_ELIGIBLE",
+        "severity": "violation",
+        "citation": "29 CFR 1910.1200(f)(12)",
+        "message": "This label relies on the small-container provision, but at 0.5 litres the container exceeds the 0.1 litre threshold the provision sets."
+      }
+    ],
+    "uncheckable": [
+      "The GHS02 symbol (flame) is not checked. Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so it gives no verdict on it.",
+      "The statement H225 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P210 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P233 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P240 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P403 + P235 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not."
+    ],
+    "declined": [
+      {
+        "ruleId": "ghs/pictogram-integrity",
+        "wants": [],
+        "limit": true,
+        "reason": "Packwright draws no pictogram artwork and cannot see the symbols on your label, so it gives no verdict on whether each pictogram carries its hazard symbol. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "ghs/pictogram-set",
+        "wants": [],
+        "limit": true,
+        "reason": "This label is for the US market, where 29 CFR 1910.1200 Appendix C.2 takes a classified chemical’s pictograms from the tables in C.4, hazard class by hazard class. This tool holds no verified copy of those tables, and the hazard classes it offers are those of the EU’s CLP Regulation, which do not map one to one onto OSHA’s. So it gives no verdict on whether the pictograms printed are the ones your classification requires. That is a limit of this tool, not a fault found in your label."
+      }
+    ]
+  },
+  {
+    "caseId": "05-osha-small-container-no-phone",
+    "fixtureName": "a small container missing the phone number the provision names",
+    "expected": {
+      "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+      "citation": "29 CFR 1910.1200(f)(12)"
+    },
+    "findings": [
+      {
+        "code": "GHS_SMALL_CONTAINER_INCOMPLETE",
+        "severity": "violation",
+        "citation": "29 CFR 1910.1200(f)(12)",
+        "message": "A small container relying on this provision must still carry the manufacturer’s phone number."
+      }
+    ],
+    "uncheckable": [
+      "The GHS02 symbol (flame) is not checked. Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so it gives no verdict on it.",
+      "The statement H225 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P210 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P233 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P240 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not.",
+      "The statement P403 + P235 is not drawn. No verified wording exists under this label’s regime, and printing another regime’s would produce a label that looks complete and is not."
+    ],
+    "declined": [
+      {
+        "ruleId": "ghs/pictogram-integrity",
+        "wants": [],
+        "limit": true,
+        "reason": "Packwright draws no pictogram artwork and cannot see the symbols on your label, so it gives no verdict on whether each pictogram carries its hazard symbol. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "ghs/pictogram-set",
+        "wants": [],
+        "limit": true,
+        "reason": "This label is for the US market, where 29 CFR 1910.1200 Appendix C.2 takes a classified chemical’s pictograms from the tables in C.4, hazard class by hazard class. This tool holds no verified copy of those tables, and the hazard classes it offers are those of the EU’s CLP Regulation, which do not map one to one onto OSHA’s. So it gives no verdict on whether the pictograms printed are the ones your classification requires. That is a limit of this tool, not a fault found in your label."
+      }
+    ]
+  },
+  {
+    "caseId": "06-gs1-check-digit",
+    "fixtureName": "transposed check digit",
+    "expected": {
+      "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+      "citation": "GS1 General Specifications 26.0 §7.9.1"
+    },
+    "findings": [
+      {
+        "code": "GS1_GTIN_CHECK_DIGIT_INVALID",
+        "severity": "blocking",
+        "citation": "GS1 General Specifications 26.0 §7.9.1",
+        "message": "The check digit for 036000291453 should be 2, not 3. No UPC-A symbol can encode this GTIN, so none was drawn."
+      }
+    ],
+    "uncheckable": [
+      "The GTIN 036000291453 has an invalid check digit, so no UPC-A symbol can encode it."
+    ],
+    "declined": []
+  },
+  {
+    "caseId": "07-gs1-digital-link-alphas",
+    "fixtureName": "Digital Link using the removed convenience alphas",
+    "expected": {
+      "code": "GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS",
+      "citation": "GS1 Digital Link URI Syntax 1.7.0 §4.1"
+    },
+    "findings": [
+      {
+        "code": "GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS",
+        "severity": "advisory",
+        "citation": "GS1 Digital Link URI Syntax 1.7.0 §4.1",
+        "message": "The Digital Link uses the convenience alphas — `/gtin/` in place of `/01/`. They were deprecated in Digital Link URI Syntax 1.2 and removed in 1.3.0, so the URI is non-conformant to the current standard."
+      }
+    ],
+    "uncheckable": [],
+    "declined": [
+      {
+        "ruleId": "gs1/magnification",
+        "wants": [
+          "magnification"
+        ],
+        "reason": "This label is described rather than drawn here, and Packwright cannot see the magnification its barcode is printed at; its own default of 1 (100%) would pass by construction. State the magnification, as a factor such as 1 or 0.8, and this check will run."
+      },
+      {
+        "ruleId": "gs1/bar-height",
+        "wants": [
+          "barHeightMm",
+          "magnification"
+        ],
+        "reason": "This label is described rather than drawn here, and Packwright cannot see how tall its bars are printed, or the magnification the minimum is set by, as a factor such as 1 or 0.8; its own defaults would decide the verdict. State them and this check will run."
+      },
+      {
+        "ruleId": "gs1/quiet-zone",
+        "wants": [],
+        "limit": true,
+        "reason": "A quiet zone is the clear space between the bars and every other mark on the label, and a request describes only the barcode and one block of artwork, not everything printed around it. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "gs1/human-readable",
+        "wants": [
+          "omitHri"
+        ],
+        "reason": "This label is described rather than drawn here, and Packwright cannot see whether the digits are printed beneath its barcode; it draws them unless told not to. Say whether they are printed (omitHri false if they are) and this check will run."
+      }
+    ]
+  },
+  {
+    "caseId": "08-fda-ingredient-order",
+    "fixtureName": "salt listed before the sugar there is more of",
+    "expected": {
+      "code": "FDA_INGREDIENTS_OUT_OF_ORDER",
+      "citation": "21 CFR 101.4(a)(1)"
+    },
+    "findings": [
+      {
+        "code": "FDA_INGREDIENTS_OUT_OF_ORDER",
+        "severity": "violation",
+        "citation": "21 CFR 101.4(a)(1)",
+        "message": "\"sugar\" is 2% of the food and is listed after \"salt\" at 0.7%. Ingredients run in descending order of predominance by weight."
+      }
+    ],
+    "uncheckable": [],
+    "declined": [
+      {
+        "ruleId": "us-food/net-quantity-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The regulation measures the height of the printed letters, and how tall a type size’s letters print depends on the typeface, which Packwright cannot see. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/net-quantity-placement",
+        "wants": [],
+        "limit": true,
+        "reason": "Where the net quantity sits on the panel is where Packwright placed it, from a word the request may or may not give, not a position measured on your label. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/net-quantity-separation",
+        "wants": [],
+        "limit": true,
+        "reason": "How far the net quantity is from the printing around it is where Packwright stacked each element, not a distance measured on your label. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/nutrition-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The Nutrition Facts type sizes are Packwright’s own: a request can scale them, but cannot state the sizes your panel is printed at. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/dual-column-required",
+        "wants": [
+          "nutritionFacts.referenceAmount",
+          "nutritionFacts.packageContent",
+          "nutritionFacts.packagedAndSoldIndividually"
+        ],
+        "reason": "This label has not stated everything 101.9(b)(12)(i) turns on — a reference amount, what the whole package holds, and whether it is packaged and sold individually — so whether a second column of nutrition information is required cannot be told. State the reference amount, what the whole package holds and whether it is packaged and sold individually and this check will run. (b)(2)(i)(D) asks the same of an individual unit, where the product has them."
+      },
+      {
+        "ruleId": "us-food/information-panel-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The regulation measures the height of the printed letters, and how tall a type size’s letters print depends on the typeface, which Packwright cannot see. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      }
+    ]
+  },
+  {
+    "caseId": "09-fda-tree-nut-type",
+    "fixtureName": "a tree nut declared as \"tree nuts\"",
+    "expected": {
+      "code": "FDA_ALLERGEN_SOURCE_NOT_SPECIFIC",
+      "citation": "FD&C Act §403(w)(2)"
+    },
+    "findings": [
+      {
+        "code": "FDA_ALLERGEN_SOURCE_NOT_SPECIFIC",
+        "severity": "violation",
+        "citation": "FD&C Act §403(w)(2)",
+        "message": "\"nut pieces\" is tree nuts, which must be declared by its specific type — almonds, pecans, walnuts — and not by the category."
+      }
+    ],
+    "uncheckable": [
+      "The \"Contains\" statement names nothing for \"nut pieces\", which contains tree nuts and states no specific type, and a food source name for it is not this engine's to invent."
+    ],
+    "declined": [
+      {
+        "ruleId": "us-food/net-quantity-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The regulation measures the height of the printed letters, and how tall a type size’s letters print depends on the typeface, which Packwright cannot see. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/net-quantity-placement",
+        "wants": [],
+        "limit": true,
+        "reason": "Where the net quantity sits on the panel is where Packwright placed it, from a word the request may or may not give, not a position measured on your label. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/net-quantity-separation",
+        "wants": [],
+        "limit": true,
+        "reason": "How far the net quantity is from the printing around it is where Packwright stacked each element, not a distance measured on your label. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/nutrition-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The Nutrition Facts type sizes are Packwright’s own: a request can scale them, but cannot state the sizes your panel is printed at. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/dual-column-required",
+        "wants": [
+          "nutritionFacts.referenceAmount",
+          "nutritionFacts.packageContent",
+          "nutritionFacts.packagedAndSoldIndividually"
+        ],
+        "reason": "This label has not stated everything 101.9(b)(12)(i) turns on — a reference amount, what the whole package holds, and whether it is packaged and sold individually — so whether a second column of nutrition information is required cannot be told. State the reference amount, what the whole package holds and whether it is packaged and sold individually and this check will run. (b)(2)(i)(D) asks the same of an individual unit, where the product has them."
+      },
+      {
+        "ruleId": "us-food/information-panel-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The regulation measures the height of the printed letters, and how tall a type size’s letters print depends on the typeface, which Packwright cannot see. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      }
+    ]
+  },
+  {
+    "caseId": "10-fpla-metric-missing",
+    "fixtureName": "net weight in ounces only",
+    "expected": {
+      "code": "FDA_NET_QUANTITY_METRIC_MISSING",
+      "citation": "15 U.S.C. 1453(a)(2)"
+    },
+    "findings": [
+      {
+        "code": "FDA_NET_QUANTITY_METRIC_MISSING",
+        "severity": "violation",
+        "citation": "15 U.S.C. 1453(a)(2)",
+        "message": "The label declares \"NET WT 12 OZ\" and no SI metric equivalent. The Fair Packaging and Labeling Act requires both systems on the principal display panel."
+      }
+    ],
+    "uncheckable": [],
+    "declined": [
+      {
+        "ruleId": "us-food/net-quantity-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The regulation measures the height of the printed letters, and how tall a type size’s letters print depends on the typeface, which Packwright cannot see. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/net-quantity-placement",
+        "wants": [],
+        "limit": true,
+        "reason": "Where the net quantity sits on the panel is where Packwright placed it, from a word the request may or may not give, not a position measured on your label. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/net-quantity-separation",
+        "wants": [],
+        "limit": true,
+        "reason": "How far the net quantity is from the printing around it is where Packwright stacked each element, not a distance measured on your label. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/contains-statement-type",
+        "wants": [],
+        "limit": true,
+        "reason": "The statute wants the statement beside the ingredient list in type no smaller than the list’s. How close the two print is where Packwright stacked them, and their sizes are measured in Packwright’s typeface, not yours. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/nutrition-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The Nutrition Facts type sizes are Packwright’s own: a request can scale them, but cannot state the sizes your panel is printed at. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/dual-column-required",
+        "wants": [
+          "nutritionFacts.referenceAmount",
+          "nutritionFacts.packageContent",
+          "nutritionFacts.packagedAndSoldIndividually"
+        ],
+        "reason": "This label has not stated everything 101.9(b)(12)(i) turns on — a reference amount, what the whole package holds, and whether it is packaged and sold individually — so whether a second column of nutrition information is required cannot be told. State the reference amount, what the whole package holds and whether it is packaged and sold individually and this check will run. (b)(2)(i)(D) asks the same of an individual unit, where the product has them."
+      },
+      {
+        "ruleId": "us-food/information-panel-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The regulation measures the height of the printed letters, and how tall a type size’s letters print depends on the typeface, which Packwright cannot see. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      }
+    ]
+  },
+  {
+    "caseId": "C1-clp-control",
+    "fixtureName": "GHS_CONFORMANT",
+    "expected": null,
+    "findings": [],
+    "uncheckable": [
+      "The GHS02 symbol (flame) is not checked. Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so it gives no verdict on it. A pictogram smaller than CLP’s minimum is still reported."
+    ],
+    "declined": [
+      {
+        "ruleId": "ghs/pictogram-integrity",
+        "wants": [],
+        "limit": true,
+        "reason": "Packwright draws no pictogram artwork and cannot see the symbols on your label, so it gives no verdict on whether each pictogram carries its hazard symbol. That is a limit of this tool, not a fault found in your label. A pictogram smaller than CLP’s minimum is still reported."
+      }
+    ]
+  },
+  {
+    "caseId": "C2-fda-control",
+    "fixtureName": "US_FOOD_CONFORMANT",
+    "expected": null,
+    "findings": [],
+    "uncheckable": [],
+    "declined": [
+      {
+        "ruleId": "us-food/net-quantity-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The regulation measures the height of the printed letters, and how tall a type size’s letters print depends on the typeface, which Packwright cannot see. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/net-quantity-placement",
+        "wants": [],
+        "limit": true,
+        "reason": "Where the net quantity sits on the panel is where Packwright placed it, from a word the request may or may not give, not a position measured on your label. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/net-quantity-separation",
+        "wants": [],
+        "limit": true,
+        "reason": "How far the net quantity is from the printing around it is where Packwright stacked each element, not a distance measured on your label. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/contains-statement-type",
+        "wants": [],
+        "limit": true,
+        "reason": "The statute wants the statement beside the ingredient list in type no smaller than the list’s. How close the two print is where Packwright stacked them, and their sizes are measured in Packwright’s typeface, not yours. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/nutrition-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The Nutrition Facts type sizes are Packwright’s own: a request can scale them, but cannot state the sizes your panel is printed at. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      },
+      {
+        "ruleId": "us-food/dual-column-required",
+        "wants": [
+          "nutritionFacts.referenceAmount",
+          "nutritionFacts.packageContent",
+          "nutritionFacts.packagedAndSoldIndividually"
+        ],
+        "reason": "This label has not stated everything 101.9(b)(12)(i) turns on — a reference amount, what the whole package holds, and whether it is packaged and sold individually — so whether a second column of nutrition information is required cannot be told. State the reference amount, what the whole package holds and whether it is packaged and sold individually and this check will run. (b)(2)(i)(D) asks the same of an individual unit, where the product has them."
+      },
+      {
+        "ruleId": "us-food/information-panel-type-size",
+        "wants": [],
+        "limit": true,
+        "reason": "The regulation measures the height of the printed letters, and how tall a type size’s letters print depends on the typeface, which Packwright cannot see. So it gives no verdict either way on a label it did not draw. That is a limit of this tool, not a fault found in your label."
+      }
+    ]
+  }
+]
