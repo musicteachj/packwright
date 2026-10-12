@@ -7,7 +7,7 @@ import type { Finding } from '../types/index'
 import { CONFORMANT_FIXTURE, GS1_RETAIL_FIXTURES } from './fixtures/gs1Retail'
 import { layOutGhsLabel } from '../layout/ghsEngine'
 import { layOutUsFoodLabel } from '../layout/usFoodEngine'
-import { GHS_FIXTURES, HAZARDS } from './fixtures/ghs'
+import { GHS_CONFORMANT, GHS_FIXTURES, HAZARDS } from './fixtures/ghs'
 import { US_FOOD_CONFORMANT, US_FOOD_FIXTURES } from './fixtures/usFood'
 import {
   GHS_RULES,
@@ -744,6 +744,15 @@ describe('a check that stood down names what would let it run', () => {
       stock: f.stock,
       subject: 'described' as LabelSubject,
     })),
+    {
+      // Carrying everything the small-container provision lists, but for pictogram
+      // symbols no one can see: `ghs/small-container` stands down as a limit.
+      name: 'a small container carrying everything, described',
+      labelType: 'ghs-chemical' as const,
+      data: { ...GHS_CONFORMANT.data, capacityL: 0.1, smallContainerLabelling: true } as unknown,
+      stock: { widthMm: 105, heightMm: 148, marginMm: 4 },
+      subject: 'described' as LabelSubject,
+    },
   ] as Array<{
     name: string
     labelType: 'us-food' | 'ghs-chemical'

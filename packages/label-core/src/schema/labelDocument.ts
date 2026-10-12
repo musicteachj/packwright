@@ -853,10 +853,25 @@ const STOCK_BESIDE_DATA = z
   .never({ error: '`stock` goes beside `data` in a check request, not inside it' })
   .optional()
 
-/** The default margins, as the `marginMm` description states them — from the stocks, never restated. */
-const DEFAULT_MARGINS_TEXT =
-  `${DEFAULT_UPC_A_STOCK.marginMm} mm for gs1-retail, ${DEFAULT_GHS_STOCK.marginMm} mm for ` +
-  `ghs-chemical, ${DEFAULT_US_FOOD_STOCK.marginMm} mm for us-food`
+/**
+ * Each label type's default stock, whose margin `checkedStock` applies where a check
+ * request states none. Keyed on `LABEL_TYPES` rather than on the request's own type,
+ * which is built from the schema below that reads this.
+ */
+const DEFAULT_STOCKS: Record<(typeof LABEL_TYPES)[number], LabelStock> = {
+  'gs1-retail': DEFAULT_UPC_A_STOCK,
+  'ghs-chemical': DEFAULT_GHS_STOCK,
+  'us-food': DEFAULT_US_FOOD_STOCK,
+}
+
+/**
+ * The default margins, as the `marginMm` description states them — read from
+ * `DEFAULT_STOCKS`, the map `checkedStock` applies, so the figures a model is told are
+ * the ones used, and a label type added there is added here. Found by review.
+ */
+const DEFAULT_MARGINS_TEXT = Object.entries(DEFAULT_STOCKS)
+  .map(([labelType, stock]) => `${stock.marginMm} mm for ${labelType}`)
+  .join(', ')
 
 /**
  * The size of the label being checked, which the request must state.
@@ -1092,12 +1107,6 @@ export function toUsFoodLabelData(
       ? {}
       : { responsibleFirm: toResponsibleFirm(request.responsibleFirm) }),
   }
-}
-
-const DEFAULT_STOCKS: Record<LabelCheckRequest['labelType'], LabelStock> = {
-  'gs1-retail': DEFAULT_UPC_A_STOCK,
-  'ghs-chemical': DEFAULT_GHS_STOCK,
-  'us-food': DEFAULT_US_FOOD_STOCK,
 }
 
 /**

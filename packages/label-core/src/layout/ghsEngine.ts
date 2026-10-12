@@ -205,6 +205,11 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
   const pictograms: ResolvedPictogram[] = []
 
   const type = GHS_TYPE_DEFAULT
+  // Once the pictogram row is drawn, everything below sits where that row put it as
+  // well as where the default type sizes did — so its bottom-edge overrun is blamed on
+  // the arrangement, whose explanation names both. Found by `/code-review high` on #86.
+  let belowThePictogramRow = false
+  const bottomCause = (): OverrunCause => (belowThePictogramRow ? 'arrangement' : 'type sizes')
   // A simple top-to-bottom stack. Nothing is clamped: a block that runs past the
   // panel is drawn hanging off it, because nudging it back would hide the defect.
   let cursorYMm = panel.yMm
@@ -353,9 +358,10 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       label,
       box: { xMm: panel.xMm, yMm: startYMm, widthMm: panel.widthMm, heightMm: boxHeightMm },
     })
-    // Every block sits where the default type sizes of the blocks above it put it, and
-    // is as tall and as wide as its own make it.
-    if (!recordOverrun(elementId, label, startYMm, startYMm + boxHeightMm, 'type sizes')) {
+    // Every block sits where the blocks above it put it — at the default type sizes,
+    // and below the pictogram row once there is one — and is as tall and as wide as its
+    // own type size makes it.
+    if (!recordOverrun(elementId, label, startYMm, startYMm + boxHeightMm, bottomCause())) {
       recordRightOverrun(
         elementId,
         label,
@@ -478,6 +484,11 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
       // fit. Decided for the pictogram, not per edge: only one edge is recorded, and a
       // box too wide for the label pushed off the bottom first would otherwise be
       // blamed on the row. Found by review.
+      // Against the stock, not the panel inside its margins. "Does not fit" is said as a
+      // fact about the user's label, and the margin is often this engine's assumption
+      // (`checkedStock`): measured against an assumed margin, a pictogram the real label
+      // carries comfortably would be called impossible. The stock is the one bound the
+      // request always states. Raised by `/code-review high` on #86 and kept.
       const tooWide = boxMm > stock.widthMm
       const tooTall = boxMm > stock.heightMm
       const cause: OverrunCause =
@@ -506,6 +517,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
     })
 
     cursorYMm += boxMm + type.blockGapMm
+    belowThePictogramRow = true
   }
 
   for (const [elementId, label, codes, lookup] of [
@@ -576,7 +588,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
         heightMm: cursorYMm - startYMm,
       },
     })
-    if (!recordOverrun(elementId, label, startYMm, cursorYMm, 'type sizes')) {
+    if (!recordOverrun(elementId, label, startYMm, cursorYMm, bottomCause())) {
       recordRightOverrun(elementId, label, panel.xMm, panel.xMm + widestMm, 'type sizes')
     }
     cursorYMm += type.blockGapMm

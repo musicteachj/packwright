@@ -131,6 +131,52 @@ describe('pictogram symbols, on a label printed elsewhere', () => {
   })
 })
 
+describe('a small container, on a label printed elsewhere', () => {
+  // Everything CLP 1.5.1.2 lists is on it, on stock large enough to print it all. The
+  // only thing between it and the pass is a pictogram symbol nobody can see.
+  const small: GhsLabelData = {
+    ...GHS_CONFORMANT.data,
+    capacityL: 0.1,
+    smallContainerLabelling: true,
+  }
+  const roomy: LabelStock = { widthMm: 105, heightMm: 148, marginMm: 4 }
+  const ruleIds = (judgement: Judgement) => judgement.declined.map((one) => one.ruleId)
+
+  it('says the unseen symbols are why it gives no verdict, rather than vanishing', () => {
+    const described = judged(small, roomy, 'described')
+    expect(described.findings.map((one) => one.code)).not.toContain('GHS_SMALL_CONTAINER_COMPLETE')
+    const declined = described.declined.find((one) => one.ruleId === 'ghs/small-container')
+    expect(declined).toMatchObject({ wants: [], limit: true })
+    expect(declined!.reason).toContain('a limit of this tool')
+  })
+
+  it('stays as it was on the drawing, where the missing symbol is reported', () => {
+    expect(ruleIds(judged(small, roomy))).not.toContain('ghs/small-container')
+  })
+
+  it('does not blame the symbols for a pictogram the regime does not recognise', () => {
+    // GHS09 is not one of OSHA's eight symbols, and is reported as such: seeing its
+    // symbol would not make this container's label complete.
+    const us: GhsLabelData = {
+      ...small,
+      regime: 'us-osha',
+      signalWords: ['Warning'],
+      pictograms: ['GHS09'],
+      outerPackageStatement: 'Full label information is on the outer package.',
+    }
+    const { hazardStatementCodes: _h, precautionaryStatementCodes: _p, ...noCodes } = us
+    const described = judged(noCodes, roomy, 'described')
+    expect(described.findings.map((one) => one.code)).toContain('GHS_PICTOGRAM_NOT_RECOGNISED')
+    expect(ruleIds(described)).not.toContain('ghs/small-container')
+  })
+
+  it('does not blame the symbols when something else did not print either', () => {
+    // On 50 × 40 mm the supplier runs off the bottom, and the omission says so.
+    const cramped = judged(small, { widthMm: 50, heightMm: 40, marginMm: 2 }, 'described')
+    expect(ruleIds(cramped)).not.toContain('ghs/small-container')
+  })
+})
+
 describe('text set at the default type sizes, on a label printed elsewhere', () => {
   // Case 03 of the 2026-10-10 evaluation: a 5 L CLP label on 50 × 70 mm stock, every
   // line of it printed. Laid out at this engine's default sizes, the precautionary
@@ -169,12 +215,32 @@ describe('text set at the default type sizes, on a label printed elsewhere', () 
     expect(overrun.map((one) => one.elementId).sort()).toEqual(
       [GHS_ELEMENTS.precautionaryStatements, GHS_ELEMENTS.supplier].sort(),
     )
+    // Both sit below the GHS02 pictogram this classification draws, in Packwright's
+    // one row, so the arrangement is blamed — its explanation names the type sizes too.
     for (const one of overrun) {
       for (const reason of one.reasons) {
-        expect(reason.text).toMatch(/^At Packwright’s default type sizes, /)
-        expect(reason.explanation?.why).toBe(LAID_OUT_AT_DEFAULT_TYPE_SIZES)
+        expect(reason.text).toMatch(/^In Packwright’s arrangement, /)
+        expect(reason.explanation?.why).toBe(LAID_OUT_IN_PACKWRIGHTS_ARRANGEMENT)
       }
     }
+  })
+
+  it('blames the type sizes alone where no pictogram row sits above the text', () => {
+    // No classification and no pictograms: nothing but the default sizes put the
+    // statements where they are.
+    const { hazards: _hazards, ...unclassified } = case03
+    const described = judged(
+      { ...unclassified, pictograms: [] },
+      { widthMm: 50, heightMm: 35, marginMm: 4 },
+      'described',
+    )
+    const statements = described.uncheckable.find(
+      (one) => one.elementId === GHS_ELEMENTS.precautionaryStatements,
+    )
+    expect(statements?.reasons.map((reason) => reason.explanation?.why)).toEqual([
+      LAID_OUT_AT_DEFAULT_TYPE_SIZES,
+    ])
+    expect(statements?.reasons[0]!.text).toMatch(/^At Packwright’s default type sizes, /)
   })
 
   it('still withholds every pass on what did not fit, and still finds the label too small', () => {

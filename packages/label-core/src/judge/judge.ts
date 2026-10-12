@@ -134,26 +134,20 @@ export function layOutLabel(request: JudgeRequest): ResolvedLayout {
 
 /** The rules' view of a request and its layout — the request without its encoder. */
 function contextOf(request: JudgeRequest, layout: ResolvedLayout): RuleContext {
-  const subject = request.subject === undefined ? {} : { subject: request.subject }
+  const context = withoutEncoder(request, layout)
+  // Attached once, after the switch, so a label type added there cannot be judged as a
+  // drawing for want of a line.
+  return request.subject === undefined ? context : { ...context, subject: request.subject }
+}
+
+function withoutEncoder(request: JudgeRequest, layout: ResolvedLayout): RuleContext {
   switch (request.labelType) {
     case 'gs1-retail':
-      return {
-        labelType: 'gs1-retail',
-        data: request.data,
-        stock: request.stock,
-        layout,
-        ...subject,
-      }
+      return { labelType: 'gs1-retail', data: request.data, stock: request.stock, layout }
     case 'ghs-chemical':
-      return {
-        labelType: 'ghs-chemical',
-        data: request.data,
-        stock: request.stock,
-        layout,
-        ...subject,
-      }
+      return { labelType: 'ghs-chemical', data: request.data, stock: request.stock, layout }
     case 'us-food':
-      return { labelType: 'us-food', data: request.data, stock: request.stock, layout, ...subject }
+      return { labelType: 'us-food', data: request.data, stock: request.stock, layout }
   }
 }
 

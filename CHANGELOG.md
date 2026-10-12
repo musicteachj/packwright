@@ -10,6 +10,19 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **What `/code-review high` found on #86, answered.** On a label printed elsewhere, `ghs/small-container`'s pass
+  never came — every pictogram carries the unseen-symbol omission — and with the missing-symbol finding gone,
+  nothing beside the silence said why; it now stands down as a limit of the tool where the unseen symbols are all
+  it cannot confirm, and keeps its silence where anything else did not print. Text below the pictogram row that
+  runs off the label is blamed on Packwright's arrangement, which names the row as well as the type sizes, rather
+  than on the type sizes alone. The tool description and `docs/WHAT-IS-NOT-CHECKED.md` no longer promise the
+  symbol check always appears under `declined`, which it does not when an unrecognised pictogram is reported. The
+  server decides an assumed margin caused a refusal from the panel itself rather than by catching whatever the
+  engine's assertion throws, the judge attaches the subject in one place, and the default margins a model is
+  told are read from the map `checkedStock` applies. The review's largest finding — `check_label` passing type
+  sizes, placements and barcode geometry the engine chose itself — is pinned in `docs/BACKLOG.md` as must-fix and
+  gating the `/mcp` launch, for a design decision.
+
 - **`check_label` tells a model what its fields mean, refuses a key it does not know, and says when a margin
   it refused was its own assumption.** The 2026-10-10 evaluation found models reading field names without their
   meaning: every model's first Digital Link sent a bare host name, which the rule rightly refuses. The shared schema

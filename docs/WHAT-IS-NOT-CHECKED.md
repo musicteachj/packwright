@@ -242,9 +242,11 @@ and is not permitted on the label"), and CLP requires the symbol (Annex I, 1.2.1
 
 **On a label printed elsewhere, it is not.** Checking a label through the `check_label` tool, or auditing one from
 a photograph, judges a label that already exists, and Packwright's drawing of it is a reconstruction. The symbols
-are on your label, where this tool cannot see them, so the symbol check gives no verdict either way. It appears
-under "checks that did not run" as a limit of this tool, and each pictogram is listed under "cannot be checked".
-On an EU label, a pictogram smaller than CLP's minimum is still reported, though none is passed for its size,
+are on your label, where this tool cannot see them, so the symbol check gives no verdict either way. Each pictogram
+is listed under "cannot be checked", and the check itself appears under "checks that did not run" as a limit of
+this tool — unless the label also carries a pictogram its regime does not recognise, which is reported, and then
+the "cannot be checked" list is where it says so. A small container's check stands down the same way where the
+unseen symbols are all it cannot confirm. On an EU label, a pictogram smaller than CLP's minimum is still reported, though none is passed for its size,
 since a pictogram whose symbol nobody has seen is not one this tool can clear. OSHA sets no minimum.
 
 **Type sizes are the same kind of gap.** A GHS label's description carries no type sizes, so Packwright sets its

@@ -24,7 +24,9 @@ piece, that piece stayed, as an entry of its own. What remains is open.
 The entries fall into four kinds:
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. **None outstanding.** The MCP evaluation of 2026-10-10
+provision that does not say what the finding claims. **One outstanding, found 2026-10-11:** `check_label` passes
+type sizes, placements and barcode geometry the engine chose itself — under "From the MCP evaluation" below, and
+pinned under "Worth doing before deployment". The MCP evaluation of 2026-10-10
 found two — `check_label` passing a label size nobody gave it, and `GHS_PICTOGRAM_NOT_REQUIRED` giving a reason its
 citation contradicted — and both were fixed the same day (`CHANGELOG.md`). The one before them, `ghs/pictogram-set`
 citing CLP Annex V on US OSHA labels, was closed on 2026-10-09 by standing it down on US labels.
@@ -53,7 +55,10 @@ which cost four review rounds on one pull request.
 
 ## Worth doing before deployment
 
-**None outstanding.** The last two, found by the MCP evaluation of 2026-10-10 — `check_label` reporting every
+**One, and it gates the `/mcp` launch: `check_label` passes values the engine chose itself** — entry below, under
+"From the MCP evaluation". A false clearance, so it is must-fix, and a design decision for James.
+
+The two before it, found by the MCP evaluation of 2026-10-10 — `check_label` reporting every
 pictogram as having no symbol, and text set at Packwright's own type sizes as "not printed", both about
 Packwright's drawing rather than the user's label — were fixed on 2026-10-11: a label checked through `/mcp` or
 audited from a photograph is judged as one printed elsewhere (`LabelSubject`, `CHANGELOG.md`). The evaluation's
@@ -86,6 +91,25 @@ apart, one easily legible sans-serif face, black on white. Regulation (EU) 2025/
 `check_label` can judge this today. **Before 2028-01-01**, add type sizes to the GHS document and a rule on them,
 with the 120% line spacing (`GHS_TYPE_DEFAULT.lineHeight` is 1.35) and the ≤0.5 L band split that the new table
 introduces and the current one does not have. `docs/WHAT-IS-NOT-CHECKED.md` says so meanwhile.
+
+**`check_label` passes type sizes, placements and barcode geometry nobody stated.** Found by `/code-review high` on
+#86 and confirmed on 2026-10-11 by judging two labels as `described`. Through `check_label`, every optional field
+the request leaves out is filled in by the engine, and the rules then pass the engine's choice as if it were the
+user's label. A request carrying only a GTIN comes back with `GS1_MAGNIFICATION_IN_RANGE`,
+`GS1_BAR_HEIGHT_SUFFICIENT` and both `GS1_QUIET_ZONE_CLEAR` passes, measured on magnification 1.0, the nominal bar
+height and a centred symbol (`layout/engine.ts`). The conformant US food fixture, which states none of these, comes
+back with `FDA_NET_QUANTITY_TYPE_SIZE_MET` on an em the engine derives to just meet 101.7(i)
+(`usFoodEngine.ts`, `fontSizeMmForGlyphHeight`), `FDA_NET_QUANTITY_PLACEMENT_MET` and `_SEPARATION_MET` on its own
+bottom-centre anchor, `FDA_CONTAINS_TYPE_MET` on a Contains statement set to the ingredient list's size by default,
+and `FDA_NUTRITION_TYPE_SIZE_MET` and `FDA_PANEL_TYPE_SIZE_MET` on its default sizes. On the website these are true —
+the export prints exactly those values — and on a label printed elsewhere they are passes on geometry nobody
+measured: the false clearance this project exists to prevent, the same class as the label size stage 20 fixed and
+the pictograms and type sizes stage 22 fixed, but on the side that clears rather than accuses. The fix is the
+same shape as stage 22's — on a `described` label a pass resting on a value the request did not state is not
+issued — but where it lives is a choice for James: each rule declining with `wants` naming the field (the user can
+answer), `check_label` requiring the fields (more refusals, and many users will not know a bar height), or the
+answer listing every assumed value as `stockUsed` does and withholding the passes on them. Not done in stage 22
+because it reaches every label type's rules and wants that choice first. Gates the `/mcp` launch.
 
 **The evaluation harness still judges each case as a drawing.** `judgeCase` (`apps/api/src/experiments/withoutTool/
 prompt.ts`) calls the judge without a subject, which is right for what it does — each case's printed text is read

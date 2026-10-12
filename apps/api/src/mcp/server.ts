@@ -23,7 +23,6 @@ import {
   GHS_REGIMES,
   LABEL_TYPES,
   SEVERITY_ORDER,
-  assertMarginLeavesPanel,
   GS1_KEY_LENGTHS,
   calculateCheckDigit,
   canonicalStatementCode,
@@ -34,6 +33,7 @@ import {
   knownHazardStatementCodes,
   knownPrecautionaryStatementCodes,
   listRules,
+  panelFor,
   precautionaryStatementText,
   severitiesOf,
   type Citation,
@@ -104,14 +104,16 @@ export function assumedMarginNotice(marginMm: number): string {
   )
 }
 
-/** Whether the margin alone is why the engine could not draw the label. */
+/**
+ * Whether the margin leaves no panel — the engine's own test, asked of the stock
+ * directly rather than by re-running its assertion and catching whatever it throws.
+ * Every engine makes this check before any other that can refuse a request the
+ * schema let through, which is what lets it stand for the refusal's cause; the test
+ * beside `assumedMarginNotice` holds that a refusal for another reason gets no notice.
+ */
 function marginLeavesNoPanel(stock: StockUsed): boolean {
-  try {
-    assertMarginLeavesPanel(stock)
-    return false
-  } catch {
-    return true
-  }
+  const panel = panelFor(stock)
+  return panel.widthMm <= 0 || panel.heightMm <= 0
 }
 
 /**
@@ -471,8 +473,9 @@ export function createPackwrightMcpServer(): McpServer {
         'The answer’s `stockUsed` says the size used, and whether the margin was assumed. ' +
         'Packwright draws no pictogram artwork and a GHS label’s input carries no type sizes, so ' +
         'on a GHS label whether each pictogram carries its symbol, and whether the text fits at ' +
-        'the label’s own type sizes, are not checked: the answer says so under `declined` and ' +
-        '`uncheckable` rather than reporting them as faults.',
+        'the label’s own type sizes, are not checked. The answer lists each under `uncheckable`, ' +
+        'element by element, rather than reporting it as a fault; the symbol check is also ' +
+        'under `declined`, unless a pictogram the regime does not recognise was reported.',
       inputSchema: CheckLabelInput,
       outputSchema: CheckLabelOutput,
       annotations: READ_ONLY,
