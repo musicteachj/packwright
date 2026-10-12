@@ -58,6 +58,7 @@ import {
   FDA_NET_QUANTITY_TYPE_SIZE_MET,
   usFoodNetQuantityTypeSizeRule,
 } from './netQuantityTypeSize'
+import { noVerdictOnADescribedLabel } from '../described'
 
 export const FDA_NET_QUANTITY_OUTSIDE_ZONE = 'FDA_NET_QUANTITY_OUTSIDE_ZONE'
 export const FDA_NET_QUANTITY_PLACEMENT_MET = 'FDA_NET_QUANTITY_PLACEMENT_MET'
@@ -69,7 +70,7 @@ const CITATION: Citation = {
   title: 'Net quantity of contents — placement within the bottom 30 percent of the panel',
 }
 
-export const usFoodNetQuantityPlacementRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/net-quantity-placement',
   title: 'The net quantity declaration sits within the bottom 30 percent of the panel.',
   citation: CITATION,
@@ -156,6 +157,16 @@ export const usFoodNetQuantityPlacementRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, giving no verdict on a label printed elsewhere — see `rules/described.ts`. */
+export const usFoodNetQuantityPlacementRule: UsFoodRule = noVerdictOnADescribedLabel(
+  judgedAsDrawn,
+  {
+    why:
+      'Where the net quantity sits on the panel is where Packwright placed it, from a word the ' +
+      'request may or may not give, not a position measured on your label.',
+  },
+)
 
 /**
  * Which of the other part 101 requirements this project checks the declaration

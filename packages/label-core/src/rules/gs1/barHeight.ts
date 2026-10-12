@@ -13,6 +13,7 @@ import { nominalBarHeightMm } from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, xDimensionMm } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
+import { verdictWaitsOnADescribedLabel } from '../described'
 
 export const GS1_BAR_HEIGHT_BELOW_MINIMUM = 'GS1_BAR_HEIGHT_BELOW_MINIMUM'
 export const GS1_BAR_HEIGHT_SUFFICIENT = 'GS1_BAR_HEIGHT_SUFFICIENT'
@@ -23,7 +24,7 @@ const CITATION: Citation = {
   title: 'EAN/UPC symbol height at nominal size, and the minimum by X-dimension',
 }
 
-export const barHeightRule: Gs1RetailRule = {
+const judgedAsDrawn: Gs1RetailRule = {
   id: 'gs1/bar-height',
   title: 'Bar height meets the specification’s minimum for the symbol’s X-dimension.',
   citation: CITATION,
@@ -71,3 +72,27 @@ export const barHeightRule: Gs1RetailRule = {
     return findings
   },
 }
+
+/** The rule as drawn, its verdict waiting on a label printed elsewhere — see `rules/described.ts`. */
+export const barHeightRule: Gs1RetailRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
+  // The minimum is set by the X-dimension, so the magnification is waited for too.
+  unstated: ({ data }) => [
+    ...(data.barHeightMm === undefined ? (['barHeightMm'] as const) : []),
+    ...(data.magnification === undefined ? (['magnification'] as const) : []),
+  ],
+  // Names only what is missing: a request that gave its magnification was told
+  // Packwright could not see it. Found by `/code-review high` on #87.
+  reason: (wants) => {
+    const missing = [
+      ...(wants.includes('barHeightMm') ? ['how tall its bars are printed'] : []),
+      ...(wants.includes('magnification')
+        ? ['the magnification the minimum is set by, as a factor such as 1 or 0.8']
+        : []),
+    ].join(', or ')
+    return (
+      `This label is described rather than drawn here, and Packwright cannot see ${missing}; ` +
+      `its own ${wants.length > 1 ? 'defaults' : 'default'} would decide the verdict. State ` +
+      `${wants.length > 1 ? 'them' : 'it'} and this check will run.`
+    )
+  },
+})

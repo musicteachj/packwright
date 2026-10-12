@@ -16,6 +16,7 @@ import {
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork, xDimensionMm } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
+import { verdictWaitsOnADescribedLabel } from '../described'
 
 export const GS1_MAGNIFICATION_OUT_OF_RANGE = 'GS1_MAGNIFICATION_OUT_OF_RANGE'
 export const GS1_MAGNIFICATION_IN_RANGE = 'GS1_MAGNIFICATION_IN_RANGE'
@@ -28,7 +29,7 @@ const CITATION: Citation = {
 
 const RANGE = `${MIN_MAGNIFICATION.toFixed(2)}x–${MAX_MAGNIFICATION.toFixed(2)}x`
 
-export const magnificationRule: Gs1RetailRule = {
+const judgedAsDrawn: Gs1RetailRule = {
   id: 'gs1/magnification',
   title: `An EAN/UPC symbol is drawn between ${RANGE} of its nominal size.`,
   citation: CITATION,
@@ -63,3 +64,15 @@ export const magnificationRule: Gs1RetailRule = {
     })
   },
 }
+
+/** The rule as drawn, its verdict waiting on a label printed elsewhere — see `rules/described.ts`. */
+export const magnificationRule: Gs1RetailRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
+  unstated: ({ data }) => (data.magnification === undefined ? ['magnification'] : []),
+  // A factor, said as one: "100%" invited `magnification: 100`, a hundredfold symbol.
+  // Found by `/code-review high` on #87.
+  reason: () =>
+    'This label is described rather than drawn here, and Packwright cannot see the ' +
+    'magnification its barcode is printed at; its own default of 1 (100%) would pass by ' +
+    'construction. State the magnification, as a factor such as 1 or 0.8, and this check ' +
+    'will run.',
+})

@@ -700,26 +700,34 @@ describe('a check that stood down names what would let it run', () => {
   ]
 
   const contextOf = (
-    labelType: 'us-food' | 'ghs-chemical',
+    labelType: 'us-food' | 'ghs-chemical' | 'gs1-retail',
     data: unknown,
     stock: LabelStock,
     subject: LabelSubject = 'drawing',
-  ) =>
-    labelType === 'us-food'
+  ): RuleContext =>
+    labelType === 'gs1-retail'
       ? ({
           labelType,
-          data: data as UsFoodLabelData,
+          data: data as UpcALabelData,
           stock,
-          layout: layOutUsFoodLabel({ data: data as UsFoodLabelData, stock }),
+          layout: layOutUpcALabel(bwip, { data: data as UpcALabelData, stock }),
           subject,
         } satisfies RuleContext)
-      : ({
-          labelType,
-          data: data as GhsLabelData,
-          stock,
-          layout: layOutGhsLabel({ data: data as GhsLabelData, stock }),
-          subject,
-        } satisfies RuleContext)
+      : labelType === 'us-food'
+        ? ({
+            labelType,
+            data: data as UsFoodLabelData,
+            stock,
+            layout: layOutUsFoodLabel({ data: data as UsFoodLabelData, stock }),
+            subject,
+          } satisfies RuleContext)
+        : ({
+            labelType,
+            data: data as GhsLabelData,
+            stock,
+            layout: layOutGhsLabel({ data: data as GhsLabelData, stock }),
+            subject,
+          } satisfies RuleContext)
 
   const cases = [
     ...US_FOOD_FIXTURES.map((f) => ({
@@ -744,6 +752,23 @@ describe('a check that stood down names what would let it run', () => {
       stock: f.stock,
       subject: 'described' as LabelSubject,
     })),
+    // Every UPC-A fixture as `check_label` judges it: the passes on magnification, bar
+    // height and the digits wait for the fields the request left out.
+    ...[...GS1_RETAIL_FIXTURES, { name: 'conformant', ...CONFORMANT_FIXTURE }].map((f) => ({
+      name: `${f.name}, described`,
+      labelType: 'gs1-retail' as const,
+      data: f.data as unknown,
+      stock: f.stock,
+      subject: 'described' as LabelSubject,
+    })),
+    // And every food fixture, where the type-size and position checks stand down.
+    ...US_FOOD_FIXTURES.map((f) => ({
+      name: `${f.name}, described`,
+      labelType: 'us-food' as const,
+      data: f.data as unknown,
+      stock: f.stock,
+      subject: 'described' as LabelSubject,
+    })),
     {
       // Carrying everything the small-container provision lists, but for pictogram
       // symbols no one can see: `ghs/small-container` stands down as a limit.
@@ -755,7 +780,7 @@ describe('a check that stood down names what would let it run', () => {
     },
   ] as Array<{
     name: string
-    labelType: 'us-food' | 'ghs-chemical'
+    labelType: 'us-food' | 'ghs-chemical' | 'gs1-retail'
     data: unknown
     stock: LabelStock
     subject?: LabelSubject
@@ -766,8 +791,15 @@ describe('a check that stood down names what would let it run', () => {
     const figure = (value: unknown) =>
       typeof value === 'number' && Number.isFinite(value) && value > 0
     const ghs = data as GhsLabelData
+    const upcA = data as UpcALabelData
     const panel = (data as UsFoodLabelData).nutritionFacts
     switch (fact) {
+      case 'magnification':
+        return upcA.magnification !== undefined
+      case 'barHeightMm':
+        return upcA.barHeightMm !== undefined
+      case 'omitHri':
+        return upcA.omitHri !== undefined
       case 'hazards':
         return (ghs.hazards ?? []).length > 0
       case 'ingredients.percentByWeight':
@@ -794,6 +826,11 @@ describe('a check that stood down names what would let it run', () => {
   /** A valid answer to each fact, as a user filling the field would give one. */
   const state = (data: unknown, fact: DeclinedFact): unknown => {
     if (fact === 'hazards') return { ...(data as GhsLabelData), hazards: [HAZARDS.flammableLiquid] }
+    // The figures a designer would read off the artwork: 100%, its nominal bar height,
+    // and the digits printed.
+    if (fact === 'magnification') return { ...(data as UpcALabelData), magnification: 1 }
+    if (fact === 'barHeightMm') return { ...(data as UpcALabelData), barHeightMm: 22.85 }
+    if (fact === 'omitHri') return { ...(data as UpcALabelData), omitHri: false }
     const label = data as UsFoodLabelData
     if (fact === 'ingredients.percentByWeight') {
       // Each blank takes the figure above it, so a run the stated figures kept in
@@ -816,7 +853,15 @@ describe('a check that stood down names what would let it run', () => {
     }
     const panel = label.nutritionFacts!
     const answer: Record<
-      Exclude<DeclinedFact, 'hazards' | 'ingredients.percentByWeight' | 'ingredients.name'>,
+      Exclude<
+        DeclinedFact,
+        | 'hazards'
+        | 'ingredients.percentByWeight'
+        | 'ingredients.name'
+        | 'magnification'
+        | 'barHeightMm'
+        | 'omitHri'
+      >,
       object
     > = {
       'nutritionFacts.referenceAmount': {
@@ -885,8 +930,16 @@ describe('a check that stood down names what would let it run', () => {
         const still = declinedChecks(contextOf(one.labelType, data, one.stock, one.subject)).find(
           (d) => d.ruleId === first.ruleId,
         )
+        // Asked for nothing more, at least. On a label printed elsewhere a rule can
+        // then stand down at a limit of this tool instead — the dual-column form,
+        // whose pass also rests on type sizes nobody can state — which promises
+        // nothing to follow and is held to saying so above.
         expect(
-          still,
+          still?.limit === true &&
+            first.ruleId === 'us-food/dual-column-form' &&
+            still.reason.includes('a line between them and at equal prominence')
+            ? undefined
+            : still,
           `${first.ruleId} on ${one.name} still stands down after ${path.join(' then ') || 'being asked for nothing'}`,
         ).toBeUndefined()
       }
@@ -920,7 +973,7 @@ describe('a check that stood down names what would let it run', () => {
         ),
       ),
     )
-    const declaring = [...US_FOOD_RULES, ...GHS_RULES]
+    const declaring = [...US_FOOD_RULES, ...GHS_RULES, ...GS1_RETAIL_RULES]
       .filter((rule) => rule.declines !== undefined)
       .map((r) => r.id)
     expect([...reached].sort()).toEqual([...declaring].sort())

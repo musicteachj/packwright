@@ -19,6 +19,13 @@ import { testRouter } from './views/editorTestRouter'
  * do nothing.
  */
 
+/**
+ * The facts only a label printed elsewhere asks for — `check_label`'s, never the
+ * editor's, which judges its own drawing. Kept here, where it is used, rather than
+ * exported beside the map as if it were authoritative. Found by `/code-review high` on #87.
+ */
+const DESCRIBED_ONLY_FACTS: readonly DeclinedFact[] = ['magnification', 'barHeightMm', 'omitHri']
+
 Element.prototype.scrollIntoView = vi.fn()
 
 beforeEach(() => setActivePinia(createPinia()))
@@ -143,7 +150,28 @@ describe('the fields a check that did not run links to', () => {
       for (const fact of wanted) asked.add(fact)
       wrapper.unmount()
     }
-    expect([...asked].sort()).toEqual(Object.keys(DECLINED_FACT_FIELDS).sort())
+    expect([...asked].sort()).toEqual(
+      Object.keys(DECLINED_FACT_FIELDS)
+        .filter((fact) => !DESCRIBED_ONLY_FACTS.includes(fact as DeclinedFact))
+        .sort(),
+    )
+  })
+
+  it('send the facts only a label printed elsewhere asks for to the UPC-A form’s own fields', async () => {
+    // No check in the editor waits on these — it judges its own drawing — so no scenario
+    // above reaches them. Each still has to land on a field the page has, called what
+    // the link calls it.
+    const { wrapper } = await mountIn((store) => {
+      store.labelType = 'gs1-retail'
+    })
+    for (const fact of DESCRIBED_ONLY_FACTS) {
+      const { fieldId, name } = DECLINED_FACT_FIELDS[fact]
+      expect(wrapper.find(`#${fieldId}`).exists(), `${fact} links to #${fieldId}`).toBe(true)
+      expect(labelOn(wrapper, fieldId).trim(), fact).toMatch(
+        new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+      )
+    }
+    wrapper.unmount()
   })
 })
 

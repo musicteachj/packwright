@@ -217,6 +217,11 @@ export interface Rule<TContext extends RuleContext = RuleContext> {
  */
 export type DeclinedFact =
   | 'hazards'
+  // Asked for only on a label printed elsewhere, where the engine's default for each
+  // would otherwise pass by construction — see `rules/described.ts`.
+  | 'magnification'
+  | 'barHeightMm'
+  | 'omitHri'
   | 'ingredients.percentByWeight'
   | 'ingredients.name'
   | 'nutritionFacts.referenceAmount'

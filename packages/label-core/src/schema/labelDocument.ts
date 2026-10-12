@@ -141,9 +141,28 @@ export const UpcARequest = z.object({
   // Bounded below only. The specification's 0.8–2.0 range is a rule, reported
   // with its citation against the resolved layout; zero or negative is not a
   // symbol at all.
-  magnification: z.number().positive().optional(),
-  barHeightMm: z.number().positive().optional(),
-  omitHri: z.boolean().optional(),
+  magnification: z
+    .number()
+    .positive()
+    .optional()
+    .describe(
+      'The symbol’s size as a factor of the nominal: 1 for 100%, 0.8 for 80% — not a ' +
+        'percentage. Omitted, check_label gives no verdict on magnification or bar height.',
+    ),
+  barHeightMm: z
+    .number()
+    .positive()
+    .optional()
+    .describe(
+      'The height of the bars in millimetres. Omitted, check_label gives no verdict on it.',
+    ),
+  omitHri: z
+    .boolean()
+    .optional()
+    .describe(
+      'false if the digits are printed beneath the barcode, true if they are not. Omitted, ' +
+        'check_label gives no verdict on them.',
+    ),
   symbolPlacement: z.enum(ANCHORS).optional(),
   artwork: Artwork.optional(),
   digitalLink: DigitalLink.optional(),

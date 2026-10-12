@@ -30,6 +30,7 @@ import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { UsFoodContext, UsFoodRule } from '../types'
 import { smallestOf } from './printedText'
+import { noVerdictOnADescribedLabel } from '../described'
 
 export const FDA_CONTAINS_TYPE_TOO_SMALL = 'FDA_CONTAINS_TYPE_TOO_SMALL'
 export const FDA_CONTAINS_NOT_ADJACENT = 'FDA_CONTAINS_NOT_ADJACENT'
@@ -63,7 +64,7 @@ const letterHeightMm = (
   basis: GlyphBasis,
 ): number => glyphHeightMm(block.fontSizeMm, block.fontFamily, basis)
 
-export const usFoodContainsStatementTypeRule: UsFoodRule = {
+const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/contains-statement-type',
   title: 'The "Contains" statement is adjacent to the ingredient list and no smaller than it.',
   citation: CITATION,
@@ -162,3 +163,17 @@ export const usFoodContainsStatementTypeRule: UsFoodRule = {
     ]
   },
 }
+
+/** The rule as drawn, giving no verdict on a label printed elsewhere — see `rules/described.ts`. */
+export const usFoodContainsStatementTypeRule: UsFoodRule = noVerdictOnADescribedLabel(
+  judgedAsDrawn,
+  {
+    // §403(w)(1)(A) compares the two type sizes and wants the statement beside the
+    // list; it sets no letter height of its own. How far apart they print is where
+    // this engine stacked them, and so is the gap the check measures.
+    why:
+      'The statute wants the statement beside the ingredient list in type no smaller than the ' +
+      'list’s. How close the two print is where Packwright stacked them, and their sizes are ' +
+      'measured in Packwright’s typeface, not yours.',
+  },
+)
