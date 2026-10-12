@@ -27,7 +27,7 @@ export const GS1_MAGNIFICATION_IN_RANGE = 'GS1_MAGNIFICATION_IN_RANGE'
 // themselves are unchanged (`geometry/symbol.ts`).
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 General Specifications 26.0, §5.12.3.1, table 5-44',
+  reference: 'GS1 General Specifications 26.0 §5.12.3.1, table 5-44',
   // Table 5-44's own caption: "GS1 symbol specification table 1".
   title: 'GS1 symbol specification table 1 — EAN/UPC X-dimension range',
 }

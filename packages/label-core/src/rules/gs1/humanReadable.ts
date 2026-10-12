@@ -31,7 +31,7 @@ export const GS1_HRI_PRESENT = 'GS1_HRI_PRESENT'
 // and SHALL be placed below the barcode." The citation named no release until then.
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 General Specifications 26.0, §4.14.2',
+  reference: 'GS1 General Specifications 26.0 §4.14.2',
   title: 'General retail consumer trade item human readable text rules',
 }
 

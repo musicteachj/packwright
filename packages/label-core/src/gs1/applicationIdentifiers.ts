@@ -57,7 +57,9 @@ export const FNC1_SEPARATOR = '\u001D'
 
 /**
  * GS1 AI encodable character set 82, from General Specifications 25.0 figure
- * 7.11-1 — a subset of ISO/IEC 646 IRV, not "any printable ASCII".
+ * 7.11-1 — a subset of ISO/IEC 646 IRV, not "any printable ASCII". Release 26.0
+ * numbers it table 7-20, under §7.11 "The GS1 subset of International Standard
+ * ISO/IEC 646" (rendered page read 2026-10-12); the characters were not re-compared.
  *
  * Transcribed from the figure rather than derived: 13 punctuation marks, the
  * ten digits, six more punctuation marks, A–Z, low line, a–z. That totals 82

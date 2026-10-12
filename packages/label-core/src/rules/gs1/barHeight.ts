@@ -24,7 +24,7 @@ export const GS1_BAR_HEIGHT_SUFFICIENT = 'GS1_BAR_HEIGHT_SUFFICIENT'
 // themselves are unchanged (`geometry/symbol.ts`).
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 General Specifications 26.0, §5.2.3.2 and table 5-44',
+  reference: 'GS1 General Specifications 26.0 §5.2.3.2 and table 5-44',
   title: 'EAN/UPC symbol height at nominal size, and the minimum by X-dimension',
 }
 

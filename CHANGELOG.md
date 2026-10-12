@@ -12,8 +12,9 @@ into a version only when there is a reason to.
 
 - **The %DV pass and four GS1 rules cite what they rest on, in the release they rest on.** The percent Daily Value
   pass cited only 21 CFR 101.9(d)(7)(ii), which rounds a nutrient with a DRV to the whole percent, while clearing
-  vitamin D, calcium, iron and potassium, which (c)(8)(iii) rounds in 2, 5 and 10 percent steps; it now cites the
-  paragraph that governs what it cleared, or both. Both read from the eCFR on 2026-10-12. The bar-height,
+  vitamin D, calcium, iron and potassium, which (c)(8)(iii) rounds in 2, 5 and 10 percent steps; it now passes each
+  kind under its own paragraph — two passes where a column holds both, one mapping shared with the violation, so
+  the catalogue still counts two provisions rather than three. Both read from the eCFR on 2026-10-12. The bar-height,
   magnification and quiet-zone rules cited "figure 5.12.3.1-1" and "figure 5.2.3.4-1" of GS1 General
   Specifications 25.0, identifiers that do not exist in Release 26.0, which numbers them as tables 5-44 and 5-11;
   `geometry/symbol.ts` had recorded the renumbering since 2026-09-17 and the rules never followed. The
@@ -21,7 +22,11 @@ into a version only when there is a reason to.
   table 5-44, §5.2.3.4 and table 5-11, and §4.14.2 under its own heading — each read from the rendered page on
   2026-10-12, where every figure the engine uses (the 0.264–0.660 mm X-dimension, the 18.28/22.85/45.70 mm heights,
   the 9X quiet zones, "the height of the bars only") matched. The landing page's figures card cited the same two 25.0 figures for the quiet zone and the symbol
-  length, and now cites tables 5-11 and 5-12. Found by grading the MCP evaluation of 2026-10-10.
+  length, and named no release for the rest; every entry now cites 26.0 (tables 5-11 and 5-12 among them). The
+  AI character set's source note records 26.0's table 7-20. `/code-review high` on #88 also found the %DV rule
+  accepting either basis — declared or actual amount — for vitamins and minerals, a permission (d)(7)(ii) grants
+  only to nutrients with a DRV; the regulation is silent for RDI nutrients, so the rule keeps the reading that
+  cannot accuse, and the question is in `docs/BACKLOG.md`. Found by grading the MCP evaluation of 2026-10-10.
 
 - **What `/code-review high` found on #87, answered.** The three barcode fields `check_label` now asks for carry
   descriptions, and the magnification is asked for as a factor ("1 or 0.8"): the decline said "100%", which invited

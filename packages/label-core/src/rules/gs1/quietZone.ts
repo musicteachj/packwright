@@ -27,7 +27,7 @@ export const GS1_QUIET_ZONE_CLEAR = 'GS1_QUIET_ZONE_CLEAR'
 // themselves are unchanged (`geometry/symbol.ts`).
 const CITATION: Citation = {
   authority: 'GS1',
-  reference: 'GS1 General Specifications 26.0, §5.2.3.4, table 5-11',
+  reference: 'GS1 General Specifications 26.0 §5.2.3.4, table 5-11',
   title: 'Quiet Zone widths by version',
 }
 
