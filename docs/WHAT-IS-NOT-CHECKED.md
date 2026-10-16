@@ -307,6 +307,24 @@ These three readings are from consolidated CLP text 02008R1272-20260701, the ver
 Regulations (EU) 2024/2865 and 2025/2439, all read from the EU Publications Office on 2026-10-10. The
 consolidated text is a documentation aid; the Official Journal is the authentic version.
 
+### Precautionary statements are printed in Annex IV Part 2's wording
+
+CLP gives each precautionary statement's English text twice, in the selection tables of Annex IV Part 1 and in
+the per-language tables of Part 2, and for 18 statements the two differ. Article 22(4) says the statements "shall
+be worded in accordance with Part 2 of Annex IV", so this tool prints Part 2's. Some of Part 1's texts are newer:
+Commission Regulation (EU) 2019/521 reworded P103 in Part 1 as "Read carefully and follow all instructions." and
+left Part 2's "Read label before use." as it was. Annex IV's introduction allows "minor textual variations" where
+"the safety advice is not diluted or compromised", so a label carrying Part 1's wording is not reported by this
+tool either; no check here judges a statement's wording.
+
+**P280 is the one where the difference is more than wording.** Part 1, as 2019/521 replaced it, adds "hearing
+protection" to the choices: "Wear protective gloves/protective clothing/eye protection/face protection/hearing
+protection/…". Part 2's English text, which this tool prints, has no hearing protection and no "…" to add it. If
+your product needs hearing protection named, add it to the printed label yourself.
+
+All 18 differences, with both texts and the act behind each, are in `docs/CLP-P-STATEMENT-TEXTS.md`, read from
+consolidated text 02008R1272-20260701 on 2026-10-16.
+
 ---
 
 ## Barcodes
