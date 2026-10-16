@@ -35,7 +35,7 @@
  * Six more had a line break after a slash welded into a space, giving
  * `vapours/ spray` for `vapours/spray`.
  *
- * **A second text-layer artefact survived in eight more.** Between a slash and
+ * **A second text-layer artifact survived in eight more.** Between a slash and
  * the ellipsis that follows it, the PDF's text layer emits a space the printed
  * page does not have: it gives `CENTER/doctor/ …` for a line the page sets as
  * `CENTER/doctor/…`. P250, P301 + P310, P308 + P311, P310, P311, P312,

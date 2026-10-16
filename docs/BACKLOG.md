@@ -104,6 +104,22 @@ there is no Part 2 text to compare. Left as it is, since the Official Journal's 
 that would decide it. Found by the Part 1/Part 2 comparison of 2026-10-16; the eight other spacing faults it found
 were fixed the same day (`CHANGELOG.md`).
 
+**A statement can now wrap only at a space, so `CENTER/doctor/…` is one unbreakable word.** Removing the eight
+spurious spaces (#93) took away the break point before the ellipsis, and `wrapTextMm` breaks on whitespace only. On
+a narrow panel a line that used to wrap there now runs long. It is not silent: the GHS engine records a word wider
+than the panel as a right overrun, so nothing is counted as printed that is not. The regulation's own PDF breaks
+lines after a slash, so allowing a break after `/` in `text/measure.ts` would be typographically sound; it changes
+every wrapped line that contains a slash, so it is a `layout/` change with its own review. Found by
+`/code-review medium` on #93.
+
+**The comparison that certifies the statement table is not in the repository.** The module note of
+`ghs/statements.ts` says every Part 2 text was compared by script with the XHTML in force, and on 2026-10-16 it
+was, but the extractors and the comparison lived in `/tmp`. Nothing re-runs them, so the next unforeseen kind of
+extraction artifact passes CI the way these eight did. Checking in the two extractors and a normalized Part 2
+extract, with a test that the table matches it, would replace one regex per defect found with a check of the
+whole table. The extract is a copy of the regulation, so it would need its own provenance note and a re-fetch
+whenever a new consolidation is read. Found by `/code-review medium` on #93.
+
 **A model can still invent a label size.** With the size optional, Haiku 4.5 still made one up in 3 of 21 answers in
 the second re-check, twice without telling the user, and in one the tool, given it, reported the label below CLP's
 minimum about a size nobody stated. No check can tell an invented size from a stated one. The tool description

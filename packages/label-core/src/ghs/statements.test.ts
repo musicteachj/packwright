@@ -282,7 +282,10 @@ describe('the text carries no extraction artefacts', () => {
     ['a degree sign flattened to a spaced letter o', /\so\s[CF]\b/],
     // Any whitespace after a slash: a line break welded into a space
     // (`vapours/ spray`), or the space the text layer puts before an ellipsis
-    // (`doctor/ …`). No statement in the tables has one.
+    // (`doctor/ …`). No statement in the tables has one. P503's text in Part 1
+    // is an open question (docs/BACKLOG.md): the XHTML in force sets a space after
+    // two of its slashes. If the Official Journal settles it that way, exempt P503
+    // here rather than weakening the pattern.
     ['whitespace after a slash', /\/\s/],
     ['a double space', / {2}/],
     ['an amendment marker', /[►◄▼]/],

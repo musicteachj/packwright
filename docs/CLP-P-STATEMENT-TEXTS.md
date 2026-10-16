@@ -157,7 +157,7 @@ question.** The first is
 against Part 2; the second is P503, which the engine takes from Part 1 because Part 2 has no row for it.
 
 - **A space after a slash, before the ellipsis, in eight entries**: P250, P301 + P310, P308 + P311, P310, P311,
-  P312, P342 + P311 and P406, where the engine prints `/ …` (for example `Call a POISON CENTER/doctor/ …`) and
+  P312, P342 + P311 and P406, where the engine printed `/ …` (for example `Call a POISON CENTER/doctor/ …`) and
   Part 2 reads `/…` (`Call a POISON CENTER/doctor/…`). Both the 2025-09-01 and 2026-07-01 XHTML read `/…`. In
   the 2026-07-01 PDF, seven of the eight `EN` rows set the slash and the ellipsis together on one line with no
   space (P250, P301 + P310, P308 + P311, P311, P312, P342 + P311, P406); the eighth, P310, breaks the line after

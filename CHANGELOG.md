@@ -38,7 +38,7 @@ into a version only when there is a reason to.
   ellipsis in its text layer that its printed rows do not set: read on 2026-10-16, the 2025-09-01 PDF's text layer
   gives the space in all eight rows, its rendered rows set the two together in seven (the eighth breaks the line
   after the slash), and the XHTML of the 2025-09-01 and 2026-07-01 consolidations has no space in any. Every Part 2
-  text in the table now matches the XHTML in force. A test pins each of the eight, and the artefact test now refuses
+  text in the table now matches the XHTML in force. A test pins each of the eight, and the artifact test now refuses
   any whitespace after a slash; P336's "Do no rub", Part 2's own typo, is now pinned beside
   P410 + P412's "Do no expose". The module note no longer says CLP allows no textual variation in precautionary
   statements: Annex IV's introduction, as 2019/521 replaced it, allows minor ones.
