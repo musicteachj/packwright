@@ -126,8 +126,9 @@ export const DigitalLink = z.object({
     .boolean()
     .optional()
     .describe(
-      'True only if the printed link writes /gtin/ where the standard writes /01/. Removed ' +
-        'from GS1 Digital Link URI Syntax 1.3.0, and reported as such.',
+      'Builds the link with /gtin/ where the standard writes /01/. Removed from GS1 Digital ' +
+        'Link URI Syntax 1.3.0, and reported as such. For a link Packwright builds; check_label ' +
+        'takes a printed link as its URI instead (PrintedDigitalLink).',
     ),
 })
 
@@ -147,14 +148,18 @@ export const UpcARequest = z.object({
     .optional()
     .describe(
       'The symbol’s size as a factor of the nominal: 1 for 100%, 0.8 for 80% — not a ' +
-        'percentage. Omitted, check_label gives no verdict on magnification or bar height.',
+        'percentage. Send it only if the user stated it: a value you supply yourself is judged ' +
+        'as the printed label’s, 1 included. Omitted, check_label gives no verdict on ' +
+        'magnification or bar height.',
     ),
   barHeightMm: z
     .number()
     .positive()
     .optional()
     .describe(
-      'The height of the bars in millimetres. Omitted, check_label gives no verdict on it.',
+      'The height of the bars in millimetres. Send it only if the user stated it: a value you ' +
+        'supply yourself is judged as the printed label’s. Omitted, check_label gives no ' +
+        'verdict on it.',
     ),
   omitHri: z
     .boolean()
@@ -950,6 +955,38 @@ export const CheckStockSchema = z.strictObject(
 )
 
 /**
+ * A Digital Link on a label checked from its description: the URI as printed, and
+ * nothing to infer. The editor's `DigitalLink` asks for a domain and whether the
+ * convenience alphas are used, which is right for a link Packwright builds and wrong
+ * for one a label already carries: a model reading `https://id.example.com/gtin/…` off
+ * the label had to decide the flag itself, got it wrong in 5 of 12 answers in the
+ * re-checks of 2026-10-16, and the rule then passed a `/01/` link the label does not
+ * carry. James decided that day that `check_label` takes the printed URI only. Its
+ * object is not strict, as nothing inside `data` is, so an old `{ domain }` is
+ * refused for its missing `uri`, with this message.
+ */
+export const PrintedDigitalLink = z.object({
+  uri: z
+    .string({
+      error:
+        'Give the Digital Link exactly as the label prints it, in `uri`, for example ' +
+        '"https://id.example.com/01/00036000291452". check_label takes no domain or ' +
+        'convenience-alpha setting: it reads them from the URI.',
+    })
+    .trim()
+    .min(1)
+    .describe(
+      'The Digital Link exactly as the label prints it (the text its QR code encodes), ' +
+        'scheme, path and query included. Do not correct or rebuild it: it is judged as written.',
+    ),
+})
+
+/** The UPC-A fields of a check request: the editor's, with the Digital Link as printed. */
+export const UpcACheckRequest = UpcARequest.omit({ digitalLink: true }).extend({
+  digitalLink: PrintedDigitalLink.optional(),
+})
+
+/**
  * A request to check a label: its type, its fields, and its stock.
  *
  * The saved-label shape without a name. Built from the same parts as
@@ -970,7 +1007,7 @@ export const CheckStockSchema = z.strictObject(
 export const LabelCheckRequest = z.discriminatedUnion('labelType', [
   z.strictObject({
     labelType: z.literal('gs1-retail'),
-    data: UpcARequest.extend({ stock: STOCK_BESIDE_DATA }),
+    data: UpcACheckRequest.extend({ stock: STOCK_BESIDE_DATA }),
     stock: CheckStockSchema.optional(),
   }),
   z.strictObject({
@@ -1009,7 +1046,7 @@ export const LabelCheckRequestOutline = z.strictObject({
   labelType: z.enum(LABEL_TYPES).describe('Which kind of label `data` describes.'),
   data: z
     .union([
-      UpcARequest.omit({ stock: true }),
+      UpcACheckRequest.omit({ stock: true }),
       GhsRequestShape.omit({ stock: true }),
       UsFoodRequestBase.omit({ stock: true }),
     ])
@@ -1053,6 +1090,20 @@ export function toUpcALabelData(
     ...(request.digitalLink === undefined
       ? {}
       : { digitalLink: toDigitalLink(request.digitalLink) }),
+  }
+}
+
+/**
+ * A parsed UPC-A check request as the engine's input: the editor's fields by
+ * `toUpcALabelData`, and the Digital Link as printed, judged as written.
+ */
+export function toUpcACheckLabelData(
+  request: Omit<z.output<typeof UpcACheckRequest>, 'stock'>,
+): UpcALabelData {
+  const { digitalLink, ...rest } = request
+  return {
+    ...toUpcALabelData(rest),
+    ...(digitalLink === undefined ? {} : { digitalLinkAsPrinted: digitalLink.uri }),
   }
 }
 
@@ -1190,7 +1241,7 @@ export function toJudgeRequest(request: LabelCheckRequest, barcode: BarcodeEncod
     case 'gs1-retail':
       return {
         labelType: 'gs1-retail',
-        data: toUpcALabelData(request.data),
+        data: toUpcACheckLabelData(request.data),
         stock,
         barcode,
         subject: 'described',

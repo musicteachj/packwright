@@ -61,6 +61,26 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **`check_label` takes a Digital Link as printed, and judges the string.** It asked for a domain and a
+  `useConvenienceAlphas` flag, so a model reading `https://id.example.com/gtin/…` off a label had to infer the flag,
+  and in the third and fourth re-checks of 2026-10-16 Haiku 4.5 got it wrong in 5 of 12 answers. Each time the rule
+  rebuilt a `/01/` link, passed it, and the answer told the user the QR code was compliant. `data.digitalLink` is now
+  `{ uri }`, exactly as printed (James's decision of 2026-10-16). A new `parseDigitalLinkUri` takes it apart by GS1
+  Digital Link URI Syntax 1.7.0, read that day, custom stem segments included. `gs1/digital-link` reports the
+  convenience alphas it finds (§4.1) and what the grammar plainly refuses (§4). It withholds the pass, as a limit of
+  the tool, where the link carries another GTIN than the barcode's, a GTIN in fewer than 14 digits, or a key it
+  cannot place, such as (235) after a GTIN, which the standard permits. The `magnification` and `barHeightMm` fields
+  now say, where a model reads them, that they are sent only when the user stated them, since Haiku had sent an
+  invented `magnification: 1`. The editor's Digital Link, which Packwright builds, is unchanged. A fifth re-check
+  (`docs/experiments/2026-10-16-mcp-recheck-tool-side/`, 49 conversations, $1.25) measured both: on case 07, 5 of 6
+  Haiku answers sent the printed URI exactly and no false clearance came from it; no answer sent an invented
+  magnification or bar height, and none asked instead of checking. The harness gained `--tool-side-describe` and
+  `--tool-side`. `/code-review high` on #96 found the printed path crashing `check_label` on a 15-digit GTIN, and
+  standing down where it should report: a malformed GTIN, or a path with no GS1 key, was declined as a key this build
+  does not hold. The parser now takes the key whose value could be one, and only the 16 primary keys URI Syntax
+  1.7.0 defines can be a key this build does not hold; a repeated qualifier is named as repeated; and the MCP sweep
+  checks that a configured link and the URI it prints get the same Digital Link verdict.
+
 - **Eight CLP precautionary statements printed a space the regulation does not have.** P250, P301 + P310,
   P308 + P311, P310, P311, P312, P342 + P311 and P406 read `/ …` where CLP Annex IV Part 2 reads `/…`, as in
   "Call a POISON CENTER/doctor/…". The PDF the table was extracted from puts a space between the slash and the

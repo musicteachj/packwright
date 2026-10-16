@@ -38,6 +38,12 @@
  *
  *   --measurements-describe, --measurements
  *
+ * And the fifth, the same day (`docs/experiments/2026-10-16-mcp-recheck-tool-side/`): the
+ * same design after the fixes moved into the tool, a Digital Link taken as printed and
+ * the magnification and bar height fields saying they are sent only when stated.
+ *
+ *   --tool-side-describe, --tool-side
+ *
  * **Both halves run afresh** (`docs/plans/2026-10-10-mcp.md`, stage 19). Since
  * 2026-10-09 the engine prints "Includes 0g Added Sugars", so today's food prompts
  * differ from the ones the "without" experiment sent, and pairing new "with"
@@ -205,6 +211,19 @@ const MEASUREMENTS_RECHECK: Study = {
   describeMode: '--measurements-describe',
 }
 
+/**
+ * The fifth re-check, of 2026-10-16: the third's design again, with the instructions as
+ * the third had them and two fixes in the tool instead. `check_label` takes a Digital
+ * Link as printed, so no model infers the convenience alphas (all five false clearances
+ * of the third and fourth re-checks were that inference), and the magnification and bar
+ * height fields say, where a model reads them, that they are sent only when stated.
+ */
+const TOOL_SIDE_RECHECK: Study = {
+  ...INSTRUCTIONS_RECHECK,
+  out: join(EXPERIMENTS, '2026-10-16-mcp-recheck-tool-side'),
+  describeMode: '--tool-side-describe',
+}
+
 const MODES = {
   '--describe': { study: STAGE_19, run: 'describe' },
   '--pilot': { study: STAGE_19, run: 'pilot' },
@@ -218,6 +237,8 @@ const MODES = {
   '--instructions': { study: INSTRUCTIONS_RECHECK, run: 'full' },
   '--measurements-describe': { study: MEASUREMENTS_RECHECK, run: 'describe' },
   '--measurements': { study: MEASUREMENTS_RECHECK, run: 'full' },
+  '--tool-side-describe': { study: TOOL_SIDE_RECHECK, run: 'describe' },
+  '--tool-side': { study: TOOL_SIDE_RECHECK, run: 'full' },
 } as const
 
 // Own keys only: `toString` is on every object, and fell through to a billed run of

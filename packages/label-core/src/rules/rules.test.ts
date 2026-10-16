@@ -779,6 +779,17 @@ describe('a check that stood down names what would let it run', () => {
       stock: f.stock,
       subject: 'described' as LabelSubject,
     })),
+    // A Digital Link as printed for another GTIN: no pass, and a limit of the tool.
+    {
+      name: 'a Digital Link as printed for a GTIN other than the barcode’s',
+      labelType: 'gs1-retail' as const,
+      data: {
+        ...CONFORMANT_FIXTURE.data,
+        digitalLinkAsPrinted: 'https://id.example.com/01/09506000134352',
+      } as unknown,
+      stock: CONFORMANT_FIXTURE.stock,
+      subject: 'described' as LabelSubject,
+    },
     // And every food fixture, where the type-size and position checks stand down.
     ...US_FOOD_FIXTURES.map((f) => ({
       name: `${f.name}, described`,
