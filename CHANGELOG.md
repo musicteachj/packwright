@@ -10,6 +10,18 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **A comparison of every CLP precautionary statement's two English texts** (`docs/CLP-P-STATEMENT-TEXTS.md`).
+  Annex IV gives each statement in Part 1's selection tables and in Part 2's English rows, and Packwright prints
+  Part 2. Read on 2026-10-16 from the consolidated text in force (02008R1272-20260701), extracted two independent
+  ways and every difference read in the rendered rows: 18 codes differ, four in words (P103, P280, P336,
+  P410 + P412), one in spelling (P301 + P312), one in a choice slash (P250), one in capitalization and eleven in
+  punctuation, spacing or the degree sign. James decided the engine keeps printing Part 2, as Article 22(4) says,
+  and `docs/WHAT-IS-NOT-CHECKED.md` now tells a user so, and that Part 2's P280 cannot name hearing protection,
+  which Part 1 has added since 2019/521. No code changed;
+  what the side checks found is in `docs/BACKLOG.md`: a space after a slash in eight engine entries, P503's
+  spacing, which the PDF cannot settle, P336's "Do no rub" left unpinned by a test, and the module note's claim
+  that CLP allows no textual variation.
+
 - **A second re-check, after stage 26** (`docs/experiments/2026-10-12-mcp-recheck-sizeless/`): the seven cases whose
   prompts give no label size, the "with tools" half, 42 conversations for $1.73. Models now check first and ask
   second: 41 of 42 answers ran `check_label`, against 1 of 42 before; Sonnet caught all 18 planted defects (7 before)
