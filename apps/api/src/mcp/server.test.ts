@@ -18,10 +18,12 @@ import {
   DEFAULT_US_FOOD_STOCK,
   EU_CLP_PRECAUTIONARY_STATEMENTS,
   SEVERITY_ORDER,
+  buildDigitalLinkUri,
   judgeLabel,
   type JudgeRequest,
   type LabelStock,
   type Severity,
+  type UpcALabelData,
 } from '@packwright/label-core'
 import { LabelCheckRequest } from '@packwright/label-core/schema'
 import * as bwip from 'bwip-js/generic'
@@ -192,7 +194,10 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
     expect(schema.additionalProperties).toBe(false)
     expect(schema.properties.stock!.additionalProperties).toBe(false)
     const advertised = JSON.stringify(schema)
-    expect(advertised).toContain('scheme included')
+    // The Digital Link as printed, with nothing to infer (2026-10-16): models inferred
+    // the convenience alphas from the printed URI wrongly in 5 of 12 answers.
+    expect(advertised).toContain('The Digital Link exactly as the label prints it')
+    expect(advertised).not.toContain('useConvenienceAlphas')
     // A factor, not a percentage: "100%" would have read as `magnification: 100`.
     expect(advertised).toContain('not a percentage')
     expect(advertised).toContain('not the size of the label')
@@ -269,6 +274,43 @@ const judgeAsCheckLabelShould = (document: (typeof documents)[number]) =>
     ...(document.labelType === 'gs1-retail' ? { barcode: bwip } : {}),
   } as JudgeRequest)
 
+/**
+ * A sweep document as `check_label` takes it: a Digital Link configured from a domain
+ * becomes the URI that label would print, since `check_label` takes the link as printed
+ * (2026-10-16). Without this every such document was refused at the door and dropped out
+ * of the comparison below without anyone noticing (found by review). Where the builder
+ * refuses the fields, the URI is put together as the label would print it anyway, so
+ * the rule meets the same fault in the string.
+ */
+const asCheckLabelTakesIt = (document: (typeof documents)[number]): (typeof documents)[number] => {
+  if (document.labelType !== 'gs1-retail') return document
+  const { digitalLink, ...data } = document.data as UpcALabelData
+  if (digitalLink === undefined) return document
+  const { domain, lot, serial, expiry, useConvenienceAlphas } = digitalLink
+  const gtin = (data as { gtin: string }).gtin
+  let uri: string
+  try {
+    uri = buildDigitalLinkUri({
+      domain,
+      primary: { ai: '01', value: gtin },
+      qualifiers: [
+        ...(lot === undefined ? [] : [{ ai: '10', value: lot }]),
+        ...(serial === undefined ? [] : [{ ai: '21', value: serial }]),
+      ],
+      attributes: expiry === undefined ? [] : [{ ai: '17', value: expiry }],
+      ...(useConvenienceAlphas === undefined ? {} : { useConvenienceAlphas }),
+    })
+  } catch {
+    const key = (alpha: string, ai: string) => (useConvenienceAlphas ? alpha : ai)
+    uri =
+      `${domain.replace(/\/+$/, '')}/${key('gtin', '01')}/${gtin.padStart(14, '0')}` +
+      (lot === undefined ? '' : `/${key('lot', '10')}/${lot}`) +
+      (serial === undefined ? '' : `/${key('ser', '21')}/${serial}`) +
+      (expiry === undefined ? '' : `?17=${expiry}`)
+  }
+  return { ...document, data: { ...data, digitalLinkAsPrinted: uri } }
+}
+
 describe('check_label on every document the judge is tested against', () => {
   it('has the whole sweep, every label type among it', () => {
     expect(documents.length).toBeGreaterThan(80)
@@ -277,11 +319,21 @@ describe('check_label on every document the judge is tested against', () => {
 
   it.each(documents.map((document) => [document.name, document] as const))(
     '%s',
-    async (_name, document) => {
+    async (_name, swept) => {
+      const document = asCheckLabelTakesIt(swept)
       // Through JSON, as a client sends it: a value JSON cannot carry is refused
       // by the schema, as the export routes refuse it.
       const wire = JSON.parse(JSON.stringify(document)) as typeof document
-      const request = { labelType: wire.labelType, data: wire.data, stock: wire.stock }
+      // A Digital Link as printed is sent as a client sends it, in `digitalLink.uri`.
+      const { digitalLinkAsPrinted, ...data } = wire.data as { digitalLinkAsPrinted?: string }
+      const request = {
+        labelType: wire.labelType,
+        data:
+          digitalLinkAsPrinted === undefined
+            ? wire.data
+            : { ...data, digitalLink: { uri: digitalLinkAsPrinted } },
+        stock: wire.stock,
+      }
       const result = await (await connect()).callTool({ name: 'check_label', arguments: request })
 
       const parsed = LabelCheckRequest.safeParse(request)

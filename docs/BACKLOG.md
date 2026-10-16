@@ -127,18 +127,22 @@ in `docs/experiments/2026-10-16-mcp-recheck-instructions/`, against 3 of 21 befo
 (stage 23), passed it. A wording naming every value the tool takes on trust (size, margin, magnification, bar height,
 the digits, the food facts) was tested the same day (`docs/experiments/2026-10-16-mcp-recheck-measurements/`): it
 stopped the magnification, and three Haiku answers asked for the size instead of checking, against none, with two
-planted defects missed. James decided not to ship it. **Next, in the tool:** say at the point of use, in the schema's
-own description of `magnification` and `barHeightMm`, that each is sent only when the user stated it, and measure that
-with one re-run of the fourth re-check's design (about $1.35), together with the Digital Link fix below.
+planted defects missed. James decided not to ship it. **Done in the tool on 2026-10-16:** the schema's own
+descriptions of `magnification` and `barHeightMm` say each is sent only when the user stated it. The fifth re-check
+(`docs/experiments/2026-10-16-mcp-recheck-tool-side/`) found no invented magnification or bar height in 42 Haiku
+answers and no answer asking instead of checking. **Still open:** one answer there invented a label size and told
+the user it "meets the minimum", which no check can tell from a stated size; and one put the printed Digital Link in
+`artwork.text` instead of `digitalLink`, so nothing judged it. Both are the model's, one in 42 each.
 
-**`check_label` asks the model to infer the Digital Link's convenience alpha, and Haiku gets it wrong.** The request
-carries a domain and a boolean, `useConvenienceAlphas`, rather than the URI as printed, so a model reading
-`https://id.example.com/gtin/00036000291452` off a label must decide the boolean itself. Haiku sent `false` or left it
-out in 2 of 6 answers on 2026-10-16 and 3 of 6 in the re-run after it; the tool then built and passed a `/01/` link,
-and each answer told the user the QR code was compliant. Five false clearances in twelve answers, all on the case that
-plants this defect, none from the instruction. Letting the request carry the printed URI and judging its path in the
-rule takes the inference away from the model. It changes GS1 rule input, so its pull request takes
-`/code-review high`.
+**A Digital Link as printed has three questions this tool leaves open.** Since 2026-10-16 `check_label` takes the
+link exactly as printed and `gs1/digital-link` judges the string (`parseDigitalLinkUri`). It withholds the pass,
+as a limit, where the link carries another GTIN than the barcode's, a GTIN in fewer than 14 digits, or something
+its tables cannot place. Each could become a finding with reading: whether GS1 requires a label's Digital Link to
+carry its barcode's GTIN (James's decision of 2026-10-16 was no pass until the text is read); §4.1's "SHALL be
+prefixed with leading zeroes" to 14 digits, already read, which wants its own code because the §4.1 citation's
+title covers the convenience alphas alone; and the rest of URI Syntax 1.7.0's path grammar, of which this build
+holds the GTIN's qualifiers (22), (10) and (21) only, so a UPUI path's (235) or a GLN's path stands down rather than
+being judged.
 
 **The experiment harness can pass its spend cap.** It checks the cap before starting each conversation, with four in
 flight, so a study can end above it by up to four conversations' cost, about $0.30 at the worst seen. Every study so

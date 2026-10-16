@@ -149,6 +149,36 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
       citation: 'GS1 Digital Link URI Syntax 1.7.0 §4.1',
     },
   },
+  // The same two, as a label printed elsewhere carries them: the URI as written, which
+  // `check_label` takes in place of the fields above (`digitalLinkAsPrinted`).
+  {
+    name: 'Digital Link as printed, using the removed convenience alphas',
+    defect: 'The printed URI opens its path with `/gtin/`, removed in URI Syntax 1.3.0.',
+    data: {
+      gtin: VALID_GTIN,
+      digitalLinkAsPrinted: 'https://id.example.com/gtin/00036000291452',
+    },
+    stock: DEFAULT_STOCK,
+    expected: {
+      code: GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS,
+      severity: 'advisory',
+      citation: 'GS1 Digital Link URI Syntax 1.7.0 §4.1',
+    },
+  },
+  {
+    name: 'Digital Link as printed, with its key qualifiers out of order',
+    defect: 'The serial (21) is printed before the lot (10); URI Syntax 1.7.0 fixes the order.',
+    data: {
+      gtin: VALID_GTIN,
+      digitalLinkAsPrinted: 'https://id.example.com/01/00036000291452/21/S1/10/L1',
+    },
+    stock: DEFAULT_STOCK,
+    expected: {
+      code: GS1_DIGITAL_LINK_INVALID,
+      severity: 'violation',
+      citation: 'GS1 Digital Link URI Syntax 1.7.0 §4',
+    },
+  },
 ]
 
 /**

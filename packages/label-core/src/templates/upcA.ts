@@ -88,6 +88,16 @@ export interface UpcALabelData {
   symbolPlacement?: Anchor
   artwork?: ArtworkBlock
   digitalLink?: DigitalLinkData
+  /**
+   * A Digital Link exactly as a label printed elsewhere carries it, from a check
+   * request. Judged as written by `gs1/digital-link`, which takes it apart with
+   * `parseDigitalLinkUri`, rather than rebuilt from `digitalLink`'s fields: those ask
+   * whoever describes the label to infer the convenience alphas from the printed URI,
+   * and in the re-checks of 2026-10-16 Haiku 4.5 inferred them wrongly in 5 of 12
+   * answers, each time passing a link the label does not carry. Wins over `digitalLink`
+   * where both are given. The engine draws no carrier for either.
+   */
+  digitalLinkAsPrinted?: string
 }
 
 /**

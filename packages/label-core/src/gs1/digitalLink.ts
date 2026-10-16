@@ -12,7 +12,7 @@
  * an attribute in the query string.
  */
 
-import { getAiSpec, validateAiValue } from './applicationIdentifiers'
+import { getAiSpec, listAiSpecs, validateAiValue } from './applicationIdentifiers'
 import { GS1_KEY_LENGTHS, isValidCheckDigit, normaliseToGtin14 } from './checkDigit'
 import type { Gs1Element } from './elementString'
 
@@ -171,4 +171,192 @@ export function buildDigitalLinkUri(input: DigitalLinkInput): string {
   const query = attributes.map(({ ai, value }) => `${ai}=${encodeURIComponent(value)}`).join('&')
 
   return `${origin}/${path}${query ? `?${query}` : ''}`
+}
+
+/**
+ * A Digital Link as printed, taken apart: the stem it is served under, the primary
+ * key, its qualifiers, the GS1 attributes in its query, and what this build could not
+ * place.
+ */
+export interface ParsedDigitalLink {
+  /** Scheme, host and any custom path segments before the primary key. */
+  stem: string
+  /** Absent where the path names a primary key this build does not hold. */
+  primary?: Gs1Element
+  qualifiers: Gs1Element[]
+  attributes: Gs1Element[]
+  /** The convenience alphas used in place of AIs, e.g. `['gtin']`. */
+  convenienceAlphas: string[]
+  /**
+   * What this build cannot judge, each said in a phrase: a key or qualifier its tables
+   * do not hold, an AI in the query it does not know, or one there it cannot place.
+   * Kept apart from the errors it throws because the standard may well permit them:
+   * `upui-path = gtin-comp tpx-comp` puts AI (235) after a GTIN, and this build's
+   * qualifier table has only (22), (10) and (21). Calling a permitted link
+   * non-conformant is a false finding under a citation nobody can argue with.
+   */
+  unplaced: string[]
+}
+
+/** AI by its convenience alpha, from the same table `segmentFor` emits them from. */
+const AI_BY_ALPHA = new Map<string, string>(
+  listAiSpecs()
+    .filter((spec) => spec.digitalLinkAlpha !== undefined)
+    .map((spec) => [spec.digitalLinkAlpha!, spec.ai]),
+)
+
+/** A key as printed, numeric or a convenience alpha, as an AI this build holds. */
+function keyFor(segment: string): { ai: string; alpha?: string } | undefined {
+  if (/^[0-9]+$/.test(segment)) return getAiSpec(segment) ? { ai: segment } : undefined
+  const ai = AI_BY_ALPHA.get(segment)
+  return ai === undefined ? undefined : { ai, alpha: segment }
+}
+
+function decoded(segment: string): string {
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    throw new DigitalLinkError(`"${segment}" is not validly percent-encoded`)
+  }
+}
+
+/** A host name of letters, digits and hyphens in dot-separated labels, and a port. */
+const HOST = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*(?::[0-9]+)?$/i
+
+/**
+ * Takes apart a Digital Link URI as printed on a label, so a rule can judge the
+ * string itself rather than one rebuilt from fields somebody inferred from it.
+ *
+ * Follows GS1 Digital Link URI Syntax 1.7.0, read from
+ * https://ref.gs1.org/standards/digital-link/uri-syntax/ on 2026-10-16:
+ *
+ * - "zero or more path segments are permitted to appear after the hostname or
+ *   domain name and before the start of the gs1uriPattern" (`customURIstem =
+ *   scheme "://" hostname *optionalPathSegment`), so the primary key is the first
+ *   segment naming one whose value can be one, not the first segment;
+ * - `gtin-path = gtin-comp [cpv-comp] [lot-comp] [ser-comp]`, in that order: a path
+ *   such as `/01/09520123456788/21/12345XYZ/10/ABC123` "in which the sequential
+ *   ordering of the key qualifier components is not preserved" is not permitted;
+ * - the standard's own examples of permitted paths include one ending in a slash.
+ *
+ * **It throws only for what that grammar plainly refuses**: an address that is not
+ * http or https with a host name, an empty segment, a key with no value after it,
+ * GTIN qualifiers out of order, or no GS1 key at all. What this build cannot place
+ * it lists in `unplaced` instead. It records convenience alphas rather than refusing
+ * them, because what to say about them is the rule's business (§4.1), and it does not
+ * widen or check the GTIN: a short GTIN and a wrong check digit are judged by the
+ * caller, which knows what the label's barcode carries.
+ */
+export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
+  const uri = printed.trim()
+  const match = /^(https?):\/\/([^/?#\s]*)([^?#\s]*)(\?[^#\s]*)?(#\S*)?$/i.exec(uri)
+  if (!match) {
+    throw new DigitalLinkError(
+      `"${uri}" is not an http or https web address with nothing but the address in it`,
+    )
+  }
+  const [, scheme, host = '', path = '', query = ''] = match
+  if (!HOST.test(host)) throw new DigitalLinkError(`"${host}" is not a host name`)
+
+  const raw = path === '' ? [] : path.slice(1).split('/')
+  // One trailing slash is permitted, as in the standard's own examples.
+  if (raw.length > 0 && raw[raw.length - 1] === '') raw.pop()
+  if (raw.some((segment) => segment === '')) {
+    throw new DigitalLinkError('the path has an empty segment ("//")')
+  }
+  const segments = raw.map(decoded)
+  const unplaced: string[] = []
+  const convenienceAlphas: string[] = []
+
+  // The first segment naming a primary key this build holds, with a value after it
+  // that could be one: a stem segment spelled "gtin" before a word is not the key.
+  const start = segments.findIndex((segment, i) => {
+    const key = keyFor(segment)
+    if (key === undefined || !getAiSpec(key.ai)?.primaryKey || i + 1 >= segments.length)
+      return false
+    return key.ai !== '01' || /^[0-9]+$/.test(segments[i + 1]!)
+  })
+
+  let primary: Gs1Element | undefined
+  let rest: string[] = []
+  if (start === -1) {
+    // No key this build holds. A numeric segment with a value after it may be one it
+    // does not, such as (414) or (8004); with none, there is no GS1 key at all.
+    const other = segments.findIndex((s, i) => /^[0-9]+$/.test(s) && i + 1 < segments.length)
+    if (other === -1) {
+      throw new DigitalLinkError('no GS1 primary key, such as /01/ and a GTIN, appears in the path')
+    }
+    unplaced.push(`(${segments[other]}) as its primary key, which this build does not hold`)
+  } else {
+    const key = keyFor(segments[start]!)!
+    if (key.alpha !== undefined) convenienceAlphas.push(key.alpha)
+    primary = { ai: key.ai, value: segments[start + 1]! }
+    rest = segments.slice(start + 2)
+  }
+
+  const qualifiers: Gs1Element[] = []
+  if (primary !== undefined) {
+    if (rest.length % 2 === 1) {
+      throw new DigitalLinkError(`"${rest[rest.length - 1]}" has no value after it in the path`)
+    }
+    const order = QUALIFIER_ORDER[primary.ai] ?? []
+    let last = -1
+    for (let i = 0; i < rest.length; i += 2) {
+      const key = keyFor(rest[i]!)
+      const position = key === undefined ? -1 : order.indexOf(key.ai)
+      if (key === undefined || position === -1) {
+        unplaced.push(`(${rest[i]}) after the ${getAiSpec(primary.ai)?.title ?? primary.ai}`)
+        continue
+      }
+      if (position <= last) {
+        throw new DigitalLinkError(
+          'the key qualifiers are not in their defined order, ' +
+            order.map((ai) => `(${ai})`).join(' then '),
+        )
+      }
+      last = position
+      if (key.alpha !== undefined) convenienceAlphas.push(key.alpha)
+      qualifiers.push({ ai: key.ai, value: rest[i + 1]! })
+    }
+  }
+
+  // GS1 attributes from the query. A numeric key is an AI whether or not the table
+  // holds it; any other key is somebody else's business.
+  const attributes: Gs1Element[] = []
+  const inPath = new Set([primary?.ai, ...qualifiers.map((q) => q.ai)])
+  for (const pair of query.slice(1).split(/[&;]/)) {
+    if (pair === '') continue
+    const at = pair.indexOf('=')
+    const name = decoded(at === -1 ? pair : pair.slice(0, at))
+    if (/^[0-9]+$/.test(name) && getAiSpec(name) === undefined) {
+      unplaced.push(`AI (${name}) in its query, which this build does not hold`)
+      continue
+    }
+    const key = keyFor(name)
+    if (key === undefined) continue
+    const spec = getAiSpec(key.ai)!
+    if (spec.primaryKey || spec.qualifier || inPath.has(key.ai)) {
+      unplaced.push(`AI (${key.ai}) in its query, where it is a key or qualifier`)
+      continue
+    }
+    if (attributes.some((a) => a.ai === key.ai)) {
+      unplaced.push(`AI (${key.ai}) more than once in its query`)
+      continue
+    }
+    if (key.alpha !== undefined) convenienceAlphas.push(key.alpha)
+    attributes.push({ ai: key.ai, value: at === -1 ? '' : decoded(pair.slice(at + 1)) })
+  }
+
+  return {
+    // From the segments as printed, not decoded: the stem is an address, not data.
+    stem: `${scheme}://${host}${raw
+      .slice(0, start === -1 ? 0 : start)
+      .map((s) => `/${s}`)
+      .join('')}`,
+    ...(primary === undefined ? {} : { primary }),
+    qualifiers,
+    attributes,
+    convenienceAlphas,
+    unplaced,
+  }
 }

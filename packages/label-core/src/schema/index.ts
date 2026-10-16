@@ -9,6 +9,8 @@ export {
   GhsSupplierSchema,
   IngredientSchema,
   LabelCheckRequest,
+  PrintedDigitalLink,
+  UpcACheckRequest,
   LabelCheckRequestOutline,
   LabelDocumentInput,
   NON_COMPLIANT_BUT_WELL_FORMED,
@@ -35,6 +37,7 @@ export {
   toNutritionFacts,
   toResponsibleFirm,
   toSupplier,
+  toUpcACheckLabelData,
   toUpcALabelData,
   toUsFoodLabelData,
 } from './labelDocument'
