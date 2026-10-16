@@ -21,6 +21,15 @@ into a version only when there is a reason to.
   harness gained `--instructions-describe` and `--instructions`, and run counts per model, refusing a model it does
   not know before anything is sent.
 
+- **`ghs_statement_text` says which part of CLP Annex IV its precautionary text comes from.** It gives Annex IV
+  Part 2's English wording, as Article 22(4) directs, and P503 from Part 1, which Part 2 does not list, and now says
+  so; and that Part 1's selection tables word some statements differently, P103 and P280 among them
+  (`docs/CLP-P-STATEMENT-TEXTS.md`). It quotes Annex IV's permission for minor textual variations with both its
+  conditions, and says Packwright does not judge a printed statement's wording, so a wording difference is never a
+  finding of this tool. It states no verdict on Part 1's wording: two drafts did, one dropping the permission's
+  conditions and one concluding Part 1's text was not wrongly worded, and reviews caught both, since a verdict belongs
+  in `rules/`. Held out of the third re-check so that run measured one change.
+
 - **A comparison of every CLP precautionary statement's two English texts** (`docs/CLP-P-STATEMENT-TEXTS.md`).
   Annex IV gives each statement in Part 1's selection tables and in Part 2's English rows, and Packwright prints
   Part 2. Read on 2026-10-16 from the consolidated text in force (02008R1272-20260701), extracted two independent

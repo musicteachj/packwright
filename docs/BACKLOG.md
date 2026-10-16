@@ -91,8 +91,8 @@ Article 22(4) says the statements "shall be worded in accordance with Part 2" an
 every language; a label carrying Part 1's wording is not to be reported, because Annex IV's introduction, as
 2019/521 replaced it, permits "minor textual variations". P280 is the exception that is more than wording (Part 1
 adds "hearing protection"), and `docs/WHAT-IS-NOT-CHECKED.md` tells a user so. Still open from it: offering Part
-1's P280 as a choice, which belongs with the undisclosed P-statement selection; and `ghs_statement_text` on `/mcp`
-answering the 18 codes with Part 2's text and no word that Part 1 differs. A search on 2026-10-16 found no act,
+1's P280 as a choice, which belongs with the undisclosed P-statement selection. (`ghs_statement_text` on `/mcp` has
+said since 2026-10-16 that its text is Part 2's and that Part 1 words 18 statements differently.) A search on 2026-10-16 found no act,
 corrigendum or official note reconciling the parts; ECHA's labelling guidance, which might, could not be fetched
 (echa.europa.eu blocks automated requests).
 

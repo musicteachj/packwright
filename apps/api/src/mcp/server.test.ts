@@ -145,6 +145,41 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
     expect(thenAsk).toBeGreaterThan(checkFirst)
   })
 
+  it('says which part of CLP Annex IV a precautionary statement’s wording comes from', async () => {
+    // Part 2, as Article 22(4) directs, P503 from Part 1, and the permission for
+    // variations with both its conditions. It states no verdict: two drafts did,
+    // and a wording verdict belongs in rules/, which has none.
+    const { tools } = await (await connect(era)).listTools()
+    const description = tools.find((tool) => tool.name === 'ghs_statement_text')!.description!
+    expect(description).toContain('the English wording of Annex IV Part 2')
+    expect(description).toContain('Article 22(4)')
+    expect(description).toContain('P503, which Part 2 does not list, is given from Part 1')
+    expect(description).toContain('assist in communicating safety information')
+    expect(description).toContain('the safety advice is not diluted or compromised')
+    expect(description).toContain('Packwright does not judge a printed statement’s wording')
+    expect(description).not.toMatch(/not\b[^.]*wrongly worded|is compliant|acceptable/)
+    expect(description).not.toContain('\u2014') // no em dash
+  })
+
+  it('answers P103 and P280 with Part 2’s text, which the description says it gives', async () => {
+    // The description's claim, held to the data: Part 1 reads "Read carefully and
+    // follow all instructions." and adds "hearing protection/…" to P280
+    // (docs/CLP-P-STATEMENT-TEXTS.md).
+    const client = await connect(era)
+    for (const [code, part2] of [
+      ['P103', 'Read label before use.'],
+      ['P280', 'Wear protective gloves/protective clothing/eye protection/face protection.'],
+    ] as const) {
+      const result = await client.callTool({
+        name: 'ghs_statement_text',
+        arguments: { regime: 'eu-clp', code },
+      })
+      expect(result.structuredContent, code).toMatchObject({ found: true, text: part2 })
+      expect(EU_CLP_PRECAUTIONARY_STATEMENTS[code], code).toBe(part2)
+    }
+    expect(EU_CLP_PRECAUTIONARY_STATEMENTS['P503']).toBeDefined()
+  })
+
   it('advertises what the fields mean, and that the request takes no other keys', async () => {
     // The descriptions the 2026-10-10 evaluation showed were missing — every model's
     // first Digital Link sent a bare host name — and the strict top level, which a

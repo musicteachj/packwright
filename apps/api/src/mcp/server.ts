@@ -564,10 +564,24 @@ export function createPackwrightMcpServer(): McpServer {
     'ghs_statement_text',
     {
       title: 'Look up a GHS statement',
+      // The Part 1 / Part 2 sentences: Article 22(4) and Annex IV's introduction read
+      // from consolidated text 02008R1272-20260701 on 2026-10-16; the codes that differ
+      // are in docs/CLP-P-STATEMENT-TEXTS.md, and James decided that day to print Part 2.
+      // They state where the text comes from and what the regulation permits, and stop
+      // there. Two drafts went further, one dropping the permission's conditions and
+      // one concluding that Part 1's wording "is not wrongly worded"; both were a
+      // compliance verdict written outside rules/, and reviews caught both.
       description:
         'The exact text of a GHS hazard (H) or precautionary (P) statement code under a regime, ' +
-        'from the verified reference tables — or an explicit answer that this build has no ' +
-        'verified text for it. Text is never generated.',
+        'from the verified reference tables, or an explicit answer that this build has no ' +
+        'verified text for it. Text is never generated. An EU CLP precautionary statement is ' +
+        'given in the English wording of Annex IV Part 2, which Article 22(4) says the ' +
+        'statements shall be worded in accordance with; P503, which Part 2 does not list, is ' +
+        'given from Part 1. The selection tables of Part 1 word some statements differently, ' +
+        'P103 and P280 among them, and Annex IV’s introduction allows minor textual variations ' +
+        'where these assist in communicating safety information and the safety advice is not ' +
+        'diluted or compromised. Packwright does not judge a printed statement’s wording against ' +
+        'either text, so a wording difference is never a finding of this tool.',
       inputSchema: z.object({
         regime: z.enum(GHS_REGIMES),
         // The longest code in the tables is under thirty characters. The cap is a
