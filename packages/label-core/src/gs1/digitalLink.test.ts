@@ -262,6 +262,32 @@ describe('parseDigitalLinkUri', () => {
     ).toEqual(['(17) after the GTIN'])
   })
 
+  it('takes the key whose value could be one, past a stem segment named like a key', () => {
+    // "sscc" in a custom stem, followed by "01": (00) cannot have "01" as an SSCC.
+    const parsed = parseDigitalLinkUri(`https://example.com/sscc/01/${STANDARD_GTIN}`)
+    expect(parsed.stem).toBe('https://example.com/sscc')
+    expect(parsed.primary).toEqual({ ai: '01', value: STANDARD_GTIN })
+  })
+
+  it('keeps a malformed GTIN as the key, so the builder reports it, rather than calling (01) unknown', () => {
+    const parsed = parseDigitalLinkUri('https://id.example.com/01/00O36000291452')
+    expect(parsed.primary).toEqual({ ai: '01', value: '00O36000291452' })
+    expect(parsed.unplaced).toEqual([])
+  })
+
+  it('places a key the standard defines and this build does not hold, and nothing else', () => {
+    // (2024) is not one of the standard's primary keys: no GS1 key at all.
+    expect(() => parseDigitalLinkUri('https://example.com/2024/promo')).toThrow(
+      /no GS1 primary key/,
+    )
+  })
+
+  it('names a repeated qualifier as repeated, not as out of order', () => {
+    expect(() =>
+      parseDigitalLinkUri(`https://id.example.com/01/${STANDARD_GTIN}/10/A/10/B`),
+    ).toThrow(/AI \(10\) appears more than once in the path/)
+  })
+
   it('does not take a stem segment spelled like a key for the key', () => {
     const parsed = parseDigitalLinkUri(`https://example.com/gtin/catalog/01/${STANDARD_GTIN}`)
     expect(parsed.stem).toBe('https://example.com/gtin/catalog')

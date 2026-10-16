@@ -75,7 +75,11 @@ into a version only when there is a reason to.
   (`docs/experiments/2026-10-16-mcp-recheck-tool-side/`, 49 conversations, $1.25) measured both: on case 07, 5 of 6
   Haiku answers sent the printed URI exactly and no false clearance came from it; no answer sent an invented
   magnification or bar height, and none asked instead of checking. The harness gained `--tool-side-describe` and
-  `--tool-side`.
+  `--tool-side`. `/code-review high` on #96 found the printed path crashing `check_label` on a 15-digit GTIN, and
+  standing down where it should report: a malformed GTIN, or a path with no GS1 key, was declined as a key this build
+  does not hold. The parser now takes the key whose value could be one, and only the 16 primary keys URI Syntax
+  1.7.0 defines can be a key this build does not hold; a repeated qualifier is named as repeated; and the MCP sweep
+  checks that a configured link and the URI it prints get the same Digital Link verdict.
 
 - **Eight CLP precautionary statements printed a space the regulation does not have.** P250, P301 + P310,
   P308 + P311, P310, P311, P312, P342 + P311 and P406 read `/ …` where CLP Annex IV Part 2 reads `/…`, as in

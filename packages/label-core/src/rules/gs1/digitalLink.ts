@@ -139,6 +139,7 @@ function judgedAsPrinted(printed: string, gtin: string): PrintedVerdict {
     unjudged.push(...parsed.unplaced)
   } else {
     // The values themselves, by the builder that refuses them on the configured path.
+    let built = true
     try {
       buildDigitalLinkUri({
         domain: parsed.stem,
@@ -149,8 +150,13 @@ function judgedAsPrinted(printed: string, gtin: string): PrintedVerdict {
     } catch (error) {
       if (!(error instanceof DigitalLinkError)) throw error
       findings.push(invalid(error.message))
+      built = false
     }
-    if (primary.ai !== '01') {
+    // Compared only once the value is a GTIN: widening a 15-digit one threw out of the
+    // rule, and `check_label` with it (found by review).
+    if (!built) {
+      // The finding above is the verdict on the key.
+    } else if (primary.ai !== '01') {
       unjudged.push(`a key other than a GTIN, (${primary.ai}) ${primary.value}`)
     } else if (normaliseToGtin14(primary.value) !== normaliseToGtin14(gtin)) {
       unjudged.push(`the GTIN ${primary.value}, not the barcode's ${gtin}`)
@@ -167,8 +173,7 @@ function judgedAsPrinted(printed: string, gtin: string): PrintedVerdict {
     unjudged.length === 0
       ? undefined
       : `The Digital Link as printed carries ${unjudged.join('; and ')}. Packwright does not ` +
-        'judge that, so the link is not passed: a limit of this tool, not a fault found in ' +
-        'the label.'
+        'yet judge that, so the link is not passed: a limit of this tool.'
 
   if (findings.length === 0) {
     if (limit !== undefined) return { findings, limit }
@@ -189,15 +194,20 @@ function judgedAsPrinted(printed: string, gtin: string): PrintedVerdict {
 }
 
 /** One verdict per label, shared by `check` and `declines`: parsing twice is waste. */
-const printedVerdicts = new WeakMap<object, { printed: string; verdict: PrintedVerdict }>()
+const printedVerdicts = new WeakMap<
+  object,
+  { printed: string; gtin: string; verdict: PrintedVerdict }
+>()
 
 function verdictOnPrinted(data: Gs1RetailContext['data']): PrintedVerdict | undefined {
   const printed = data.digitalLinkAsPrinted
   if (printed === undefined || !gtinIsSound(data.gtin)) return undefined
   const kept = printedVerdicts.get(data)
-  if (kept?.printed === printed) return kept.verdict
+  // Keyed on both inputs: a GTIN changed in place under the same link returned the
+  // old verdict, a pass on a link that no longer carries it (found by review).
+  if (kept?.printed === printed && kept.gtin === data.gtin) return kept.verdict
   const verdict = judgedAsPrinted(printed, data.gtin)
-  printedVerdicts.set(data, { printed, verdict })
+  printedVerdicts.set(data, { printed, gtin: data.gtin, verdict })
   return verdict
 }
 

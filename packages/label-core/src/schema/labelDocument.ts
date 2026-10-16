@@ -126,8 +126,9 @@ export const DigitalLink = z.object({
     .boolean()
     .optional()
     .describe(
-      'True only if the printed link writes /gtin/ where the standard writes /01/. Removed ' +
-        'from GS1 Digital Link URI Syntax 1.3.0, and reported as such.',
+      'Builds the link with /gtin/ where the standard writes /01/. Removed from GS1 Digital ' +
+        'Link URI Syntax 1.3.0, and reported as such. For a link Packwright builds; check_label ' +
+        'takes a printed link as its URI instead (PrintedDigitalLink).',
     ),
 })
 

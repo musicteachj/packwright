@@ -102,6 +102,36 @@ describe('gs1/digital-link on a Digital Link as printed', () => {
     expect(declined?.reason).toContain('(235) after the GTIN')
   })
 
+  it.each([
+    ['a GTIN of 15 digits', 'https://id.example.com/01/000360002914520'],
+    ['a letter in the GTIN', 'https://id.example.com/01/00O36000291452'],
+    ['no GS1 key at all', 'https://example.com/2024/promo'],
+  ])('reports %s as not conformant, without throwing or standing down', (_what, uri) => {
+    // A 15-digit GTIN threw out of the rule, and `check_label` with it; the others were
+    // declined as keys this build does not hold. Found by `/code-review high` on #96.
+    const { findings, declined } = judged(printed(uri))
+    expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_INVALID])
+    expect(declined).toBeUndefined()
+  })
+
+  it('does not tell a user a short GTIN is no fault, when §4.1 says it shall be 14 digits', () => {
+    const declined = judged(printed('https://id.example.com/01/036000291452')).declined!
+    expect(declined.reason).not.toMatch(/not a fault/)
+    expect(declined.reason).toContain('a limit of this tool')
+  })
+
+  it('judges again when the GTIN changes under the same link', () => {
+    const data = {
+      gtin: VALID_GTIN,
+      digitalLinkAsPrinted: 'https://id.example.com/01/00036000291452',
+    }
+    const context = { data, subject: 'described' } as Gs1RetailContext
+    expect(digitalLinkRule.check(context).map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_VALID])
+    data.gtin = '012345678905'
+    expect(digitalLinkRule.check(context)).toEqual([])
+    expect(digitalLinkRule.declines!(context)?.reason).toContain("not the barcode's 012345678905")
+  })
+
   it('judges the link as printed where the configured fields are given too', () => {
     const context = {
       data: {

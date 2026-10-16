@@ -355,6 +355,18 @@ describe('check_label on every document the judge is tested against', () => {
           marginAssumed: false,
         }),
       )
+      // A configured link and the URI it prints are the same label, so the Digital Link
+      // rule must say the same of both: the comparison above runs the printed path on
+      // both sides, and without this the editor's path went unchecked against it.
+      if (document !== swept) {
+        const linkCodes = (judged: ReturnType<typeof judgeAsCheckLabelShould>) =>
+          ('findings' in judged ? judged.findings : [])
+            .filter((finding) => finding.code.startsWith('GS1_DIGITAL_LINK_'))
+            .map((finding) => `${finding.code} ${finding.severity}`)
+        expect(linkCodes(judgeAsCheckLabelShould(document))).toEqual(
+          linkCodes(judgeAsCheckLabelShould(swept)),
+        )
+      }
       // Said apart from the comparison above, which runs `checkLabelOutput` on
       // both sides: the findings come most severe first, as the findings rail
       // shows them, and never climb back up the scale.

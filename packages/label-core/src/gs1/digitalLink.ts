@@ -205,6 +205,34 @@ const AI_BY_ALPHA = new Map<string, string>(
     .map((spec) => [spec.digitalLinkAlpha!, spec.ai]),
 )
 
+/**
+ * The primary keys GS1 Digital Link URI Syntax 1.7.0 defines a path for, from its
+ * `gs1path` production and the `-code` rules beside it, read 2026-10-16: GTIN (01),
+ * ITIP (8006), GMN (8013), CPID (8010), GLN (414), pay-to GLN (415), party GLN (417),
+ * GSRN of a provider (8017) and of a recipient (8018), GCN (255), SSCC (00), GDTI
+ * (253), GINC (401), GSIN (402), GRAI (8003) and GIAI (8004). A path opening with one
+ * this build's table does not hold is a link it cannot judge; a path with none of
+ * them is not a Digital Link.
+ */
+const DL_PRIMARY_KEY_CODES = new Set([
+  '01',
+  '8006',
+  '8013',
+  '8010',
+  '414',
+  '415',
+  '417',
+  '8017',
+  '8018',
+  '255',
+  '00',
+  '253',
+  '401',
+  '402',
+  '8003',
+  '8004',
+])
+
 /** A key as printed, numeric or a convenience alpha, as an AI this build holds. */
 function keyFor(segment: string): { ai: string; alpha?: string } | undefined {
   if (/^[0-9]+$/.test(segment)) return getAiSpec(segment) ? { ai: segment } : undefined
@@ -268,29 +296,40 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   const unplaced: string[] = []
   const convenienceAlphas: string[] = []
 
-  // The first segment naming a primary key this build holds, with a value after it
-  // that could be one: a stem segment spelled "gtin" before a word is not the key.
-  const start = segments.findIndex((segment, i) => {
+  // The primary key: of the segments naming one, with a value after them, the first
+  // whose value could be that key's, so a stem segment spelled "gtin" or "sscc" before
+  // something else is not taken for it (found by review). Where none could be, the
+  // first is taken anyway, so the builder reports the malformed value as the fault it
+  // is: "/01/00O36000291452", a letter O for a zero, is a bad GTIN, not a missing key.
+  const candidates = segments.flatMap((segment, i) => {
+    if (i + 1 >= segments.length) return []
     const key = keyFor(segment)
-    if (key === undefined || !getAiSpec(key.ai)?.primaryKey || i + 1 >= segments.length)
-      return false
-    return key.ai !== '01' || /^[0-9]+$/.test(segments[i + 1]!)
+    if (key !== undefined && getAiSpec(key.ai)?.primaryKey) return [{ i, key, held: true }]
+    if (DL_PRIMARY_KEY_CODES.has(segment)) return [{ i, key: { ai: segment }, held: false }]
+    return []
   })
+  if (candidates.length === 0) {
+    throw new DigitalLinkError('no GS1 primary key, such as /01/ and a GTIN, appears in the path')
+  }
+  const plausible = (candidate: (typeof candidates)[number]): boolean => {
+    if (!candidate.held) return true
+    const value = segments[candidate.i + 1]!
+    return candidate.key.ai === '01'
+      ? /^[0-9]+$/.test(value) && GTIN_LENGTHS.has(value.length)
+      : validateAiValue(candidate.key.ai, value) === null
+  }
+  const chosen = candidates.find(plausible) ?? candidates[0]!
+  const start = chosen.i
 
   let primary: Gs1Element | undefined
   let rest: string[] = []
-  if (start === -1) {
-    // No key this build holds. A numeric segment with a value after it may be one it
-    // does not, such as (414) or (8004); with none, there is no GS1 key at all.
-    const other = segments.findIndex((s, i) => /^[0-9]+$/.test(s) && i + 1 < segments.length)
-    if (other === -1) {
-      throw new DigitalLinkError('no GS1 primary key, such as /01/ and a GTIN, appears in the path')
-    }
-    unplaced.push(`(${segments[other]}) as its primary key, which this build does not hold`)
+  if (!chosen.held) {
+    // A key the standard defines and this build's table does not hold, such as a GLN:
+    // nothing after it can be placed either.
+    unplaced.push(`(${chosen.key.ai}) as its primary key, which this build does not hold`)
   } else {
-    const key = keyFor(segments[start]!)!
-    if (key.alpha !== undefined) convenienceAlphas.push(key.alpha)
-    primary = { ai: key.ai, value: segments[start + 1]! }
+    if (chosen.key.alpha !== undefined) convenienceAlphas.push(chosen.key.alpha)
+    primary = { ai: chosen.key.ai, value: segments[start + 1]! }
     rest = segments.slice(start + 2)
   }
 
@@ -308,6 +347,9 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
         unplaced.push(`(${rest[i]}) after the ${getAiSpec(primary.ai)?.title ?? primary.ai}`)
         continue
       }
+      if (qualifiers.some((q) => q.ai === key.ai)) {
+        throw new DigitalLinkError(`AI (${key.ai}) appears more than once in the path`)
+      }
       if (position <= last) {
         throw new DigitalLinkError(
           'the key qualifiers are not in their defined order, ' +
@@ -324,6 +366,8 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   // holds it; any other key is somebody else's business.
   const attributes: Gs1Element[] = []
   const inPath = new Set([primary?.ai, ...qualifiers.map((q) => q.ai)])
+  // "Within the URI query string, key=value pairs may be concatenated using & or ; as
+  // a delimiter" (URI Syntax 1.7.0, read 2026-10-16), so both split.
   for (const pair of query.slice(1).split(/[&;]/)) {
     if (pair === '') continue
     const at = pair.indexOf('=')
