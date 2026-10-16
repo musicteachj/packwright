@@ -96,26 +96,13 @@ answering the 18 codes with Part 2's text and no word that Part 1 differs. A sea
 corrigendum or official note reconciling the parts; ECHA's labelling guidance, which might, could not be fetched
 (echa.europa.eu blocks automated requests).
 
-**The engine prints a space after a slash that CLP does not.** Eight Part 2 entries in `ghs/statements.ts` read
-`/ …` where the text reads `/…`: P250, P301 + P310, P308 + P311, P310, P311, P312, P342 + P311 and P406. Both the
-2025-09-01 consolidation the engine was read from and the 2026-07-01 one in force read `/…` in the XHTML, and the
-2026-07-01 PDF sets seven of the eight rows with the slash and ellipsis together, no space; P310's row breaks the
-line after the slash, so it cannot show either way. That is the module note's line-break defect in the other
-direction, so the space is most likely an extraction artifact. P503 differs
-the other way: the XHTML has a space after "manufacturer/" and "recovery/", the engine does not, and the PDF breaks
-the line at both, so it cannot settle it. Found by the Part 1/Part 2 comparison of 2026-10-16, which changed no
-code. Fixing it changes printed text, so it wants each row re-read in the PDF the fix is made against, and a test
-per entry. In the same table, P336's "Do no rub" is Part 2's own text (the 2008 text, Part 1 reads "Do not rub"),
-but unlike P410 + P412's "Do no expose" no test pins it, and `P336 + P315` beside it reads "Do not rub", which
-invites a tidy-up.
-
-**`ghs/statements.ts` says CLP grants no latitude in precautionary statement wording, and Annex IV says it does.**
-The module note contrasts OSHA's C.2.4.7 with "CLP grants no such latitude." Annex IV's introduction, under
-2019/521: "Notwithstanding Article 22 the precautionary statements that appear on labels or in safety data sheets
-may incorporate minor textual variations […]. These may include spelling variations, synonyms or other equivalent
-terms appropriate to the region where the product is supplied and used." No rule judges printed P-statement
-wording, so no finding rests on the sentence today, but any future check that compares printed statement text should start
-from the permission. Read 2026-10-16 from 02008R1272-20260701.
+**P503's spacing cannot be settled from the sources this project can fetch.** The XHTML of the consolidation in
+force reads "Refer to manufacturer/ supplier/… for information on disposal/recovery/ recycling", with a space after
+two of the slashes; the engine prints none, following the rule its module note records for line breaks after a
+slash. The PDF breaks the line at both of those slashes, so it cannot say. P503 is in Annex IV Part 1 only, so
+there is no Part 2 text to compare. Left as it is, since the Official Journal's own typesetting is the only thing
+that would decide it. Found by the Part 1/Part 2 comparison of 2026-10-16; the eight other spacing faults it found
+were fixed the same day (`CHANGELOG.md`).
 
 **A model can still invent a label size.** With the size optional, Haiku 4.5 still made one up in 3 of 21 answers in
 the second re-check, twice without telling the user, and in one the tool, given it, reported the label below CLP's

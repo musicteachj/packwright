@@ -12,6 +12,16 @@
  * precautionary statements from Annex IV Part 2, except `P503` whose text
  * appears only in Annex IV Part 1 and is marked below.
  *
+ * **Re-read on 2026-10-16** against the consolidation in force,
+ * `02008R1272-20260701`, from the EU Publications Office (XHTML and PDF): no
+ * precautionary statement's key or text changed from 2025-09-01. Every Part 2
+ * text below was compared by script with that XHTML, whitespace runs in the
+ * markup collapsed and the raised letter o the source sets for the degree sign
+ * read as °, and matches it character for character. Part 1 words 18 statements differently from
+ * Part 2, P103 among them; this table keeps Part 2, as Article 22(4) directs
+ * ("shall be worded in accordance with Part 2 of Annex IV"), by James's decision
+ * of that day. Both texts of all 18 are in `docs/CLP-P-STATEMENT-TEXTS.md`.
+ *
  * **The first verification of this file was circular, and it let corrupted text
  * through.** It checked that every string appears verbatim in the source PDF —
  * but computed both sides with the same extractor, so any artefact the extractor
@@ -25,6 +35,18 @@
  * Six more had a line break after a slash welded into a space, giving
  * `vapours/ spray` for `vapours/spray`.
  *
+ * **A second text-layer artefact survived in eight more.** Between a slash and
+ * the ellipsis that follows it, the PDF's text layer emits a space the printed
+ * page does not have: it gives `CENTER/doctor/ …` for a line the page sets as
+ * `CENTER/doctor/…`. P250, P301 + P310, P308 + P311, P310, P311, P312,
+ * P342 + P311 and P406 carried it. On 2026-10-16 the 2025-09-01 PDF this table
+ * was extracted from (`CL2008R1272EN0290030`, from the EU Publications Office)
+ * was read both ways: its text layer gives the space in all eight rows, and the
+ * rendered rows set the two together in seven, the eighth (P310) breaking the
+ * line after the slash. The XHTML of the 2025-09-01 and 2026-07-01
+ * consolidations has no space in any of them. Corrected that day
+ * (`docs/CLP-P-STATEMENT-TEXTS.md`).
+ *
  * Each was corrected by **rendering that row of the PDF at 300 dpi and reading
  * it**, which is independent of the text layer in the way the original check was
  * not. Two apparent defects turned out to be real and were left alone: `P250`
@@ -32,6 +54,8 @@
  * `P410 + P412` genuinely reads "Do no expose" where `P412` reads "Do not
  * expose". That last one is the regulation's own typo, and reproducing the text
  * means reproducing it — `statements.test.ts` pins it so nobody tidies it away.
+ * `P336` reads "Do no rub" in the same way, where `P336 + P315` reads "Do not
+ * rub", and is pinned beside it.
  *
  * Extraction was also verified two ways at the time: every key appears in the
  * source as a real heading, which is what caught a fabricated code. The second check is the one that matters — it caught a
@@ -53,11 +77,19 @@
  *   such qualifier.
  * - CLP Article 26(a) and 26(e) make a second pictogram *optional* in two cases.
  *   OSHA has no equivalent rule at all.
- * - OSHA permits "minor textual variations… spelling variations, synonyms" in
- *   precautionary statements (C.2.4.7). CLP grants no such latitude.
  *
  * A single shared table would therefore be wrong at the rule level, not merely
  * in wording.
+ *
+ * Until 2026-10-16 this list also said OSHA permits "minor textual variations…
+ * spelling variations, synonyms" in precautionary statements (C.2.4.7) and CLP
+ * grants no such latitude. CLP does: Annex IV's introduction, as Regulation (EU)
+ * 2019/521 replaced it, says the statements on a label "may incorporate minor
+ * textual variations from those set out in this Annex where these variations
+ * assist in communicating safety information and the safety advice is not
+ * diluted or compromised" (read from consolidated text 02008R1272-20260701 on
+ * 2026-10-16). No rule judges a printed statement's wording, so nothing rested
+ * on the claim.
  *
  * **The US tables are deliberately empty.** OSHA's own statement text lives in
  * the Appendix C.4 tables, which were not available in a form that could be
@@ -169,7 +201,7 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   P242: 'Use non-sparking tools.',
   P243: 'Take action to prevent static discharges.',
   P244: 'Keep valves and fittings free from oil and grease.',
-  P250: 'Do not subject to grinding/shock/friction/ … .',
+  P250: 'Do not subject to grinding/shock/friction/… .',
   P251: 'Do not pierce or burn, even after use.',
   P260: 'Do not breathe dust/fume/gas/mist/vapours/spray.',
   P261: 'Avoid breathing dust/fume/gas/mist/vapours/spray.',
@@ -185,7 +217,7 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   P283: 'Wear fire resistant or flame retardant clothing.',
   P284: '[In case of inadequate ventilation] wear respiratory protection.',
   P301: 'IF SWALLOWED:',
-  'P301 + P310': 'IF SWALLOWED: Immediately call a POISON CENTER/doctor/ …',
+  'P301 + P310': 'IF SWALLOWED: Immediately call a POISON CENTER/doctor/…',
   'P301 + P312': 'IF SWALLOWED: Call a POISON CENTRE/doctor/… if you feel unwell.',
   'P301 + P330 + P331': 'IF SWALLOWED: Rinse mouth. Do NOT induce vomiting.',
   P302: 'IF ON SKIN:',
@@ -205,11 +237,11 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   'P306 + P360':
     'IF ON CLOTHING: rinse immediately contaminated clothing and skin with plenty of water before removing clothes.',
   P308: 'IF exposed or concerned:',
-  'P308 + P311': 'IF exposed or concerned: Call a POISON CENTER/doctor/ …',
+  'P308 + P311': 'IF exposed or concerned: Call a POISON CENTER/doctor/…',
   'P308 + P313': 'IF exposed or concerned: Get medical advice/attention.',
-  P310: 'Immediately call a POISON CENTER/doctor/ …',
-  P311: 'Call a POISON CENTER/doctor/ …',
-  P312: 'Call a POISON CENTRE/doctor/ … if you feel unwell.',
+  P310: 'Immediately call a POISON CENTER/doctor/…',
+  P311: 'Call a POISON CENTER/doctor/…',
+  P312: 'Call a POISON CENTRE/doctor/… if you feel unwell.',
   P313: 'Get medical advice/attention.',
   P314: 'Get medical advice/attention if you feel unwell.',
   P315: 'Get immediate medical advice/attention.',
@@ -231,7 +263,7 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   P338: 'Remove contact lenses, if present and easy to do. Continue rinsing.',
   P340: 'Remove person to fresh air and keep comfortable for breathing.',
   P342: 'If experiencing respiratory symptoms:',
-  'P342 + P311': 'If experiencing respiratory symptoms: Call a POISON CENTER/doctor/ …',
+  'P342 + P311': 'If experiencing respiratory symptoms: Call a POISON CENTER/doctor/…',
   P351: 'Rinse cautiously with water for several minutes.',
   P352: 'Wash with plenty of water/…',
   P353: 'Rinse skin with water [or shower].',
@@ -272,7 +304,7 @@ export const EU_CLP_PRECAUTIONARY_STATEMENTS: Readonly<Record<string, string>> =
   'P403 + P235': 'Store in a well-ventilated place. Keep cool.',
   P404: 'Store in a closed container.',
   P405: 'Store locked up.',
-  P406: 'Store in a corrosion-resistant/ … container with a resistant inner liner.',
+  P406: 'Store in a corrosion-resistant/… container with a resistant inner liner.',
   P407: 'Maintain air gap between stacks or pallets.',
   P410: 'Protect from sunlight.',
   'P410 + P403': 'Protect from sunlight. Store in a well-ventilated place.',

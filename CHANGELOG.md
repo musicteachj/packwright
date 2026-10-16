@@ -32,6 +32,17 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **Eight CLP precautionary statements printed a space the regulation does not have.** P250, P301 + P310,
+  P308 + P311, P310, P311, P312, P342 + P311 and P406 read `/ …` where CLP Annex IV Part 2 reads `/…`, as in
+  "Call a POISON CENTER/doctor/…". The PDF the table was extracted from puts a space between the slash and the
+  ellipsis in its text layer that its printed rows do not set: read on 2026-10-16, the 2025-09-01 PDF's text layer
+  gives the space in all eight rows, its rendered rows set the two together in seven (the eighth breaks the line
+  after the slash), and the XHTML of the 2025-09-01 and 2026-07-01 consolidations has no space in any. Every Part 2
+  text in the table now matches the XHTML in force. A test pins each of the eight, and the artefact test now refuses
+  any whitespace after a slash; P336's "Do no rub", Part 2's own typo, is now pinned beside
+  P410 + P412's "Do no expose". The module note no longer says CLP allows no textual variation in precautionary
+  statements: Annex IV's introduction, as 2019/521 replaced it, allows minor ones.
+
 - **`check_label` judges a label it was not told the size of, and waits only where the size matters.** Stage 20 made
   the size required and told an assistant to ask rather than guess; the re-check of 2026-10-12 found that followed
   so faithfully that 43 of 72 answers asked and checked nothing, leaving a wrong check digit, two signal words and a

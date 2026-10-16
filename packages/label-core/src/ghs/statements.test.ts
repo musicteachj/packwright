@@ -280,12 +280,34 @@ describe('the text carries no extraction artefacts', () => {
    */
   it.each([
     ['a degree sign flattened to a spaced letter o', /\so\s[CF]\b/],
-    ['a line break welded into a mid-token space', /[a-z]\/ [a-z]/],
+    // Any whitespace after a slash: a line break welded into a space
+    // (`vapours/ spray`), or the space the text layer puts before an ellipsis
+    // (`doctor/ …`). No statement in the tables has one.
+    ['whitespace after a slash', /\/\s/],
     ['a double space', / {2}/],
     ['an amendment marker', /[►◄▼]/],
   ])('carries no %s', (_what, pattern) => {
     const offenders = ALL.filter(([, text]) => pattern.test(text)).map(([code]) => code)
     expect(offenders).toEqual([])
+  })
+
+  /**
+   * The PDF's text layer gave each of these a space between the slash and the
+   * ellipsis that the printed rows do not set. Read on 2026-10-16 from the
+   * 2025-09-01 PDF (text layer and rendered rows) and the 2025-09-01 and
+   * 2026-07-01 XHTML (`docs/CLP-P-STATEMENT-TEXTS.md`).
+   */
+  it.each([
+    ['P250', 'Do not subject to grinding/shock/friction/… .'],
+    ['P301 + P310', 'IF SWALLOWED: Immediately call a POISON CENTER/doctor/…'],
+    ['P308 + P311', 'IF exposed or concerned: Call a POISON CENTER/doctor/…'],
+    ['P310', 'Immediately call a POISON CENTER/doctor/…'],
+    ['P311', 'Call a POISON CENTER/doctor/…'],
+    ['P312', 'Call a POISON CENTRE/doctor/… if you feel unwell.'],
+    ['P342 + P311', 'If experiencing respiratory symptoms: Call a POISON CENTER/doctor/…'],
+    ['P406', 'Store in a corrosion-resistant/… container with a resistant inner liner.'],
+  ])('%s sets the slash and the ellipsis together, as Part 2 does', (code, text) => {
+    expect(EU_CLP_PRECAUTIONARY_STATEMENTS[code]).toBe(text)
   })
 
   it('renders temperatures with a real degree sign', () => {
@@ -307,5 +329,14 @@ describe('the text carries no extraction artefacts', () => {
     // Reproducing the text means reproducing that, however much it reads wrong.
     expect(EU_CLP_PRECAUTIONARY_STATEMENTS['P410 + P412']).toContain('Do no expose')
     expect(EU_CLP_PRECAUTIONARY_STATEMENTS['P412']).toContain('Do not expose')
+  })
+
+  it('keeps the source’s own typo in P336', () => {
+    // Part 2 prints "Do no rub" here, in the 2008 text, and "Do not rub" in
+    // P336 + P315. Part 1 reads "Do not rub"; the engine prints Part 2.
+    expect(EU_CLP_PRECAUTIONARY_STATEMENTS['P336']).toBe(
+      'Thaw frosted parts with lukewarm water. Do no rub affected area.',
+    )
+    expect(EU_CLP_PRECAUTIONARY_STATEMENTS['P336 + P315']).toContain('Do not rub')
   })
 })

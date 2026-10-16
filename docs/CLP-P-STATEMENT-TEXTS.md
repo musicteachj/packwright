@@ -70,7 +70,8 @@ The two parts list the same codes, with two exceptions:
 ## Codes whose texts differ: 18
 
 Texts are verbatim, in code spans so that spacing shows. Part 2 sets the degree sign as a raised letter o; it is
-written here as `^o`. "Engine" is what `statements.ts` prints today.
+written here as `^o`. "Engine" is what `statements.ts` printed when this was read; the eight `/ …` entries
+described under "Checked alongside" were corrected later the same day.
 
 ### Different words: 4
 
@@ -85,8 +86,8 @@ written here as `^o`. "Engine" is what `statements.ts` prints today.
 - Engine: `Wear protective gloves/protective clothing/eye protection/face protection.`
 
 **P336**, both under B, so Part 2's "Do no" is in the 2008 text itself. The engine's "Do no rub" is the
-regulation's, but unlike P410 + P412's "Do no expose" no test pins it, and `P336 + P315` beside it reads
-"Do not rub".
+regulation's; when this was read no test pinned it, as one pins P410 + P412's "Do no expose", and
+`P336 + P315` beside it reads "Do not rub". It has been pinned since the fix of 2026-10-16.
 - Part 1: `Thaw frosted parts with lukewarm water. Do not rub affected area.`
 - Part 2: `Thaw frosted parts with lukewarm water. Do no rub affected area.`
 - Engine: `Thaw frosted parts with lukewarm water. Do no rub affected area.`
@@ -113,7 +114,7 @@ introduction gives the slash a meaning ("a choice has to be made between the phr
 listed apart from plain punctuation.
 - Part 1: `Do not subject to grinding/shock/friction …`
 - Part 2: `Do not subject to grinding/shock/friction/… .`
-- Engine: `Do not subject to grinding/shock/friction/ … .`
+- Engine: `Do not subject to grinding/shock/friction/… .` (until the fix of 2026-10-16, `friction/ … .`)
 
 ### Capitalization only: 1
 
@@ -151,7 +152,8 @@ the same act, so that act set the two texts differently: P250, P231 + P232, P370
 consolidation, extracted the same way, has the same Part 1 and Part 2 keys and texts as 2026-07-01. The
 2027-01-01 consolidation changes no P-statement key or text in either part either.
 
-**The engine matches the text in force everywhere but in two places, both outside this question.** The first is
+**When this was read, the engine matched the text in force everywhere but in two places, both outside this
+question.** The first is
 against Part 2; the second is P503, which the engine takes from Part 1 because Part 2 has no row for it.
 
 - **A space after a slash, before the ellipsis, in eight entries**: P250, P301 + P310, P308 + P311, P310, P311,
@@ -159,17 +161,18 @@ against Part 2; the second is P503, which the engine takes from Part 1 because P
   Part 2 reads `/…` (`Call a POISON CENTER/doctor/…`). Both the 2025-09-01 and 2026-07-01 XHTML read `/…`. In
   the 2026-07-01 PDF, seven of the eight `EN` rows set the slash and the ellipsis together on one line with no
   space (P250, P301 + P310, P308 + P311, P311, P312, P342 + P311, P406); the eighth, P310, breaks the line after
-  `doctor/`, with the ellipsis alone on the next, so its row cannot show a space either way. That is the shape of
-  the line-break defect the module note of `statements.ts` describes, read in the other direction, so the engine's
-  space is most likely an extraction artifact. The PDF read here is the 2026-07-01 one, not the 2025-09-01 one the
-  engine was taken from. Not corrected here; recorded in `docs/BACKLOG.md`.
+  `doctor/`, with the ellipsis alone on the next, so its row cannot show a space either way. Read afterward, the
+  2025-09-01 PDF the engine was extracted from sets the eight rows the same way, and its text layer gives `/ …`
+  with a space in all eight: the space is an artifact of the PDF's text layer, not of the printed page. This report
+  changed no code; the eight were corrected the same day, in a change of their own (`CHANGELOG.md`).
 - **P503's spaces**, Part 1 only: the XHTML reads `Refer to manufacturer/ supplier/… for information on
   disposal/recovery/ recycling`, with a space after two of the slashes; the engine prints
   `Refer to manufacturer/supplier/… for information on disposal/recovery/recycling`. The PDF breaks the line at
-  both of those slashes, so it cannot say whether a space is there. Unresolved; recorded with the above.
+  both of those slashes, so it cannot say whether a space is there. Unresolved; recorded in `docs/BACKLOG.md`.
 
 **The module note of `statements.ts` says CLP grants no latitude in precautionary statement wording** (it
 contrasts OSHA's C.2.4.7). Annex IV's introduction, quoted under "Source", permits minor textual variations,
 spelling variations and synonyms where the safety advice is not diluted. No rule in `rules/` judges a printed
 P-statement's wording, so no finding rests on that sentence today; it bears on how strictly any future check of
-printed text should read a variation, and on the decision this report is for. Recorded in `docs/BACKLOG.md`.
+printed text should read a variation, and on the decision this report is for. The module note was corrected
+the same day.
