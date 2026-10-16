@@ -10,6 +10,17 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The MCP server tells a model never to invent a label size, and a third re-check measured it**
+  (`docs/experiments/2026-10-16-mcp-recheck-instructions/`). The second re-check found Haiku 4.5 sending a size no
+  prompt gave in 3 of 21 answers, with `check_label`'s description already saying to leave it out. The server's
+  `instructions`, which a client puts in front of the model, now say it too, and say to check first and ask second,
+  because stage 20's "ask rather than guess" left most answers asking and checking nothing. On the same seven
+  sizeless cases, 49 conversations for $1.34: Haiku sent no invented size in 42 answers, every answer from both
+  models ran `check_label` before asking, and none held its findings back for the size. The same run found Haiku
+  inventing a barcode magnification twice and two false clearances from transcription, now in `docs/BACKLOG.md`. The
+  harness gained `--instructions-describe` and `--instructions`, and run counts per model, refusing a model it does
+  not know before anything is sent.
+
 - **A comparison of every CLP precautionary statement's two English texts** (`docs/CLP-P-STATEMENT-TEXTS.md`).
   Annex IV gives each statement in Part 1's selection tables and in Part 2's English rows, and Packwright prints
   Part 2. Read on 2026-10-16 from the consolidated text in force (02008R1272-20260701), extracted two independent

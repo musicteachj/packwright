@@ -131,6 +131,20 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
     ])
   })
 
+  it('tells the model never to invent a label size, and to check before asking', async () => {
+    // Haiku 4.5 sent an invented size in 3 of 21 answers of the 2026-10-12 re-check,
+    // with check_label's description already saying to leave it out. The order
+    // matters as much as the prohibition: stage 20's "ask rather than guess" left
+    // 43 of 72 answers asking and checking nothing.
+    const instructions = (await connect(era)).getInstructions() ?? ''
+    expect(instructions).toContain('Never send check_label a label size the user did not give')
+    expect(instructions).toContain('cannot tell an invented size from a stated one')
+    const checkFirst = instructions.indexOf('call check_label without `stock`')
+    const thenAsk = instructions.indexOf('only then ask for the size')
+    expect(checkFirst).toBeGreaterThan(-1)
+    expect(thenAsk).toBeGreaterThan(checkFirst)
+  })
+
   it('advertises what the fields mean, and that the request takes no other keys', async () => {
     // The descriptions the 2026-10-10 evaluation showed were missing — every model's
     // first Digital Link sent a bare host name — and the strict top level, which a

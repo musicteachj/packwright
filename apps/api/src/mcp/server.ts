@@ -464,12 +464,27 @@ export function checkGtin(gtin: string): z.infer<typeof CheckGtinOutput> {
 // The server
 // ---------------------------------------------------------------------------
 
+/**
+ * What a client puts in front of the model as its system prompt.
+ *
+ * **The label size sentence** is here as well as in `check_label`'s description
+ * because the description alone did not stop it: in the re-check of 2026-10-12
+ * (`docs/experiments/2026-10-12-mcp-recheck-sizeless/`) Haiku 4.5 sent a size the
+ * prompt never gave in 3 of 21 answers, twice without telling the user, and the
+ * tool judged the invented size as if it were real. It says to check first and
+ * ask second, in that order, because stage 20's "ask rather than guess" was
+ * followed so faithfully that 43 of 72 answers asked and checked nothing.
+ */
 const INSTRUCTIONS =
   'Packwright checks packaging labels — GS1 retail barcodes (UPC-A), GHS chemical hazard labels ' +
   '(EU CLP; US OSHA in part) and US FDA food labels — against the rules it implements, by drawing ' +
   'the label and measuring what was drawn. Every finding carries the citation of the provision it ' +
   'enforces; quote those rather than recalling citations. A report with no failures is not a ' +
-  'statement of compliance: always tell the user which checks did not run and what is not checked.'
+  'statement of compliance: always tell the user which checks did not run and what is not checked. ' +
+  'Never send check_label a label size the user did not give: it judges whatever size it is sent ' +
+  'as the real label’s, and cannot tell an invented size from a stated one. When checking a label ' +
+  'whose size the user has not given, call check_label without `stock`, report what it found, and ' +
+  'only then ask for the size that the checks under `declined` are waiting for.'
 
 /** The server, built fresh for every request, as `createMcpHandler` requires. */
 export function createPackwrightMcpServer(): McpServer {
