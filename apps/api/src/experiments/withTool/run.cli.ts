@@ -31,6 +31,13 @@
  *
  *   --instructions-describe, --instructions
  *
+ * And the fourth, the same day (`docs/experiments/2026-10-16-mcp-recheck-measurements/`):
+ * the same seven cases, Haiku six times and Sonnet once, after the instructions came
+ * to name every value check_label takes on trust, the magnification and bar height
+ * among them. Under the $2 James approved.
+ *
+ *   --measurements-describe, --measurements
+ *
  * **Both halves run afresh** (`docs/plans/2026-10-10-mcp.md`, stage 19). Since
  * 2026-10-09 the engine prints "Includes 0g Added Sugars", so today's food prompts
  * differ from the ones the "without" experiment sent, and pairing new "with"
@@ -183,6 +190,21 @@ const INSTRUCTIONS_RECHECK: Study = {
   runsByModel: { 'claude-haiku-4-5': 6, 'claude-sonnet-5-5': 1 },
 }
 
+/**
+ * The fourth re-check, of 2026-10-16: the third's design again, after the instructions
+ * named the barcode magnification, bar height and the other values check_label judges
+ * as stated, since Haiku sent an invented magnification twice once the size alone was
+ * named. Asks whether that stops, and whether the size result holds. It did stop, and
+ * Haiku asked instead of checking in three answers; James decided not to ship that
+ * wording, so the instructions on `dev` are the third re-check's. A re-run of this mode
+ * measures whatever the server says today, not the wording the record tested.
+ */
+const MEASUREMENTS_RECHECK: Study = {
+  ...INSTRUCTIONS_RECHECK,
+  out: join(EXPERIMENTS, '2026-10-16-mcp-recheck-measurements'),
+  describeMode: '--measurements-describe',
+}
+
 const MODES = {
   '--describe': { study: STAGE_19, run: 'describe' },
   '--pilot': { study: STAGE_19, run: 'pilot' },
@@ -194,6 +216,8 @@ const MODES = {
   '--sizeless': { study: SIZELESS, run: 'full' },
   '--instructions-describe': { study: INSTRUCTIONS_RECHECK, run: 'describe' },
   '--instructions': { study: INSTRUCTIONS_RECHECK, run: 'full' },
+  '--measurements-describe': { study: MEASUREMENTS_RECHECK, run: 'describe' },
+  '--measurements': { study: MEASUREMENTS_RECHECK, run: 'full' },
 } as const
 
 // Own keys only: `toString` is on every object, and fell through to a billed run of

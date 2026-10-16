@@ -120,17 +120,25 @@ extract, with a test that the table matches it, would replace one regex per defe
 whole table. The extract is a copy of the regulation, so it would need its own provenance note and a re-fetch
 whenever a new consolidation is read. Found by `/code-review medium` on #93.
 
-**A model can still invent a value the user did not give, now the barcode magnification rather than the size.** The
-server's `instructions` said on 2026-10-16 never to send a label size the user did not give, and to check first and
-ask second. The third re-check (`docs/experiments/2026-10-16-mcp-recheck-instructions/`) measured it: Haiku 4.5 sent
-no invented size in 42 answers, against 3 in 21 before, and neither model went back to asking instead of checking.
-But in two of the same answers Haiku sent `magnification: 1`, which no prompt gives, and reported it as a pass
-without saying it was assumed. `check_label` waits for a magnification the request does not state (stage 23) and
-judges one it does, so an invented one is judged. The sentence names only the size; naming the other measurements
-`check_label` judges as stated (magnification, bar height, the margin) is the next step, and would want the same
-re-check, about $1.30, to show it did not cost the size result. Two other answers in that run were false clearances
-from transcription (a Digital Link sent without its convenience alpha, then called compliant); too few to pin on the
-instruction, and worth watching in the next run.
+**A model can still invent a barcode magnification, and the prompt is the wrong place to stop it.** The server's
+`instructions` say never to send a label size the user did not give, and since 2026-10-16 Haiku 4.5 does not (0 of 42
+in `docs/experiments/2026-10-16-mcp-recheck-instructions/`, against 3 of 21 before). In two of those answers it sent
+`magnification: 1` instead, which no prompt gives, and `check_label`, which judges a stated magnification as stated
+(stage 23), passed it. A wording naming every value the tool takes on trust (size, margin, magnification, bar height,
+the digits, the food facts) was tested the same day (`docs/experiments/2026-10-16-mcp-recheck-measurements/`): it
+stopped the magnification, and three Haiku answers asked for the size instead of checking, against none, with two
+planted defects missed. James decided not to ship it. **Next, in the tool:** say at the point of use, in the schema's
+own description of `magnification` and `barHeightMm`, that each is sent only when the user stated it, and measure that
+with one re-run of the fourth re-check's design (about $1.35), together with the Digital Link fix below.
+
+**`check_label` asks the model to infer the Digital Link's convenience alpha, and Haiku gets it wrong.** The request
+carries a domain and a boolean, `useConvenienceAlphas`, rather than the URI as printed, so a model reading
+`https://id.example.com/gtin/00036000291452` off a label must decide the boolean itself. Haiku sent `false` or left it
+out in 2 of 6 answers on 2026-10-16 and 3 of 6 in the re-run after it; the tool then built and passed a `/01/` link,
+and each answer told the user the QR code was compliant. Five false clearances in twelve answers, all on the case that
+plants this defect, none from the instruction. Letting the request carry the printed URI and judging its path in the
+rule takes the inference away from the model. It changes GS1 rule input, so its pull request takes
+`/code-review high`.
 
 **The experiment harness can pass its spend cap.** It checks the cap before starting each conversation, with four in
 flight, so a study can end above it by up to four conversations' cost, about $0.30 at the worst seen. Every study so
