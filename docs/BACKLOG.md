@@ -91,8 +91,8 @@ Article 22(4) says the statements "shall be worded in accordance with Part 2" an
 every language; a label carrying Part 1's wording is not to be reported, because Annex IV's introduction, as
 2019/521 replaced it, permits "minor textual variations". P280 is the exception that is more than wording (Part 1
 adds "hearing protection"), and `docs/WHAT-IS-NOT-CHECKED.md` tells a user so. Still open from it: offering Part
-1's P280 as a choice, which belongs with the undisclosed P-statement selection; and `ghs_statement_text` on `/mcp`
-answering the 18 codes with Part 2's text and no word that Part 1 differs. A search on 2026-10-16 found no act,
+1's P280 as a choice, which belongs with the undisclosed P-statement selection. (`ghs_statement_text` on `/mcp` has
+said since 2026-10-16 that its text is Part 2's and that Part 1 words 18 statements differently.) A search on 2026-10-16 found no act,
 corrigendum or official note reconciling the parts; ECHA's labelling guidance, which might, could not be fetched
 (echa.europa.eu blocks automated requests).
 
@@ -120,11 +120,22 @@ extract, with a test that the table matches it, would replace one regex per defe
 whole table. The extract is a copy of the regulation, so it would need its own provenance note and a re-fetch
 whenever a new consolidation is read. Found by `/code-review medium` on #93.
 
-**A model can still invent a label size.** With the size optional, Haiku 4.5 still made one up in 3 of 21 answers in
-the second re-check, twice without telling the user, and in one the tool, given it, reported the label below CLP's
-minimum about a size nobody stated. No check can tell an invented size from a stated one. The tool description
-already says to leave the size out rather than guess; the server's `instructions`, which a client sends as the system
-prompt, could say it too, and the next evaluation would show whether it helps.
+**A model can still invent a value the user did not give, now the barcode magnification rather than the size.** The
+server's `instructions` said on 2026-10-16 never to send a label size the user did not give, and to check first and
+ask second. The third re-check (`docs/experiments/2026-10-16-mcp-recheck-instructions/`) measured it: Haiku 4.5 sent
+no invented size in 42 answers, against 3 in 21 before, and neither model went back to asking instead of checking.
+But in two of the same answers Haiku sent `magnification: 1`, which no prompt gives, and reported it as a pass
+without saying it was assumed. `check_label` waits for a magnification the request does not state (stage 23) and
+judges one it does, so an invented one is judged. The sentence names only the size; naming the other measurements
+`check_label` judges as stated (magnification, bar height, the margin) is the next step, and would want the same
+re-check, about $1.30, to show it did not cost the size result. Two other answers in that run were false clearances
+from transcription (a Digital Link sent without its convenience alpha, then called compliant); too few to pin on the
+instruction, and worth watching in the next run.
+
+**The experiment harness can pass its spend cap.** It checks the cap before starting each conversation, with four in
+flight, so a study can end above it by up to four conversations' cost, about $0.30 at the worst seen. Every study so
+far has ended well under its cap. Bounding it means counting what is in flight against the cap before starting
+another. Found by `/code-review medium` on the third re-check's harness change.
 
 ## From the MCP evaluation, 2026-10-10
 

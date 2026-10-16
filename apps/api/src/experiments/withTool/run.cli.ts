@@ -23,6 +23,14 @@
  *
  *   --sizeless-describe, --sizeless
  *
+ * And the third, of 2026-10-16 (`docs/experiments/2026-10-16-mcp-recheck-instructions/`):
+ * the same seven cases after the server's instructions gained "never send a label
+ * size the user did not give". Haiku six times, to measure how often it still
+ * invents one, and Sonnet once, to see that it still checks before asking. Under
+ * the $2 James approved.
+ *
+ *   --instructions-describe, --instructions
+ *
  * **Both halves run afresh** (`docs/plans/2026-10-10-mcp.md`, stage 19). Since
  * 2026-10-09 the engine prints "Includes 0g Added Sugars", so today's food prompts
  * differ from the ones the "without" experiment sent, and pairing new "with"
@@ -105,6 +113,8 @@ interface Study {
   samePromptsAs?: string
   /** The cases it runs, where not all of them. `cases.md` still records every prompt. */
   caseIds?: readonly string[]
+  /** Runs per model, where not `RUNS` for each. A model left out runs `RUNS` times. */
+  runsByModel?: Readonly<Record<string, number>>
 }
 
 /** Stage 19's evaluation of 2026-10-10, under the plan's cap. */
@@ -158,6 +168,21 @@ const SIZELESS: Study = {
   ],
 }
 
+/**
+ * The third re-check, of 2026-10-16: the sizeless cases again, after the server's
+ * instructions said never to send a size the user did not give, and to check first
+ * and ask second. Haiku is the model that invented sizes (3 of 21 in the second
+ * re-check), so it runs six times; Sonnet runs once, as a guard against the wording
+ * sending it back to asking instead of checking, which is what stage 20's did.
+ */
+const INSTRUCTIONS_RECHECK: Study = {
+  ...SIZELESS,
+  out: join(EXPERIMENTS, '2026-10-16-mcp-recheck-instructions'),
+  capUsd: 2,
+  describeMode: '--instructions-describe',
+  runsByModel: { 'claude-haiku-4-5': 6, 'claude-sonnet-5-5': 1 },
+}
+
 const MODES = {
   '--describe': { study: STAGE_19, run: 'describe' },
   '--pilot': { study: STAGE_19, run: 'pilot' },
@@ -167,6 +192,8 @@ const MODES = {
   '--recheck': { study: RECHECK, run: 'full' },
   '--sizeless-describe': { study: SIZELESS, run: 'describe' },
   '--sizeless': { study: SIZELESS, run: 'full' },
+  '--instructions-describe': { study: INSTRUCTIONS_RECHECK, run: 'describe' },
+  '--instructions': { study: INSTRUCTIONS_RECHECK, run: 'full' },
 } as const
 
 // Own keys only: `toString` is on every object, and fell through to a billed run of
@@ -262,6 +289,16 @@ async function main(): Promise<void> {
     console.error(`No such case: ${unknown.join(', ')}. Nothing was written or sent.`)
     process.exit(1)
   }
+  // The same for a run count keyed by a model id that is not in MODELS: it would fall
+  // back to RUNS in silence, and the record would hold fewer answers than its README
+  // designs for. Found by review.
+  const unknownModels = Object.keys(STUDY.runsByModel ?? {}).filter(
+    (id) => !MODELS.some((model) => model.id === id),
+  )
+  if (unknownModels.length > 0) {
+    console.error(`No such model: ${unknownModels.join(', ')}. Nothing was written or sent.`)
+    process.exit(1)
+  }
   const prompts = describeCases(
     OUT,
     new Set(readRecorded().map((record) => record.caseId)),
@@ -297,18 +334,25 @@ async function main(): Promise<void> {
   let spent = recorded.reduce((sum, r) => sum + costOf(r), 0) + lostSoFar()
 
   const pending: { item: ExperimentCase; model: ModelSpec; run: number; arm: Arm }[] = []
-  const runs = mode === 'pilot' ? [1] : Array.from({ length: RUNS }, (_, i) => i + 1)
+  const runsOf = (model: ModelSpec): number =>
+    mode === 'pilot' ? 1 : (STUDY.runsByModel?.[model.id] ?? RUNS)
+  const mostRuns = Math.max(...MODELS.map(runsOf))
   const cases =
     mode === 'pilot'
       ? CASES.filter((c) => c.id.startsWith('08-'))
       : STUDY.caseIds === undefined
         ? CASES
         : CASES.filter((c) => STUDY.caseIds!.includes(c.id))
-  for (const run of runs)
+  // Run-major, as before: every model's first run is held before anyone's second, so
+  // a cap reached early leaves each model short by runs rather than one model whole
+  // and the other missing.
+  for (let run = 1; run <= mostRuns; run++)
     for (const item of cases)
       for (const model of MODELS)
-        for (const arm of STUDY.arms)
-          if (!done.has(keyOf(item.id, model.id, run, arm))) pending.push({ item, model, run, arm })
+        if (run <= runsOf(model))
+          for (const arm of STUDY.arms)
+            if (!done.has(keyOf(item.id, model.id, run, arm)))
+              pending.push({ item, model, run, arm })
 
   console.log(`${done.size} already recorded ($${spent.toFixed(4)}); ${pending.length} to hold`)
 
