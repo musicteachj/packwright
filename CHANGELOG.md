@@ -10,6 +10,15 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **A fourth re-check, of a wording that was not shipped** (`docs/experiments/2026-10-16-mcp-recheck-measurements/`).
+  After the third re-check stopped Haiku inventing a label size and found it inventing a barcode magnification, the
+  instructions were tried naming every value `check_label` takes on trust. On the same seven cases, 49 conversations
+  for $1.35, it stopped the magnification, and three Haiku answers asked for the size instead of checking, against
+  none, with two planted defects missed. James decided to keep the size-only instruction and fix the rest in the tool:
+  the magnification and bar height fields saying they are sent only when stated, and the Digital Link taking the URI
+  as printed, since all five false clearances across the two runs were Haiku inferring its convenience alpha wrongly.
+  Both are in `docs/BACKLOG.md`. The harness gained `--measurements-describe` and `--measurements`.
+
 - **The MCP server tells a model never to invent a label size, and a third re-check measured it**
   (`docs/experiments/2026-10-16-mcp-recheck-instructions/`). The second re-check found Haiku 4.5 sending a size no
   prompt gave in 3 of 21 answers, with `check_label`'s description already saying to leave it out. The server's
