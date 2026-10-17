@@ -35,15 +35,44 @@ export class DigitalLinkError extends Error {
   }
 }
 
+/*
+ * What may follow each primary key's value: the `gs1path` productions of URI Syntax 1.7.0
+ * §4.9, "Path element order", with each component's code from its `-code` rule, read
+ * from https://ref.gs1.org/standards/digital-link/uri-syntax/ on 2026-10-17. One list per
+ * production, in order; a code ending "?" is optional, as the production's brackets mark
+ * it. `upui-path = gtin-comp tpx-comp` is the second GTIN list, `fid-path`, `eoid-path`
+ * and `mid-path` the (7040) lists. Every key's own path is the empty list or begins one.
+ */
+const PATHS: Record<string, readonly (readonly string[])[]> = {
+  '01': [['22?', '10?', '21?'], ['235']], // gtin-path, upui-path
+  '8006': [['22?', '10?', '21?']], // itip-path
+  '8013': [[]], // gmn-path
+  '8010': [['8011?']], // cpid-path
+  '414': [['254?'], ['7040']], // gln-path, fid-path
+  '415': [['8020']], // payTo-path
+  '417': [[], ['7040']], // partyGln-path, eoid-path
+  '8017': [['8019?']], // gsrnp-path
+  '8018': [['8019?']], // gsrn-path
+  '255': [[]], // gcn-path
+  '00': [[]], // sscc-path
+  '253': [[]], // gdti-path
+  '401': [[]], // ginc-path
+  '402': [[]], // gsin-path
+  '8003': [[]], // grai-path
+  '8004': [[], ['7040']], // giai-path, mid-path
+}
+
 /**
  * Qualifier sequence per primary key. Order is normative — the same qualifiers
- * in a different order produce a different, non-canonical URI.
+ * in a different order produce a different, non-canonical URI. Taken from the GTIN's
+ * `gtin-path` in `PATHS`, so the builder, the parser's loop and its readings share one
+ * table (two drifted apart in review on #97).
  *
  * TODO(expand): only GTIN's sequence is encoded. Add others from the Digital
  * Link URI Syntax standard as the app starts generating those keys.
  */
 const QUALIFIER_ORDER: Record<string, readonly string[]> = {
-  '01': ['22', '10', '21'],
+  '01': PATHS['01']![0]!.map((step) => step.replace('?', '')),
 }
 
 export interface DigitalLinkInput {
@@ -310,9 +339,8 @@ const DL_PRIMARY_KEY_CODES = new Set([
  * The GTIN is left out, since a short one printed is a key to judge, not a stem segment.
  *
  * Used to tell a key from a stem segment that happens to share its code, for every key
- * alike: `plausible` once trusted any value after a key this build's table does not
- * hold, so `/shop/402/en` stood down as an ambiguous GSIN, and the verdict on a link
- * turned on which keys the table held (found by review on #97).
+ * alike: any value once counted after a key this build's table does not hold, so the
+ * verdict on a link turned on which keys the table held (found by review on #97).
  */
 const X = `[A-Za-z0-9"\\-._!%&+,/*()';:<>=?]`
 const Y = '[0-9A-Z\\-#/]'
@@ -332,6 +360,24 @@ const KEY_VALUE_FORMAT: Record<string, RegExp> = {
   '402': /^[0-9]{17}$/, // gsin-value = 17DIGIT
   '8003': new RegExp(`^[0-9]{13}${X}{0,16}$`), // grai-value = 13DIGIT [1*16XCHAR]
   '8004': new RegExp(`^${X}{1,30}$`), // giai-value = 1*30 XCHAR
+}
+
+/** Whether the component codes after a key's value make one of its paths. */
+function followsPath(key: string, codes: readonly string[]): boolean {
+  return (PATHS[key] ?? []).some((path) => {
+    let at = 0
+    for (const step of path) {
+      const optional = step.endsWith('?')
+      if (codes[at] === (optional ? step.slice(0, -1) : step)) at += 1
+      else if (!optional) return false
+    }
+    return at === codes.length
+  })
+}
+
+/** Whether any of a key's paths takes a component with this code. */
+function followsPathAnywhere(key: string, code: string): boolean {
+  return (PATHS[key] ?? []).some((path) => path.some((step) => step.replace('?', '') === code))
 }
 
 /** A key as printed, numeric or a convenience alpha, as an AI this build holds. */
@@ -462,8 +508,8 @@ export function judgeCustomUriStem(stem: string): { fault: string } | { host: st
  *
  * - "zero or more path segments are permitted to appear after the hostname or
  *   domain name and before the start of the gs1uriPattern" (`customURIstem =
- *   scheme "://" hostname *optionalPathSegment`), so the primary key is the first
- *   segment naming one whose value can be one, not the first segment;
+ *   scheme "://" hostname *optionalPathSegment`), so the primary key is where the one
+ *   reading of the path the grammar allows begins, not the first segment;
  * - `gtin-path = gtin-comp [cpv-comp] [lot-comp] [ser-comp]`, in that order: a path
  *   such as `/01/09520123456788/21/12345XYZ/10/ABC123` "in which the sequential
  *   ordering of the key qualifier components is not preserved" is not permitted;
@@ -508,14 +554,13 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   const unplaced: string[] = []
   const convenienceAlphas: string[] = []
 
-  // The primary key: of the segments naming one, with a value after them, the first
-  // held key whose value could be that key's, so a stem segment spelled "gtin", "sscc"
-  // or "414" before something else is not taken for it (found by review). Failing that,
-  // the first key the standard defines and this build does not hold, unless its value
-  // names a key itself, as "/414/01/12345" does. Failing that, the first held numeric
-  // key, so the builder reports the malformed value as the fault it is:
-  // "/01/00O36000291452", a letter O for a zero, is a bad GTIN, not a missing key, and
-  // "/gtin/catalog/01/12345" is a short GTIN, not a convenience alpha.
+  // The primary key. Each segment naming one, with a value after it, opens a reading of
+  // the path: the segments before it are the stem, and the rest must be one of the
+  // `gs1path` productions (`PATHS`). A reading lives where the value fits its key's §4.5
+  // format and the rest fits the key's path. At most one can: no key's code is among the
+  // codes a path lets follow a key, so a later key always breaks every earlier reading.
+  // This replaced four ranked fallbacks and an ambiguity scan, each added by a review and
+  // each opening an edge for the next (`/code-review high` on #97 named the cause).
   const candidates = segments.flatMap((segment, i) => {
     if (i + 1 >= segments.length || !namesPrimaryKey(segment)) return []
     const key = keyFor(segment)
@@ -532,24 +577,36 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
     }
     throw new DigitalLinkError('no GS1 primary key, such as /01/ and a GTIN, appears in the path')
   }
-  const plausible = (candidate: (typeof candidates)[number]): boolean => {
+  const valueFits = (candidate: (typeof candidates)[number]): boolean => {
     const value = segments[candidate.i + 1]!
-    if (namesPrimaryKey(value)) return false
     if (candidate.key.ai === '01') return /^[0-9]+$/.test(value) && GTIN_LENGTHS.has(value.length)
     return KEY_VALUE_FORMAT[candidate.key.ai]?.test(value) ?? false
   }
+  const pathFits = (candidate: (typeof candidates)[number]): boolean => {
+    const rest = segments.slice(candidate.i + 2)
+    if (rest.length % 2 === 1 || raw.slice(candidate.i).some((segment) => segment === '')) {
+      return false
+    }
+    const codes = rest.filter((_, k) => k % 2 === 0).map((code) => keyFor(code)?.ai ?? code)
+    return followsPath(candidate.key.ai, codes)
+  }
+  // Where none lives, the reading that names the fault best: a held key whose value fits,
+  // so the fault is in its path ("/01/catalog/01/<GTIN>/21/S/10/L" is out of order, found
+  // by review); then a held numeric key, so the
+  // builder reports a malformed value ("/01/00O36000291452", a letter O for a zero, is a
+  // bad GTIN, and "/gtin/catalog/01/12345" a short one, not a convenience alpha); then
+  // any held key; then a key this build does not hold whose value fits, whose path is
+  // then refused below. A path with none of those has no GS1 key at all.
   const chosen =
-    candidates.find((candidate) => candidate.held && plausible(candidate)) ??
-    candidates.find((candidate) => !candidate.held && plausible(candidate)) ??
+    candidates.find((candidate) => valueFits(candidate) && pathFits(candidate)) ??
+    candidates.find((candidate) => candidate.held && valueFits(candidate)) ??
     candidates.find((candidate) => candidate.held && candidate.key.alpha === undefined) ??
-    candidates[0]!
+    candidates.find((candidate) => candidate.held) ??
+    candidates.find(valueFits)
+  if (chosen === undefined) {
+    throw new DigitalLinkError('no GS1 primary key, such as /01/ and a GTIN, appears in the path')
+  }
   const start = chosen.i
-  // A key and a value that could be one, in the stem before the key taken: the grammar
-  // lets a stem hold any segments, so `/414/1234567890128/01/…` is conformant read as a
-  // stem and a GTIN, but it names two things, and which one it identifies is not this
-  // tool's to decide. It passed where the GLN's key was in the table, and stood down
-  // where it was not (found by `/code-review high` on #97).
-  const ambiguous = candidates.find((candidate) => candidate.i < start && plausible(candidate))
 
   // `segment = *pchar` lets a stem segment be empty; from the key on, every component
   // has a value.
@@ -563,12 +620,6 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   const judgedStem = judgeCustomUriStem(stem)
   if ('fault' in judgedStem) throw new DigitalLinkError(judgedStem.fault)
   if (judgedStem.host === '') unplaced.push('no host name, which no resolver can serve')
-  if (ambiguous !== undefined) {
-    unplaced.push(
-      `"${raw[ambiguous.i]}/${raw[ambiguous.i + 1]}" in its stem, which reads as a GS1 key ` +
-        'and value too',
-    )
-  }
 
   let primary: Gs1Element | undefined
   // A value as printed, judged by §4.2 before it is decoded: decoding first passed
@@ -595,7 +646,12 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   let rest: string[] = []
   if (!chosen.held) {
     // A key the standard defines and this build's table does not hold, such as a GLN:
-    // nothing after it can be placed either.
+    // nothing after it can be judged either, but a path no production allows is refused.
+    if (!pathFits(chosen)) {
+      throw new DigitalLinkError(
+        `what follows (${chosen.key.ai}) ${segments[start + 1]} is no GS1 Digital Link path for it`,
+      )
+    }
     unplaced.push(`(${chosen.key.ai}) as its primary key, which this build does not hold`)
   } else {
     if (chosen.key.alpha !== undefined) convenienceAlphas.push(chosen.key.alpha)
@@ -614,7 +670,15 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
       const key = keyFor(rest[i]!)
       const position = key === undefined ? -1 : order.indexOf(key.ai)
       if (key === undefined || position === -1) {
-        unplaced.push(`(${rest[i]}) after the ${getAiSpec(primary.ai)?.title ?? primary.ai}`)
+        const title = getAiSpec(primary.ai)?.title ?? primary.ai
+        // A component some path lets follow this key, as (235) follows a GTIN in a UPUI
+        // path, is one this build cannot judge; any other, no path allows.
+        if (!followsPathAnywhere(primary.ai, key?.ai ?? rest[i]!)) {
+          throw new DigitalLinkError(
+            `(${rest[i]}) cannot follow the ${title} in any GS1 Digital Link path`,
+          )
+        }
+        unplaced.push(`(${rest[i]}) after the ${title}`)
         continue
       }
       if (qualifiers.some((q) => q.ai === key.ai)) {
@@ -629,6 +693,13 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
       last = position
       if (key.alpha !== undefined) convenienceAlphas.push(key.alpha)
       qualifiers.push({ ai: key.ai, value: valueOf(key.ai, raw[start + 3 + i]!) })
+    }
+    // Each component may follow the key in some path and the whole still be none: a
+    // UPUI path is the GTIN and (235) alone, so `/235/X/10/L` is no path (found by review).
+    if (!pathFits(chosen)) {
+      throw new DigitalLinkError(
+        `what follows the ${getAiSpec(primary.ai)?.title ?? primary.ai} is no GS1 Digital Link path for it`,
+      )
     }
   }
 

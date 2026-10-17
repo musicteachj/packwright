@@ -90,14 +90,18 @@ into a version only when there is a reason to.
   down; it now stands down in both. `/code-review high` on #97 found two more. The editor's path kept its own copies
   of the printed path's checks, and passed what the parser refuses in a resolver domain, such as
   `https://x.com/01/09506000134352/10/A(1)`: the editor's link is now built and judged by the printed path's code, so
-  the two cannot disagree about the same string, and one cached verdict serves both. And a printed
-  `/414/1234567890128/01/…` passed, where a held key in the same place stood down: a plausible key and value in the
-  stem now stands the link down on both paths, whichever table holds the key. Whether a stem segment is a key is now
-  told by the value formats of §4.5, read 2026-10-17, for every key alike, so `/shop/402/en` is a plain stem (a GSIN
-  is 17 digits) and the verdict no longer turns on which keys the table holds. Where the builder refuses a field, the
-  link built from the remaining sound fields is judged by the same code, so what the rest of it carries is still said
-  beside the finding. Two findings went to `docs/BACKLOG.md`: the MCP test's hand-built fallback URI, and a printed
-  link the parser refuses losing the limits it would have said.
+  the two cannot disagree about the same string, and one cached verdict serves both. And how the parser took the
+  primary key had grown into four ranked fallbacks and an ambiguity scan, each added by a review and each opening the
+  next edge: a printed `/414/1234567890128/01/…` passed where a held key in the same place stood down. James chose to
+  follow the grammar instead. Each segment naming a key opens a reading of the path, which lives where its value fits
+  that key's format in §4.5 and the rest fits one of its `gs1path` productions in §4.9, both read 2026-10-17. At most
+  one reading can live, since no key's code is among those a path lets follow a key, so the link is judged by that
+  reading, faulted where there is none, and stood down where it runs through a key this build does not hold.
+  `/414/1234567890128/01/…` is therefore a stem and a GTIN, and passes; `/shop/402/en` has no reading and is faulted;
+  a component no path allows, such as (17) after a GTIN, is now a fault rather than a limit. Where the builder refuses
+  a field, the link built from the remaining sound fields is judged by the same code, so what the rest of it carries
+  is still said beside the finding. Two findings went to `docs/BACKLOG.md`: the MCP test's hand-built fallback URI,
+  and a printed link the parser refuses losing the limits it would have said.
 
 - **`check_label` takes a Digital Link as printed, and judges the string.** It asked for a domain and a
   `useConvenienceAlphas` flag, so a model reading `https://id.example.com/gtin/…` off a label had to infer the flag,

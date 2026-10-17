@@ -282,11 +282,18 @@ describe('parseDigitalLinkUri', () => {
     const gln = parseDigitalLinkUri('https://id.example.com/414/9520123456788/254/A1')
     expect(gln.primary).toBeUndefined()
     expect(gln.unplaced).toEqual(['(414) as its primary key, which this build does not hold'])
-    // An attribute's AI in the path is placed too, not refused: this build cannot rule
-    // out every path production after a GTIN.
-    expect(
-      parseDigitalLinkUri(`https://id.example.com/01/${STANDARD_GTIN}/17/261231`).unplaced,
-    ).toEqual(['(17) after the GTIN'])
+  })
+
+  it('refuses a component no path lets follow its key, by the gs1path productions', () => {
+    // §4.9, read 2026-10-17, lists every gs1path: after a GTIN, only (22), (10), (21) or
+    // a UPUI's (235). An attribute's AI in the path was placed as a limit until then.
+    expect(() =>
+      parseDigitalLinkUri(`https://id.example.com/01/${STANDARD_GTIN}/17/261231`),
+    ).toThrow(/\(17\) cannot follow the GTIN in any GS1 Digital Link path/)
+    // A GLN's path takes (254) or (7040), not a GTIN.
+    expect(() => parseDigitalLinkUri('https://id.example.com/414/9520123456788/99/A1')).toThrow(
+      /what follows \(414\) 9520123456788 is no GS1 Digital Link path for it/,
+    )
   })
 
   it('takes the key whose value could be one, past a stem segment named like a key', () => {
@@ -436,42 +443,115 @@ describe('parseDigitalLinkUri', () => {
     expect(parsed.primary).toEqual({ ai: '01', value: '12345' })
   })
 
-  it('places a plausible key and value in the stem, before the key it takes', () => {
+  it('takes the one reading the grammar allows, whatever the stem holds', () => {
+    // Read from (414), the path goes on with (01), which no GLN path takes; read from
+    // (01), it is a stem and a GTIN path. Only the second conforms, and no key's code is
+    // among those a path lets follow a key, so no link has two.
     const parsed = parseDigitalLinkUri(`https://x.com/414/1234567890128/01/${STANDARD_GTIN}`)
+    expect(parsed.stem).toBe('https://x.com/414/1234567890128')
     expect(parsed.primary).toEqual({ ai: '01', value: STANDARD_GTIN })
-    expect(parsed.unplaced).toEqual([
-      '"414/1234567890128" in its stem, which reads as a GS1 key and value too',
-    ])
+    expect(parsed.unplaced).toEqual([])
   })
 
   /*
    * §4.5 of URI Syntax 1.7.0, read 2026-10-17, worked by hand: for each primary key, a
-   * value its format takes and one just outside it. Before a GTIN path, the first makes
-   * the stem ambiguous, and the second leaves it a plain stem.
+   * value its format takes and one just outside it. With nothing after it, the first is
+   * a reading of the path; the second is none, so the path has no key, or for the held
+   * SSCC, a key whose value the builder refuses.
    */
   it.each([
     ['8006', '095201234567880102', '09520123456788010'], // 14DIGIT 2DIGIT 2DIGIT
     ['8013', 'ABC', 'A'.repeat(26)], // 1*25 XCHAR
     ['8010', 'AB-12', 'ab'], // 1*30 YCHAR, no lower case
     ['414', '1234567890123', '123456789012'], // 13DIGIT
-    ['415', '1234567890123', '123456789012'],
-    ['417', '1234567890123', '123456789012'],
+    ['415', '1234567890123', '123456789012'], // 13DIGIT, then refNo-comp, required
+    ['417', '1234567890123', '123456789012'], // 13DIGIT
     ['8017', '123456789012345678', '12345678901234567'], // 18DIGIT
     ['8018', '123456789012345678', '12345678901234567'],
     ['255', '1234567890123', '123456789012'], // 13DIGIT [1*12DIGIT]
-    ['00', '123456789012345678', '12345678901234567'], // 18DIGIT
     ['253', '1234567890123ABC', '123456789012'], // 13DIGIT [1*17XCHAR]
     ['401', 'GINC1', 'G'.repeat(31)], // 1*30XCHAR
     ['402', '12345678901234567', '1234567890123456'], // 17DIGIT
     ['8003', '1234567890123', '12345678901'], // 13DIGIT [1*16XCHAR]
     ['8004', 'thing', 't'.repeat(31)], // 1*30 XCHAR
-  ])('reads (%s) in a stem by its §4.5 format', (code, fits, misses) => {
-    const plain = (value: string) => {
-      const parsed = parseDigitalLinkUri(`https://x.com/${code}/${value}/01/${STANDARD_GTIN}`)
-      return parsed.primary?.ai === '01' && parsed.unplaced.length === 0
-    }
-    expect(plain(fits)).toBe(false)
-    expect(plain(misses)).toBe(true)
+  ])('reads (%s) by its §4.5 format', (code, fits, misses) => {
+    // payTo-path = payTo-comp refNo-comp: (415) needs its (8020) to be a path at all.
+    const tail = code === '415' ? '/8020/R1' : ''
+    expect(parseDigitalLinkUri(`https://x.com/${code}/${fits}${tail}`).unplaced).toEqual([
+      `(${code}) as its primary key, which this build does not hold`,
+    ])
+    expect(() => parseDigitalLinkUri(`https://x.com/${code}/${misses}${tail}`)).toThrow(
+      /no GS1 primary key/,
+    )
+  })
+
+  /*
+   * The gs1path productions of URI Syntax 1.7.0 §4.9, read 2026-10-17, worked by hand:
+   * for each primary key, every path its productions allow after a value of its §4.5
+   * format, and one they do not.
+   */
+  it.each([
+    ['01', STANDARD_GTIN, ['', '/22/2A/10/L/21/S', '/235/XYZ'], '/7040/1ABC'],
+    ['8006', '095201234567880102', ['', '/22/2A/10/L/21/S'], '/7040/1ABC'],
+    ['8013', 'ABC', [''], '/7040/1ABC'],
+    ['8010', 'AB-12', ['', '/8011/123'], '/7040/1ABC'],
+    ['414', '1234567890123', ['', '/254/A1', '/7040/1ABC'], '/8020/R1'],
+    ['415', '1234567890123', ['/8020/R1'], ''],
+    ['417', '1234567890123', ['', '/7040/1ABC'], '/254/A1'],
+    ['8017', '123456789012345678', ['', '/8019/12'], '/7040/1ABC'],
+    ['8018', '123456789012345678', ['', '/8019/12'], '/7040/1ABC'],
+    ['255', '1234567890123', [''], '/7040/1ABC'],
+    ['00', '106141411234567897', [''], '/7040/1ABC'],
+    ['253', '1234567890123ABC', [''], '/7040/1ABC'],
+    ['401', 'GINC1', [''], '/7040/1ABC'],
+    ['402', '12345678901234567', [''], '/7040/1ABC'],
+    ['8003', '1234567890123', [''], '/7040/1ABC'],
+    ['8004', 'thing', ['', '/7040/1ABC'], '/254/A1'],
+  ])(
+    'takes the paths §4.9 gives (%s), and refuses one it does not',
+    (code, value, allowed, refused) => {
+      for (const tail of allowed) {
+        // A malformed GTIN reading first, so this reading must live to be taken over it.
+        const parsed = parseDigitalLinkUri(`https://x.com/01/abc/${code}/${value}${tail}`)
+        if (code === '01' || code === '00') expect(parsed.primary?.ai).toBe(code)
+        else {
+          expect(parsed.unplaced).toEqual([
+            `(${code}) as its primary key, which this build does not hold`,
+          ])
+        }
+      }
+      expect(() => parseDigitalLinkUri(`https://x.com/${code}/${value}${refused}`)).toThrow(
+        DigitalLinkError,
+      )
+    },
+  )
+
+  it.each([
+    ['a UPUI path with a qualifier', `/01/${STANDARD_GTIN}/235/X/10/L`],
+    ['a qualifier then a UPUI component', `/01/${STANDARD_GTIN}/10/L/235/X`],
+    ['two UPUI components', `/01/${STANDARD_GTIN}/235/X/235/Y`],
+  ])('refuses %s, which no production allows as a whole', (_what, path) => {
+    // Each component may follow a GTIN in some path; the whole is none (found by review).
+    expect(() => parseDigitalLinkUri(`https://x.com${path}`)).toThrow(
+      /what follows the GTIN is no GS1 Digital Link path for it/,
+    )
+  })
+
+  it('names the fault in the reading whose key fits, past a stem key whose value does not', () => {
+    // It took the first held key, "catalog" as a GTIN, and missed the qualifier order.
+    expect(() =>
+      parseDigitalLinkUri(`https://x.com/01/catalog/01/${STANDARD_GTIN}/21/S/10/L`),
+    ).toThrow(/not in their defined order/)
+  })
+
+  it('reads the held SSCC by its §4.5 format too', () => {
+    // sscc-value = 18DIGIT. A value outside it is still taken, for the builder to refuse.
+    const sscc = '106141411234567897'
+    expect(parseDigitalLinkUri(`https://x.com/00/${sscc}`).primary).toEqual({
+      ai: '00',
+      value: sscc,
+    })
+    expect(parseDigitalLinkUri('https://x.com/00/abc/01/09520123456788').primary?.ai).toBe('01')
   })
 
   it('takes a GTIN path past a GIAI, which only (7040) may follow', () => {

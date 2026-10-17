@@ -39,7 +39,7 @@
  * 1.3.0 either way, and that is the one that makes a URI non-conformant.
  */
 
-import { validateAiValue } from '../../gs1/applicationIdentifiers'
+import { getAiSpec, validateAiValue } from '../../gs1/applicationIdentifiers'
 import { isValidCheckDigit, normaliseToGtin14 } from '../../gs1/checkDigit'
 import {
   DigitalLinkError,
@@ -104,6 +104,9 @@ const ALPHAS_CITATION: Citation = {
  */
 type Verdict = { findings: Finding[]; limit?: string }
 
+/** How the link judged came to be: printed, built from the editor's fields, or neither. */
+type As = 'printed' | 'built' | 'configured'
+
 /**
  * Judges a Digital Link URI as written. `as` names it in what is said, "as printed" for a
  * link from a check request and "as built" for one Packwright built from the editor's
@@ -111,7 +114,7 @@ type Verdict = { findings: Finding[]; limit?: string }
  * did, twice, while the configured path kept its own copies of the printed path's checks,
  * and each time the copy was the one missing a refusal (found by review on #97).
  */
-function judgedAsWritten(written: string, gtin: string, as: 'printed' | 'built'): Verdict {
+function judgedAsWritten(written: string, gtin: string, as: As): Verdict {
   const uri = written.trim()
   const invalid = (reason: string): Finding =>
     finding(digitalLinkRule, {
@@ -173,12 +176,7 @@ function judgedAsWritten(written: string, gtin: string, as: 'printed' | 'built')
 }
 
 /** The findings, with the pass where there are none and nothing unjudged, and the limit. */
-function verdictOf(
-  findings: Finding[],
-  uri: string,
-  as: 'printed' | 'built',
-  unjudged: string[],
-): Verdict {
+function verdictOf(findings: Finding[], uri: string, as: As, unjudged: string[]): Verdict {
   const limit =
     unjudged.length === 0
       ? undefined
@@ -206,7 +204,7 @@ function verdictOf(
   return { findings }
 }
 
-function alphasAdvisory(uri: string, as: 'printed' | 'built', alphas: readonly string[]): Finding {
+function alphasAdvisory(uri: string, as: As, alphas: readonly string[]): Finding {
   return finding(digitalLinkRule, {
     code: GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS,
     severity: 'advisory',
@@ -277,9 +275,9 @@ function judgedAsConfigured(
       measurement: { actual: error.message, required: 'a conformant Digital Link URI' },
     })
     // With no URI to judge, the link built from every field sound on its own is judged
-    // instead, by the same code, so what the rest of it carries is still said: a domain
-    // reading as a GS1 path, an empty host, a quoted lot, the convenience alphas. Hand
-    // copies of those were lost or worded apart here (found by review on #97).
+    // instead, by the same code, so what the rest of it carries is still said: an empty
+    // host, a quoted lot. Hand copies of those were lost or worded apart here (found by
+    // review on #97). It is said "as configured", since no link was built.
     const sound = (element: Gs1Element) => validateAiValue(element.ai, element.value) === null
     let rest: Verdict = { findings: [] }
     try {
@@ -289,18 +287,24 @@ function judgedAsConfigured(
           primary: { ai: '01', value: gtin },
           qualifiers: qualifiers.filter(sound),
           attributes: attributes.filter(sound),
-          ...(useConvenienceAlphas === undefined ? {} : { useConvenienceAlphas }),
         }),
         gtin,
-        'built',
+        'configured',
       )
     } catch (probeError) {
       if (!(probeError instanceof DigitalLinkError)) throw probeError
     }
+    // Built without the convenience alphas, which are named from the fields below.
     const findings = [refused, ...rest.findings.filter((one) => one.severity !== 'pass')]
+    if (useConvenienceAlphas) {
+      const alphas = ['01', ...qualifiers.map((one) => one.ai)].flatMap(
+        (ai) => getAiSpec(ai)?.digitalLinkAlpha ?? [],
+      )
+      findings.push(alphasAdvisory('/gtin/…', 'configured', alphas))
+    }
+    // Said on the refusal it qualifies, not on whichever finding came last.
     if (rest.limit === undefined) return { findings }
-    const last = findings[findings.length - 1]!
-    findings[findings.length - 1] = { ...last, message: `${last.message} ${rest.limit}` }
+    findings[0] = { ...refused, message: `${refused.message} ${rest.limit}` }
     return { findings }
   }
   return judgedAsWritten(uri, gtin, 'built')
