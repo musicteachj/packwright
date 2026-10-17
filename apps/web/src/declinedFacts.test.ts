@@ -90,6 +90,13 @@ const scenarios: Array<[string, (store: Store) => void]> = [
     },
   ],
   [
+    'a food label listing no ingredients, silent on whether it is one',
+    (store) => {
+      store.labelType = 'us-food'
+      store.foodData.ingredients = []
+    },
+  ],
+  [
     'a chemical label with no hazard classification',
     (store) => {
       store.labelType = 'ghs-chemical'

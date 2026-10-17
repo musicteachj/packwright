@@ -442,6 +442,9 @@ function addIngredient(): void {
   // judged as a figure the user had given. Refusals are kept: appending moves no row.
   rowKeys.value = [...rowKeys.value, nextRowKey++]
   setIngredients([...ingredients.value.map((i) => ({ ...i })), { name: '' }])
+  // The single-ingredient answer is asked only of an empty list, and hidden once there is
+  // one. Kept, it would come back into force unasked when the list was emptied again.
+  delete data.singleIngredient
 }
 
 function removeIngredient(index: number): void {
@@ -522,6 +525,8 @@ const ingredientsExemption = computed({
   set: (next: string) => {
     if (next === 'unstated') return
     delete data.ingredientsExempt
+    // The single-ingredient question is hidden under a claimed exemption, so its answer goes.
+    if (next !== '') delete data.singleIngredient
     if (next === '') delete data.ingredientsExemption
     else if (next === 'assortment') {
       data.ingredientsExemption = { kind: 'assortment', statement: '', mayBePresent: [] }
@@ -530,6 +535,27 @@ const ingredientsExemption = computed({
         kind: next as Exclude<UsFoodIngredientsExemptionKind, 'assortment'>,
       }
     }
+  },
+})
+
+/**
+ * Whether the food is one ingredient, asked where it lists none: FD&C Act §403(i)(2) owes a
+ * list only of a food made from two or more. Three answers, as the document holds them.
+ */
+type SingleIngredient = 'unstated' | 'yes' | 'no'
+const SINGLE_INGREDIENT: readonly SingleIngredient[] = ['unstated', 'yes', 'no']
+const SINGLE_INGREDIENT_NAMES: Record<SingleIngredient, string> = {
+  unstated: 'Not stated',
+  yes: 'Yes, a single ingredient',
+  no: 'No, two or more',
+}
+const SINGLE_INGREDIENT_LABEL = DECLINED_FACT_FIELDS.singleIngredient.name
+const singleIngredient = computed({
+  get: (): SingleIngredient =>
+    data.singleIngredient === undefined ? 'unstated' : data.singleIngredient ? 'yes' : 'no',
+  set: (next: SingleIngredient) => {
+    if (next === 'unstated') delete data.singleIngredient
+    else data.singleIngredient = next === 'yes'
   },
 })
 
@@ -1746,6 +1772,23 @@ const packaging = computed({
         The statement is not required. Listing one anyway is allowed — and a list that is printed
         still runs in descending order, because a reader has no way of knowing it was voluntary.
       </p>
+
+      <!-- Asked only where it decides something: no list, and no § 101.100 exemption. -->
+      <template v-if="ingredients.length === 0 && ingredientsExemption === ''">
+        <SelectField
+          id="field-food-single-ingredient"
+          v-model="singleIngredient"
+          :label="SINGLE_INGREDIENT_LABEL"
+        >
+          <option v-for="value in SINGLE_INGREDIENT" :key="value" :value="value">
+            {{ SINGLE_INGREDIENT_NAMES[value] }}
+          </option>
+        </SelectField>
+        <p class="text-chrome-400 text-xs">
+          FD&amp;C Act §403(i)(2) requires an ingredient statement of a food made from two or more
+          ingredients. A single-ingredient food needs none.
+        </p>
+      </template>
 
       <p class="text-chrome-400 text-xs">
         Listed in the order printed. The weight beside each is what makes that order checkable — 21

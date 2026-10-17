@@ -27,6 +27,7 @@ import { MM_PER_POINT } from '../geometry/units'
 import { measureTextMm, measuredFamilyFor } from '../text/measure'
 import { mm } from './finding'
 import {
+  FDA_ALLERGEN_DECLARED_MET,
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_NUTRITION_PERCENT_DV_WRONG,
   FDA_NUTRITION_ROUNDING_WRONG,
@@ -37,6 +38,7 @@ import {
   FDA_INGREDIENT_STATEMENT_MET,
   FDA_INGREDIENTS_EXEMPTION_UNSTATED,
   FDA_INGREDIENTS_MISSING,
+  FDA_INGREDIENTS_NOT_REQUIRED,
   FDA_NUTRITION_EXEMPTION_UNSTATED,
   FDA_INGREDIENTS_ORDER_MET,
   FDA_INGREDIENTS_OUT_OF_ORDER,
@@ -49,6 +51,7 @@ import {
   usFoodNutritionCompletenessRule,
   FDA_NET_QUANTITY_CROWDED,
   FDA_NET_QUANTITY_DUAL_MET,
+  FDA_NET_QUANTITY_METRIC_NOT_SI,
   FDA_NET_QUANTITY_METRIC_NOT_REQUIRED,
   FDA_NET_QUANTITY_MISSING,
   FDA_NET_QUANTITY_OUTSIDE_ZONE,
@@ -489,6 +492,74 @@ describe('rules that decline rather than pass', () => {
     const findings = findingsFor(US_FOOD_CONFORMANT.data, US_FOOD_CONFORMANT.stock)
     expect(findings.map((f) => f.code)).toContain(FDA_NET_QUANTITY_DUAL_MET)
   })
+
+  it('takes only an amount in an SI unit as the SI declaration', () => {
+    // 1453(a)(2) requires "the SI metric system", and the pass once took any text.
+    const codesWith = (metric: string) =>
+      findingsFor(
+        {
+          ...US_FOOD_CONFORMANT.data,
+          netQuantity: { ...US_FOOD_CONFORMANT.data.netQuantity, metric },
+        },
+        US_FOOD_CONFORMANT.stock,
+      ).map((f) => f.code)
+    for (const metric of [
+      '454 g',
+      '340g',
+      '(340 G)',
+      '1 L',
+      '500 mL',
+      '1,000 ml',
+      '1.5 litres',
+      '2 liters',
+      '1.2 kg',
+      '25 cL',
+      '0.5 m²',
+      '3 meters',
+      '750 milliliters',
+      // Every SI prefix from micro to kilo. Found by `/code-review high` on #104.
+      '1 hL',
+      '250 µg',
+      '1 dam',
+      '2 dekaliters',
+    ]) {
+      const codes = codesWith(metric)
+      expect(codes, metric).toContain(FDA_NET_QUANTITY_DUAL_MET)
+      expect(codes, metric).not.toContain(FDA_NET_QUANTITY_METRIC_NOT_SI)
+    }
+    for (const metric of ['500', '16 oz', 'half a kilo', '1 gal', '2 lb', '16 grains', '1 kilo']) {
+      const codes = codesWith(metric)
+      expect(codes, metric).toContain(FDA_NET_QUANTITY_METRIC_NOT_SI)
+      expect(codes, metric).not.toContain(FDA_NET_QUANTITY_DUAL_MET)
+    }
+  })
+
+  it('names the SI amount it found, and what it did not check', () => {
+    const pass = findingsFor(US_FOOD_CONFORMANT.data, US_FOOD_CONFORMANT.stock).find(
+      (f) => f.code === FDA_NET_QUANTITY_DUAL_MET,
+    )!
+    // The conformant label's metric field reads "(340 g)"; the amount is what is quoted.
+    expect(pass.message).toContain('("340 g")')
+    // And it does not claim the inch/pound half, which it never read. Found by review.
+    expect(pass.message).not.toContain('covering both measurement systems')
+    expect(pass.message).toContain(
+      `Not checked here: that "${US_FOOD_CONFORMANT.data.netQuantity.inchPound}" is in inch/pound units`,
+    )
+    expect(pass.message).toContain('whether the SI figure equals the inch/pound one')
+  })
+
+  it('calls only an SI amount the SI statement a random package may carry', () => {
+    const passFor = (metric: string) =>
+      findingsFor(
+        {
+          ...US_FOOD_CONFORMANT.data,
+          netQuantity: { ...US_FOOD_CONFORMANT.data.netQuantity, packaging: 'random', metric },
+        },
+        US_FOOD_CONFORMANT.stock,
+      ).find((f) => f.code === FDA_NET_QUANTITY_METRIC_NOT_REQUIRED)!.message
+    expect(passFor('340 g')).toContain('"340 g" is permitted all the same')
+    expect(passFor('16 oz')).not.toContain('permitted all the same')
+  })
 })
 
 describe('21 CFR 101.7(h)(3), which this stage does not model', () => {
@@ -711,6 +782,53 @@ describe('findings from the phase 5 review', () => {
 
     it('records nothing for a label that fits', () => {
       expect(layOutUsFoodLabel(US_FOOD_CONFORMANT).omissions).toEqual([])
+    })
+  })
+
+  describe('§403(i)(2) owes a list only of a food made from two or more ingredients', () => {
+    const empty = { ...US_FOOD_CONFORMANT.data, ingredients: [] }
+    const declinedFor = (data: UsFoodLabelData) =>
+      declinedChecks({
+        labelType: 'us-food',
+        data,
+        stock,
+        layout: layOutUsFoodLabel({ data, stock }),
+      }).find((d) => d.ruleId === usFoodIngredientListRule.id)
+
+    it('excuses the list of a single-ingredient food, on the document', () => {
+      const findings = findingsFor({ ...empty, singleIngredient: true }, stock)
+      expect(findings.map((f) => f.code)).not.toContain(FDA_INGREDIENTS_MISSING)
+      const pass = findings.find((f) => f.code === FDA_INGREDIENTS_NOT_REQUIRED)!
+      expect(pass.certifies).toBe('document')
+      expect(pass.citation.reference).toBe('FD&C Act §403(i)(2)')
+      expect(pass.message).toContain('Not checked here: that the food is a single ingredient')
+      // With nothing listed the allergen check has nothing to read, and the pass says so.
+      expect(pass.message).toContain('whether it is a major food allergen')
+      expect(declinedFor({ ...empty, singleIngredient: true })).toBeUndefined()
+    })
+
+    it('blocks a food the label says has two or more, citing the Act, not 101.4', () => {
+      const missing = findingsFor({ ...empty, singleIngredient: false }, stock).find(
+        (f) => f.code === FDA_INGREDIENTS_MISSING,
+      )!
+      expect(missing.severity).toBe('blocking')
+      expect(missing.citation.reference).toBe('FD&C Act §403(i)(2)')
+      expect(missing.message).not.toContain('A packaged food must list')
+    })
+
+    it('stands down and asks, rather than blocking a food that may be one ingredient', () => {
+      const codes = findingsFor(empty, stock).map((f) => f.code)
+      expect(codes).not.toContain(FDA_INGREDIENTS_MISSING)
+      expect(codes).not.toContain(FDA_INGREDIENTS_NOT_REQUIRED)
+      const declined = declinedFor(empty)
+      expect(declined?.wants).toEqual(['singleIngredient'])
+      expect(declined?.citation?.reference).toBe('FD&C Act §403(i)(2)')
+    })
+
+    it('judges a printed list whatever the fact says, and never asks for it', () => {
+      const listed = { ...US_FOOD_CONFORMANT.data, singleIngredient: true }
+      expect(findingsFor(listed, stock).map((f) => f.code)).toContain(FDA_INGREDIENT_STATEMENT_MET)
+      expect(declinedFor(US_FOOD_CONFORMANT.data)).toBeUndefined()
     })
   })
 
@@ -1030,6 +1148,120 @@ describe('major food allergens', () => {
         { name: 'whey', percentByWeight: 100, allergen: 'milk', declareInline: true },
       ]),
     ).not.toContain(FDA_ALLERGEN_SOURCE_NOT_SPECIFIC)
+  })
+
+  it("does not take the category's own name for a specific type", () => {
+    // §403(w)(2): "the name of the specific type of nut or species of fish or Crustacean
+    // shellfish". Any non-blank type was accepted, so "tree nuts" printed and cleared.
+    const typed = (allergen: 'fish' | 'crustacean-shellfish' | 'tree-nuts', type: string) =>
+      findingsFor(
+        {
+          ...US_FOOD_CONFORMANT.data,
+          ingredients: [
+            {
+              name: 'filling',
+              percentByWeight: 100,
+              allergen,
+              allergenSpecificType: type,
+              declareInline: true,
+            },
+          ],
+          ingredientThreshold: { percent: 2 as const, count: 0 },
+        },
+        stock,
+      )
+    for (const [allergen, type] of [
+      ['tree-nuts', 'tree nuts'],
+      ['tree-nuts', ' Nuts '],
+      ['fish', 'Fish'],
+      ['crustacean-shellfish', 'shellfish'],
+      ['crustacean-shellfish', 'Crustacean shellfish'],
+      // Spelled with the punctuation and spacing a form lets through. Found by review.
+      ['tree-nuts', 'tree-nuts'],
+      ['tree-nuts', 'Tree  nuts.'],
+      ['crustacean-shellfish', 'shell fish'],
+      ['crustacean-shellfish', 'shellfishes'],
+      // Collective names that stand for the category. Found by `/code-review high` on #104.
+      ['tree-nuts', 'Mixed nuts'],
+      ['fish', 'seafood'],
+      ['crustacean-shellfish', 'Seafood'],
+    ] as const) {
+      const findings = typed(allergen, type)
+      const finding = findings.find((f) => f.code === FDA_ALLERGEN_SOURCE_NOT_SPECIFIC)
+      expect(finding, `${allergen} as "${type}"`).toBeDefined()
+      expect(finding!.message).toContain(`"${type.trim()}", which names the category`)
+      expect(finding!.measurement?.actual, 'the measurement quotes what was typed').toBe(
+        type.trim(),
+      )
+      expect(findings.map((f) => f.code)).not.toContain(FDA_ALLERGEN_DECLARED_MET)
+    }
+    // The category's words, matched whole: a type that contains one is still a type.
+    for (const [allergen, type] of [
+      ['tree-nuts', 'pecan nuts'],
+      ['fish', 'Atlantic cod'],
+      ['crustacean-shellfish', 'shrimp'],
+    ] as const) {
+      expect(
+        typed(allergen, type).map((f) => f.code),
+        `${allergen} as "${type}"`,
+      ).toContain(FDA_ALLERGEN_DECLARED_MET)
+    }
+    // And the engine does not print the category as the source it lacks.
+    const data = {
+      ...US_FOOD_CONFORMANT.data,
+      ingredients: [
+        {
+          name: 'nut pieces',
+          percentByWeight: 100,
+          allergen: 'tree-nuts' as const,
+          allergenSpecificType: 'tree nuts',
+          declareInline: true,
+        },
+      ],
+    }
+    const printed = layOutUsFoodLabel({ data, stock }).primitives.filter(
+      (p): p is TextPrimitive => p.kind === 'text',
+    )
+    expect(printed.some((p) => p.text.includes('(tree nuts)'))).toBe(false)
+    // The Contains statement records why it named nothing, and blames the category only
+    // where one was typed.
+    const omissionFor = (allergenSpecificType?: string) =>
+      layOutUsFoodLabel({
+        data: {
+          ...US_FOOD_CONFORMANT.data,
+          ingredients: [
+            {
+              name: 'nut pieces',
+              percentByWeight: 100,
+              allergen: 'tree-nuts' as const,
+              ...(allergenSpecificType === undefined ? {} : { allergenSpecificType }),
+            },
+          ],
+          containsStatement: ['tree-nuts'],
+        },
+        stock,
+      }).omissions.find((o) => o.elementId === US_FOOD_ELEMENTS.containsStatement)!.reason
+    expect(omissionFor('tree nuts')).toContain('("tree nuts" names the category, not one)')
+    expect(omissionFor()).not.toContain('names the category')
+  })
+
+  it('accepts the singular of the statute\'s own name, and not "soy" (decision A)', () => {
+    // §403(w)(1)(B)(i): no parenthetical where the ingredient's name "uses the name of the
+    // food source". "peanut" is the statute's "peanuts"; "soy" rests only on FDA guidance.
+    const named = (name: string, allergen: 'peanuts' | 'soybeans') =>
+      withIngredients([{ name, percentByWeight: 100, allergen }])
+    expect(named('peanut butter', 'peanuts')).toContain(FDA_ALLERGEN_DECLARED_MET)
+    expect(named('soybean oil', 'soybeans')).toContain(FDA_ALLERGEN_DECLARED_MET)
+    expect(named('soy lecithin', 'soybeans')).toContain(FDA_ALLERGEN_NOT_DECLARED)
+    expect(named('soya flour', 'soybeans')).toContain(FDA_ALLERGEN_NOT_DECLARED)
+    // (B)(ii)'s caveat still holds for the singular: "peanut" inside a non-allergen
+    // ingredient's name declares nothing for the peanut ingredient beside it.
+    expect(
+      withIngredients([
+        { name: 'groundnut paste', percentByWeight: 60, allergen: 'peanuts' },
+        { name: 'refined peanut oil', percentByWeight: 40 },
+      ]),
+    ).toContain(FDA_ALLERGEN_NOT_DECLARED)
   })
 
   it('declines entirely on a recipe with no allergen in it', () => {

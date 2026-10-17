@@ -441,6 +441,8 @@ one that was. No rule cross-checks the two figures.
 
 ## Rules that do not exist yet
 
+**A net quantity by count is asked for an SI declaration, and whether 15 U.S.C. 1453(a)(2) wants one for a count was not settled** (found writing the SI unit check for fix PR 2, 2026-10-17; the rule did this before).
+
 **Nothing checks the Nutrition Facts footnote.** 21 CFR 101.9(d)(9) sets the footnote verbatim and
 `NUTRITION_FOOTNOTE` carries all three permitted variants, but no rule compares what a panel prints against
 them. Found while fixing the tabular display, which had been printing (j)(13)(i)'s abbreviated statement on

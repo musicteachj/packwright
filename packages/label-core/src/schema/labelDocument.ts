@@ -671,6 +671,14 @@ export const UsFoodRequestBase = z.object({
   netQuantityAnchor: z.enum(ANCHORS).optional(),
   informationPanelFontSizeMm: z.number().positive().optional(),
   ingredients: z.array(IngredientSchema).optional(),
+  singleIngredient: z
+    .boolean()
+    .optional()
+    .describe(
+      'Whether the food is made from a single ingredient (FD&C Act §403(i)(2) requires an ' +
+        'ingredient statement only of a food made from two or more). Leave it out if the ' +
+        'label lists its ingredients.',
+    ),
   // The four figures 21 CFR 101.4(a)(2) permits, derived from label-core's own
   // list rather than restated — a fifth would be a compliance defect, so it is
   // rejected at the boundary rather than drawn and reported.
@@ -1156,6 +1164,9 @@ export function toUsFoodLabelData(
     ...(request.ingredients === undefined
       ? {}
       : { ingredients: request.ingredients.map(toIngredient) }),
+    ...(request.singleIngredient === undefined
+      ? {}
+      : { singleIngredient: request.singleIngredient }),
     ...(request.ingredientThreshold === undefined
       ? {}
       : { ingredientThreshold: request.ingredientThreshold }),

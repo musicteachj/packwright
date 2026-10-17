@@ -21,11 +21,11 @@ Part 101 its row does not name, or a GS1 release other than the one its row name
 | document | edition used | read | link |
 |---|---|---|---|
 | **21 CFR Part 101, Food Labeling.** Cited: §§ 101.2, 101.3, 101.4, 101.5, 101.7, 101.9 and 101.100; Appendix B for the Nutrition Facts graphic | eCFR, current | 2026-09-12; re-read through 2026-10-12 | [eCFR](https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101) |
-| **Federal Food, Drug, and Cosmetic Act § 201(qq), 21 U.S.C. 321(qq).** The major food allergens | U.S. Code, 2023 edition | 2026-09-12 | [govinfo](https://www.govinfo.gov/content/pkg/USCODE-2023-title21/html/USCODE-2023-title21-chap9-subchapII-sec321.htm) |
-| **Federal Food, Drug, and Cosmetic Act § 403(w), 21 U.S.C. 343(w).** Allergen declaration and the "Contains" statement | U.S. Code, 2023 edition | 2026-09-12; re-read 2026-10-11 | [govinfo](https://www.govinfo.gov/content/pkg/USCODE-2023-title21/html/USCODE-2023-title21-chap9-subchapIV-sec343.htm) |
-| **Fair Packaging and Labeling Act, 15 U.S.C. 1453.** The net quantity in both measurement systems | U.S. Code, 2023 edition | 2026-09-12 | [govinfo](https://www.govinfo.gov/content/pkg/USCODE-2023-title15/html/USCODE-2023-title15-chap39-sec1453.htm) |
+| **Federal Food, Drug, and Cosmetic Act § 201(qq), 21 U.S.C. 321(qq).** The major food allergens | U.S. Code, 2023 edition; re-read in the 2024 edition, identical | 2026-09-12; re-read 2026-10-17 | [govinfo](https://www.govinfo.gov/content/pkg/USCODE-2023-title21/html/USCODE-2023-title21-chap9-subchapII-sec321.htm) |
+| **Federal Food, Drug, and Cosmetic Act § 403(i) and (w), 21 U.S.C. 343(i) and (w).** When a food owes an ingredient statement; allergen declaration and the "Contains" statement | U.S. Code, 2023 edition; § 403(i) from the 2024 edition, and (w) re-read in it, identical | (w) 2026-09-12, re-read 2026-10-11 and 2026-10-17; (i) 2026-10-17 | [govinfo](https://www.govinfo.gov/content/pkg/USCODE-2023-title21/html/USCODE-2023-title21-chap9-subchapIV-sec343.htm) |
+| **Fair Packaging and Labeling Act, 15 U.S.C. 1453.** The net quantity in both measurement systems | U.S. Code, 2023 edition; (a)(2) re-read in the 2024 edition | 2026-09-12; re-read 2026-10-17 | [govinfo](https://www.govinfo.gov/content/pkg/USCODE-2023-title15/html/USCODE-2023-title15-chap39-sec1453.htm) |
 
-**Rulemaking and guidance**, read to interpret Part 101. None of these is cited by a rule.
+**Rulemaking and guidance**, read to interpret Part 101 and the Fair Packaging and Labeling Act. None of these is cited by a rule.
 
 | document | why it was read | link |
 |---|---|---|
@@ -34,6 +34,8 @@ Part 101 its row does not name, or a GS1 release other than the one its row name
 | **81 FR 59129** (2016-08-29), Food Labeling; Technical Amendments | Redesignated § 101.105 as § 101.7, the net quantity section the rules cite | [Federal Register](https://www.federalregister.gov/documents/2016/08/29/2016-19925/food-labeling-technical-amendments) |
 | **83 FR 65493** (2018-12-21), Food Labeling; Revision of the Nutrition and Supplement Facts Labels; Technical Amendments | Corrects errors in both 2016 rules: cross-references, paragraphs of § 101.9(c)(2) and (j)(13)(i) deleted by mistake, the order of vitamins and minerals, one type size, and the sample labels. Read for graphic specifications; it states no bar or rule weights | [Federal Register](https://www.federalregister.gov/documents/2018/12/21/2018-27431/food-labeling-revision-of-the-nutrition-and-supplement-facts-labels-technical-amendments) |
 | **FDA, The New Nutrition Facts Label: Examples of Different Label Formats** (2017, "for reference only"), read 2026-09-12 | The bar and rule weights the renderer draws. It is guidance, not regulation, so no rule judges them (`docs/DESIGN.md`) | [FDA (PDF)](https://www.fda.gov/media/99151/download) |
+| **NIST SP 811, Guide for the Use of the International System of Units (SI)** (2008 edition, as updated on NIST's site), read 2026-10-17 | Which units are SI, for the FPLA's "SI metric system": Tables 1, 2, 5 and 6 and § 6.2.7 (the meter, gram and liter, the square and cubic meter, the prefixes, and the liter's symbols L and l) | [NIST](https://www.nist.gov/pml/special-publication-811) |
+| **NIST SP 330, The International System of Units (SI)** (2019 edition), read 2026-10-17 | The US edition of the BIPM's SI Brochure; its foreword gives "meter" and "liter" as the US spellings of "metre" and "litre" | [NIST (PDF)](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.330-2019.pdf) |
 
 ## United States: workplace chemicals
 

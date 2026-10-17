@@ -638,6 +638,10 @@ describe('a check that stood down names what would let it run', () => {
 
   /** The shapes no fixture reaches, one per declining branch the fixtures miss. */
   const constructed = [
+    {
+      name: 'a label listing no ingredients, silent on whether the food is one',
+      data: { ...foodBase.data, ingredients: [] } as UsFoodLabelData,
+    },
     food('a package owing both additional columns, drawing one', {
       availableSurfaceSqInches: 60,
       referenceAmount: { amount: 40, unit: 'g', category: 'Breakfast cereals' },
@@ -867,6 +871,8 @@ describe('a check that stood down names what would let it run', () => {
         return false
       case 'hazards':
         return (ghs.hazards ?? []).length > 0
+      case 'singleIngredient':
+        return (data as UsFoodLabelData).singleIngredient !== undefined
       case 'ingredients.percentByWeight':
         return ((data as UsFoodLabelData).ingredients ?? []).every(
           (ingredient) => ingredient.percentByWeight !== undefined,
@@ -897,6 +903,8 @@ describe('a check that stood down names what would let it run', () => {
     if (fact === 'barHeightMm') return { ...(data as UpcALabelData), barHeightMm: 22.85 }
     if (fact === 'omitHri') return { ...(data as UpcALabelData), omitHri: false }
     const label = data as UsFoodLabelData
+    // Either answer lets the check run; a single-ingredient food is the one the rule excused wrongly.
+    if (fact === 'singleIngredient') return { ...label, singleIngredient: true }
     if (fact === 'ingredients.percentByWeight') {
       // Each blank takes the figure above it, so a run the stated figures kept in
       // order stays in order — the answer a user filling the boxes in would give.
@@ -923,6 +931,7 @@ describe('a check that stood down names what would let it run', () => {
       Exclude<
         DeclinedFact,
         | 'hazards'
+        | 'singleIngredient'
         | 'ingredients.percentByWeight'
         | 'ingredients.name'
         | 'magnification'
