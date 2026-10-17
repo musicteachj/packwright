@@ -366,14 +366,34 @@ describe('the ingredient statement, from the form to the rail', () => {
     expect(options.map((o) => o.attributes('value'))).toEqual(['2', '1.5', '1', '0.5'])
   })
 
-  it('reports a missing statement rather than passing an empty one', async () => {
+  it('asks whether an emptied list is one ingredient, and blocks only a food of two or more', async () => {
+    // FD&C Act §403(i)(2) owes a list only of a food "fabricated from two or more
+    // ingredients". An empty list blocked a single-ingredient food until 2026-10-17.
     const { store, wrapper } = await mountFood()
     for (let i = store.foodData.ingredients!.length; i > 0; i -= 1) {
       await wrapper.find(`[aria-label^="Remove "]`).trigger('click')
       await nextTick()
     }
+    expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_MISSING')).toBe(false)
+    expect(store.declined.flatMap((d) => d.wants)).toContain('singleIngredient')
+
+    await wrapper.find('#field-food-single-ingredient').setValue('no')
+    await nextTick()
     expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_MISSING')).toBe(true)
     expect(store.hasBlocking).toBe(true)
+
+    await wrapper.find('#field-food-single-ingredient').setValue('yes')
+    await nextTick()
+    expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_NOT_REQUIRED')).toBe(true)
+    expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_MISSING')).toBe(false)
+    expect(store.declined.flatMap((d) => d.wants)).not.toContain('singleIngredient')
+
+    // Adding an ingredient hides the question, so it drops the answer rather than keep a
+    // hidden one that would come back into force unasked. Found by review.
+    const add = wrapper.findAll('button').find((b) => b.text().includes('Add an ingredient'))!
+    await add.trigger('click')
+    await nextTick()
+    expect(store.foodData.singleIngredient).toBeUndefined()
   })
 
   it('stops asking once an exemption is claimed and nothing is listed', async () => {

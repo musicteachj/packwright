@@ -840,7 +840,8 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
           elementId: US_FOOD_ELEMENTS.containsStatement,
           reason:
             `The "Contains" statement names nothing for "${entry.name}", which contains ` +
-            `${majorFoodAllergen(id)?.name ?? id} and states no specific type, and a food source ` +
+            `${majorFoodAllergen(id)?.name ?? id} and states no specific type (the category's ` +
+            'own name is not one), and a food source ' +
             "name for it is not this engine's to invent.",
           scope: 'detail',
         })

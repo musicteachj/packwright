@@ -70,6 +70,7 @@ import {
   FDA_INGREDIENT_THRESHOLD_NOT_PERMITTED,
   FDA_NET_QUANTITY_CROWDED,
   FDA_NET_QUANTITY_METRIC_MISSING,
+  FDA_NET_QUANTITY_METRIC_NOT_SI,
   FDA_NET_QUANTITY_MISSING,
   FDA_NET_QUANTITY_OUTSIDE_ZONE,
   FDA_NET_QUANTITY_TYPE_TOO_SMALL,
@@ -758,15 +759,16 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
   {
     name: 'no ingredient statement, and no exemption claimed',
     defect:
-      'A packaged food listing nothing it is made of. §101.100 exempts some foods, but the ' +
+      'A food the label says is made from two or more ingredients, listing none of them. ' +
+      '§403(i)(2) requires the name of each, and §101.100 exempts some foods, but the ' +
       'exemption turns on facts about the product rather than the label and this one does not ' +
       'claim it — so silence here is a missing statement, not an exempt one.',
-    data: { ...BASE, ingredients: [] },
+    data: { ...BASE, ingredients: [], singleIngredient: false },
     stock: CONFORMING_STOCK,
     expected: {
       code: FDA_INGREDIENTS_MISSING,
       severity: 'blocking',
-      citation: '21 CFR 101.4(a)(1)',
+      citation: 'FD&C Act §403(i)(2)',
     },
   },
   {
@@ -963,6 +965,27 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
         const { allergenSpecificType: _dropped, ...rest } = ingredient
         return { ...rest, name: 'nut pieces' }
       }),
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
+      severity: 'violation',
+      citation: 'FD&C Act §403(w)(2)',
+    },
+  },
+  {
+    name: 'a tree nut whose specific type is given as "tree nuts"',
+    defect:
+      'The specific type is stated, but it is the category again. §403(w)(2) means "the name ' +
+      'of the specific type of nut", and "Contains: tree nuts" is what that sentence exists to ' +
+      'rule out; a check that accepted any non-blank type let it print and clear.',
+    data: {
+      ...BASE,
+      ingredients: BASE_INGREDIENTS.map((ingredient) =>
+        ingredient.allergen === 'tree-nuts'
+          ? { ...ingredient, name: 'nut pieces', allergenSpecificType: 'Tree Nuts' }
+          : { ...ingredient },
+      ),
     },
     stock: CONFORMING_STOCK,
     expected: {
@@ -1409,6 +1432,20 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     stock: CONFORMING_STOCK,
     expected: {
       code: FDA_NET_QUANTITY_METRIC_MISSING,
+      severity: 'violation',
+      citation: '15 U.S.C. 1453(a)(2)',
+    },
+  },
+  {
+    name: 'a metric declaration stated in ounces',
+    defect:
+      'Something is in the metric field, but it is the inch/pound system again. The pass took ' +
+      'any text there as the SI declaration 1453(a)(2) requires, so "12 oz" twice cleared both ' +
+      'systems.',
+    data: { ...BASE, netQuantity: { inchPound: 'NET WT 12 OZ', metric: '12 oz' } },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: FDA_NET_QUANTITY_METRIC_NOT_SI,
       severity: 'violation',
       citation: '15 U.S.C. 1453(a)(2)',
     },

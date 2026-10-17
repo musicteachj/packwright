@@ -31,6 +31,13 @@
  * with the old bare flag gets an advisory asking which paragraph it claims. The
  * passes rest on the artwork like the rest. Read from the eCFR on 2026-09-16.
  *
+ * **Whether a list is owed at all is the Act's, not 101.4's.** FD&C Act §403(i)(2) requires
+ * the name of each ingredient "in case it is fabricated from two or more ingredients", and
+ * § 101.100(a) restates that scope. 101.4(a)(1) says how a list is written, not whether a
+ * food owes one. A single-ingredient food owes none, so a label with no list is judged only
+ * once it says whether the food is one ingredient, and stands down asking until it does.
+ * Read from govinfo (21 U.S.C. 343(i), 2024 edition) on 2026-10-17.
+ *
  * **Two rules, one for the list and one for its order.** They were one, and a rule may
  * judge or decline, never both. So on an assortment, where the statement was judged, a
  * listed ingredient with no stated percentage left the order unjudged and unnamed under
@@ -49,10 +56,11 @@ import type {
 import type { TextPrimitive } from '../../layout/types'
 import { INGREDIENT_THRESHOLD_PERCENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
-import { finding, passedOnArtwork, untitled } from '../finding'
+import { finding, passedOnArtwork, passedOnDocument, untitled } from '../finding'
 import type { Decline, DeclinedFact, UsFoodContext, UsFoodRule } from '../types'
 
 export const FDA_INGREDIENTS_MISSING = 'FDA_INGREDIENTS_MISSING'
+export const FDA_INGREDIENTS_NOT_REQUIRED = 'FDA_INGREDIENTS_NOT_REQUIRED'
 export const FDA_INGREDIENT_STATEMENT_MET = 'FDA_INGREDIENT_STATEMENT_MET'
 export const FDA_INGREDIENT_NAME_MISSING = 'FDA_INGREDIENT_NAME_MISSING'
 export const FDA_INGREDIENTS_OUT_OF_ORDER = 'FDA_INGREDIENTS_OUT_OF_ORDER'
@@ -66,6 +74,16 @@ const CITATION: Citation = {
   authority: 'FDA',
   reference: '21 CFR 101.4(a)(1)',
   title: 'Ingredients listed by common or usual name in descending order of predominance by weight',
+}
+
+/**
+ * The duty itself: §403(i)(2), "in case it is fabricated from two or more ingredients, the
+ * common or usual name of each such ingredient". Titled with the subsection's own heading.
+ */
+const INGREDIENTS_REQUIRED: Citation = {
+  authority: 'FDA',
+  reference: 'FD&C Act §403(i)(2)',
+  title: 'Label where no representation as to definition and standard of identity',
 }
 
 const EXEMPTION: Citation = {
@@ -203,12 +221,14 @@ export const usFoodIngredientListRule: UsFoodRule = {
   citation: CITATION,
   citations: [
     CITATION,
+    INGREDIENTS_REQUIRED,
     EXEMPTION,
     ...Object.values(EXEMPTIONS).map((exemption) => exemption.citation),
     ASSORTMENT,
   ],
   codes: {
     [FDA_INGREDIENTS_MISSING]: ['blocking'],
+    [FDA_INGREDIENTS_NOT_REQUIRED]: ['pass'],
     [FDA_INGREDIENT_NAME_MISSING]: ['violation'],
     [FDA_INGREDIENT_STATEMENT_MET]: ['pass'],
     [FDA_INGREDIENTS_EXEMPT]: ['pass'],
@@ -217,6 +237,26 @@ export const usFoodIngredientListRule: UsFoodRule = {
     [FDA_ASSORTMENT_STATEMENT_INCOMPLETE]: ['violation'],
   },
   appliesTo: 'us-food',
+
+  /**
+   * A label with no list, no exemption claimed, and no word on whether the food is one
+   * ingredient. §403(i)(2) owes a list only of a food "fabricated from two or more
+   * ingredients", so the missing list is reported once the label says the food is one of
+   * those, and excused once it says it is not.
+   */
+  declines(context: UsFoodContext): Decline | undefined {
+    if (usFoodIngredientListRule.check(context).length > 0) return undefined
+    const { data } = context
+    if ((data.ingredients ?? []).length > 0 || data.singleIngredient !== undefined) return undefined
+    return {
+      reason:
+        'Whether the label owes an ingredient statement cannot be told while it does not say ' +
+        'whether the food is made from a single ingredient. A food made from two or more must ' +
+        'list them. State whether it is a single ingredient and this check will run.',
+      citation: INGREDIENTS_REQUIRED,
+      wants: ['singleIngredient'],
+    }
+  },
 
   check(context: UsFoodContext): Finding[] {
     const { data } = context
@@ -284,19 +324,43 @@ export const usFoodIngredientListRule: UsFoodRule = {
       ]
     }
 
-    if (ingredients.length === 0) {
+    // §403(i)(2) owes the list only of a food "fabricated from two or more ingredients".
+    // Unstated, the rule stands down and asks (`declines` above); it does not guess.
+    if (ingredients.length === 0 && data.singleIngredient === true) {
+      return [
+        // A fact about the food, not about anything printed: the document. No element,
+        // because no statement is drawn and nothing is withheld by this pass.
+        passedOnDocument(
+          usFoodIngredientListRule,
+          FDA_INGREDIENTS_NOT_REQUIRED,
+          'The label says the food is made from a single ingredient, so no ingredient ' +
+            'statement is required: §403(i)(2) requires one only of a food made from two or ' +
+            'more. Not checked here: that the food is a single ingredient, and, with nothing ' +
+            'listed, whether it is a major food allergen; list the ingredient with its ' +
+            'allergen for that check to run.',
+          undefined,
+          INGREDIENTS_REQUIRED,
+        ),
+      ]
+    }
+
+    if (ingredients.length === 0 && data.singleIngredient === false) {
       return [
         finding(usFoodIngredientListRule, {
           code: FDA_INGREDIENTS_MISSING,
           severity: 'blocking',
           message:
-            'The label bears no ingredient statement. A packaged food must list its ingredients ' +
+            'The label bears no ingredient statement. It says the food is made from two or ' +
+            'more ingredients, and §403(i)(2) then requires the common or usual name of each, ' +
             'unless § 101.100 exempts it, which this label does not claim.',
           measurement: { actual: 'no ingredients listed', required: 'an ingredient statement' },
           elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
+          citation: INGREDIENTS_REQUIRED,
         }),
       ]
     }
+
+    if (ingredients.length === 0) return []
 
     // 101.4(a)(1) does not merely require a list — ingredients "shall be listed
     // by **common or usual name**". An entry with no name at all is not one, and
