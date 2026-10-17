@@ -10,6 +10,14 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **`CLAUDE.md` carries the backlog freeze.** Every session loads it first, and it still asked for a hedge review of
+  `dev` every second or third stage and for every finding to be recorded in the backlog with its reasoning, which
+  would undo the freeze decided on 2026-10-17. Until Phase 8 is deployed, the hedge row is suspended, and a finding
+  gets work only if it is a false clearance, a citation that does not say, or cannot be shown to say, what the
+  finding claims, a crash, data loss or a security hole. The words "or cannot be shown to say" keep the bar in step
+  with the rule that an unverifiable citation does not ship; the backlog's notice says the same. Both additions point
+  to `docs/DESIGN.md` § Phase 8 for when they end, so the rules return to normal after launch.
+
 - **`docs/BACKLOG.md` is frozen until Phase 8 is deployed.** It had grown from 888 lines to 1,242 in the eight days
   after it was pared down on 2026-10-09 (`a422483`), with every review adding to it, and sessions kept reading it as
   work to do. A notice at its top now says what James decided on 2026-10-17: until then, a finding gets work only if
