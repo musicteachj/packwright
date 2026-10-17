@@ -353,12 +353,12 @@ symbology actually requires and read as reassurance. You cannot currently produc
 symbologies, so this does not bite today; it is recorded because the silence is deliberate and would otherwise
 look like an oversight if it ever became reachable.
 
-### A Digital Link you describe is judged as printed, and five things about it are not
+### A Digital Link you describe is judged as printed, and six things about it are not
 
 When a label is checked from its description (through `/mcp`'s `check_label`), its Digital Link is given exactly
 as printed and judged as written: a URI that is not a conformant GS1 Digital Link is reported against GS1 Digital
 Link URI Syntax 1.7.0 §4, and one using the removed convenience alphas, `/gtin/` in place of `/01/`, against §4.1.
-Five things stop the link's pass without a finding, and the report says each as a limit of this tool: under
+Six things stop the link's pass without a finding, and the report says each as a limit of this tool: under
 "checks that did not run", or in the finding's own words where the link has a finding too:
 
 - **The link carries a GTIN other than the barcode's.** No GS1 clause saying the two must match has been read for
@@ -374,6 +374,10 @@ Five things stop the link's pass without a finding, and the report says each as 
 - **A GS1 value in the link carries a double quote,** in the lot, the serial or any other. §4.2 writes one unencoded
   and RFC 3986 allows one only as `%22`, so no form satisfies both, and the tool passes neither. The same holds for
   a lot or serial entered in the editor.
+- **The link ends in a well-formed fragment,** as in `https://id.example.com/01/…#top`. The grammar of URI Syntax
+  1.7.0 §4, which governs, has no place for one, while its informative §3 describes a fragment as an optional part of
+  any Web URI, and none reaches a resolver. The tool neither faults it on a reading the standard does not plainly
+  support nor passes it. A fragment RFC 3986 §3.5 does not allow is a fault, since the link is then no web address.
 
 The link's stem may hold anything, segments that look like a GS1 key included: the tool judges the one reading of the
 path the grammar allows. `https://x.com/414/1234567890128/01/…` is a stem and a GTIN, since a GLN's path cannot go on

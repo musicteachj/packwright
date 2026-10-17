@@ -173,6 +173,26 @@ would leave nothing for a stand-in to do. The same change would let the parser's
 `PATHS` become one walk over the grammar, which the same review asked for; the two now share one table
 (`QUALIFIER_ORDER` is taken from `PATHS`), so they cannot drift on data, only in code.
 
+**Recognize a Digital Link by the standard's own §6.1 procedure, before extending the hand-written parser again.**
+Worth a stage of its own before deployment. Six review rounds on #97 (2026-10-16 and 17) each found another corner of
+URI Syntax 1.7.0's ABNF that `parseDigitalLinkUri` did not cover: hosts, percent-encoding, which key opens the path,
+encoded query keys, then fragments and empty query parameters. The parser is a hand-written partial recognizer of the
+grammar, and reviewers keep finding the parts not yet written. §6.1, "Recognising a GS1 Digital Link URI", read
+2026-10-17, offers two things, and neither is a full recognizer. Its regular expressions are a gate only: §6.1.3 says
+a string matching RE1 "plausibly is an uncompressed GS1 Digital Link URI", and one matching none "definitely is not a
+conformant GS1 Digital Link URI", so RE1 could refuse with a citation what fails it, but cannot pass anything. §6.1.4
+points to the GS1 Barcode Syntax Resource, which "validates the GS1 Application Identifiers and their associated
+values" but "does not aim to address all possible validation scenarios". The stage would read both, decide whether RE1
+should guard the parser and whether the Syntax Resource (its license, and `label-core`'s rule of importing no
+framework) can judge the AI values, and replace what of the hand-written recognizer they cover. Recorded against it,
+from the fifth `high` review on #97, as clean-ups the same change would make: the optional marker on a `PATHS` step
+parsed three ways; `leniently` and `decoded` as two wrappers of one decode; the GTIN's shape restated in `valueFits`
+beside the builder's check; each candidate's key, value and path computed two or three times, and `faultOf` re-running
+`readFrom` for a message; the query sorting AIs into keys and attributes by the AI table's flags rather than by
+`PATHS`, so `?414=` is an attribute while `?00=` is not (the standard's `queryStringParam` does list a GLN parameter,
+so that one passes rightly); and the values of a key's components this build does not hold, (254), (8011), (8019),
+(7040) and (8020), judged by §4.2 but not by their §4.6 formats.
+
 **The MCP test's fallback URI does not percent-encode.** `asCheckLabelTakesIt` in `apps/api/src/mcp/server.test.ts`
 puts the URI together by hand where `buildDigitalLinkUri` refuses the fields, without encoding the lot or serial. A
 sweep document with `/`, `?` or `#` in its lot would give the printed side a different fault from the configured

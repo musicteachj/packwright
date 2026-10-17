@@ -445,4 +445,15 @@ describe('gs1/digital-link judges a configured link as built, by the printed pat
       [GS1_DIGITAL_LINK_INVALID, 'GS1 Digital Link URI Syntax 1.7.0 §4'],
     ])
   })
+
+  it('stands down on a fragment, and says a limit as one neither passed nor faulted', () => {
+    // A fragment passed unjudged (found by `/code-review high` on #97). The limit's words
+    // say only that the tool judges it neither way, where "does not yet judge" read as
+    // the tool's fault for an empty host, and a sentence blaming the standard misplaced
+    // the gap for a key this build does not hold (both found by review).
+    const { findings, declined } = judged(printed('https://id.example.com/01/00036000291452#top'))
+    expect(findings).toEqual([])
+    expect(declined?.reason).toContain('a fragment, "#top"')
+    expect(declined?.reason).toContain('Packwright does not judge that either way')
+  })
 })

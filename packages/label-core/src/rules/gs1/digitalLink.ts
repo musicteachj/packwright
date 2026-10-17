@@ -181,7 +181,7 @@ function verdictOf(findings: Finding[], uri: string, as: As, unjudged: string[])
     unjudged.length === 0
       ? undefined
       : `The Digital Link as ${as} carries ${unjudged.join('; and ')}. Packwright does not ` +
-        'yet judge that, so the link is not passed: a limit of this tool.'
+        'judge that either way, so the link is not passed: a limit of this tool.'
 
   if (findings.length === 0) {
     if (limit !== undefined) return { findings, limit }

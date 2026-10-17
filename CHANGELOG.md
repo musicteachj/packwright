@@ -97,9 +97,16 @@ into a version only when there is a reason to.
   which one the printer meant blaming some segment wrongly. Codes, in the path and the query, are matched as printed,
   so `%30%31` is a stem segment and not the key (01); a query key that decodes to digits, `?%31%37=…`, is a fault
   under §4.10.1, which says an extension key "SHALL NOT use all-numeric keys", where it had passed with its expiry
-  unjudged. Three findings went to `docs/BACKLOG.md`: the MCP test's hand-built fallback URI, a printed link the
-  parser refuses losing the limits it would have said, and the stand-in link judged beside a field the builder
-  refuses.
+  unjudged. The fifth `high` review on #97 found two more false clearances, now fixed: a fragment passed unjudged,
+  `#<a%ZZ#b>` included; and an empty query, a stray `&` or `;`, or a parameter with no key passed, none of which
+  `queryStringComp` produces. A fragment RFC 3986 §3.5 does not allow is now a fault, since the string is then no URI
+  at all, and a well-formed one stands the link down, since §4's grammar has no place for one while its informative §3
+  describes one. Values this build cannot place, after a UPUI's (235) or a key it does not hold, are judged by §4.2
+  too, and a limit now says only that Packwright does not judge the link either way, where it said the tool did not
+  yet judge it. Four findings went to `docs/BACKLOG.md`: recognizing a Digital Link by the standard's own §6.1
+  procedure, as a stage before extending the hand-written parser again; the MCP test's hand-built fallback URI, a
+  printed link the parser refuses losing the limits it would have said, and the stand-in link judged beside a field
+  the builder refuses.
 
 - **`check_label` takes a Digital Link as printed, and judges the string.** It asked for a domain and a
   `useConvenienceAlphas` flag, so a model reading `https://id.example.com/gtin/…` off a label had to infer the flag,

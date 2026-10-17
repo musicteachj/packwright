@@ -708,6 +708,51 @@ describe('parseDigitalLinkUri on a value as printed, by §4.2', () => {
     expect(() => parseDigitalLinkUri(uri)).toThrow(reason)
   })
 
+  it.each([
+    ['an empty query', `${GTIN_PATH}?`],
+    ['a trailing "&"', `${GTIN_PATH}?17=261231&`],
+    ['a leading "&"', `${GTIN_PATH}?&17=261231`],
+    ['two ";" together', `${GTIN_PATH}?17=261231;;linkType=gs1:pip`],
+  ])('refuses %s, which queryStringComp does not produce', (_what, uri) => {
+    // §4.11, read 2026-10-17: a parameter after the "?" and after every delimiter. Each
+    // passed as conformant (found by `/code-review high` on #97).
+    expect(() => parseDigitalLinkUri(uri)).toThrow(/the query has an empty parameter/)
+  })
+
+  it('places a well-formed fragment, which §4 has no place for and §3 describes', () => {
+    // A fragment passed unjudged (found by `/code-review high` on #97).
+    expect(parseDigitalLinkUri(`${GTIN_PATH}#top`).unplaced).toEqual([
+      'a fragment, "#top", which the grammar of Digital Link URI Syntax 1.7.0 §4 has no ' +
+        'place for, and its informative §3 describes as part of a Web URI',
+    ])
+  })
+
+  it.each([
+    ['a raw "<"', '#<a'],
+    ['an escape that is not one', '#a%ZZ'],
+    ['a second "#"', '#a#b'],
+  ])('refuses a fragment with %s, which RFC 3986 §3.5 does not allow', (_what, fragment) => {
+    // fragment = *( pchar / "/" / "?" ), read 2026-10-17: no URI at all (found by review).
+    expect(() => parseDigitalLinkUri(`${GTIN_PATH}${fragment}`)).toThrow(
+      /is not one RFC 3986 §3\.5 allows/,
+    )
+  })
+
+  it.each([
+    ['a key-less value', `${GTIN_PATH}?=foo`],
+    ['a bare "="', `${GTIN_PATH}?17=261231&=`],
+  ])('refuses a query parameter with no key: %s', (_what, uri) => {
+    expect(() => parseDigitalLinkUri(uri)).toThrow(/has no key/)
+  })
+
+  it.each([
+    ["after a UPUI's (235)", `${GTIN_PATH}/235/A<B`],
+    ["after a GLN's (254)", 'https://x.com/414/9506000134352/254/A<B'],
+  ])('judges a value it cannot place by §4.2 too: %s', (_what, uri) => {
+    // Stood down as a limit, though a raw "<" is a fault §4.2 names (found by review).
+    expect(() => parseDigitalLinkUri(uri)).toThrow(/has "<" unencoded.*"%3C"/)
+  })
+
   it('refuses a query key that decodes to an AI code, which §4.10.1 forbids an extension', () => {
     // Read as printed, "%31%37" passed as somebody else's parameter, and its expiry went
     // unjudged; a resolver normalizing it reads AI (17). Found by `/code-review high` on
