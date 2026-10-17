@@ -9,10 +9,10 @@ import { onScopeDispose, ref, watch } from 'vue'
  * `document.title` last.
  */
 
-export const APP_NAME = 'packwright'
+export const APP_NAME = 'Packwright'
 
 /** What the window says on the landing page, and anywhere a route names nothing. */
-export const DEFAULT_TITLE = `${APP_NAME} — packaging label compliance`
+export const DEFAULT_TITLE = `${APP_NAME} · packaging label compliance`
 
 interface Claim {
   readonly owner: symbol
@@ -46,7 +46,7 @@ export function useDocumentTitle(source: () => string | undefined): void {
   })
 }
 
-/** "Rules — packwright", or the default where there is nothing to name. */
+/** "Rules · Packwright", or the default where there is nothing to name. */
 export function composeTitle(name: string | undefined): string {
-  return name === undefined ? DEFAULT_TITLE : `${name} — ${APP_NAME}`
+  return name === undefined ? DEFAULT_TITLE : `${name} · ${APP_NAME}`
 }

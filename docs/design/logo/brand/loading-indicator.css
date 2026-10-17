@@ -1,0 +1,26 @@
+/* Packwright loading indicator: the 2b mark, one full clockwise turn every 2.4 s (150°/s), linear.
+   The whole mark turns as one piece. Ink follows currentColor. */
+.pw-loader {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background-color: currentColor;
+  -webkit-mask: url("mark-32.svg") center / contain no-repeat;
+          mask: url("mark-32.svg") center / contain no-repeat;
+  transform-origin: 50% 50%;
+  animation: pw-turn 2.4s linear infinite;
+}
+.pw-loader--32 { width: 32px; height: 32px; }
+
+@keyframes pw-turn {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pw-loader { animation: none; }
+}
+
+/* Usage, always beside a text label:
+   <span class="pw-loader" aria-hidden="true"></span> <span>Loading</span> */

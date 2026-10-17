@@ -3,3 +3,5 @@ dist/
 coverage/
 package-lock.json
 *.md
+# Claude Design exports, kept byte for byte as the record of the logo decision.
+docs/design/logo/

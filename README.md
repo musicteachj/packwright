@@ -1,10 +1,10 @@
-# packwright
+# Packwright
 
 A packaging label generator that knows **why** a label is non-compliant, and cites the rule.
 
 Barcodes are one element of a packaging label. The rest — net quantity statements, hazard pictograms,
 nutrition panels, type sizes measured in fractions of an inch — is governed by real, citable regulation.
-packwright generates print-accurate labels and checks them against that regulation, reporting each finding
+Packwright generates print-accurate labels and checks them against that regulation, reporting each finding
 with the provision behind it.
 
 ```

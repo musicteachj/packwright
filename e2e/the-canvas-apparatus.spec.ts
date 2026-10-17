@@ -80,7 +80,10 @@ test('the overlay toggles are the component layer’s checkboxes, not bare input
     const geometry = await page.getByLabel(name).evaluate((input) => {
       const box = input.getBoundingClientRect()
       const row = input.closest('label')!.getBoundingClientRect()
-      const word = input.closest('label')!.querySelector('span')!.getBoundingClientRect()
+      const word = input
+        .closest('label')!
+        .querySelector(':scope > span:last-child')!
+        .getBoundingClientRect()
       return { box: box.width, row: row.height, gap: word.left - box.right }
     })
     expect(geometry.box, `${name}: the box`).toBeGreaterThanOrEqual(16)

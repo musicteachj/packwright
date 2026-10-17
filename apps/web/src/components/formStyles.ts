@@ -84,9 +84,23 @@ export const SELECT =
  * `size-4` (16px) is the box; `min-h-6` (24px) and `gap-2.5` (10px) are the
  * row. `items-start`, not `items-center`: a label that wraps to a second line
  * should keep its box level with the first line, not floating at the middle
- * of the whole block. `accent-notice` is already on the six GHS and UPC-A
- * checkboxes and on none of the fourteen US food ones.
+ * of the whole block.
+ *
+ * **Drawn, not native.** The browser's own box has rounded corners that
+ * `border-radius` cannot reach, so beside the square fields every checkbox
+ * looked like it came from another kit. `appearance-none` hands the box to
+ * these classes, which give it the fields' square border and surface, and
+ * `CheckboxField` draws the tick as an SVG sibling shown by `peer-checked`, the
+ * way `SelectField` draws its chevron, so its color stays a token.
+ *
+ * **The unticked edge is `chrome-400`, not the fields' `chrome-700`.** At
+ * `chrome-700` the edge measured 1.33:1 against the rail, so it vanished and
+ * an unticked box read about 2px smaller than a ticked one of the same 16px.
+ * A checkbox's edge is the control itself rather than decoration, so it
+ * answers to WCAG 2.2's 3:1 for non-text contrast, and `chrome-400` is the
+ * token `theme.test.ts` holds to 3:1 on every surface.
  */
-export const CHECKBOX_INPUT = 'accent-notice size-4 shrink-0'
+export const CHECKBOX_INPUT =
+  'peer bg-chrome-950 border-chrome-400 checked:bg-notice checked:border-notice focus-visible:outline-notice size-4 shrink-0 appearance-none border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50'
 
 export const CHECKBOX_LABEL = 'text-chrome-300 flex min-h-6 items-start gap-2.5 text-xs'

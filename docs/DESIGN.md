@@ -1,4 +1,4 @@
-# packwright — packaging label compliance generator
+# Packwright — packaging label compliance generator
 
 ## Context
 
@@ -460,8 +460,12 @@ Mono for anything that is an identifier or a measurement — GTINs, SSCCs, eleme
   drawing. Used literally on the canvas (label dimensions, quiet-zone widths, type heights) and echoed as
   section dividers in the UI. The app is about measuring things against a standard, so measurement notation
   *is* the brand.
-- **Registration target** ⊕ — the logo mark, and the loading indicator. A rotating registration target is
-  domain-native and quietly delightful.
+- **Registration target on a dimension line**: the logo mark (`BrandMark.vue`), chosen in Claude Design on
+  2026-10-17 as direction 2b. A registration target whose horizontal arm ends in dimension ticks, set in
+  `chrome-100`; until then the mark was the font glyph ⊕ in `notice` blue. The rounds, the masters and the reasons
+  are in `docs/design/logo/README.md`. Claude Design also specified it as a loading indicator (one turn every
+  2.4 s, still under reduced motion), kept in `brand/loading-indicator.css` for the day the app has something to
+  wait on.
 - **Crop marks** at the canvas corners.
 
 ### Density and anti-patterns
@@ -740,6 +744,10 @@ group, ALB listener rule, Route 53 record, and the two Secrets Manager entries.
     an event stream.
   - `WHAT_IS_NOT_CHECKED_URL` in `apps/api/src/mcp/server.ts` points at `dev`, because the document is not on
     `main`; move it to `main` with the release.
+- **Link-preview tags (recorded 2026-10-17).** `apps/web/public/og-image.png` (1200 × 630) ships already, but
+  nothing points at it: `og:image` needs an absolute address, which exists only once the host serves. Add
+  `og:title`, `og:description`, `og:image` (`https://packwright.jameslittlefield.net/og-image.png`), `og:url` and
+  `twitter:card` (`summary_large_image`) to `apps/web/index.html`, then check a preview in one link debugger.
 
 This should be a short phase. `barcode-crud` already proves this exact shape — Vue + Express + Mongo, single
 container, shared cluster and ALB — so it is provisioning against a known-good reference rather than working

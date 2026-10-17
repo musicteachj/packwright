@@ -1,4 +1,4 @@
-# packwright — project rules
+# Packwright — project rules
 
 A packaging label compliance generator. It produces print-accurate GS1 retail, GHS chemical and FDA food
 labels, and reports why a label is non-compliant with a citation for every finding.

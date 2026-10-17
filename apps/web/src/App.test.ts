@@ -104,12 +104,12 @@ describe('the masthead', () => {
 describe('the window title', () => {
   for (const [path, title] of [
     ['/', DEFAULT_TITLE],
-    ['/labels', 'Saved labels — packwright'],
-    ['/audit', 'Audit a label — packwright'],
-    ['/rules', 'Rules — packwright'],
-    ['/design', 'Design — packwright'],
-    ['/labels/new', 'New label — packwright'],
-    ['/no-such-page', 'Page not found — packwright'],
+    ['/labels', 'Saved labels · Packwright'],
+    ['/audit', 'Audit a label · Packwright'],
+    ['/rules', 'Rules · Packwright'],
+    ['/design', 'Design · Packwright'],
+    ['/labels/new', 'New label · Packwright'],
+    ['/no-such-page', 'Page not found · Packwright'],
   ] as const) {
     it(`names ${path}`, async () => {
       await mountAt(path)
@@ -121,14 +121,14 @@ describe('the window title', () => {
 describe('the window title of a saved label', () => {
   it('is the label’s name, which the editor knows and its route does not', async () => {
     await mountAt('/labels/abc123')
-    expect(document.title).toBe('Granola 340g — packwright')
+    expect(document.title).toBe('Granola 340g · Packwright')
   })
 
   it('goes back to the route’s own once the editor is left', async () => {
     const { router } = await mountAt('/labels/abc123')
     await router.push('/rules')
     await flushPromises()
-    expect(document.title).toBe('Rules — packwright')
+    expect(document.title).toBe('Rules · Packwright')
   })
 })
 

@@ -22,7 +22,15 @@ const NODE_BUILTINS = builtinModules
 export default defineConfigWithVueTs(
   {
     name: 'packwright/ignores',
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      // Claude Design's exports, kept byte for byte, and the gitignored screenshot and export scratch folders:
+      // neither is this project's code, and ESLint does not read `.gitignore`.
+      'docs/design/logo/**',
+      'docs/ui-audit-*/**',
+    ],
   },
 
   js.configs.recommended,

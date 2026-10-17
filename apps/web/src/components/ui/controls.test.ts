@@ -29,7 +29,16 @@ it('gives a checkbox a target a finger can hit, and a gap to its own word', () =
   expect(row.get('label').classes()).toContain('gap-2.5')
   expect(row.get('label').classes()).toContain('min-h-6')
   expect(row.get('label').classes()).toContain('items-start')
-  expect(row.get('input').classes()).toContain('accent-notice')
+  // Drawn rather than native, so it can be square like the fields beside it.
+  expect(row.get('input').classes()).toContain('appearance-none')
+  expect(row.get('input').classes()).toContain('checked:bg-notice')
+  expect(row.find('[data-tick]').exists()).toBe(true)
+  // The edge is the control, so it takes the token held to 3:1 on every surface. At the fields'
+  // chrome-700 it measured 1.33:1 and an unticked box read smaller than a ticked one.
+  expect(row.get('input').classes()).toContain('border-chrome-400')
+  // The tick is a sibling, so the input's own `disabled:opacity-50` does not reach it: a disabled,
+  // ticked box would fade while its tick stayed at full strength.
+  expect(row.get('[data-tick]').classes()).toContain('peer-disabled:opacity-50')
 })
 
 it('reserves room for the select chevron', () => {

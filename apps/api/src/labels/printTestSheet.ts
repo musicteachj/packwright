@@ -123,7 +123,7 @@ export function buildPrintTestSheet(): ResolvedLayout {
   let cursorYMm = MARGIN_MM
 
   primitives.push(
-    caption(`packwright print test — expected GTIN ${EXPECTED_GTIN}`, MARGIN_MM, cursorYMm),
+    caption(`Packwright print test: expected GTIN ${EXPECTED_GTIN}`, MARGIN_MM, cursorYMm),
   )
   cursorYMm += CAPTION_SIZE_MM * 2
   primitives.push(

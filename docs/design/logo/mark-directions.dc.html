@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#14120f;color:#ebe7e0;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#ebe7e0;text-decoration:none}a:hover{color:#fdfcfa}
+@keyframes pw-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.pw-spin{animation:none!important}}
+</style>
+</helmet>
+<section data-screen-label="Round 2" style="padding:56px;display:flex;flex-direction:column;gap:40px;background:#14120f;border-bottom:1px solid #34302b">
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:880px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.2em;color:#8f887d">PACKWRIGHT MARK · ROUND 2 · REFINING <a href="#1c" style="text-decoration:underline">1c</a></div>
+    <h1 style="margin:0;font-size:32px;font-weight:600;line-height:40px">Tick height</h1>
+    <p style="margin:0;font-size:14px;line-height:22px;color:#b5aea3;text-wrap:pretty">Three tick heights on the 32 px master; ring, arms and stroke unchanged. Tick heights are whole units so the ends stay sharp: <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">6</span>, <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">8</span> and <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">10</span> of 32. At 16 px a tick has to be an odd number of pixels to center on the 1 px line, so 19% and 25% both come out at 3 px and 31% at 5 px. Ink stays chrome-100: <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">15.17:1</span> on chrome-950, <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">14.10:1</span> on chrome-900.</p>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+    <div id="2a" style="width:560px;display:flex;flex-direction:column;border:1px solid #34302b">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #34302b;background:#1c1a16">
+        <a href="#2a" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#14120f;background:#ebe7e0;padding:2px 7px">2a</a>
+        <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Ticks 19%</div>
+        <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">6/32 · 3 px at 16</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:36px;padding:28px 20px 24px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2a-32.svg" width="64" height="64" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">64 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2a-32.svg" width="32" height="32" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">32 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2a-16.svg" width="16" height="16" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="position:relative;width:128px;height:128px;background-image:linear-gradient(to right,#262320 1px,transparent 1px),linear-gradient(to bottom,#262320 1px,transparent 1px);background-size:8px 8px;outline:1px solid #34302b"><img src="marks/2a-16.svg" width="128" height="128" alt="" style="position:absolute;inset:0"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px · 8×</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #34302b">
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#14120f">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/2a-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:16px"><img src="marks/2a-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-950</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#1c1a16">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/2a-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:16px"><img src="marks/2a-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-900</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;padding:20px;border-top:1px solid #34302b">
+        <div style="display:flex;align-items:flex-end;gap:2px;padding:6px 8px 0;background:#1c1a16;border:1px solid #34302b">
+          <div style="display:flex;align-items:center;gap:8px;width:200px;height:34px;padding:0 12px;background:#14120f"><img src="marks/2a-16.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#ebe7e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · GS1 retail label</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:150px;height:34px;padding:0 12px"><img src="marks/2a-16.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#b5aea3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · Audit</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:120px;height:34px;padding:0 12px"><div style="width:16px;height:16px;background:#4a453e;flex:none"></div><span style="font-size:12px;color:#8f887d;white-space:nowrap;overflow:hidden">Other site</span></div>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:2px;padding:6px 8px 0;background:#ebe7e0;border:1px solid #d6d0c7">
+          <div style="display:flex;align-items:center;gap:8px;width:200px;height:34px;padding:0 12px;background:#fdfcfa"><img src="marks/2a-16-dark.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#14120f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · GS1 retail label</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:150px;height:34px;padding:0 12px"><img src="marks/2a-16-dark.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#4a453e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · Audit</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:120px;height:34px;padding:0 12px"><div style="width:16px;height:16px;background:#b5aea3;flex:none"></div><span style="font-size:12px;color:#6b655c;white-space:nowrap;overflow:hidden">Other site</span></div>
+        </div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">browser tabs · dark and light theme</span>
+      </div>
+    </div>
+
+    <div id="2b" style="width:560px;display:flex;flex-direction:column;border:1px solid #ebe7e0">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #34302b;background:#1c1a16">
+        <a href="#2b" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#14120f;background:#ebe7e0;padding:2px 7px">2b</a>
+        <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Ticks 25%</div>
+        <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#ebe7e0">recommended · 8/32 · 3 px at 16</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:36px;padding:28px 20px 24px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2b-32.svg" width="64" height="64" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">64 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2b-32.svg" width="32" height="32" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">32 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2b-16.svg" width="16" height="16" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="position:relative;width:128px;height:128px;background-image:linear-gradient(to right,#262320 1px,transparent 1px),linear-gradient(to bottom,#262320 1px,transparent 1px);background-size:8px 8px;outline:1px solid #34302b"><img src="marks/2b-16.svg" width="128" height="128" alt="" style="position:absolute;inset:0"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px · 8×</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #34302b">
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#14120f">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/2b-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:16px"><img src="marks/2b-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-950</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#1c1a16">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/2b-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:16px"><img src="marks/2b-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-900</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;padding:20px;border-top:1px solid #34302b">
+        <div style="display:flex;align-items:flex-end;gap:2px;padding:6px 8px 0;background:#1c1a16;border:1px solid #34302b">
+          <div style="display:flex;align-items:center;gap:8px;width:200px;height:34px;padding:0 12px;background:#14120f"><img src="marks/2b-16.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#ebe7e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · GS1 retail label</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:150px;height:34px;padding:0 12px"><img src="marks/2b-16.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#b5aea3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · Audit</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:120px;height:34px;padding:0 12px"><div style="width:16px;height:16px;background:#4a453e;flex:none"></div><span style="font-size:12px;color:#8f887d;white-space:nowrap;overflow:hidden">Other site</span></div>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:2px;padding:6px 8px 0;background:#ebe7e0;border:1px solid #d6d0c7">
+          <div style="display:flex;align-items:center;gap:8px;width:200px;height:34px;padding:0 12px;background:#fdfcfa"><img src="marks/2b-16-dark.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#14120f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · GS1 retail label</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:150px;height:34px;padding:0 12px"><img src="marks/2b-16-dark.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#4a453e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · Audit</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:120px;height:34px;padding:0 12px"><div style="width:16px;height:16px;background:#b5aea3;flex:none"></div><span style="font-size:12px;color:#6b655c;white-space:nowrap;overflow:hidden">Other site</span></div>
+        </div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">browser tabs · dark and light theme</span>
+      </div>
+    </div>
+
+    <div id="2c" style="width:560px;display:flex;flex-direction:column;border:1px solid #34302b">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #34302b;background:#1c1a16">
+        <a href="#2c" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#14120f;background:#ebe7e0;padding:2px 7px">2c</a>
+        <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Ticks 31%</div>
+        <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">10/32 · 5 px at 16</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:36px;padding:28px 20px 24px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2c-32.svg" width="64" height="64" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">64 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2c-32.svg" width="32" height="32" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">32 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2c-16.svg" width="16" height="16" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="position:relative;width:128px;height:128px;background-image:linear-gradient(to right,#262320 1px,transparent 1px),linear-gradient(to bottom,#262320 1px,transparent 1px);background-size:8px 8px;outline:1px solid #34302b"><img src="marks/2c-16.svg" width="128" height="128" alt="" style="position:absolute;inset:0"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px · 8×</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #34302b">
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#14120f">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/2c-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:16px"><img src="marks/2c-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-950</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#1c1a16">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/2c-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:16px"><img src="marks/2c-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-900</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;padding:20px;border-top:1px solid #34302b">
+        <div style="display:flex;align-items:flex-end;gap:2px;padding:6px 8px 0;background:#1c1a16;border:1px solid #34302b">
+          <div style="display:flex;align-items:center;gap:8px;width:200px;height:34px;padding:0 12px;background:#14120f"><img src="marks/2c-16.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#ebe7e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · GS1 retail label</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:150px;height:34px;padding:0 12px"><img src="marks/2c-16.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#b5aea3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · Audit</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:120px;height:34px;padding:0 12px"><div style="width:16px;height:16px;background:#4a453e;flex:none"></div><span style="font-size:12px;color:#8f887d;white-space:nowrap;overflow:hidden">Other site</span></div>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:2px;padding:6px 8px 0;background:#ebe7e0;border:1px solid #d6d0c7">
+          <div style="display:flex;align-items:center;gap:8px;width:200px;height:34px;padding:0 12px;background:#fdfcfa"><img src="marks/2c-16-dark.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#14120f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · GS1 retail label</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:150px;height:34px;padding:0 12px"><img src="marks/2c-16-dark.svg" width="16" height="16" alt=""><span style="font-size:12px;color:#4a453e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packwright · Audit</span></div>
+          <div style="display:flex;align-items:center;gap:8px;width:120px;height:34px;padding:0 12px"><div style="width:16px;height:16px;background:#b5aea3;flex:none"></div><span style="font-size:12px;color:#6b655c;white-space:nowrap;overflow:hidden">Other site</span></div>
+        </div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">browser tabs · dark and light theme</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="2-rec" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:32px;max-width:1744px">
+    <div style="display:flex;flex-direction:column;gap:16px;padding:24px;border:1px solid #34302b">
+      <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Recommendation · <a href="#2b">2b</a>, 25%</div>
+      <p style="margin:0;font-size:13px;line-height:20px;color:#b5aea3;text-wrap:pretty">At 8 of 32 units the ticks are under half the ring's 18-unit diameter, so the ring stays the subject and the ticks read as the ends of a line, as on the canvas callouts. <a href="#2c">2c</a> keeps a 5 px tick at 16 px, which is still more than half the ring there, and the wing shape returns. <a href="#2a">2a</a> is identical to 2b at 16 px and only a 6 px tick at 32 px, close enough to the 2 px line that it begins to read as a plain cross.</p>
+      <div style="display:flex;align-items:flex-end;gap:28px;padding-top:8px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="position:relative;width:192px;height:192px;background-image:linear-gradient(to right,#262320 1px,transparent 1px),linear-gradient(to bottom,#262320 1px,transparent 1px);background-size:12px 12px;outline:1px solid #34302b"><img src="marks/2b-16.svg" width="192" height="192" alt="" style="position:absolute;inset:0"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">2b · 16 px · 12×</span>
+        </div>
+        <p style="margin:0;max-width:240px;font-size:13px;line-height:20px;color:#b5aea3;text-wrap:pretty">Redrawn for 16 px. The ring is a single-pixel 9 px circle with no doubled steps on the diagonals. Arms and line are 1 px on column and row 7. Ticks are 3 px, centered on the line, with two pixels of line between each tick and the ring.</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px;padding:24px;border:1px solid #34302b">
+      <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Loading indicator · 2b</div>
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:28px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2b-32.svg" width="32" height="32" alt=""><img src="marks/2b-32.svg" width="16" height="16" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">0°</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2b-32.svg" width="32" height="32" alt="" style="transform:rotate(45deg)"><img src="marks/2b-32.svg" width="16" height="16" alt="" style="transform:rotate(45deg)"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">45°</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2b-32.svg" width="32" height="32" alt="" style="transform:rotate(90deg)"><img src="marks/2b-32.svg" width="16" height="16" alt="" style="transform:rotate(90deg)"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">90°</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/2b-32.svg" width="32" height="32" alt="" style="transform:rotate(135deg)"><img src="marks/2b-32.svg" width="16" height="16" alt="" style="transform:rotate(135deg)"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">135°</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-left:12px;padding-left:28px;border-left:1px solid #34302b">
+          <div style="display:flex;align-items:center;gap:10px">{{ spinner32 }}</div>
+          <div style="display:flex;align-items:center;gap:8px">{{ spinner16 }}<span style="font-size:12px;line-height:16px;color:#b5aea3">Loading</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">live</span>
+        </div>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:20px;color:#b5aea3;text-wrap:pretty">The whole mark turns as one piece, clockwise, at a constant <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">2.4 s</span> per revolution (<span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">150°/s</span>), linear, with no easing. The ring shows no motion; the arms and ticks carry it. The mark repeats every 180°, so the visible cycle is 1.2 s. Spin the 32 px master at every size, including 16 px: the pixel drawing only holds at 0° and 90°. Under prefers-reduced-motion the mark stays still and the "Loading" label carries the state.</p>
+    </div>
+  </div>
+</section>
+<section data-screen-label="Round 1" style="padding:56px;display:flex;flex-direction:column;gap:40px;background:#14120f">
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:880px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.2em;color:#8f887d">PACKWRIGHT MARK · ROUND 1</div>
+    <h1 style="margin:0;font-size:32px;font-weight:600;line-height:40px">Four directions</h1>
+    <p style="margin:0;font-size:14px;line-height:22px;color:#b5aea3;text-wrap:pretty">Every mark is one color, chrome-100 <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">#ebe7e0</span>: <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">15.17:1</span> on chrome-950 and <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">14.10:1</span> on chrome-900, against the 3:1 non-text minimum. Notice blue is held back this round. The 16 px drawings are separate pixel drawings on a 15-pixel grid, so 1 px strokes have a true center pixel; the last row and column are empty. 32 and 64 px use the 32 px master.</p>
+    <p style="margin:0;font-size:14px;line-height:22px;color:#b5aea3;text-wrap:pretty">Lockups are IBM Plex Sans 600 at 14 px beside the 16 px drawing, 8 px apart, then at 2×. Recommendation: <span style="color:#ebe7e0;font-weight:600">Packwright</span>, capitalized. It matches how the name appears in running text, and the cap P gives the mark a straight vertical to sit against.</p>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+    <div id="1a" style="width:620px;display:flex;flex-direction:column;border:1px solid #34302b">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #34302b;background:#1c1a16">
+        <a href="#1a" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#14120f;background:#ebe7e0;padding:2px 7px">1a</a>
+        <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Hairline target</div>
+        <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">lead concept</div>
+      </div>
+      <p style="margin:0;padding:16px 20px 0;font-size:13px;line-height:20px;color:#b5aea3;text-wrap:pretty">The registration mark as printers draw it: one circle, with a crosshair running past it on all four sides. At 16 px the circle is plotted pixel by pixel at radius 5 so it stays round without blur. It repeats every 90°, so as a loader the turn shows only between quarter positions.</p>
+      <div style="display:flex;align-items:flex-end;gap:36px;padding:28px 20px 24px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1a-32.svg" width="64" height="64" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">64 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1a-32.svg" width="32" height="32" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">32 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1a-16.svg" width="16" height="16" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="position:relative;width:128px;height:128px;background-image:linear-gradient(to right,#262320 1px,transparent 1px),linear-gradient(to bottom,#262320 1px,transparent 1px);background-size:8px 8px;outline:1px solid #34302b">
+            <img src="marks/1a-16.svg" width="128" height="128" alt="" style="position:absolute;inset:0;image-rendering:pixelated">
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px · 8×</span>
+        </div>
+        <sc-if value="{{ showRotation }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-left:auto">
+            <div style="display:flex;gap:14px"><img src="marks/1a-32.svg" width="32" height="32" alt=""><img src="marks/1a-32.svg" width="32" height="32" alt="" style="transform:rotate(30deg)"><img src="marks/1a-32.svg" width="32" height="32" alt="" style="transform:rotate(60deg)"></div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">0° · 30° · 60°</span>
+          </div>
+        </sc-if>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #34302b">
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#14120f">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1a-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1a-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-950</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#1c1a16">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1a-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1a-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-900</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:40px;padding:24px 20px;border-top:1px solid #34302b">
+        <div style="display:flex;align-items:center;gap:16px"><img src="marks/1a-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+        <div style="display:flex;align-items:center;gap:16px"><img src="marks/1a-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">packwright</span></div>
+      </div>
+    </div>
+
+    <div id="1b" style="width:620px;display:flex;flex-direction:column;border:1px solid #34302b">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #34302b;background:#1c1a16">
+        <a href="#1b" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#14120f;background:#ebe7e0;padding:2px 7px">1b</a>
+        <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Split target</div>
+        <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">lead concept, variant</div>
+      </div>
+      <p style="margin:0;padding:16px 20px 0;font-size:13px;line-height:20px;color:#b5aea3;text-wrap:pretty">Adds the solid quadrants found at the center of real registration marks. Two opposite quadrants are filled, so the mark repeats only every 180° and a spin is visible at every frame. Heavier at 16 px, where the ring's diagonals double up.</p>
+      <div style="display:flex;align-items:flex-end;gap:36px;padding:28px 20px 24px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1b-32.svg" width="64" height="64" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">64 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1b-32.svg" width="32" height="32" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">32 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1b-16.svg" width="16" height="16" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="position:relative;width:128px;height:128px;background-image:linear-gradient(to right,#262320 1px,transparent 1px),linear-gradient(to bottom,#262320 1px,transparent 1px);background-size:8px 8px;outline:1px solid #34302b">
+            <img src="marks/1b-16.svg" width="128" height="128" alt="" style="position:absolute;inset:0;image-rendering:pixelated">
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px · 8×</span>
+        </div>
+        <sc-if value="{{ showRotation }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-left:auto">
+            <div style="display:flex;gap:14px"><img src="marks/1b-32.svg" width="32" height="32" alt=""><img src="marks/1b-32.svg" width="32" height="32" alt="" style="transform:rotate(30deg)"><img src="marks/1b-32.svg" width="32" height="32" alt="" style="transform:rotate(60deg)"></div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">0° · 30° · 60°</span>
+          </div>
+        </sc-if>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #34302b">
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#14120f">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1b-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1b-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-950</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#1c1a16">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1b-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1b-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-900</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:40px;padding:24px 20px;border-top:1px solid #34302b">
+        <div style="display:flex;align-items:center;gap:16px"><img src="marks/1b-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+        <div style="display:flex;align-items:center;gap:16px"><img src="marks/1b-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">packwright</span></div>
+      </div>
+    </div>
+
+    <div id="1c" style="width:620px;display:flex;flex-direction:column;border:1px solid #34302b">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #34302b;background:#1c1a16">
+        <a href="#1c" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#14120f;background:#ebe7e0;padding:2px 7px">1c</a>
+        <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Target on a dimension line</div>
+      </div>
+      <p style="margin:0;padding:16px 20px 0;font-size:13px;line-height:20px;color:#b5aea3;text-wrap:pretty">The horizontal arm becomes a dimension line with tick ends, the notation the canvas uses for label sizes, so the mark says measured as well as aligned. The ring is smaller to make room for the ticks. Spinning, the ticks sweep a circle outside the ring.</p>
+      <div style="display:flex;align-items:flex-end;gap:36px;padding:28px 20px 24px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1c-32.svg" width="64" height="64" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">64 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1c-32.svg" width="32" height="32" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">32 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1c-16.svg" width="16" height="16" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="position:relative;width:128px;height:128px;background-image:linear-gradient(to right,#262320 1px,transparent 1px),linear-gradient(to bottom,#262320 1px,transparent 1px);background-size:8px 8px;outline:1px solid #34302b">
+            <img src="marks/1c-16.svg" width="128" height="128" alt="" style="position:absolute;inset:0;image-rendering:pixelated">
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px · 8×</span>
+        </div>
+        <sc-if value="{{ showRotation }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-left:auto">
+            <div style="display:flex;gap:14px"><img src="marks/1c-32.svg" width="32" height="32" alt=""><img src="marks/1c-32.svg" width="32" height="32" alt="" style="transform:rotate(30deg)"><img src="marks/1c-32.svg" width="32" height="32" alt="" style="transform:rotate(60deg)"></div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">0° · 30° · 60°</span>
+          </div>
+        </sc-if>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #34302b">
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#14120f">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1c-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1c-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-950</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#1c1a16">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1c-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1c-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-900</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:40px;padding:24px 20px;border-top:1px solid #34302b">
+        <div style="display:flex;align-items:center;gap:16px"><img src="marks/1c-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+        <div style="display:flex;align-items:center;gap:16px"><img src="marks/1c-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">packwright</span></div>
+      </div>
+    </div>
+
+    <div id="1d" style="width:620px;display:flex;flex-direction:column;border:1px solid #34302b">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #34302b;background:#1c1a16">
+        <a href="#1d" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#14120f;background:#ebe7e0;padding:2px 7px">1d</a>
+        <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Crop-mark P</div>
+      </div>
+      <p style="margin:0;padding:16px 20px 0;font-size:13px;line-height:20px;color:#b5aea3;text-wrap:pretty">Four crop corners, as on the canvas, trimming a geometric P built from the same 2-unit stroke. The only direction with a letter, so it identifies the product in a row of browser tabs. A letter does not rotate well, so the loader would need a separate target.</p>
+      <div style="display:flex;align-items:flex-end;gap:36px;padding:28px 20px 24px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1d-32.svg" width="64" height="64" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">64 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1d-32.svg" width="32" height="32" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">32 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px"><img src="marks/1d-16.svg" width="16" height="16" alt=""><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="position:relative;width:128px;height:128px;background-image:linear-gradient(to right,#262320 1px,transparent 1px),linear-gradient(to bottom,#262320 1px,transparent 1px);background-size:8px 8px;outline:1px solid #34302b">
+            <img src="marks/1d-16.svg" width="128" height="128" alt="" style="position:absolute;inset:0;image-rendering:pixelated">
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">16 px · 8×</span>
+        </div>
+        <sc-if value="{{ showRotation }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-left:auto">
+            <div style="display:flex;gap:14px"><img src="marks/1d-32.svg" width="32" height="32" alt=""><img src="marks/1d-32.svg" width="32" height="32" alt="" style="transform:rotate(30deg)"><img src="marks/1d-32.svg" width="32" height="32" alt="" style="transform:rotate(60deg)"></div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">0° · 30° · 60°</span>
+          </div>
+        </sc-if>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #34302b">
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#14120f">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1d-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1d-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-950</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#1c1a16">
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1d-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><img src="marks/1d-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">packwright</span></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6b655c">chrome-900</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:40px;padding:24px 20px;border-top:1px solid #34302b">
+        <div style="display:flex;align-items:center;gap:16px"><img src="marks/1d-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">Packwright</span></div>
+        <div style="display:flex;align-items:center;gap:16px"><img src="marks/1d-32.svg" width="32" height="32" alt=""><span style="font-size:28px;font-weight:600;line-height:32px">packwright</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showRotation&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Board&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const spin = (size) => React.createElement('img', { src: 'marks/2b-32.svg', width: size, height: size, alt: '', className: 'pw-spin', style: { animation: 'pw-spin 2.4s linear infinite' } });
+    return { showRotation: this.props.showRotation ?? true, spinner32: spin(32), spinner16: spin(16) };
+  }
+}
+</script>
+</body>
+</html>

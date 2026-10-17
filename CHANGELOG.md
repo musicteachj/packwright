@@ -10,6 +10,53 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **Checkboxes are square, like the fields.** The browser's own box has rounded corners that `border-radius` cannot
+  reach, so every checkbox looked like it came from another kit. `CHECKBOX_INPUT` now turns the native box off
+  (`appearance-none`) and draws it square on the fields' surface, filled `notice` when ticked, and
+  `CheckboxField` draws the tick as an SVG sibling in a token color, as `SelectField` draws its chevron. Every
+  checkbox in the app goes through `CheckboxField`, so this is all of them. `e2e/the-checkbox.spec.ts` checks the
+  box is drawn and the tick follows the checked state, and fails with the native box restored. The unticked edge is
+  `chrome-400` rather than the fields' `chrome-700`: at `chrome-700` it measured 1.33:1 against the rail, so an
+  unticked box read smaller than a ticked one of the same 16 px, and a checkbox's edge is the control itself, which
+  WCAG 2.2 holds to 3:1.
+
+- **The name is written "Packwright".** It appeared lowercase wherever a user meets it: the wordmark in both
+  headers, the landing heading, every window title (`APP_NAME`), the 404 page's sentence, the exported PDF's title
+  and creator, the print test sheet's caption, and the top of `README.md`, `docs/DESIGN.md` and `CLAUDE.md`. In a
+  sentence that reads as a typo. Identifiers stay lowercase: the npm package names, the MCP server's `name` (clients
+  build tool names from it, so changing it would rename every tool), the ECR repository and the hostnames. Earlier
+  entries in this file, and the dated plans, specs and experiments, are records and are left as written. Window
+  titles now separate with a middle dot ("Rules · Packwright") rather than an em dash, the landing sentence takes a
+  comma, and the print test caption a colon, since the project's copy uses no em dashes. Em dashes elsewhere in the
+  interface's copy are left for after deployment.
+
+- **The editor header's controls are one height and sit on one line.** The type select, the name box, Save and
+  Export each brought their own padding (22 to 30 px tall at 1440) inside groups aligned by baseline, so no two shared
+  a top or bottom edge. Every one is now `TOOLBAR_CONTROL` (`chrome.ts`, 32 px), and the groups are centered. The type
+  select is set in sans rather than mono, since a label type is a name and not a measurement, and draws its arrow the
+  way `SelectField` does. `e2e/the-editor-header.spec.ts` measures heights and centers at 375 and 1440, and fails with
+  the old classes restored.
+
+### Added
+
+- **Packwright has a mark, a favicon and app icons.** The mark is a registration target on a dimension line,
+  direction 2b of three Claude Design rounds; `docs/design/logo/` keeps the boards, the masters and why the other
+  directions lost. `BrandMark.vue` draws it inline in `chrome-100` in both headers, replacing the font glyph ⊕ in
+  `notice` blue, which was also a severity color. `apps/web/public/` now holds the favicon, PNG icons at 32, 180,
+  192 and 512, a web manifest and the 1200 × 630 share image, linked from `index.html`; until now the tab
+  showed the browser's blank page icon. The favicon shipped by Claude Design had no fill and no theme switch, so it
+  rendered black and vanished on a dark tab bar; the shipped one switches ink with `prefers-color-scheme`. The
+  share image's link-preview tags need the site's absolute address, so they are a Phase 8 item in
+  `docs/DESIGN.md`. `e2e/the-brand.spec.ts` checks every linked icon is served with its type, the favicon's
+  switch, and the mark in both headers; each fails with its part reverted.
+
+- **A Claude Design brief for the logo, favicon and share image** (`docs/design/logo-brief.md`). The mark has only
+  ever been the font glyph ⊕, and the app has no favicon and no image for when its link is shared. The brief leads
+  with a properly drawn registration target, which `docs/DESIGN.md` already names as the mark and the loading
+  indicator. It keeps the mark off the four severity colors, which mean findings everywhere else in the app, and away
+  from checkmarks and seals, which would claim a compliance the tool does not certify. It lists the screenshots and
+  extracts to attach, and says how they were made, since they are regenerated rather than stored.
+
 - **`CLAUDE.md` carries the backlog freeze.** Every session loads it first, and it still asked for a hedge review of
   `dev` every second or third stage and for every finding to be recorded in the backlog with its reasoning, which
   would undo the freeze decided on 2026-10-17. Until Phase 8 is deployed, the hedge row is suspended, and a finding
