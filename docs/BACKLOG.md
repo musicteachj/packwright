@@ -1,5 +1,15 @@
 # Backlog
 
+> **Frozen until Phase 8 is deployed (James's decision, 2026-10-17).** This file is a record of why things were
+> not done, not a plan of what to do next. Until then, a finding gets work only if it is a false clearance, a
+> citation that does not say what the finding claims, a crash, data loss or a security hole. Anything else gets
+> one line here at most, and nobody offers an entry as the next piece of work. Where a section below calls an
+> entry worth doing, schedulable or a chore to do first, this notice governs. The file was pared down from 1,802
+> lines to 888 on 2026-10-09 (`a422483`) and had grown to 1,242 eight days later, every review adding to it, and
+> a file this size reads as a to-do list whatever its header says. Once Phase 8 is deployed it is decided once:
+> the few entries worth doing move to a short list of their own, and this file is archived where the code
+> comments that point into it still resolve.
+
 Things found and deliberately **not** done, with the reason. Mostly review findings that were real but
 outside the stage that surfaced them.
 

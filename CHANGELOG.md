@@ -8,6 +8,15 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Changed
+
+- **`docs/BACKLOG.md` is frozen until Phase 8 is deployed.** It had grown from 888 lines to 1,242 in the eight days
+  after it was pared down on 2026-10-09 (`a422483`), with every review adding to it, and sessions kept reading it as
+  work to do. A notice at its top now says what James decided on 2026-10-17: until then, a finding gets work only if
+  it is a false clearance, a citation that does not say what the finding claims, a crash, data loss or a security
+  hole, and anything else gets one line at most. Once Phase 8 is deployed, the few entries worth doing move to a
+  list of their own and the file is archived, kept where the code comments that point into it still resolve.
+
 ### Added
 
 - **A fourth re-check, of a wording that was not shipped** (`docs/experiments/2026-10-16-mcp-recheck-measurements/`).
