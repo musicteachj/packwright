@@ -103,10 +103,13 @@ into a version only when there is a reason to.
   at all, and a well-formed one stands the link down, since §4's grammar has no place for one while its informative §3
   describes one. Values this build cannot place, after a UPUI's (235) or a key it does not hold, are judged by §4.2
   too, and a limit now says only that Packwright does not judge the link either way, where it said the tool did not
-  yet judge it. Four findings went to `docs/BACKLOG.md`: recognizing a Digital Link by the standard's own §6.1
-  procedure, as a stage before extending the hand-written parser again; the MCP test's hand-built fallback URI, a
-  printed link the parser refuses losing the limits it would have said, and the stand-in link judged beside a field
-  the builder refuses.
+  yet judge it. The sixth found a query parameter that is not GS1's skipped unread, so `?x=<script>` and `?foo`
+  passed: every parameter must now have an "=", as §4.10.1's `extensionParameter` does, and one not judged as a GS1
+  attribute must be text RFC 3986 §3.4 allows, read that day, while a pass names such parameters as judged as URI text
+  only. Four findings went to `docs/BACKLOG.md`: recognizing a Digital Link by the standard's own §6.1 procedure, as a
+  stage before extending the hand-written parser again; the MCP test's hand-built fallback URI, a printed link the
+  parser refuses losing the limits it would have said, and the stand-in link judged beside a field the builder
+  refuses.
 
 - **`check_label` takes a Digital Link as printed, and judges the string.** It asked for a domain and a
   `useConvenienceAlphas` flag, so a model reading `https://id.example.com/gtin/…` off a label had to infer the flag,

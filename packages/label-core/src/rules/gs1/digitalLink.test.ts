@@ -456,4 +456,25 @@ describe('gs1/digital-link judges a configured link as built, by the printed pat
     expect(declined?.reason).toContain('a fragment, "#top"')
     expect(declined?.reason).toContain('Packwright does not judge that either way')
   })
+
+  it("faults a query RFC 3986 refuses, though its parameter is not GS1's", () => {
+    // "is conformant" was said of it (found by `/code-review high` on #97).
+    const { findings } = judged(
+      printed('https://id.example.com/01/00036000291452?17=261231&x=<script>'),
+    )
+    expect(findings.map((f) => [f.code, f.citation.reference])).toEqual([
+      [GS1_DIGITAL_LINK_INVALID, 'GS1 Digital Link URI Syntax 1.7.0 §4'],
+    ])
+  })
+
+  it('says in a pass which query parameters it judged as URI text only', () => {
+    // A pass said "conformant" with nothing about them (found by review on #97).
+    const { findings } = judged(
+      printed('https://id.example.com/01/00036000291452?linkType=gs1:pip'),
+    )
+    expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_VALID])
+    expect(findings[0]!.message).toContain(
+      "Its query parameters `linkType` are not GS1's, and are judged as URI text only.",
+    )
+  })
 })

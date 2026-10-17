@@ -317,6 +317,11 @@ export interface ParsedDigitalLink {
    * host is listed here for the same reason: `reg-name` allows it.
    */
   unplaced: string[]
+  /**
+   * The keys of query parameters that are not GS1's, judged as RFC 3986 text and no
+   * further, so a pass can say so: §4.10.1's own grammar for them is not judged.
+   */
+  extensions: string[]
 }
 
 /** AI by its convenience alpha, from the same table `segmentFor` emits them from. */
@@ -441,8 +446,11 @@ function decoded(segment: string): string {
 const UNRESERVED_AND_SUB_DELIMS = "A-Za-z0-9\\-._~!$&'()*+,;="
 const REG_NAME = new RegExp(`^(?:[${UNRESERVED_AND_SUB_DELIMS}]|%[0-9A-Fa-f]{2})*$`)
 const SEGMENT = new RegExp(`^(?:[${UNRESERVED_AND_SUB_DELIMS}:@]|%[0-9A-Fa-f]{2})*$`)
-/** RFC 3986 §3.5: `fragment = *( pchar / "/" / "?" )`, read 2026-10-17. */
-const FRAGMENT = new RegExp(`^(?:[${UNRESERVED_AND_SUB_DELIMS}:@/?]|%[0-9A-Fa-f]{2})*$`)
+/**
+ * RFC 3986 §3.4 and §3.5, read from rfc-editor.org on 2026-10-17, give the query and the
+ * fragment one body: `query = *( pchar / "/" / "?" )`, `fragment = *( pchar / "/" / "?" )`.
+ */
+const QUERY_OR_FRAGMENT = new RegExp(`^(?:[${UNRESERVED_AND_SUB_DELIMS}:@/?]|%[0-9A-Fa-f]{2})*$`)
 const IPV4 =
   /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$/
 const IPV_FUTURE = new RegExp(`^v[0-9A-Fa-f]+\\.[${UNRESERVED_AND_SUB_DELIMS}:]+$`, 'i')
@@ -542,17 +550,18 @@ export function judgeCustomUriStem(stem: string): { fault: string } | { host: st
  * from a component that may follow the key in none to GTIN qualifiers out of order or
  * repeated; an empty segment from the key on; any GS1 value, placed or not, with a
  * symbol §4.2 writes encoded left unencoded, or a letter or digit it writes as it is
- * encoded; a query parameter that is empty or has no key, against §4.11's
- * `queryStringComp`; a query key that decodes to digits, which §4.10.1 forbids an
- * extension; and a fragment RFC 3986 §3.5 does not allow. Codes, in the path and the
- * query, are otherwise matched as printed. What this build cannot judge it lists in
- * `unplaced` instead: a key its table does not hold, a UPUI's (235), a query AI it
- * does not know, a double quote in a value, a well-formed fragment, and an empty host,
- * which the grammar allows and no resolver can serve. It records convenience alphas
- * rather than refusing them, because what to say about them is the rule's business
- * (§4.1), and it does not widen or check a GTIN it reads from a single key: a short
- * GTIN and a wrong check digit are judged by the caller, which knows what the label's
- * barcode carries.
+ * encoded; a query parameter that is empty, has no key or has no "=", against §4.11
+ * and §4.10.1; one not judged as a GS1 attribute that RFC 3986 §3.4 does not allow; a
+ * query key that decodes to digits, which §4.10.1 forbids an extension; and a fragment
+ * RFC 3986 §3.5 does not allow. Codes, in the path and the query, are otherwise
+ * matched as printed. What this build cannot judge it lists in `unplaced` instead: a
+ * key its table does not hold, a UPUI's (235), a query AI it does not know, a double
+ * quote in a GS1 value, a well-formed fragment, and an empty host, which the grammar
+ * allows and no resolver can serve. The keys of parameters that are not GS1's it lists
+ * in `extensions`. It records convenience alphas rather than refusing them, because
+ * what to say about them is the rule's business (§4.1), and it does not widen or check
+ * a GTIN it reads from a single key: a short GTIN and a wrong check digit are judged
+ * by the caller, which knows what the label's barcode carries.
  */
 export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   const uri = printed.trim()
@@ -786,14 +795,7 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
           .join('; '),
     )
   }
-  // A fragment RFC 3986 refuses makes the string no URI under any reading, and is
-  // refused: `fragment = *( pchar / "/" / "?" )` (§3.5, read from rfc-editor.org on
-  // 2026-10-17). `#<a%ZZ#b>` breaks it three times (found by review on #97).
-  if (fragment !== undefined && !FRAGMENT.test(fragment.slice(1))) {
-    throw new DigitalLinkError(
-      `the fragment "${fragment}" is not one RFC 3986 §3.5 allows, so the link is no web address`,
-    )
-  }
+  // The path first, so its faults are named before the query's or the fragment's.
   const { stem, primary, qualifiers, convenienceAlphas, unplaced } = readFrom(
     live ?? candidates[0]!,
   )
@@ -802,6 +804,14 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   // which is informative, describes one as an optional part of any Web URI; and none
   // reaches a resolver. Faulting it would be a finding the standard does not plainly
   // support, and passing it passed (found by `/code-review high` on #97): stood down.
+  // One RFC 3986 refuses makes the string no URI under any reading, and is refused:
+  // `fragment = *( pchar / "/" / "?" )` (§3.5, read from rfc-editor.org on 2026-10-17).
+  // `#<a%ZZ#b>` breaks it three times (found by review on #97).
+  if (fragment !== undefined && !QUERY_OR_FRAGMENT.test(fragment.slice(1))) {
+    throw new DigitalLinkError(
+      `the fragment "${fragment}" is not one RFC 3986 §3.5 allows, so the link is no web address`,
+    )
+  }
   if (fragment !== undefined) {
     unplaced.push(
       `a fragment, "${fragment}", which the grammar of Digital Link URI Syntax 1.7.0 §4 ` +
@@ -812,6 +822,7 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   // GS1 attributes from the query. A numeric key is an AI whether or not the table
   // holds it; any other key is somebody else's business.
   const attributes: Gs1Element[] = []
+  const extensions: string[] = []
   const inPath = new Set([primary?.ai, ...qualifiers.map((q) => q.ai)])
   // "Within the URI query string, key=value pairs may be concatenated using & or ; as
   // a delimiter" (URI Syntax 1.7.0, read 2026-10-16), so both split.
@@ -825,16 +836,24 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
           'has one after the "?" and after every "&" or ";"',
       )
     }
-    // Every `queryStringParam` §4.11 lists, an AI's or an extension's, opens with a key.
+    const at = pair.indexOf('=')
+    // Every `queryStringParam` §4.11 lists, an AI's or an extension's, is a key, "=" and a
+    // value: `extensionParameter = extensionKey "=" extensionValue` (§4.10.1). `?foo`
+    // passed, as somebody else's parameter (found by `/code-review high` on #97).
+    if (at === -1) {
+      throw new DigitalLinkError(
+        `the query parameter "${pair}" has no "=", which every parameter Digital Link URI ` +
+          'Syntax 1.7.0 §4.11 lists has',
+      )
+    }
     if (pair.startsWith('=')) {
       throw new DigitalLinkError(
         `the query parameter "${pair}" has no key, which every parameter Digital Link URI ` +
           'Syntax 1.7.0 §4.11 lists opens with',
       )
     }
-    const at = pair.indexOf('=')
     // Matched as printed, as a path's codes are: §4 writes an AI's code as it is.
-    const name = at === -1 ? pair : pair.slice(0, at)
+    const name = pair.slice(0, at)
     // But a key that decodes to digits is no extension key either: "Any key=value pairs
     // used for extension data SHALL NOT use all-numeric keys to avoid conflict with
     // existing and future keys used for GS1 Application Identifiers" (URI Syntax 1.7.0
@@ -848,25 +867,44 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
           "writes an AI's code as it is",
       )
     }
+    // A parameter whose value is not judged as a GS1 attribute's is judged as URI text:
+    // `query = *( pchar / "/" / "?" )` (RFC 3986 §3.4, read 2026-10-17). One that is not
+    // GS1's was skipped unread, so `?x=<script>` passed as conformant (found by
+    // `/code-review high` on #97). A GS1 attribute's value goes to `valueOf` instead, which
+    // stands down on the double quote §4.2 writes unencoded rather than refusing it.
+    const asUriText = (): void => {
+      if (!QUERY_OR_FRAGMENT.test(pair)) {
+        throw new DigitalLinkError(
+          `the query parameter "${pair}" is not one RFC 3986 §3.4 allows, so the link is no web address`,
+        )
+      }
+    }
     if (/^[0-9]+$/.test(name) && getAiSpec(name) === undefined) {
+      asUriText()
       unplaced.push(`AI (${name}) in its query, which this build does not hold`)
       continue
     }
     const key = keyFor(name)
-    if (key === undefined) continue
+    if (key === undefined) {
+      asUriText()
+      extensions.push(name)
+      continue
+    }
     const spec = getAiSpec(key.ai)!
     if (spec.primaryKey || spec.qualifier || inPath.has(key.ai)) {
+      asUriText()
       unplaced.push(`AI (${key.ai}) in its query, where it is a key or qualifier`)
       continue
     }
     if (attributes.some((a) => a.ai === key.ai)) {
+      asUriText()
       unplaced.push(`AI (${key.ai}) more than once in its query`)
       continue
     }
     if (key.alpha !== undefined) convenienceAlphas.push(key.alpha)
     attributes.push({
       ai: key.ai,
-      value: at === -1 ? '' : valueOf(key.ai, pair.slice(at + 1), unplaced),
+      value: valueOf(key.ai, pair.slice(at + 1), unplaced),
     })
   }
 
@@ -878,5 +916,6 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
     attributes,
     convenienceAlphas,
     unplaced,
+    extensions,
   }
 }

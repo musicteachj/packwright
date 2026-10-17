@@ -172,11 +172,25 @@ function judgedAsWritten(written: string, gtin: string, as: As): Verdict {
     unjudged.push(...parsed.unplaced)
   }
 
-  return verdictOf(findings, uri, as, unjudged)
+  return verdictOf(findings, uri, as, unjudged, parsed.extensions)
 }
 
 /** The findings, with the pass where there are none and nothing unjudged, and the limit. */
-function verdictOf(findings: Finding[], uri: string, as: As, unjudged: string[]): Verdict {
+function verdictOf(
+  findings: Finding[],
+  uri: string,
+  as: As,
+  unjudged: string[],
+  extensions: readonly string[] = [],
+): Verdict {
+  // A pass says what it did not judge: a parameter that is not GS1's is RFC 3986 text to
+  // it, and §4.10.1's own grammar for one goes unread (found by review on #97).
+  const unread =
+    extensions.length === 0
+      ? ''
+      : ` Its query parameters ${extensions.map((key) => `\`${key}\``).join(', ')} are not ` +
+        "GS1's, and are judged as URI text only."
+
   const limit =
     unjudged.length === 0
       ? undefined
@@ -191,9 +205,9 @@ function verdictOf(findings: Finding[], uri: string, as: As, unjudged: string[])
         passedOnDocument(
           digitalLinkRule,
           GS1_DIGITAL_LINK_VALID,
-          as === 'printed'
+          (as === 'printed'
             ? `The Digital Link as printed, ${uri}, is conformant.`
-            : `The Digital Link resolves to ${uri}.`,
+            : `The Digital Link resolves to ${uri}.`) + unread,
         ),
       ],
     }

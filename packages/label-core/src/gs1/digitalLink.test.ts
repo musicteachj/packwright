@@ -273,6 +273,7 @@ describe('parseDigitalLinkUri', () => {
       attributes: [],
       convenienceAlphas: [],
       unplaced: [],
+      extensions: [],
     })
   })
 
@@ -737,6 +738,49 @@ describe('parseDigitalLinkUri on a value as printed, by §4.2', () => {
       /is not one RFC 3986 §3\.5 allows/,
     )
   })
+
+  it.each([
+    ['a raw "<" in somebody else\'s parameter', `${GTIN_PATH}?17=261231&x=<script>`],
+    ['an escape that is not one', `${GTIN_PATH}?x=a%ZZ`],
+    ['a raw "|" and "{"', `${GTIN_PATH}?x=a|b{c}`],
+  ])('refuses a query with %s, which RFC 3986 §3.4 does not allow', (_what, uri) => {
+    // query = *( pchar / "/" / "?" ), read 2026-10-17. A parameter that is not GS1's was
+    // skipped unread, and each of these passed (found by `/code-review high` on #97).
+    expect(() => parseDigitalLinkUri(uri)).toThrow(/is not one RFC 3986 §3\.4 allows/)
+  })
+
+  it('stands down on a double quote in a GS1 attribute in the query, as in the path', () => {
+    // The whole-query check refused it, where §4.2 writes it unencoded (found by review).
+    expect(parseDigitalLinkUri(`${GTIN_PATH}?240=A"B`).unplaced).toEqual([
+      'a double quote in the value of AI (240), which Digital Link URI Syntax 1.7.0 §4.2 ' +
+        'writes unencoded and RFC 3986 allows only encoded',
+    ])
+  })
+
+  it("names a GS1 attribute's symbol by §4.2, not by RFC 3986, in the query too", () => {
+    expect(() => parseDigitalLinkUri(`${GTIN_PATH}?240=A<B`)).toThrow(/§4\.2 writes "%3C"/)
+  })
+
+  it('names a fault in the path before one in the query or the fragment', () => {
+    // The query and fragment were judged first, and hid the path's fault (found by review).
+    expect(() => parseDigitalLinkUri(`${GTIN_PATH}/21/S/10/L?x=<#<`)).toThrow(
+      /not in their defined order/,
+    )
+  })
+
+  it("lists the keys of the parameters that are not GS1's", () => {
+    expect(parseDigitalLinkUri(`${GTIN_PATH}?17=261231&linkType=gs1:pip`).extensions).toEqual([
+      'linkType',
+    ])
+  })
+
+  it.each([`${GTIN_PATH}?foo`, `${GTIN_PATH}?17=261231&linkType`])(
+    'refuses a query parameter with no "=" in %s, which §4.10.1 and §4.11 require',
+    (uri) => {
+      // extensionParameter = extensionKey "=" extensionValue (§4.10.1): `?foo` passed.
+      expect(() => parseDigitalLinkUri(uri)).toThrow(/has no "="/)
+    },
+  )
 
   it.each([
     ['a key-less value', `${GTIN_PATH}?=foo`],

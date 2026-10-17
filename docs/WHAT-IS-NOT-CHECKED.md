@@ -384,6 +384,10 @@ path the grammar allows. `https://x.com/414/1234567890128/01/…` is a stem and 
 with a GTIN. A resolver that reads such a link differently would not be following the standard, and the tool does not
 guess at that.
 
+A query parameter that is not GS1's, `?x=1` say, is checked as URI text only: it must be text RFC 3986 allows and have
+an "=", but URI Syntax 1.7.0 §4.10.1's narrower grammar for such a key, and its reserved keywords `linkType` and
+`context`, are not judged. A pass names such parameters and says so.
+
 ---
 
 ## A label you describe rather than draw

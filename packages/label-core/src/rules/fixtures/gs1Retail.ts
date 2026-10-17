@@ -196,6 +196,22 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     },
   },
   {
+    name: 'Digital Link as printed, with a query that is no URI query',
+    defect:
+      'The query carries `x=<script>`; RFC 3986 §3.4 allows no raw `<` in a query, so the link is ' +
+      "no web address, and the parameter not being GS1's does not excuse it.",
+    data: {
+      gtin: VALID_GTIN,
+      digitalLinkAsPrinted: 'https://id.example.com/01/00036000291452?17=261231&x=<script>',
+    },
+    stock: DEFAULT_STOCK,
+    expected: {
+      code: GS1_DIGITAL_LINK_INVALID,
+      severity: 'violation',
+      citation: 'GS1 Digital Link URI Syntax 1.7.0 §4',
+    },
+  },
+  {
     name: 'Digital Link as printed, with its key qualifiers out of order',
     defect: 'The serial (21) is printed before the lot (10); URI Syntax 1.7.0 fixes the order.',
     data: {

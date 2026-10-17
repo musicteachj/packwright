@@ -149,12 +149,17 @@ title covers the convenience alphas alone; and the rest of URI Syntax 1.7.0's pa
 holds the GTIN's qualifiers (22), (10) and (21) only, so a UPUI path's (235) or a GLN's path stands down rather than
 being judged.
 
-**Query parameters that are not GS1's go unjudged in a Digital Link.** URI Syntax 1.7.0 §4 gives them a grammar of
-their own, `extensionParameter = extensionKey "=" extensionValue`, read 2026-10-16: the key may not be all digits, and
-the value is drawn from a set that leaves out, among others, a raw `<`. `parseDigitalLinkUri` skips any parameter
-whose key is not an AI, so `?x=a<b` passes. Found while fixing the percent-encoding of GS1 values the same day. Left
-because an extension parameter is the link owner's own data, the GS1 values are what the rule exists to judge, and
-the fix wants that grammar transcribed whole rather than one character at a time.
+**Query parameters that are not GS1's are judged as URI text, not by their own grammar.** Since 2026-10-17 every
+parameter must have a key and an "=", one not judged as a GS1 attribute must be text RFC 3986 §3.4 allows, and a pass
+names such parameters, so `?x=<script>` and `?foo` are faults; until the sixth `/code-review high` on #97 found them,
+both passed as conformant. What remains is URI Syntax 1.7.0 §4.10.1's own grammar for an extension, `extensionKey = *(
+DIGIT ) everythingExceptDigitsAndEquals *( DIGIT / everythingExceptDigitsAndEquals )`, which is narrower than RFC
+3986; its reserved keywords `linkType` and `context`, which it says "SHALL NOT be used except as defined" in the
+GS1-Conformant Resolver Standard, not read here; and a key that decodes to a removed convenience alpha, `%67tin`,
+which a resolver normalizing it reads as `gtin`, an AI code in no release since 1.3.0. Left for the §6.1 stage below,
+since an extension parameter is the link owner's data and none of these can now pass a string that is not a URI.
+
+
 
 **A printed Digital Link the parser refuses loses the limits it would have said.** `parseDigitalLinkUri` throws on
 the first thing the grammar refuses, and what it had listed in `unplaced` by then, such as an empty host,
@@ -195,9 +200,11 @@ so that one passes rightly); and the values of a key's components this build doe
 
 **The MCP test's fallback URI does not percent-encode.** `asCheckLabelTakesIt` in `apps/api/src/mcp/server.test.ts`
 puts the URI together by hand where `buildDigitalLinkUri` refuses the fields, without encoding the lot or serial. A
-sweep document with `/`, `?` or `#` in its lot would give the printed side a different fault from the configured
-side, and the equality check would compare two defects. Latent: no sweep document has such a lot. Found by the same
-review.
+sweep document with `/`, `?` or `#` in its lot would give the printed side a different fault from the configured side,
+and the equality check would compare two defects. Latent: no sweep document has such a lot. Found by the same review.
+The same fallback strips a domain's trailing slashes with `domain.replace(/\/+$/, '')`, which turns `https://` into
+`https:`, where the builder now uses `withoutTrailingSlashes` (found by the sixth `high` review on #97); a sweep
+document with an empty host and a refused field would compare two different defects.
 
 **The experiment harness can pass its spend cap.** It checks the cap before starting each conversation, with four in
 flight, so a study can end above it by up to four conversations' cost, about $0.30 at the worst seen. Every study so
