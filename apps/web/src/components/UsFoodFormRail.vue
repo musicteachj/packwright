@@ -43,6 +43,7 @@ import {
   US_FOOD_PACKAGINGS,
   US_FOOD_TYPE_DEFAULT,
   fontSizeMmForGlyphHeight,
+  measuredFamilyFor,
   mm,
   minNetQuantityTypeHeightMm,
   regulatedGlyphBasis,
@@ -176,11 +177,15 @@ const measuredLetter = computed(() =>
  * field that holds an *em*: ticking the box on a compliant label wrote 4.76 mm
  * and immediately reported the declaration at 54% of the minimum. That is the
  * exact conflation this whole stage exists to remove, reintroduced one layer up.
+ *
+ * In the face the declaration prints in, which is bold (21 CFR 101.7(h)), as the
+ * engine sizes it. From Regular's metrics the seed came out 1% larger than the
+ * size the engine draws when the field is left alone.
  */
 const compliantFontSizeMm = computed(() =>
   fontSizeMmForGlyphHeight(
     requiredLetterMm.value,
-    US_FOOD_TYPE_DEFAULT.fontFamily,
+    measuredFamilyFor(US_FOOD_TYPE_DEFAULT.fontFamily, US_FOOD_TYPE_DEFAULT.emphasisFontWeight),
     glyphBasis.value,
   ),
 )

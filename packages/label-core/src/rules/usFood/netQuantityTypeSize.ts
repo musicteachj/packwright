@@ -13,9 +13,9 @@
  *   some lower case.
  *
  * Neither letter is the em. `TextPrimitive.fontSizeMm` is the em, which for
- * IBM Plex Sans runs 1.852 times the "o" and 1.433 times a capital — so a rule
- * comparing the requirement against that field directly would clear type at 54%
- * of the legal minimum. This measures the drawn primitive through
+ * IBM Plex Sans SemiBold, the bold face the declaration prints in, runs 1.832
+ * times the "o" and 1.433 times a capital — so a rule comparing the requirement
+ * against that field directly would clear type at 55% of the legal minimum. This measures the drawn primitive through
  * `glyphHeightMm`, whose per-face ratios are generated from the embedded TTFs.
  *
  * **21 CFR 101.105 is not cited anywhere.** That was this section's number until
@@ -28,7 +28,7 @@ import {
   regulatedGlyphBasis,
   pdpAreaSqInches,
 } from '../../geometry/pdp'
-import { glyphHeightMm } from '../../text/measure'
+import { glyphHeightMm, measuredFamilyFor } from '../../text/measure'
 import type { TextPrimitive } from '../../layout/types'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
@@ -74,7 +74,13 @@ const judgedAsDrawn: UsFoodRule = {
     const requiredMm = minNetQuantityTypeHeightMm(pdpSqInches, markingMethod)
 
     const basis = regulatedGlyphBasis(drawn.text)
-    const actualMm = glyphHeightMm(drawn.fontSizeMm, drawn.fontFamily, basis)
+    // In the face it prints in: the declaration is bold, and a SemiBold "o" is not
+    // the height of a Regular one.
+    const actualMm = glyphHeightMm(
+      drawn.fontSizeMm,
+      measuredFamilyFor(drawn.fontFamily, drawn.fontWeight),
+      basis,
+    )
 
     const panelText = `${pdpSqInches.toFixed(1)} in² panel`
     const formedNote =

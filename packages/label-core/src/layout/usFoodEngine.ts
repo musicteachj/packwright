@@ -326,13 +326,22 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
     .filter((part) => part !== '')
     .join(' ')
 
+  // **Bold, because 21 CFR 101.7(h) says so**: the declaration "shall appear in
+  // conspicuous and easily legible boldface print or type". It was drawn in the
+  // regular face until the 2026-10-17 source verification, on every label, while
+  // the net quantity rules reported it compliant. Sized and measured in the face it
+  // prints in, SemiBold, whose lowercase "o" is taller than Regular's: sized from
+  // Regular's metrics it would print a little over the minimum, and the type-size
+  // rule, reading the same face, would disagree with the engine about why.
+  const netQuantityWeight = type.emphasisFontWeight
+  const netQuantityFace = measuredFamilyFor(type.fontFamily, netQuantityWeight)
   const basis = regulatedGlyphBasis(declaration)
   const requiredHeightMm = minNetQuantityTypeHeightMm(
     pdpAreaSqInches(data.container),
     data.markingMethod ?? 'printed',
   )
   const fontSizeMm =
-    data.netQuantityFontSizeMm ?? fontSizeMmForGlyphHeight(requiredHeightMm, type.fontFamily, basis)
+    data.netQuantityFontSizeMm ?? fontSizeMmForGlyphHeight(requiredHeightMm, netQuantityFace, basis)
 
   const panelTypeMm = data.informationPanelFontSizeMm ?? type.informationPanelMm
 
@@ -907,7 +916,7 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
   // three rules decline, and `netQuantityPresent` reports what is actually
   // wrong — that 21 CFR 101.7(a) requires a declaration and there is none.
   if (declaration !== '') {
-    const declarationWidthMm = measureTextMm(declaration, fontSizeMm, type.fontFamily)
+    const declarationWidthMm = measureTextMm(declaration, fontSizeMm, netQuantityFace)
     const declarationHeightMm = fontSizeMm * type.lineHeight
     const { xMm, yMm } = anchorBox(
       data.netQuantityAnchor ?? 'bottom-centre',
@@ -943,6 +952,7 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
       text: declaration,
       fontSizeMm,
       fontFamily: type.fontFamily,
+      fontWeight: netQuantityWeight,
       fill: '000000',
       anchor: 'start',
     })

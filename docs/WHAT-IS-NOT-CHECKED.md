@@ -110,6 +110,15 @@ left alone on purpose:
 - **(d), "lines generally parallel to the base".** This engine draws no rotated text, so there is nothing to
   catch.
 
+### 101.7(h): the net quantity in boldface
+
+The declaration "shall appear in conspicuous and easily legible boldface print or type". The engine draws it bold
+unconditionally, so, as with the statement of identity, a rule for it could never fail on a label this tool
+produced, and none is written. It was drawn in the regular face until 2026-10-17, while the net quantity rules
+reported it compliant; `docs/verification-2026-10-17.md` records how that was found. On a label you describe
+rather than draw, nothing judges whether the declaration is bold: a description does not carry the weight
+of the type, and no finding about it appears, either way.
+
 ### A package that owes both second columns
 
 Two paragraphs of 21 CFR 101.9 can each require a second column of nutrition information. 101.9(b)(12)(i)
