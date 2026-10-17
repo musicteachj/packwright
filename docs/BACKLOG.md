@@ -24,7 +24,12 @@ piece, that piece stayed, as an entry of its own. What remains is open.
 The entries fall into four kinds:
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. **None outstanding.** The last, `check_label` passing type
+provision that does not say what the finding claims. **None outstanding.** The last, the editor's Digital Link passing
+what the parser refuses in a resolver domain (found by `/code-review high` on #97), was fixed on 2026-10-17 by judging
+the link it builds with the printed path's code. The two before it were fixed on 2026-10-16
+(`CHANGELOG.md`): `gs1/digital-link` passing a GS1 value whose symbols are not percent-encoded as URI Syntax 1.7.0
+§4.2 writes them, and a configured resolver domain ending `#x` passing as a conformant Digital Link, the second found
+by the medium review of dev and the first while fixing it. Before them, `check_label` passing type
 sizes, placements and barcode geometry the engine chose itself (found by `/code-review high` on #86), was fixed on
 2026-10-11 (`rules/described.ts`, `CHANGELOG.md`). The MCP evaluation of 2026-10-10
 found two — `check_label` passing a label size nobody gave it, and `GHS_PICTOGRAM_NOT_REQUIRED` giving a reason its
@@ -134,15 +139,94 @@ answers and no answer asking instead of checking. **Still open:** one answer the
 the user it "meets the minimum", which no check can tell from a stated size; and one put the printed Digital Link in
 `artwork.text` instead of `digitalLink`, so nothing judged it. Both are the model's, one in 42 each.
 
-**A Digital Link as printed has three questions this tool leaves open.** Since 2026-10-16 `check_label` takes the
-link exactly as printed and `gs1/digital-link` judges the string (`parseDigitalLinkUri`). It withholds the pass,
-as a limit, where the link carries another GTIN than the barcode's, a GTIN in fewer than 14 digits, or something
-its tables cannot place. Each could become a finding with reading: whether GS1 requires a label's Digital Link to
-carry its barcode's GTIN (James's decision of 2026-10-16 was no pass until the text is read); §4.1's "SHALL be
-prefixed with leading zeroes" to 14 digits, already read, which wants its own code because the §4.1 citation's
-title covers the convenience alphas alone; and the rest of URI Syntax 1.7.0's path grammar, of which this build
+**A Digital Link as printed has two questions this tool leaves open.** Since 2026-10-16 `check_label` takes the link
+exactly as printed and `gs1/digital-link` judges the string (`parseDigitalLinkUri`). It withholds the pass, as a
+limit, where the link carries another GTIN than the barcode's, or something its tables cannot place. Each could become
+a finding with reading: whether GS1 requires a label's Digital Link to carry its barcode's GTIN (James's decision of
+2026-10-16 was no pass until the text is read); and the rest of URI Syntax 1.7.0's path grammar, of which this build
 holds the GTIN's qualifiers (22), (10) and (21) only, so a UPUI path's (235) or a GLN's path stands down rather than
-being judged.
+being judged. A third, a GTIN in fewer than 14 digits, became a §4 violation on 2026-10-17 (James's decision, on
+`/code-review high` of #97): §4.5's `gtin-value = 14DIGIT` is in the grammar §4 cites, so it needed no citation of its
+own.
+
+**An empty host in a Digital Link is a limit, and RFC 9110 may make it a fault.** URI Syntax 1.7.0 §4.11's `reg-name =
+*( … )` allows an empty host, so faulting one under §4 would cite the grammar against what it permits, and James
+decided on 2026-10-17 to keep it a limit. Two `/code-review high` rounds on #97 cited RFC 9110 §4.2.1, which they
+quote as "A sender MUST NOT generate an "http" URI with an empty host identifier". That would be a finding under a
+citation the rule does not yet carry, so it needs RFC 9110 read in the session that writes it, a citation added beside
+§4 and §4.1, and a fixture.
+
+**The convenience alphas are an advisory, and a short GTIN a violation, though both are non-conformant.** URI Syntax
+1.7.0 §4.1, read 2026-10-17, removes both from the grammar together, and its "Important" note calls them alike "legacy
+expressions" that "only existing infrastructure ... SHOULD continue to support". That note is about readers, not about
+what a label may print, and the alphas' own advisory already says the URI "is non-conformant to the current standard".
+So the short GTIN is rightly a violation under §4, and the alphas' advisory severity, which predates #97, is the
+inconsistency. Raising it to a violation is a change to what the rule reports, so it is James's to decide. Found by
+the per-commit review on #97.
+
+**Query parameters that are not GS1's are judged as URI text, not by their own grammar.** Since 2026-10-17 every
+parameter must have a key and an "=", one not judged as a GS1 attribute must be text RFC 3986 §3.4 allows, and a pass
+names such parameters, so `?x=<script>` and `?foo` are faults; until the sixth `/code-review high` on #97 found them,
+both passed as conformant. What remains is URI Syntax 1.7.0 §4.10.1's own grammar for an extension, `extensionKey = *(
+DIGIT ) everythingExceptDigitsAndEquals *( DIGIT / everythingExceptDigitsAndEquals )`, which is narrower than RFC
+3986; its reserved keywords `linkType` and `context`, which it says "SHALL NOT be used except as defined" in the
+GS1-Conformant Resolver Standard, not read here; and a key that decodes to a removed convenience alpha, `%67tin`,
+which a resolver normalizing it reads as `gtin`, an AI code in no release since 1.3.0. Left for the §6.1 stage below,
+since an extension parameter is the link owner's data and none of these can now pass a string that is not a URI.
+
+
+
+**A printed Digital Link the parser refuses loses the limits it would have said.** `parseDigitalLinkUri` throws on
+the first thing the grammar refuses, and what it had listed in `unplaced` by then, such as an empty host,
+goes with it, so the finding stands alone where `docs/WHAT-IS-NOT-CHECKED.md` says a limit is said in the finding's
+own words. Found by the per-commit review on #97, 2026-10-17. Nothing passes on account of it, since the refusal is a
+violation; the fix is for the parser to return its refusal beside what it placed rather than throw, which changes its
+contract for every caller, so it waits for a reason to touch the parser again.
+
+**The editor's Digital Link beside a refused field is judged by a stand-in.** Where `buildDigitalLinkUri` refuses a
+field, `gs1/digital-link` builds a second link from the fields `validateAiValue` passes and judges that, so what the
+rest of the link carries is still said. Its findings measure a URI the user never configured, one without the refused
+field, and the `sound` filter is a second copy of the builder's own checks. Found by the fourth `/code-review high` on
+#97, 2026-10-17. Nothing passes on account of it, since the refusal is itself a violation. The cure is the entry
+above: a builder and a parser that return every refusal beside what they placed, rather than throwing on the first,
+would leave nothing for a stand-in to do. The same change would let the parser's qualifier loop and its reading of
+`PATHS` become one walk over the grammar, which the same review asked for; the two now share one table
+(`QUALIFIER_ORDER` is taken from `PATHS`), so they cannot drift on data, only in code.
+
+**Recognize a Digital Link by the standard's own §6.1 procedure, before extending the hand-written parser again.**
+Worth a stage of its own before deployment. Six review rounds on #97 (2026-10-16 and 17) each found another corner of
+URI Syntax 1.7.0's ABNF that `parseDigitalLinkUri` did not cover: hosts, percent-encoding, which key opens the path,
+encoded query keys, then fragments and empty query parameters. The parser is a hand-written partial recognizer of the
+grammar, and reviewers keep finding the parts not yet written. §6.1, "Recognising a GS1 Digital Link URI", read
+2026-10-17, offers two things, and neither is a full recognizer. Its regular expressions are a gate only: §6.1.3 says
+a string matching RE1 "plausibly is an uncompressed GS1 Digital Link URI", and one matching none "definitely is not a
+conformant GS1 Digital Link URI", so RE1 could refuse with a citation what fails it, but cannot pass anything. §6.1.4
+points to the GS1 Barcode Syntax Resource, which "validates the GS1 Application Identifiers and their associated
+values" but "does not aim to address all possible validation scenarios". The stage would read both, decide whether RE1
+should guard the parser and whether the Syntax Resource (its license, and `label-core`'s rule of importing no
+framework) can judge the AI values, and replace what of the hand-written recognizer they cover. Recorded against it,
+from the fifth `high` review on #97, as clean-ups the same change would make: the optional marker on a `PATHS` step
+parsed three ways; `leniently` and `decoded` as two wrappers of one decode; the GTIN's shape restated in `valueFits`
+beside the builder's check; each candidate's key, value and path computed two or three times, and `faultOf` re-running
+`readFrom` for a message; the query sorting AIs into keys and attributes by the AI table's flags rather than by
+`PATHS`, so `?414=` is an attribute while `?00=` is not (the standard's `queryStringParam` does list a GLN parameter,
+so that one passes rightly); and the values of a key's components this build does not hold, (254), (8011), (8019),
+(7040) and (8020), judged by §4.2 but not by their §4.6 formats.
+
+**`buildDigitalLinkUri` accepts any resolver domain; only the rule judges it.** Since #97 `gs1/digital-link` judges
+the configured domain with `judgeCustomUriStem` before building, but the builder itself still returns a URI for
+`javascript:alert(1)` or a domain ending `#x`. Found by the eighth `/code-review high` on #97, 2026-10-17. Its one
+other caller is the experiment harness's prompt builder (`apps/api/src/experiments/withoutTool/prompt.ts`), not the
+product, so nothing a user sees passes on account of it. Moving the stem check into the builder would cover every
+caller and let the rule drop its own; it belongs with the §6.1 stage, which will touch both.
+
+**The MCP test's fallback URI does not percent-encode.** `asCheckLabelTakesIt` in `apps/api/src/mcp/server.test.ts`
+puts the URI together by hand where `buildDigitalLinkUri` refuses the fields, without encoding the lot or serial. A
+sweep document with `/`, `?` or `#` in its lot would give the printed side a different fault from the configured side,
+and the equality check would compare two defects. Latent: no sweep document has such a lot. Found by the same review.
+The same fallback strips a domain's trailing slashes with `domain.replace(/\/+$/, '')`, which turns `https://` into
+`https:`, where the builder now uses `withoutTrailingSlashes` (found by the sixth `high` review on #97); a sweep
+document with an empty host and a refused field would compare two different defects.
 
 **The experiment harness can pass its spend cap.** It checks the cap before starting each conversation, with four in
 flight, so a study can end above it by up to four conversations' cost, about $0.30 at the worst seen. Every study so

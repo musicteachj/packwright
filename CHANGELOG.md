@@ -61,6 +61,61 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **A Digital Link's GS1 values are judged as §4.2 writes them, encoded.** GS1 Digital Link URI Syntax 1.7.0 §4.2,
+  read 2026-10-16, writes every symbol in a lot, serial or other GS1 value percent-encoded except "-", "." and "_" and
+  the double quote: `LeftBracket = "%28"`, `LeftAngleBracket = "%3C"`, and so on. Both paths passed what it refuses.
+  The printed path decoded each value before judging it, so `/10/A<B` passed, and the editor's path built with
+  `encodeURIComponent`, which leaves `! ' ( ) *` alone, so a lot of `A(1)` built `/10/A(1)` and passed: two false
+  clearances, found while fixing the medium review of dev. The builder now encodes as §4.2 writes, and the parser
+  faults an unencoded symbol under §4. A double quote stands the link down as a limit on both paths, because §4.2
+  writes it unencoded and RFC 3986 allows it only as `%22`, read the same day. The other way round is a fault too: a
+  letter, digit, "-", "." or "_" encoded needlessly, `%41` for `A`, which §4.2 writes as it is. RFC 3986 §2.3 calls
+  the two forms the same resource, and James chose the grammar on 2026-10-17. Query parameters that are not GS1's are
+  still not judged, and that went to `docs/BACKLOG.md`.
+
+- **A Digital Link is judged by the grammar it cites, on both paths.** The medium review of dev on 2026-10-16, the
+  hedge before Phase 8, found the configured resolver domain checked by a prefix only. `https://id.example.com#x`
+  built `https://id.example.com#x/01/00036000291452`, a GS1 path no resolver sees, and passed as conformant under §4.
+  So did a domain with a query, a space, user information or a port of letters: a false clearance. The printed path
+  had the opposite fault, and refused `id_example.com`, `[2001:db8::1]` and an empty stem segment under §4, which
+  permits all three. The stem is now judged by one `judgeCustomUriStem`, written from the `customURIstem` productions
+  of GS1 Digital Link URI Syntax 1.7.0 §4.11. An empty host, which the grammar allows and nothing can serve, stands
+  the link down as a limit, and a stem segment percent-encoded in something other than UTF-8 is allowed, as
+  `pct-encoded` allows it. `/code-review high` on #97 then found the editor's path passing what the parser refused in
+  a resolver domain, because it kept its own copies of the printed path's checks: the editor's link is now built from
+  its fields and judged by the printed path's code, so the two cannot disagree about the same string. Where the
+  builder refuses a field, the link built from the remaining sound fields is judged instead, so what the rest of it
+  carries is still said beside the finding. How the parser took the primary key had grown, review by review, into a
+  chain of ranked guesses, each fix opening the next edge, and James chose on 2026-10-17 to follow the grammar
+  instead. Each segment naming a key opens a reading of the path, which conforms where its value fits that key's
+  format in §4.5 and the rest fits one of its `gs1path` productions in §4.9, both read that day. No key's code is
+  among those a path lets follow a key, so at most one reading conforms: the link is judged by it, faulted where there
+  is none, and stood down where it runs through a key this build does not hold. A stem may hold segments that look
+  like a key, so `/414/1234567890128/01/…` and `/01/09506000134352/01/<GTIN>` are a stem and a GTIN, and pass, in the
+  editor as printed; a component no path allows, such as (17) after a GTIN, is a fault; and where no reading conforms
+  and the path names several keys, the fault of each reading is said, since four rounds of review found every rule for
+  which one the printer meant blaming some segment wrongly. Codes, in the path and the query, are matched as printed,
+  so `%30%31` is a stem segment and not the key (01); a query key that decodes to digits, `?%31%37=…`, which had
+  passed with its expiry unjudged, now stands the link down: a fault under §4.10.1's "SHALL NOT use all-numeric keys"
+  was tried, and the next review found it cited prose against a key the `extensionKey` grammar admits, so the two
+  readings are said as a limit. The fifth `high` review on #97 found two more false clearances, now fixed: a fragment
+  passed unjudged, `#<a%ZZ#b>` included; and an empty query, a stray `&` or `;`, or a parameter with no key passed,
+  none of which `queryStringComp` produces. A fragment RFC 3986 §3.5 does not allow is now a fault, since the string
+  is then no URI at all, and a well-formed one stands the link down, since §4's grammar has no place for one while its
+  informative §3 describes one. Values this build cannot place, after a UPUI's (235) or a key it does not hold, are
+  judged by §4.2 too, and a limit now says only that Packwright does not judge the link either way, where it said the
+  tool did not yet judge it. The sixth found a query parameter that is not GS1's skipped unread, so `?x=<script>` and
+  `?foo` passed: every parameter must now have an "=", as §4.10.1's `extensionParameter` does, and one not judged as a
+  GS1 attribute must be text RFC 3986 §3.4 allows, read that day, while a pass names such parameters as judged as URI
+  text only. The seventh found a false violation in a table: §4 writes a GRAI after a "0" pad, `grai-comp = "/"
+  grai-code "/" "0" grai-value`, and the format had been transcribed from `grai-value` alone, so a padded GRAI was
+  faulted and a pad-less one taken; every row of both tables was then re-checked against each key's `-comp`, `-value`
+  and `-path` productions. A GTIN in fewer than 14 digits in the path is now a §4 violation, where it was a limit,
+  since §4.5's `gtin-value = 14DIGIT` is in the grammar §4 cites. Four findings went to `docs/BACKLOG.md`: recognizing
+  a Digital Link by the standard's own §6.1 procedure, as a stage before extending the hand-written parser again; the
+  MCP test's hand-built fallback URI, a printed link the parser refuses losing the limits it would have said, and the
+  stand-in link judged beside a field the builder refuses.
+
 - **`check_label` takes a Digital Link as printed, and judges the string.** It asked for a domain and a
   `useConvenienceAlphas` flag, so a model reading `https://id.example.com/gtin/…` off a label had to infer the flag,
   and in the third and fourth re-checks of 2026-10-16 Haiku 4.5 got it wrong in 5 of 12 answers. Each time the rule

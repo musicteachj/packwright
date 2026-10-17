@@ -70,8 +70,12 @@ export const FNC1_SEPARATOR = '\u001D'
  * carrying one of those cannot be represented in a GS1 element string — and an
  * embedded separator in particular truncates the field at the decoder, which
  * the encoder has no way to notice.
+ *
+ * `CSET_82_CLASS` is the same set as a character class, for patterns built from it
+ * elsewhere: the Digital Link key formats in `digitalLink.ts`.
  */
-const CSET_82 = /^[!"%&'()*+,\-./0-9:;<=>?A-Z_a-z]*$/
+export const CSET_82_CLASS = '!"%&\'()*+,\\-./0-9:;<=>?A-Z_a-z'
+const CSET_82 = new RegExp(`^[${CSET_82_CLASS}]*$`)
 
 const SPECS: readonly AiSpec[] = [
   {

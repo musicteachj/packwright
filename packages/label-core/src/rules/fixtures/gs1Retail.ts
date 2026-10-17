@@ -149,6 +149,22 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
       citation: 'GS1 Digital Link URI Syntax 1.7.0 §4.1',
     },
   },
+  {
+    name: 'Digital Link whose resolver domain ends in a fragment',
+    defect:
+      'The domain ends `#x`, so the GS1 path built after it is a fragment no resolver sees; ' +
+      'URI Syntax 1.7.0 §4.11 builds the stem from a host name and path segments only.',
+    data: {
+      gtin: VALID_GTIN,
+      digitalLink: { domain: 'https://id.example.com#x' },
+    },
+    stock: DEFAULT_STOCK,
+    expected: {
+      code: GS1_DIGITAL_LINK_INVALID,
+      severity: 'violation',
+      citation: 'GS1 Digital Link URI Syntax 1.7.0 §4',
+    },
+  },
   // The same two, as a label printed elsewhere carries them: the URI as written, which
   // `check_label` takes in place of the fields above (`digitalLinkAsPrinted`).
   {
@@ -163,6 +179,36 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
       code: GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS,
       severity: 'advisory',
       citation: 'GS1 Digital Link URI Syntax 1.7.0 §4.1',
+    },
+  },
+  {
+    name: 'Digital Link as printed, with a symbol in its lot unencoded',
+    defect: 'The lot prints `A(1)`; URI Syntax 1.7.0 §4.2 writes the brackets `%28` and `%29`.',
+    data: {
+      gtin: VALID_GTIN,
+      digitalLinkAsPrinted: 'https://id.example.com/01/00036000291452/10/A(1)',
+    },
+    stock: DEFAULT_STOCK,
+    expected: {
+      code: GS1_DIGITAL_LINK_INVALID,
+      severity: 'violation',
+      citation: 'GS1 Digital Link URI Syntax 1.7.0 §4',
+    },
+  },
+  {
+    name: 'Digital Link as printed, with a query that is no URI query',
+    defect:
+      'The query carries `x=<script>`; RFC 3986 §3.4 allows no raw `<` in a query, so the link is ' +
+      "no web address, and the parameter not being GS1's does not excuse it.",
+    data: {
+      gtin: VALID_GTIN,
+      digitalLinkAsPrinted: 'https://id.example.com/01/00036000291452?17=261231&x=<script>',
+    },
+    stock: DEFAULT_STOCK,
+    expected: {
+      code: GS1_DIGITAL_LINK_INVALID,
+      severity: 'violation',
+      citation: 'GS1 Digital Link URI Syntax 1.7.0 §4',
     },
   },
   {

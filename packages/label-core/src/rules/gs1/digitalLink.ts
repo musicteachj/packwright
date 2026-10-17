@@ -19,10 +19,10 @@
  * standard is expressed using ABNF grammar [RFC 5234] in section 4 such that
  * conformance can be determined with certainty." Every `GS1_DIGITAL_LINK_INVALID`
  * this rule reports is a structural non-conformance, so §4 is the reference they
- * share. The resolver-domain check rests on one production inside it — §4.11
- * gives `scheme = "http" / "https" / "HTTP" / "HTTPS"` — and splitting that into
- * a citation of its own is a judgement left for when a bad domain gets a fixture
- * separate from the builder's rejections.
+ * share. The resolver-domain check rests on the productions of §4.11, `customURIstem
+ * = scheme "://" hostname *optionalPathSegment` and those it is built from (re-read
+ * 2026-10-16). Splitting that into a citation of its own is a judgment still open: the
+ * bad-domain fixture added that day asserts §4, as every other finding here does.
  *
  * **The convenience alphas move to §4.1 of the current release**, rather than
  * citing 1.3.0 because that is where they were removed. §4.1 of 1.7.0 both names
@@ -39,8 +39,15 @@
  * 1.3.0 either way, and that is the one that makes a URI non-conformant.
  */
 
+import { getAiSpec, validateAiValue } from '../../gs1/applicationIdentifiers'
 import { isValidCheckDigit, normaliseToGtin14 } from '../../gs1/checkDigit'
-import { DigitalLinkError, buildDigitalLinkUri, parseDigitalLinkUri } from '../../gs1/digitalLink'
+import {
+  DigitalLinkError,
+  buildDigitalLinkUri,
+  judgeCustomUriStem,
+  parseDigitalLinkUri,
+  withoutTrailingSlashes,
+} from '../../gs1/digitalLink'
 import type { Gs1Element } from '../../gs1/elementString'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnDocument } from '../finding'
@@ -60,10 +67,11 @@ const ALPHAS_CITATION: Citation = {
   authority: 'GS1',
   reference: 'GS1 Digital Link URI Syntax 1.7.0 §4.1',
   // Not §4.1's own heading, which is "Removal of convenience alphas **and GTIN values
-  // expressed using fewer than 14 digits**". This rule checks the first half and not the
-  // second, and a title is what the `/rules` catalogue and the findings rail show — so
-  // taking the heading whole would advertise a check nothing performs. The review of
-  // PR #40 recorded that shape in `dualColumnParagraphs.ts`; this is the same one.
+  // expressed using fewer than 14 digits**". This citation is for the first half only;
+  // the second, a short GTIN, is reported under `CITATION`, §4, whose §4.5 grammar says
+  // `gtin-value = 14DIGIT`, so one fault never gets two findings under two citations. A
+  // title is what the `/rules` catalog and the findings rail show. The review of PR #40
+  // recorded that shape in `dualColumnParagraphs.ts`; this is the same one.
   title: 'Convenience alphas removed from the URI path',
 }
 
@@ -83,9 +91,6 @@ const ALPHAS_CITATION: Citation = {
  * - **a GTIN other than the barcode's,** or a primary key that is not a GTIN. Nothing
  *   verified says a label's Digital Link must carry its barcode's GTIN (James's
  *   decision of 2026-10-16: no pass, and say so, until the GS1 text is read);
- * - **a GTIN of fewer than 14 digits.** §4.1 says one "SHALL be prefixed with leading
- *   zeroes" to 14 (read 2026-10-16), but this rule's §4.1 citation is titled for the
- *   convenience alphas alone, and widening it is a change of the finding's meaning;
  * - **anything the parser could not place** (`ParsedDigitalLink.unplaced`), which the
  *   standard may permit: (235) after a GTIN is a UPUI path.
  *
@@ -95,49 +100,67 @@ const ALPHAS_CITATION: Citation = {
  * second in the first draft (found by review). Beside a finding, the limit's sentence
  * is added to the finding's message instead, so it is still said.
  */
-type PrintedVerdict = { findings: Finding[]; limit?: string }
+type Verdict = { findings: Finding[]; limit?: string }
 
-function judgedAsPrinted(printed: string, gtin: string): PrintedVerdict {
-  const uri = printed.trim()
+/** How the link judged came to be: printed, built from the editor's fields, or neither. */
+type As = 'printed' | 'built' | 'configured'
+
+/**
+ * Judges a Digital Link URI as written. `as` names it in what is said, "as printed" for a
+ * link from a check request and "as built" for one Packwright built from the editor's
+ * fields: both go through here, so the two cannot disagree about the same string. They
+ * did, twice, while the configured path kept its own copies of the printed path's checks,
+ * and each time the copy was the one missing a refusal (found by review on #97).
+ */
+function judgedAsWritten(written: string, gtin: string, as: As): Verdict {
+  const uri = written.trim()
   const invalid = (reason: string): Finding =>
     finding(digitalLinkRule, {
       code: GS1_DIGITAL_LINK_INVALID,
       severity: 'violation',
-      message: `The Digital Link as printed is not conformant: ${reason}.`,
+      message: `The Digital Link as ${as} is not conformant: ${reason}.`,
       measurement: { actual: uri, required: 'a conformant Digital Link URI' },
     })
 
   let parsed
   try {
-    parsed = parseDigitalLinkUri(printed)
+    parsed = parseDigitalLinkUri(written)
   } catch (error) {
     if (!(error instanceof DigitalLinkError)) throw error
     return { findings: [invalid(error.message)] }
   }
 
   const findings: Finding[] = []
-  if (parsed.convenienceAlphas.length > 0) {
-    findings.push(
-      finding(digitalLinkRule, {
-        code: GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS,
-        severity: 'advisory',
-        message:
-          `The Digital Link as printed uses the convenience alphas ` +
-          `${parsed.convenienceAlphas.map((alpha) => `\`${alpha}\``).join(', ')} in place of ` +
-          'numeric Application Identifiers, as in `/gtin/` for `/01/`. They were deprecated in ' +
-          'Digital Link URI Syntax 1.2 and removed in 1.3.0, so the URI is non-conformant to the ' +
-          'current standard.',
-        measurement: { actual: uri, required: '/01/…' },
-        citation: ALPHAS_CITATION,
-      }),
-    )
-  }
+  if (parsed.convenienceAlphas.length > 0)
+    findings.push(alphasAdvisory(uri, as, parsed.convenienceAlphas))
 
   const unjudged: string[] = []
   const { primary } = parsed
   if (primary === undefined) {
     unjudged.push(...parsed.unplaced)
   } else {
+    // §4.5: `gtin-value = 14DIGIT ; GTIN-8, GTIN-12 and GTIN-13 SHALL be expressed as 14
+    // digits` (read 2026-10-17), and §4.1 says the same with "SHALL be prefixed". A
+    // shorter one is outside the grammar §4 cites, so it is a fault under that citation,
+    // not a limit: it stood down only because §4.1's citation is titled for the
+    // convenience alphas (James's decision of 2026-10-17, on `/code-review high` of #97).
+    // §4.1's note that "existing infrastructure ... SHOULD continue to support legacy
+    // expressions", short GTINs among them, is about readers, not about what a label may
+    // print. Said before the builder's own verdict, so a check digit it refuses does not
+    // hide the length (found by review).
+    if (
+      primary.ai === '01' &&
+      /^[0-9]+$/.test(primary.value) &&
+      [8, 12, 13].includes(primary.value.length)
+    ) {
+      findings.push(
+        invalid(
+          `its GTIN "${primary.value}" is ${primary.value.length} digits, where Digital Link ` +
+            'URI Syntax 1.7.0 §4.5 says a GTIN-8, GTIN-12 or GTIN-13 "SHALL be expressed as ' +
+            '14 digits, with leading zeroes serving as filler digits"',
+        ),
+      )
+    }
     // The values themselves, by the builder that refuses them on the configured path.
     let built = true
     try {
@@ -160,29 +183,46 @@ function judgedAsPrinted(printed: string, gtin: string): PrintedVerdict {
       unjudged.push(`a key other than a GTIN, (${primary.ai}) ${primary.value}`)
     } else if (normaliseToGtin14(primary.value) !== normaliseToGtin14(gtin)) {
       unjudged.push(`the GTIN ${primary.value}, not the barcode's ${gtin}`)
-    } else if (primary.value.length !== 14) {
-      unjudged.push(
-        `its GTIN in ${primary.value.length} digits, where Digital Link URI Syntax 1.7.0 ` +
-          '§4.1 expects 14, padded with leading zeroes',
-      )
     }
     unjudged.push(...parsed.unplaced)
   }
 
+  return verdictOf(findings, uri, as, unjudged, parsed.extensions)
+}
+
+/** The findings, with the pass where there are none and nothing unjudged, and the limit. */
+function verdictOf(
+  findings: Finding[],
+  uri: string,
+  as: As,
+  unjudged: string[],
+  extensions: readonly string[] = [],
+): Verdict {
+  // A pass says what it did not judge: a parameter that is not GS1's is RFC 3986 text to
+  // it, and §4.10.1's own grammar for one goes unread (found by review on #97).
+  const unread =
+    extensions.length === 0
+      ? ''
+      : ` Its query parameters ${extensions.map((key) => `\`${key}\``).join(', ')} are not ` +
+        "GS1's, and are judged as URI text only."
+
   const limit =
     unjudged.length === 0
       ? undefined
-      : `The Digital Link as printed carries ${unjudged.join('; and ')}. Packwright does not ` +
-        'yet judge that, so the link is not passed: a limit of this tool.'
+      : `The Digital Link as ${as} carries ${unjudged.join('; and ')}. Packwright does not ` +
+        'judge that either way, so the link is not passed: a limit of this tool.'
 
   if (findings.length === 0) {
     if (limit !== undefined) return { findings, limit }
     return {
       findings: [
+        // URI Syntax governs the string, and this engine prints no carrier for it: the document.
         passedOnDocument(
           digitalLinkRule,
           GS1_DIGITAL_LINK_VALID,
-          `The Digital Link as printed, ${uri}, is conformant.`,
+          (as === 'printed'
+            ? `The Digital Link as printed, ${uri}, is conformant.`
+            : `The Digital Link resolves to ${uri}.`) + unread,
         ),
       ],
     }
@@ -193,21 +233,133 @@ function judgedAsPrinted(printed: string, gtin: string): PrintedVerdict {
   return { findings }
 }
 
-/** One verdict per label, shared by `check` and `declines`: parsing twice is waste. */
-const printedVerdicts = new WeakMap<
-  object,
-  { printed: string; gtin: string; verdict: PrintedVerdict }
->()
+function alphasAdvisory(uri: string, as: As, alphas: readonly string[]): Finding {
+  return finding(digitalLinkRule, {
+    code: GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS,
+    severity: 'advisory',
+    message:
+      `The Digital Link as ${as} uses the convenience alphas ` +
+      `${alphas.map((alpha) => `\`${alpha}\``).join(', ')} in place of ` +
+      'numeric Application Identifiers, as in `/gtin/` for `/01/`. They were deprecated in ' +
+      'Digital Link URI Syntax 1.2 and removed in 1.3.0, so the URI is non-conformant to the ' +
+      'current standard.',
+    measurement: { actual: uri, required: '/01/…' },
+    citation: ALPHAS_CITATION,
+  })
+}
 
-function verdictOnPrinted(data: Gs1RetailContext['data']): PrintedVerdict | undefined {
+/**
+ * **A Digital Link configured in the editor** is built from its fields and the URI judged
+ * as written, by `judgedAsWritten`. Two things are said before that, because they are
+ * about the fields rather than the string:
+ *
+ * - **a resolver domain §4.11 refuses as a stem.** `buildDigitalLinkUri` never looks at
+ *   the domain, so "it did not throw" was read as conformance, and an empty resolver,
+ *   `not a url` or `javascript:alert(1)` each came back as a green pass. A prefix test
+ *   then passed a domain ending `#x`, which turns the GS1 path built after it into a
+ *   fragment (found by the medium review of dev, 2026-10-16). The domain is judged whole
+ *   by `judgeCustomUriStem`, as the builder prints it, and said as the domain's fault;
+ * - **fields the builder refuses,** said as the builder says them, since there is no URI.
+ */
+function judgedAsConfigured(
+  link: NonNullable<Gs1RetailContext['data']['digitalLink']>,
+  gtin: string,
+): Verdict {
+  const { domain, lot, serial, expiry, useConvenienceAlphas } = link
+  const stem = judgeCustomUriStem(withoutTrailingSlashes(domain))
+  if ('fault' in stem) {
+    return {
+      findings: [
+        finding(digitalLinkRule, {
+          code: GS1_DIGITAL_LINK_INVALID,
+          severity: 'violation',
+          message: `The resolver domain "${domain}" cannot open a conformant Digital Link: ${stem.fault}.`,
+          measurement: { actual: domain || '(empty)', required: 'http(s)://host[:port][/path]' },
+        }),
+      ],
+    }
+  }
+
+  const qualifiers: Gs1Element[] = []
+  if (lot !== undefined) qualifiers.push({ ai: '10', value: lot })
+  if (serial !== undefined) qualifiers.push({ ai: '21', value: serial })
+  const attributes: Gs1Element[] = []
+  if (expiry !== undefined) attributes.push({ ai: '17', value: expiry })
+
+  let uri: string
+  try {
+    uri = buildDigitalLinkUri({
+      domain,
+      primary: { ai: '01', value: gtin },
+      qualifiers,
+      attributes,
+      ...(useConvenienceAlphas === undefined ? {} : { useConvenienceAlphas }),
+    })
+  } catch (error) {
+    if (!(error instanceof DigitalLinkError)) throw error
+    const refused = finding(digitalLinkRule, {
+      code: GS1_DIGITAL_LINK_INVALID,
+      severity: 'violation',
+      message: `The Digital Link is not conformant: ${error.message}.`,
+      measurement: { actual: error.message, required: 'a conformant Digital Link URI' },
+    })
+    // With no URI to judge, the link built from every field sound on its own is judged
+    // instead, by the same code, so what the rest of it carries is still said: an empty
+    // host, a quoted lot. Hand copies of those were lost or worded apart here (found by
+    // review on #97). It is said "as configured", since no link was built.
+    const sound = (element: Gs1Element) => validateAiValue(element.ai, element.value) === null
+    let rest: Verdict = { findings: [] }
+    try {
+      rest = judgedAsWritten(
+        buildDigitalLinkUri({
+          domain,
+          primary: { ai: '01', value: gtin },
+          qualifiers: qualifiers.filter(sound),
+          attributes: attributes.filter(sound),
+        }),
+        gtin,
+        'configured',
+      )
+    } catch (probeError) {
+      if (!(probeError instanceof DigitalLinkError)) throw probeError
+    }
+    // Built without the convenience alphas, which are named from the fields below.
+    const findings = [refused, ...rest.findings.filter((one) => one.severity !== 'pass')]
+    if (useConvenienceAlphas) {
+      const alphas = ['01', ...qualifiers.map((one) => one.ai)].flatMap(
+        (ai) => getAiSpec(ai)?.digitalLinkAlpha ?? [],
+      )
+      findings.push(alphasAdvisory('/gtin/…', 'configured', alphas))
+    }
+    // Said on the refusal it qualifies, not on whichever finding came last.
+    if (rest.limit === undefined) return { findings }
+    findings[0] = { ...refused, message: `${refused.message} ${rest.limit}` }
+    return { findings }
+  }
+  return judgedAsWritten(uri, gtin, 'built')
+}
+
+/** One verdict per label, shared by `check` and `declines`: judging twice is waste. */
+const verdicts = new WeakMap<object, { key: string; verdict: Verdict }>()
+
+function verdictOn(data: Gs1RetailContext['data']): Verdict | undefined {
+  // A barcode GTIN with a wrong check digit leaves this to the check-digit rule: building
+  // a link from it threw, which blamed the URI for a fault in the identifier, two findings
+  // for one cause. Nothing can be concluded about the link until its key is sound.
+  if (!gtinIsSound(data.gtin)) return undefined
+  // No Digital Link is not a defect. Sunrise 2027 is a transition, not a deadline passed.
   const printed = data.digitalLinkAsPrinted
-  if (printed === undefined || !gtinIsSound(data.gtin)) return undefined
-  const kept = printedVerdicts.get(data)
-  // Keyed on both inputs: a GTIN changed in place under the same link returned the
-  // old verdict, a pass on a link that no longer carries it (found by review).
-  if (kept?.printed === printed && kept.gtin === data.gtin) return kept.verdict
-  const verdict = judgedAsPrinted(printed, data.gtin)
-  printedVerdicts.set(data, { printed, gtin: data.gtin, verdict })
+  if (printed === undefined && !data.digitalLink) return undefined
+  // Keyed on every input: a GTIN changed in place under the same link returned the old
+  // verdict, a pass on a link that no longer carries it (found by review).
+  const key = JSON.stringify([data.gtin, printed, data.digitalLink])
+  const kept = verdicts.get(data)
+  if (kept?.key === key) return kept.verdict
+  const verdict =
+    printed !== undefined
+      ? judgedAsWritten(printed, data.gtin, 'printed')
+      : judgedAsConfigured(data.digitalLink!, data.gtin)
+  verdicts.set(data, { key, verdict })
   return verdict
 }
 
@@ -226,104 +378,14 @@ export const digitalLinkRule: Gs1RetailRule = {
   },
   appliesTo: 'gs1-retail',
 
-  // A link as printed that this tool cannot pass and cannot fault: said as its limit.
+  // A link this tool cannot pass and cannot fault: said as its limit. A verdict carries a
+  // limit only where it has no findings, so this is silent beside one.
   declines({ data }: Gs1RetailContext): Decline | undefined {
-    const limit = verdictOnPrinted(data)?.limit
+    const limit = verdictOn(data)?.limit
     return limit === undefined ? undefined : { reason: limit, wants: [], limit: true }
   },
 
   check({ data }: Gs1RetailContext): Finding[] {
-    // A barcode GTIN with a wrong check digit leaves this to the check-digit rule, as
-    // on the configured path below.
-    if (data.digitalLinkAsPrinted !== undefined) return verdictOnPrinted(data)?.findings ?? []
-
-    // No Digital Link configured is not a defect. Sunrise 2027 is a transition,
-    // not a deadline that has passed.
-    if (!data.digitalLink) return []
-
-    // A GTIN whose check digit is wrong makes `buildDigitalLinkUri` throw, and
-    // reporting that here blamed the URI for a fault in the identifier: two
-    // findings for one cause, the second of them misattributed. The check-digit
-    // rule owns that defect and states it precisely. Nothing can be concluded
-    // about the Digital Link until the key it is built from is sound.
-    if (!gtinIsSound(data.gtin)) return []
-
-    const { domain, lot, serial, expiry, useConvenienceAlphas } = data.digitalLink
-    const findings: Finding[] = []
-
-    // `buildDigitalLinkUri` never looks at the domain, so "it did not throw" was
-    // being read as conformance — and an empty resolver, `not a url`, or
-    // `javascript:alert(1)` each came back as a green pass under a GS1 citation.
-    // A Digital Link is a resolvable web address or it is not a Digital Link.
-    if (!/^https?:\/\/[^\s/?#]+/i.test(domain)) {
-      return [
-        finding(digitalLinkRule, {
-          code: GS1_DIGITAL_LINK_INVALID,
-          severity: 'violation',
-          message:
-            `The resolver domain "${domain}" is not an http or https web address, ` +
-            'so the Digital Link cannot resolve.',
-          measurement: { actual: domain || '(empty)', required: 'https://…' },
-        }),
-      ]
-    }
-
-    const qualifiers: Gs1Element[] = []
-    if (lot !== undefined) qualifiers.push({ ai: '10', value: lot })
-    if (serial !== undefined) qualifiers.push({ ai: '21', value: serial })
-
-    const attributes: Gs1Element[] = []
-    if (expiry !== undefined) attributes.push({ ai: '17', value: expiry })
-
-    try {
-      const uri = buildDigitalLinkUri({
-        domain,
-        primary: { ai: '01', value: data.gtin },
-        qualifiers,
-        attributes,
-        ...(useConvenienceAlphas === undefined ? {} : { useConvenienceAlphas }),
-      })
-      // Not counted as a pass when the convenience alphas are in use: the
-      // advisory below declares the same URI non-conformant, and a rail that
-      // tallies both reports a check as cleared that the rule itself just
-      // faulted.
-      if (!useConvenienceAlphas) {
-        findings.push(
-          // URI Syntax governs the string, and this engine prints no carrier for it: the document.
-          passedOnDocument(
-            digitalLinkRule,
-            GS1_DIGITAL_LINK_VALID,
-            `The Digital Link resolves to ${uri}.`,
-          ),
-        )
-      }
-    } catch (error) {
-      if (!(error instanceof DigitalLinkError)) throw error
-      findings.push(
-        finding(digitalLinkRule, {
-          code: GS1_DIGITAL_LINK_INVALID,
-          severity: 'violation',
-          message: `The Digital Link is not conformant: ${error.message}.`,
-          measurement: { actual: error.message, required: 'a conformant Digital Link URI' },
-        }),
-      )
-    }
-
-    if (useConvenienceAlphas) {
-      findings.push(
-        finding(digitalLinkRule, {
-          code: GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS,
-          severity: 'advisory',
-          message:
-            'The Digital Link uses the convenience alphas — `/gtin/` in place of `/01/`. They were ' +
-            'deprecated in Digital Link URI Syntax 1.2 and removed in 1.3.0, so the URI is ' +
-            'non-conformant to the current standard.',
-          measurement: { actual: '/gtin/…', required: '/01/…' },
-          citation: ALPHAS_CITATION,
-        }),
-      )
-    }
-
-    return findings
+    return verdictOn(data)?.findings ?? []
   },
 }

@@ -10,6 +10,7 @@ export {
 export type { Gs1KeyKind } from './checkDigit'
 
 export {
+  CSET_82_CLASS,
   FNC1_SEPARATOR,
   getAiSpec,
   hasPredefinedLength,
@@ -29,5 +30,11 @@ export type { Gs1Element } from './elementString'
 export { normaliseScannedGtin } from './scan'
 export type { ScannedGtin } from './scan'
 
-export { DigitalLinkError, buildDigitalLinkUri, parseDigitalLinkUri } from './digitalLink'
+export {
+  DigitalLinkError,
+  buildDigitalLinkUri,
+  judgeCustomUriStem,
+  parseDigitalLinkUri,
+  withoutTrailingSlashes,
+} from './digitalLink'
 export type { DigitalLinkInput, ParsedDigitalLink } from './digitalLink'

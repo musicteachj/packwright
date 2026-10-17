@@ -353,21 +353,43 @@ symbology actually requires and read as reassurance. You cannot currently produc
 symbologies, so this does not bite today; it is recorded because the silence is deliberate and would otherwise
 look like an oversight if it ever became reachable.
 
-### A Digital Link you describe is judged as printed, and three things about it are not
+### A Digital Link you describe is judged as printed, and six things about it are not
 
-When a label is checked from its description (through `/mcp`'s `check_label`), its Digital Link is given exactly
-as printed and judged as written: a URI that is not a conformant GS1 Digital Link is reported against GS1 Digital
-Link URI Syntax 1.7.0 §4, and one using the removed convenience alphas, `/gtin/` in place of `/01/`, against §4.1.
-Three things stop the link's pass without a finding, and the report says each as a limit of this tool: under
-"checks that did not run", or in the finding's own words where the link has a finding too:
+When a label is checked from its description (through `/mcp`'s `check_label`), its Digital Link is given exactly as
+printed and judged as written: a URI that is not a conformant GS1 Digital Link is reported against GS1 Digital Link
+URI Syntax 1.7.0 §4, a GTIN written in fewer than 14 digits among them, since §4.5 writes `gtin-value = 14DIGIT`, and
+one using the removed convenience alphas, `/gtin/` in place of `/01/`, against §4.1. Six things stop the link's pass
+without a finding, and the report says each as a limit of this tool: under "checks that did not run", or in the
+finding's own words where the link has a finding too:
 
 - **The link carries a GTIN other than the barcode's.** No GS1 clause saying the two must match has been read for
   this project, so the tool does not judge it. Check that the link identifies the same product.
-- **The link gives the GTIN in fewer than 14 digits.** §4.1 says a GTIN-8, -12 or -13 "SHALL be prefixed with
-  leading zeroes" to 14 (read 2026-10-16), but this tool does not yet report it.
 - **The link carries a key or Application Identifier this tool cannot place,** such as a primary key other than a
   GTIN, (235) after the GTIN, an AI its tables do not hold, or an AI repeated or out of its place in the query. The
   standard permits some of these (a GTIN followed by (235) is a UPUI path), so the tool does not call them faults.
+  What no path in the standard allows, an expiry date's (17) after a GTIN say, is a fault.
+- **The link has no host name,** as in `https:///01/…`. URI Syntax 1.7.0 §4.11 allows an empty host, and no
+  resolver can serve one, so the tool says so rather than citing the standard against it.
+- **A GS1 value in the link carries a double quote,** in the lot, the serial or any other. §4.2 writes one unencoded
+  and RFC 3986 allows one only as `%22`, so no form satisfies both, and the tool passes neither. The same holds for
+  a lot or serial entered in the editor.
+- **A query key is written encoded and decodes to digits,** as in `?%31%37=999999`. URI Syntax 1.7.0 §4.10.1's
+  grammar admits it as an extension key, since `extensionKey` takes percent-encoded characters, while its prose says
+  extension keys "SHALL NOT use all-numeric keys", and a resolver that decodes the key reads AI (17). The two readings
+  disagree, so the tool neither faults it nor passes it.
+- **The link ends in a well-formed fragment,** as in `https://id.example.com/01/…#top`. The grammar of URI Syntax
+  1.7.0 §4, which governs, has no place for one, while its informative §3 describes a fragment as an optional part of
+  any Web URI, and none reaches a resolver. The tool neither faults it on a reading the standard does not plainly
+  support nor passes it. A fragment RFC 3986 §3.5 does not allow is a fault, since the link is then no web address.
+
+The link's stem may hold anything, segments that look like a GS1 key included: the tool judges the one reading of the
+path the grammar allows. `https://x.com/414/1234567890128/01/…` is a stem and a GTIN, since a GLN's path cannot go on
+with a GTIN. A resolver that reads such a link differently would not be following the standard, and the tool does not
+guess at that.
+
+A query parameter that is not GS1's, `?x=1` say, is checked as URI text only: it must be text RFC 3986 allows and have
+an "=", but URI Syntax 1.7.0 §4.10.1's narrower grammar for such a key, and its reserved keywords `linkType` and
+`context`, are not judged. A pass names such parameters and says so.
 
 ---
 
