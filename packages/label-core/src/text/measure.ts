@@ -41,7 +41,9 @@ const SEMIBOLD_FROM_WEIGHT = 600
  * `renderPdf`'s `embeddedFontFor` resolves the face it embeds, so the width
  * checked and the width printed come from the same face.
  *
- * Only the bounds checks use it so far. Wrapping still measures in the family's
+ * The bounds checks use it, and so do the net quantity's sizing and the two rules
+ * that measure it (type size and separation), which read the bold face it prints
+ * in. Wrapping still measures in the family's
  * Regular widths, which `docs/BACKLOG.md` keeps as a stage of its own; a line it
  * wraps too long is at least recorded by the check rather than lost.
  */

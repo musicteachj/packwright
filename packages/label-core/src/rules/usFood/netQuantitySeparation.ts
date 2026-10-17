@@ -25,7 +25,7 @@
  *   clause that actually governs it.
  */
 
-import { glyphHeightMm, measureTextMm } from '../../text/measure'
+import { glyphHeightMm, measureTextMm, measuredFamilyFor } from '../../text/measure'
 import { regulatedGlyphBasis } from '../../geometry/pdp'
 import type { BoundingBox, Citation, Finding } from '../../types/index'
 import type { TextPrimitive } from '../../layout/types'
@@ -107,8 +107,12 @@ const judgedAsDrawn: UsFoodRule = {
     if (neighbours.length === 0) return []
 
     const basis = regulatedGlyphBasis(drawn.text)
-    const requiredVerticalMm = glyphHeightMm(drawn.fontSizeMm, drawn.fontFamily, basis)
-    const requiredHorizontalMm = 2 * measureTextMm('N', drawn.fontSizeMm, drawn.fontFamily)
+    // Both in the face the declaration prints in, which is bold: (f) measures "the
+    // height of the lettering used in the declaration" and "the letter 'N' of the
+    // style of type used", and a SemiBold N is wider than a Regular one.
+    const face = measuredFamilyFor(drawn.fontFamily, drawn.fontWeight)
+    const requiredVerticalMm = glyphHeightMm(drawn.fontSizeMm, face, basis)
+    const requiredHorizontalMm = 2 * measureTextMm('N', drawn.fontSizeMm, face)
 
     const box: BoundingBox = declaration.box
     const crowded = neighbours

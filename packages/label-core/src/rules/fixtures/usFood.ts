@@ -14,9 +14,10 @@
  *   so the panel is 31.62 in². 21 CFR 101.7(i)(3) covers "more than 25 but not
  *   more than 100" and demands 3/16 inch, which is 0.1875 × 25.4 = 4.7625 mm.
  * - That 4.7625 mm is a *letter* height, and 101.7(h)(2) says which letter.
- *   Capitals stand 0.698 em in IBM Plex Sans and the lowercase "o" 0.540, so the
- *   same requirement needs an em of 4.7625 / 0.698 = 6.823 mm set in capitals
- *   and 4.7625 / 0.540 = 8.819 mm set with any lower case.
+ *   The declaration prints bold, in IBM Plex Sans SemiBold (101.7(h)), where
+ *   capitals stand 0.698 em and the lowercase "o" 0.546, so the same requirement
+ *   needs an em of 4.7625 / 0.698 = 6.823 mm set in capitals and
+ *   4.7625 / 0.546 = 8.7225 mm set with any lower case.
  * - Molded rather than printed, 101.7(i)'s closing sentence adds 1/16 inch:
  *   3/16 + 1/16 = 1/4 inch = 6.35 mm, needing 6.35 / 0.698 = 9.097 mm of em.
  * - A cylinder 200 mm tall and 300 mm round has a panel of 0.4 × 200 × 300 =
@@ -631,7 +632,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     defect:
       'The declaration is set at an em of 4.7625 mm — numerically the 3/16 inch this panel ' +
       'requires — so a rule comparing the requirement against `fontSizeMm` would pass it. Set ' +
-      'with lower case, its "o" actually prints 2.57 mm, 54% of the minimum.',
+      'with lower case, its bold "o" actually prints 2.60 mm (4.7625 × 0.546), 55% of the minimum.',
     data: {
       ...BASE,
       netQuantity: { inchPound: 'Net wt 12 oz', metric: '(340 g)' },
@@ -647,7 +648,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
   {
     name: 'type sized for the printed band on a declaration molded into the bottle',
     defect:
-      'An em of 8.82 mm puts the "o" at 4.763 mm, a hair over the printed 3/16 inch this panel ' +
+      'An em of 8.82 mm puts the bold "o" at 4.82 mm, over the printed 3/16 inch this panel ' +
       'demands — and this same label passes with `markingMethod: printed`. Molded into a ' +
       'plastic surface, 101.7(i) adds a sixteenth of an inch and the requirement becomes ' +
       '6.35 mm, so nothing but the marking method separates the two verdicts.',

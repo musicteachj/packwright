@@ -25,6 +25,7 @@ import { UNIT_CONTAINER_STATEMENTS, UNIT_CONTAINER_WORDINGS } from '../fda/unitC
 import { nutritionDisplayFor, nutritionTypeForDisplay } from '../fda/nutritionPanel'
 import { MM_PER_POINT } from '../geometry/units'
 import { measureTextMm, measuredFamilyFor } from '../text/measure'
+import { mm } from './finding'
 import {
   FDA_ALLERGEN_NOT_DECLARED,
   FDA_NUTRITION_PERCENT_DV_WRONG,
@@ -310,7 +311,9 @@ describe('the em is not the letter height', () => {
     // The trap `layout/types.ts` warns about, asserted rather than described. The
     // drawn primitive's `fontSizeMm` is 4.7625 — numerically the 3/16 inch this
     // panel requires, so `fontSizeMm >= requiredMm` is true — while the letter
-    // the regulation measures stands at 54% of the minimum.
+    // the regulation measures stands at 55% of the minimum. 4.7625 × 0.546, the
+    // lowercase "o" of IBM Plex Sans SemiBold, the bold face 101.7(h) has the
+    // declaration printed in, is 2.600 mm; Regular's 0.540 gave 2.57 before it was.
     const { data, stock } = fixture('type sized as though the em were the letter height')
     const layout = layOutUsFoodLabel({ data, stock })
     const drawn = layout.primitives.find(
@@ -320,7 +323,44 @@ describe('the em is not the letter height', () => {
     expect(drawn!.fontSizeMm).toBe(4.7625)
 
     const match = findingsFor(data, stock).find((f) => f.code === FDA_NET_QUANTITY_TYPE_TOO_SMALL)
-    expect(match!.measurement).toEqual({ actual: '2.57 mm', required: '4.76 mm' })
+    expect(match!.measurement).toEqual({ actual: '2.60 mm', required: '4.76 mm' })
+  })
+})
+
+describe('the net quantity is bold, as 21 CFR 101.7(h) requires', () => {
+  // "The declaration shall appear in conspicuous and easily legible boldface print
+  // or type". It printed in the regular face on every label until the 2026-10-17
+  // source verification, while all five net quantity rules reported it compliant.
+  const drawnDeclaration = () =>
+    layOutUsFoodLabel(US_FOOD_CONFORMANT).primitives.find(
+      (primitive): primitive is TextPrimitive =>
+        primitive.kind === 'text' && primitive.elementId === US_FOOD_ELEMENTS.netQuantity,
+    )!
+
+  it('draws the declaration in a bold weight', () => {
+    expect(drawnDeclaration().fontWeight).toBeGreaterThanOrEqual(600)
+  })
+
+  it('sizes and measures it in the face it prints in, so the two agree to the hundredth', () => {
+    // The conformant panel is 44.64 in², so 101.7(i) asks 3/16 inch: 4.7625 mm on
+    // the lowercase "o", since the declaration carries lower case. The engine sizes
+    // the em to exactly that in SemiBold, whose "o" is 0.546 em. Measured in
+    // Regular's 0.540 instead, the same em reads 4.7625 × 0.540 / 0.546 = 4.71 mm.
+    const pass = findingsFor(US_FOOD_CONFORMANT.data, US_FOOD_CONFORMANT.stock).find(
+      (f) => f.code === FDA_NET_QUANTITY_TYPE_SIZE_MET,
+    )
+    expect(pass?.message).toContain('measures 4.76 mm on')
+  })
+
+  it('takes the letter N for 101.7(f) separation from the bold face too', () => {
+    const drawn = drawnDeclaration()
+    const boldN = 2 * measureTextMm('N', drawn.fontSizeMm, 'IBM Plex Sans SemiBold')
+    const regularN = 2 * measureTextMm('N', drawn.fontSizeMm, 'IBM Plex Sans')
+    expect(mm(boldN)).not.toBe(mm(regularN))
+    const pass = findingsFor(US_FOOD_CONFORMANT.data, US_FOOD_CONFORMANT.stock).find(
+      (f) => f.code === FDA_NET_QUANTITY_SEPARATION_MET,
+    )
+    expect(pass?.message).toContain(`${mm(boldN)} either side`)
   })
 })
 
@@ -342,8 +382,12 @@ describe('which letter is measured follows the casing of the declaration', () =>
     expect(at('Net wt 12 oz', 6.83)).toContain(FDA_NET_QUANTITY_TYPE_TOO_SMALL)
   })
 
-  it('clears lower case once the em reaches 8.82 mm', () => {
-    expect(at('Net wt 12 oz', 8.82)).toContain(FDA_NET_QUANTITY_TYPE_SIZE_MET)
+  it('clears lower case at an em of 8.73 mm and not at 8.72', () => {
+    // The edge, worked by hand in the bold face the declaration prints in: 8.73 × 0.546
+    // = 4.7666 mm clears 4.7625; 8.72 × 0.546 = 4.7611 mm falls short by more than the
+    // 0.001 mm tolerance.
+    expect(at('Net wt 12 oz', 8.73)).toContain(FDA_NET_QUANTITY_TYPE_SIZE_MET)
+    expect(at('Net wt 12 oz', 8.72)).toContain(FDA_NET_QUANTITY_TYPE_TOO_SMALL)
   })
 
   it('names the letter it measured, so the finding can be acted on', () => {

@@ -242,7 +242,7 @@ describe('the form can express a label that is wrong', () => {
     const { store, wrapper } = await mountFood()
     await wrapper.find('#field-food-override-type').setValue(true)
     await nextTick()
-    // 8.82 mm of em puts the "o" a hair over the printed 3/16 inch.
+    // 8.82 mm of em puts the bold "o" over the printed 3/16 inch: 8.82 × 0.546 = 4.82 mm.
     await wrapper.find('#field-food-type-size').setValue(8.82)
     await nextTick()
     expect(store.failures).toEqual([])
@@ -304,8 +304,8 @@ describe('the form does not author label content', () => {
     await wrapper.find('#field-food-override-type').setValue(true)
     await nextTick()
 
-    // 4.7625 / 0.540 = 8.819, rounded to two places for the field.
-    expect(store.foodData.netQuantityFontSizeMm).toBeCloseTo(8.82, 2)
+    // 4.7625 / 0.546, the SemiBold "o" it prints in = 8.7225, rounded up to two places.
+    expect(store.foodData.netQuantityFontSizeMm).toBeCloseTo(8.73, 2)
     expect(store.failures).toEqual([])
   })
 
@@ -501,8 +501,8 @@ describe('the type-size override seeds a size that complies', () => {
     const { store, wrapper } = await mountFood()
     await wrapper.find('#field-food-override-type').setValue(true)
     await nextTick()
-    // 4.7625 / 0.540 = 8.819444, so 8.82 rounds up and clears.
-    expect(store.foodData.netQuantityFontSizeMm).toBe(8.82)
+    // 4.7625 / 0.546 = 8.722527 in the bold face it prints in, so 8.73 rounds up and clears.
+    expect(store.foodData.netQuantityFontSizeMm).toBe(8.73)
     expect(store.failures).toEqual([])
   })
 
