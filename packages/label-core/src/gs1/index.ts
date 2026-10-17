@@ -10,6 +10,7 @@ export {
 export type { Gs1KeyKind } from './checkDigit'
 
 export {
+  CSET_82_CLASS,
   FNC1_SEPARATOR,
   getAiSpec,
   hasPredefinedLength,

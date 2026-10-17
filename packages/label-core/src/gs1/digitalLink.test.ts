@@ -456,8 +456,8 @@ describe('parseDigitalLinkUri', () => {
   /*
    * §4.5 of URI Syntax 1.7.0, read 2026-10-17, worked by hand: for each primary key, a
    * value its format takes and one just outside it. With nothing after it, the first is
-   * a reading of the path; the second is none, so the path has no key, or for the held
-   * SSCC, a key whose value the builder refuses.
+   * a reading of the path; the second is none, and the key is named with the value it
+   * does not take. It said there was no key at all until review on #97.
    */
   it.each([
     ['8006', '095201234567880102', '09520123456788010'], // 14DIGIT 2DIGIT 2DIGIT
@@ -481,7 +481,7 @@ describe('parseDigitalLinkUri', () => {
       `(${code}) as its primary key, which this build does not hold`,
     ])
     expect(() => parseDigitalLinkUri(`https://x.com/${code}/${misses}${tail}`)).toThrow(
-      /no GS1 primary key/,
+      `"${misses}" after (${code}) is not a value Digital Link URI Syntax 1.7.0 §4.5 allows`,
     )
   })
 
@@ -603,10 +603,72 @@ describe('parseDigitalLinkUri on a value as printed, by §4.2', () => {
     expect(parsed.attributes).toEqual([{ ai: '240', value: 'X*1' }])
   })
 
-  it('takes a letter encoded needlessly, which RFC 3986 §2.3 calls the same resource', () => {
-    expect(parseDigitalLinkUri(`${GTIN_PATH}/10/%41BC`).qualifiers).toEqual([
-      { ai: '10', value: 'ABC' },
-    ])
+  it.each([
+    ['a letter in a lot', `${GTIN_PATH}/10/%41BC`, /"%41" encoded/],
+    ['a digit in the GTIN', 'https://x.com/01/%309520123456788', /"%30" encoded/],
+  ])('refuses %s encoded needlessly, which §4.2 writes as it is', (_what, uri, reason) => {
+    // RFC 3986 §2.3 calls the two forms the same resource; the grammar writes one. James
+    // chose the grammar on 2026-10-17, as he had for reading the path.
+    expect(() => parseDigitalLinkUri(uri)).toThrow(reason)
+  })
+
+  it.each([
+    ['a key code', 'https://x.com/%30%31/09520123456788', /"%30%31" decodes to one/],
+    ['a qualifier code', `${GTIN_PATH}/%31%30/AB`, /\(%31%30\) cannot follow the GTIN/],
+  ])('reads %s as printed, not decoded', (_what, uri, reason) => {
+    expect(() => parseDigitalLinkUri(uri)).toThrow(reason)
+  })
+
+  it.each([
+    ['a short GTIN past a stem "00"', 'https://x.com/00/products/01/123', /^/, '123'],
+    [
+      'qualifiers out of order past a stem GTIN',
+      'https://x.com/01/12345670/01/09520123456788/21/S/10/L',
+      /not in their defined order/,
+      null,
+    ],
+    [
+      'a serial "00" before a lot, out of order',
+      'https://x.com/01/09520123456788/21/00/10/L',
+      /not in their defined order/,
+      null,
+    ],
+    [
+      'a serial "01" with a segment left over',
+      'https://x.com/01/09520123456788/21/01/123',
+      /"123" has no value after it/,
+      null,
+    ],
+    [
+      'a GLN value too short past a stem "01"',
+      'https://x.com/01/catalog/414/123',
+      /"123" after \(414\) is not a value/,
+      null,
+    ],
+  ])('names the fault in the last fitting key’s reading: %s', (_what, uri, reason, value) => {
+    // Found by `/code-review high` on #97 and the per-commit review after it: ranked
+    // guesses, then the last held key, blamed a stem segment or a qualifier's value.
+    if (value === null) expect(() => parseDigitalLinkUri(uri)).toThrow(reason)
+    else expect(parseDigitalLinkUri(uri).primary).toEqual({ ai: '01', value })
+  })
+
+  it.each([
+    ['a needlessly encoded letter', 'https://x.com/8004/%41BC', /"%41" encoded/],
+    ['an unencoded symbol', 'https://x.com/8004/A<B', /"<" unencoded/],
+  ])('judges %s in the value of a key this build does not hold', (_what, uri, reason) => {
+    // §4.2 governs every GS1 value; only the held keys' values reached it (found by review).
+    expect(() => parseDigitalLinkUri(uri)).toThrow(reason)
+  })
+
+  it('reads a query AI code as printed, as a path code is', () => {
+    // "%31%35" decoded to (15) and was taken as an attribute (found by review).
+    expect(parseDigitalLinkUri(`${GTIN_PATH}?%31%35=261231`).attributes).toEqual([])
+  })
+
+  it('says an encoded code decodes to one, past a stem segment that names a key', () => {
+    expect(() => parseDigitalLinkUri('https://x.com/01/09520123456788/%31%30/AB')).toThrow(
+      /decodes to \(10\), and Digital Link URI Syntax 1\.7\.0 §4 writes a code as it is/,
+    )
   })
 
   it.each([`${GTIN_PATH}/10/A"B`, `${GTIN_PATH}/10/A%22B`])(

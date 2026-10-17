@@ -157,7 +157,7 @@ because an extension parameter is the link owner's own data, the GS1 values are 
 the fix wants that grammar transcribed whole rather than one character at a time.
 
 **A printed Digital Link the parser refuses loses the limits it would have said.** `parseDigitalLinkUri` throws on
-the first thing the grammar refuses, and what it had listed in `unplaced` by then, such as a stem reading as a GS1 key,
+the first thing the grammar refuses, and what it had listed in `unplaced` by then, such as an empty host,
 goes with it, so the finding stands alone where `docs/WHAT-IS-NOT-CHECKED.md` says a limit is said in the finding's
 own words. Found by the per-commit review on #97, 2026-10-17. Nothing passes on account of it, since the refusal is a
 violation; the fix is for the parser to return its refusal beside what it placed rather than throw, which changes its

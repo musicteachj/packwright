@@ -71,7 +71,9 @@ export const FNC1_SEPARATOR = '\u001D'
  * embedded separator in particular truncates the field at the decoder, which
  * the encoder has no way to notice.
  */
-const CSET_82 = /^[!"%&'()*+,\-./0-9:;<=>?A-Z_a-z]*$/
+/** CSET 82 as a character class, for patterns built from it elsewhere. */
+export const CSET_82_CLASS = '!"%&\'()*+,\\-./0-9:;<=>?A-Z_a-z'
+const CSET_82 = new RegExp(`^[${CSET_82_CLASS}]*$`)
 
 const SPECS: readonly AiSpec[] = [
   {
