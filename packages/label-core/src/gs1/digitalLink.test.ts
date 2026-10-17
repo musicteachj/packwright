@@ -88,6 +88,44 @@ describe('buildDigitalLinkUri', () => {
     ).toBe('https://id.example.com/01/09506000134352/10/LOT%2F01')
   })
 
+  /*
+   * §4.2 of URI Syntax 1.7.0, read 2026-10-17, worked by hand from its list: each XSYMBOL
+   * member it writes encoded, with the encoding it gives. The builder writes each so, and
+   * the parser, finding one unencoded, names that encoding; "/" and "?" cannot appear
+   * unencoded inside a path value, so the parser is not asked about them.
+   */
+  it.each([
+    ['!', '%21'],
+    ['%', '%25'],
+    ['&', '%26'],
+    ['+', '%2B'],
+    [',', '%2C'],
+    ['/', '%2F'],
+    ['*', '%2A'],
+    ['(', '%28'],
+    [')', '%29'],
+    ["'", '%27'],
+    [';', '%3B'],
+    [':', '%3A'],
+    ['<', '%3C'],
+    ['>', '%3E'],
+    ['=', '%3D'],
+    ['?', '%3F'],
+  ])('writes %s as %s, as §4.2 gives it', (symbol, encoding) => {
+    expect(
+      buildDigitalLinkUri({
+        domain: DOMAIN,
+        primary: { ai: '01', value: GTIN },
+        qualifiers: [{ ai: '10', value: `A${symbol}B` }],
+      }),
+    ).toBe(`https://id.example.com/01/09506000134352/10/A${encoding}B`)
+    if (symbol !== '/' && symbol !== '?') {
+      expect(() => parseDigitalLinkUri(`https://x.com/01/${GTIN}/10/A${symbol}B`)).toThrow(
+        `has "${symbol}" unencoded, which Digital Link URI Syntax 1.7.0 §4.2 writes "${encoding}"`,
+      )
+    }
+  })
+
   it('percent-encodes the symbols encodeURIComponent leaves alone, as §4.2 writes them', () => {
     // URI Syntax 1.7.0 §4.2, read 2026-10-16: LeftBracket = "%28", RightBracket = "%29",
     // Asterisk = "%2A", Exclamation = "%21", Apostrophe = "%27". `/10/A(1)` passed before.
@@ -416,14 +454,14 @@ describe('parseDigitalLinkUri', () => {
     ])
   })
 
-  it('takes a short GTIN for the key, not a stem segment spelled "gtin", when neither is sound', () => {
+  it('says each reading is no path, where a stem "gtin" and the GTIN both fail', () => {
     // Found by the medium review of 2026-10-16: the first candidate was taken, so
     // `gtin` was reported as a convenience alpha and "catalog" as the bad GTIN.
-    const parsed = parseDigitalLinkUri('https://example.com/gtin/catalog/01/12345')
-    expect(parsed.stem).toBe('https://example.com/gtin/catalog')
-    expect(parsed.primary).toEqual({ ai: '01', value: '12345' })
-    expect(parsed.convenienceAlphas).toEqual([])
-    expect(parsed.unplaced).toEqual([])
+    expect(() => parseDigitalLinkUri('https://example.com/gtin/catalog/01/12345')).toThrow(
+      'no reading of the path is a GS1 Digital Link path: ' +
+        'read from "gtin/catalog", "catalog" is not a GTIN of 8, 12, 13 or 14 digits; ' +
+        'read from "01/12345", "12345" is not a GTIN of 8, 12, 13 or 14 digits',
+    )
   })
 
   it('takes a sound GTIN past a stem segment spelled like a key this build does not hold', () => {
@@ -435,12 +473,12 @@ describe('parseDigitalLinkUri', () => {
     expect(parsed.unplaced).toEqual([])
   })
 
-  it('takes a malformed GTIN past a key this build does not hold whose value names a key', () => {
+  it('faults a malformed GTIN past a key this build does not hold, saying each reading', () => {
     // Found by the per-commit review of the fix above: "414" took the path whenever the
     // GTIN after it was malformed, and the link stood down instead of being faulted.
-    const parsed = parseDigitalLinkUri('https://brand.com/414/01/12345')
-    expect(parsed.stem).toBe('https://brand.com/414')
-    expect(parsed.primary).toEqual({ ai: '01', value: '12345' })
+    expect(() => parseDigitalLinkUri('https://brand.com/414/01/12345')).toThrow(
+      /read from "414\/01", "01" after \(414\) is not a value .*; read from "01\/12345", "12345" is not a GTIN/,
+    )
   })
 
   it('takes the one reading the grammar allows, whatever the stem holds', () => {
@@ -619,37 +657,47 @@ describe('parseDigitalLinkUri on a value as printed, by §4.2', () => {
     expect(() => parseDigitalLinkUri(uri)).toThrow(reason)
   })
 
+  /*
+   * Where no reading of the path is a GS1 path and there were several keys, each
+   * reading's fault is said: four rounds of review on #97 found every rule for which
+   * reading the printer meant blaming some segment, the last of them the SSCC case here.
+   */
   it.each([
-    ['a short GTIN past a stem "00"', 'https://x.com/00/products/01/123', /^/, '123'],
+    [
+      'a short GTIN past a stem "00"',
+      'https://x.com/00/products/01/123',
+      'read from "00/products", "products" after (00) is not a value Digital Link URI Syntax ' +
+        '1.7.0 §4.5 allows for that key; read from "01/123", "123" is not a GTIN of 8, 12, 13 or 14 digits',
+    ],
+    [
+      'a GTIN with a letter O past an SSCC that fits',
+      'https://x.com/00/006141411234567890/01/0950600O134352',
+      'read from "00/006141411234567890", (01) cannot follow the SSCC in any GS1 Digital ' +
+        'Link path; read from "01/0950600O134352", "0950600O134352" is not a GTIN of 8, 12, ' +
+        '13 or 14 digits',
+    ],
     [
       'qualifiers out of order past a stem GTIN',
       'https://x.com/01/12345670/01/09520123456788/21/S/10/L',
-      /not in their defined order/,
-      null,
+      'read from "01/09520123456788", the key qualifiers are not in their defined order',
     ],
     [
       'a serial "00" before a lot, out of order',
       'https://x.com/01/09520123456788/21/00/10/L',
-      /not in their defined order/,
-      null,
+      'read from "01/09520123456788", the key qualifiers are not in their defined order',
     ],
     [
       'a serial "01" with a segment left over',
       'https://x.com/01/09520123456788/21/01/123',
-      /"123" has no value after it/,
-      null,
+      'read from "01/09520123456788", "123" has no value after it in the path',
     ],
     [
       'a GLN value too short past a stem "01"',
       'https://x.com/01/catalog/414/123',
-      /"123" after \(414\) is not a value/,
-      null,
+      'read from "414/123", "123" after (414) is not a value Digital Link URI Syntax 1.7.0 §4.5 allows for that key',
     ],
-  ])('names the fault in the last fitting key’s reading: %s', (_what, uri, reason, value) => {
-    // Found by `/code-review high` on #97 and the per-commit review after it: ranked
-    // guesses, then the last held key, blamed a stem segment or a qualifier's value.
-    if (value === null) expect(() => parseDigitalLinkUri(uri)).toThrow(reason)
-    else expect(parseDigitalLinkUri(uri).primary).toEqual({ ai: '01', value })
+  ])('says the fault of each reading: %s', (_what, uri, part) => {
+    expect(() => parseDigitalLinkUri(uri)).toThrow(part)
   })
 
   it.each([
@@ -660,9 +708,13 @@ describe('parseDigitalLinkUri on a value as printed, by §4.2', () => {
     expect(() => parseDigitalLinkUri(uri)).toThrow(reason)
   })
 
-  it('reads a query AI code as printed, as a path code is', () => {
-    // "%31%35" decoded to (15) and was taken as an attribute (found by review).
-    expect(parseDigitalLinkUri(`${GTIN_PATH}?%31%35=261231`).attributes).toEqual([])
+  it('refuses a query key that decodes to an AI code, which §4.10.1 forbids an extension', () => {
+    // Read as printed, "%31%37" passed as somebody else's parameter, and its expiry went
+    // unjudged; a resolver normalizing it reads AI (17). Found by `/code-review high` on
+    // #97. §4.10.1, read 2026-10-17: extension keys "SHALL NOT use all-numeric keys".
+    expect(() => parseDigitalLinkUri(`${GTIN_PATH}?%31%37=999999`)).toThrow(
+      /the query key "%31%37" decodes to "17", .*§4\.10\.1/,
+    )
   })
 
   it('says an encoded code decodes to one, past a stem segment that names a key', () => {

@@ -163,6 +163,16 @@ own words. Found by the per-commit review on #97, 2026-10-17. Nothing passes on 
 violation; the fix is for the parser to return its refusal beside what it placed rather than throw, which changes its
 contract for every caller, so it waits for a reason to touch the parser again.
 
+**The editor's Digital Link beside a refused field is judged by a stand-in.** Where `buildDigitalLinkUri` refuses a
+field, `gs1/digital-link` builds a second link from the fields `validateAiValue` passes and judges that, so what the
+rest of the link carries is still said. Its findings measure a URI the user never configured, one without the refused
+field, and the `sound` filter is a second copy of the builder's own checks. Found by the fourth `/code-review high` on
+#97, 2026-10-17. Nothing passes on account of it, since the refusal is itself a violation. The cure is the entry
+above: a builder and a parser that return every refusal beside what they placed, rather than throwing on the first,
+would leave nothing for a stand-in to do. The same change would let the parser's qualifier loop and its reading of
+`PATHS` become one walk over the grammar, which the same review asked for; the two now share one table
+(`QUALIFIER_ORDER` is taken from `PATHS`), so they cannot drift on data, only in code.
+
 **The MCP test's fallback URI does not percent-encode.** `asCheckLabelTakesIt` in `apps/api/src/mcp/server.test.ts`
 puts the URI together by hand where `buildDigitalLinkUri` refuses the fields, without encoding the lot or serial. A
 sweep document with `/`, `?` or `#` in its lot would give the printed side a different fault from the configured

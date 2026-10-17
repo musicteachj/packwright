@@ -226,10 +226,11 @@ describe('gs1/digital-link judges the stem by §4.11, as printed and as configur
     expect(declined?.reason).toContain('no host name')
   })
 
-  it('names the GTIN printed, and no convenience alpha, past a stem segment spelled "gtin"', () => {
+  it('names the GTIN printed, and reports no convenience alpha, past a stem segment spelled "gtin"', () => {
     const { findings } = judged(printed('https://example.com/gtin/catalog/01/12345'))
     expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_INVALID])
-    expect(findings[0]!.message).toContain('received 5 ("12345")')
+    expect(findings[0]!.message).toContain('"12345" is not a GTIN of 8, 12, 13 or 14 digits')
+    expect(findings.map((f) => f.code)).not.toContain(GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS)
   })
 
   it('says a primary key at the end of the path has no value, not that there is no key', () => {
@@ -435,5 +436,13 @@ describe('gs1/digital-link judges a configured link as built, by the printed pat
     ])
     expect(findings[0]!.message).toContain('no host name')
     expect(findings[1]!.message).not.toContain('no host name')
+  })
+
+  it('faults an encoded AI code in the query, whose value went unjudged as printed', () => {
+    // `?%31%37=999999` passed: an expiry no calendar has (found by `/code-review high` on #97).
+    const { findings } = judged(printed('https://id.example.com/01/00036000291452?%31%37=999999'))
+    expect(findings.map((f) => [f.code, f.citation.reference])).toEqual([
+      [GS1_DIGITAL_LINK_INVALID, 'GS1 Digital Link URI Syntax 1.7.0 §4'],
+    ])
   })
 })

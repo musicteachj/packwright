@@ -92,11 +92,14 @@ into a version only when there is a reason to.
   among those a path lets follow a key, so at most one reading conforms: the link is judged by it, faulted where there
   is none, and stood down where it runs through a key this build does not hold. A stem may hold segments that look
   like a key, so `/414/1234567890128/01/…` and `/01/09506000134352/01/<GTIN>` are a stem and a GTIN, and pass, in the
-  editor as printed; a component no path allows, such as (17) after a GTIN, is a fault; and where no reading conforms,
-  the fault is named from the reading of the last key whose value fits its format, since the stem comes first. Codes,
-  in the path and the query, are matched as printed, so `%30%31` is a stem segment and not the key (01). Two findings
-  went to `docs/BACKLOG.md`: the MCP test's hand-built fallback URI, and a printed link the parser refuses losing the
-  limits it would have said.
+  editor as printed; a component no path allows, such as (17) after a GTIN, is a fault; and where no reading conforms
+  and the path names several keys, the fault of each reading is said, since four rounds of review found every rule for
+  which one the printer meant blaming some segment wrongly. Codes, in the path and the query, are matched as printed,
+  so `%30%31` is a stem segment and not the key (01); a query key that decodes to digits, `?%31%37=…`, is a fault
+  under §4.10.1, which says an extension key "SHALL NOT use all-numeric keys", where it had passed with its expiry
+  unjudged. Three findings went to `docs/BACKLOG.md`: the MCP test's hand-built fallback URI, a printed link the
+  parser refuses losing the limits it would have said, and the stand-in link judged beside a field the builder
+  refuses.
 
 - **`check_label` takes a Digital Link as printed, and judges the string.** It asked for a domain and a
   `useConvenienceAlphas` flag, so a model reading `https://id.example.com/gtin/…` off a label had to infer the flag,
