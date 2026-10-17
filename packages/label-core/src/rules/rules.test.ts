@@ -340,19 +340,25 @@ describe('measurements compared with a tolerance', () => {
 })
 
 describe('a Digital Link needs a resolvable address', () => {
-  it.each(['', 'not a url', 'javascript:alert(1)', 'id.example.com'])(
-    'faults the resolver domain %o',
-    (domain) => {
-      // `buildDigitalLinkUri` never inspects the domain, so "it did not throw"
-      // was being reported as a green pass.
-      const findings = findingsFor(
-        { gtin: '036000291452', digitalLink: { domain } },
-        CONFORMANT_FIXTURE.stock,
-      )
-      expect(findings.map((f) => f.code)).toContain('GS1_DIGITAL_LINK_INVALID')
-      expect(findings.map((f) => f.code)).not.toContain('GS1_DIGITAL_LINK_VALID')
-    },
-  )
+  it.each([
+    '',
+    'not a url',
+    'javascript:alert(1)',
+    'id.example.com',
+    // Each passed a prefix test, and so the rule, until the medium review of 2026-10-16.
+    'https://id.example.com#x',
+    'https://id.example.com?q=1',
+    'https://id.example.com/a b',
+  ])('faults the resolver domain %o', (domain) => {
+    // `buildDigitalLinkUri` never inspects the domain, so "it did not throw"
+    // was being reported as a green pass.
+    const findings = findingsFor(
+      { gtin: '036000291452', digitalLink: { domain } },
+      CONFORMANT_FIXTURE.stock,
+    )
+    expect(findings.map((f) => f.code)).toContain('GS1_DIGITAL_LINK_INVALID')
+    expect(findings.map((f) => f.code)).not.toContain('GS1_DIGITAL_LINK_VALID')
+  })
 
   it('does not count a URI it simultaneously faults as a check that passed', () => {
     const findings = findingsFor(

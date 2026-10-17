@@ -151,3 +151,201 @@ describe('gs1/digital-link on a Digital Link as printed', () => {
     expect(judged(context)).toEqual({ findings: [], declined: undefined })
   })
 })
+
+/**
+ * Found by the medium review of dev on 2026-10-16, each against the productions of
+ * URI Syntax 1.7.0 §4.11, re-read that day.
+ */
+describe('gs1/digital-link judges the stem by §4.11, as printed and as configured', () => {
+  const configured = (domain: string): Gs1RetailContext =>
+    ({
+      data: { gtin: VALID_GTIN, digitalLink: { domain } },
+      subject: 'described',
+    }) as Gs1RetailContext
+
+  it.each([
+    ['a fragment, which swallows the GS1 path', 'https://id.example.com#x', /"#x"/],
+    ['a query, which swallows the GS1 path', 'https://id.example.com?q=1', /"\?q=1"/],
+    ['a space in its path', 'https://id.example.com/a b', /"a b"/],
+    ['user information', 'https://u:p@id.example.com', /user information/],
+    ['a port that is not a number', 'https://id.example.com:abc', /"abc" is not a port/],
+  ])('faults a configured domain with %s, and passes nothing', (_what, domain, reason) => {
+    // Each came back GS1_DIGITAL_LINK_VALID: the domain was tested by a prefix only.
+    const findings = digitalLinkRule.check(configured(domain))
+    expect(findings.map((f) => [f.code, f.severity, f.citation.reference])).toEqual([
+      [GS1_DIGITAL_LINK_INVALID, 'violation', 'GS1 Digital Link URI Syntax 1.7.0 §4'],
+    ])
+    expect(findings[0]!.message).toMatch(reason)
+  })
+
+  it.each([
+    'https://id_example.com',
+    'https://id.example.com:8443',
+    'https://id.example.com/products/en/',
+    'https://[2001:db8::1]',
+  ])('passes a configured domain the grammar permits, %o', (domain) => {
+    expect(digitalLinkRule.check(configured(domain)).map((f) => f.code)).toEqual([
+      GS1_DIGITAL_LINK_VALID,
+    ])
+  })
+
+  it.each([
+    'https://id_example.com/01/00036000291452',
+    'https://[2001:db8::1]/01/00036000291452',
+    'https://id.example.com//01/00036000291452',
+    'https://brand.com/414/01/00036000291452',
+  ])('passes %o as printed, which it faulted or declined', (uri) => {
+    const { findings, declined } = judged(printed(uri))
+    expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_VALID])
+    expect(declined).toBeUndefined()
+  })
+
+  it('stands down on an empty host configured, as it does printed', () => {
+    // A §4 violation cited the grammar against an empty host it allows (found by the
+    // per-commit review): it is a limit, as on the printed path.
+    const context = configured('https://:443')
+    expect(digitalLinkRule.check(context)).toEqual([])
+    expect(digitalLinkRule.declines!(context)).toMatchObject({ limit: true, wants: [] })
+    expect(digitalLinkRule.declines!(context)!.reason).toContain('has no host name')
+  })
+
+  it('faults a malformed GTIN past a stem segment spelled like a key this build does not hold', () => {
+    const { findings, declined } = judged(printed('https://brand.com/414/01/12345'))
+    expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_INVALID])
+    expect(declined).toBeUndefined()
+  })
+
+  it('names what a faulted domain must look like, not just its scheme', () => {
+    const [finding] = digitalLinkRule.check(configured('https://id.example.com#x'))
+    expect(finding!.measurement?.required).toBe('http(s)://host[:port][/path]')
+  })
+
+  it('stands down on an empty host as printed, which the grammar allows and nothing serves', () => {
+    const { findings, declined } = judged(printed('https:///01/00036000291452'))
+    expect(findings).toEqual([])
+    expect(declined?.reason).toContain('no host name')
+  })
+
+  it('names the GTIN printed, and no convenience alpha, past a stem segment spelled "gtin"', () => {
+    const { findings } = judged(printed('https://example.com/gtin/catalog/01/12345'))
+    expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_INVALID])
+    expect(findings[0]!.message).toContain('received 5 ("12345")')
+  })
+
+  it('says a primary key at the end of the path has no value, not that there is no key', () => {
+    const { findings } = judged(printed('https://id.example.com/01'))
+    expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_INVALID])
+    expect(findings[0]!.message).toContain('"01" ends the path with no value after it')
+  })
+})
+
+/**
+ * URI Syntax 1.7.0 §4.2 writes every symbol in a GS1 value encoded but "-", "." and "_"
+ * and the double quote; RFC 3986 allows a double quote only encoded. Both read 2026-10-16.
+ * Each pass below was a false clearance until then.
+ */
+describe('gs1/digital-link judges a value by §4.2, as printed and as configured', () => {
+  const configured = (link: Record<string, unknown>): Gs1RetailContext =>
+    ({
+      data: { gtin: VALID_GTIN, digitalLink: { domain: 'https://id.example.com', ...link } },
+      subject: 'described',
+    }) as Gs1RetailContext
+
+  it.each([
+    'https://id.example.com/01/00036000291452/10/A<B',
+    'https://id.example.com/01/00036000291452/10/A(1)',
+  ])('faults %o as printed, a symbol §4.2 writes encoded', (uri) => {
+    const { findings, declined } = judged(printed(uri))
+    expect(findings.map((f) => [f.code, f.citation.reference])).toEqual([
+      [GS1_DIGITAL_LINK_INVALID, 'GS1 Digital Link URI Syntax 1.7.0 §4'],
+    ])
+    expect(findings[0]!.message).toMatch(/unencoded, which Digital Link URI Syntax 1\.7\.0 §4\.2/)
+    expect(declined).toBeUndefined()
+  })
+
+  it('passes the same lot encoded as printed', () => {
+    const { findings } = judged(printed('https://id.example.com/01/00036000291452/10/A%281%29'))
+    expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_VALID])
+  })
+
+  it('builds a configured lot with its symbols encoded, and passes that', () => {
+    const findings = digitalLinkRule.check(configured({ lot: 'A(1)' }))
+    expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_VALID])
+    expect(findings[0]!.message).toContain('/10/A%281%29')
+  })
+
+  it('stands down on a double quote in a lot, as printed and as configured', () => {
+    const asPrinted = judged(printed('https://id.example.com/01/00036000291452/10/A%22B'))
+    expect(asPrinted.findings).toEqual([])
+    expect(asPrinted.declined?.reason).toContain('a double quote in the value of AI (10)')
+
+    const context = configured({ lot: 'A"B' })
+    expect(digitalLinkRule.check(context)).toEqual([])
+    expect(digitalLinkRule.declines!(context)).toMatchObject({ limit: true, wants: [] })
+    expect(digitalLinkRule.declines!(context)!.reason).toContain(
+      'a double quote in its lot or serial',
+    )
+  })
+
+  it('says the double quote inside the convenience-alpha advisory, since it may not also stand down', () => {
+    const context = configured({ lot: 'A"B', useConvenienceAlphas: true })
+    const findings = digitalLinkRule.check(context)
+    expect(findings.map((f) => f.code)).toEqual([GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS])
+    expect(findings[0]!.message).toContain('a double quote in its lot or serial')
+    expect(digitalLinkRule.declines!(context)).toBeUndefined()
+  })
+
+  it.each([
+    [
+      'the convenience-alpha advisory beside an empty host',
+      { domain: 'https://:443', useConvenienceAlphas: true },
+      GS1_DIGITAL_LINK_CONVENIENCE_ALPHAS,
+      'has no host name',
+    ],
+    [
+      'a lot the builder refuses beside an empty host',
+      { domain: 'https://:443', lot: 'x'.repeat(30) },
+      GS1_DIGITAL_LINK_INVALID,
+      'has no host name',
+    ],
+    [
+      'a serial the builder refuses beside a quoted lot',
+      { lot: 'A"B', serial: '' },
+      GS1_DIGITAL_LINK_INVALID,
+      'a double quote in its lot or serial',
+    ],
+  ])('reports %s, and says the limit in its message', (_what, link, code, limit) => {
+    // An empty host returned nothing, hiding both findings; the quote's limit was said
+    // beside the advisory only. Found by the per-commit review of 2026-10-16.
+    const context = configured(link)
+    const findings = digitalLinkRule.check(context)
+    expect(findings.map((f) => f.code)).toEqual([code])
+    expect(findings[0]!.message).toContain(limit)
+    expect(digitalLinkRule.declines!(context)).toBeUndefined()
+  })
+
+  it.each([
+    ['an empty host written https://', { domain: 'https://' }, 'has no host name'],
+    [
+      'a domain that reads as a GS1 path itself',
+      { domain: 'https://x.com/01/09506000134352' },
+      'whose key comes before the GTIN built into it',
+    ],
+  ])('stands down on %s, as the printed path does on the link it builds', (_what, link, reason) => {
+    // Found by the per-commit review of 2026-10-17: the first was faulted under §4 as no
+    // web address, and the second passed a link whose key, read as printed, is another GTIN.
+    const context = configured(link)
+    expect(digitalLinkRule.check(context)).toEqual([])
+    expect(digitalLinkRule.declines!(context)!.reason).toContain(reason)
+  })
+
+  it('passes a stem segment that is percent-encoded but not UTF-8, on both paths', () => {
+    // `pct-encoded` allows any octet in a stem; the printed path decoded it and refused it.
+    expect(
+      judged(printed('https://x.com/caf%E9/01/00036000291452')).findings.map((f) => f.code),
+    ).toEqual([GS1_DIGITAL_LINK_VALID])
+    expect(
+      digitalLinkRule.check(configured({ domain: 'https://x.com/caf%E9' })).map((f) => f.code),
+    ).toEqual([GS1_DIGITAL_LINK_VALID])
+  })
+})

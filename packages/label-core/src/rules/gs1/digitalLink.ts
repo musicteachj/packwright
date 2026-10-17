@@ -19,10 +19,10 @@
  * standard is expressed using ABNF grammar [RFC 5234] in section 4 such that
  * conformance can be determined with certainty." Every `GS1_DIGITAL_LINK_INVALID`
  * this rule reports is a structural non-conformance, so §4 is the reference they
- * share. The resolver-domain check rests on one production inside it — §4.11
- * gives `scheme = "http" / "https" / "HTTP" / "HTTPS"` — and splitting that into
- * a citation of its own is a judgement left for when a bad domain gets a fixture
- * separate from the builder's rejections.
+ * share. The resolver-domain check rests on the productions of §4.11, `customURIstem
+ * = scheme "://" hostname *optionalPathSegment` and those it is built from (re-read
+ * 2026-10-16). Splitting that into a citation of its own is a judgment still open: the
+ * bad-domain fixture added that day asserts §4, as every other finding here does.
  *
  * **The convenience alphas move to §4.1 of the current release**, rather than
  * citing 1.3.0 because that is where they were removed. §4.1 of 1.7.0 both names
@@ -40,7 +40,13 @@
  */
 
 import { isValidCheckDigit, normaliseToGtin14 } from '../../gs1/checkDigit'
-import { DigitalLinkError, buildDigitalLinkUri, parseDigitalLinkUri } from '../../gs1/digitalLink'
+import {
+  DigitalLinkError,
+  buildDigitalLinkUri,
+  judgeCustomUriStem,
+  parseDigitalLinkUri,
+  withoutTrailingSlashes,
+} from '../../gs1/digitalLink'
 import type { Gs1Element } from '../../gs1/elementString'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnDocument } from '../finding'
@@ -211,6 +217,60 @@ function verdictOnPrinted(data: Gs1RetailContext['data']): PrintedVerdict | unde
   return verdict
 }
 
+/** The configured domain as the builder prints it, without its trailing slashes. */
+const configuredStem = (domain: string) => judgeCustomUriStem(withoutTrailingSlashes(domain))
+
+/**
+ * What stops a configured link's pass without a finding, said as a limit of the tool.
+ *
+ * - **An empty host.** `reg-name = *( … )` in §4.11 allows one, so faulting it under §4
+ *   cited a provision against what it permits (found by review), and no resolver can
+ *   serve it, so it is not passed either: the printed path's answer.
+ * - **A double quote in the lot or serial.** §4.2 writes `DoubleQuote = '"'` unencoded,
+ *   and RFC 3986 allows one in a URI only as `%22`: it is in neither `unreserved` (§2.3)
+ *   nor `reserved` (§2.2). Both read 2026-10-16. No form satisfies both, so neither is
+ *   passed, here or as printed.
+ * - **A domain that reads as a GS1 path itself.** `https://x.com/01/09506000134352` is a
+ *   stem §4.11 allows, but the link built under it carries two GTINs, and read as printed
+ *   the first is its key. It passed here and stood down there (found by review).
+ */
+function configuredLimit(data: Gs1RetailContext['data']): string | undefined {
+  if (!data.digitalLink || !gtinIsSound(data.gtin)) return undefined
+  const { domain, lot, serial } = data.digitalLink
+  const stem = configuredStem(domain)
+  if ('fault' in stem) return undefined
+  const reasons: string[] = []
+  if (stem.host === '') {
+    reasons.push(
+      `has no host name in its resolver domain "${domain}", which Digital Link URI Syntax ` +
+        '1.7.0 §4.11 allows and no resolver can serve',
+    )
+  }
+  if ([lot, serial].some((value) => value?.includes('"'))) {
+    reasons.push(
+      'carries a double quote in its lot or serial, which Digital Link URI Syntax 1.7.0 §4.2 ' +
+        'writes unencoded and RFC 3986 allows only encoded',
+    )
+  }
+  try {
+    const stemAsPrinted = parseDigitalLinkUri(
+      buildDigitalLinkUri({ domain, primary: { ai: '01', value: data.gtin } }),
+    ).stem
+    if (stemAsPrinted !== withoutTrailingSlashes(domain)) {
+      reasons.push(
+        `reads, under the resolver domain "${domain}", as a link whose key comes before ` +
+          'the GTIN built into it',
+      )
+    }
+  } catch (error) {
+    // A domain the parser refuses outright is the finding's business, not a limit's.
+    if (!(error instanceof DigitalLinkError)) throw error
+  }
+  return reasons.length === 0
+    ? undefined
+    : `The Digital Link ${reasons.join(', and ')}, so the link is not passed: a limit of this tool.`
+}
+
 /** The GTIN is sound enough to judge a link built from it, or printed beside it. */
 const gtinIsSound = (gtin: string): boolean => /^[0-9]{12}$/.test(gtin) && isValidCheckDigit(gtin)
 
@@ -226,9 +286,15 @@ export const digitalLinkRule: Gs1RetailRule = {
   },
   appliesTo: 'gs1-retail',
 
-  // A link as printed that this tool cannot pass and cannot fault: said as its limit.
-  declines({ data }: Gs1RetailContext): Decline | undefined {
-    const limit = verdictOnPrinted(data)?.limit
+  // A link, printed or configured, that this tool cannot pass and cannot fault: said as its limit.
+  declines(context: Gs1RetailContext): Decline | undefined {
+    const { data } = context
+    if (data.digitalLinkAsPrinted !== undefined) {
+      const limit = verdictOnPrinted(data)?.limit
+      return limit === undefined ? undefined : { reason: limit, wants: [], limit: true }
+    }
+    // Silent beside a finding, which then says the limit itself.
+    const limit = digitalLinkRule.check(context).length > 0 ? undefined : configuredLimit(data)
     return limit === undefined ? undefined : { reason: limit, wants: [], limit: true }
   },
 
@@ -255,18 +321,25 @@ export const digitalLinkRule: Gs1RetailRule = {
     // being read as conformance — and an empty resolver, `not a url`, or
     // `javascript:alert(1)` each came back as a green pass under a GS1 citation.
     // A Digital Link is a resolvable web address or it is not a Digital Link.
-    if (!/^https?:\/\/[^\s/?#]+/i.test(domain)) {
+    // The test that replaced it looked at a prefix only, and passed a domain ending
+    // `#x`, which turns the whole GS1 path built after it into a fragment (found by
+    // review): the domain is now judged whole, by the same §4.11 productions as a link
+    // as printed, and with its trailing slashes gone, as the builder prints it.
+    const stem = configuredStem(domain)
+    if ('fault' in stem) {
       return [
         finding(digitalLinkRule, {
           code: GS1_DIGITAL_LINK_INVALID,
           severity: 'violation',
-          message:
-            `The resolver domain "${domain}" is not an http or https web address, ` +
-            'so the Digital Link cannot resolve.',
-          measurement: { actual: domain || '(empty)', required: 'https://…' },
+          message: `The resolver domain "${domain}" cannot open a conformant Digital Link: ${stem.fault}.`,
+          measurement: { actual: domain || '(empty)', required: 'http(s)://host[:port][/path]' },
         }),
       ]
     }
+    // What stops the pass without a finding (`configuredLimit`): said by `declines`, or
+    // beside a finding in its message. An empty host returned nothing at all here, and hid
+    // a lot the builder refuses (found by review).
+    const limit = configuredLimit(data)
 
     const qualifiers: Gs1Element[] = []
     if (lot !== undefined) qualifiers.push({ ai: '10', value: lot })
@@ -287,7 +360,8 @@ export const digitalLinkRule: Gs1RetailRule = {
       // advisory below declares the same URI non-conformant, and a rail that
       // tallies both reports a check as cleared that the rule itself just
       // faulted.
-      if (!useConvenienceAlphas) {
+      // Nor where the tool cannot judge the URI (`configuredLimit`).
+      if (!useConvenienceAlphas && limit === undefined) {
         findings.push(
           // URI Syntax governs the string, and this engine prints no carrier for it: the document.
           passedOnDocument(
@@ -324,6 +398,10 @@ export const digitalLinkRule: Gs1RetailRule = {
       )
     }
 
+    if (limit !== undefined && findings.length > 0) {
+      const last = findings[findings.length - 1]!
+      findings[findings.length - 1] = { ...last, message: `${last.message} ${limit}` }
+    }
     return findings
   },
 }

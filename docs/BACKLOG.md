@@ -24,7 +24,10 @@ piece, that piece stayed, as an entry of its own. What remains is open.
 The entries fall into four kinds:
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. **None outstanding.** The last, `check_label` passing type
+provision that does not say what the finding claims. **None outstanding.** The last two were fixed on 2026-10-16
+(`CHANGELOG.md`): `gs1/digital-link` passing a GS1 value whose symbols are not percent-encoded as URI Syntax 1.7.0
+§4.2 writes them, and a configured resolver domain ending `#x` passing as a conformant Digital Link, the second found
+by the medium review of dev and the first while fixing it. Before them, `check_label` passing type
 sizes, placements and barcode geometry the engine chose itself (found by `/code-review high` on #86), was fixed on
 2026-10-11 (`rules/described.ts`, `CHANGELOG.md`). The MCP evaluation of 2026-10-10
 found two — `check_label` passing a label size nobody gave it, and `GHS_PICTOGRAM_NOT_REQUIRED` giving a reason its
@@ -143,6 +146,25 @@ prefixed with leading zeroes" to 14 digits, already read, which wants its own co
 title covers the convenience alphas alone; and the rest of URI Syntax 1.7.0's path grammar, of which this build
 holds the GTIN's qualifiers (22), (10) and (21) only, so a UPUI path's (235) or a GLN's path stands down rather than
 being judged.
+
+**Query parameters that are not GS1's go unjudged in a Digital Link.** URI Syntax 1.7.0 §4 gives them a grammar of
+their own, `extensionParameter = extensionKey "=" extensionValue`, read 2026-10-16: the key may not be all digits, and
+the value is drawn from a set that leaves out, among others, a raw `<`. `parseDigitalLinkUri` skips any parameter
+whose key is not an AI, so `?x=a<b` passes. Found while fixing the percent-encoding of GS1 values the same day. Left
+because an extension parameter is the link owner's own data, the GS1 values are what the rule exists to judge, and
+the fix wants that grammar transcribed whole rather than one character at a time.
+
+**The configured and printed Digital Link are still two judgments.** Found by the medium review of dev on
+2026-10-16. Since that day they share `judgeCustomUriStem` for the domain, which closed the false clearance the two
+paths disagreeing had caused. The end state is one path: build the configured URI, then judge it as printed. Not done
+here because it changes the configured path's messages and measurements, which fixtures and the editor's tests
+assert, and the shared stem check closed the defect without it. Worth doing when the configured path next changes.
+
+**The MCP test's fallback URI does not percent-encode.** `asCheckLabelTakesIt` in `apps/api/src/mcp/server.test.ts`
+puts the URI together by hand where `buildDigitalLinkUri` refuses the fields, without encoding the lot or serial. A
+sweep document with `/`, `?` or `#` in its lot would give the printed side a different fault from the configured
+side, and the equality check would compare two defects. Latent: no sweep document has such a lot. Found by the same
+review.
 
 **The experiment harness can pass its spend cap.** It checks the cap before starting each conversation, with four in
 flight, so a study can end above it by up to four conversations' cost, about $0.30 at the worst seen. Every study so

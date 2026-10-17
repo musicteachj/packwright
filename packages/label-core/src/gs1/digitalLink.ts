@@ -78,11 +78,78 @@ export interface DigitalLinkInput {
   useConvenienceAlphas?: boolean
 }
 
+/*
+ * A GS1 value in a Digital Link, by URI Syntax 1.7.0 §4.2, "Character sets", read from
+ * https://ref.gs1.org/standards/digital-link/uri-syntax/ on 2026-10-16. `XCHAR = DIGIT /
+ * UPPERALPHA / LOWERALPHA / XSYMBOL`, and XSYMBOL's members are written encoded,
+ * `LeftAngleBracket = "%3C"`, `LeftBracket = "%28"` and so on, for every symbol but
+ * "-", "." and "_" and the double quote, `DoubleQuote = '"'`. §4.6 builds the lot and
+ * serial from XCHAR. RFC 3986, read from rfc-editor.org the same day, allows a double
+ * quote in a URI only encoded (it is in neither `unreserved`, §2.3, nor `reserved`,
+ * §2.2), so no form of one satisfies both, and the rule stands down on it.
+ */
+
+/**
+ * A value as §4.2 writes it. `encodeURIComponent` leaves `! ' ( ) *` as they are, and
+ * §4.2 writes each one encoded, so a lot of `A(1)` built `/10/A(1)` and passed (found
+ * 2026-10-16, fixing the medium review of dev).
+ */
+function encodedValue(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (symbol) => `%${symbol.charCodeAt(0).toString(16).toUpperCase()}`,
+  )
+}
+
+/**
+ * The XSYMBOL members §4.2 writes encoded, from its own list. A character outside XCHAR
+ * altogether, `~` or a letter with an accent, is not one, and is said so (found by review).
+ */
+const ENCODED_XSYMBOLS = new Set([
+  '!',
+  '%',
+  '&',
+  '+',
+  ',',
+  '/',
+  '*',
+  '(',
+  ')',
+  "'",
+  ';',
+  ':',
+  '<',
+  '=',
+  '>',
+  '?',
+])
+
+/**
+ * The first character of a value as printed that §4.2 does not allow unencoded, if any. A letter
+ * or digit encoded needlessly, `%41` for `A`, is let through: RFC 3986 §2.3 says the two
+ * forms "are equivalent: they identify the same resource".
+ */
+function unencodedSymbol(printed: string): string | undefined {
+  return [...printed.replace(/%[0-9A-Fa-f]{2}/g, '')].find(
+    (character) => !/^[A-Za-z0-9._"-]$/.test(character),
+  )
+}
+
 function segmentFor(element: Gs1Element, useAlphas: boolean): string {
   const spec = getAiSpec(element.ai)
   if (!spec) throw new DigitalLinkError(`Unknown Application Identifier (${element.ai})`)
   const key = useAlphas && spec.digitalLinkAlpha ? spec.digitalLinkAlpha : element.ai
-  return `${key}/${encodeURIComponent(element.value)}`
+  return `${key}/${encodedValue(element.value)}`
+}
+
+/**
+ * A resolver domain without its trailing slashes, as the builder prints it, short of the
+ * "//" after the scheme: `https://` became `https:` and built `https:/01/…`, faulted under
+ * §4 where the empty host the user gave is one §4.11 allows (found by review).
+ */
+export function withoutTrailingSlashes(domain: string): string {
+  const scheme = /^[a-z][a-z0-9+.-]*:\/\//i.exec(domain)?.[0] ?? ''
+  return scheme + domain.slice(scheme.length).replace(/\/+$/, '')
 }
 
 export function buildDigitalLinkUri(input: DigitalLinkInput): string {
@@ -160,7 +227,7 @@ export function buildDigitalLinkUri(input: DigitalLinkInput): string {
 
   const ordered = [...qualifiers].sort((a, b) => order.indexOf(a.ai) - order.indexOf(b.ai))
 
-  const origin = domain.replace(/\/+$/, '')
+  const origin = withoutTrailingSlashes(domain)
   const path = [
     segmentFor({ ai: primary.ai, value: primaryValue }, useConvenienceAlphas),
     ...ordered.map((q) => segmentFor(q, useConvenienceAlphas)),
@@ -168,7 +235,7 @@ export function buildDigitalLinkUri(input: DigitalLinkInput): string {
 
   // Attributes stay numeric in the query string — the convenience alphas are a
   // path-segment convention only.
-  const query = attributes.map(({ ai, value }) => `${ai}=${encodeURIComponent(value)}`).join('&')
+  const query = attributes.map(({ ai, value }) => `${ai}=${encodedValue(value)}`).join('&')
 
   return `${origin}/${path}${query ? `?${query}` : ''}`
 }
@@ -193,7 +260,8 @@ export interface ParsedDigitalLink {
    * Kept apart from the errors it throws because the standard may well permit them:
    * `upui-path = gtin-comp tpx-comp` puts AI (235) after a GTIN, and this build's
    * qualifier table has only (22), (10) and (21). Calling a permitted link
-   * non-conformant is a false finding under a citation nobody can argue with.
+   * non-conformant is a false finding under a citation nobody can argue with. An empty
+   * host is listed here for the same reason: `reg-name` allows it.
    */
   unplaced: string[]
 }
@@ -240,6 +308,15 @@ function keyFor(segment: string): { ai: string; alpha?: string } | undefined {
   return ai === undefined ? undefined : { ai, alpha: segment }
 }
 
+/** Whether a segment names a primary key, held here or only defined by the standard. */
+function namesPrimaryKey(segment: string): boolean {
+  const key = keyFor(segment)
+  return (
+    (key !== undefined && getAiSpec(key.ai)?.primaryKey === true) ||
+    DL_PRIMARY_KEY_CODES.has(segment)
+  )
+}
+
 function decoded(segment: string): string {
   try {
     return decodeURIComponent(segment)
@@ -248,8 +325,100 @@ function decoded(segment: string): string {
   }
 }
 
-/** A host name of letters, digits and hyphens in dot-separated labels, and a port. */
-const HOST = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*(?::[0-9]+)?$/i
+/*
+ * The custom stem a Digital Link is served under, by the productions of URI Syntax
+ * 1.7.0 §4.11, "Constructing the GS1 Digital Link URI", read from
+ * https://ref.gs1.org/standards/digital-link/uri-syntax/ on 2026-10-16:
+ *
+ *   customURIstem = scheme "://" hostname *optionalPathSegment
+ *   hostname = host [ ":" port]                   port = *DIGIT
+ *   host = IP-literal / IPv4address / reg-name
+ *   reg-name = *( unreserved / pct-encoded / sub-delims )
+ *   IP-literal = "[" ( IPv6address / IPvFuture ) "]"
+ *   optionalPathSegment = "/" segment             segment = *pchar
+ *   pchar = unreserved / pct-encoded / sub-delims / ":" / "@"
+ *
+ * A host of letters, digits and hyphens alone faulted `id_example.com` and
+ * `[2001:db8::1]` under §4, which permits both, and refused an empty stem segment that
+ * `segment = *pchar` allows (found by review). IPv4address is not tested apart: every
+ * one is also a reg-name.
+ */
+const UNRESERVED_AND_SUB_DELIMS = "A-Za-z0-9\\-._~!$&'()*+,;="
+const REG_NAME = new RegExp(`^(?:[${UNRESERVED_AND_SUB_DELIMS}]|%[0-9A-Fa-f]{2})*$`)
+const SEGMENT = new RegExp(`^(?:[${UNRESERVED_AND_SUB_DELIMS}:@]|%[0-9A-Fa-f]{2})*$`)
+const IPV4 =
+  /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$/
+const IPV_FUTURE = new RegExp(`^v[0-9A-Fa-f]+\\.[${UNRESERVED_AND_SUB_DELIMS}:]+$`, 'i')
+
+/** IPv6address, by its nine alternatives: eight 16-bit groups, or fewer around one "::". */
+function isIpv6(address: string): boolean {
+  const halves = address.split('::')
+  if (halves.length > 2) return false
+  const groups = halves.map((half) => (half === '' ? [] : half.split(':')))
+  const all = groups.flat()
+  // ls32: the last 32 bits may be written as an IPv4 address, and only last.
+  const last = all[all.length - 1]
+  const endsInIpv4 =
+    last !== undefined && IPV4.test(last) && (halves.length === 1 || groups[1]!.length > 0)
+  const h16s = endsInIpv4 ? all.slice(0, -1) : all
+  if (!h16s.every((group) => /^[0-9A-Fa-f]{1,4}$/.test(group))) return false
+  const width = h16s.length + (endsInIpv4 ? 2 : 0)
+  return halves.length === 2 ? width <= 7 : width === 8
+}
+
+/** What `hostname = host [ ":" port]` refuses in an authority, if anything. */
+function hostnameFault(hostname: string): string | undefined {
+  if (hostname.includes('@')) {
+    return `"${hostname}" has user information before its host name, which a Digital Link does not take`
+  }
+  let host = hostname
+  let port = ''
+  if (hostname.startsWith('[')) {
+    const close = hostname.indexOf(']')
+    const literal = close === -1 ? '' : hostname.slice(1, close)
+    if (close === -1 || !(isIpv6(literal) || IPV_FUTURE.test(literal))) {
+      return `"${close === -1 ? hostname : hostname.slice(0, close + 1)}" is not an IP address`
+    }
+    const after = hostname.slice(close + 1)
+    if (after !== '' && !after.startsWith(':')) return `"${hostname}" is not a host name`
+    port = after.slice(1)
+  } else {
+    const colon = hostname.indexOf(':')
+    if (colon !== -1) {
+      host = hostname.slice(0, colon)
+      port = hostname.slice(colon + 1)
+    }
+    if (!REG_NAME.test(host)) return `"${host}" is not a host name`
+  }
+  return /^[0-9]*$/.test(port) ? undefined : `"${port}" is not a port number`
+}
+
+/**
+ * Judges a custom stem, `https://id.example.com/products` say, by the §4.11 productions
+ * above: the fault where the grammar refuses it, or else its host. The host may be empty,
+ * because `reg-name` allows it, and an empty host cannot resolve: what to say about
+ * that is the caller's business.
+ */
+export function judgeCustomUriStem(stem: string): { fault: string } | { host: string } {
+  const match = /^(https?):\/\/([^/?#]*)([^?#]*)([?#][\s\S]*)?$/i.exec(stem)
+  if (!match) return { fault: 'it is not an http or https web address' }
+  const [, , hostname = '', path = '', after] = match
+  if (after !== undefined) {
+    return {
+      fault: `it ends in "${after}", a query or fragment, which would swallow the GS1 path after it`,
+    }
+  }
+  const fault = hostnameFault(hostname)
+  if (fault !== undefined) return { fault }
+  const segment = path
+    .split('/')
+    .slice(1)
+    .find((one) => !SEGMENT.test(one))
+  if (segment !== undefined) {
+    return { fault: `the path segment "${segment}" holds a character a URI must percent-encode` }
+  }
+  return { host: hostname.replace(/:[0-9]*$/, '') }
+}
 
 /**
  * Takes apart a Digital Link URI as printed on a label, so a rule can judge the
@@ -268,9 +437,10 @@ const HOST = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9]
  * - the standard's own examples of permitted paths include one ending in a slash.
  *
  * **It throws only for what that grammar plainly refuses**: an address that is not
- * http or https with a host name, an empty segment, a key with no value after it,
- * GTIN qualifiers out of order, or no GS1 key at all. What this build cannot place
- * it lists in `unplaced` instead. It records convenience alphas rather than refusing
+ * http or https, a stem `judgeCustomUriStem` faults, an empty segment from the primary
+ * key on, a key with no value after it, GTIN qualifiers out of order, or no GS1 key at
+ * all. What this build cannot place it lists in `unplaced` instead, and so is an empty
+ * host, which the grammar allows and no resolver can serve. It records convenience alphas rather than refusing
  * them, because what to say about them is the rule's business (§4.1), and it does not
  * widen or check the GTIN: a short GTIN and a wrong check digit are judged by the
  * caller, which knows what the label's barcode carries.
@@ -284,23 +454,35 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
     )
   }
   const [, scheme, host = '', path = '', query = ''] = match
-  if (!HOST.test(host)) throw new DigitalLinkError(`"${host}" is not a host name`)
+  // The host first, so a bad one is named before a missing key; the stem is judged
+  // whole once the key is found.
+  const hostFault = hostnameFault(host)
+  if (hostFault !== undefined) throw new DigitalLinkError(hostFault)
 
   const raw = path === '' ? [] : path.slice(1).split('/')
   // One trailing slash is permitted, as in the standard's own examples.
   if (raw.length > 0 && raw[raw.length - 1] === '') raw.pop()
-  if (raw.some((segment) => segment === '')) {
-    throw new DigitalLinkError('the path has an empty segment ("//")')
-  }
-  const segments = raw.map(decoded)
+  // Decoded to find the key, but a segment that is not UTF-8 is kept as printed rather
+  // than refused: `pct-encoded` allows any octet in a stem, "caf%E9" included, and a
+  // value is decoded strictly where it is placed (found by review).
+  const segments = raw.map((segment) => {
+    try {
+      return decodeURIComponent(segment)
+    } catch {
+      return segment
+    }
+  })
   const unplaced: string[] = []
   const convenienceAlphas: string[] = []
 
   // The primary key: of the segments naming one, with a value after them, the first
-  // whose value could be that key's, so a stem segment spelled "gtin" or "sscc" before
-  // something else is not taken for it (found by review). Where none could be, the
-  // first is taken anyway, so the builder reports the malformed value as the fault it
-  // is: "/01/00O36000291452", a letter O for a zero, is a bad GTIN, not a missing key.
+  // held key whose value could be that key's, so a stem segment spelled "gtin", "sscc"
+  // or "414" before something else is not taken for it (found by review). Failing that,
+  // the first key the standard defines and this build does not hold, unless its value
+  // names a key itself, as "/414/01/12345" does. Failing that, the first held numeric
+  // key, so the builder reports the malformed value as the fault it is:
+  // "/01/00O36000291452", a letter O for a zero, is a bad GTIN, not a missing key, and
+  // "/gtin/catalog/01/12345" is a short GTIN, not a convenience alpha.
   const candidates = segments.flatMap((segment, i) => {
     if (i + 1 >= segments.length) return []
     const key = keyFor(segment)
@@ -309,19 +491,63 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
     return []
   })
   if (candidates.length === 0) {
+    const last = segments[segments.length - 1]
+    if (last !== undefined && namesPrimaryKey(last)) {
+      throw new DigitalLinkError(
+        `"${last}" ends the path with no value after it, and no GS1 primary key with a value comes before it`,
+      )
+    }
     throw new DigitalLinkError('no GS1 primary key, such as /01/ and a GTIN, appears in the path')
   }
   const plausible = (candidate: (typeof candidates)[number]): boolean => {
-    if (!candidate.held) return true
     const value = segments[candidate.i + 1]!
+    if (!candidate.held) return !namesPrimaryKey(value)
     return candidate.key.ai === '01'
       ? /^[0-9]+$/.test(value) && GTIN_LENGTHS.has(value.length)
       : validateAiValue(candidate.key.ai, value) === null
   }
-  const chosen = candidates.find(plausible) ?? candidates[0]!
+  const chosen =
+    candidates.find((candidate) => candidate.held && plausible(candidate)) ??
+    candidates.find((candidate) => !candidate.held && plausible(candidate)) ??
+    candidates.find((candidate) => candidate.held && candidate.key.alpha === undefined) ??
+    candidates[0]!
   const start = chosen.i
 
+  // `segment = *pchar` lets a stem segment be empty; from the key on, every component
+  // has a value.
+  if (raw.slice(start).some((segment) => segment === '')) {
+    throw new DigitalLinkError('the path has an empty segment ("//") from its GS1 key on')
+  }
+  const stem = `${scheme}://${host}${raw
+    .slice(0, start)
+    .map((s) => `/${s}`)
+    .join('')}`
+  const judgedStem = judgeCustomUriStem(stem)
+  if ('fault' in judgedStem) throw new DigitalLinkError(judgedStem.fault)
+  if (judgedStem.host === '') unplaced.push('no host name, which no resolver can serve')
+
   let primary: Gs1Element | undefined
+  // A value as printed, judged by §4.2 before it is decoded: decoding first passed
+  // `/10/A<B`, where §4.2 writes `/10/A%3CB` (found 2026-10-16).
+  const valueOf = (ai: string, printedValue: string): string => {
+    const symbol = unencodedSymbol(printedValue)
+    if (symbol !== undefined) {
+      throw new DigitalLinkError(
+        `the value of AI (${ai}), "${printedValue}", has "${symbol}" unencoded, ` +
+          (ENCODED_XSYMBOLS.has(symbol)
+            ? `which Digital Link URI Syntax 1.7.0 §4.2 writes "${encodedValue(symbol)}"`
+            : 'which is not among the characters Digital Link URI Syntax 1.7.0 §4.2 allows'),
+      )
+    }
+    if (/"|%22/i.test(printedValue)) {
+      unplaced.push(
+        `a double quote in the value of AI (${ai}), which Digital Link URI Syntax 1.7.0 ` +
+          '§4.2 writes unencoded and RFC 3986 allows only encoded',
+      )
+    }
+    return decoded(printedValue)
+  }
+
   let rest: string[] = []
   if (!chosen.held) {
     // A key the standard defines and this build's table does not hold, such as a GLN:
@@ -329,7 +555,7 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
     unplaced.push(`(${chosen.key.ai}) as its primary key, which this build does not hold`)
   } else {
     if (chosen.key.alpha !== undefined) convenienceAlphas.push(chosen.key.alpha)
-    primary = { ai: chosen.key.ai, value: segments[start + 1]! }
+    primary = { ai: chosen.key.ai, value: valueOf(chosen.key.ai, raw[start + 1]!) }
     rest = segments.slice(start + 2)
   }
 
@@ -358,7 +584,7 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
       }
       last = position
       if (key.alpha !== undefined) convenienceAlphas.push(key.alpha)
-      qualifiers.push({ ai: key.ai, value: rest[i + 1]! })
+      qualifiers.push({ ai: key.ai, value: valueOf(key.ai, raw[start + 3 + i]!) })
     }
   }
 
@@ -388,15 +614,12 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
       continue
     }
     if (key.alpha !== undefined) convenienceAlphas.push(key.alpha)
-    attributes.push({ ai: key.ai, value: at === -1 ? '' : decoded(pair.slice(at + 1)) })
+    attributes.push({ ai: key.ai, value: at === -1 ? '' : valueOf(key.ai, pair.slice(at + 1)) })
   }
 
   return {
     // From the segments as printed, not decoded: the stem is an address, not data.
-    stem: `${scheme}://${host}${raw
-      .slice(0, start === -1 ? 0 : start)
-      .map((s) => `/${s}`)
-      .join('')}`,
+    stem,
     ...(primary === undefined ? {} : { primary }),
     qualifiers,
     attributes,

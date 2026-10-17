@@ -353,12 +353,12 @@ symbology actually requires and read as reassurance. You cannot currently produc
 symbologies, so this does not bite today; it is recorded because the silence is deliberate and would otherwise
 look like an oversight if it ever became reachable.
 
-### A Digital Link you describe is judged as printed, and three things about it are not
+### A Digital Link you describe is judged as printed, and five things about it are not
 
 When a label is checked from its description (through `/mcp`'s `check_label`), its Digital Link is given exactly
 as printed and judged as written: a URI that is not a conformant GS1 Digital Link is reported against GS1 Digital
 Link URI Syntax 1.7.0 §4, and one using the removed convenience alphas, `/gtin/` in place of `/01/`, against §4.1.
-Three things stop the link's pass without a finding, and the report says each as a limit of this tool: under
+Five things stop the link's pass without a finding, and the report says each as a limit of this tool: under
 "checks that did not run", or in the finding's own words where the link has a finding too:
 
 - **The link carries a GTIN other than the barcode's.** No GS1 clause saying the two must match has been read for
@@ -368,6 +368,11 @@ Three things stop the link's pass without a finding, and the report says each as
 - **The link carries a key or Application Identifier this tool cannot place,** such as a primary key other than a
   GTIN, (235) after the GTIN, an AI its tables do not hold, or an AI repeated or out of its place in the query. The
   standard permits some of these (a GTIN followed by (235) is a UPUI path), so the tool does not call them faults.
+- **The link has no host name,** as in `https:///01/…`. URI Syntax 1.7.0 §4.11 allows an empty host, and no
+  resolver can serve one, so the tool says so rather than citing the standard against it.
+- **A GS1 value in the link carries a double quote,** in the lot, the serial or any other. §4.2 writes one unencoded
+  and RFC 3986 allows one only as `%22`, so no form satisfies both, and the tool passes neither. The same holds for
+  a lot or serial entered in the editor.
 
 ---
 
