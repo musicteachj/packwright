@@ -47,8 +47,9 @@ const DOCUMENTS: {
   { pattern: /^15 U\.S\.C\. 1453\b/, row: '15 U.S.C. 1453', rowSays: () => [] },
   {
     pattern: /^FD&C Act §403\((i|w)\)/,
+    // The row names both subsections, so the row itself is the check.
     row: '§ 403(i) and (w), 21 U.S.C. 343(i) and (w)',
-    rowSays: (match) => [names(`(${match[1]!})`)],
+    rowSays: () => [],
   },
   {
     pattern: /^29 CFR 1910\.1200\b/,

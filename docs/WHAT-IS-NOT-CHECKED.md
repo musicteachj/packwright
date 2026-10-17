@@ -125,9 +125,10 @@ of the type, and no finding about it appears, either way.
 
 The Fair Packaging and Labeling Act requires the net quantity in "the SI metric system" as well as in inch/pound
 units. The check looks for an amount in an SI unit in the metric declaration: grams, liters or meters, bare or with
-the kilo, deci, centi or milli prefix, as a symbol or spelled out ("liter" or "litre"), and the square or cubic
-meter. Anything else there, "16 oz" or a bare "500", is reported. It does not check that the SI figure equals the
-inch/pound one, or that the units chosen are "the most appropriate", and the passing message says so. Case is not
+an SI prefix from micro to kilo, as a symbol or spelled out ("liter" or "litre"), and the square or cubic meter.
+Anything else there, "16 oz" or a bare "500", is reported. It does not check that the other declaration is in
+inch/pound units, that the SI figure equals it, or that the units chosen are "the most appropriate", and the
+passing message says so. Case is not
 judged: "340 G" on a label set in capitals reads as grams, though NIST's style guide writes "g". Abbreviations
 that are not SI symbols, such as "gm" or "ltr", and fractions such as "½ L", are reported: write "g", "L" or a
 decimal. Until 2026-10-17 any text in the metric field passed.
@@ -208,9 +209,10 @@ A declaration counts where it uses the name FD&C Act § 201(qq)(1) gives the all
 reported as undeclared.** FDA's allergen guidance accepts them, but it is nonbinding, and the statute's own word is
 "soybeans"; if your label uses "soy", add "(soybeans)" or a Contains statement. For a tree nut, fish or Crustacean
 shellfish, the specific type you give is the name (§ 403(w)(2)), and a type that is only the category's own name,
-such as "tree nuts", "nuts", "fish" or "shellfish", is reported as not specific. That test matches those words
+such as "tree nuts", "nuts", "fish" or "shellfish", or a collective name such as "mixed nuts" or "seafood", is
+reported as not specific. That test matches those words
 whole, with case, spaces and punctuation set aside: it does not check that what you typed is a real species or
-nut, so "pecan nuts" passes, and so would a misspelling or "mixed nuts".
+nut, so "pecan nuts" passes, and so would a misspelling or a collective name the list lacks, such as "party mix".
 
 **A single-ingredient food with nothing listed gets no allergen check.** The check reads the allergen you tag on
 each ingredient, and with no list there is none to read. If the one ingredient is, or contains, a major food

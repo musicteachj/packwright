@@ -408,6 +408,20 @@ describe('the ingredient statement, from the form to the rail', () => {
     }
     expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_EXEMPT')).toBe(true)
     expect(store.findings.some((f) => f.code === 'FDA_INGREDIENTS_MISSING')).toBe(false)
+    // Nor asks whether the food is one ingredient, which the exemption makes moot.
+    expect(wrapper.find('#field-food-single-ingredient').exists()).toBe(false)
+  })
+
+  it('drops a single-ingredient answer when an exemption is claimed', async () => {
+    // Hidden under the exemption, it would come back into force unasked if the claim
+    // were later cleared. Found by `/code-review high` on #104.
+    const { store, wrapper } = await mountFood()
+    store.foodData.ingredients = []
+    store.foodData.singleIngredient = true
+    await nextTick()
+    await wrapper.find('#field-food-ing-exemption').setValue('bulk-at-retail')
+    await nextTick()
+    expect(store.foodData.singleIngredient).toBeUndefined()
   })
 
   it('takes an assortment with its statement, and prints it after the list', async () => {

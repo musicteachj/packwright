@@ -24,20 +24,27 @@
  * **"The SI metric system" is judged as a unit, not as any text.** The pass once took
  * whatever sat in the metric field, so "16 oz" there cleared both systems. It now wants
  * an amount followed by an SI unit for mass, volume, length or area: the gram, liter and
- * meter, bare or with the kilo, deci, centi or milli prefix, as symbols or spelled out,
- * and the square and cubic meter with those prefixes. Source: NIST SP 811 (2008, as
+ * meter, bare or with an SI prefix from micro to kilo (micro, milli, centi, deci, deka,
+ * hecto, kilo), as symbols or spelled out, and the square and cubic meter with those
+ * prefixes. Source: NIST SP 811 (2008, as
  * updated), Table 1 (the meter and kilogram), Table 2 (square and cubic meter), Table 5
  * (the prefixes), § 6.2.7 (prefixes attach to the gram) and Table 6 (the liter, accepted
  * for use with the SI, symbol L or l); and NIST SP 330 (2019), which notes the US
  * spellings "meter" and "liter" for the BIPM's "metre" and "litre". Both read from NIST
- * on 2026-10-17. Both spellings are accepted, since both name the same SI unit.
+ * on 2026-10-17. Both spellings are accepted, since both name the same SI unit, and so
+ * are "deka" and "deca", which SP 330 gives the same way.
+ *
+ * **The inch/pound half is not judged here.** The pass names the SI amount it found and
+ * says it did not check that the other declaration is in inch/pound units: a count, such
+ * as "24 TABLETS", has none, and whether (a)(2) then wants an SI figure is not settled
+ * (`docs/BACKLOG.md`).
  *
  * **Case is not judged.** SP 811 fixes the symbols' case ("mL", never "ML"), but labels
  * are often set in capitals, and "NET WT 12 OZ (340 G)" states grams as plainly to a
  * reader as "(340 g)". The rule asks whether an SI unit is stated, which (a)(2) requires,
  * not whether its symbol follows NIST's style guide, which nothing here makes binding.
  * The prefixes are a closed set, so a capital "M" still reads as the meter and never as
- * mega: nothing larger than the kilo is recognized.
+ * mega: nothing larger than the kilo is recognized, and "u" is not taken for micro.
  *
  * Reading the document rather than the geometry is a means, not what is judged.
  * (a)(2) governs what is stated upon the panel, so the pass for both systems rests
@@ -90,8 +97,9 @@ const EXEMPTION: Record<
  * prefixes and units the module note sources, never extended by guesswork. The unit
  * must end the word, so "16 grains" is not grams and "2 gal" is not grams either.
  */
-const SI_PREFIX_SYMBOLS = '(?:k|d|c|m)?'
-const SI_PREFIX_NAMES = '(?:kilo|deci|centi|milli)?'
+// "da" before "d", so deka is not read as deci and a stray "a".
+const SI_PREFIX_SYMBOLS = '(?:da|k|h|d|c|m|µ|μ)?'
+const SI_PREFIX_NAMES = '(?:kilo|hecto|deka|deca|deci|centi|milli|micro)?'
 const SI_AMOUNT = new RegExp(
   '\\d(?:[\\d.,]*\\d)?\\s*(' +
     // Symbols: g, L or l, and m alone or squared or cubed.
@@ -140,7 +148,8 @@ export const usFoodNetQuantityDualDeclarationRule: UsFoodRule = {
       // Worded as the entitlement, not as what the panel shows. This pass rests on
       // the document and survives a declaration drawn off the stock, and "the label
       // carries an SI declaration" is false of one that never printed.
-      const carriesMetric = metric !== undefined && metric.trim() !== ''
+      // Only an SI amount is the SI statement it permits; "16 oz" there is not one.
+      const carriesMetric = metric !== undefined && siAmountIn(metric) !== undefined
       return [
         // An exemption for this kind of package, true whether or not either declaration printed.
         passedOnDocument(
@@ -198,8 +207,9 @@ export const usFoodNetQuantityDualDeclarationRule: UsFoodRule = {
         usFoodNetQuantityDualDeclarationRule,
         FDA_NET_QUANTITY_DUAL_MET,
         `The label declares "${inchPound}" and "${metric}", an amount in SI units ` +
-          `("${amount}"), covering both measurement systems. Not checked here: whether the SI ` +
-          'figure equals the inch/pound one, and whether the units are the most appropriate.',
+          `("${amount}"). Not checked here: that "${inchPound}" is in inch/pound units, ` +
+          'whether the SI figure equals the inch/pound one, and whether the units are the ' +
+          'most appropriate.',
         US_FOOD_ELEMENTS.netQuantity,
       ),
     ]

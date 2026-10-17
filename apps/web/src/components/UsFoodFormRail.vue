@@ -525,6 +525,8 @@ const ingredientsExemption = computed({
   set: (next: string) => {
     if (next === 'unstated') return
     delete data.ingredientsExempt
+    // The single-ingredient question is hidden under a claimed exemption, so its answer goes.
+    if (next !== '') delete data.singleIngredient
     if (next === '') delete data.ingredientsExemption
     else if (next === 'assortment') {
       data.ingredientsExemption = { kind: 'assortment', statement: '', mayBePresent: [] }
@@ -1771,7 +1773,8 @@ const packaging = computed({
         still runs in descending order, because a reader has no way of knowing it was voluntary.
       </p>
 
-      <template v-if="ingredients.length === 0">
+      <!-- Asked only where it decides something: no list, and no § 101.100 exemption. -->
+      <template v-if="ingredients.length === 0 && ingredientsExemption === ''">
         <SelectField
           id="field-food-single-ingredient"
           v-model="singleIngredient"

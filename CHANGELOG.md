@@ -29,8 +29,9 @@ into a version only when there is a reason to.
   for a tree nut, fish or Crustacean shellfish, the food source name "means the name of the specific type of nut
   or species", and any non-blank type was accepted, so a type of "tree nuts" printed "(tree nuts)" and cleared
   (item 4). The category's own words ("tree nuts", "nuts", "fish", "shellfish", "Crustacean shellfish" and their
-  forms) are now no specific type: the rule reports `FDA_ALLERGEN_SOURCE_NOT_SPECIFIC`, quoting what was typed,
-  and the engine prints nothing for it and records the omission, as it does for a type left blank. The words are
+  forms), and the collective names that stand for them ("mixed nuts", "seafood"), are now no specific type: the rule reports `FDA_ALLERGEN_SOURCE_NOT_SPECIFIC`, quoting what was typed,
+  and the engine prints nothing for it and records the omission, as it does for a type left blank, naming the
+  typed category only where one was typed. The words are
   matched whole, with case, spacing, hyphens and punctuation folded out ("tree-nuts", "Shell fish."), so "pecan
   nuts" and "Atlantic cod" still count; whether a typed name is a real species is not
   checked, and `docs/WHAT-IS-NOT-CHECKED.md` says so. A new fixture and test fail with the category accepted again.
@@ -46,11 +47,13 @@ into a version only when there is a reason to.
 - **The SI declaration must state an SI unit.** The Fair Packaging and Labeling Act requires the net quantity in
   "the SI metric system" (15 U.S.C. 1453(a)(2)), and the pass accepted any text in the metric field, so "12 oz"
   there cleared both systems (the FPLA part of item 13). The rule now wants an amount in grams, liters or meters,
-  with the kilo, deci, centi or milli prefix or none, as a symbol or spelled out in either spelling, or the square
-  or cubic meter; anything else is a new violation, `FDA_NET_QUANTITY_METRIC_NOT_SI`. The units come from NIST
+  with an SI prefix from micro to kilo or none, as a symbol or spelled out in either spelling, or the square or
+  cubic meter; anything else is a new violation, `FDA_NET_QUANTITY_METRIC_NOT_SI`. The units come from NIST
   SP 811 and SP 330, read on 2026-10-17 and added to `docs/SOURCES.md`. Case is not judged, since "340 G" on a
-  label set in capitals states grams to any reader. The pass now names the amount it found and says it did not
-  compare the two figures. A new fixture and test fail with the unit check removed.
+  label set in capitals states grams to any reader. The pass now names the amount it found, no longer says both
+  systems are covered, and says it did not check that the other declaration is in inch/pound units or compare the
+  two figures. On a random package or one packaged at retail, only an SI amount is called the SI statement the
+  exemption permits. A new fixture and test fail with the unit check removed.
 
 - **The net quantity is printed in boldface.** 21 CFR 101.7(h) says the declaration "shall appear in conspicuous and
   easily legible boldface print or type", and the US food engine drew it in the regular face on every label while

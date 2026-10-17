@@ -67,7 +67,8 @@ export interface MajorFoodAllergen {
   requiresSpecificType: boolean
   /**
    * What names only the category, where a specific type is required: the statute's own
-   * name, its singular, and the bare words it is built from. §403(w)(2) asks for "the
+   * name, its singular, the bare words it is built from, and the collective names that
+   * stand for the category on a label ("mixed nuts", "seafood"). §403(w)(2) asks for "the
    * specific type of nut or species of fish or Crustacean shellfish", so a specific type
    * of "tree nuts" or "shellfish" is not one. Matched whole, with case, spaces, hyphens
    * and punctuation folded out ("tree-nuts", "Shell fish."), so "pecan nuts" and
@@ -88,7 +89,7 @@ export const MAJOR_FOOD_ALLERGENS: readonly MajorFoodAllergen[] = [
     id: 'fish',
     name: 'fish',
     requiresSpecificType: true,
-    categoryNames: ['fish', 'fishes'],
+    categoryNames: ['fish', 'fishes', 'seafood'],
     examples: ['bass', 'flounder', 'cod'],
   },
   {
@@ -102,6 +103,7 @@ export const MAJOR_FOOD_ALLERGENS: readonly MajorFoodAllergen[] = [
       'shellfishes',
       'crustacean',
       'crustaceans',
+      'seafood',
     ],
     examples: ['crab', 'lobster', 'shrimp'],
   },
@@ -109,7 +111,16 @@ export const MAJOR_FOOD_ALLERGENS: readonly MajorFoodAllergen[] = [
     id: 'tree-nuts',
     name: 'tree nuts',
     requiresSpecificType: true,
-    categoryNames: ['tree nuts', 'tree nut', 'nuts', 'nut'],
+    categoryNames: [
+      'tree nuts',
+      'tree nut',
+      'nuts',
+      'nut',
+      'mixed nuts',
+      'assorted nuts',
+      'mixed tree nuts',
+      'assorted tree nuts',
+    ],
     examples: ['almonds', 'pecans', 'walnuts'],
   },
   { id: 'wheat', name: 'wheat', requiresSpecificType: false, examples: [] },
