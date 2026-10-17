@@ -382,8 +382,12 @@ describe('which letter is measured follows the casing of the declaration', () =>
     expect(at('Net wt 12 oz', 6.83)).toContain(FDA_NET_QUANTITY_TYPE_TOO_SMALL)
   })
 
-  it('clears lower case once the em reaches 8.82 mm', () => {
-    expect(at('Net wt 12 oz', 8.82)).toContain(FDA_NET_QUANTITY_TYPE_SIZE_MET)
+  it('clears lower case at an em of 8.73 mm and not at 8.72', () => {
+    // The edge, worked by hand in the bold face the declaration prints in: 8.73 × 0.546
+    // = 4.7666 mm clears 4.7625; 8.72 × 0.546 = 4.7611 mm falls short by more than the
+    // 0.001 mm tolerance.
+    expect(at('Net wt 12 oz', 8.73)).toContain(FDA_NET_QUANTITY_TYPE_SIZE_MET)
+    expect(at('Net wt 12 oz', 8.72)).toContain(FDA_NET_QUANTITY_TYPE_TOO_SMALL)
   })
 
   it('names the letter it measured, so the finding can be acted on', () => {

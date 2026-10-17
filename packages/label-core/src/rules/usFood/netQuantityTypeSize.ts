@@ -14,9 +14,10 @@
  *
  * Neither letter is the em. `TextPrimitive.fontSizeMm` is the em, which for
  * IBM Plex Sans SemiBold, the bold face the declaration prints in, runs 1.832
- * times the "o" and 1.433 times a capital — so a rule comparing the requirement
- * against that field directly would clear type at 55% of the legal minimum. This measures the drawn primitive through
- * `glyphHeightMm`, whose per-face ratios are generated from the embedded TTFs.
+ * times the "o" and 1.433 times a capital, so a rule comparing the requirement
+ * against that field directly would clear type at 55% of the legal minimum. This
+ * measures the drawn primitive through `glyphHeightMm`, in the face it prints in,
+ * whose per-face ratios are generated from the embedded TTFs.
  *
  * **21 CFR 101.105 is not cited anywhere.** That was this section's number until
  * 81 FR 59129 redesignated it on 29 Aug 2016; the section it names no longer

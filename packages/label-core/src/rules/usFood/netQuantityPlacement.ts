@@ -32,9 +32,10 @@
  * metric mandate is the Fair Packaging and Labeling Act's, which
  * `netQuantityDualDeclaration.ts` cites, and 101.7(p) says only that a metric
  * statement "may also appear". The rest of 101.7 — a distinct item, no qualifying
- * term, contrast, (h)(1)'s 3:1, the unit forms of (j) and (k) — is not modeled,
+ * term, contrast, (h)(1)'s 3:1, the unit forms of (j) and (k): none is modeled,
  * and the pass says it rests on the three alone. Boldface, (h)'s other demand, is
- * satisfied by construction: the engine draws the declaration bold.
+ * met by construction: the engine draws the declaration in IBM Plex Sans SemiBold,
+ * which this project reads as boldface (`docs/WHAT-IS-NOT-CHECKED.md`).
  *
  * The "lines generally parallel to the base" clause needs no rule: this engine
  * draws no rotated text, so it is satisfied by construction rather than checked.

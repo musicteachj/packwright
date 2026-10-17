@@ -114,7 +114,9 @@ left alone on purpose:
 
 The declaration "shall appear in conspicuous and easily legible boldface print or type". The engine draws it bold
 unconditionally, so, as with the statement of identity, a rule for it could never fail on a label this tool
-produced, and none is written. It was drawn in the regular face until 2026-10-17, while the net quantity rules
+produced, and none is written. It is drawn in IBM Plex Sans SemiBold (weight 600), the heaviest face Packwright
+embeds. The regulation does not define boldface by weight, and this project reads a semibold as bold, as it does
+for the statement of identity; if you print with a font of your own, check that its weight reads as bold. It was drawn in the regular face until 2026-10-17, while the net quantity rules
 reported it compliant; `docs/verification-2026-10-17.md` records how that was found. On a label you describe
 rather than draw, nothing judges whether the declaration is bold: a description does not carry the weight
 of the type, and no finding about it appears, either way.

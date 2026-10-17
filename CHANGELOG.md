@@ -13,16 +13,17 @@ into a version only when there is a reason to.
 - **The net quantity is printed in boldface.** 21 CFR 101.7(h) says the declaration "shall appear in conspicuous and
   easily legible boldface print or type", and the US food engine drew it in the regular face on every label while
   the five net quantity rules reported it compliant; the 2026-10-17 source verification found it (item 1 of
-  `docs/verification-2026-10-17.md`). It is now drawn at the emphasis weight the statement of identity uses, and
-  sized and measured in that face, IBM Plex Sans SemiBold, whose lowercase "o" is 0.546 em against Regular's
-  0.540. The type-size rule and the 101.7(f) separation rule read the face the declaration prints in, so the
-  engine and the rules agree on its letter height and on the width of its "N"; the PDF embeds the same face. The
-  editor's "set the size by hand" seed is computed in the same face (8.73 mm on the default label, where Regular
-  gave 8.82), so ticking it no longer grows the declaration. As
-  with the statement of identity, no rule judges the weight, since it cannot fail on a drawn label, and on a
-  described label nothing claims it; `docs/WHAT-IS-NOT-CHECKED.md` says both. New tests fail with the weight
-  removed, with either rule measuring Regular, with the engine sizing from Regular, and with the seed computed
-  from Regular.
+  `docs/verification-2026-10-17.md`). It is now drawn at the emphasis weight the statement of identity uses: IBM
+  Plex Sans SemiBold, the heaviest face Packwright embeds, which the project reads as boldface since the regulation
+  does not define it by weight. It is sized and measured in that face, whose lowercase "o" is 0.546 em against
+  Regular's 0.540. The type-size rule and the 101.7(f) separation rule read the face the declaration prints in, so
+  the engine and the rules agree on its letter height and on the width of its "N", and the PDF embeds the same
+  face. The editor's "set the size by hand" seed is computed in that face too (8.73 mm on the default label, where
+  Regular gave 8.82), so ticking it no longer grows the declaration. As with the statement of identity, no rule
+  judges the weight, since it cannot fail on a drawn label, and on a described label nothing claims it;
+  `docs/WHAT-IS-NOT-CHECKED.md` says both. New tests fail with the weight removed, with either rule measuring
+  Regular, with the engine sizing from Regular, and with the seed computed from Regular, and the lower-case
+  type-size edge is pinned at 8.73 mm passing and 8.72 failing.
 
 ### Added
 
