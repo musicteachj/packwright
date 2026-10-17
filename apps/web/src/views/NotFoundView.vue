@@ -19,7 +19,7 @@ const path = computed(() => route.fullPath)
   <div class="flex flex-col gap-6">
     <h1 class="text-2xl font-semibold tracking-tight">There is no page here</h1>
     <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
-      Nothing in packwright lives at
+      Nothing in Packwright lives at
       <span class="numeric text-chrome-200 break-all" data-test="missing-path">{{ path }}</span
       >. If you followed a link to a saved label, saved labels live under
       <span class="numeric text-chrome-200">/labels</span>.

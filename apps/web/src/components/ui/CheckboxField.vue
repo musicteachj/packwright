@@ -4,8 +4,10 @@
  * label/control/description shape, because a checkbox's label follows the
  * control rather than sitting above it. `FormField` puts the accessible name
  * before the slot and help below it; neither is what a checkbox wants, so
- * this component renders `<label><input type="checkbox"><span>…</span></label>`
- * directly and does not use `FormField` at all.
+ * this component does not use `FormField` at all. It renders
+ * `<label><span><input type="checkbox"><svg></span><span>…</span></label>`
+ * directly: the first span holds the drawn box and its tick, the last one the
+ * words.
  *
  * Two things were measured on the canvas, not inferred: the box came out
  * 13×13 in a 16px row, under WCAG 2.2 AA's 24×24 target-size floor, and the
@@ -14,9 +16,8 @@
  * `CHECKBOX_LABEL` sets `min-h-6` (24px) and `gap-2.5` (10px) on the row, and
  * `items-start` rather than `items-center` so a label that wraps to a second
  * line keeps its box level with the first line instead of floating at the
- * middle of the whole block. `accent-notice` is already on the six GHS and
- * UPC-A checkboxes and on none of the fourteen US food ones; it ships here on
- * all of them.
+ * middle of the whole block. The box is drawn rather than native, square like
+ * the fields; `formStyles.ts` says why.
  *
  * `UpcAFormRail.vue`'s hazard checkboxes bind `:checked` and `@change`
  * against array membership rather than a boolean ref — there is no single
@@ -101,14 +102,25 @@ watch(() => props.label, warnIfNameDisagrees, { flush: 'post' })
 
 <template>
   <label :for="props.id" :class="CHECKBOX_LABEL" v-bind="layoutAttrs">
-    <input
-      :id="props.id"
-      type="checkbox"
-      :class="CHECKBOX_INPUT"
-      :checked="model"
-      v-bind="controlAttrs"
-      @change="model = ($event.target as HTMLInputElement).checked"
-    />
+    <span class="relative flex size-4 shrink-0">
+      <input
+        :id="props.id"
+        type="checkbox"
+        :class="CHECKBOX_INPUT"
+        :checked="model"
+        v-bind="controlAttrs"
+        @change="model = ($event.target as HTMLInputElement).checked"
+      />
+      <svg
+        class="text-chrome-950 pointer-events-none absolute inset-0 hidden size-4 peer-checked:block peer-disabled:opacity-50"
+        viewBox="0 0 16 16"
+        fill="none"
+        aria-hidden="true"
+        data-tick
+      >
+        <path d="M4 8.5 6.75 11 12 5" stroke="currentColor" stroke-width="2" />
+      </svg>
+    </span>
     <!--
       A slot over the prop, for the same reason `FormField`'s description has
       one: some labels are not a single run of prose. The 44 GHS hazard classes

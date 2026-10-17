@@ -67,10 +67,10 @@ const gtin = GTIN
       <p class="numeric text-chrome-400 text-xs tracking-widest uppercase">
         Packaging label compliance
       </p>
-      <h1 class="text-3xl font-semibold tracking-tight">packwright</h1>
+      <h1 class="text-3xl font-semibold tracking-tight">Packwright</h1>
       <p class="text-chrome-300 max-w-2xl leading-relaxed">
-        Print-accurate GS1 retail, GHS chemical and FDA food labels — with an engine that reports
-        why a label is non-compliant and cites the regulation for every finding.
+        Print-accurate GS1 retail, GHS chemical and FDA food labels, with an engine that reports why
+        a label is non-compliant and cites the regulation for every finding.
       </p>
     </header>
 

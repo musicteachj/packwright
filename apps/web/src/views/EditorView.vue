@@ -42,8 +42,9 @@ import LabelTextView from '../components/LabelTextView.vue'
 import { blockingOmissions, labelFilename, type DeclinedFact } from '@packwright/label-core'
 import { DECLINED_FACT_FIELDS } from '../declinedFacts'
 import { useLabelDocumentStore } from '../stores/labelDocument'
-import { BUTTON } from '../components/chrome'
+import { BUTTON, TOOLBAR_CONTROL } from '../components/chrome'
 import { useDocumentTitle } from '../documentTitle'
+import BrandMark from '../components/BrandMark.vue'
 import PaneSwitcher from '../components/PaneSwitcher.vue'
 import { DEFAULT_EDITOR_PANE, useNarrowEditor, type EditorPane } from '../panes'
 
@@ -611,33 +612,61 @@ async function exportPdf() {
     <header
       class="border-chrome-800 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-3 py-3 lg:gap-6 lg:px-6"
     >
-      <div class="flex min-w-0 items-baseline gap-3">
+      <!--
+        Centered, not baseline-aligned, and every control `TOOLBAR_CONTROL` high:
+        see `chrome.ts`.
+      -->
+      <div class="flex min-w-0 items-center gap-3">
         <!--
           A way out. The editor has no masthead, and its wordmark was the only
           one in the application that went nowhere.
         -->
         <RouterLink
           to="/"
-          class="focus-visible:outline-notice flex items-baseline gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          class="focus-visible:outline-notice flex items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         >
-          <span class="text-notice text-lg" aria-hidden="true">⊕</span>
-          <h1 class="text-sm font-semibold tracking-tight">packwright</h1>
+          <BrandMark class="text-chrome-100" />
+          <h1 class="text-sm font-semibold tracking-tight">Packwright</h1>
         </RouterLink>
         <label
           for="field-label-type"
-          class="text-chrome-400 flex min-w-0 items-baseline gap-2 text-xs"
+          class="text-chrome-400 flex min-w-0 items-center gap-2 text-xs"
         >
           <span class="sr-only">Label type</span>
-          <select
-            id="field-label-type"
-            v-model="store.labelType"
-            :disabled="opening !== null"
-            class="border-chrome-700 bg-chrome-900 text-chrome-300 numeric min-w-0 border px-2 py-0.5 text-xs"
-          >
-            <option value="gs1-retail">GS1 retail label</option>
-            <option value="ghs-chemical">GHS chemical label</option>
-            <option value="us-food">US food label</option>
-          </select>
+          <!--
+            Sans, not `numeric`: a label type is a name, not a measurement. The
+            native arrow is off and drawn as `SelectField` draws it, so this select
+            looks like every select in the rails.
+          -->
+          <span class="relative min-w-0">
+            <select
+              id="field-label-type"
+              v-model="store.labelType"
+              :disabled="opening !== null"
+              :class="[
+                TOOLBAR_CONTROL,
+                'border-chrome-700 bg-chrome-900 text-chrome-300 w-full min-w-0 appearance-none border pr-8 pl-2',
+              ]"
+            >
+              <option value="gs1-retail">GS1 retail label</option>
+              <option value="ghs-chemical">GHS chemical label</option>
+              <option value="us-food">US food label</option>
+            </select>
+            <svg
+              class="text-chrome-400 pointer-events-none absolute top-1/2 right-2 size-3 -translate-y-1/2"
+              viewBox="0 0 12 12"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M2.5 4.5 6 8l3.5-3.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
         </label>
       </div>
 
@@ -646,7 +675,7 @@ async function exportPdf() {
         it has to be asked for somewhere, and a modal to collect one string would
         be the first dialog this application owns.
       -->
-      <label for="field-label-name" class="flex min-w-0 grow items-baseline gap-2 text-xs">
+      <label for="field-label-name" class="flex min-w-0 grow items-center gap-2 text-xs">
         <span class="sr-only">Label name</span>
         <input
           id="field-label-name"
@@ -655,7 +684,10 @@ async function exportPdf() {
           :disabled="opening !== null"
           maxlength="120"
           :placeholder="opening !== null ? 'Opening a label…' : 'Name this label to save it'"
-          class="border-chrome-700 bg-chrome-900 text-chrome-200 min-w-0 grow border px-2 py-0.5 text-xs"
+          :class="[
+            TOOLBAR_CONTROL,
+            'border-chrome-700 bg-chrome-900 text-chrome-200 min-w-0 grow border px-2',
+          ]"
         />
       </label>
 
@@ -672,7 +704,7 @@ async function exportPdf() {
         >
         <button
           type="button"
-          :class="[BUTTON, 'shrink-0 px-3 py-1 text-xs']"
+          :class="[BUTTON, TOOLBAR_CONTROL, 'shrink-0 px-3']"
           :disabled="
             opening !== null || saving || !canSave || (store.savedId !== null && !store.isDirty)
           "
@@ -690,7 +722,7 @@ async function exportPdf() {
         <button
           v-if="store.savedId !== null"
           type="button"
-          :class="[BUTTON, 'shrink-0 px-3 py-1 text-xs']"
+          :class="[BUTTON, TOOLBAR_CONTROL, 'shrink-0 px-3']"
           :disabled="opening !== null || saving || !canSave || atCap"
           :title="atCap ? atCapReason : undefined"
           data-save-as
@@ -727,7 +759,7 @@ async function exportPdf() {
         <p v-if="loadError" class="text-danger max-w-md text-xs" role="alert">{{ loadError }}</p>
         <button
           type="button"
-          :class="[BUTTON, 'px-3 py-1.5 text-xs']"
+          :class="[BUTTON, TOOLBAR_CONTROL, 'shrink-0 px-3']"
           :disabled="
             opening !== null || exporting || !store.layout || cannotExport || exportWaitsForEncoder
           "

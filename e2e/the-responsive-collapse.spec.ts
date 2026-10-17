@@ -130,7 +130,7 @@ test('the masthead fits the narrowest screen rather than clipping', async ({ pag
   for (const [name, control] of [
     ['Export PDF', page.getByRole('button', { name: /Export PDF/ })],
     ['Label type', page.getByRole('combobox', { name: 'Label type' })],
-    ['the wordmark', page.getByRole('link', { name: 'packwright' })],
+    ['the wordmark', page.getByRole('link', { name: 'Packwright' })],
   ] as const) {
     await expect(control).toHaveCount(1)
     const box = await control.boundingBox()

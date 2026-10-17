@@ -150,7 +150,7 @@ export function renderLayoutToPdf(
     // layout engine resolved.
     margin: 0,
     compress: !options.uncompressed,
-    info: { Title: 'packwright label', Creator: 'packwright' },
+    info: { Title: 'Packwright label', Creator: 'Packwright' },
   })
 
   const chunks: Buffer[] = []

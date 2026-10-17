@@ -32,6 +32,7 @@ export type Section = 'landing' | 'labels' | 'audit' | 'rules' | 'design'
  * Every entry is at least 24px tall (`min-h-6`), WCAG 2.2's target floor. The
  * old text links were the 16px line box of 12px type.
  */
+import BrandMark from './BrandMark.vue'
 import { BUTTON, PAGE_COLUMN } from './chrome'
 
 /** `undefined` on a page that is none of the sections — the 404. */
@@ -64,8 +65,8 @@ const ariaCurrent = (section: Section) =>
         :aria-current="ariaCurrent('landing')"
         to="/"
       >
-        <span class="text-notice text-lg" aria-hidden="true">⊕</span>
-        <span class="text-sm font-semibold tracking-tight">packwright</span>
+        <BrandMark class="text-chrome-100" />
+        <span class="text-sm font-semibold tracking-tight">Packwright</span>
       </RouterLink>
 
       <nav

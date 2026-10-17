@@ -22,6 +22,16 @@ export const BUTTON =
   'border-chrome-700 bg-chrome-900 text-chrome-100 hover:bg-chrome-800 focus-visible:outline-notice border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50'
 
 /**
+ * The editor header's controls: one height for every one of them.
+ *
+ * Each used to bring its own padding (the type select and the name box `py-0.5`, Save `py-1`, Export
+ * `py-1.5`) inside groups aligned by baseline, so no two shared a top or a bottom edge. A fixed height
+ * rather than matching paddings, because a select, a text box and a button given the same padding still
+ * differ by their own line boxes. `the-editor-header.spec.ts` measures it.
+ */
+export const TOOLBAR_CONTROL = 'h-8 text-xs'
+
+/**
  * The page frame the reading routes sit in.
  *
  * The editor is `h-screen` and owns its own frame: it is a full-height three-pane

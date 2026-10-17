@@ -3,11 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>packwright — packaging label compliance</title>
+    <title>Packwright · packaging label compliance</title>
     <meta
       name="description"
       content="Generate print-accurate GS1, GHS and FDA packaging labels, and see exactly which rule a label breaks."
     />
+    <!--
+      The mark, from `docs/design/logo/`. The SVG switches ink with the browser's
+      theme; Safari ignores SVG favicons and takes the PNG. The PNG is named first
+      and the SVG last, the order in which browsers that can draw an SVG icon
+      choose it over a sized raster one. Link-preview tags wait
+      for Phase 8: they need the site's absolute address, and `og-image.png` is
+      already here for them.
+    -->
+    <link rel="icon" href="/icon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#14120f" />
   </head>
   <body>
     <div id="app"></div>

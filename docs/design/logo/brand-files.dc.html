@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brand/loading-indicator.css">
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+<style>
+body{margin:0;background:#14120f;color:#ebe7e0;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#ebe7e0;text-decoration:none}a:hover{color:#fdfcfa}
+</style>
+</helmet>
+<div data-screen-label="Brand files" style="max-width:1040px;margin:0 auto;padding:56px 32px 96px;display:flex;flex-direction:column;gap:56px">
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;gap:8px"><img src="brand/mark-16.svg" width="16" height="16" alt=""><span style="font-size:14px;font-weight:600;line-height:16px">Packwright</span></div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.2em;color:#8f887d">BRAND FILES · MARK 2b</div>
+    <h1 style="margin:0;font-size:32px;font-weight:600;line-height:40px">Downloads</h1>
+    <p style="margin:0;max-width:680px;font-size:14px;line-height:22px;color:#b5aea3;text-wrap:pretty">The registration target on a dimension line, with 25% ticks. All files sit in <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">brand/</span>. Inks are chrome-100 <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">#ebe7e0</span> for dark grounds, chrome-950 <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">#14120f</span> for light grounds, and black for one-color print.</p>
+  </div>
+
+  <div id="specimen" style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Specimen</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));border:1px solid #34302b">
+      <div style="display:flex;flex-direction:column;gap:20px;padding:24px;background:#14120f">
+        <img src="brand/mark-32.svg" width="64" height="64" alt="">
+        <img src="brand/lockup.svg" width="196" height="32" alt="Packwright" style="align-self:flex-start">
+        <div style="display:flex;flex-direction:column;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:18px"><span style="font-size:20px;line-height:28px;color:#ebe7e0">15.17:1</span><span style="color:#8f887d">chrome-100 on chrome-950</span><span style="color:#8f887d">#ebe7e0 / #14120f</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px;padding:24px;background:#1c1a16">
+        <img src="brand/mark-32.svg" width="64" height="64" alt="">
+        <img src="brand/lockup.svg" width="196" height="32" alt="Packwright" style="align-self:flex-start">
+        <div style="display:flex;flex-direction:column;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:18px"><span style="font-size:20px;line-height:28px;color:#ebe7e0">14.10:1</span><span style="color:#8f887d">chrome-100 on chrome-900</span><span style="color:#8f887d">#ebe7e0 / #1c1a16</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px;padding:24px;background:#fdfcfa">
+        <img src="brand/mark-32-ink-dark.svg" width="64" height="64" alt="">
+        <img src="brand/lockup-ink-dark.svg" width="196" height="32" alt="Packwright" style="align-self:flex-start">
+        <div style="display:flex;flex-direction:column;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:18px"><span style="font-size:20px;line-height:28px;color:#14120f">18.24:1</span><span style="color:#4a453e">chrome-950 on paper</span><span style="color:#4a453e">#14120f / #fdfcfa</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px;padding:24px;background:#fdfcfa;border-left:1px solid #d6d0c7">
+        <img src="brand/mark-one-color.svg" width="64" height="64" alt="">
+        <img src="brand/lockup-one-color.svg" width="196" height="32" alt="Packwright" style="align-self:flex-start">
+        <div style="display:flex;flex-direction:column;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:18px"><span style="font-size:20px;line-height:28px;color:#000000">20.48:1</span><span style="color:#4a453e">one-color, black on paper</span><span style="color:#4a453e">#000000 / #fdfcfa</span></div>
+      </div>
+    </div>
+    <p style="margin:0;font-size:13px;line-height:20px;color:#8f887d;text-wrap:pretty">WCAG 2.2 AA non-text contrast requires 3:1. Every pairing clears it by a factor of four or more. The thinnest element is the 2-unit stroke, 1 px at 16 px.</p>
+  </div>
+
+  <div style="display:flex;flex-direction:column">
+    <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding-bottom:12px">Mark</div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center;background:#1c1a16"><img src="brand/mark-32.svg" width="32" height="32" alt=""></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">mark-32.svg</span><span style="font-size:13px;line-height:20px;color:#b5aea3">32 px master in chrome-100, for dark backgrounds. Use from 24 px up.</span></div>
+      <a href="brand/mark-32.svg" download="mark-32.svg" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center;background:#fdfcfa"><img src="brand/mark-32-ink-dark.svg" width="32" height="32" alt=""></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">mark-32-ink-dark.svg</span><span style="font-size:13px;line-height:20px;color:#b5aea3">32 px master in chrome-950, for light backgrounds.</span></div>
+      <a href="brand/mark-32-ink-dark.svg" download="mark-32-ink-dark.svg" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center;background:#1c1a16"><img src="brand/mark-16.svg" width="16" height="16" alt=""></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">mark-16.svg</span><span style="font-size:13px;line-height:20px;color:#b5aea3">Hand-drawn 16 px version in chrome-100, on whole pixels. Use at 16 px only (or exact multiples).</span></div>
+      <a href="brand/mark-16.svg" download="mark-16.svg" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center;background:#fdfcfa"><img src="brand/mark-16-ink-dark.svg" width="16" height="16" alt=""></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">mark-16-ink-dark.svg</span><span style="font-size:13px;line-height:20px;color:#b5aea3">Hand-drawn 16 px version in chrome-950.</span></div>
+      <a href="brand/mark-16-ink-dark.svg" download="mark-16-ink-dark.svg" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center;background:#fdfcfa"><img src="brand/mark-one-color.svg" width="32" height="32" alt=""></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">mark-one-color.svg</span><span style="font-size:13px;line-height:20px;color:#b5aea3">One-color master, black on paper, for print and single-ink reproduction.</span></div>
+      <a href="brand/mark-one-color.svg" download="mark-one-color.svg" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column">
+    <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding-bottom:12px">Lockup · wordmark as outlines</div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:24px">
+        <div style="display:flex;align-items:center;padding:20px 24px;background:#1c1a16"><img src="brand/lockup.svg" width="196" height="32" alt="Packwright"></div>
+        <div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">lockup.svg</span><span style="font-size:13px;line-height:20px;color:#b5aea3">chrome-100 · 196 × 32</span></div>
+      </div>
+      <a href="brand/lockup.svg" download="lockup.svg" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:24px">
+        <div style="display:flex;align-items:center;padding:20px 24px;background:#fdfcfa"><img src="brand/lockup-ink-dark.svg" width="196" height="32" alt="Packwright"></div>
+        <div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">lockup-ink-dark.svg</span><span style="font-size:13px;line-height:20px;color:#b5aea3">chrome-950 · 196 × 32</span></div>
+      </div>
+      <a href="brand/lockup-ink-dark.svg" download="lockup-ink-dark.svg" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:24px">
+        <div style="display:flex;align-items:center;padding:20px 24px;background:#fdfcfa"><img src="brand/lockup-one-color.svg" width="196" height="32" alt="Packwright"></div>
+        <div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">lockup-one-color.svg</span><span style="font-size:13px;line-height:20px;color:#b5aea3">black · 196 × 32</span></div>
+      </div>
+      <a href="brand/lockup-one-color.svg" download="lockup-one-color.svg" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <p style="margin:0;padding-top:12px;border-top:1px solid #34302b;font-size:13px;line-height:20px;color:#8f887d;text-wrap:pretty">IBM Plex Sans SemiBold at 28 units beside the 32-unit mark, 16 apart, cap height centered on the mark. This is the 14 px masthead lockup at 2×; in the app header, keep the live text and use mark-16.svg with an 8 px gap.</p>
+  </div>
+
+  <div style="display:flex;flex-direction:column">
+    <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding-bottom:12px">Favicon and app icons</div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center;gap:12px;background:linear-gradient(to right,#1c1a16 50%,#fdfcfa 50%)"><img src="brand/mark-16.svg" width="16" height="16" alt=""><img src="brand/mark-16-ink-dark.svg" width="16" height="16" alt=""></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">favicon.svg</span><span style="font-size:13px;line-height:20px;color:#b5aea3">The 16 px drawing. chrome-950 by default, chrome-100 under prefers-color-scheme: dark.</span></div>
+      <a href="brand/favicon.svg" download="favicon.svg" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center"><img src="brand/icon-16.png" width="16" height="16" alt="" style="outline:1px solid #34302b"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">icon-16.png</span><span style="font-size:13px;line-height:20px;color:#b5aea3">16 × 16 on chrome-950, from the pixel drawing.</span></div>
+      <a href="brand/icon-16.png" download="icon-16.png" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center"><img src="brand/icon-32.png" width="32" height="32" alt="" style="outline:1px solid #34302b"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">icon-32.png</span><span style="font-size:13px;line-height:20px;color:#b5aea3">32 × 32 on chrome-950, from the master at 1×.</span></div>
+      <a href="brand/icon-32.png" download="icon-32.png" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center"><img src="brand/apple-touch-icon.png" width="60" height="60" alt="" style="border-radius:14px;outline:1px solid #34302b"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">apple-touch-icon.png</span><span style="font-size:13px;line-height:20px;color:#b5aea3">180 × 180. Mark at 3× (96 px, 53%), centered; iOS applies its own corner rounding, previewed here.</span></div>
+      <a href="brand/apple-touch-icon.png" download="apple-touch-icon.png" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center"><img src="brand/icon-192.png" width="60" height="60" alt="" style="border-radius:50%;outline:1px solid #34302b"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">icon-192.png</span><span style="font-size:13px;line-height:20px;color:#b5aea3">192 × 192. Mark at 3× (96 px, 50%). Previewed with a circular crop.</span></div>
+      <a href="brand/icon-192.png" download="icon-192.png" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center"><img src="brand/icon-512.png" width="60" height="60" alt="" style="border-radius:50%;outline:1px solid #34302b"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">icon-512.png</span><span style="font-size:13px;line-height:20px;color:#b5aea3">512 × 512. Mark at 9× (288 px, 56%). Previewed with a circular crop.</span></div>
+      <a href="brand/icon-512.png" download="icon-512.png" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <p style="margin:0;padding-top:12px;border-top:1px solid #34302b;font-size:13px;line-height:20px;color:#8f887d;text-wrap:pretty">On the 180, 192 and 512 icons the farthest point of the mark, the outer corner of a tick, sits at most 29% of the icon's width from the center. A circle crop keeps everything within 50%, and the maskable safe zone within 40%, so all three can be declared <span style="font-family:'IBM Plex Mono',monospace;color:#ebe7e0">"purpose": "any maskable"</span>. Each mark is drawn at a whole-number scale of the master so strokes land on whole pixels.</p>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Loading indicator</div>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;padding:14px 0;border-top:1px solid #34302b">
+      <div style="width:96px;height:64px;display:flex;align-items:center;justify-content:center;gap:12px;background:#1c1a16;color:#ebe7e0"><span class="pw-loader pw-loader--32" aria-hidden="true"></span><span class="pw-loader" aria-hidden="true"></span></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">loading-indicator.css</span><span style="font-size:13px;line-height:20px;color:#b5aea3">One clockwise turn per 2.4 s, linear; no motion under prefers-reduced-motion: reduce. Masks mark-32.svg, so the ink follows currentColor. Keep the CSS file next to mark-32.svg.</span></div>
+      <a href="brand/loading-indicator.css" download="loading-indicator.css" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+    <pre style="margin:0;padding:16px 20px;background:#1c1a16;border:1px solid #34302b;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:20px;color:#d6d0c7;overflow-x:auto">.pw-loader { animation: pw-turn 2.4s linear infinite; }
+@keyframes pw-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pw-loader { animation: none; } }
+
+&lt;span class="pw-loader" aria-hidden="true"&gt;&lt;/span&gt; &lt;span&gt;Loading&lt;/span&gt;</pre>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Share image</div>
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-end;padding-top:14px;border-top:1px solid #34302b">
+      <img src="brand/og-image.png" alt="Packwright share image" style="width:100%;max-width:600px;height:auto;outline:1px solid #34302b">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <img src="brand/og-image.png" alt="" width="240" height="126" style="outline:1px solid #34302b">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8f887d">at thumbnail size, 240 px</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">og-image.png</span><span style="font-size:13px;line-height:20px;color:#b5aea3">1200 × 630 on chrome-950. Lockup and line in chrome-100, crop marks in chrome-500. Type is outlined Plex, so it does not depend on installed fonts.</span></div>
+      <a href="brand/og-image.png" download="og-image.png" style="font-size:13px;padding:6px 12px;border:1px solid #4a453e">Download</a>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Head tags</div>
+    <pre style="margin:0;padding:16px 20px;background:#1c1a16;border:1px solid #34302b;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:20px;color:#d6d0c7;overflow-x:auto">&lt;link rel="icon" href="/favicon.svg" type="image/svg+xml"&gt;
+&lt;link rel="icon" href="/icon-32.png" sizes="32x32" type="image/png"&gt;
+&lt;link rel="icon" href="/icon-16.png" sizes="16x16" type="image/png"&gt;
+&lt;link rel="apple-touch-icon" href="/apple-touch-icon.png"&gt;
+&lt;meta property="og:image" content="https://…/og-image.png"&gt;
+&lt;meta property="og:image:width" content="1200"&gt;
+&lt;meta property="og:image:height" content="630"&gt;
+&lt;meta name="twitter:card" content="summary_large_image"&gt;</pre>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

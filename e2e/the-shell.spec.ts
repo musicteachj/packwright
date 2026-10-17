@@ -58,14 +58,14 @@ test('an address with no page reaches the 404, inside the shell', async ({ page 
   expect(response?.status()).toBe(404)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('There is no page here')
   await expect(page.locator('header nav[aria-label="Sections"]')).toBeVisible()
-  await expect(page).toHaveTitle('Page not found — packwright')
+  await expect(page).toHaveTitle('Page not found · Packwright')
 })
 
 test('each route names the window', async ({ page }) => {
   expect((await page.goto('/rules'))?.status()).toBe(200)
-  await expect(page).toHaveTitle('Rules — packwright')
+  await expect(page).toHaveTitle('Rules · Packwright')
   await page.getByRole('link', { name: 'Saved', exact: true }).click()
-  await expect(page).toHaveTitle('Saved labels — packwright')
+  await expect(page).toHaveTitle('Saved labels · Packwright')
 })
 
 test('back returns to where the reader was, and a new page starts at the top', async ({ page }) => {
