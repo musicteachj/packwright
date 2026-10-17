@@ -112,6 +112,7 @@ database at all — so a clean checkout with no Docker runs the whole suite.
 | File | Purpose |
 |---|---|
 | [`docs/WHAT-IS-NOT-CHECKED.md`](docs/WHAT-IS-NOT-CHECKED.md) | For anyone relying on a report: the requirements this tool does not check, and why |
+| [`docs/SOURCES.md`](docs/SOURCES.md) | Every official regulation, statute, standard and specification the app was built from, with editions and links |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Full design — architecture, rule sets, design system, all 8 phases |
 | [`CLAUDE.md`](CLAUDE.md) | Project rules and correctness invariants |
 | [`CHANGELOG.md`](CHANGELOG.md) | Development log |

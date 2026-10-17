@@ -153,7 +153,10 @@ it at length.
 
 **Record what was read and when**, in the module note beside the figures: "Source: 21 CFR 101.9(j)(13), read
 from the eCFR on 2026-09-12." Every reference table here does this, and it is what makes a later reader able
-to re-check a figure rather than re-derive it.
+to re-check a figure rather than re-derive it. A document read for the first time, or a new edition of one, also
+gets its line in `docs/SOURCES.md`, the index of every source by document; `apps/api/src/sources.test.ts` fails
+when a rule cites one the index does not list, but it can hold an edition only where the citation names one
+(GS1's releases), so a new CFR, U.S. Code or CLP edition has to be added by hand.
 
 **Know which source you are standing on.** The regulation governs; FDA's illustrations and guidance documents
 do not. `fda/nutritionPanel.ts` draws its bar weights from FDA's "Examples of Different Label Formats" and

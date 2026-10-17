@@ -8,6 +8,27 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **`docs/SOURCES.md` lists every official document the app was built from.** The sources were recorded beside
+  each figure, as `CLAUDE.md` asks, but nowhere in one place: about 117 module notes across 45 files, the `/rules`
+  page's 87 citations without links, and links scattered through the docs and the MCP experiments. The new file
+  lists each document once, with the edition used, when it was read and a link to the official publisher: 21 CFR
+  Part 101, the FD&C Act's allergen sections, the Fair Packaging and Labeling Act, 29 CFR 1910.1200, CLP and four of
+  its amendments, GS1 General Specifications 26.0, GS1 Digital Link URI Syntax 1.7.0, four Federal Register notices
+  and an FDA guidance document read to interpret Part 101, ANSI Z535.4 and Z535.1, RFC 3986 and 5234, WCAG 2.2, and
+  the MCP specification and docs. Every link was fetched on 2026-10-17 and checked against the document's own title
+  and edition. Two finds on the way: the dual-column rule the changelog cites as 81 FR 34000 is the separate
+  serving-size final rule published the same day as the Nutrition Facts rule (81 FR 33742, which ends at page
+  33999), so both are listed; and NEMA's pages for the Z535 standards now redirect to an unrelated store, so the
+  ANSI webstore's are listed instead. `apps/api/src/sources.test.ts` fails, within the document's own row, when a rule cites a document the list does
+  not have, a section of 21 CFR Part 101 the row does not name, or a GS1 release other than the row's; editions
+  of the CFR, U.S. Code and CLP are kept by hand, since their citations name none. It failed with the OSHA row
+  removed, § 101.100 dropped, GS1's row on 25.0 while the file said 26.0 elsewhere, and a duplicated row.
+  Reading 83 FR 65493 in full for the list also corrected `docs/DESIGN.md`, which called it a type-size amendment:
+  it corrects errors throughout both 2016 rules, though it still states no bar or rule weights, so the conclusion
+  it supported stands. `CLAUDE.md` and the README point to the list.
+
 ### Changed
 
 - **Checkboxes are square, like the fields.** The browser's own box has rounded corners that `border-radius` cannot

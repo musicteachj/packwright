@@ -286,7 +286,7 @@ statements, supplier identification.
   specifications set forth in appendix B to part 101". Appendix B is two images and 55 words of boilerplate,
   and the figures are in neither the regulation, the 292,000-word preamble to the 2016 final rule (81 FR
   33742, which mentions "hairline" once and defines it as "a thin line"), nor the 2018 technical amendment
-  (83 FR 65493, type sizes only).
+  (83 FR 65493, which corrects errors in both 2016 rules and states no bar or rule weights; re-read 2026-10-17).
 
   **Corrected 2026-09-12.** This entry previously concluded the figures were "stated nowhere" and that the
   renderer would have to use house defaults. They are stated — in FDA's own illustrations, [The New Nutrition
