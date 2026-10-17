@@ -10,6 +10,21 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **A source verification before deployment** (`docs/verification-2026-10-17.md`). Two parts. First, whether any
+  source changed since it was read: none did. Part 101 and § 1910.1200 were last amended before the project read
+  them, the U.S. Code sections are unchanged in the 2024 edition, GS1's releases are current, and CLP's 2027-01-01
+  consolidation, already published, changes nothing Packwright uses. Second, whether each of the 87 cited provisions
+  and the reference tables say what their findings claim: four readers quoted every operative passage, all 290
+  checkable quotes were confirmed as exact text in independently fetched copies, and every flag was verified by hand.
+  The readers returned HOLDS for 69 of 98 items. Thirteen are must-fix under the bar in `CLAUDE.md`, among them a net quantity printed in the
+  regular face on every US food label though 101.7(h) requires boldface, a single-ingredient food blocked for having
+  no ingredient list, an allergen "specific type" of "tree nuts" passing, and CLP's Article 26(1)(a) exception left
+  unapplied; they are to be fixed in four pull requests that follow. All 70 EU single hazard statements match Annex III exactly; its 12 combined statements are not carried.
+  OSHA's 2024 transition creates no permission the rules report, and the environment pictogram on a US label stays a
+  violation on the regulation's text, which settles that open backlog entry. James decided the two open readings:
+  singular forms of the statute's allergen names count, and type between 6 point and the usual minimum on packages
+  under 12 in² will get no verdict, with the fix.
+
 - **`docs/SOURCES.md` lists every official document the app was built from.** The sources were recorded beside
   each figure, as `CLAUDE.md` asks, but nowhere in one place: about 117 module notes across 45 files, the `/rules`
   page's 87 citations without links, and links scattered through the docs and the MCP experiments. The new file
