@@ -38,7 +38,13 @@ PRing there adds no ceremony.
 | before each commit | `/code-review medium` with **no target** — it reviews the uncommitted diff, so it scales with what was just written rather than with the branch. `max`, still with no target, when that diff touches `rules/`, `fda/` or `layout/` and is small |
 | PR touching `rules/`, `fda/` or `layout/` | `/code-review high <PR#>` — broader coverage than medium, and some findings it is less sure of; triaging them is the price |
 | PR that is UI or API only | the per-commit medium was enough |
-| every second or third stage, while a phase is in flight | one `/code-review medium dev` as a hedge — reviews keep finding defects in *older* code, and the allergen false clearance was stage 3 work found on the fifth pass |
+| every second or third stage, while a phase is in flight | **suspended until Phase 8 is deployed, see below.** One `/code-review medium dev` as a hedge — reviews keep finding defects in *older* code, and the allergen false clearance was stage 3 work found on the fifth pass |
+
+**Until Phase 8 is deployed, the hedge row is suspended** (James, 2026-10-17). Phase 8 is the deployment phase in
+`docs/DESIGN.md` § Phase 8; the freeze ends when it has shipped. The per-commit and PR rows still apply to anything
+changed, and nothing else goes looking for findings. What those reviews find outside the diff goes through the
+bar below like anything else. The last hedge grew into a nine-commit PR, #97, because every fix got a review and
+every review found more.
 
 **Cloud reviews are not used on this project.** `/code-review ultra` is billed per run against usage credits
 and its free allotment is three per account, one-time and non-refreshing — spent the moment the cloud session
@@ -77,9 +83,17 @@ unreviewed. On `feat/interface-foundation` that gap reached about 250 lines, inc
 mechanism behind an invalid state. Either re-run the `medium` before committing, or say plainly in the pull
 request which parts no review has seen.
 
-**Fix what is in the current scope and record the rest in `docs/BACKLOG.md`, with the reasoning.** Fixing
+**Fix what is in the current scope and record the rest in `docs/BACKLOG.md`, with the reasoning** (until Phase
+8 is deployed, one line at most: see the next paragraph). Fixing
 every finding the moment it appears turned four planned items into four unplanned commits in one session,
 and left the stage no further forward.
+
+**Until Phase 8 is deployed, a finding gets work only if it is a false clearance, a citation that does not say,
+or cannot be shown to say, what the finding claims, a crash, data loss or a security hole** (James, 2026-10-17).
+An unverifiable citation is in that list because a rule whose citation cannot be verified does not ship (see the
+correctness invariants), and so is a finding that reports a label for using a permission. Anything else gets one line
+in `docs/BACKLOG.md` at most, and no backlog entry is offered as the next piece of work. The backlog is frozen
+until then; its own notice says why.
 
 **After changing any rule or the renderer, ask directly: can this rule now pass on something the engine did
 not draw?** Every false clearance this project has shipped was found by review and none by the suite — the

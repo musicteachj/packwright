@@ -2,7 +2,8 @@
 
 > **Frozen until Phase 8 is deployed (James's decision, 2026-10-17).** This file is a record of why things were
 > not done, not a plan of what to do next. Until then, a finding gets work only if it is a false clearance, a
-> citation that does not say what the finding claims, a crash, data loss or a security hole. Anything else gets
+> citation that does not say, or cannot be shown to say, what the finding claims, a crash, data loss or a
+> security hole. Anything else gets
 > one line here at most, and nobody offers an entry as the next piece of work. Where a section below calls an
 > entry worth doing, schedulable or a chore to do first, this notice governs. The file was pared down from 1,802
 > lines to 888 on 2026-10-09 (`a422483`) and had grown to 1,242 eight days later, every review adding to it, and
