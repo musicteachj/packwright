@@ -70,7 +70,7 @@ const ALPHAS_CITATION: Citation = {
   // expressed using fewer than 14 digits**". This citation is for the first half only;
   // the second, a short GTIN, is reported under `CITATION`, §4, whose §4.5 grammar says
   // `gtin-value = 14DIGIT`, so one fault never gets two findings under two citations. A
-  // title is what the `/rules` catalogue and the findings rail show. The review of PR #40
+  // title is what the `/rules` catalog and the findings rail show. The review of PR #40
   // recorded that shape in `dualColumnParagraphs.ts`; this is the same one.
   title: 'Convenience alphas removed from the URI path',
 }

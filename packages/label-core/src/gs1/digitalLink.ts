@@ -148,6 +148,9 @@ const XSYMBOL_ENCODED: Readonly<Record<string, string>> = {
   '?': '%3F',
 }
 
+/** What §4.2 writes as it is: letters, digits, and XSYMBOL's "-", "." and "_". */
+const WRITTEN_AS_IT_IS = /^[A-Za-z0-9._-]$/
+
 /**
  * A value as §4.2 writes it: letters, digits, "-", "." and "_" as they are, the symbols
  * in `XSYMBOL_ENCODED` as it gives them, and anything else, the double quote included,
@@ -159,7 +162,7 @@ function encodedValue(value: string): string {
     .map(
       (character) =>
         XSYMBOL_ENCODED[character] ??
-        (/^[A-Za-z0-9._-]$/.test(character) ? character : encodeURIComponent(character)),
+        (WRITTEN_AS_IT_IS.test(character) ? character : encodeURIComponent(character)),
     )
     .join('')
 }
@@ -173,9 +176,7 @@ function encodedValue(value: string): string {
 function overEncoded(printed: string): string | undefined {
   return printed
     .match(/%[0-9A-Fa-f]{2}/g)
-    ?.find((triplet) =>
-      /^[A-Za-z0-9._-]$/.test(String.fromCharCode(parseInt(triplet.slice(1), 16))),
-    )
+    ?.find((triplet) => WRITTEN_AS_IT_IS.test(String.fromCharCode(parseInt(triplet.slice(1), 16))))
 }
 
 /**
@@ -184,7 +185,8 @@ function overEncoded(printed: string): string | undefined {
  */
 function unencodedSymbol(printed: string): string | undefined {
   return [...printed.replace(/%[0-9A-Fa-f]{2}/g, '')].find(
-    (character) => !/^[A-Za-z0-9._"-]$/.test(character),
+    // The double quote too, which §4.2 writes unencoded: `valueOf` stands down on it.
+    (character) => !WRITTEN_AS_IT_IS.test(character) && character !== '"',
   )
 }
 
@@ -546,9 +548,9 @@ export function judgeCustomUriStem(stem: string): { fault: string } | { host: st
  *   ordering of the key qualifier components is not preserved" is not permitted;
  * - the standard's own examples of permitted paths include one ending in a slash.
  *
- * **It throws only for what that grammar plainly refuses**: an address that is not
- * http or https; a stem `judgeCustomUriStem` faults; no GS1 key at all, or a key with
- * no value after it; where several segments name a key and no reading of the path from
+ * **It throws only for what that grammar plainly refuses**: an address that is not http
+ * or https; a stem `judgeCustomUriStem` faults; no GS1 key at all, or a key with no
+ * value after it; where several segments name a key and no reading of the path from
  * any of them is a `gs1path` production, each reading's fault, in one message; where
  * one does, a key's value outside its §4.5 format, for a key this build does not hold
  * (a held key's value is the builder's to refuse), or a path no production allows,
@@ -556,17 +558,18 @@ export function judgeCustomUriStem(stem: string): { fault: string } | { host: st
  * repeated; an empty segment from the key on; any GS1 value, placed or not, with a
  * symbol §4.2 writes encoded left unencoded, or a letter or digit it writes as it is
  * encoded; a query parameter that is empty, has no key or has no "=", against §4.11
- * and §4.10.1; one not judged as a GS1 attribute that RFC 3986 §3.4 does not allow; a
- * query key that decodes to digits, which §4.10.1 forbids an extension; and a fragment
- * RFC 3986 §3.5 does not allow. Codes, in the path and the query, are otherwise
- * matched as printed. What this build cannot judge it lists in `unplaced` instead: a
- * key its table does not hold, a UPUI's (235), a query AI it does not know, a double
- * quote in a GS1 value, a well-formed fragment, and an empty host, which the grammar
- * allows and no resolver can serve. The keys of parameters that are not GS1's it lists
- * in `extensions`. It records convenience alphas rather than refusing them, because
- * what to say about them is the rule's business (§4.1), and it does not widen or check
- * a GTIN it reads from a single key: a short GTIN and a wrong check digit are judged
- * by the caller, which knows what the label's barcode carries.
+ * and §4.10.1; one not judged as a GS1 attribute that RFC 3986 §3.4 does not allow;
+ * and a fragment RFC 3986 §3.5 does not allow. Codes, in the path and the query, are
+ * otherwise matched as printed. What this build cannot judge it lists in `unplaced`
+ * instead: a key its table does not hold, a UPUI's (235), a query AI it does not know,
+ * a double quote in a GS1 value, a query key that decodes to digits, which §4.10.1's
+ * grammar admits and a normalizing resolver reads as an AI, a well-formed fragment,
+ * and an empty host, which the grammar allows and no resolver can serve. The keys of
+ * parameters that are not GS1's it lists in `extensions`. It records convenience
+ * alphas rather than refusing them, because what to say about them is the rule's
+ * business (§4.1), and it does not widen or check a GTIN it reads from a single key: a
+ * short GTIN and a wrong check digit are judged by the caller, which knows what the
+ * label's barcode carries.
  */
 export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   const uri = printed.trim()
@@ -859,19 +862,6 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
     }
     // Matched as printed, as a path's codes are: §4 writes an AI's code as it is.
     const name = pair.slice(0, at)
-    // But a key that decodes to digits is no extension key either: "Any key=value pairs
-    // used for extension data SHALL NOT use all-numeric keys to avoid conflict with
-    // existing and future keys used for GS1 Application Identifiers" (URI Syntax 1.7.0
-    // §4.10.1, read 2026-10-17). `?%31%37=999999` passed as somebody else's parameter,
-    // while a resolver normalizing it reads an expiry (found by review on #97).
-    const decodedName = leniently(name)
-    if (decodedName !== name && /^[0-9]+$/.test(decodedName)) {
-      throw new DigitalLinkError(
-        `the query key "${name}" decodes to "${decodedName}", and Digital Link URI Syntax ` +
-          '1.7.0 §4.10.1 says extension keys "SHALL NOT use all-numeric keys", while §4 ' +
-          "writes an AI's code as it is",
-      )
-    }
     // A parameter whose value is not judged as a GS1 attribute's is judged as URI text:
     // `query = *( pchar / "/" / "?" )` (RFC 3986 §3.4, read 2026-10-17). One that is not
     // GS1's was skipped unread, so `?x=<script>` passed as conformant (found by
@@ -883,6 +873,22 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
           `the query parameter "${pair}" is not one RFC 3986 §3.4 allows, so the link is no web address`,
         )
       }
+    }
+    // A key that decodes to digits, `?%31%37=999999`, is neither passed nor faulted. It
+    // passed as somebody else's parameter while a resolver normalizing it reads an expiry
+    // nobody judged (found by review on #97). But a fault cited §4.10.1's "SHALL NOT use
+    // all-numeric keys" against a key the grammar admits, since `extensionKey` takes
+    // `pct-encoded`, and is all-numeric only decoded (found by the next review): the two
+    // readings of the standard disagree, so it is said as a limit.
+    const decodedName = leniently(name)
+    if (decodedName !== name && /^[0-9]+$/.test(decodedName)) {
+      asUriText()
+      unplaced.push(
+        `a query key "${name}", which §4.10.1's grammar admits as an extension and which a ` +
+          `resolver decoding it reads as the numeric key "${decodedName}"` +
+          (getAiSpec(decodedName) === undefined ? '' : `, AI (${decodedName})`),
+      )
+      continue
     }
     if (/^[0-9]+$/.test(name) && getAiSpec(name) === undefined) {
       asUriText()

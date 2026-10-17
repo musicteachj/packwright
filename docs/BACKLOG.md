@@ -213,6 +213,13 @@ beside the builder's check; each candidate's key, value and path computed two or
 so that one passes rightly); and the values of a key's components this build does not hold, (254), (8011), (8019),
 (7040) and (8020), judged by §4.2 but not by their §4.6 formats.
 
+**`buildDigitalLinkUri` accepts any resolver domain; only the rule judges it.** Since #97 `gs1/digital-link` judges
+the configured domain with `judgeCustomUriStem` before building, but the builder itself still returns a URI for
+`javascript:alert(1)` or a domain ending `#x`. Found by the eighth `/code-review high` on #97, 2026-10-17. Its one
+other caller is the experiment harness's prompt builder (`apps/api/src/experiments/withoutTool/prompt.ts`), not the
+product, so nothing a user sees passes on account of it. Moving the stem check into the builder would cover every
+caller and let the rule drop its own; it belongs with the §6.1 stage, which will touch both.
+
 **The MCP test's fallback URI does not percent-encode.** `asCheckLabelTakesIt` in `apps/api/src/mcp/server.test.ts`
 puts the URI together by hand where `buildDigitalLinkUri` refuses the fields, without encoding the lot or serial. A
 sweep document with `/`, `?` or `#` in its lot would give the printed side a different fault from the configured side,

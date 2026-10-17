@@ -126,6 +126,22 @@ describe('buildDigitalLinkUri', () => {
     }
   })
 
+  it('writes "-", "." and "_" as they are, and refuses them encoded, as §4.2 writes them', () => {
+    // XSYMBOL's members written as they are, one set for the builder and the parser.
+    expect(
+      buildDigitalLinkUri({
+        domain: DOMAIN,
+        primary: { ai: '01', value: GTIN },
+        qualifiers: [{ ai: '10', value: 'A-B.C_D' }],
+      }),
+    ).toBe('https://id.example.com/01/09506000134352/10/A-B.C_D')
+    for (const triplet of ['%2D', '%2E', '%5F']) {
+      expect(() => parseDigitalLinkUri(`https://x.com/01/${GTIN}/10/A${triplet}B`)).toThrow(
+        `has "${triplet}" encoded`,
+      )
+    }
+  })
+
   it('percent-encodes the symbols encodeURIComponent leaves alone, as §4.2 writes them', () => {
     // URI Syntax 1.7.0 §4.2, read 2026-10-16: LeftBracket = "%28", RightBracket = "%29",
     // Asterisk = "%2A", Exclamation = "%21", Apostrophe = "%27". `/10/A(1)` passed before.
@@ -798,14 +814,30 @@ describe('parseDigitalLinkUri on a value as printed, by §4.2', () => {
     expect(() => parseDigitalLinkUri(uri)).toThrow(/has "<" unencoded.*"%3C"/)
   })
 
-  it('refuses a query key that decodes to an AI code, which §4.10.1 forbids an extension', () => {
-    // Read as printed, "%31%37" passed as somebody else's parameter, and its expiry went
-    // unjudged; a resolver normalizing it reads AI (17). Found by `/code-review high` on
-    // #97. §4.10.1, read 2026-10-17: extension keys "SHALL NOT use all-numeric keys".
-    expect(() => parseDigitalLinkUri(`${GTIN_PATH}?%31%37=999999`)).toThrow(
-      /the query key "%31%37" decodes to "17", .*§4\.10\.1/,
-    )
+  it('places a query key that decodes to an AI code, which two readings of §4.10.1 split on', () => {
+    // Passed as somebody else's parameter, "%31%37" left an expiry a normalizing resolver
+    // reads unjudged; faulted under "SHALL NOT use all-numeric keys", it cited prose
+    // against a key `extensionKey` admits. Both found by `/code-review high` on #97.
+    const parsed = parseDigitalLinkUri(`${GTIN_PATH}?%31%37=999999`)
+    expect(parsed.unplaced).toEqual([
+      'a query key "%31%37", which §4.10.1\'s grammar admits as an extension and which a ' +
+        'resolver decoding it reads as the numeric key "17", AI (17)',
+    ])
+    expect(parsed.extensions).toEqual([])
   })
+
+  it.each([
+    ['partly encoded', '1%37', 'the numeric key "17", AI (17)'],
+    ['decoding to no AI', '%39%39%39', 'the numeric key "999"'],
+  ])(
+    'places a query key %s that decodes to digits, naming an AI only where it is one',
+    (_what, key, read) => {
+      // It said "AI (999)" of a number that is no AI (found by review on #97).
+      const [note] = parseDigitalLinkUri(`${GTIN_PATH}?${key}=1`).unplaced
+      expect(note).toContain(`reads as ${read}`)
+      expect(note!.endsWith(read)).toBe(true)
+    },
+  )
 
   it('says an encoded code decodes to one, past a stem segment that names a key', () => {
     expect(() => parseDigitalLinkUri('https://x.com/01/09520123456788/%31%30/AB')).toThrow(

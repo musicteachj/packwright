@@ -353,12 +353,12 @@ symbology actually requires and read as reassurance. You cannot currently produc
 symbologies, so this does not bite today; it is recorded because the silence is deliberate and would otherwise
 look like an oversight if it ever became reachable.
 
-### A Digital Link you describe is judged as printed, and five things about it are not
+### A Digital Link you describe is judged as printed, and six things about it are not
 
 When a label is checked from its description (through `/mcp`'s `check_label`), its Digital Link is given exactly as
 printed and judged as written: a URI that is not a conformant GS1 Digital Link is reported against GS1 Digital Link
 URI Syntax 1.7.0 §4, a GTIN written in fewer than 14 digits among them, since §4.5 writes `gtin-value = 14DIGIT`, and
-one using the removed convenience alphas, `/gtin/` in place of `/01/`, against §4.1. Five things stop the link's pass
+one using the removed convenience alphas, `/gtin/` in place of `/01/`, against §4.1. Six things stop the link's pass
 without a finding, and the report says each as a limit of this tool: under "checks that did not run", or in the
 finding's own words where the link has a finding too:
 
@@ -373,6 +373,10 @@ finding's own words where the link has a finding too:
 - **A GS1 value in the link carries a double quote,** in the lot, the serial or any other. §4.2 writes one unencoded
   and RFC 3986 allows one only as `%22`, so no form satisfies both, and the tool passes neither. The same holds for
   a lot or serial entered in the editor.
+- **A query key is written encoded and decodes to digits,** as in `?%31%37=999999`. URI Syntax 1.7.0 §4.10.1's
+  grammar admits it as an extension key, since `extensionKey` takes percent-encoded characters, while its prose says
+  extension keys "SHALL NOT use all-numeric keys", and a resolver that decodes the key reads AI (17). The two readings
+  disagree, so the tool neither faults it nor passes it.
 - **The link ends in a well-formed fragment,** as in `https://id.example.com/01/…#top`. The grammar of URI Syntax
   1.7.0 §4, which governs, has no place for one, while its informative §3 describes a fragment as an optional part of
   any Web URI, and none reaches a resolver. The tool neither faults it on a reading the standard does not plainly

@@ -95,25 +95,26 @@ into a version only when there is a reason to.
   editor as printed; a component no path allows, such as (17) after a GTIN, is a fault; and where no reading conforms
   and the path names several keys, the fault of each reading is said, since four rounds of review found every rule for
   which one the printer meant blaming some segment wrongly. Codes, in the path and the query, are matched as printed,
-  so `%30%31` is a stem segment and not the key (01); a query key that decodes to digits, `?%31%37=…`, is a fault
-  under §4.10.1, which says an extension key "SHALL NOT use all-numeric keys", where it had passed with its expiry
-  unjudged. The fifth `high` review on #97 found two more false clearances, now fixed: a fragment passed unjudged,
-  `#<a%ZZ#b>` included; and an empty query, a stray `&` or `;`, or a parameter with no key passed, none of which
-  `queryStringComp` produces. A fragment RFC 3986 §3.5 does not allow is now a fault, since the string is then no URI
-  at all, and a well-formed one stands the link down, since §4's grammar has no place for one while its informative §3
-  describes one. Values this build cannot place, after a UPUI's (235) or a key it does not hold, are judged by §4.2
-  too, and a limit now says only that Packwright does not judge the link either way, where it said the tool did not
-  yet judge it. The sixth found a query parameter that is not GS1's skipped unread, so `?x=<script>` and `?foo`
-  passed: every parameter must now have an "=", as §4.10.1's `extensionParameter` does, and one not judged as a GS1
-  attribute must be text RFC 3986 §3.4 allows, read that day, while a pass names such parameters as judged as URI text
-  only. The seventh found a false violation in a table: §4 writes a GRAI after a "0" pad, `grai-comp = "/" grai-code
-  "/" "0" grai-value`, and the format had been transcribed from `grai-value` alone, so a padded GRAI was faulted and a
-  pad-less one taken; every row of both tables was then re-checked against each key's `-comp`, `-value` and `-path`
-  productions. A GTIN in fewer than 14 digits in the path is now a §4 violation, where it was a limit, since §4.5's
-  `gtin-value = 14DIGIT` is in the grammar §4 cites. Four findings went to `docs/BACKLOG.md`: recognizing a Digital
-  Link by the standard's own §6.1 procedure, as a stage before extending the hand-written parser again; the MCP test's
-  hand-built fallback URI, a printed link the parser refuses losing the limits it would have said, and the stand-in
-  link judged beside a field the builder refuses.
+  so `%30%31` is a stem segment and not the key (01); a query key that decodes to digits, `?%31%37=…`, which had
+  passed with its expiry unjudged, now stands the link down: a fault under §4.10.1's "SHALL NOT use all-numeric keys"
+  was tried, and the next review found it cited prose against a key the `extensionKey` grammar admits, so the two
+  readings are said as a limit. The fifth `high` review on #97 found two more false clearances, now fixed: a fragment
+  passed unjudged, `#<a%ZZ#b>` included; and an empty query, a stray `&` or `;`, or a parameter with no key passed,
+  none of which `queryStringComp` produces. A fragment RFC 3986 §3.5 does not allow is now a fault, since the string
+  is then no URI at all, and a well-formed one stands the link down, since §4's grammar has no place for one while its
+  informative §3 describes one. Values this build cannot place, after a UPUI's (235) or a key it does not hold, are
+  judged by §4.2 too, and a limit now says only that Packwright does not judge the link either way, where it said the
+  tool did not yet judge it. The sixth found a query parameter that is not GS1's skipped unread, so `?x=<script>` and
+  `?foo` passed: every parameter must now have an "=", as §4.10.1's `extensionParameter` does, and one not judged as a
+  GS1 attribute must be text RFC 3986 §3.4 allows, read that day, while a pass names such parameters as judged as URI
+  text only. The seventh found a false violation in a table: §4 writes a GRAI after a "0" pad, `grai-comp = "/"
+  grai-code "/" "0" grai-value`, and the format had been transcribed from `grai-value` alone, so a padded GRAI was
+  faulted and a pad-less one taken; every row of both tables was then re-checked against each key's `-comp`, `-value`
+  and `-path` productions. A GTIN in fewer than 14 digits in the path is now a §4 violation, where it was a limit,
+  since §4.5's `gtin-value = 14DIGIT` is in the grammar §4 cites. Four findings went to `docs/BACKLOG.md`: recognizing
+  a Digital Link by the standard's own §6.1 procedure, as a stage before extending the hand-written parser again; the
+  MCP test's hand-built fallback URI, a printed link the parser refuses losing the limits it would have said, and the
+  stand-in link judged beside a field the builder refuses.
 
 - **`check_label` takes a Digital Link as printed, and judges the string.** It asked for a domain and a
   `useConvenienceAlphas` flag, so a model reading `https://id.example.com/gtin/…` off a label had to infer the flag,
