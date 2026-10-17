@@ -680,7 +680,7 @@ Judging US labels would need three things:
 A stage of reading, or more. `docs/WHAT-IS-NOT-CHECKED.md` tells users, and the editor says it beside the
 classification on a US label.
 
-**Whether printing GHS09 on a US label should be a violation is open.** `ghs/pictogram-integrity` reports it as
+**Settled 2026-10-17: printing GHS09 on a US label stays a violation.** `ghs/pictogram-integrity` reports it as
 `GHS_PICTOGRAM_NOT_RECOGNISED`, a violation under 29 CFR 1910.1200 Appendix C.2.3.2: "One of eight standard
 hazard symbols shall be used in each pictogram", and the environment symbol is not one of the eight. But OSHA's
 own pictogram QuickCard (OSHA 3491), read on 2026-10-09, lists "Environment (non-mandatory)", and C.3.1 admits
@@ -689,7 +689,8 @@ information". The regulation's text and the regulator's guidance point different
 case `CLAUDE.md` says to write down rather than settle by assumption. Raised by `/code-review high` on PR #71.
 Settling it wants OSHA's preamble to the 2012 or 2024 rule, or a letter of interpretation, read for whether a
 ninth pictogram is permitted supplementary information. Until then the violation stands, as it has since
-phase 4.
+phase 4. **Settled 2026-10-17:** neither preamble grants a permission and no interpretation letter was found, so
+the violation stands on the regulation's text (`docs/verification-2026-10-17.md`).
 
 **`gs1/quiet-zone` stands down on four symbologies and says nothing, deliberately.** It declines where no
 figure has been confirmed against a source document — CODE128, CODE39, MSI and PHARMACODE — and unlike the
