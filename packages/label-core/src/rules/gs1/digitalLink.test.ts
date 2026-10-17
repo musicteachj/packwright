@@ -67,11 +67,6 @@ describe('gs1/digital-link on a Digital Link as printed', () => {
       /09506000134352.*not the barcode's 036000291452/,
     ],
     [
-      'the barcode’s GTIN in fewer than 14 digits',
-      'https://id.example.com/01/036000291452',
-      /in 12 digits.*§4\.1 expects 14/,
-    ],
-    [
       'an AI this build cannot validate',
       'https://id.example.com/01/00036000291452?3103=000189',
       /AI \(3103\)/,
@@ -114,10 +109,38 @@ describe('gs1/digital-link on a Digital Link as printed', () => {
     expect(declined).toBeUndefined()
   })
 
-  it('does not tell a user a short GTIN is no fault, when §4.1 says it shall be 14 digits', () => {
-    const declined = judged(printed('https://id.example.com/01/036000291452')).declined!
-    expect(declined.reason).not.toMatch(/not a fault/)
-    expect(declined.reason).toContain('a limit of this tool')
+  it('faults the barcode’s GTIN in fewer than 14 digits under §4, whose §4.5 says it shall be 14', () => {
+    // A limit until James's decision of 2026-10-17: §4.5's gtin-value = 14DIGIT is in the
+    // grammar §4 cites, so no new citation was needed (found by `/code-review high` on #97).
+    const { findings, declined } = judged(printed('https://id.example.com/01/036000291452'))
+    expect(findings.map((f) => [f.code, f.citation.reference])).toEqual([
+      [GS1_DIGITAL_LINK_INVALID, 'GS1 Digital Link URI Syntax 1.7.0 §4'],
+    ])
+    expect(findings[0]!.message).toContain(
+      'its GTIN "036000291452" is 12 digits, where Digital Link URI Syntax 1.7.0 §4.5',
+    )
+    expect(declined).toBeUndefined()
+  })
+
+  it('says another GTIN beside a short one, as a limit inside the finding', () => {
+    const { findings, declined } = judged(printed('https://id.example.com/01/012345678905'))
+    expect(findings.map((f) => [f.code, f.citation.reference])).toEqual([
+      [GS1_DIGITAL_LINK_INVALID, 'GS1 Digital Link URI Syntax 1.7.0 §4'],
+    ])
+    expect(findings[0]!.message).toContain('its GTIN "012345678905" is 12 digits')
+    expect(findings[0]!.message).toContain("not the barcode's 036000291452")
+    expect(declined).toBeUndefined()
+  })
+
+  it('says a short GTIN beside a check digit the builder refuses', () => {
+    // The length went unsaid until the check digit was fixed (found by review).
+    const { findings } = judged(printed('https://id.example.com/01/036000291453'))
+    expect(findings.map((f) => f.code)).toEqual([
+      GS1_DIGITAL_LINK_INVALID,
+      GS1_DIGITAL_LINK_INVALID,
+    ])
+    expect(findings[0]!.message).toContain('is 12 digits')
+    expect(findings[1]!.message).toMatch(/[Cc]heck digit/)
   })
 
   it('judges again when the GTIN changes under the same link', () => {

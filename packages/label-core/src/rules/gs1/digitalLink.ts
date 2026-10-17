@@ -67,10 +67,11 @@ const ALPHAS_CITATION: Citation = {
   authority: 'GS1',
   reference: 'GS1 Digital Link URI Syntax 1.7.0 §4.1',
   // Not §4.1's own heading, which is "Removal of convenience alphas **and GTIN values
-  // expressed using fewer than 14 digits**". This rule checks the first half and not the
-  // second, and a title is what the `/rules` catalogue and the findings rail show — so
-  // taking the heading whole would advertise a check nothing performs. The review of
-  // PR #40 recorded that shape in `dualColumnParagraphs.ts`; this is the same one.
+  // expressed using fewer than 14 digits**". This citation is for the first half only;
+  // the second, a short GTIN, is reported under `CITATION`, §4, whose §4.5 grammar says
+  // `gtin-value = 14DIGIT`, so one fault never gets two findings under two citations. A
+  // title is what the `/rules` catalogue and the findings rail show. The review of PR #40
+  // recorded that shape in `dualColumnParagraphs.ts`; this is the same one.
   title: 'Convenience alphas removed from the URI path',
 }
 
@@ -90,9 +91,6 @@ const ALPHAS_CITATION: Citation = {
  * - **a GTIN other than the barcode's,** or a primary key that is not a GTIN. Nothing
  *   verified says a label's Digital Link must carry its barcode's GTIN (James's
  *   decision of 2026-10-16: no pass, and say so, until the GS1 text is read);
- * - **a GTIN of fewer than 14 digits.** §4.1 says one "SHALL be prefixed with leading
- *   zeroes" to 14 (read 2026-10-16), but this rule's §4.1 citation is titled for the
- *   convenience alphas alone, and widening it is a change of the finding's meaning;
  * - **anything the parser could not place** (`ParsedDigitalLink.unplaced`), which the
  *   standard may permit: (235) after a GTIN is a UPUI path.
  *
@@ -141,6 +139,28 @@ function judgedAsWritten(written: string, gtin: string, as: As): Verdict {
   if (primary === undefined) {
     unjudged.push(...parsed.unplaced)
   } else {
+    // §4.5: `gtin-value = 14DIGIT ; GTIN-8, GTIN-12 and GTIN-13 SHALL be expressed as 14
+    // digits` (read 2026-10-17), and §4.1 says the same with "SHALL be prefixed". A
+    // shorter one is outside the grammar §4 cites, so it is a fault under that citation,
+    // not a limit: it stood down only because §4.1's citation is titled for the
+    // convenience alphas (James's decision of 2026-10-17, on `/code-review high` of #97).
+    // §4.1's note that "existing infrastructure ... SHOULD continue to support legacy
+    // expressions", short GTINs among them, is about readers, not about what a label may
+    // print. Said before the builder's own verdict, so a check digit it refuses does not
+    // hide the length (found by review).
+    if (
+      primary.ai === '01' &&
+      /^[0-9]+$/.test(primary.value) &&
+      [8, 12, 13].includes(primary.value.length)
+    ) {
+      findings.push(
+        invalid(
+          `its GTIN "${primary.value}" is ${primary.value.length} digits, where Digital Link ` +
+            'URI Syntax 1.7.0 §4.5 says a GTIN-8, GTIN-12 or GTIN-13 "SHALL be expressed as ' +
+            '14 digits, with leading zeroes serving as filler digits"',
+        ),
+      )
+    }
     // The values themselves, by the builder that refuses them on the configured path.
     let built = true
     try {
@@ -163,11 +183,6 @@ function judgedAsWritten(written: string, gtin: string, as: As): Verdict {
       unjudged.push(`a key other than a GTIN, (${primary.ai}) ${primary.value}`)
     } else if (normaliseToGtin14(primary.value) !== normaliseToGtin14(gtin)) {
       unjudged.push(`the GTIN ${primary.value}, not the barcode's ${gtin}`)
-    } else if (primary.value.length !== 14) {
-      unjudged.push(
-        `its GTIN in ${primary.value.length} digits, where Digital Link URI Syntax 1.7.0 ` +
-          '§4.1 expects 14, padded with leading zeroes',
-      )
     }
     unjudged.push(...parsed.unplaced)
   }

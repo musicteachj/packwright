@@ -139,15 +139,30 @@ answers and no answer asking instead of checking. **Still open:** one answer the
 the user it "meets the minimum", which no check can tell from a stated size; and one put the printed Digital Link in
 `artwork.text` instead of `digitalLink`, so nothing judged it. Both are the model's, one in 42 each.
 
-**A Digital Link as printed has three questions this tool leaves open.** Since 2026-10-16 `check_label` takes the
-link exactly as printed and `gs1/digital-link` judges the string (`parseDigitalLinkUri`). It withholds the pass,
-as a limit, where the link carries another GTIN than the barcode's, a GTIN in fewer than 14 digits, or something
-its tables cannot place. Each could become a finding with reading: whether GS1 requires a label's Digital Link to
-carry its barcode's GTIN (James's decision of 2026-10-16 was no pass until the text is read); §4.1's "SHALL be
-prefixed with leading zeroes" to 14 digits, already read, which wants its own code because the §4.1 citation's
-title covers the convenience alphas alone; and the rest of URI Syntax 1.7.0's path grammar, of which this build
+**A Digital Link as printed has two questions this tool leaves open.** Since 2026-10-16 `check_label` takes the link
+exactly as printed and `gs1/digital-link` judges the string (`parseDigitalLinkUri`). It withholds the pass, as a
+limit, where the link carries another GTIN than the barcode's, or something its tables cannot place. Each could become
+a finding with reading: whether GS1 requires a label's Digital Link to carry its barcode's GTIN (James's decision of
+2026-10-16 was no pass until the text is read); and the rest of URI Syntax 1.7.0's path grammar, of which this build
 holds the GTIN's qualifiers (22), (10) and (21) only, so a UPUI path's (235) or a GLN's path stands down rather than
-being judged.
+being judged. A third, a GTIN in fewer than 14 digits, became a §4 violation on 2026-10-17 (James's decision, on
+`/code-review high` of #97): §4.5's `gtin-value = 14DIGIT` is in the grammar §4 cites, so it needed no citation of its
+own.
+
+**An empty host in a Digital Link is a limit, and RFC 9110 may make it a fault.** URI Syntax 1.7.0 §4.11's `reg-name =
+*( … )` allows an empty host, so faulting one under §4 would cite the grammar against what it permits, and James
+decided on 2026-10-17 to keep it a limit. Two `/code-review high` rounds on #97 cited RFC 9110 §4.2.1, which they
+quote as "A sender MUST NOT generate an "http" URI with an empty host identifier". That would be a finding under a
+citation the rule does not yet carry, so it needs RFC 9110 read in the session that writes it, a citation added beside
+§4 and §4.1, and a fixture.
+
+**The convenience alphas are an advisory, and a short GTIN a violation, though both are non-conformant.** URI Syntax
+1.7.0 §4.1, read 2026-10-17, removes both from the grammar together, and its "Important" note calls them alike "legacy
+expressions" that "only existing infrastructure ... SHOULD continue to support". That note is about readers, not about
+what a label may print, and the alphas' own advisory already says the URI "is non-conformant to the current standard".
+So the short GTIN is rightly a violation under §4, and the alphas' advisory severity, which predates #97, is the
+inconsistency. Raising it to a violation is a change to what the rule reports, so it is James's to decide. Found by
+the per-commit review on #97.
 
 **Query parameters that are not GS1's are judged as URI text, not by their own grammar.** Since 2026-10-17 every
 parameter must have a key and an "=", one not judged as a GS1 attribute must be text RFC 3986 §3.4 allows, and a pass

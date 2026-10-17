@@ -344,7 +344,10 @@ const DL_PRIMARY_KEY_CODES = new Set(Object.keys(PATHS))
 
 /*
  * Each primary key's value, decoded, by the formats of URI Syntax 1.7.0 §4.5, "Primary
- * identification key formats", with each key's code from its `-code` rule, read from
+ * identification key formats", and as §4.7, "Primary identification key concatenation",
+ * writes it into the path: plainly for every key but the GRAI, which `grai-comp` writes
+ * after a "0" pad, so its row is not `grai-value` alone. Each key's code is from its
+ * `-code` rule. Read from
  * https://ref.gs1.org/standards/digital-link/uri-syntax/ on 2026-10-17. XCHAR is §4.2's
  * 82-character set and YCHAR its 39-character one (DIGIT, UPPERALPHA, "-", "#" and "/").
  * Format only: the check digits the General Specifications add are not looked at here.
@@ -370,7 +373,9 @@ const KEY_VALUE_FORMAT: Record<string, RegExp> = {
   '253': new RegExp(`^[0-9]{13}${X}{0,17}$`), // gdti-value = 13DIGIT [1*17XCHAR]
   '401': new RegExp(`^${X}{1,30}$`), // ginc-value = 1*30XCHAR
   '402': /^[0-9]{17}$/, // gsin-value = 17DIGIT
-  '8003': new RegExp(`^[0-9]{13}${X}{0,16}$`), // grai-value = 13DIGIT [1*16XCHAR]
+  // grai-comp = "/" grai-code "/" "0" grai-value: the GRAI alone is written after a "0"
+  // pad, which a transcription of grai-value alone left out (found by review on #97).
+  '8003': new RegExp(`^0[0-9]{13}${X}{0,16}$`), // "0" grai-value = 13DIGIT [1*16XCHAR]
   '8004': new RegExp(`^${X}{1,30}$`), // giai-value = 1*30 XCHAR
 }
 

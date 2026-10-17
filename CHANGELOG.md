@@ -106,10 +106,14 @@ into a version only when there is a reason to.
   yet judge it. The sixth found a query parameter that is not GS1's skipped unread, so `?x=<script>` and `?foo`
   passed: every parameter must now have an "=", as §4.10.1's `extensionParameter` does, and one not judged as a GS1
   attribute must be text RFC 3986 §3.4 allows, read that day, while a pass names such parameters as judged as URI text
-  only. Four findings went to `docs/BACKLOG.md`: recognizing a Digital Link by the standard's own §6.1 procedure, as a
-  stage before extending the hand-written parser again; the MCP test's hand-built fallback URI, a printed link the
-  parser refuses losing the limits it would have said, and the stand-in link judged beside a field the builder
-  refuses.
+  only. The seventh found a false violation in a table: §4 writes a GRAI after a "0" pad, `grai-comp = "/" grai-code
+  "/" "0" grai-value`, and the format had been transcribed from `grai-value` alone, so a padded GRAI was faulted and a
+  pad-less one taken; every row of both tables was then re-checked against each key's `-comp`, `-value` and `-path`
+  productions. A GTIN in fewer than 14 digits in the path is now a §4 violation, where it was a limit, since §4.5's
+  `gtin-value = 14DIGIT` is in the grammar §4 cites. Four findings went to `docs/BACKLOG.md`: recognizing a Digital
+  Link by the standard's own §6.1 procedure, as a stage before extending the hand-written parser again; the MCP test's
+  hand-built fallback URI, a printed link the parser refuses losing the limits it would have said, and the stand-in
+  link judged beside a field the builder refuses.
 
 - **`check_label` takes a Digital Link as printed, and judges the string.** It asked for a domain and a
   `useConvenienceAlphas` flag, so a model reading `https://id.example.com/gtin/…` off a label had to infer the flag,

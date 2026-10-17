@@ -511,7 +511,8 @@ describe('parseDigitalLinkUri', () => {
     ['253', '1234567890123ABC', '123456789012'], // 13DIGIT [1*17XCHAR]
     ['401', 'GINC1', 'G'.repeat(31)], // 1*30XCHAR
     ['402', '12345678901234567', '1234567890123456'], // 17DIGIT
-    ['8003', '1234567890123', '12345678901'], // 13DIGIT [1*16XCHAR]
+    // grai-comp writes a "0" pad before grai-value; a pad-less GRAI is the one that misses.
+    ['8003', '01234567890123', '1234567890123'], // "0" 13DIGIT [1*16XCHAR]
     ['8004', 'thing', 't'.repeat(31)], // 1*30 XCHAR
   ])('reads (%s) by its §4.5 format', (code, fits, misses) => {
     // payTo-path = payTo-comp refNo-comp: (415) needs its (8020) to be a path at all.
@@ -544,7 +545,7 @@ describe('parseDigitalLinkUri', () => {
     ['253', '1234567890123ABC', [''], '/7040/1ABC'],
     ['401', 'GINC1', [''], '/7040/1ABC'],
     ['402', '12345678901234567', [''], '/7040/1ABC'],
-    ['8003', '1234567890123', [''], '/7040/1ABC'],
+    ['8003', '01234567890123ABC', [''], '/7040/1ABC'],
     ['8004', 'thing', ['', '/7040/1ABC'], '/254/A1'],
   ])(
     'takes the paths §4.9 gives (%s), and refuses one it does not',
