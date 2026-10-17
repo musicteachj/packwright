@@ -436,6 +436,44 @@ describe('parseDigitalLinkUri', () => {
     expect(parsed.primary).toEqual({ ai: '01', value: '12345' })
   })
 
+  it('places a plausible key and value in the stem, before the key it takes', () => {
+    const parsed = parseDigitalLinkUri(`https://x.com/414/1234567890128/01/${STANDARD_GTIN}`)
+    expect(parsed.primary).toEqual({ ai: '01', value: STANDARD_GTIN })
+    expect(parsed.unplaced).toEqual([
+      '"414/1234567890128" in its stem, which reads as a GS1 key and value too',
+    ])
+  })
+
+  /*
+   * §4.5 of URI Syntax 1.7.0, read 2026-10-17, worked by hand: for each primary key, a
+   * value its format takes and one just outside it. Before a GTIN path, the first makes
+   * the stem ambiguous, and the second leaves it a plain stem.
+   */
+  it.each([
+    ['8006', '095201234567880102', '09520123456788010'], // 14DIGIT 2DIGIT 2DIGIT
+    ['8013', 'ABC', 'A'.repeat(26)], // 1*25 XCHAR
+    ['8010', 'AB-12', 'ab'], // 1*30 YCHAR, no lower case
+    ['414', '1234567890123', '123456789012'], // 13DIGIT
+    ['415', '1234567890123', '123456789012'],
+    ['417', '1234567890123', '123456789012'],
+    ['8017', '123456789012345678', '12345678901234567'], // 18DIGIT
+    ['8018', '123456789012345678', '12345678901234567'],
+    ['255', '1234567890123', '123456789012'], // 13DIGIT [1*12DIGIT]
+    ['00', '123456789012345678', '12345678901234567'], // 18DIGIT
+    ['253', '1234567890123ABC', '123456789012'], // 13DIGIT [1*17XCHAR]
+    ['401', 'GINC1', 'G'.repeat(31)], // 1*30XCHAR
+    ['402', '12345678901234567', '1234567890123456'], // 17DIGIT
+    ['8003', '1234567890123', '12345678901'], // 13DIGIT [1*16XCHAR]
+    ['8004', 'thing', 't'.repeat(31)], // 1*30 XCHAR
+  ])('reads (%s) in a stem by its §4.5 format', (code, fits, misses) => {
+    const plain = (value: string) => {
+      const parsed = parseDigitalLinkUri(`https://x.com/${code}/${value}/01/${STANDARD_GTIN}`)
+      return parsed.primary?.ai === '01' && parsed.unplaced.length === 0
+    }
+    expect(plain(fits)).toBe(false)
+    expect(plain(misses)).toBe(true)
+  })
+
   it('takes a GTIN path past a GIAI, which only (7040) may follow', () => {
     // `mid-path = giai-comp uic-ext-comp` (URI Syntax 1.7.0): read as a GIAI, this path
     // is not conformant, and read as a stem and a GTIN it is.

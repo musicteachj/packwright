@@ -87,7 +87,17 @@ into a version only when there is a reason to.
   builder stripped `https://` to `https:`, and so faulted an empty host it should stand down on. The parser refused a
   stem segment percent-encoded in something other than UTF-8, which the grammar allows. And a domain that reads as a
   GS1 path itself, `https://x.com/01/09506000134352`, passed in the editor while the printed path stood the same link
-  down; it now stands down in both. Two findings went to `docs/BACKLOG.md`.
+  down; it now stands down in both. `/code-review high` on #97 found two more. The editor's path kept its own copies
+  of the printed path's checks, and passed what the parser refuses in a resolver domain, such as
+  `https://x.com/01/09506000134352/10/A(1)`: the editor's link is now built and judged by the printed path's code, so
+  the two cannot disagree about the same string, and one cached verdict serves both. And a printed
+  `/414/1234567890128/01/…` passed, where a held key in the same place stood down: a plausible key and value in the
+  stem now stands the link down on both paths, whichever table holds the key. Whether a stem segment is a key is now
+  told by the value formats of §4.5, read 2026-10-17, for every key alike, so `/shop/402/en` is a plain stem (a GSIN
+  is 17 digits) and the verdict no longer turns on which keys the table holds. Where the builder refuses a field, the
+  link built from the remaining sound fields is judged by the same code, so what the rest of it carries is still said
+  beside the finding. Two findings went to `docs/BACKLOG.md`: the MCP test's hand-built fallback URI, and a printed
+  link the parser refuses losing the limits it would have said.
 
 - **`check_label` takes a Digital Link as printed, and judges the string.** It asked for a domain and a
   `useConvenienceAlphas` flag, so a model reading `https://id.example.com/gtin/…` off a label had to infer the flag,

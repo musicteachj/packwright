@@ -24,7 +24,9 @@ piece, that piece stayed, as an entry of its own. What remains is open.
 The entries fall into four kinds:
 
 **Must fix before this ships.** A rule that can clear a label on something never printed, or a finding citing a
-provision that does not say what the finding claims. **None outstanding.** The last two were fixed on 2026-10-16
+provision that does not say what the finding claims. **None outstanding.** The last, the editor's Digital Link passing
+what the parser refuses in a resolver domain (found by `/code-review high` on #97), was fixed on 2026-10-17 by judging
+the link it builds with the printed path's code. The two before it were fixed on 2026-10-16
 (`CHANGELOG.md`): `gs1/digital-link` passing a GS1 value whose symbols are not percent-encoded as URI Syntax 1.7.0
 §4.2 writes them, and a configured resolver domain ending `#x` passing as a conformant Digital Link, the second found
 by the medium review of dev and the first while fixing it. Before them, `check_label` passing type
@@ -154,11 +156,12 @@ whose key is not an AI, so `?x=a<b` passes. Found while fixing the percent-encod
 because an extension parameter is the link owner's own data, the GS1 values are what the rule exists to judge, and
 the fix wants that grammar transcribed whole rather than one character at a time.
 
-**The configured and printed Digital Link are still two judgments.** Found by the medium review of dev on
-2026-10-16. Since that day they share `judgeCustomUriStem` for the domain, which closed the false clearance the two
-paths disagreeing had caused. The end state is one path: build the configured URI, then judge it as printed. Not done
-here because it changes the configured path's messages and measurements, which fixtures and the editor's tests
-assert, and the shared stem check closed the defect without it. Worth doing when the configured path next changes.
+**A printed Digital Link the parser refuses loses the limits it would have said.** `parseDigitalLinkUri` throws on
+the first thing the grammar refuses, and what it had listed in `unplaced` by then, such as a stem reading as a GS1 key,
+goes with it, so the finding stands alone where `docs/WHAT-IS-NOT-CHECKED.md` says a limit is said in the finding's
+own words. Found by the per-commit review on #97, 2026-10-17. Nothing passes on account of it, since the refusal is a
+violation; the fix is for the parser to return its refusal beside what it placed rather than throw, which changes its
+contract for every caller, so it waits for a reason to touch the parser again.
 
 **The MCP test's fallback URI does not percent-encode.** `asCheckLabelTakesIt` in `apps/api/src/mcp/server.test.ts`
 puts the URI together by hand where `buildDigitalLinkUri` refuses the fields, without encoding the lot or serial. A

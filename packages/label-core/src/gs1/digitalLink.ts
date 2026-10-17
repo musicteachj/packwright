@@ -301,6 +301,39 @@ const DL_PRIMARY_KEY_CODES = new Set([
   '8004',
 ])
 
+/*
+ * Each primary key's value, decoded, by the formats of URI Syntax 1.7.0 §4.5, "Primary
+ * identification key formats", with each key's code from its `-code` rule, read from
+ * https://ref.gs1.org/standards/digital-link/uri-syntax/ on 2026-10-17. XCHAR is §4.2's
+ * 82-character set and YCHAR its 39-character one (DIGIT, UPPERALPHA, "-", "#" and "/").
+ * Format only: the check digits the General Specifications add are not looked at here.
+ * The GTIN is left out, since a short one printed is a key to judge, not a stem segment.
+ *
+ * Used to tell a key from a stem segment that happens to share its code, for every key
+ * alike: `plausible` once trusted any value after a key this build's table does not
+ * hold, so `/shop/402/en` stood down as an ambiguous GSIN, and the verdict on a link
+ * turned on which keys the table held (found by review on #97).
+ */
+const X = `[A-Za-z0-9"\\-._!%&+,/*()';:<>=?]`
+const Y = '[0-9A-Z\\-#/]'
+const KEY_VALUE_FORMAT: Record<string, RegExp> = {
+  '8006': /^[0-9]{18}$/, // itip-value = 14DIGIT 2DIGIT 2DIGIT
+  '8013': new RegExp(`^${X}{1,25}$`), // gmn-value = 1*25 XCHAR
+  '8010': new RegExp(`^${Y}{1,30}$`), // cpid-value = 1*30 YCHAR
+  '414': /^[0-9]{13}$/, // gln-value = 13DIGIT
+  '415': /^[0-9]{13}$/, // payTo-value = 13DIGIT
+  '417': /^[0-9]{13}$/, // partyGln-value = 13DIGIT
+  '8017': /^[0-9]{18}$/, // gsrnp-value = 18DIGIT
+  '8018': /^[0-9]{18}$/, // gsrn-value = 18DIGIT
+  '255': /^[0-9]{13,25}$/, // gcn-value = 13DIGIT [1*12DIGIT]
+  '00': /^[0-9]{18}$/, // sscc-value = 18DIGIT
+  '253': new RegExp(`^[0-9]{13}${X}{0,17}$`), // gdti-value = 13DIGIT [1*17XCHAR]
+  '401': new RegExp(`^${X}{1,30}$`), // ginc-value = 1*30XCHAR
+  '402': /^[0-9]{17}$/, // gsin-value = 17DIGIT
+  '8003': new RegExp(`^[0-9]{13}${X}{0,16}$`), // grai-value = 13DIGIT [1*16XCHAR]
+  '8004': new RegExp(`^${X}{1,30}$`), // giai-value = 1*30 XCHAR
+}
+
 /** A key as printed, numeric or a convenience alpha, as an AI this build holds. */
 function keyFor(segment: string): { ai: string; alpha?: string } | undefined {
   if (/^[0-9]+$/.test(segment)) return getAiSpec(segment) ? { ai: segment } : undefined
@@ -484,11 +517,11 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   // "/01/00O36000291452", a letter O for a zero, is a bad GTIN, not a missing key, and
   // "/gtin/catalog/01/12345" is a short GTIN, not a convenience alpha.
   const candidates = segments.flatMap((segment, i) => {
-    if (i + 1 >= segments.length) return []
+    if (i + 1 >= segments.length || !namesPrimaryKey(segment)) return []
     const key = keyFor(segment)
-    if (key !== undefined && getAiSpec(key.ai)?.primaryKey) return [{ i, key, held: true }]
-    if (DL_PRIMARY_KEY_CODES.has(segment)) return [{ i, key: { ai: segment }, held: false }]
-    return []
+    return key !== undefined && getAiSpec(key.ai)?.primaryKey
+      ? [{ i, key, held: true }]
+      : [{ i, key: { ai: segment }, held: false }]
   })
   if (candidates.length === 0) {
     const last = segments[segments.length - 1]
@@ -501,10 +534,9 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   }
   const plausible = (candidate: (typeof candidates)[number]): boolean => {
     const value = segments[candidate.i + 1]!
-    if (!candidate.held) return !namesPrimaryKey(value)
-    return candidate.key.ai === '01'
-      ? /^[0-9]+$/.test(value) && GTIN_LENGTHS.has(value.length)
-      : validateAiValue(candidate.key.ai, value) === null
+    if (namesPrimaryKey(value)) return false
+    if (candidate.key.ai === '01') return /^[0-9]+$/.test(value) && GTIN_LENGTHS.has(value.length)
+    return KEY_VALUE_FORMAT[candidate.key.ai]?.test(value) ?? false
   }
   const chosen =
     candidates.find((candidate) => candidate.held && plausible(candidate)) ??
@@ -512,6 +544,12 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
     candidates.find((candidate) => candidate.held && candidate.key.alpha === undefined) ??
     candidates[0]!
   const start = chosen.i
+  // A key and a value that could be one, in the stem before the key taken: the grammar
+  // lets a stem hold any segments, so `/414/1234567890128/01/…` is conformant read as a
+  // stem and a GTIN, but it names two things, and which one it identifies is not this
+  // tool's to decide. It passed where the GLN's key was in the table, and stood down
+  // where it was not (found by `/code-review high` on #97).
+  const ambiguous = candidates.find((candidate) => candidate.i < start && plausible(candidate))
 
   // `segment = *pchar` lets a stem segment be empty; from the key on, every component
   // has a value.
@@ -525,6 +563,12 @@ export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   const judgedStem = judgeCustomUriStem(stem)
   if ('fault' in judgedStem) throw new DigitalLinkError(judgedStem.fault)
   if (judgedStem.host === '') unplaced.push('no host name, which no resolver can serve')
+  if (ambiguous !== undefined) {
+    unplaced.push(
+      `"${raw[ambiguous.i]}/${raw[ambiguous.i + 1]}" in its stem, which reads as a GS1 key ` +
+        'and value too',
+    )
+  }
 
   let primary: Gs1Element | undefined
   // A value as printed, judged by §4.2 before it is decoded: decoding first passed
