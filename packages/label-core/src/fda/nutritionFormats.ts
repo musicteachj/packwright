@@ -280,8 +280,8 @@ export function formatIsPermitted(
           : `${area.describe}, and (j)(13)(ii)(A) permits a reduced display only at 40 in² or ` +
             'less') +
         (format === 'tabular'
-          ? `; nor does (d)(11)(iii), which permits a tabular display only without ` +
-            `approximately 3 inches of continuous vertical space, and the label states ` +
+          ? `. (d)(11)(iii) does not permit it either: it permits a tabular display only ` +
+            `without approximately 3 inches of continuous vertical space, and the label states ` +
             `${space} in`
           : ''),
       reference: SMALL_PACKAGE_ROUTE_REFERENCE,

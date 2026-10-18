@@ -1579,6 +1579,36 @@ describe('the two clauses the Nutrition Facts rules turn on', () => {
       expect(ironAt(0.4, 0)).toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
     })
 
+    it('judges the zero on the amount present, not the rounded one', () => {
+      // 0.3 mg declared, 0.38 mg present: 2.1 percent, which (c)(8)(iii) does not reach.
+      // Found by `/code-review high` on #105.
+      expect(
+        withPanel({
+          amounts: { ...panel.amounts, iron: 0.38 },
+          declaredAmounts: { ...panel.declaredAmounts, iron: 0.3 },
+          declaredPercentDv: { ...panel.declaredPercentDv, iron: 0 },
+        }),
+      ).toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+    })
+
+    it('names the zero as a permission, not as a figure the amount gives', () => {
+      const wrong = findingsFor(
+        {
+          ...US_FOOD_CONFORMANT.data,
+          nutritionFacts: {
+            ...panel,
+            amounts: { ...panel.amounts, iron: 0.3 },
+            declaredAmounts: { ...panel.declaredAmounts, iron: 0.3 },
+            declaredPercentDv: { ...panel.declaredPercentDv, iron: 6 },
+          },
+        },
+        stock,
+      ).find((f) => f.code === FDA_NUTRITION_PERCENT_DV_WRONG)!
+      expect(wrong.message).toContain('2% is what 0.3mg')
+      expect(wrong.message).toContain('also permits 0% for an amount under 2 percent of the RDI')
+      expect(wrong.measurement!.required).toBe('0% or 2%')
+    })
+
     it('does not reach a DRV nutrient', () => {
       // 20 mg of sodium is under 2 percent of 2,300 mg, but (c)(8)(iii) is about vitamins
       // and minerals; (d)(7)(ii) rounds sodium to 1.
@@ -4200,6 +4230,39 @@ describe('the second column (b)(12)(i) and (b)(2)(i)(D) make mandatory', () => {
     expect(codes).not.toContain('FDA_DUAL_COLUMN_EXEMPT')
     expect(codes).toContain('FDA_DUAL_COLUMN_MISSING')
   })
+  it('keeps (b)(12)(i)(C) where an unrelated part of the panel recorded an omission', () => {
+    // A serving size whose words overlap its own figures records a detail omission against
+    // the panel. The as-prepared column printed whole, and stays exempt. Found by
+    // `/code-review high` on #105.
+    const data = panel({
+      ...individually,
+      packageContent: 55,
+      servingSize: '1 cup prepared with two tablespoons of water and stirred well (240g)',
+      columns: { mode: 'dual', basis: 'as-prepared', secondAmounts: { 'total-fat': 7.5 } },
+    })
+    const layout = layOutUsFoodLabel({ data, stock })
+    expect(
+      layout.omissions.some((o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel),
+      'the premise: an omission against the panel',
+    ).toBe(true)
+    const codes = findingsFor(data, stock).map((f) => f.code)
+    expect(codes).toContain('FDA_DUAL_COLUMN_EXEMPT')
+    expect(codes).not.toContain('FDA_DUAL_COLUMN_MISSING')
+  })
+  it('says an egg carton’s (b)(12)(i)(C) column is declared, not printed', () => {
+    // (j)(14) presents the panel off this label, so nothing here was printed in full.
+    const data = {
+      ...panel({
+        ...individually,
+        packageContent: 55,
+        columns: { mode: 'dual', basis: 'as-prepared', secondAmounts: { 'total-fat': 7.5 } },
+      }),
+      nutritionExemption: { kind: 'egg-carton' as const, presentedIn: 'beneath-lid' as const },
+    }
+    const pass = findingsFor(data, stock).find((f) => f.code === 'FDA_DUAL_COLUMN_EXEMPT')!
+    expect(pass.message).not.toContain('printed in full')
+    expect(pass.message).toContain('presented off this label')
+  })
   it('says the (b)(12)(i)(C) pass read the column, and only that', () => {
     const exemptFor = (patch: Record<string, unknown>) =>
       findingsFor(panel({ ...individually, packageContent: 55, ...patch }), stock).find(
@@ -4238,6 +4301,17 @@ describe('the second column (b)(12)(i) and (b)(2)(i)(D) make mandatory', () => {
       ],
     }
     expect(dualColumnDutyFor(data, stock, clipped).exemption).toBeUndefined()
+    // Run past the edge with the omission recorded against the panel, as the engine records
+    // it, and none against the column: the column's box is what tells.
+    const offTheEdge = {
+      ...drawn,
+      elements: drawn.elements.map((element) =>
+        element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn
+          ? { ...element, box: { ...element.box, xMm: stock.widthMm - 1 } }
+          : element,
+      ),
+    }
+    expect(dualColumnDutyFor(data, stock, offTheEdge).exemption).toBeUndefined()
   })
   exempt(
     { dualColumnExemption: { variedWeight: true } },
@@ -4954,6 +5028,14 @@ describe('the tabular display', () => {
     const pass = findings.find((f) => f.code === 'FDA_NUTRITION_TYPE_SIZE_MET')!
     expect(pass.message).toContain('Not judged: "Calories"')
     expect(pass.message).toContain('waits on the continuous vertical space')
+    // Refused outright, with room for a vertical display stated, the same: the format
+    // finding reports the display, and its lower figures are not certified. Found by
+    // `/code-review high` on #105.
+    const refused = findingsFor(tabular({ continuousVerticalSpaceInches: 6 }), stock)
+    expect(refused.map((f) => f.code)).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+    expect(refused.find((f) => f.code === 'FDA_NUTRITION_TYPE_SIZE_MET')!.message).toContain(
+      'one this package may not use',
+    )
     // Once the space is stated short, the tabular display is the label's, and judged.
     const entitled = findingsFor(tabular(), stock).find(
       (f) => f.code === 'FDA_NUTRITION_TYPE_SIZE_MET',

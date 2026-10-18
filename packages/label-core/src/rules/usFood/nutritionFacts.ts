@@ -1022,29 +1022,30 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
       // allows the actual amount for an RDI nutrient is open (`docs/BACKLOG.md`).
       // Raised by `/code-review high` on #88.
       const [fromDeclared, fromActual] = column.bases(entry.id)
-      const permitted = [
+      const computed = [
         fromDeclared === undefined
           ? undefined
           : percentDailyValue(entry.id, fromDeclared, population),
         fromActual === undefined ? undefined : percentDailyValue(entry.id, fromActual, population),
-        // (c)(8)(iii): under 2 percent of the RDI, a vitamin or mineral "may be declared by
-        // a zero". On either basis, for the reason above.
-        [fromDeclared, fromActual].some(
-          (amount) => amount !== undefined && underTwoPercentOfRdi(entry.id, amount, population),
-        )
-          ? 0
-          : undefined,
       ].filter((value): value is number => value !== undefined)
-      if (permitted.length === 0) return []
+      if (computed.length === 0) return []
+      // (c)(8)(iii): a vitamin or mineral "present at less than 2 percent of the RDI" "may be
+      // declared by a zero". Judged on the amount present, the unrounded one where the label
+      // has it: a declared 0.3 mg of iron analyzed at 0.38 mg is 2.1 percent, and may not be
+      // declared as zero. Found by `/code-review high` on #105.
+      const present = fromActual ?? fromDeclared
+      const zeroPermitted =
+        present !== undefined && underTwoPercentOfRdi(entry.id, present, population)
 
       const declared = column.stated![entry.id]!
-      return permitted.includes(declared)
+      return computed.includes(declared) || (zeroPermitted && declared === 0)
         ? []
         : [
             {
               entry,
               declared,
-              permitted,
+              computed,
+              zeroPermitted,
               second: column.second,
               amount: fromDeclared ?? fromActual,
             },
@@ -1061,20 +1062,24 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     if (measured.length === 0 && wrong.length === 0) return []
 
     if (wrong.length > 0) {
-      return wrong.map(({ entry, declared, permitted, second, amount }) =>
+      return wrong.map(({ entry, declared, computed, zeroPermitted, second, amount }) =>
         finding(usFoodNutritionPercentDvRule, {
           code: FDA_NUTRITION_PERCENT_DV_WRONG,
           severity: 'violation',
           message:
             `${entry.name} shows ${declared}% of the Daily Value` +
             `${second ? ' in the second column' : ''}; ` +
-            `${[...new Set(permitted)].sort((a, b) => a - b).join('% or ')}% is what ` +
+            `${[...new Set(computed)].sort((a, b) => a - b).join('% or ')}% is what ` +
             `${amount}${entry.unit} of a ` +
             `${dailyValueFor(entry.id, population)!.amount}${entry.unit} Daily Value` +
-            `${population === 'children-1-through-3' ? ' for children 1 through 3' : ''} gives.`,
+            `${population === 'children-1-through-3' ? ' for children 1 through 3' : ''} gives` +
+            // The zero is a permission, not a figure the amount gives, and is said as one.
+            (zeroPermitted
+              ? ', and 101.9(c)(8)(iii) also permits 0% for an amount under 2 percent of the RDI.'
+              : '.'),
           measurement: {
             actual: `${declared}%`,
-            required: [...new Set(permitted)]
+            required: [...new Set([...(zeroPermitted ? [0] : []), ...computed])]
               .sort((a, b) => a - b)
               .map((p) => `${p}%`)
               .join(' or '),

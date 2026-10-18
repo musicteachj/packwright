@@ -49,21 +49,39 @@ export const secondColumnShown = (
  * Whether the label provides a second column, as (b)(12)(i)(C) asks: shown, and where the
  * panel was drawn, printed in full. Stricter than `secondColumnShown`, because a column run
  * off the stock still records its element and provides nothing to a reader. Where it fails,
- * the duty stands and the column is judged as any other, so this can only move a label from
- * excused to judged.
+ * the duty stands and the column is judged as any other.
+ *
+ * **"In full" is the column's, not the panel's.** The panel records its clipping and its
+ * unrelated defects alike against `nutritionPanel`, at detail scope: a serving size whose
+ * words overlap its figures cancelled the exemption of a column printed whole, and the label
+ * was reported for using (C). Found by `/code-review high` on #105. So the column is held to
+ * its own omissions, to the panel being drawn at all, and to its box lying on the stock.
  */
 const secondColumnProvided = (
   facts: NonNullable<UsFoodLabelData['nutritionFacts']>,
   layout: ResolvedLayout,
+  stock: LabelStock,
 ): boolean => {
   if (!secondColumnShown(facts, layout)) return false
   const panelDrawn = layout.elements.some(
     (element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel,
   )
+  if (!panelDrawn) return true
+  const column = layout.elements.find(
+    (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+  )!
+  const { xMm, yMm, widthMm, heightMm } = column.box
   return (
-    !panelDrawn ||
-    (wasFullyDrawn(layout, US_FOOD_ELEMENTS.nutritionPanel) &&
-      wasFullyDrawn(layout, US_FOOD_ELEMENTS.nutritionSecondColumn))
+    wasFullyDrawn(layout, US_FOOD_ELEMENTS.nutritionSecondColumn) &&
+    !layout.omissions.some(
+      (omission) =>
+        omission.elementId === US_FOOD_ELEMENTS.nutritionPanel && omission.scope === 'element',
+    ) &&
+    // A label described without its size is judged on a stock of no area, and drawn on an
+    // edgeless one; there is no edge to have run past.
+    (stock.widthMm <= 0 ||
+      stock.heightMm <= 0 ||
+      (xMm >= 0 && yMm >= 0 && xMm + widthMm <= stock.widthMm && yMm + heightMm <= stock.heightMm))
   )
 }
 
@@ -118,7 +136,7 @@ export function dualColumnDutyFor(
       : { variedWeight: panel.dualColumnExemption.variedWeight }),
     meetsSmallPackageRequirements,
     // (C) excuses only a product that provides the additional column, so it reads the drawing.
-    secondColumnShown: secondColumnProvided(panel, layout),
+    secondColumnShown: secondColumnProvided(panel, layout, stock),
   })
 }
 

@@ -16,22 +16,25 @@ into a version only when there is a reason to.
   any size where there is not "approximately 3 in" of continuous vertical space (item 2 of
   `docs/verification-2026-10-17.md`). With the space unstated, the rule now stands down and asks for it, linking the
   editor's existing field. Stated short, the display passes under (d)(11)(iii) as before. Stated 3 in or more, it is
-  reported, with a message naming both routes and why neither applies. While it waits, the type-size check does not
-  certify the tabular display's lower minimums either: type that meets them but not the vertical display's gets no
-  verdict until the space is stated. New tests fail with either wait removed.
+  reported, with a message naming both routes and why neither applies. While it waits, and where it refuses the
+  display, the type-size check does not certify the reduced display's lower minimums either: type that meets them
+  but not the vertical display's gets no verdict. New tests fail with either wait removed.
 
 - **A vitamin or mineral under 2% of its RDI may be declared as 0%.** 101.9(c)(8)(iii) says such amounts "may be
   declared by a zero", and the percent Daily Value check reported 0% as the wrong figure (item 5). Zero is now one
-  more permitted figure wherever the amount, on either basis the rule already accepts, is under 2 percent of the RDI.
-  The banded figure is still accepted beside it, and a DRV nutrient such as sodium is unaffected. New tests fail with
+  more permitted figure wherever the amount present, the unrounded one where the label gives it, is under 2 percent
+  of the RDI, and the message names the zero as that permission rather than as a figure the amount gives. The
+  banded figure is still accepted beside it, and a DRV nutrient such as sodium is unaffected. New tests fail with
   the permission removed.
 
 - **The (b)(12)(i)(C) exemption needs the second column on the label.** (C) excuses products that "provide an
   additional column of nutrition information", and the exemption was granted from the declared column basis
   alone, so a panel declaring an as-prepared column and drawing one column passed as exempt (item 6). It is now
-  granted only where the second column is drawn and printed in full; otherwise the 200 to 300 percent duty stands
-  and the column is judged like any other. Its pass now says it read the column, and that the product's own
-  qualification is what it did not check. The test that had locked in the old behavior now draws the column, and
+  granted only where the second column is drawn and printed in full, judged on the column's own omissions and on its
+  box lying on the label, so an unrelated defect elsewhere in the panel does not cancel it; otherwise the 200 to 300
+  percent duty stands and the column is judged like any other. Its pass now says it read the column (or, on an egg
+  carton whose panel is presented elsewhere, that the column is declared), and that the product's own qualification
+  is what it did not check. The test that had locked in the old behavior now draws the column, and
   new tests fail with either condition removed.
 
 - **The Calories and nutrient-row type sizes cite 101.9(d)(1)(iii).** The 16 and 10 point Calories minimums were

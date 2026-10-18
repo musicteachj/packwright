@@ -154,9 +154,10 @@ below the permission's own floor is reported against the usual minimum, since it
   or on passenger carriers, not for retail sale, with 3 in² or less to bear labeling and too little room for 1/16
   inch type, may use 1/32 inch. The check can read only the area, so on a package that may be that small, type
   from 1/32 to 1/16 inch gets no verdict.
-- **A tabular display waiting on its vertical space.** While the Nutrition Facts display check waits for the
-  continuous vertical space (101.9(d)(11)(iii)), the tabular display's lower minimums may not be the label's. Type
-  that meets them but not the vertical display's gets no verdict until the space is stated.
+- **A reduced display the package may not use.** While the Nutrition Facts display check waits for the continuous
+  vertical space (101.9(d)(11)(iii)), or where it reports the display, the reduced display's lower minimums may not
+  be the label's. Type that meets them but not the vertical display's gets no verdict; the display finding, or
+  stating the space, is what settles it.
 
 **101.2(c)(1), soft drinks in bottles, does not reach a label this tool draws.** It exempts information blown,
 lithographed or formed onto a bottle made before October 31, 1975, and lets a bottle with no paper, plastic foam

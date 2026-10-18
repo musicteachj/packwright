@@ -267,9 +267,18 @@ const judgedAsDrawn: UsFoodRule = {
             // `/code-review medium` on the fix for item 6 of the source verification.
             (duty.exemption === '21 CFR 101.9(b)(12)(i)(C)' &&
             data.nutritionFacts?.dualColumnExemption?.variedWeight !== true
-              ? 'The label carries the additional column (C) asks for, printed in full. Whether ' +
-                'the product is one (C) names, such as one that requires further preparation, ' +
-                'is a fact about the product, not about the label, and is not checked here.'
+              ? // Printed, or, where the panel is presented off this label (an egg carton's,
+                // under (j)(14)), declared with figures: said as whichever it was. Found by
+                // `/code-review high` on #105.
+                (layout.elements.some(
+                  (element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+                )
+                  ? 'The label carries the additional column (C) asks for, printed in full. '
+                  : 'The panel is presented off this label, and declares the additional column ' +
+                    '(C) asks for, with figures; that it is printed there is not checked here. ') +
+                'Whether the product is one (C) names, such as one that requires further ' +
+                'preparation, is a fact about the product, not about the label, and is not ' +
+                'checked here.'
               : 'Whether that exemption applies is a fact about the product, not about the ' +
                 'label, and is not checked here.'),
           US_FOOD_ELEMENTS.nutritionPanel,

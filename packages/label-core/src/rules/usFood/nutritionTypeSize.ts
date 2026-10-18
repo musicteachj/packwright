@@ -190,7 +190,8 @@ const judgedAsDrawn: UsFoodRule = {
   },
   appliesTo: 'us-food',
 
-  check({ data, layout, stock }: UsFoodContext): Finding[] {
+  check(context: UsFoodContext): Finding[] {
+    const { data, layout, stock } = context
     const facts = data.nutritionFacts
     // The same floor the engine drew the panel with, so the minimums judged are those of
     // the display the package can actually reach.
@@ -247,10 +248,14 @@ const judgedAsDrawn: UsFoodRule = {
       (declared === undefined || declared < SMALL_PACKAGE_EXEMPT_MAX_SQ_INCHES)
     const mayBeFoodServicePack =
       Math.max(floor.sqInches, declared ?? 0) <= FOOD_SERVICE_PACK_MAX_SQ_INCHES
-    // The vertical display's minimum for each part, where the display's own lower one waits
-    // on an entitlement the format rule has not settled.
-    const entitlementWaits =
-      nutritionFormatVerdict({ data, layout, stock, labelType: 'us-food' })?.undetermined === true
+    // The vertical display's minimum for each part, where the display's own lower one is not
+    // the label's to use: its entitlement waits on a fact, or the format rule refuses it.
+    // Certifying the reduced figures then would pass a panel on minimums the package may not
+    // have. The refused case found by `/code-review high` on #105.
+    const verdict = nutritionFormatVerdict(context)
+    const entitlementWaits = verdict?.undetermined === true
+    const entitlementRefused =
+      verdict !== undefined && verdict.undetermined !== true && !verdict.permitted
     const verticalPt = new Map([
       ...minimumsFor('verticalD12').map((entry) => [entry.measureId, entry.pt] as const),
       [US_FOOD_ELEMENTS.nutritionPanel, nutritionTypeForDisplay('verticalD12').nutrientPt] as const,
@@ -285,17 +290,20 @@ const judgedAsDrawn: UsFoodRule = {
     const short = checks.filter((entry) => below(entry, entry.pt))
     // Clear of the display's own minimum, but not of the vertical display's, while the
     // display's entitlement waits: no verdict either way.
-    const waiting = entitlementWaits
-      ? checks
-          .filter((entry) => !below(entry, entry.pt))
-          .filter((entry) => below(entry, verticalPt.get(entry.measureId) ?? entry.pt))
-          .map((entry) => ({
-            entry: { ...entry, pt: verticalPt.get(entry.measureId) ?? entry.pt },
-            because:
-              'the tabular display that permits less waits on the continuous vertical space, ' +
-              'which the label does not state (21 CFR 101.9(d)(11)(iii))',
-          }))
-      : []
+    const waiting =
+      entitlementWaits || entitlementRefused
+        ? checks
+            .filter((entry) => !below(entry, entry.pt))
+            .filter((entry) => below(entry, verticalPt.get(entry.measureId) ?? entry.pt))
+            .map((entry) => ({
+              entry: { ...entry, pt: verticalPt.get(entry.measureId) ?? entry.pt },
+              because: entitlementWaits
+                ? 'the tabular display that permits less waits on the continuous vertical space, ' +
+                  'which the label does not state (21 CFR 101.9(d)(11)(iii))'
+                : 'the display that permits less is one this package may not use, which the ' +
+                  'Nutrition Facts display finding reports',
+            }))
+        : []
     const unjudged = [
       ...short.flatMap((entry) => {
         const because = unjudgedBecause(entry)
