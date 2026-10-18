@@ -24,8 +24,48 @@ import {
 import type { DualColumnDuty, DualColumnFact } from '../../fda/nutritionFormats'
 import type { DeclinedFact, UsFoodContext } from '../types'
 import { labelingSurfaceFloor } from '../../geometry/pdp'
+import { willDrawSecondColumn } from '../../layout/nutritionPanel'
+import { wasFullyDrawn } from '../../layout/omissions'
+import type { ResolvedLayout } from '../../layout/types'
 import type { LabelStock } from '../../templates/stock'
+import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { UsFoodLabelData } from '../../templates/usFood'
+
+/**
+ * Whether the label shows a second column: drawn on the panel, or, for a panel printed
+ * somewhere other than this label (such as beneath a (j)(14) lid), declared with figures.
+ */
+export const secondColumnShown = (
+  facts: NonNullable<UsFoodLabelData['nutritionFacts']>,
+  layout: ResolvedLayout,
+): boolean =>
+  layout.elements.some((element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel)
+    ? layout.elements.some(
+        (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+      )
+    : willDrawSecondColumn(facts)
+
+/**
+ * Whether the label provides a second column, as (b)(12)(i)(C) asks: shown, and where the
+ * panel was drawn, printed in full. Stricter than `secondColumnShown`, because a column run
+ * off the stock still records its element and provides nothing to a reader. Where it fails,
+ * the duty stands and the column is judged as any other, so this can only move a label from
+ * excused to judged.
+ */
+const secondColumnProvided = (
+  facts: NonNullable<UsFoodLabelData['nutritionFacts']>,
+  layout: ResolvedLayout,
+): boolean => {
+  if (!secondColumnShown(facts, layout)) return false
+  const panelDrawn = layout.elements.some(
+    (element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+  )
+  return (
+    !panelDrawn ||
+    (wasFullyDrawn(layout, US_FOOD_ELEMENTS.nutritionPanel) &&
+      wasFullyDrawn(layout, US_FOOD_ELEMENTS.nutritionSecondColumn))
+  )
+}
 
 /**
  * What second column, if any, this label is obliged to carry.
@@ -33,7 +73,11 @@ import type { UsFoodLabelData } from '../../templates/usFood'
  * Returns an empty duty for a label with no nutrition panel, which is the same
  * answer as a label that stated no reference amount: not cleared, not asked.
  */
-export function dualColumnDutyFor(data: UsFoodLabelData, stock: LabelStock): DualColumnDuty {
+export function dualColumnDutyFor(
+  data: UsFoodLabelData,
+  stock: LabelStock,
+  layout: ResolvedLayout,
+): DualColumnDuty {
   const panel = data.nutritionFacts
   if (panel === undefined) {
     // Asked of the one computation rather than written out: a hand-copied
@@ -73,6 +117,8 @@ export function dualColumnDutyFor(data: UsFoodLabelData, stock: LabelStock): Dua
       ? {}
       : { variedWeight: panel.dualColumnExemption.variedWeight }),
     meetsSmallPackageRequirements,
+    // (C) excuses only a product that provides the additional column, so it reads the drawing.
+    secondColumnShown: secondColumnProvided(panel, layout),
   })
 }
 
@@ -128,9 +174,9 @@ export const PROVISION_FOR = (basis: 'per-container' | 'per-unit'): string =>
  * protein percent — each wait for the size when this holds, so none of them can give a
  * verdict on a column whose duty a size nobody gave decides. Raised by review.
  */
-export function sizeDecidesTheDuty({ data, stock, sizeUnstated }: UsFoodContext): boolean {
+export function sizeDecidesTheDuty({ data, layout, stock, sizeUnstated }: UsFoodContext): boolean {
   return (
     sizeUnstated === true &&
-    dualColumnDutyFor(data, stock).exemption === SMALL_PACKAGE_EXEMPTION_REFERENCE
+    dualColumnDutyFor(data, stock, layout).exemption === SMALL_PACKAGE_EXEMPTION_REFERENCE
   )
 }

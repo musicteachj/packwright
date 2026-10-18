@@ -241,5 +241,6 @@ export {
 export {
   FDA_NUTRITION_FORMAT_MET,
   FDA_NUTRITION_FORMAT_NOT_PERMITTED,
+  nutritionFormatVerdict,
   usFoodNutritionFormatRule,
 } from './usFood/nutritionFormat'

@@ -166,6 +166,13 @@ export interface FormatVerdict {
   /** One sentence, for the finding. Empty when permitted. */
   reason: string
   reference: string
+  /**
+   * The verdict turns on a fact the package has not stated: a tabular display no
+   * small-package route permits is still permitted by (d)(11)(iii) where there is not
+   * approximately 3 inches of continuous vertical space, and the space is unstated.
+   * Neither permitted nor refused; a rule reading this asks for the space.
+   */
+  undetermined?: true
 }
 
 /**
@@ -242,12 +249,41 @@ export function formatIsPermitted(
   }
 
   if (!reduced) {
+    // **A tabular display has a second route, and it is still open while the space is
+    // unstated.** "Permitted only at 40 in² or less" was said of every tabular display
+    // over 40 in², though (d)(11)(iii) permits one at any size without approximately
+    // 3 inches of continuous vertical space. Item 2 of the 2026-10-17 source
+    // verification; (d)(11)(iii) re-read from the eCFR on 2026-10-18.
+    const space = entitlement.continuousVerticalSpaceInches
+    if (format === 'tabular' && space === undefined) {
+      return {
+        permitted: false,
+        undetermined: true,
+        reason:
+          (under40
+            ? `${area.describe}, at which (j)(13)(ii)(A) permits a tabular display only where ` +
+              'the shape or size cannot accommodate a standard vertical column, and the label ' +
+              'does not say so'
+            : `${area.describe}, so (j)(13)(ii)(A) does not permit a tabular display`) +
+          '; but (d)(11)(iii) permits one at any size where there is not approximately 3 ' +
+          'inches of continuous vertical space for the nutrition label, and the label does not ' +
+          'say how much there is',
+        reference: '21 CFR 101.9(d)(11)(iii)',
+      }
+    }
     return {
       permitted: false,
-      reason: under40
-        ? `${area.describe}, which permits a reduced display only where its shape or size ` +
-          'cannot accommodate a standard vertical column, and the label does not say so'
-        : `${area.describe}, and a reduced display is permitted only at 40 in² or less`,
+      reason:
+        (under40
+          ? `${area.describe}, which permits a reduced display only where its shape or size ` +
+            'cannot accommodate a standard vertical column, and the label does not say so'
+          : `${area.describe}, and (j)(13)(ii)(A) permits a reduced display only at 40 in² or ` +
+            'less') +
+        (format === 'tabular'
+          ? `; nor does (d)(11)(iii), which permits a tabular display only without ` +
+            `approximately 3 inches of continuous vertical space, and the label states ` +
+            `${space} in`
+          : ''),
       reference: SMALL_PACKAGE_ROUTE_REFERENCE,
     }
   }
@@ -378,6 +414,13 @@ export interface DualColumnInput {
   rawCommodityVoluntary?: boolean
   variedWeight?: boolean
   /**
+   * Whether a second column is shown on the label, as the layout drew it. Exemption (C)
+   * reaches only products that "provide an additional column", so a declared basis with
+   * no column drawn excuses nothing. The varied-weight limb names no column and does not
+   * read this.
+   */
+  secondColumnShown?: boolean
+  /**
    * Whether (j)(13)(ii)(A) reaches this package — exemption (A). Note its wording:
    * "products that **meet the requirements to use** the tabular format", not
    * products that use it. A package entitled to the small-package displays is
@@ -391,6 +434,13 @@ export interface DualColumnInput {
  * one of these reasons — the clause is conjunctive, naming the property *and* the
  * additional column together. So most of the carve-out falls out of the basis the
  * label declares rather than needing to be asserted separately.
+ *
+ * **"Provide" is a fact about the drawing, and is read from it.** The exemption was
+ * granted from the declared basis alone, so a label declaring an as-prepared column
+ * and drawing a panel of one column passed as exempt. It now needs
+ * `secondColumnShown` as well (item 6 of the 2026-10-17 source verification). Re-read
+ * from the eCFR on 2026-10-18: "products that require further preparation and provide
+ * an additional column of nutrition information under paragraph (e)".
  */
 const EXEMPT_BASES: readonly DualColumnBasis[] = [
   'as-prepared',
@@ -484,7 +534,8 @@ export function dualColumnDuty(input: DualColumnInput): DualColumnDuty {
           : input.variedWeight === true ||
               (input.columns?.mode === 'dual' &&
                 input.columns.basis !== undefined &&
-                EXEMPT_BASES.includes(input.columns.basis))
+                EXEMPT_BASES.includes(input.columns.basis) &&
+                input.secondColumnShown === true)
             ? '21 CFR 101.9(b)(12)(i)(C)'
             : undefined
 

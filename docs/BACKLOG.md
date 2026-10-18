@@ -441,6 +441,10 @@ one that was. No rule cross-checks the two figures.
 
 ## Rules that do not exist yet
 
+**A clipped (b)(12)(i)(C) column is reported as the wrong basis**, since the exemption falls away and `FDA_DUAL_COLUMN_MISSING` names the declared basis rather than the clipping, which its own omission reports (medium review of fix PR 2b, 2026-10-18).
+
+**A type-size check with every part in a no-verdict band says nothing and asks for nothing**, though stating a package area of 12 in² or more would let it run (same review).
+
 **A net quantity by count is asked for an SI declaration, and whether 15 U.S.C. 1453(a)(2) wants one for a count was not settled** (found writing the SI unit check for fix PR 2, 2026-10-17; the rule did this before).
 
 **Nothing checks the Nutrition Facts footnote.** 21 CFR 101.9(d)(9) sets the footnote verbatim and

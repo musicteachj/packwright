@@ -159,7 +159,7 @@ const judgedAsDrawn: UsFoodRule = {
     // any rule at all. Silence is right where no provision governs; here the
     // question is answerable and unanswered.
     if (basis !== 'per-container' && basis !== 'per-unit') return undefined
-    const { standing, unstated } = dualColumnDutyFor(data, stock)
+    const { standing, unstated } = dualColumnDutyFor(data, stock, layout)
     if (standing[basis] !== 'undetermined') return undefined
     // The facts of the provision this column's basis answers to, and only the
     // ones not yet stated. It said "the reference amount, what the package holds
@@ -214,7 +214,7 @@ const judgedAsDrawn: UsFoodRule = {
     const paragraphOf = (reference: string) => reference.replace('21 CFR ', '')
     const paragraph = (citation: Citation) => paragraphOf(citation.reference)
     const basis = data.nutritionFacts?.columns?.basis
-    const duty = dualColumnDutyFor(data, stock)
+    const duty = dualColumnDutyFor(data, stock, layout)
 
     // Nothing to say where no provision governs the column, and nothing to say
     // where the label has not said which one might — `declines` asks for that.

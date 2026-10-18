@@ -5,8 +5,8 @@
  * rule.**
  *
  * The type sizes are in **21 CFR 101.9** itself and are binding: (d)(2) for the
- * heading, (d)(3) for the servings lines, (d)(5) for Calories, (d)(7)(iii) for
- * the nutrient block, (j)(13) for the small-package floors. Those ship as rules.
+ * heading, (d)(3) for the servings lines, (d)(1)(iii) for Calories and the
+ * nutrient block, (j)(13) for the small-package floors. Those ship as rules.
  *
  * The rule weights are not in the regulation at all. 101.9 defers to its graphic
  * fifteen times and says only that "for uniformity of presentation, FDA strongly
@@ -88,11 +88,13 @@ export const NUTRITION_PANEL_TYPE = {
   /** 101.9(d)(3)(ii): "highlighted in bold or extra bold ... no smaller than
    *  10 point". */
   servingSizePt: 10,
-  /** 101.9(d)(5): "highlighted in bold or extra bold ... no smaller than 16
-   *  point" for the word. The illustrations set the figure beside it at 22 pt. */
+  /** 101.9(d)(1)(iii), for the (d)(5) declaration: "highlighted in bold or extra
+   *  bold and shall be in a type size no smaller than 16 point" for the word, and 22
+   *  for "the numeric amount". */
   caloriesWordPt: 16,
   caloriesFigurePt: 22,
-  /** 101.9(d)(7)(iii): "no smaller than 8 point", with 4 pt of leading. */
+  /** 101.9(d)(1)(iii), for (d)(7) and (8): "no smaller than 8 point", with 4 pt of
+   *  leading. */
   nutrientPt: 8,
   nutrientLeadingPt: 4,
   /** "No smaller than 6 pt with 1 pt of leading" — the footnote. */

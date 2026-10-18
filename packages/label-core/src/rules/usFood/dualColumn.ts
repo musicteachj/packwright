@@ -42,6 +42,7 @@ import type { DualColumnBasis, MandatoryDualColumnBasis } from '../../fda/nutrit
 import {
   asDeclinedFacts,
   dualColumnDutyFor,
+  secondColumnShown,
   sizeDecidesTheDuty,
   stateThese,
 } from './mandatoryColumns'
@@ -130,20 +131,6 @@ const limitApplies = (
 const couldBeEitherOwed = (declared: DualColumnBasis | undefined): boolean =>
   declared === undefined || declared === 'per-container' || declared === 'per-unit'
 
-/**
- * Whether the label shows a second column: drawn on the panel, or — for a panel printed
- * somewhere other than this label, such as beneath a (j)(14) lid — declared with figures.
- */
-const secondColumnShown = (
-  facts: NonNullable<UsFoodContext['data']['nutritionFacts']>,
-  layout: UsFoodContext['layout'],
-): boolean =>
-  layout.elements.some((element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel)
-    ? layout.elements.some(
-        (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
-      )
-    : willDrawSecondColumn(facts)
-
 const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/dual-column-required',
   title: 'A package holding 200 to 300 percent of its reference amount carries a second column.',
@@ -199,7 +186,7 @@ const judgedAsDrawn: UsFoodRule = {
    */
   declines({ data, layout, stock }: UsFoodContext): Decline | undefined {
     if (data.nutritionFacts === undefined) return undefined
-    const duty = dualColumnDutyFor(data, stock)
+    const duty = dualColumnDutyFor(data, stock, layout)
 
     // **Both columns owed, one drawn: the tool's limit, said as such.** (b)(12)(i) asks for
     // a column for the entire package and (b)(2)(i)(D) for one per individual unit, and
@@ -254,7 +241,7 @@ const judgedAsDrawn: UsFoodRule = {
 
     // Assembled in `mandatoryColumns.ts`, because two other rules need the same
     // answer to decide whether (e)(6) reaches the column they are judging.
-    const duty = dualColumnDutyFor(data, stock)
+    const duty = dualColumnDutyFor(data, stock, layout)
 
     // No duty is nothing to report. A label outside the band, or one that never
     // stated its reference amount, has not been cleared of anything — it has not
@@ -275,9 +262,16 @@ const judgedAsDrawn: UsFoodRule = {
           usFoodDualColumnRule,
           FDA_DUAL_COLUMN_EXEMPT,
           `This package holds ${percent} percent of its reference amount, which would require a ` +
-            `second column for ${BASIS_NAME[duty.basis]} — but ${duty.exemption} excuses it. ` +
-            'Whether that exemption applies is a fact about the product, not about the label, ' +
-            'and is not checked here.',
+            `second column for ${BASIS_NAME[duty.basis]}, but ${duty.exemption} excuses it. ` +
+            // (C)'s column limb reads the drawing, so the pass says what it read. Found by
+            // `/code-review medium` on the fix for item 6 of the source verification.
+            (duty.exemption === '21 CFR 101.9(b)(12)(i)(C)' &&
+            data.nutritionFacts?.dualColumnExemption?.variedWeight !== true
+              ? 'The label carries the additional column (C) asks for, printed in full. Whether ' +
+                'the product is one (C) names, such as one that requires further preparation, ' +
+                'is a fact about the product, not about the label, and is not checked here.'
+              : 'Whether that exemption applies is a fact about the product, not about the ' +
+                'label, and is not checked here.'),
           US_FOOD_ELEMENTS.nutritionPanel,
           { ...CITATION, reference: duty.exemption },
         ),

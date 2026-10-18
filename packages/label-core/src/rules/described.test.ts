@@ -346,7 +346,12 @@ describe('a label described without its size', () => {
   })
 
   it('denies a format the panel alone rules out, naming the panel', () => {
-    const described = sizeless(tabular(bigBox))
+    // With room for a vertical display stated, so (d)(11)(iii) cannot permit it either.
+    const roomy = tabular(bigBox)
+    const described = sizeless({
+      ...roomy,
+      nutritionFacts: { ...roomy.nutritionFacts, continuousVerticalSpaceInches: 6 },
+    })
     const denied = described.findings.find((f) => f.code === 'FDA_NUTRITION_FORMAT_NOT_PERMITTED')
     expect(denied).toBeDefined()
     // The panel, never the ten-metre stock a sizeless label is drawn on.

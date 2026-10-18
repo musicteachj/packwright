@@ -114,8 +114,8 @@ export function passedOnArtwork(
  *
  * Use this — and only this — for a verdict that stays true whatever the engine
  * managed to draw: an entitlement, an exemption, or a fact about the food. A
- * food excused from a second column under 101.9(b)(12)(i)(C) is excused whether
- * or not its panel printed, so withholding that pass when the panel is omitted
+ * raw commodity excused from a second column under 101.9(b)(12)(i)(B) is excused
+ * whether or not its panel printed, so withholding that pass when the panel is omitted
  * would delete the only explanation of why no column was demanded — and would
  * leave the label reporting nothing at all on the point.
  *

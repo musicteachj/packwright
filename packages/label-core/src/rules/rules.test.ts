@@ -655,6 +655,10 @@ describe('a check that stood down names what would let it run', () => {
         secondAmounts: { ...foodPanel.amounts },
       },
     }),
+    food('a tabular display over 40 in² that does not say how much vertical space it has', {
+      format: 'tabular',
+      availableSurfaceSqInches: 60,
+    }),
     unweighed('an ingredient whose percentage was never stated', [1]),
     unweighed('a grouped ingredient whose percentage was never stated', [3], 2),
     food('a second column that does not say what it counts', {
@@ -891,6 +895,8 @@ describe('a check that stood down names what would let it run', () => {
         return panel?.packagedAndSoldIndividually !== undefined
       case 'nutritionFacts.columns.basis':
         return panel?.columns?.basis !== undefined
+      case 'nutritionFacts.continuousVerticalSpaceInches':
+        return figure(panel?.continuousVerticalSpaceInches)
     }
   }
 
@@ -948,6 +954,8 @@ describe('a check that stood down names what would let it run', () => {
       'nutritionFacts.unitContent': { unitContent: 100 },
       'nutritionFacts.packagedAndSoldIndividually': { packagedAndSoldIndividually: true },
       'nutritionFacts.columns.basis': { columns: { ...panel.columns!, basis: 'per-container' } },
+      // The figure a designer would measure off a short panel.
+      'nutritionFacts.continuousVerticalSpaceInches': { continuousVerticalSpaceInches: 2 },
     }
     return { ...label, nutritionFacts: { ...panel, ...answer[fact] } }
   }

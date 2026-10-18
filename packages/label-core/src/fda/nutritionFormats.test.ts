@@ -58,9 +58,33 @@ describe('which display a package may use', () => {
     const verdict = formatIsPermitted('tabular', {
       availableSqInches: 40.1,
       cannotAccommodateVertical: true,
+      continuousVerticalSpaceInches: 6,
     })
     expect(verdict.permitted).toBe(false)
     expect(verdict.reason).toContain('40 in² or less')
+    // And says why (d)(11)(iii), the route that has no area limit, does not rescue it.
+    expect(verdict.reason).toContain('(d)(11)(iii)')
+    expect(verdict.reason).toContain('states 6 in')
+  })
+
+  it('leaves a tabular display over 40 in² undetermined while the vertical space is unstated', () => {
+    // (d)(11)(iii) permits a tabular display at any size without approximately 3 in of
+    // continuous vertical space. Refusing it here reported a permission; item 2 of the
+    // 2026-10-17 source verification.
+    const verdict = formatIsPermitted('tabular', { availableSqInches: 60 })
+    expect(verdict.permitted).toBe(false)
+    expect(verdict.undetermined).toBe(true)
+    expect(verdict.reference).toBe('21 CFR 101.9(d)(11)(iii)')
+    expect(verdict.reason).not.toContain('permitted only at 40 in² or less')
+    // At 40 in² or less, (j)(13)(ii)(A)'s shape limb is named for what it is, not as closed.
+    const under40 = formatIsPermitted('tabular', { availableSqInches: 30 })
+    expect(under40.undetermined).toBe(true)
+    expect(under40.reason).toContain('cannot accommodate a standard vertical column')
+    expect(under40.reason).not.toContain('does not permit a tabular display')
+    // The linear display has no such route, so it is still refused outright.
+    const linear = formatIsPermitted('linear', { availableSqInches: 60 })
+    expect(linear.undetermined).toBeUndefined()
+    expect(linear.permitted).toBe(false)
   })
 
   it('permits one at exactly 40 in² with the declaration', () => {
@@ -92,8 +116,9 @@ describe('which display a package may use', () => {
   })
 
   it('cites the paragraph the refusal comes from', () => {
-    expect(formatIsPermitted('tabular', { availableSqInches: 60 }).reference).toBe(
-      '21 CFR 101.9(j)(13)(ii)(A)',
-    )
+    expect(
+      formatIsPermitted('tabular', { availableSqInches: 60, continuousVerticalSpaceInches: 6 })
+        .reference,
+    ).toBe('21 CFR 101.9(j)(13)(ii)(A)')
   })
 })

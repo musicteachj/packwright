@@ -105,7 +105,7 @@ const judgedAsDrawn: UsFoodRule = {
    * this engine never draws — the path where review found the question vanishing
    * with neither a finding nor a word about it.
    */
-  declines({ data, stock }: UsFoodContext): Decline | undefined {
+  declines({ data, layout, stock }: UsFoodContext): Decline | undefined {
     const panel = data.nutritionFacts
     if (panel === undefined || dailyValuePopulationOf(panel) !== 'children-1-through-3') {
       return undefined
@@ -129,7 +129,7 @@ const judgedAsDrawn: UsFoodRule = {
     // be determined is a question nobody answered, not a provision that does not
     // apply, and only the second deserves silence.
     if (basis !== 'per-container' && basis !== 'per-unit') return undefined
-    const { standing, unstated } = dualColumnDutyFor(data, stock)
+    const { standing, unstated } = dualColumnDutyFor(data, stock, layout)
     if (standing[basis] !== 'undetermined') return undefined
     // Asked of the provision this column's basis answers to — see the same
     // branch in `us-food/dual-column-form`, which had the same defect.
@@ -149,7 +149,7 @@ const judgedAsDrawn: UsFoodRule = {
 
     // (e)(6) reaches only the columns (b)(12)(i) and (b)(2)(i)(D) require, so which
     // paragraph governs a second column depends on more than what it counts.
-    const duty = dualColumnDutyFor(data, stock)
+    const duty = dualColumnDutyFor(data, stock, layout)
     /**
      * The paragraph putting a percentage in the *second* column, or nothing.
      *

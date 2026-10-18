@@ -612,8 +612,17 @@ describe('the Nutrition Facts displays, from the editor', () => {
     await wrapper.find('#field-food-nf-area').setValue(80)
     await nextTick()
 
-    // 80 in² is twice the (j)(13) cap and the label claims no shortage of vertical
-    // space, so nothing entitles it to a reduced display.
+    // 80 in² is twice the (j)(13) cap, but (d)(11)(iii) permits a tabular display at any
+    // size without approximately 3 in of vertical space, so with the space unstated the
+    // check waits and asks for it, rather than reporting the display.
+    expect(store.findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+    expect(store.declined.flatMap((d) => d.wants)).toContain(
+      'nutritionFacts.continuousVerticalSpaceInches',
+    )
+
+    // With room for a vertical display stated, nothing entitles it to a reduced one.
+    await wrapper.find('#field-food-nf-vertical-space').setValue(6)
+    await nextTick()
     expect(store.findings.map((f) => f.code)).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
 
     await wrapper.find('#field-food-nf-vertical-space').setValue(2)
