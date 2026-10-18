@@ -31,10 +31,10 @@ into a version only when there is a reason to.
   in 22 ms (found by the high review). After: each path under 5 ms at n = 32,000 and wrapping 47 ms at 256,000;
   anything past a bound is refused in under 40 ms with the field named; and the worst case found inside the bounds,
   a 235 KB ingredient list in 0.1 mm type on 1 m stock, exports in 200 ms (3.8 s without the PDF chunking). What a
-  bound could refuse that is lawful is in `docs/WHAT-IS-NOT-CHECKED.md`, "Input limits". The rewrites are checked against the old implementations, kept in the tests as oracles over
-  seeded inputs. New tests fail with each bound, the wrapping, the chunking, the filename cap, each fold and the
-  allergen strike-outs reverted; the four pattern rewrites change only speed, so each was reverted against its
-  reproduction instead, and the time came back.
+  bound could refuse that is lawful is in `docs/WHAT-IS-NOT-CHECKED.md`, "Input limits". The rewrites are checked
+  against the old implementations, kept in the tests as oracles over seeded inputs. New tests fail with each bound,
+  the wrapping, the chunking, the filename cap, each fold and the allergen strike-outs reverted; the four pattern
+  rewrites change only speed, so each was reverted against its reproduction instead, and the time came back.
 
 - **A barcode in GS1's on-demand X-dimension band is no longer reported, and its bars are no longer allowed short.**
   Table 5-44 of the General Specifications 26.0, re-read from the rendered pages 410 and 411 on 2026-10-18, sets the
