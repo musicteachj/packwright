@@ -605,6 +605,15 @@ export interface UsFoodLabelData {
    */
   ingredients?: readonly UsFoodIngredient[]
   /**
+   * Whether the food is made from a single ingredient, as the supplier states it.
+   *
+   * FD&C Act §403(i)(2) owes an ingredient statement only "in case it is fabricated from
+   * two or more ingredients", so a label with no list is judged on this and never on a
+   * guess: `true` excuses the list, `false` makes its absence a defect, and left out the
+   * check stands down and asks. A list printed anyway is judged like any other.
+   */
+  singleIngredient?: boolean
+  /**
    * Where the 101.4(a)(2) grouping is claimed: the threshold on the quantifying
    * statement, and how many entries at the end of the list sit behind it.
    */

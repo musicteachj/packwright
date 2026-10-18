@@ -35,7 +35,12 @@
  * about a label, so nothing here infers them.
  */
 
-import { foodSourceName, majorFoodAllergen } from '../../fda/allergens'
+import {
+  foodSourceName,
+  foodSourceNames,
+  majorFoodAllergen,
+  namesOnlyTheCategory,
+} from '../../fda/allergens'
 import type { MajorFoodAllergenId } from '../../fda/allergens'
 import { wasFullyDrawn } from '../../layout/omissions'
 import type { TextPrimitive } from '../../layout/types'
@@ -96,15 +101,17 @@ const SPECIFIC: Citation = {
  * the question it belongs to.
  */
 function elementsDeclaring(
-  source: string,
+  sources: readonly string[],
   allergenId: MajorFoodAllergenId,
   printedList: string,
   printedContains: string,
   ingredients: readonly UsFoodIngredient[],
 ): string[] {
-  const needle = source.toLowerCase()
+  // Every form the source may be named by ("peanuts" or "peanut"), and any one will do.
+  const needles = sources.map((source) => source.toLowerCase())
+  const names = (text: string) => needles.some((needle) => text.includes(needle))
   const declaring: string[] = []
-  if (printedContains.toLowerCase().includes(needle)) {
+  if (names(printedContains.toLowerCase())) {
     declaring.push(US_FOOD_ELEMENTS.containsStatement)
   }
 
@@ -132,7 +139,7 @@ function elementsDeclaring(
     if (ingredient.allergen === allergenId) continue
     searchable = searchable.split(ingredient.name.toLowerCase()).join(' ')
   }
-  if (searchable.includes(needle)) declaring.push(US_FOOD_ELEMENTS.ingredients)
+  if (names(searchable)) declaring.push(US_FOOD_ELEMENTS.ingredients)
   return declaring
 }
 
@@ -174,21 +181,29 @@ export const usFoodAllergenRule: UsFoodRule = {
       const allergen = majorFoodAllergen(id)
       if (allergen === undefined) continue
 
-      const source = foodSourceName(id, ingredient.allergenSpecificType)
+      const sources = foodSourceNames(id, ingredient.allergenSpecificType)
 
       // §403(w)(2) first: without a specific type there is no food source name
       // to put in either form, so neither can be satisfied and saying "not
-      // declared" would name the wrong defect.
-      if (source === undefined) {
+      // declared" would name the wrong defect. A type that only names the category
+      // ("tree nuts") is none, and the message quotes it so the user sees why.
+      if (sources === undefined) {
+        const kind = id === 'fish' || id === 'crustacean-shellfish' ? 'species' : 'type'
+        const typed = ingredient.allergenSpecificType?.trim() ?? ''
         findings.push(
           finding(usFoodAllergenRule, {
             code: FDA_ALLERGEN_SOURCE_NOT_SPECIFIC,
             severity: 'violation',
             message:
-              `"${ingredient.name}" is ${allergen.name}, which must be declared by its specific ` +
-              `${id === 'fish' || id === 'crustacean-shellfish' ? 'species' : 'type'} — ` +
-              `${allergen.examples.join(', ')} — and not by the category.`,
-            measurement: { actual: allergen.name, required: `a specific ${allergen.name} source` },
+              (namesOnlyTheCategory(id, typed)
+                ? `"${ingredient.name}" is ${allergen.name}, and its specific ${kind} is given ` +
+                  `as "${typed}", which names the category, not the ${kind}. It must be declared `
+                : `"${ingredient.name}" is ${allergen.name}, which must be declared `) +
+              `by its specific ${kind} (${allergen.examples.join(', ')}), not by the category.`,
+            measurement: {
+              actual: typed === '' ? allergen.name : typed,
+              required: `a specific ${allergen.name} source`,
+            },
             elementId: US_FOOD_ELEMENTS.ingredients,
             citation: SPECIFIC,
           }),
@@ -198,7 +213,8 @@ export const usFoodAllergenRule: UsFoodRule = {
 
       // Either form satisfies (w)(1). They are alternatives in the statute and
       // demanding both would report a violation against a compliant label.
-      const declaring = elementsDeclaring(source, id, printedList, printedContains, ingredients)
+      const source = sources[0]!
+      const declaring = elementsDeclaring(sources, id, printedList, printedContains, ingredients)
       if (declaring.length > 0) {
         if (declaring.some((elementId) => wasFullyDrawn(layout, elementId))) continue
 

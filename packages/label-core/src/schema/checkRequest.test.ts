@@ -133,6 +133,7 @@ const EVERY_US_FOOD_FIELD = {
   ingredientThreshold: { percent: 2, count: 1 },
   ingredientsExemption: { kind: 'assortment', statement: 'Assorted', mayBePresent: ['Nuts'] },
   ingredientsExempt: false,
+  singleIngredient: false,
   containsStatement: ['wheat'],
   containsStatementFontSizeMm: 2,
   containsStatementGapMm: 1,

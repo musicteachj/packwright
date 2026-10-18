@@ -91,6 +91,11 @@ export const PERMISSION_PATHS: Array<{ label: string; data: UsFoodDocument; stoc
         ingredientsExemption: { kind: 'bulk-at-retail' },
       },
     },
+    // The same rule excuses a single-ingredient food from a list, under §403(i)(2).
+    {
+      label: 'single ingredient, no list',
+      data: { ...US_FOOD_CONFORMANT.data, ingredients: [], singleIngredient: true },
+    },
     // The same rule clears an assortment whose statement names what may be present,
     // citing (a)(1) — the one citation no other document here emits.
     {

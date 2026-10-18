@@ -237,6 +237,8 @@ export type DeclinedFact =
   // The label's size, which sits beside the data rather than in it. Asked for where a
   // label printed elsewhere was described without one (`sizeUnstated`).
   | 'stock'
+  // Whether the food is one ingredient, where it lists none: FD&C Act §403(i)(2).
+  | 'singleIngredient'
   | 'ingredients.percentByWeight'
   | 'ingredients.name'
   | 'nutritionFacts.referenceAmount'

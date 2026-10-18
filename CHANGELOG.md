@@ -10,6 +10,51 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **A single-ingredient food is no longer blocked for having no ingredient list.** An empty list was a blocking
+  finding, "A packaged food must list its ingredients", cited to 21 CFR 101.4(a)(1). But the duty is FD&C Act
+  §403(i)(2), which requires the name of each ingredient only "in case it is fabricated from two or more
+  ingredients" (101.100(a) restates the scope), and 101.4(a)(1) governs how a list is written, not whether a food
+  owes one. Item 3 of `docs/verification-2026-10-17.md`. The label now says whether the food is made from a single
+  ingredient, a new `singleIngredient` field, asked for in the editor's Ingredients section when the list is empty
+  and accepted by `check_label`. Stated "two or more", a missing list is still blocking, now cited to §403(i)(2).
+  Stated "single", the rule passes on the document, saying no list is required and that it did not check the food
+  is one ingredient, nor, with nothing listed, whether it is a major food allergen (list the one ingredient with
+  its allergen tag for that check to run). Left unstated, the rule stands down and asks, under "checks that did
+  not run", rather than guessing either way. Adding an ingredient clears the answer, so a hidden one cannot come
+  back into force when the list is emptied again. A list printed anyway is judged as before. `docs/SOURCES.md` lists §403(i), read from
+  govinfo's 2024 edition. New tests fail with the pass removed, with the old citation restored, with the decline
+  removed, and with an unstated fact blocking as before.
+
+- **An allergen's "specific type" that only names the category no longer counts.** FD&C Act §403(w)(2) says that
+  for a tree nut, fish or Crustacean shellfish, the food source name "means the name of the specific type of nut
+  or species", and any non-blank type was accepted, so a type of "tree nuts" printed "(tree nuts)" and cleared
+  (item 4). The category's own words ("tree nuts", "nuts", "fish", "shellfish", "Crustacean shellfish" and their
+  forms), and the collective names that stand for them ("mixed nuts", "seafood"), are now no specific type: the rule reports `FDA_ALLERGEN_SOURCE_NOT_SPECIFIC`, quoting what was typed,
+  and the engine prints nothing for it and records the omission, as it does for a type left blank, naming the
+  typed category only where one was typed. The words are
+  matched whole, with case, spacing, hyphens and punctuation folded out ("tree-nuts", "Shell fish."), so "pecan
+  nuts" and "Atlantic cod" still count; whether a typed name is a real species is not
+  checked, and `docs/WHAT-IS-NOT-CHECKED.md` says so. A new fixture and test fail with the category accepted again.
+
+- **"Peanut" and "soybean" declare peanuts and soybeans.** The allergen rule matched only the statute's exact
+  names, so "peanut butter" or "soybean oil" with no parenthetical was reported undeclared, though
+  §403(w)(1)(B)(i) excuses an ingredient whose name "uses the name of the food source". James decided on
+  2026-10-17 (decision A of the record) that the singular of the statute's own name is that name. "Soy" and
+  "soya" are still reported, since only FDA's nonbinding guidance accepts them, and the engine still prints the
+  statute's word. (B)(ii)'s caveat holds for the singular too: "peanut" inside a non-allergen ingredient's name
+  declares nothing. The new test fails with the singulars removed.
+
+- **The SI declaration must state an SI unit.** The Fair Packaging and Labeling Act requires the net quantity in
+  "the SI metric system" (15 U.S.C. 1453(a)(2)), and the pass accepted any text in the metric field, so "12 oz"
+  there cleared both systems (the FPLA part of item 13). The rule now wants an amount in grams, liters or meters,
+  with an SI prefix from micro to kilo or none, as a symbol or spelled out in either spelling, or the square or
+  cubic meter; anything else is a new violation, `FDA_NET_QUANTITY_METRIC_NOT_SI`. The units come from NIST
+  SP 811 and SP 330, read on 2026-10-17 and added to `docs/SOURCES.md`. Case is not judged, since "340 G" on a
+  label set in capitals states grams to any reader. The pass now names the amount it found, no longer says both
+  systems are covered, and says it did not check that the other declaration is in inch/pound units or compare the
+  two figures. On a random package or one packaged at retail, only an SI amount is called the SI statement the
+  exemption permits. A new fixture and test fail with the unit check removed.
+
 - **The net quantity is printed in boldface.** 21 CFR 101.7(h) says the declaration "shall appear in conspicuous and
   easily legible boldface print or type", and the US food engine drew it in the regular face on every label while
   the five net quantity rules reported it compliant; the 2026-10-17 source verification found it (item 1 of
