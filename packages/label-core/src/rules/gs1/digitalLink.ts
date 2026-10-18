@@ -102,6 +102,15 @@ const ALPHAS_CITATION: Citation = {
  */
 type Verdict = { findings: Finding[]; limit?: string }
 
+/**
+ * What every pass leaves unjudged. §2, read from the standard's page on 2026-10-18:
+ * "Applications SHALL NOT assume that a URL that follows the syntax defined in this
+ * standard will point to a resolver." Nothing here fetches the link.
+ */
+const NOT_RESOLVED =
+  ' Not checked: whether it points to a resolver, which conforming to the syntax does ' +
+  'not establish (URI Syntax 1.7.0 §2).'
+
 /** How the link judged came to be: printed, built from the editor's fields, or neither. */
 type As = 'printed' | 'built' | 'configured'
 
@@ -217,12 +226,12 @@ function verdictOf(
     return {
       findings: [
         // URI Syntax governs the string, and this engine prints no carrier for it: the document.
+        // It says what was judged, the string, and not where the string leads: "resolves to"
+        // claimed a lookup nothing made (verification record of 2026-10-17, item 13).
         passedOnDocument(
           digitalLinkRule,
           GS1_DIGITAL_LINK_VALID,
-          (as === 'printed'
-            ? `The Digital Link as printed, ${uri}, is conformant.`
-            : `The Digital Link resolves to ${uri}.`) + unread,
+          `The Digital Link as ${as}, ${uri}, is conformant.${unread}${NOT_RESOLVED}`,
         ),
       ],
     }

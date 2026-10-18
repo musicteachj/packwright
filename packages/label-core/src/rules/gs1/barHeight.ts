@@ -7,6 +7,13 @@
  * nominal height has bars of the right width and quiet zones of the right size,
  * and merely reads as a slightly squat barcode. Nothing about it looks wrong. It
  * is non-conformant at point of sale.
+ *
+ * **It stops scaling at the minimum X-dimension.** Table 5-44 footnote (**): "When
+ * printing a minimum symbol with any method of printing, the bar height SHALL NOT be
+ * truncated below the minimum as listed in the table above." Below X = 0.264 the floor is
+ * the height listed for 0.264, whatever the print process (`nominalBarHeightMm`). Until
+ * 2026-10-18 it went on scaling, and passed a truncated bar in footnote (*)'s on-demand
+ * band (verification record of 2026-10-17, item 12).
  */
 
 import { nominalBarHeightMm } from '../../geometry/symbol'
@@ -19,7 +26,8 @@ export const GS1_BAR_HEIGHT_BELOW_MINIMUM = 'GS1_BAR_HEIGHT_BELOW_MINIMUM'
 export const GS1_BAR_HEIGHT_SUFFICIENT = 'GS1_BAR_HEIGHT_SUFFICIENT'
 
 // GS1 General Specifications Release 26.0 (Ratified Jan 26), read from the rendered
-// pages at https://ref.gs1.org/standards/genspecs/ on 2026-10-12. 25.0's "figure
+// pages at https://ref.gs1.org/standards/genspecs/ on 2026-10-12; table 5-44 and its
+// footnotes (pages 410 and 411) re-read from the rendered pages on 2026-10-18. 25.0's "figure
 // 5.x-1" identifiers do not exist in 26.0, which numbers the tables; the figures
 // themselves are unchanged (`geometry/symbol.ts`).
 const CITATION: Citation = {

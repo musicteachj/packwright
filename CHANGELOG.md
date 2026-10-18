@@ -10,6 +10,23 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **A barcode in GS1's on-demand X-dimension band is no longer reported, and its bars are no longer allowed short.**
+  Table 5-44 of the General Specifications 26.0, re-read from the rendered pages 410 and 411 on 2026-10-18, sets the
+  EAN/UPC X-dimension from 0.264 to 0.660 mm, and its footnote (*) allows 0.249 to 0.264 mm "only" to "on demand
+  (e.g., thermal, laser) print processes" (item 12 of `docs/verification-2026-10-17.md`). The magnification check
+  reported everything under 0.80x, so a label using that allowance was reported for it. A label does not say how it
+  is printed, so in that band the check now gives no verdict and says so as a limit of the tool; below 0.249 mm the
+  violation stands, and names the allowance. The second half was hidden behind the first: footnote (**) says the bar
+  height "SHALL NOT be truncated below the minimum as listed" with any method of printing, and the minimum height
+  went on scaling down below X 0.264, so bars of 17.6 mm at 0.77x passed where 18.28 mm is listed. Below the minimum
+  X-dimension the floor is now the listed height (18.28 mm, 14.58 mm for EAN-8), and the engine draws a bar height
+  left blank at that floor too. New tests fail with each change reverted.
+
+- **The Digital Link pass says what it checked.** For a link built from the editor's fields it said the link
+  "resolves to" its URI, which nothing tested, and GS1 Digital Link URI Syntax 1.7.0 §2 says applications "SHALL NOT
+  assume" a conformant URI points to a resolver (the Digital Link part of item 13). Every pass now says the link as
+  built or as printed is conformant, and that whether it points to a resolver was not checked.
+
 - **A CLP small package's inner label is held to the list Annex I 1.5 gives it.** The small-container check was
   wrong three ways under CLP (item 10 of `docs/verification-2026-10-17.md`), read again from the 2026-07-01
   consolidation on 2026-10-18. 1.5.1.2, as amended by 2024/2865, lists "the hazard pictograms, the signal words, the

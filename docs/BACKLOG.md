@@ -1175,6 +1175,11 @@ version extracts the printed wording alongside the code and compares it against
 launder. It needs a field `GhsLabelData` does not have, and a decision about whether a mismatch is a finding
 or a warning — a finding would be the first rule in this project to judge text rather than geometry.
 
+**From fix PR 4's review (2026-10-18), one line each:** the EAN-8 minimum steps from the listed 14.58 mm below X
+0.264 to a scaled 14.584 mm at it, 0.004 mm stricter; the editor and design page still call 80% to 200% "GS1's
+range", true outside the on-demand band; `gs1/magnification` applies table 5-44's EAN/UPC band to every drawn
+symbol, which is only ever a UPC-A.
+
 ---
 
 ## From phase 7, stage 2

@@ -84,6 +84,31 @@ export const GS1_RETAIL_FIXTURES: readonly RuleFixture[] = [
     },
   },
   {
+    // Table 5-44 footnote (**): the bar height "SHALL NOT be truncated below the minimum
+    // as listed", with any method of printing. 17.6 mm is above the 17.59 mm a height
+    // scaled to 0.77x would give, which is what passed until 2026-10-18.
+    name: 'bars truncated below the listed minimum at an on-demand X-dimension',
+    defect: 'Bars of 17.6 mm at 0.77x, where the minimum listed for X = 0.264 is 18.28 mm.',
+    data: { gtin: VALID_GTIN, magnification: 0.77, barHeightMm: 17.6 },
+    stock: DEFAULT_STOCK,
+    expected: {
+      code: GS1_BAR_HEIGHT_BELOW_MINIMUM,
+      severity: 'violation',
+      citation: 'GS1 General Specifications 26.0 §5.2.3.2 and table 5-44',
+    },
+  },
+  {
+    name: 'magnification below the on-demand allowance',
+    defect: 'Drawn at 0.70x, X = 0.231 mm, below the 0.249 mm footnote (*) allows any process.',
+    data: { gtin: VALID_GTIN, magnification: 0.7 },
+    stock: DEFAULT_STOCK,
+    expected: {
+      code: GS1_MAGNIFICATION_OUT_OF_RANGE,
+      severity: 'violation',
+      citation: 'GS1 General Specifications 26.0 §5.12.3.1, table 5-44',
+    },
+  },
+  {
     name: 'artwork encroaching on the left quiet zone',
     defect:
       'A 10 mm brand block against the left margin ends 1.325 mm from the bars, ' +

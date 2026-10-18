@@ -40,6 +40,41 @@ export const EAN_UPC_NOMINAL_X_DIMENSION_MM = 0.33
 export const MIN_MAGNIFICATION = 0.8
 export const MAX_MAGNIFICATION = 2.0
 
+/** Table 5-44's minimum EAN/UPC X-dimension, the 0.8x above. */
+export const EAN_UPC_MIN_X_DIMENSION_MM = 0.264
+
+/**
+ * The floor of table 5-44 footnote (*)'s allowance, read from the rendered page 411 of
+ * GenSpec 26.0 on 2026-10-18: "The allowance for X-dimensions between 0.249 millimetre
+ * (0.0098 inch) and 0.264 millimetre (0.0104 inch) is only applicable to on demand (e.g.,
+ * thermal, laser) print processes. For all other printing processes, an X-dimension of
+ * 0.264 millimetre (0.0104 inch) is attainable and is the minimum allowable size."
+ */
+export const ON_DEMAND_MIN_X_DIMENSION_MM = 0.249
+
+/**
+ * How far an X-dimension may sit from a tabulated figure and still be on it: 0.8 x 0.33 is
+ * not exactly 0.264 in floating point, and a symbol drawn at the table's own minimum must
+ * not fall out of range by a rounding error.
+ */
+const X_DIMENSION_EPSILON_MM = 1e-9
+
+/**
+ * Where a drawn EAN/UPC X-dimension falls against table 5-44 and footnote (*).
+ *
+ * `on-demand` is the band footnote (*) allows only to on demand print processes, which a
+ * label cannot be judged in without knowing how it is printed.
+ */
+export type XDimensionBand = 'below' | 'on-demand' | 'in-range' | 'above'
+
+export function xDimensionBand(xDimensionMm: number): XDimensionBand {
+  const maxMm = magnificationToXDimensionMm(MAX_MAGNIFICATION)
+  if (xDimensionMm > maxMm + X_DIMENSION_EPSILON_MM) return 'above'
+  if (xDimensionMm >= EAN_UPC_MIN_X_DIMENSION_MM - X_DIMENSION_EPSILON_MM) return 'in-range'
+  if (xDimensionMm >= ON_DEMAND_MIN_X_DIMENSION_MM - X_DIMENSION_EPSILON_MM) return 'on-demand'
+  return 'below'
+}
+
 export interface QuietZoneSpec {
   /** Minimum left-hand quiet zone, as a multiple of the X-dimension. */
   leftX: number
@@ -56,6 +91,11 @@ export interface SymbolMetrics {
   totalModules: number
   /** Nominal height of the bars, in mm, at the nominal X-dimension. */
   nominalHeightMm: number
+  /**
+   * Table 5-44's minimum symbol height for the minimum X-dimension, as listed: the floor
+   * footnote (**) forbids truncating below "with any method of printing".
+   */
+  minimumXHeightMm: number
 }
 
 /**
@@ -73,15 +113,19 @@ export interface SymbolMetrics {
  * barcodes the height of the symbol at the nominal size is 18.23 millimetres
  * (0.718 inch)."
  *
+ * The heights at minimum X are table 5-44's "For minimum X-dimension" column, read from
+ * the rendered page 410 on 2026-10-18: 18.28 mm (0.720") for EAN-13, UPC-A and UPC-E,
+ * 14.58 mm (0.574") for EAN-8.
+ *
  * Only the EAN/UPC family is tabulated here, because it is the only family whose
  * length is fixed. ITF-14 and GS1-128 grow with their payload, so their width is
  * computed from the encoded data rather than looked up.
  */
 const SYMBOL_METRICS: Partial<Record<SymbologyId, SymbolMetrics>> = {
-  'UPC-A': { totalModules: 113, nominalHeightMm: 22.85 },
-  'EAN-13': { totalModules: 113, nominalHeightMm: 22.85 },
-  'UPC-E': { totalModules: 67, nominalHeightMm: 22.85 },
-  'EAN-8': { totalModules: 81, nominalHeightMm: 18.23 },
+  'UPC-A': { totalModules: 113, nominalHeightMm: 22.85, minimumXHeightMm: 18.28 },
+  'EAN-13': { totalModules: 113, nominalHeightMm: 22.85, minimumXHeightMm: 18.28 },
+  'UPC-E': { totalModules: 67, nominalHeightMm: 22.85, minimumXHeightMm: 18.28 },
+  'EAN-8': { totalModules: 81, nominalHeightMm: 18.23, minimumXHeightMm: 14.58 },
 }
 
 export function symbolMetricsFor(symbology: SymbologyId): SymbolMetrics | undefined {
@@ -101,6 +145,14 @@ export function symbolMetricsFor(symbology: SymbologyId): SymbolMetrics | undefi
  * right width, the quiet zones are right, the proportions merely read as a
  * slightly squat barcode. It is non-conformant at point of sale, and it is the
  * exact shape of error this whole engine exists to make impossible.
+ *
+ * **It does not scale below the minimum X-dimension.** Table 5-44 footnote (**), read
+ * from the rendered page 411 on 2026-10-18: "When printing a minimum symbol with any
+ * method of printing, the bar height SHALL NOT be truncated below the minimum as listed
+ * in the table above." So a symbol under X = 0.264, footnote (*)'s on-demand band
+ * included, still owes the height listed for 0.264. Scaling on down passed a UPC-A at
+ * 0.77x with 17.6 mm bars, and drew one that short by default (verification record of
+ * 2026-10-17, item 12).
  */
 export function nominalBarHeightMm(
   symbology: SymbologyId,
@@ -108,6 +160,9 @@ export function nominalBarHeightMm(
 ): number | undefined {
   const metrics = SYMBOL_METRICS[symbology]
   if (!metrics) return undefined
+  if (xDimensionMm < EAN_UPC_MIN_X_DIMENSION_MM - X_DIMENSION_EPSILON_MM) {
+    return metrics.minimumXHeightMm
+  }
   return metrics.nominalHeightMm * (xDimensionMm / EAN_UPC_NOMINAL_X_DIMENSION_MM)
 }
 
@@ -284,8 +339,12 @@ export function xDimensionMmToMagnification(xDimensionMm: number): number {
   return xDimensionMm / EAN_UPC_NOMINAL_X_DIMENSION_MM
 }
 
+/**
+ * Within table 5-44's 0.8x to 2.0x, by `xDimensionBand`, so the two cannot disagree. Footnote
+ * (*)'s on-demand band is not in range: whether it is allowed turns on the print process.
+ */
 export function isMagnificationInRange(magnification: number): boolean {
-  return magnification >= MIN_MAGNIFICATION && magnification <= MAX_MAGNIFICATION
+  return xDimensionBand(magnificationToXDimensionMm(magnification)) === 'in-range'
 }
 
 /**
