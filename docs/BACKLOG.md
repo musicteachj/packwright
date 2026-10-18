@@ -1226,6 +1226,21 @@ read, the first read goes without a key and counts against the hour before the f
 another field fails, so a missing audit key is reported a deploy late; the key is required even where
 `AUDIT_DAILY_LIMIT=0` has turned the audit off; and line-wrapped base64 is refused as "not base64".
 
+**From security fix 3's medium review (2026-10-18), one line each:** two tabs writing the held-label list in the same
+instant can drop the newer token, since each is a read and a write of one `localStorage` key; `GET /api/labels` has no
+rate limit (as reads never have) and counts the collection on every call; the editor decides whether Save may replace
+once per attached label, so a token gained or lost in another tab shows on the next open; a 201 without a token
+(only a client and server from different builds) creates a label nobody can change; and the client's 200-id ceiling
+copies `LABEL_CAP` by hand.
+
+**From the high review of #112 (2026-10-18), one line each:** the list asks about the 200 most recently created
+held ids, not the most recently changed, so past 200 held a live label can be left off the page (its token is kept);
+with a full quota, a forgotten id stays in storage and comes back; a stored token that no longer opens its label
+leaves a row Delete cannot clear; the editor says "Opened from a link" for any label it holds no token for, and
+promises Save as new beside a full app; a full app with nothing held says so twice and still offers the editor;
+malformed ids are skipped by the list rather than dropped on read; `isNotYours` has no caller; and the e2e helpers
+copy the storage key and header name.
+
 ---
 
 ## From phase 7, stage 2

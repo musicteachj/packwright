@@ -10,7 +10,12 @@
  * describes. The shape of a label is decided by `label-core`'s `schema/` module
  * on the server and by `label-core`'s engine in the browser, and a third opinion
  * here would be the drift this project keeps closing.
+ *
+ * **It does know whose a label is.** Creating one hands back an edit token,
+ * which this module keeps (`heldLabels.ts`) and sends again to change or delete
+ * that label; the list is of the labels this browser holds tokens for.
  */
+import { editTokenFor, forgetLabels, heldLabels, holdLabel } from './heldLabels'
 
 export interface SavedLabelSummary {
   readonly id: string
@@ -59,14 +64,28 @@ export class SavedLabelError extends Error {
   get isAtCap(): boolean {
     return this.status === 409
   }
+
+  /** A change refused because this browser does not hold the label's edit token. */
+  get isNotYours(): boolean {
+    return this.status === 403
+  }
 }
 
 const BASE = '/api/labels'
 
-async function request(path: string, init?: RequestInit): Promise<unknown> {
+/** The header the server reads a label's edit token from. */
+export const EDIT_TOKEN_HEADER = 'X-Edit-Token'
+
+async function request(
+  path: string,
+  init?: RequestInit & { headers?: Record<string, string> },
+): Promise<unknown> {
   const response = await fetch(path, {
     ...init,
-    headers: init?.body === undefined ? {} : { 'Content-Type': 'application/json' },
+    headers: {
+      ...(init?.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      ...init?.headers,
+    },
   })
 
   if (response.ok) return response.status === 204 ? undefined : await response.json()
@@ -93,20 +112,25 @@ export interface LabelCount {
 }
 
 export interface LabelList {
-  /** Newest first. */
+  /** The labels this browser holds, newest first. */
   readonly labels: SavedLabelSummary[]
   /** `null` where the server did not say; nothing then shows a figure it lacks. */
   readonly counted: LabelCount | null
-  /** The server had more than one page to give, so `labels` is not all of them. */
-  readonly truncated: boolean
 }
 
-/** As many as the cap, so one page is the whole list. */
-const LIST_LIMIT = 20
+/**
+ * The most ids one list asks about: the server's cap, since a browser cannot
+ * hold more live labels than the application keeps. Only ids of labels that have
+ * since expired could take it past that, and the oldest are the ones left out.
+ */
+const MOST_IDS = 200
+
+/** What the server reads as a label id: an ObjectId's 24 hex digits. */
+const OBJECT_ID = /^[0-9a-f]{24}$/
 
 /**
  * The cap and count from a list response, or `null` where the body does not
- * carry them — an older server, or something in front of it answering instead.
+ * carry them: an older server, or something in front of it answering instead.
  */
 const countIn = (answer: { cap?: unknown; count?: unknown }): LabelCount | null =>
   typeof answer.cap === 'number' && typeof answer.count === 'number'
@@ -114,52 +138,84 @@ const countIn = (answer: { cap?: unknown; count?: unknown }): LabelCount | null 
     : null
 
 /**
- * The saved labels, newest first, in **one** request.
+ * The labels this browser saved, newest first, in one request.
  *
- * The client used to follow the cursor to the end, up to forty serial round
- * trips, because stopping at the first page would have made the fifty-first
- * label unreachable with nothing to say so. The application now keeps at most
- * twenty, so the first page is everything there is — and if it ever is not,
- * `truncated` says so and the list view says it aloud, rather than the
- * walk carrying on in silence. A database from before the cap is the one case
- * that reaches it.
- *
- * One request also closes a hole the walk had: a label saved between two of its
- * page fetches sorted above the cursor and appeared on neither.
+ * The server no longer lists every label, because that list published every
+ * link (`docs/security-review-2026-10-18.md`, finding 4); it answers for the ids
+ * it is given. An id it leaves out names a label that was deleted or has expired,
+ * so this browser lets go of it, and only on an answer that succeeded: a failed
+ * request says nothing about which labels exist.
  */
 export const listLabels = async (): Promise<LabelList> => {
-  const answer = (await request(`${BASE}?limit=${LIST_LIMIT}`)) as {
+  // Only ids the server can read. It refuses a whole list over one it cannot,
+  // so a single bad entry (edited by hand, or written by some other build) failed
+  // the Saved labels page on every visit, with no way out but clearing storage
+  // and every good token with it. Found by review.
+  const ids = heldLabels()
+    .map((label) => label.id)
+    .filter((id) => OBJECT_ID.test(id))
+    .slice(0, MOST_IDS)
+  const answer = (await request(ids.length === 0 ? BASE : `${BASE}?ids=${ids.join(',')}`)) as {
     labels?: SavedLabelSummary[]
-    nextBefore?: string
     cap?: unknown
     count?: unknown
   }
-  return {
-    labels: answer.labels ?? [],
-    counted: countIn(answer),
-    truncated: answer.nextBefore !== undefined,
-  }
+  // **Only an answer that lists anything can say a label is gone.** Read as an
+  // empty list, a body with no `labels` (an older server, or something in front
+  // of it answering) let go of every token this browser held, for good. Found
+  // by review.
+  if (!Array.isArray(answer.labels)) return { labels: [], counted: countIn(answer) }
+  const listed = new Set(answer.labels.map((label) => label.id))
+  forgetLabels(ids.filter((id) => !listed.has(id)))
+  return { labels: answer.labels, counted: countIn(answer) }
 }
 
 /**
  * The cap and the count alone, for the editor to know before it offers to save
- * a new label. A one-row page, since the figures come with every page.
+ * a new label.
  *
  * `null` where the server did not say, and the caller then offers the save and
  * lets the server refuse it: the server is the authority, and a guess here could
  * only ever disable a button that would have worked.
  */
 export const readLabelCount = async (): Promise<LabelCount | null> =>
-  countIn((await request(`${BASE}?limit=1`)) as { cap?: unknown; count?: unknown })
+  countIn((await request(BASE)) as { cap?: unknown; count?: unknown })
 
 export const readLabel = (id: string) => request(`${BASE}/${id}`) as Promise<SavedLabel>
 
-export const createLabel = (input: SavedLabelInput) =>
-  request(BASE, { method: 'POST', body: JSON.stringify(input) }) as Promise<SavedLabel>
+/** Whether this browser can change label `id`: it saved it, and still holds its token. */
+export const canChangeLabel = (id: string): boolean => editTokenFor(id) !== undefined
+
+/** The header that opens label `id` for changes, or none, which the server refuses. */
+const tokenHeader = (id: string): Record<string, string> => {
+  const token = editTokenFor(id)
+  return token === undefined ? {} : { [EDIT_TOKEN_HEADER]: token }
+}
+
+/** Creates a label and keeps its edit token, which is handed back this once. */
+export const createLabel = async (input: SavedLabelInput): Promise<SavedLabel> => {
+  const { editToken, ...created } = (await request(BASE, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })) as SavedLabel & { editToken?: unknown }
+  if (typeof editToken === 'string') holdLabel(created.id, editToken)
+  return created
+}
 
 export const replaceLabel = (id: string, input: SavedLabelInput) =>
-  request(`${BASE}/${id}`, { method: 'PUT', body: JSON.stringify(input) }) as Promise<SavedLabel>
+  request(`${BASE}/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+    headers: tokenHeader(id),
+  }) as Promise<SavedLabel>
 
+/** Deletes a label, and lets go of its token once it is gone, however it went. */
 export const deleteLabel = async (id: string): Promise<void> => {
-  await request(`${BASE}/${id}`, { method: 'DELETE' })
+  try {
+    await request(`${BASE}/${id}`, { method: 'DELETE', headers: tokenHeader(id) })
+  } catch (caught) {
+    if (caught instanceof SavedLabelError && caught.isMissing) forgetLabels([id])
+    throw caught
+  }
+  forgetLabels([id])
 }
