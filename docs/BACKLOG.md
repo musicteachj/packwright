@@ -958,6 +958,12 @@ The routes are unauthenticated, which is also the edge's job.
 **Settled 2026-10-18 for saved labels, by security fix 3:** changing or deleting a label needs its edit token, and
 writes are limited per address (`docs/security-review-2026-10-18.md`, finding 4).
 
+**From the high review of #111 (2026-10-18), one line each:** a save refused at the cap or for a bad body still
+spends one of the address's ten creates, so a person retrying a full app as its 409 suggests can reach 429; ten
+creates an hour is shared by everyone behind one NAT; `PUT` validates the body before it checks the token; the list
+awaits its find and its count one after the other; `PUT` checks the id twice; and the hourly limiter's settings are
+written out in four files.
+
 **Superseded 2026-10-18:** the security review found this parse order can reset the audit's spending cap, so
 it is must-fix finding 2 of `docs/security-review-2026-10-18.md`, which also lists that review's recorded,
 no-work items.

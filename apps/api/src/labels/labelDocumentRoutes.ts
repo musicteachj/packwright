@@ -72,6 +72,20 @@ function tokenOpens(presented: unknown, storedHash: unknown): boolean {
   return timingSafeEqual(sha256(presented), stored)
 }
 
+/**
+ * A new label's id, from twelve random bytes.
+ *
+ * **The id is the link, and a link is only private if nobody can work it out.**
+ * A default ObjectId is a four-byte timestamp, five bytes fixed for the life of
+ * the process and a counter, so one label a caller saved told them the rest of
+ * every id the process had minted, short of a timestamp they could bracket by
+ * saving another. With the list of every label gone, that was the way back to
+ * it: guess ids, 200 at a time, against `?ids=` (high review of #111). Twelve
+ * random bytes are 96 bits nobody can guess, still an ObjectId in shape, so
+ * every link and URL stays as it was.
+ */
+const unguessableId = () => new Types.ObjectId(randomBytes(12))
+
 const NOT_YOURS = 'This label can be changed only from the browser that saved it.'
 
 /**
@@ -142,8 +156,10 @@ export interface LabelWriteLimits {
   /**
    * `PUT`. Three hundred: the editor saves when the Save button is pressed, never
    * on its own, so this is one save every twelve seconds for a whole hour, which
-   * ordinary editing does not reach. A script is held to 300 parses of a body
-   * of up to 256 KB, and can only rewrite labels whose tokens it holds.
+   * ordinary editing does not reach. A script is held to 300 validations and
+   * writes of a label, and can only rewrite labels whose tokens it holds. Not to
+   * 300 reads of a body: `app.ts` parses every JSON body, up to 256 KB, before
+   * any route's limiter runs, as it does for every route but the audit.
    */
   replacesPerHour: number
   /**
@@ -239,7 +255,11 @@ export function createLabelDocumentRouter(
     if (!parsed.success) return badRequest(response, parsed.error.issues)
     if ((await LabelDocument.countDocuments({})) >= LABEL_CAP) return atCap(response)
     const { token, hash } = newEditToken()
-    const created = await LabelDocument.create({ ...parsed.data, editTokenHash: hash })
+    const created = await LabelDocument.create({
+      _id: unguessableId(),
+      ...parsed.data,
+      editTokenHash: hash,
+    })
     // **Counted again once the label exists**, because the count above can be
     // stale by the time the insert lands: two saves with one place left both
     // read one place left and both insert. Whoever finds the collection over the

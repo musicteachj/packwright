@@ -217,6 +217,18 @@ describe('/api/labels', () => {
       }
     })
 
+    it('belongs to a label whose id cannot be worked out from another’s', async () => {
+      // A default ObjectId keeps five bytes fixed for the life of the process,
+      // and counts up in the last three, so one saved label told its creator
+      // most of every other id: the list of every label, back by guessing. Two
+      // ids from one process sharing those five bytes is what a default looks
+      // like; random ones share them once in 2^40. Found by the high review.
+      const first = await saved()
+      const second = await saved()
+      expect(first.id.slice(8, 18)).not.toBe(second.id.slice(8, 18))
+      expect(first.id).toMatch(/^[0-9a-f]{24}$/)
+    })
+
     it('is different for every label', async () => {
       const first = await saved()
       const second = await saved()
