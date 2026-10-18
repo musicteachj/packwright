@@ -44,8 +44,12 @@
  * - **The pictograms and the signal word are the classification's.** OSHA (f)(12)(ii)
  *   lists "Pictogram(s)" and "Signal word", and CLP "the hazard pictograms, the signal
  *   words"; a classification that carries neither owes neither, and the rule demanded both
- *   of every label. The engine draws every pictogram the classification assigns, so the
- *   pictograms drawn are what is held to printing. Which classifications carry a signal
+ *   of every label. On a CLP label each pictogram Annex V assigns, less any Article 26 makes
+ *   optional, must be on it; a label may declare its own pictograms, so this is asked of the
+ *   drawing rather than assumed of the engine (found by `/code-review high` on #106, after a
+ *   first version passed a label with none). OSHA's assignments are Appendix C.4's, which
+ *   this tool does not hold, so a US label drawing no pictogram gets no pass and a stated
+ *   limit, as `ghs/pictogram-set` does. Which classifications carry a signal
  *   word is not in this tool's tables, so a label with none gets no pass, and the rule
  *   says so as a limit of the tool rather than reporting a word the label may not owe.
  *
@@ -60,6 +64,7 @@ import { SYMBOL_NOT_DRAWN_BECAUSE } from '../../layout/ghsEngine'
 import { omissionsForElement, wasFullyDrawn } from '../../layout/omissions'
 import { GHS_ELEMENTS } from '../../templates/ghs'
 import { isPictogramRecognised, type GhsPictogramCode } from '../../ghs/pictograms'
+import { derivedPictograms, precedenceSuppressions } from '../../ghs/precedence'
 import type { GhsRegime } from '../../ghs/statements'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
@@ -96,6 +101,27 @@ const underTenMl = (data: GhsChemicalContext['data']): boolean =>
 /** Whether the label carries a signal word, the one listed element no table here derives. */
 const carriesSignalWord = (data: GhsChemicalContext['data']): boolean =>
   (data.signalWords ?? []).length > 0
+
+/**
+ * The pictograms a CLP classification assigns that the label does not carry: Annex V's, after
+ * the clauses of Article 26 that forbid one, less those it makes optional. Empty for a US
+ * label, whose assignments this tool does not hold, and for one with no classification.
+ */
+const missingAssignedPictograms = ({
+  data,
+  layout,
+}: Pick<GhsChemicalContext, 'data' | 'layout'>): readonly GhsPictogramCode[] => {
+  const hazards = data.hazards ?? []
+  if (data.regime !== 'eu-clp' || hazards.length === 0) return []
+  const assigned = derivedPictograms(hazards, 'eu-clp')
+  const optional = new Set(
+    precedenceSuppressions(assigned, hazards, 'eu-clp')
+      .filter((suppression) => suppression.kind === 'optional')
+      .map((suppression) => suppression.code),
+  )
+  const drawn = new Set(layout.pictograms.map((pictogram) => pictogram.code))
+  return assigned.filter((code) => !drawn.has(code) && !optional.has(code))
+}
 
 /** Whether the supplier's name and telephone, both listed, are on the document. */
 const carriesSupplier = (data: GhsChemicalContext['data']): boolean =>
@@ -138,7 +164,7 @@ function unsettled(context: GhsChemicalContext): string[] | undefined {
           (omission) => omission.explanation?.why === SYMBOL_NOT_DRAWN_BECAUSE[data.regime],
         ),
     )
-    // And only where every pictogram is one the regime recognises: a GHS09 on a US label
+    // And only where every pictogram is one the regime recognizes: a GHS09 on a US label
     // is reported beside this as not a pictogram at all, so seeing its symbol would not
     // let the check pass, and calling the gap this tool's would excuse it. Found by review.
     const allRecognised = layout.pictograms.every((pictogram) =>
@@ -150,6 +176,14 @@ function unsettled(context: GhsChemicalContext): string[] | undefined {
         'complete',
     )
   }
+  // OSHA assigns pictograms in Appendix C.4, which this tool does not hold; with none drawn,
+  // whether the classification owes one cannot be told.
+  if (data.regime === 'us-osha' && layout.pictograms.length === 0) {
+    reasons.push(
+      'the label carries no pictogram, and which pictograms Appendix C.4 of 29 CFR ' +
+        '1910.1200 assigns its classification is not in Packwright’s tables',
+    )
+  }
   if (!carriesSignalWord(data)) {
     reasons.push(
       'the label carries no signal word, which the provision lists only where the ' +
@@ -157,13 +191,16 @@ function unsettled(context: GhsChemicalContext): string[] | undefined {
         'tables',
     )
   }
-  if (underTenMl(data) && !carriesSupplier(data)) {
+  if (
+    underTenMl(data) &&
+    (!carriesSupplier(data) || missingAssignedPictograms(context).length > 0)
+  ) {
     reasons.push(
       'at 10 ml or less CLP Annex I 1.5.2.4 lets the inner label carry only the product ' +
-        'identifier and pictograms, where one of the conditions in 1.5.2.4.1 holds and the ' +
-        'product is not a plant protection product or biocide (1.5.2.5), and otherwise 1.5.1.2 ' +
-        'asks for the supplier’s name and telephone as well; which applies is not something ' +
-        'Packwright can tell',
+        'identifier and, where appropriate, GHS01, GHS05, GHS06 and/or GHS08, where one of the ' +
+        'conditions in 1.5.2.4.1 holds and the product is not a plant protection product or ' +
+        'biocide (1.5.2.5), and otherwise 1.5.1.2 asks for the supplier’s name and telephone ' +
+        'and every assigned pictogram; which applies is not something Packwright can tell',
     )
   }
   return reasons
@@ -246,6 +283,18 @@ export const ghsSmallContainerRule: GhsChemicalRule = {
     if (!tenMl && !data.supplier?.telephone?.trim()) {
       missing.push(isUs ? 'the manufacturer’s phone number' : 'the supplier’s telephone number')
     }
+    // Each pictogram the classification assigns, on a CLP label; at 10 ml or less 1.5.2.4.2
+    // may excuse some, so there the gap is `unsettled`'s.
+    const unassigned = missingAssignedPictograms({ data, layout })
+    if (!tenMl && unassigned.length > 0) {
+      missing.push(
+        `the pictogram${unassigned.length === 1 ? '' : 's'} its classification assigns ` +
+          `(${unassigned.join(', ')})`,
+      )
+    }
+    // No classification, no pictograms to hold it to: nothing is cleared, and
+    // `ghs/pictogram-set` asks for the classification.
+    if ((data.hazards ?? []).length === 0 && layout.pictograms.length === 0) return []
     if (isUs && !data.outerPackageStatement?.trim()) {
       missing.push('a statement that the full label information is on the immediate outer package')
     }
@@ -284,8 +333,11 @@ export const ghsSmallContainerRule: GhsChemicalRule = {
       passedOnArtwork(
         ghsSmallContainerRule,
         GHS_SMALL_CONTAINER_COMPLETE,
-        'The container carries everything the small-container provision requires of it: ' +
-          'the product identifier, the pictograms drawn from its classification, the signal ' +
+        (tenMl
+          ? 'The inner packaging carries everything CLP Annex I 1.5.1.2 lists, which also covers ' +
+            '1.5.2.4.2’s shorter list for 10 ml or less: '
+          : 'The container carries everything the small-container provision requires of it: ') +
+          'the product identifier, the pictograms its classification assigns, the signal ' +
           `word, the ${isUs ? 'manufacturer’s name and phone number' : 'supplier’s name and telephone number'}` +
           `${isUs ? ', and the statement pointing to the outer package' : ''}.`,
         undefined,

@@ -55,7 +55,7 @@ const sqMm = (value: number) => `${value.toFixed(1)} mm²`
 
 export const ghsPictogramSizeRule: GhsChemicalRule = {
   id: 'ghs/pictogram-size',
-  title: 'Each pictogram meets CLP’s minimum dimension, area and share of the label.',
+  title: 'Each pictogram meets the minimum dimension CLP’s Table 1.3 sets for its capacity band.',
   citation: CITATION,
   codes: {
     [GHS_PICTOGRAM_BELOW_MINIMUM_SIZE]: ['violation'],
@@ -102,12 +102,13 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
             GHS_PICTOGRAM_SIZE_MET,
             `The ${pictogram.code} pictogram is ${mm(pictogram.drawnSideMm)} square, covering ` +
               `${sqMm(pictogram.drawnAreaSqMm)}, which meets Table 1.3` +
-              (pictogram.drawnAreaSqMm >= fifteenthSqMm
-                ? ` and 1.2.1.3's one fifteenth of the label's minimum area, ${sqMm(fifteenthSqMm)}.`
-                : // The first band's label is "If possible, at least 52 × 74", no minimum to take a
-                  // fifteenth of, so nothing is said of the fraction there. Found by review.
-                  band.labelDimensionIsBestEffort
-                  ? '.'
+              // The first band's label is "If possible, at least 52 × 74", no minimum to take a
+              // fifteenth of, so nothing is said of the fraction there, either way. Found by
+              // review.
+              (band.labelDimensionIsBestEffort
+                ? '.'
+                : pictogram.drawnAreaSqMm >= fifteenthSqMm
+                  ? ` and 1.2.1.3's one fifteenth of the label's minimum area, ${sqMm(fifteenthSqMm)}.`
                   : `. It does not reach 1.2.1.3's one fifteenth of the label's minimum area, ` +
                     `${sqMm(fifteenthSqMm)}, and nor does Table 1.3's own figure for this band; ` +
                     'that difference is not judged here.'),

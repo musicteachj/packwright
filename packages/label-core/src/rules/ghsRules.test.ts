@@ -407,9 +407,12 @@ describe('the pictogram size pass says only what it measured', () => {
   it('says nothing of the fraction against the first band’s "if possible" label', () => {
     // Table 1.3 qualifies 52 × 74 "If possible", so there is no minimum to take a fifteenth
     // of, and the pass does not say the pictogram falls short of one. Found by review.
-    const message = messageAt(1, 12, { widthMm: 52, heightMm: 74, marginMm: 3 })
-    expect(message).toContain('which meets Table 1.3.')
-    expect(message).not.toContain('one fifteenth')
+    for (const side of [12, 20]) {
+      // Short of the fraction, or past it: either way, nothing is claimed of it.
+      const message = messageAt(1, side, { widthMm: 52, heightMm: 74, marginMm: 3 })
+      expect(message, `${side} mm`).toContain('which meets Table 1.3.')
+      expect(message, `${side} mm`).not.toContain('one fifteenth')
+    }
   })
 
   it('claims it where the pictogram reaches it', () => {
@@ -434,5 +437,22 @@ describe('GHS02 on a Type B is compulsory whether or not GHS01 is drawn', () => 
     )
     expect(missing.find((f) => f.message.startsWith('GHS02'))?.severity).toBe('violation')
     expect(missing.find((f) => f.message.startsWith('GHS01'))?.severity).toBe('advisory')
+  })
+
+  it('stays an advisory on a CLP inner label of 10 ml or less on the small-package path', () => {
+    // 1.5.2.4.2 asks only for GHS01, GHS05, GHS06 and/or GHS08 there, where 1.5.2.4.1 applies,
+    // which no label states. Found by `/code-review high` on #106.
+    const data: GhsLabelData = {
+      regime: 'eu-clp',
+      productIdentifier: 'Example peroxide',
+      capacityL: 0.01,
+      smallContainerLabelling: true,
+      hazards: ['2.15/organic-peroxides-types-a-b', '2.15/organic-peroxides-types-b-c-d-e-f'],
+      pictograms: ['GHS01'],
+    }
+    const ghs02 = findingsFor(data, { widthMm: 52, heightMm: 74, marginMm: 3 }).find(
+      (f) => f.code === 'GHS_PICTOGRAM_MISSING' && f.message.startsWith('GHS02'),
+    )
+    expect(ghs02?.severity).toBe('advisory')
   })
 })

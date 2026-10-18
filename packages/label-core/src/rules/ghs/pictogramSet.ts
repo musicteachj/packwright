@@ -42,6 +42,7 @@ import type { GhsPictogramCode } from '../../ghs/pictograms'
 import { GHS_PICTOGRAM_SYMBOLS } from '../../ghs/pictograms'
 import { wasFullyDrawn } from '../../layout/omissions'
 import { GHS_ELEMENTS } from '../../templates/ghs'
+import { CLP_INNER_PACKAGING_MAX_L } from './smallContainer'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnArtwork } from '../finding'
 import type { GhsRegime } from '../../ghs/statements'
@@ -238,7 +239,15 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
       // rule might account for it, and none does. Item 11 of the 2026-10-17 verification.
       // Whether or not GHS01 was drawn: Annex V makes GHS02 compulsory for a Type B either
       // way, and without GHS01 not even (a) is in play. Found by review of the fix.
-      if (compulsory.includes(code)) {
+      // Except on a CLP inner label of 10 ml or less on the small-package path, where 1.5.2.4.2
+      // asks only for GHS01, GHS05, GHS06 and/or GHS08 when 1.5.2.4.1 applies, which no label
+      // states: the advisory below then says as much as is known. Found by `/code-review high`
+      // on #106.
+      const innerTenMl =
+        data.regime === 'eu-clp' &&
+        data.smallContainerLabelling === true &&
+        data.capacityL <= CLP_INNER_PACKAGING_MAX_L
+      if (compulsory.includes(code) && !innerTenMl) {
         findings.push(
           finding(ghsPictogramSetRule, {
             code: GHS_PICTOGRAM_MISSING,

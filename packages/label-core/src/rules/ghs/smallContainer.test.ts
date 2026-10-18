@@ -169,15 +169,50 @@ describe('what each regime then requires on the container', () => {
     expect(declinedFor(COMPLETE_US), 'and nothing to say where it carries one').toBeUndefined()
   })
 
-  it('does not demand a pictogram of a classification that assigns none', () => {
+  it('does not demand a pictogram of a CLP classification that assigns none', () => {
     // Flammable gases Category 2 carries no pictogram in Annex V; "at least one hazard
     // pictogram" was demanded of every label (item 13).
     const data = {
       ...COMPLETE_US,
+      regime: 'eu-clp' as const,
       hazards: ['2.2/flammable-gases-2'],
       signalWords: ['Warning' as const],
     }
     expect(layOutGhsLabel({ data, stock: STOCK }).pictograms, 'the premise').toEqual([])
+    expect(codes(data)).toEqual([GHS_SMALL_CONTAINER_COMPLETE])
+  })
+
+  it('holds a CLP label to the pictograms its classification assigns, though it declares its own', () => {
+    // A label may declare its pictograms, so "the engine draws them" is not a check. A first
+    // version passed this label with none. Found by `/code-review high` on #106.
+    const data = { ...COMPLETE_US, regime: 'eu-clp' as const, pictograms: [] }
+    const incomplete = findingsFor(data).find((f) => f.code === GHS_SMALL_CONTAINER_INCOMPLETE)
+    expect(incomplete?.message).toContain('GHS02')
+  })
+
+  it('stands down on a US label drawing no pictogram, as Appendix C.4 is not held here', () => {
+    for (const hazards of [[FLAMMABLE], ['2.2/flammable-gases-2']]) {
+      const data = { ...COMPLETE_US, hazards, pictograms: [] }
+      expect(codes(data)).toEqual([])
+      expect(declinedFor(data)?.reason).toContain('Appendix C.4')
+    }
+  })
+
+  it('passes nothing on a label with no classification and no pictogram', () => {
+    for (const regime of ['us-osha', 'eu-clp'] as const) {
+      expect(codes({ ...COMPLETE_US, regime, hazards: [], pictograms: [] }), regime).toEqual([])
+    }
+  })
+
+  it('does not demand a pictogram Article 26 makes optional', () => {
+    // An explosive that is also flammable: (a) makes GHS02 optional beside GHS01, so a label
+    // carrying GHS01 alone is complete.
+    const data = {
+      ...COMPLETE_US,
+      regime: 'eu-clp' as const,
+      hazards: ['2.1/unstable-explosives-explosives-of-divisions-1-1-1-2-1-3', FLAMMABLE],
+      pictograms: ['GHS01' as const],
+    }
     expect(codes(data)).toEqual([GHS_SMALL_CONTAINER_COMPLETE])
   })
 
@@ -221,6 +256,16 @@ describe('what each regime then requires on the container', () => {
     }).find((d) => d.ruleId === 'ghs/small-container')
     expect(declined?.reason).toContain('cannot see the pictograms’ symbols')
     expect(declined?.reason).toContain('no signal word')
+  })
+
+  it('does not say 1.5.1.2’s list is required of a complete 10 ml inner label', () => {
+    // It carries 1.5.1.2's full list, which covers 1.5.2.4.2's shorter one; the pass says so
+    // rather than that the provision requires the longer list. Found by `/code-review high`.
+    const pass = findingsFor({ ...COMPLETE_US, regime: 'eu-clp', capacityL: 0.01 }).find(
+      (f) => f.code === GHS_SMALL_CONTAINER_COMPLETE,
+    )!
+    expect(pass.message).toContain('which also covers 1.5.2.4.2’s shorter list')
+    expect(pass.message).not.toContain('requires of it')
   })
 
   it('names every gap it cannot settle in one decline', () => {
