@@ -55,5 +55,5 @@ export function photoFault(mediaType: PhotoMediaType, data: string): string | un
       opening.length >= signature.length &&
       signature.every((byte, i) => byte === undefined || opening[i] === byte),
   )
-  return matches ? undefined : `The image data does not begin as a ${mediaType} file does.`
+  return matches ? undefined : `The image data does not begin as an ${mediaType} file does.`
 }

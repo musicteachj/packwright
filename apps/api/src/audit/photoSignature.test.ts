@@ -28,7 +28,7 @@ describe('photoFault', () => {
     ['image/gif', ascii('GIF88a')],
   ] as const)('refuses data declared %s that begins as something else', (mediaType, bytes) => {
     expect(photoFault(mediaType, b64([...bytes]))).toBe(
-      `The image data does not begin as a ${mediaType} file does.`,
+      `The image data does not begin as an ${mediaType} file does.`,
     )
   })
 
@@ -43,7 +43,7 @@ describe('photoFault', () => {
 
   it('refuses data too short to carry the signature', () => {
     expect(photoFault('image/png', b64([0x89, 0x50, 0x4e]))).toBe(
-      'The image data does not begin as a image/png file does.',
+      'The image data does not begin as an image/png file does.',
     )
   })
 })

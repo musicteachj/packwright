@@ -1209,6 +1209,14 @@ the whole printed list once per allergen, so 1,000 entries over all nine allerge
 test uses two allergens and has one assertion the other always implies, and the Contains text is lowercased once per
 bearing ingredient.
 
+**From security fix 2's reviews (2026-10-18), one line each:** the audit key is kept in `localStorage` with no
+expiry, and is still sent, unseen, once a server stops asking for one; requests without a key fill the same hourly
+bucket a key holder at that address uses (per address only with `TRUST_PROXY_HOPS=1`); where the status cannot be
+read, the first read goes without a key and counts against the hour before the field appears; a key with a character
+`fetch` cannot put in a header reads as a generic failure; the environment's cross-field check is skipped while
+another field fails, so a missing audit key is reported a deploy late; the key is required even where
+`AUDIT_DAILY_LIMIT=0` has turned the audit off; and line-wrapped base64 is refused as "not base64".
+
 ---
 
 ## From phase 7, stage 2

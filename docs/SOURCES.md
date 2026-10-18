@@ -90,3 +90,15 @@ order and the names of their colors, as the summaries describe them; no rule cit
 | **Claude connector documentation** | Size and time limits, no sign-in, Anthropic's address range, adding an unlisted connector | [building](https://claude.com/docs/connectors/building/index.md), [authentication](https://claude.com/docs/connectors/building/authentication.md), [unlisted](https://claude.com/docs/connectors/custom/add-unlisted.md) |
 
 The MCP sources were read on 2026-10-10 (`docs/plans/2026-10-10-mcp.md`).
+
+## The photo audit
+
+| document | how it is used | link |
+|---|---|---|
+| **ITU-T T.81, Digital compression and coding of continuous-tone still images** (09/92), Table B.1 and B.1.1.3 | The JPEG SOI marker, X'FFD8', and the X'FF' every marker begins with: the opening a JPEG photograph must have (`apps/api/src/audit/photoSignature.ts`) | [W3C copy (PDF)](https://www.w3.org/Graphics/JPEG/itu-t81.pdf) |
+| **Portable Network Graphics (PNG) Specification**, Third Edition, § 5.2 | The eight-byte PNG signature | [W3C](https://www.w3.org/TR/png-3/) |
+| **Graphics Interchange Format, Version 89a**, § 17 | The GIF signature and its two versions, 87a and 89a | [W3C copy](https://www.w3.org/Graphics/GIF/spec-gif89a.txt) |
+| **RFC 9649, WebP Image Format**, § 2.4 | The RIFF header: "RIFF", the file size, then "WEBP" | [RFC Editor](https://www.rfc-editor.org/rfc/rfc9649.html) |
+
+The photo audit's sources were read and their links fetched on 2026-10-18, for fix 2 of
+`docs/security-review-2026-10-18.md`.
