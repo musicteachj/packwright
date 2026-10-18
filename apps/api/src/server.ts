@@ -1,4 +1,5 @@
 import { createApp } from './app'
+import { databaseAllowance } from './audit/dailyAllowance'
 import { DEFAULT_AUDIT_LIMITS } from './audit/routes'
 import { DEFAULT_EXPORT_LIMIT } from './labels/routes'
 import { DEFAULT_MCP_LIMITS } from './mcp/routes'
@@ -50,7 +51,12 @@ const app = createApp({
   // builds the same application every time it is called. This is the only place
   // that knows it is a real server rather than a test harness, so it is the
   // place that decides what the route may spend.
-  auditLimits: DEFAULT_AUDIT_LIMITS,
+  auditLimits: {
+    perHour: DEFAULT_AUDIT_LIMITS.perHour,
+    perDay: env.AUDIT_DAILY_LIMIT ?? DEFAULT_AUDIT_LIMITS.perDay,
+  },
+  // In the database, so a restart does not start the day again at zero.
+  auditAllowance: databaseAllowance(),
   exportLimit: DEFAULT_EXPORT_LIMIT,
   ...(env.AUDIT_API_KEY === undefined ? {} : { auditApiKey: env.AUDIT_API_KEY }),
   ...(env.TRUST_PROXY_HOPS === undefined ? {} : { trustProxyHops: env.TRUST_PROXY_HOPS }),

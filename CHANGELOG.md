@@ -10,6 +10,24 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The photo audit's spending cap now holds: the key is required on the public deploy, the body is read after
+  the guards, junk images are refused for free, and the day's count survives a restart.** Findings 2 and 3 of
+  `docs/security-review-2026-10-18.md`. The route parsed its 10 MB body before its limiter and key ran, so a nested
+  body cost 635 ms and 267 MB before its 401; it counted a call as soon as the body parsed, so three one-character
+  "images" spent a three-call day and a real photograph then got 429; and the day's count was a variable, so a
+  restart started it again at zero. The body parser now sits inside the route, after the limiter and the key, and
+  the route is mounted ahead of the 256 KB parser the other routes share: the same nested body without a key is
+  refused in 15 ms. Image data must be base64 opening with its declared type's signature (JPEG, PNG, GIF and WebP,
+  each read from its specification) before a call is counted. The count is one database document per UTC day,
+  taken in one atomic step, so a restart or a second task cannot reset or double it, and an unreadable count
+  refuses rather than spends; the day's first call is tried twice, since calls racing to create the day's document
+  lost about three in ten to a false "limit reached" (found by the medium review). James decided that an anonymous budget shared by everyone can always be drained, so
+  `AUDIT_API_KEY` is now required in production wherever `ANTHROPIC_API_KEY` is set, and the server refuses to
+  start without it; the audit page asks for the key when the server needs one (`GET /api/audit/status` says so),
+  keeps it in the browser, and sends it as `X-Audit-Key`. The daily cap is a setting, `AUDIT_DAILY_LIMIT`, and its
+  default falls from 200 to 10 (about $1.30 a day) so it sits well inside a small monthly spend limit. New tests
+  fail with each change reverted.
+
 - **One request can no longer hold the server for minutes: every field has a bound, and the text code that grew
   faster than its input is linear.** Finding 1 of `docs/security-review-2026-10-18.md`. No free-text field had a
   maximum length, no list a maximum count, a stock no largest size and a type size no smallest, and six paths then

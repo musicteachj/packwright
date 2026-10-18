@@ -3,6 +3,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import helmet from 'helmet'
 import morgan from 'morgan'
 import { join } from 'node:path'
+import type { DailyAllowance } from './audit/dailyAllowance'
 import { createAuditRouter, type AuditLimits } from './audit/routes'
 import { loadClientPages, matchesClientPage } from './clientPages'
 import { createLabelDocumentRouter } from './labels/labelDocumentRoutes'
@@ -64,6 +65,11 @@ export interface AppOptions {
    * about the quotas passes `false`.
    */
   auditLimits?: AuditLimits | false | undefined
+  /**
+   * Where the audit route counts the day's calls. Absent, in memory, which a
+   * restart resets; `server.ts` passes the database's (`audit/dailyAllowance.ts`).
+   */
+  auditAllowance?: DailyAllowance | undefined
   /**
    * What one client may export in an hour, or `false` for no limit.
    *
@@ -144,8 +150,6 @@ const CLIENT_ERRORS: Readonly<Record<number, string>> = {
 
 /** What a label document may weigh as JSON. See the note where these are mounted. */
 const BODY_LIMIT = '256kb'
-/** What the audit route may weigh, because it carries a photograph. */
-const AUDIT_BODY_LIMIT = '10mb'
 
 /**
  * A client-error status an upstream library has already worked out, or nothing.
@@ -175,6 +179,7 @@ export function createApp(options: AppOptions = {}): Express {
     extract,
     auditApiKey,
     auditLimits,
+    auditAllowance,
     exportLimit,
     trustProxyHops,
     mcp,
@@ -272,27 +277,43 @@ export function createApp(options: AppOptions = {}): Express {
     }),
   )
 
+  // Before the body parsers, so a request one of them refuses is logged too.
+  if (enableLogging) app.use(morgan('combined'))
+
   /**
-   * Ten megabytes for the one route that posts a photograph, and a fortieth of
-   * that for everything else.
+   * The audit route, ahead of the body parser every other route shares.
+   *
+   * It reads its own body, up to ten megabytes because it carries a photograph,
+   * and only after its limiter and its key have let the request through
+   * (`audit/routes.ts`). It used to be parsed here, at the top, so a request the
+   * guards were about to refuse had been read in full first
+   * (`docs/security-review-2026-10-18.md`, finding 2). Mounted first so the
+   * parser below never sees one of its requests: Express hands the request to
+   * this router by its own matching, and the router answers every request it
+   * has a route for, or passes its parser's refusal to the error handler below.
+   * A photograph past 256 KB reaching it is tested (`audit/routes.test.ts`).
+   */
+  app.use(
+    '/api/audit',
+    createAuditRouter({
+      extract,
+      apiKey: auditApiKey,
+      limits: auditLimits,
+      allowance: auditAllowance,
+    }),
+  )
+
+  /**
+   * A fortieth of the audit route's ten megabytes, for everything else.
    *
    * The generous figure used to be global, which meant every route on this server
-   * would buffer and parse ten megabytes before anything looked at it — including
-   * the ones that take a label document, which is a few kilobytes of JSON, and
-   * including the audit route's own guards, so a request they were about to
-   * refuse had already been read in full.
-   *
-   * Mounted narrow-first: `body-parser` steps over a request another parser has
-   * already finished — `onFinished.isFinished`, since 2.x dropped the `_body`
-   * flag it used to set — so `/api/audit` gets the large limit and nothing else
-   * can reach it. A label document that genuinely needs more than
-   * 256 KB of JSON does not exist — the largest field is an ingredient list —
-   * and a request that claims to is one worth refusing before it is read.
+   * would buffer and parse ten megabytes before anything looked at it, including
+   * the ones that take a label document, which is a few kilobytes of JSON. A label
+   * document that genuinely needs more than 256 KB of JSON does not exist (the
+   * largest field is an ingredient list, bounded in `INPUT_BOUNDS`), and a request
+   * that claims to is one worth refusing before it is read.
    */
-  app.use('/api/audit', express.json({ limit: AUDIT_BODY_LIMIT }))
   app.use(express.json({ limit: BODY_LIMIT }))
-
-  if (enableLogging) app.use(morgan('combined'))
 
   /**
    * Liveness probe. The ALB target group polls this, so its shape is load
@@ -318,7 +339,6 @@ export function createApp(options: AppOptions = {}): Express {
   // about either mount shadows the other.
   app.use('/api/labels', createLabelDocumentRouter())
   app.use('/api/labels', createLabelRouter({ limit: exportLimit }))
-  app.use('/api/audit', createAuditRouter({ extract, apiKey: auditApiKey, limits: auditLimits }))
   if (mcp !== undefined) app.use('/mcp', createMcpRouter(mcp))
 
   /**

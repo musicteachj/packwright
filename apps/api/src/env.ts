@@ -111,10 +111,34 @@ const EnvSchema = z.object({
    * route spends `ANTHROPIC_API_KEY` on every call, so this is what stands
    * between an open origin and somebody else's bill. Set it and the route is
    * shut to everything that cannot present it — including this project's own
-   * browser client, which is the point rather than an oversight. A public
-   * deployment leaves it unset and relies on the quotas instead.
+   * browser client unless the person using it types the key in, which the
+   * audit page asks for. **Required in production wherever `ANTHROPIC_API_KEY`
+   * is set** (`loadEnv`, below), since 2026-10-18: the quotas alone left a budget
+   * shared by every anonymous caller, which enough addresses can always spend
+   * (`docs/security-review-2026-10-18.md`, James's decision).
    */
-  AUDIT_API_KEY: optionalSecret,
+  // Trimmed, as the audit page trims what is typed, so a key pasted into a console
+  // with a trailing newline is still one a person can match.
+  AUDIT_API_KEY: blankAsAbsent(z.string().trim().min(1).optional()),
+
+  /**
+   * How many vision calls the audit route may make in a UTC day, across the
+   * deployment, or nothing for `DEFAULT_AUDIT_LIMITS.perDay` (10).
+   *
+   * A setting so that it can follow the Anthropic workspace's monthly spend limit
+   * down without a release: at about $0.13 a call, a day's figure should be a small
+   * fraction of that month's. Zero turns live audits off.
+   */
+  // Digits only, rather than `z.coerce.number()`, which reads " " as 0 and would
+  // turn the audit off on a value meant as blank.
+  AUDIT_DAILY_LIMIT: blankAsAbsent(
+    z
+      .string()
+      .regex(/^\d+$/, 'must be a whole number of calls, such as 10')
+      .transform(Number)
+      .pipe(z.number().max(10_000))
+      .optional(),
+  ),
 
   /**
    * How many proxies sit in front of this server, or nothing for none.
@@ -171,8 +195,31 @@ export type Env = z.infer<typeof EnvSchema>
  */
 export const ENV_NAMES = Object.keys(EnvSchema.shape) as readonly (keyof Env)[]
 
+/**
+ * The schema, and the one rule that spans two of its fields: a production server
+ * that can spend the Anthropic key must ask for the audit key. Without it the
+ * server refuses to start, as it does without a database, so a deployment cannot go
+ * out with the audit open to anyone by leaving a secret unset. Applied here, not
+ * on `EnvSchema`, whose `shape` `ENV_NAMES` reads and a refinement would hide.
+ */
+const CheckedEnvSchema = EnvSchema.superRefine((env, context) => {
+  if (
+    env.NODE_ENV === 'production' &&
+    env.ANTHROPIC_API_KEY !== undefined &&
+    env.AUDIT_API_KEY === undefined
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['AUDIT_API_KEY'],
+      message:
+        'is required in production when ANTHROPIC_API_KEY is set, so that only the people ' +
+        'given the key can spend it on the photo audit',
+    })
+  }
+})
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const parsed = EnvSchema.safeParse(source)
+  const parsed = CheckedEnvSchema.safeParse(source)
   if (!parsed.success) {
     const detail = parsed.error.issues
       .map((issue) => `  ${issue.path.join('.') || '(root)'}: ${issue.message}`)

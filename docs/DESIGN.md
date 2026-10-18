@@ -144,7 +144,7 @@ portfolio infrastructure already running `barcode-crud` rather than standing up 
 | ECS service + task def | `barcode-service` / `barcode-task` | `packwright-service` / `packwright-task` |
 | Target group | `barcode-tg-service` | `packwright-tg-service` |
 | Route 53 | `barcode.jameslittlefield.net` | `packwright.jameslittlefield.net` |
-| Secrets Manager | `barcode-mongo-uri` | `packwright-mongo-uri` **+ `packwright-anthropic-key`** |
+| Secrets Manager | `barcode-mongo-uri` | `packwright-mongo-uri` **+ `packwright-anthropic-key` + `packwright-audit-key`** |
 | Logs | CloudWatch `/ecs/barcode-crud` | `/ecs/packwright` |
 
 Marginal cost is roughly **$3–4/month**, since the ALB — the expensive part at ~$17/month — is already paid
@@ -161,6 +161,11 @@ and it keeps the marginal cost at one Fargate task.
 **One new thing to get right:** the Anthropic API key is a server-side secret. It goes in Secrets Manager and
 is injected into the task definition — it must never reach the browser bundle. This is part of why vision
 extraction lives in `apps/api` rather than being called from the client.
+
+**And the audit key beside it (2026-10-18).** `AUDIT_API_KEY` is required in production whenever
+`ANTHROPIC_API_KEY` is set, and the server refuses to start without it, because an audit open to anyone spends
+a budget anyone can exhaust (`docs/security-review-2026-10-18.md`, finding 3 and James's decision). It is never in
+the bundle either: the audit page asks the person using it to type it in.
 
 ### Data model
 
@@ -691,13 +696,13 @@ until there is a finished application to put behind it.
 
 *Build:* the Dockerfile (multi-stage — build `label-core`, then `apps/web`, then `apps/api`, ship one runtime
 image), the GitHub Actions ECS workflow, and the AWS resources: ECR repo, task definition, ECS service, target
-group, ALB listener rule, Route 53 record, and the two Secrets Manager entries.
+group, ALB listener rule, Route 53 record, and the three Secrets Manager entries.
 
 *Done when:*
 - `packwright.jameslittlefield.net` serves the app over HTTPS
 - `/health` returns healthy and the ALB target group reflects it
-- Both secrets resolve from Secrets Manager into the task, and **the Anthropic key is absent from the browser
-  bundle** — grep the built assets to confirm
+- All three secrets resolve from Secrets Manager into the task, and **the Anthropic key and the audit key are
+  absent from the browser bundle**: grep the built assets to confirm
 - Push to `main` deploys; a failed deploy rolls back via the deployment circuit breaker
 - CloudWatch `/ecs/packwright` shows application logs
 
@@ -722,15 +727,23 @@ group, ALB listener rule, Route 53 record, and the two Secrets Manager entries.
   task would double the audit route's daily cap. Keep the service at one task, or move to a shared store.
   **Decided with James, 2026-10-11: one task.** The 20-label cap, the audit route's spending caps and
   `/mcp`'s allowances are all held in the process, and this app's traffic does not need a second; a shared store
-  is work to do the day it does. The deployment circuit breaker still replaces a failed task.
+  is work to do the day it does. The deployment circuit breaker still replaces a failed task. **Since 2026-10-18
+  the audit route's daily count is in the database** (`audit/dailyAllowance.ts`), so neither a restart nor a
+  second task resets or doubles what it may spend; its hourly per-client limit is still per process.
 - **Edge-level limits.** Every limit today is middleware in this process. An ALB rule or a WAF is the place
-  to refuse traffic cheaply, and the audit route still parses its 10 MB body before its guards run.
+  to refuse traffic cheaply. The audit route parsed its 10 MB body before its guards ran until 2026-10-18; it now
+  reads it only after its limiter and its key have let the request through.
   **Decided with James, 2026-10-11: one AWS WAF rate-based rule, about $6 a month** — $5 for the web
   ACL, $1 for the rule and $0.60 per million requests (aws.amazon.com/waf/pricing, read 2026-10-11). It is the one
   limit that counts every request before this process reads a byte: `/mcp`'s handshake requests and the audit
   route's 10 MB bodies included, which the in-process limits do not reach. The ALB is shared with other services,
   so the rule is scoped to this app's host; the per-client threshold, and whether Anthropic's range gets its own,
   follow from the `/mcp` allowances below.
+- **The audit key and the daily audit limit (2026-10-18).** Set `AUDIT_API_KEY` (the server will not start in
+  production without it) and give it only to the people who should spend the Anthropic key; they type it on the
+  audit page, once per browser. `AUDIT_DAILY_LIMIT` is the deployment's vision calls per UTC day, 10 if unset
+  (about $1.30); keep it a small fraction of the Anthropic workspace's monthly spend limit, and lower it with that
+  limit.
 - **`/mcp` (recorded 2026-10-10, stage 18 of `docs/plans/2026-10-10-mcp.md`).** Five things, each of which
   fails quietly if missed:
   - `MCP_ALLOWED_HOSTS=packwright.jameslittlefield.net`. Without it `/mcp` answers 403 to every request,

@@ -592,3 +592,114 @@ describe('when the server refuses', () => {
     expect(wrapper.find('[data-field="productIdentifier"]').exists()).toBe(false)
   })
 })
+
+/**
+ * The audit key, which a public deployment asks for before it spends its allowance
+ * with Anthropic (`docs/security-review-2026-10-18.md`, James's decision of
+ * 2026-10-18). The server's two answers are faked by path.
+ */
+describe('the audit key', () => {
+  const serving = (status: unknown, reading: { body: unknown; ok?: boolean; code?: number }) =>
+    vi.fn(async (url: string) =>
+      url === '/api/audit/status'
+        ? ({ ok: true, status: 200, json: async () => status } as unknown as Response)
+        : ({
+            ok: reading.ok ?? true,
+            status: reading.code ?? 200,
+            json: async () => reading.body,
+          } as unknown as Response),
+    )
+
+  async function mountServing(fetching: ReturnType<typeof serving>) {
+    vi.stubGlobal('fetch', fetching)
+    const wrapper = mount(AuditView, {
+      global: { plugins: [testRouter('/audit'), createPinia()], stubs: { RouterLink: true } },
+    })
+    await flushPromises()
+    return wrapper
+  }
+
+  async function choosePhotograph(wrapper: Awaited<ReturnType<typeof mountServing>>) {
+    await wrapper.find('[data-test="regime"]').setValue('eu-clp')
+    const input = wrapper.find('[data-test="photo-file"]')
+    Object.defineProperty(input.element, 'files', { value: [new Blob()], configurable: true })
+    await input.trigger('change')
+    await flushPromises()
+  }
+
+  const headersOfRead = (fetching: ReturnType<typeof serving>) => {
+    const call = fetching.mock.calls.find(([url]) => url === '/api/audit/ghs') as
+      [string, RequestInit] | undefined
+    return call?.[1].headers as Record<string, string> | undefined
+  }
+
+  beforeEach(() => localStorage.clear())
+
+  it('is asked for where the server needs one, and sent with the photograph', async () => {
+    const fetching = serving({ available: true, keyRequired: true }, { body: READING })
+    const wrapper = await mountServing(fetching)
+    await choosePhotograph(wrapper)
+
+    expect(wrapper.find('[data-test="audit-key"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.find('[data-test="audit-key"]').setValue('the-secret')
+    await wrapper.find('[data-test="read"]').trigger('click')
+    await flushPromises()
+
+    expect(headersOfRead(fetching)?.['X-Audit-Key']).toBe('the-secret')
+    expect(wrapper.find('[data-value="productIdentifier"]').text()).toBe('Acetone')
+  })
+
+  it('is kept in this browser, so it is typed once', async () => {
+    const first = await mountServing(
+      serving({ available: true, keyRequired: true }, { body: READING }),
+    )
+    await first.find('[data-test="audit-key"]').setValue('the-secret')
+    first.unmount()
+
+    const again = await mountServing(
+      serving({ available: true, keyRequired: true }, { body: READING }),
+    )
+    expect((again.find('[data-test="audit-key"]').element as HTMLInputElement).value).toBe(
+      'the-secret',
+    )
+  })
+
+  it('is not asked for where the server needs none', async () => {
+    const wrapper = await mountServing(
+      serving({ available: true, keyRequired: false }, { body: READING }),
+    )
+    expect(wrapper.find('[data-test="audit-key-section"]').exists()).toBe(false)
+  })
+
+  it('is asked for once the server refuses one, and the refusal is said', async () => {
+    // A server whose status could not be read still answers 401 where it needs a
+    // key, and the person then needs somewhere to put one.
+    const fetching = serving(
+      { unexpected: true },
+      { body: { error: 'A valid audit key is required' }, ok: false, code: 401 },
+    )
+    const wrapper = await mountServing(fetching)
+    await choosePhotograph(wrapper)
+    expect(wrapper.find('[data-test="audit-key-section"]').exists()).toBe(false)
+
+    await wrapper.find('[data-test="read"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-test="audit-key-refused"]').exists()).toBe(true)
+
+    // Typing a new key clears the refusal, and the field stays while it is typed.
+    await wrapper.find('[data-test="audit-key"]').setValue('another')
+    expect(wrapper.find('[data-test="audit-key-refused"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="audit-key"]').exists()).toBe(true)
+  })
+
+  it('says so, and reads nothing, where the server reads no photographs', async () => {
+    const wrapper = await mountServing(
+      serving({ available: false, keyRequired: false }, { body: READING }),
+    )
+    await choosePhotograph(wrapper)
+    expect(wrapper.find('[data-test="audit-unavailable"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeDefined()
+  })
+})
