@@ -62,12 +62,22 @@ export function measuredFamilyFor(fontFamily: string, fontWeight?: number): stri
  * only where it breaks.
  */
 export function measureTextMm(text: string, fontSizeMm: number, fontFamily: string): number {
-  const face = faceFor(fontFamily)
-  let em = 0
+  return emOf(faceFor(fontFamily), text, 0) * fontSizeMm
+}
+
+/**
+ * `start` plus the em width of `text`, adding one character at a time from the left.
+ *
+ * Starting from a running total is what lets `wrapTextMm` grow a line without measuring
+ * it again: the sum is built in the same order as measuring the whole line, so it is the
+ * same floating-point number, not merely a close one.
+ */
+function emOf(face: FaceMetrics, text: string, start: number): number {
+  let em = start
   for (const character of text) {
     em += face.widths[character] ?? face.fallback
   }
-  return em * fontSizeMm
+  return em
 }
 
 /**
@@ -126,16 +136,28 @@ export function wrapTextMm(
 ): string[] {
   if (!Number.isFinite(widthMm) || widthMm <= 0) return [text]
 
+  // The line's width is kept as it grows rather than measured again for every word,
+  // which made wrapping quadratic in a line's length: a check request on a 1e9 mm label
+  // blocked the server for 308 s (`docs/security-review-2026-10-18.md`, finding 1).
+  const face = faceFor(fontFamily)
   const lines: string[] = []
   let line = ''
+  let lineEm = 0
 
   for (const word of text.split(/\s+/).filter(Boolean)) {
-    const candidate = line === '' ? word : `${line} ${word}`
-    if (line !== '' && measureTextMm(candidate, fontSizeMm, fontFamily) > widthMm) {
+    if (line === '') {
+      line = word
+      lineEm = emOf(face, word, 0)
+      continue
+    }
+    const candidateEm = emOf(face, word, emOf(face, ' ', lineEm))
+    if (candidateEm * fontSizeMm > widthMm) {
       lines.push(line)
       line = word
+      lineEm = emOf(face, word, 0)
     } else {
-      line = candidate
+      line = `${line} ${word}`
+      lineEm = candidateEm
     }
   }
 

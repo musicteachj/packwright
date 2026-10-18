@@ -5,7 +5,7 @@ import { layOutUpcALabel } from '../layout/engine'
 import { DEFAULT_UPC_A_STOCK } from '../templates/upcA'
 import type { PathCommand, ResolvedLayout } from '../layout/types'
 import type { PdfCanvas } from './toPDF'
-import { pageSizePoints, toPDF } from './toPDF'
+import { PDF_TEXT_SPACES_PER_CALL, pageSizePoints, spaceBoundedChunks, toPDF } from './toPDF'
 import { toSVG } from './toSVG'
 
 /**
@@ -267,5 +267,72 @@ describe('preview == print', () => {
       expect((call!.args[1] as number) * MM_PER_POINT).toBeCloseTo(text.xMm, 4)
       expect((call!.args[2] as number) * MM_PER_POINT).toBeCloseTo(text.baselineYMm, 4)
     })
+  })
+})
+
+/**
+ * PDFKit's text layout costs a call's spaces times its length, so a long line is drawn
+ * in pieces (`PDF_TEXT_SPACES_PER_CALL`). A count of what each call is given, not a
+ * timing: the work a call does is what is bounded.
+ */
+describe('a line with more spaces than one PDFKit call is given', () => {
+  const spacesIn = (text: string) => [...text].filter((c) => c === ' ' || c === '\t').length
+  const longLine = (spaces: number): ResolvedLayout =>
+    ({
+      widthMm: 100,
+      heightMm: 50,
+      primitives: [
+        {
+          kind: 'text',
+          id: 'long',
+          text: 'ab '.repeat(spaces) + 'end',
+          xMm: 10,
+          baselineYMm: 20,
+          fontSizeMm: 3,
+          fontFamily: 'IBM Plex Sans',
+          anchor: 'start',
+          fill: '000000',
+        },
+      ],
+    }) as unknown as ResolvedLayout
+
+  it('is drawn in calls of at most PDF_TEXT_SPACES_PER_CALL spaces, end to end', () => {
+    const canvas = recordingCanvas()
+    toPDF(longLine(1_000), canvas)
+    const drawn = canvas.calls.filter((c) => c.op === 'text')
+
+    expect(drawn.length).toBe(Math.ceil(1_000 / PDF_TEXT_SPACES_PER_CALL))
+    for (const call of drawn) {
+      expect(spacesIn(call.args[0] as string)).toBeLessThanOrEqual(PDF_TEXT_SPACES_PER_CALL)
+    }
+    expect(drawn.map((c) => c.args[0]).join('')).toBe('ab '.repeat(1_000) + 'end')
+    // Each piece starts where the pieces before it end, at the canvas's own widths.
+    let x = drawn[0]!.args[1] as number
+    expect(x * MM_PER_POINT).toBeCloseTo(10, 6)
+    for (let i = 1; i < drawn.length; i++) {
+      x += (drawn[i - 1]!.args[0] as string).length * 2
+      expect(drawn[i]!.args[1]).toBe(x)
+      expect(drawn[i]!.args[2]).toBe(drawn[0]!.args[2])
+    }
+  })
+
+  it('leaves a line of PDF_TEXT_SPACES_PER_CALL spaces or fewer to one call', () => {
+    const canvas = recordingCanvas()
+    toPDF(longLine(PDF_TEXT_SPACES_PER_CALL - 1), canvas)
+    expect(canvas.calls.filter((c) => c.op === 'text')).toHaveLength(1)
+    expect(spaceBoundedChunks('')).toEqual([''])
+    expect(spaceBoundedChunks(' '.repeat(PDF_TEXT_SPACES_PER_CALL))).toEqual([
+      ' '.repeat(PDF_TEXT_SPACES_PER_CALL),
+    ])
+  })
+
+  it('draws every line of a real label in one call, as before', () => {
+    const resolved = layout()
+    const canvas = recordingCanvas()
+    toPDF(resolved, canvas)
+    const texts = resolved.primitives.filter((p) => p.kind === 'text')
+    expect(canvas.calls.filter((c) => c.op === 'text').map((c) => c.args[0])).toEqual(
+      texts.map((p) => (p as { text: string }).text),
+    )
   })
 })

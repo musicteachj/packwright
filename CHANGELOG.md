@@ -10,6 +10,34 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **One request can no longer hold the server for minutes: every field has a bound, and the text code that grew
+  faster than its input is linear.** Finding 1 of `docs/security-review-2026-10-18.md`. No free-text field had a
+  maximum length, no list a maximum count, a stock no largest size and a type size no smallest, and six paths then
+  grew quadratically or worse, blocking the event loop and `/health` inside the 256 KB body limit. Re-measured before
+  the fix at n = 32,000: wrapping 18.0 s, the filename trim 7.4 s, the Digital Link trailing slashes 7.4 s, the URI
+  split 3.1 s and the SI amount 0.85 s, each quadrupling per doubling; through the routes, artwork text took 9.1 s to
+  export and a 1e308 stock or 1e300 magnification answered a 500. The schema now bounds every field
+  (`INPUT_BOUNDS`), each figure sized against the longest real values found (ingredient lists to 7,730 characters,
+  IUPAC names to 626, the 342-character RACC category) and set far above anything a rule judges, so a non-compliant
+  label still reaches its rule; the export requests share one stock schema rather than three copies. `wrapTextMm`
+  keeps a running width that is the same float as measuring the line; the four patterns are replaced by scans that
+  return what they matched; PDFKit is given at most 256 spaces per call, since its layout costs spaces times length
+  and the bounds still allow 42,000 spaces in a line; the filename is cut at 100 characters, which also caps
+  `Content-Disposition` (a 50 KB header had failed the client); and the widest and smallest lines are found by
+  folds, in both engines and in the rules, since spreading every line into `Math.max` or `Math.min` failed past
+  about 122,000 lines and answered a 500 (the rules' copy was found by the medium review). The allergen rule
+  struck the other ingredients' names out of the printed list once for every ingredient bearing an allergen, and
+  900 milk and egg entries took 1.7 s inside the bounds; it now does so once per allergen, with the same findings,
+  in 22 ms (found by the high review). After: each path under 5 ms at n = 32,000 and wrapping 47 ms at 256,000;
+  anything past a bound is refused in under 40 ms with the field named; a 235 KB ingredient list in 0.1 mm type on
+  1 m stock exports in 200 ms (3.8 s without the PDF chunking); and the worst case found inside the bounds is
+  `check_label` on 1,000 entries spread over all nine allergens, about 0.5 to 0.75 s, since the allergen rule still
+  strikes out every name once per allergen (a linear rewrite is in `docs/BACKLOG.md`). What a bound could refuse
+  that is lawful is in `docs/WHAT-IS-NOT-CHECKED.md`, "Input limits". The rewrites are checked against the old
+  implementations, kept in the tests as oracles over seeded inputs. New tests fail with each bound,
+  the wrapping, the chunking, the filename cap, each fold and the allergen strike-outs reverted; the four pattern
+  rewrites change only speed, so each was reverted against its reproduction instead, and the time came back.
+
 - **A barcode in GS1's on-demand X-dimension band is no longer reported, and its bars are no longer allowed short.**
   Table 5-44 of the General Specifications 26.0, re-read from the rendered pages 410 and 411 on 2026-10-18, sets the
   EAN/UPC X-dimension from 0.264 to 0.660 mm, and its footnote (*) allows 0.249 to 0.264 mm "only" to "on demand

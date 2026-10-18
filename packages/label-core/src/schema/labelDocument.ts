@@ -87,12 +87,152 @@ export const UPC_A_CONSTRAINTS = getSymbologyConstraints('UPC-A')
 export const GTIN_LENGTH =
   (UPC_A_CONSTRAINTS?.payloadLength.min ?? 11) + (UPC_A_CONSTRAINTS?.appendsCheckDigit ? 1 : 0)
 
+/**
+ * **The bounds on what a label may hold**, added before deployment because none of these
+ * fields had one: every free-text field took any length, every list any count, a stock
+ * any size and a type size any smallness, and code that grows faster than its input then
+ * blocked the server for up to five minutes on one request inside the 256 KB body limit
+ * (`docs/security-review-2026-10-18.md`, finding 1). The superlinear code was rewritten as
+ * well; these bounds are what keep the rest of the work in proportion to a real label.
+ *
+ * **Each sits far above anything a rule judges**, or for a floor far below it, so a label
+ * that is merely non-compliant still reaches the rule and its citation rather than a 400.
+ * The figures the rules judge, from their code: AI (10) and (21) values of 20 characters,
+ * magnification from 0.8 to 2.0, net quantity type from 1/16 in and information panel type
+ * from 1/32 in (21 CFR 101.7(i), 101.2(c)), and CLP Table 1.3's largest label, 148 × 210 mm.
+ *
+ * **Sized against the longest real values that could be found**, read on 2026-10-18; each
+ * figure's reasoning is beside it. What a bound could still refuse that is lawful is in
+ * `docs/WHAT-IS-NOT-CHECKED.md`, "Input limits".
+ *
+ * **Not bounded above:** `capacityL`, `servingsPerContainer`, `packageContent`,
+ * `unitContent`, the nutrient amounts and the surface figures in inches. Each selects a
+ * band or is printed as a number, and none becomes a coordinate; Zod 4 already refuses
+ * anything not finite.
+ */
+export const INPUT_BOUNDS = {
+  /**
+   * An ingredient, or a name an assortment may contain. The longest whole ingredient lists
+   * in Open Food Facts run to 3,576 characters on a US label (a Great Value brownie
+   * variety pack) and 7,730 on a multilingual EU one, and in a variety pack one compound
+   * ingredient can be nearly the whole list, so one entry is allowed twice the longest list.
+   */
+  ingredientName: 16_000,
+  /**
+   * Entries on an ingredient list. Open Food Facts' longest parsed lists reach about 400,
+   * counting the sub-ingredients that here sit inside an entry's name.
+   */
+  ingredients: 1_000,
+  /**
+   * A GHS product identifier. IUPAC names reach 626 characters, and CLP Art. 18(3) wants up
+   * to four chemical names on a mixture's label "unless more than four names are needed to
+   * reflect the nature and the severity of the hazards", beside its trade name.
+   */
+  productIdentifier: 8_000,
+  /** A food's statement of identity: about three times the longest product name found (177). */
+  statementOfIdentity: 500,
+  /** A name: a supplier or a responsible firm. No longest was found, so generous. */
+  name: 300,
+  /** A supplier's whole address, in one field. */
+  address: 1_000,
+  /** A telephone number, room left for an emergency number and its hours. */
+  telephone: 200,
+  /** "Manufactured for", "Distributed by" and the like. */
+  qualifyingPhrase: 200,
+  /** A street address line. */
+  streetAddress: 500,
+  /** A city: Bangkok's ceremonial name, the longest place name, is 168 letters. */
+  city: 200,
+  /** A state, province or region. */
+  state: 100,
+  /** A postal code: formats run to 10 characters (Iran's, and ZIP+4 with its hyphen). */
+  zip: 20,
+  /** A statement printed as prose: the outer package statement, an assortment's statement. */
+  statement: 2_000,
+  /** The small package's line under 101.9(j)(13)(i)(A): a telephone number, address or URL. */
+  contactLine: 500,
+  /** A serving size: the longest label statement in 21 CFR 101.12(b)'s tables is 245 characters. */
+  servingSize: 300,
+  /** A reference amount's category: the longest in 101.12(b) is 342 characters. */
+  category: 500,
+  /** One half of the net quantity, drawn unwrapped on one line: "NET WT 1 LB 4 OZ". */
+  netQuantity: 200,
+  /** A dual-column heading, drawn unwrapped: "Per serving", "Per container". */
+  heading: 100,
+  /** The specific allergen: the tree nuts or fish an ingredient names. */
+  allergenSpecificType: 200,
+  /** Artwork text on a retail label, drawn unwrapped on one line. */
+  artworkText: 1_000,
+  /** A resolver's origin and any path stem before the key. */
+  domain: 1_000,
+  /** A lot, serial or expiry date: ten times the 20 characters AI (10) and (21) allow, so a long one is reported by the rule. */
+  aiValue: 200,
+  /**
+   * A Digital Link as printed: above the 2,953 bytes a QR Code holds at the most in binary
+   * (Keyence, read 2026-10-18), so a link too long for any QR code is the only one refused.
+   */
+  printedUri: 4_096,
+  /** One statement code, as `ghs_statement_text` already caps it in the MCP server. */
+  statementCode: 100,
+  /** Statement codes on a label: above the 129 precautionary codes of the EU table. */
+  statementCodes: 500,
+  /**
+   * A list of values from a closed list (signal words, hazard classes, pictograms,
+   * nutrients, allergens): above the 44 hazard classes, the longest of them, so only a
+   * list repeating itself is refused.
+   */
+  closedList: 100,
+  /** A label's stock, in millimeters: nearly five times the largest CLP Table 1.3 label (148 × 210 mm). */
+  stockMm: 1_000,
+  /** A label's margin: half the largest stock. */
+  marginMm: 500,
+  /**
+   * The size of anything printed on the label, in millimeters (artwork, bar height,
+   * pictograms, the gap before the Contains statement): no larger than the stock.
+   */
+  printedMm: 1_000,
+  /** Magnification: five times the specification's largest, 2.0. The editor stops at 2.5. */
+  magnification: 10,
+  /**
+   * The smallest type size, as an em in millimeters: the editor's own net quantity minimum,
+   * and well under the 1/32 in (0.79 mm) letter the smallest regulated type is measured by.
+   */
+  fontSizeMinMm: 0.1,
+  /** The largest type size, as an em in millimeters: the largest stock. */
+  fontSizeMaxMm: 1_000,
+  /** A type scale: the editor offers 10% to 300%. */
+  typeScaleMin: 0.1,
+  typeScaleMax: 10,
+  /** A container's side or circumference, in millimeters: ten meters, past any food package. */
+  containerMm: 10_000,
+  /** A container's area, in square millimeters: ten meters square. */
+  containerSqMm: 100_000_000,
+} as const
+
+const B = INPUT_BOUNDS
+
+/** A type size, as an em in millimeters, between the floor and the ceiling above. */
+const fontSizeMm = () => z.number().min(B.fontSizeMinMm).max(B.fontSizeMaxMm)
+
+/** A size printed on the label, in millimeters. */
+const printedMm = () => z.number().positive().max(B.printedMm)
+
+/**
+ * A label's stock. One shape for every door: the export requests carried three copies of
+ * it, so a bound added here would have missed them.
+ */
+export const StockSchema = z.object({
+  widthMm: z.number().positive().max(B.stockMm),
+  heightMm: z.number().positive().max(B.stockMm),
+  marginMm: z.number().min(0).max(B.marginMm),
+})
+
 export const Artwork = z.object({
-  text: z.string().min(1),
+  text: z.string().min(1).max(B.artworkText),
   anchor: z.enum(ANCHORS),
-  widthMm: z.number().positive(),
-  heightMm: z.number().positive(),
-  fontSizeMm: z.number().positive().optional(),
+  widthMm: printedMm(),
+  heightMm: printedMm(),
+  fontSizeMm: fontSizeMm().optional(),
   // Constrained to the faces the exporter actually embeds. Free text here
   // reached PDFKit's `document.font()`, which resolves an unknown name as a
   // filesystem path.
@@ -112,14 +252,24 @@ export const DigitalLink = z.object({
   domain: z
     .string()
     .min(1)
+    .max(B.domain)
     .describe(
       'The resolver’s whole origin, scheme included — "https://id.example.com", not ' +
         '"id.example.com".',
     ),
-  lot: z.string().optional().describe('Batch or lot number, GS1 Application Identifier (10).'),
-  serial: z.string().optional().describe('Serial number, GS1 Application Identifier (21).'),
+  lot: z
+    .string()
+    .max(B.aiValue)
+    .optional()
+    .describe('Batch or lot number, GS1 Application Identifier (10).'),
+  serial: z
+    .string()
+    .max(B.aiValue)
+    .optional()
+    .describe('Serial number, GS1 Application Identifier (21).'),
   expiry: z
     .string()
+    .max(B.aiValue)
     .optional()
     .describe('Expiration date as YYMMDD, GS1 Application Identifier (17).'),
   useConvenienceAlphas: z
@@ -139,12 +289,13 @@ export const UpcARequest = z.object({
       new RegExp(`^[0-9]{${GTIN_LENGTH}}$`),
       `A GTIN-12 is exactly ${GTIN_LENGTH} digits, check digit included`,
     ),
-  // Bounded below only. The specification's 0.8–2.0 range is a rule, reported
-  // with its citation against the resolved layout; zero or negative is not a
-  // symbol at all.
+  // The specification's 0.8–2.0 range is a rule, reported with its citation
+  // against the resolved layout; zero or negative is not a symbol at all, and the
+  // ceiling is far past the range (`INPUT_BOUNDS`).
   magnification: z
     .number()
     .positive()
+    .max(B.magnification)
     .optional()
     .describe(
       'The symbol’s size as a factor of the nominal: 1 for 100%, 0.8 for 80% — not a ' +
@@ -152,9 +303,7 @@ export const UpcARequest = z.object({
         'as the printed label’s, 1 included. Omitted, check_label gives no verdict on ' +
         'magnification or bar height.',
     ),
-  barHeightMm: z
-    .number()
-    .positive()
+  barHeightMm: printedMm()
     .optional()
     .describe(
       'The height of the bars in millimetres. Send it only if the user stated it: a value you ' +
@@ -171,13 +320,7 @@ export const UpcARequest = z.object({
   symbolPlacement: z.enum(ANCHORS).optional(),
   artwork: Artwork.optional(),
   digitalLink: DigitalLink.optional(),
-  stock: z
-    .object({
-      widthMm: z.number().positive(),
-      heightMm: z.number().positive(),
-      marginMm: z.number().min(0),
-    })
-    .optional(),
+  stock: StockSchema.optional(),
 })
 
 /**
@@ -213,9 +356,9 @@ export function toDigitalLink(link: z.infer<typeof DigitalLink>): DigitalLinkDat
 }
 
 export const GhsSupplierSchema = z.object({
-  name: z.string().min(1),
-  address: z.string().min(1),
-  telephone: z.string().optional(),
+  name: z.string().min(1).max(B.name),
+  address: z.string().min(1).max(B.address),
+  telephone: z.string().max(B.telephone).optional(),
 })
 
 /**
@@ -321,10 +464,11 @@ function statementCodesMatchRegime(value: StatementCodeCarrier, ctx: z.Refinemen
  */
 const GhsRequestShape = z.object({
   regime: z.enum(GHS_REGIMES),
-  productIdentifier: z.string().min(1),
+  productIdentifier: z.string().min(1).max(B.productIdentifier),
   // Bounded below only, and required. Capacity selects the CLP Table 1.3 band
   // that every dimensional rule is measured against; defaulting it would invent
-  // a requirement the caller never stated.
+  // a requirement the caller never stated. No ceiling: it selects a band and is
+  // never drawn (`INPUT_BOUNDS`).
   capacityL: z
     .number()
     .positive()
@@ -337,13 +481,16 @@ const GhsRequestShape = z.object({
   // other — the drift the UPC-A schema was already fixed for.
   // Plural, so a label carrying both Danger and Warning is representable and
   // therefore checkable — see `GhsLabelData.signalWords`.
-  signalWords: z.array(z.enum(GHS_SIGNAL_WORDS)).optional(),
+  signalWords: z.array(z.enum(GHS_SIGNAL_WORDS)).max(B.closedList).optional(),
   // Validated against label-core's own list rather than accepted as free
   // strings. An id one character off used to be discarded silently, so a label
   // drew no pictograms at all and the rules reported a green pass — a false
   // clearance produced by a typo.
-  hazards: z.array(z.enum(HAZARD_CLASS_IDS as [string, ...string[]])).optional(),
-  pictograms: z.array(z.enum(GHS_PICTOGRAM_CODES)).optional(),
+  hazards: z
+    .array(z.enum(HAZARD_CLASS_IDS as [string, ...string[]]))
+    .max(B.closedList)
+    .optional(),
+  pictograms: z.array(z.enum(GHS_PICTOGRAM_CODES)).max(B.closedList).optional(),
   // Canonicalised on the way in, through `label-core`'s own function, because
   // the engine looks these up by exact key and every other layer already does
   // it. A caller sending `P337+P313` or `h225` — both of which the extraction
@@ -362,9 +509,14 @@ const GhsRequestShape = z.object({
   // `.trim().min(1)` rather than `.min(1)`: a whitespace-only entry has a length
   // and canonicalises to nothing, so the check below reported ““” has no verified
   // text” — a message naming no code, about a code the caller cannot find.
-  hazardStatementCodes: z.array(z.string().trim().min(1)).transform(distinctCodes).optional(),
+  hazardStatementCodes: z
+    .array(z.string().trim().min(1).max(B.statementCode))
+    .max(B.statementCodes)
+    .transform(distinctCodes)
+    .optional(),
   precautionaryStatementCodes: z
-    .array(z.string().trim().min(1))
+    .array(z.string().trim().min(1).max(B.statementCode))
+    .max(B.statementCodes)
     .transform(distinctCodes)
     .optional(),
   supplier: GhsSupplierSchema.optional(),
@@ -376,22 +528,14 @@ const GhsRequestShape = z.object({
         '1910.1200(f)(12) on a US label, CLP Annex I section 1.5 on an EU one. Stated, not ' +
         'inferred from the capacity.',
     ),
-  outerPackageStatement: z.string().optional(),
-  pictogramSideMm: z
-    .number()
-    .positive()
+  outerPackageStatement: z.string().max(B.statement).optional(),
+  pictogramSideMm: printedMm()
     .optional()
     .describe(
       'The side of each pictogram’s square in millimetres, not its diagonal. Omitted, the ' +
         'minimum for the capacity’s CLP Table 1.3 band is drawn.',
     ),
-  stock: z
-    .object({
-      widthMm: z.number().positive(),
-      heightMm: z.number().positive(),
-      marginMm: z.number().min(0),
-    })
-    .optional(),
+  stock: StockSchema.optional(),
 })
 
 export const GhsRequest = GhsRequestShape.superRefine(statementCodesMatchRegime)
@@ -417,18 +561,18 @@ export function toSupplier(supplier: z.infer<typeof GhsSupplierSchema>): GhsSupp
 export const ContainerSchema = z.discriminatedUnion('shape', [
   z.object({
     shape: z.literal('rectangular'),
-    widthMm: z.number().positive(),
-    heightMm: z.number().positive(),
+    widthMm: z.number().positive().max(B.containerMm),
+    heightMm: z.number().positive().max(B.containerMm),
   }),
   z.object({
     shape: z.literal('cylindrical'),
-    heightMm: z.number().positive(),
-    circumferenceMm: z.number().positive(),
+    heightMm: z.number().positive().max(B.containerMm),
+    circumferenceMm: z.number().positive().max(B.containerMm),
   }),
   z.object({
     shape: z.literal('other'),
-    totalSurfaceAreaSqMm: z.number().positive(),
-    obviousPanelAreaSqMm: z.number().positive().optional(),
+    totalSurfaceAreaSqMm: z.number().positive().max(B.containerSqMm),
+    obviousPanelAreaSqMm: z.number().positive().max(B.containerSqMm).optional(),
   }),
 ])
 
@@ -453,13 +597,13 @@ export const ContainerSchema = z.discriminatedUnion('shape', [
 export const NON_COMPLIANT_BUT_WELL_FORMED = z.string()
 
 export const NetQuantitySchema = z.object({
-  inchPound: NON_COMPLIANT_BUT_WELL_FORMED,
-  metric: z.string().optional(),
+  inchPound: NON_COMPLIANT_BUT_WELL_FORMED.max(B.netQuantity),
+  metric: z.string().max(B.netQuantity).optional(),
   packaging: z.enum(US_FOOD_PACKAGINGS).optional(),
 })
 
 export const IngredientSchema = z.object({
-  name: NON_COMPLIANT_BUT_WELL_FORMED,
+  name: NON_COMPLIANT_BUT_WELL_FORMED.max(B.ingredientName),
   // Optional, as in `UsFoodIngredient`: a percentage the labeller has not stated is
   // absent, not zero. The bounds still hold where one is given.
   percentByWeight: z.number().min(0).max(100).optional(),
@@ -468,19 +612,19 @@ export const IngredientSchema = z.object({
   // nothing while reporting a clean allergen check — the exact false clearance
   // the GHS hazard-class enum was tightened for.
   allergen: z.enum(MAJOR_FOOD_ALLERGEN_IDS).optional(),
-  allergenSpecificType: z.string().optional(),
+  allergenSpecificType: z.string().max(B.allergenSpecificType).optional(),
   declareInline: z.boolean().optional(),
 })
 
 export const ResponsibleFirmSchema = z.object({
-  name: NON_COMPLIANT_BUT_WELL_FORMED,
+  name: NON_COMPLIANT_BUT_WELL_FORMED.max(B.name),
   isManufacturer: z.boolean(),
-  qualifyingPhrase: z.string().optional(),
-  streetAddress: z.string().optional(),
+  qualifyingPhrase: z.string().max(B.qualifyingPhrase).optional(),
+  streetAddress: z.string().max(B.streetAddress).optional(),
   streetAddressInDirectory: z.boolean().optional(),
-  city: z.string(),
-  state: z.string(),
-  zip: z.string().optional(),
+  city: z.string().max(B.city),
+  state: z.string().max(B.state),
+  zip: z.string().max(B.zip).optional(),
 })
 
 /**
@@ -600,7 +744,7 @@ export function toResponsibleFirm(
 export const NutrientAmounts = z.partialRecord(z.enum(NUTRIENT_IDS), z.number()).optional()
 
 export const NutritionFactsSchema = z.object({
-  servingSize: NON_COMPLIANT_BUT_WELL_FORMED,
+  servingSize: NON_COMPLIANT_BUT_WELL_FORMED.max(B.servingSize),
   servingsPerContainer: z.number().positive().optional(),
   // `partialRecord`, not `record`. Zod 4 makes a record over an enum key
   // **exhaustive**, so `z.record` here demanded all fifteen nutrients and
@@ -610,12 +754,12 @@ export const NutritionFactsSchema = z.object({
   amounts: z.partialRecord(z.enum(NUTRIENT_IDS), z.number()),
   declaredAmounts: NutrientAmounts,
   declaredPercentDv: NutrientAmounts,
-  order: z.array(z.enum(NUTRIENT_IDS)).optional(),
+  order: z.array(z.enum(NUTRIENT_IDS)).max(B.closedList).optional(),
   // Whom the food is for, which moves it onto that group's Daily Values under
   // 101.9(c)(8)(i). Listed here and copied in `toNutritionFacts`, or Zod strips it
   // and the export prints adult percentages beside a preview showing toddler ones.
   representedFor: z.enum(DAILY_VALUE_POPULATIONS).optional(),
-  typeScale: z.number().positive().optional(),
+  typeScale: z.number().min(B.typeScaleMin).max(B.typeScaleMax).optional(),
   format: z.enum(NUTRITION_FORMATS).optional(),
   // The second axis, derived from the same consts so a new column mode or basis
   // reaches the boundary without being restated. `headings` is a fixed pair
@@ -625,7 +769,7 @@ export const NutritionFactsSchema = z.object({
     .object({
       mode: z.enum(NUTRITION_COLUMN_MODES),
       basis: z.enum(DUAL_COLUMN_BASES).optional(),
-      headings: z.tuple([z.string(), z.string()]).optional(),
+      headings: z.tuple([z.string().max(B.heading), z.string().max(B.heading)]).optional(),
       // Zod **strips** unknown keys rather than rejecting them, so a field missing
       // here is silently dropped: a document carrying `secondAmounts` previewed
       // with a populated second column in the browser and exported a blank one,
@@ -638,11 +782,15 @@ export const NutritionFactsSchema = z.object({
       // protein percentage (c)(7)(i) requires of it in both columns.
       secondPercentDv: NutrientAmounts,
       separated: z.boolean().optional(),
-      secondColumnTypeScale: z.number().positive().optional(),
+      secondColumnTypeScale: z.number().min(B.typeScaleMin).max(B.typeScaleMax).optional(),
     })
     .optional(),
   referenceAmount: z
-    .object({ amount: z.number().positive(), unit: z.enum(['g', 'mL']), category: z.string() })
+    .object({
+      amount: z.number().positive(),
+      unit: z.enum(['g', 'mL']),
+      category: z.string().max(B.category),
+    })
     .optional(),
   packageContent: z.number().positive().optional(),
   unitContent: z.number().positive().optional(),
@@ -660,17 +808,17 @@ export const NutritionFactsSchema = z.object({
 })
 
 export const UsFoodRequestBase = z.object({
-  statementOfIdentity: NON_COMPLIANT_BUT_WELL_FORMED,
+  statementOfIdentity: NON_COMPLIANT_BUT_WELL_FORMED.max(B.statementOfIdentity),
   netQuantity: NetQuantitySchema,
   // Required, and not defaulted. The container selects the 101.7(i) type-size
   // band; supplying one the caller never stated would invent the requirement
   // every finding on this label is measured against.
   container: ContainerSchema,
   markingMethod: z.enum(['printed', 'blown-embossed-or-molded']).optional(),
-  netQuantityFontSizeMm: z.number().positive().optional(),
+  netQuantityFontSizeMm: fontSizeMm().optional(),
   netQuantityAnchor: z.enum(ANCHORS).optional(),
-  informationPanelFontSizeMm: z.number().positive().optional(),
-  ingredients: z.array(IngredientSchema).optional(),
+  informationPanelFontSizeMm: fontSizeMm().optional(),
+  ingredients: z.array(IngredientSchema).max(B.ingredients).optional(),
   singleIngredient: z
     .boolean()
     .optional()
@@ -702,8 +850,8 @@ export const UsFoodRequestBase = z.object({
       z.object({ kind: z.enum(US_FOOD_INGREDIENTS_EXEMPTIONS_CLAIMED_ALONE) }),
       z.object({
         kind: z.literal('assortment'),
-        statement: z.string(),
-        mayBePresent: z.array(z.string()),
+        statement: z.string().max(B.statement),
+        mayBePresent: z.array(z.string().max(B.ingredientName)).max(B.ingredients),
       }),
     ])
     .optional(),
@@ -711,21 +859,20 @@ export const UsFoodRequestBase = z.object({
   ingredientsExempt: z.boolean().optional(),
   containsStatement: z
     .array(z.enum(MAJOR_FOOD_ALLERGEN_IDS))
+    .max(B.closedList)
     .optional()
     .describe(
       'The allergens the printed "Contains" statement names (FD&C Act §403(w)(1)(A)), as ' +
         'printed — not worked out from the ingredients. Leave it out entirely if the label ' +
         'has no "Contains" statement.',
     ),
-  containsStatementFontSizeMm: z
-    .number()
-    .positive()
+  containsStatementFontSizeMm: fontSizeMm()
     .optional()
     .describe(
       'The "Contains" statement’s em size in millimetres. Omitted, it matches the ingredient ' +
         'list.',
     ),
-  containsStatementGapMm: z.number().min(0).optional(),
+  containsStatementGapMm: z.number().min(0).max(B.printedMm).optional(),
   nutritionFacts: NutritionFactsSchema.optional(),
   // Claimed by paragraph alone; or the small package with the area that qualifies it
   // and the line (j)(13)(i)(A) puts on its label — a blank area is not accepted here,
@@ -739,7 +886,7 @@ export const UsFoodRequestBase = z.object({
       z.object({
         kind: z.literal('small-package'),
         availableSurfaceSqInches: z.number().positive(),
-        contactLine: z.string(),
+        contactLine: z.string().max(B.contactLine),
       }),
       z.object({ kind: z.literal('unit-container'), wording: z.enum(UNIT_CONTAINER_WORDINGS) }),
       z.object({
@@ -751,13 +898,7 @@ export const UsFoodRequestBase = z.object({
   // Superseded, as `ingredientsExempt` is.
   nutritionFactsExempt: z.boolean().optional(),
   responsibleFirm: ResponsibleFirmSchema.optional(),
-  stock: z
-    .object({
-      widthMm: z.number().positive(),
-      heightMm: z.number().positive(),
-      marginMm: z.number().min(0),
-    })
-    .optional(),
+  stock: StockSchema.optional(),
 })
 
 /**
@@ -820,12 +961,6 @@ export function toContainer(
       : { obviousPanelAreaSqMm: container.obviousPanelAreaSqMm }),
   }
 }
-
-export const StockSchema = z.object({
-  widthMm: z.number().positive(),
-  heightMm: z.number().positive(),
-  marginMm: z.number().min(0),
-})
 
 /** Required, trimmed, and not unique — two drafts of the same product is normal. */
 const SavedLabelName = z.string().trim().min(1).max(120)
@@ -983,6 +1118,7 @@ export const PrintedDigitalLink = z.object({
     })
     .trim()
     .min(1)
+    .max(B.printedUri)
     .describe(
       'The Digital Link exactly as the label prints it (the text its QR code encodes), ' +
         'scheme, path and query included. Do not correct or rebuild it: it is judged as written.',

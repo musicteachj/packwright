@@ -100,20 +100,45 @@ const EXEMPTION: Record<
 // "da" before "d", so deka is not read as deci and a stray "a".
 const SI_PREFIX_SYMBOLS = '(?:da|k|h|d|c|m|µ|μ)?'
 const SI_PREFIX_NAMES = '(?:kilo|hecto|deka|deca|deci|centi|milli|micro)?'
-const SI_AMOUNT = new RegExp(
-  '\\d(?:[\\d.,]*\\d)?\\s*(' +
-    // Symbols: g, L or l, and m alone or squared or cubed.
-    `${SI_PREFIX_SYMBOLS}(?:g|l|m(?:[²³23])?)` +
-    '|' +
-    // Names: the gram, liter and meter, singular or plural, -er or -re, and the square or
-    // cubic meter.
-    `(?:(?:square|cubic)\\s+)?${SI_PREFIX_NAMES}(?:grams?|lit(?:er|re)s?|met(?:er|re)s?)` +
-    ')(?![a-z])',
-  'i',
-)
+const SI_UNIT_PATTERN =
+  '\\s*(' +
+  // Symbols: g, L or l, and m alone or squared or cubed.
+  `${SI_PREFIX_SYMBOLS}(?:g|l|m(?:[²³23])?)` +
+  '|' +
+  // Names: the gram, liter and meter, singular or plural, -er or -re, and the square or
+  // cubic meter.
+  `(?:(?:square|cubic)\\s+)?${SI_PREFIX_NAMES}(?:grams?|lit(?:er|re)s?|met(?:er|re)s?)` +
+  ')(?![a-z])'
 
-/** The SI amount the text states, as written, or `undefined` where it states none. */
-const siAmountIn = (text: string): string | undefined => SI_AMOUNT.exec(text)?.[0]
+/** The unit, tried only where an amount ends. */
+const SI_UNIT_AT = new RegExp(SI_UNIT_PATTERN, 'iy')
+
+/** Every run of digits, points and commas: the amounts are found among these. */
+const NUMBER_RUNS = /[\d.,]+/g
+
+/**
+ * The SI amount the text states, as written, or `undefined` where it states none.
+ *
+ * What `/\d(?:[\d.,]*\d)?` followed by the unit pattern found, without its cost. That
+ * pattern was tried from every digit of a long run of digits, and backtracked across the
+ * whole run each time: 212 s for one metric declaration (`docs/security-review-2026-10-18.md`,
+ * finding 1). An amount is a run of digits, points and commas that begins and ends with a
+ * digit, and only the end of a whole run can meet the unit: everywhere else the next
+ * character is another digit, point or comma, which neither the space before a unit nor
+ * its first letter can be. So each run is tried once, from its first digit, at its end, and
+ * the first that meets a unit is the match the pattern found.
+ */
+function siAmountIn(text: string): string | undefined {
+  for (const run of text.matchAll(NUMBER_RUNS)) {
+    const firstDigit = run[0].search(/\d/)
+    if (firstDigit === -1 || !/\d$/.test(run[0])) continue
+    const end = run.index + run[0].length
+    SI_UNIT_AT.lastIndex = end
+    const unit = SI_UNIT_AT.exec(text)
+    if (unit) return text.slice(run.index + firstDigit, end + unit[0].length)
+  }
+  return undefined
+}
 
 export const usFoodNetQuantityDualDeclarationRule: UsFoodRule = {
   id: 'us-food/net-quantity-dual-declaration',

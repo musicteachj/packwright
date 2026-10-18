@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { EU_CLP_HAZARD_STATEMENTS, EU_CLP_PRECAUTIONARY_STATEMENTS } from '../ghs/statements'
+import { fuzzStrings } from '../testing/fuzz'
 import { EMBEDDED_FONT_FAMILIES } from './faces'
 import { FONT_METRICS } from './metrics'
 import {
@@ -143,5 +144,79 @@ describe('glyph heights', () => {
     expect(em).toBeCloseTo(8.8194, 3)
     expect(glyphHeightMm(em, FACE, 'lowercase-o')).toBeCloseTo(requiredMm, 10)
     expect(fontSizeMmForGlyphHeight(requiredMm, FACE, 'cap-height')).toBeCloseTo(6.823, 3)
+  })
+})
+
+/**
+ * Wrapping kept a line's width as it grew rather than measuring it again for every word
+ * (`docs/security-review-2026-10-18.md`, finding 1: 308 s for one check request). The
+ * work is counted, as character widths looked up, rather than timed.
+ */
+describe('wrapping in one pass', () => {
+  const FACE = 'IBM Plex Sans'
+  const face = FONT_METRICS[FACE]!
+  const widths = face.widths
+  afterEach(() => {
+    ;(face as { widths: typeof widths }).widths = widths
+  })
+
+  /** The number of width lookups `run` makes. */
+  const lookups = (run: () => void): number => {
+    let count = 0
+    ;(face as { widths: typeof widths }).widths = new Proxy(widths, {
+      get(target, key, receiver) {
+        count++
+        return Reflect.get(target, key, receiver)
+      },
+    })
+    run()
+    ;(face as { widths: typeof widths }).widths = widths
+    return count
+  }
+
+  const text = 'a '.repeat(20_000)
+
+  it('looks up each character a bounded number of times on a line that never breaks', () => {
+    expect(lookups(() => wrapTextMm(text, 1e9, 3, FACE))).toBeLessThanOrEqual(3 * text.length)
+  })
+
+  it('looks up each character a bounded number of times at the smallest type', () => {
+    expect(lookups(() => wrapTextMm(text, 100, 0.1, FACE))).toBeLessThanOrEqual(3 * text.length)
+  })
+
+  /** The implementation it replaced, kept as the oracle. */
+  function wrapByMeasuringEachLine(
+    source: string,
+    widthMm: number,
+    fontSizeMm: number,
+    fontFamily: string,
+  ): string[] {
+    if (!Number.isFinite(widthMm) || widthMm <= 0) return [source]
+    const lines: string[] = []
+    let line = ''
+    for (const word of source.split(/\s+/).filter(Boolean)) {
+      const candidate = line === '' ? word : `${line} ${word}`
+      if (line !== '' && measureTextMm(candidate, fontSizeMm, fontFamily) > widthMm) {
+        lines.push(line)
+        line = word
+      } else {
+        line = candidate
+      }
+    }
+    if (line !== '') lines.push(line)
+    return lines.length > 0 ? lines : [source]
+  }
+
+  it('breaks every line where measuring each line again broke it', () => {
+    const alphabet = ['a', 'W', 'i', '1', '.', ' ', ' ', '\t', '\n', 'é', '😀', '\u00ad']
+    const widthsMm = [0, -1, Number.NaN, 0.5, 2, 5, 9.75, 20]
+    for (const [i, source] of fuzzStrings(alphabet, { maxLength: 40 }).entries()) {
+      const widthMm = widthsMm[i % widthsMm.length]!
+      for (const family of [FACE, 'IBM Plex Mono SemiBold', 'no such face']) {
+        expect(wrapTextMm(source, widthMm, 1.7, family), JSON.stringify([source, widthMm])).toEqual(
+          wrapByMeasuringEachLine(source, widthMm, 1.7, family),
+        )
+      }
+    }
   })
 })

@@ -7,6 +7,7 @@ export {
   GTIN_LENGTH,
   GhsRequest,
   GhsSupplierSchema,
+  INPUT_BOUNDS,
   IngredientSchema,
   LabelCheckRequest,
   PrintedDigitalLink,

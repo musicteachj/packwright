@@ -4,11 +4,14 @@ import {
   layOutGhsLabel,
   layOutUpcALabel,
   mmToPoints,
+  spaceBoundedChunks,
   type ResolvedLayout,
 } from '@packwright/label-core'
+import { join } from 'node:path'
 import * as bwip from 'bwip-js/generic'
+import PDFDocument from 'pdfkit'
 import { describe, expect, it } from 'vitest'
-import { embeddedFontFor, renderLayoutToPdf } from './renderPdf'
+import { embeddedFontFor, plexFontDirectory, renderLayoutToPdf } from './renderPdf'
 
 /**
  * The test the whole phase exists for.
@@ -200,5 +203,24 @@ describe('the GHS label only asks for faces this build embeds', () => {
       // of tests exists to close.
       if (weight >= 600) expect(resolved).toContain('SemiBold')
     }
+  })
+})
+
+/**
+ * `toPDF` draws a line with many spaces in pieces, each at the width of those before it,
+ * so the pieces must measure to the whole line in PDFKit itself, with the embedded face
+ * and not the recording canvas's fixed advance.
+ */
+describe('a line drawn in pieces', () => {
+  it('measures the same in PDFKit as the line drawn whole', () => {
+    const document = new PDFDocument({ margin: 0 })
+    document.registerFont('Plex', join(plexFontDirectory(), 'IBMPlexSans-Regular.ttf'))
+    document.font('Plex').fontSize(7)
+    const line = 'Wheat flour, niacin, AV Ty To '.repeat(120)
+    const chunks = spaceBoundedChunks(line)
+    expect(chunks.length).toBeGreaterThan(1)
+
+    const pieces = chunks.reduce((sum, chunk) => sum + document.widthOfString(chunk), 0)
+    expect(pieces).toBeCloseTo(document.widthOfString(line), 6)
   })
 })

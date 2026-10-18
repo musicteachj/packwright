@@ -105,19 +105,26 @@ function rightOverrun(
   ]
 }
 
-/** The widest of a block's lines, measured in the face they print in. */
+/**
+ * The widest of a block's lines, measured in the face they print in.
+ *
+ * A fold rather than `Math.max(...lines)`: spreading passes every line as an argument,
+ * and an ingredient list of one-letter words on a narrow label reached the engine's limit
+ * on arguments, about 122,000, inside the 256 KB body, which answered a 500
+ * (`docs/security-review-2026-10-18.md`, finding 1).
+ */
 const widestLineMm = (
   lines: readonly string[],
   fontSizeMm: number,
   fontFamily: string,
   fontWeight?: number,
-): number =>
-  Math.max(
+): number => {
+  const family = measuredFamilyFor(fontFamily, fontWeight)
+  return lines.reduce(
+    (widest, line) => Math.max(widest, measureTextMm(line, fontSizeMm, family)),
     0,
-    ...lines.map((line) =>
-      measureTextMm(line, fontSizeMm, measuredFamilyFor(fontFamily, fontWeight)),
-    ),
   )
+}
 
 /**
  * Width of the Nutrition Facts box. FDA's illustrations draw the standard

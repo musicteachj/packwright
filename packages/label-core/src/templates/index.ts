@@ -1,4 +1,4 @@
-export { labelFilename } from './filename'
+export { FILENAME_MAX_CHARACTERS, labelFilename } from './filename'
 export {
   DEFAULT_GHS_STOCK,
   GHS_ELEMENTS,

@@ -1186,6 +1186,24 @@ UPC-A; `EAN_UPC_MIN_X_DIMENSION_MM` is written beside `MIN_MAGNIFICATION` rather
 `isAtTheListedHeightFloor` repeats `xDimensionBand`'s edge by hand; "say the limit in the last finding" is copied
 from `gs1/digital-link` rather than shared.
 
+**From security fix 1 (2026-10-18), one line each:** the audit's extraction schema (`extractionSchema.ts`) has no
+maximums of its own, so a long extracted value is refused only when the confirmed label is saved or exported;
+`nutritionFacts.ts`'s `printedInRun` interpolates a declared percentage into a regex unescaped, so the point in
+"4.5" matches any character (no false clearance found, since the engine never prints a figure it could confuse).
+
+**From the high review of #109 (2026-10-18), one line each:** a saved label stored before the bounds with a value
+past one now answers 500 on open, with no tolerant read (the deployed database starts empty); the `/mcp` sweep's
+guard against bound refusals also catches the older `min(1)` and `positive()` refusals; `widestLineMm` is written
+in both engines, and the two end-of-string trims are two helpers; `Math.max(...)` and `Math.min(...)` remain over
+the nutrient rows and the bars, which are bounded; and `wrapTextMm` measures a word that starts a line twice.
+
+**From the review of `75ff207` (2026-10-18):** the allergen rule still strikes every other ingredient's name out of
+the whole printed list once per allergen, so 1,000 entries over all nine allergens take about 0.5 to 0.75 s in
+`check_label`; finding each name's matches once and masking them per allergen would be linear, but it changes how
+(B)(ii)'s caveat treats overlapping names, so it wants its own fixtures. Also, one line each: the strike-out count
+test uses two allergens and has one assertion the other always implies, and the Contains text is lowercased once per
+bearing ingredient.
+
 ---
 
 ## From phase 7, stage 2

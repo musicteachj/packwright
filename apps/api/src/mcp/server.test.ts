@@ -340,6 +340,12 @@ describe('check_label on every document the judge is tested against', () => {
       if (!parsed.success) {
         // Refused at the door, in the schema's own words, every one of them.
         expect(result.isError).toBe(true)
+        // Never for a size or a length: a fixture is a real label, and a bound in
+        // `INPUT_BOUNDS` that refused one would turn it from judged to refused here
+        // without failing anything else.
+        for (const issue of parsed.error.issues) {
+          expect(issue.code, issue.path.join('.')).not.toMatch(/^too_(big|small)$/)
+        }
         for (const issue of parsed.error.issues) {
           expect(textOf(result)).toContain(`${issue.path.join('.')}: ${issue.message}`)
         }

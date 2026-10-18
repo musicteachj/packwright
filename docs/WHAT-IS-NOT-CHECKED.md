@@ -580,6 +580,33 @@ recorded because it is the kind of assumption that stops being true quietly.
 
 ---
 
+## Input limits
+
+Every field has a bound, added before deployment so that one request cannot hold the server for minutes
+(`docs/security-review-2026-10-18.md`, finding 1). The figures and their reasoning are in `INPUT_BOUNDS`
+(`packages/label-core/src/schema/labelDocument.ts`). Each sits far above any length or size a rule judges, so a
+label that is merely non-compliant still reaches its rule and citation. A label past a bound is **refused, not
+checked**: the editor's export or save, and `check_label`, answer with the field named and the limit it passed.
+
+### Bounds that could refuse a lawful label
+
+None of these was reached by any real label found, but nothing in the regulations forbids them:
+- **A label stock over 1,000 mm on a side**, nearly five times the largest label CLP Annex I Table 1.3 asks for
+  (148 × 210 mm, over 500 L).
+- **Artwork type under 0.1 mm**, as an em. Artwork on a retail label has no regulated minimum. The regulated text
+  of a food or chemical label is measured against minimums that start several times higher, so on those labels
+  the floor refuses only type no rule could pass.
+- **A food container over 10 m in a side or circumference**, or over 100 m² of surface.
+- **An ingredient entry over 16,000 characters**, or more than 1,000 entries. The longest real lists found were
+  3,576 characters on a US label and 7,730 on a multilingual EU one.
+- **A GHS product identifier over 8,000 characters**, which leaves room for several IUPAC names of 600 or more.
+- **A printed Digital Link over 4,096 characters**, longer than any QR Code can hold (2,953 bytes).
+
+**The downloaded file's name is cut at 100 characters**, so a long product identifier names its PDF by its
+opening words. The label itself is not changed.
+
+---
+
 ## If you find something missing from this list
 
 That is worth reporting. A requirement this tool neither checks nor admits to skipping is the one kind of gap
