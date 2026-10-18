@@ -955,6 +955,10 @@ is held to 256 KB. A per-route daily cap on the one route that spends a key is s
 enforce, but refusing traffic cheaply belongs at the edge — an ALB rule or a WAF — and that is deployment work.
 The routes are unauthenticated, which is also the edge's job.
 
+**Superseded 2026-10-18:** the security review found this parse order can reset the audit's spending cap, so
+it is must-fix finding 2 of `docs/security-review-2026-10-18.md`, which also lists that review's recorded,
+no-work items.
+
 **The audit route's guards run after its body has been parsed.** `/api/audit`'s `express.json({ limit: '10mb'
 })` is mounted ahead of its router, so a request the quotas or the key refuse has already been buffered and
 parsed in full: ten megabytes of JSON can be read before a 401. The guards bound what the route can *spend*,

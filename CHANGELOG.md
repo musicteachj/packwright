@@ -191,6 +191,19 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **A security review before deployment** (`docs/security-review-2026-10-18.md`). Everything the deployed
+  application exposes was read and probed against its own handlers: saved labels and exports, the photo audit, and
+  `/mcp` with every function its tools reach. Five findings are must-fix. Free text has no length limits and label
+  dimensions no bounds, and six places in the text and Digital Link code grow quadratically, so one request within
+  the body limit can block the server for up to five minutes. The audit's daily spending cap can be reset by
+  knocking over the task and drained with junk data that costs nothing. Saved labels can be overwritten or deleted
+  by anyone. `/mcp` counts only tool calls, so a batch of listings rides free. James decided that saved labels get
+  an edit token and that the Anthropic workspace gets a hard spend limit; four fix pull requests follow. Two
+  dependency advisories `npm audit` calls critical and high do not reach this application as configured, and their
+  patches ride with the fixes.
+
+### Added
+
 - **A source verification before deployment** (`docs/verification-2026-10-17.md`). Two parts. First, whether any
   source changed since it was read: none did. Part 101 and § 1910.1200 were last amended before the project read
   them, the U.S. Code sections are unchanged in the 2024 edition, GS1's releases are current, and CLP's 2027-01-01
