@@ -34,7 +34,7 @@
  *   without, so the information is still required and judged, and what goes unchecked
  *   is only where and how it is presented. Read from the eCFR on 2026-09-16, and
  *   (j)(14) and (j)(15) again on 2026-09-17.
- * - The *weights* of the four vitamins and minerals. 101.9(c)(8)(ii) permits
+ * - The *weights* of the four vitamins and minerals. 101.9(c)(8)(iii) permits
  *   "additional levels of significance" beyond the whole units (c)(8)(iv) gives,
  *   so 235 mg of potassium and 235.4 mg are both proper declarations and no
  *   single value can be demanded. Their *percentages* are checked, under
@@ -47,6 +47,7 @@ import {
   dailyValueFor,
   nutrient,
   percentDailyValue,
+  underTwoPercentOfRdi,
   permittedNutrientAmounts,
   roundNutrientAmount,
   roundingIsCheckable,
@@ -120,7 +121,10 @@ const NO_CLAIMS =
 /**
  * Each exemption cites its own paragraph and says what of it is not checked.
  * Untitled, because the subparagraphs carry no heading of their own to quote.
- * Worded from 101.9(j) as read from the eCFR on 2026-09-16.
+ * Worded from 101.9(j) as read from the eCFR on 2026-09-16. (j)(3), (j)(9) and
+ * (j)(11)(ii) were reworded from the eCFR on 2026-10-18: their passes described a
+ * broader exemption than the paragraph grants, or left conditions off the "not
+ * checked" list (item 8 of the 2026-10-17 source verification).
  */
 const EXEMPTIONS: Record<
   (typeof US_FOOD_NUTRITION_EXEMPTIONS_CLAIMED_ALONE)[number],
@@ -140,12 +144,17 @@ const EXEMPTIONS: Record<
       `which of (j)(2)’s five cases applies and the conditions each attaches — for the first ` +
       `three, ${NO_CLAIMS}`,
   },
+  // (j)(3) is five conditions, all of which must hold, under "Except as provided in
+  // § 101.11", with the no-claims proviso on the last.
   'retail-prepared': {
     citation: untitled(EXEMPTION, '21 CFR 101.9(j)(3)'),
     grants:
-      'ready-to-eat food processed and prepared primarily in a retail establishment and not ' +
-      'offered for sale outside it',
-    unchecked: `where the food is prepared and sold, and ${NO_CLAIMS}`,
+      'food of the type (j)(2)(i) and (ii) describe, ready for human consumption, offered for ' +
+      'sale to consumers but not for immediate human consumption, processed and prepared ' +
+      'primarily in a retail establishment, and not offered for sale outside that establishment',
+    unchecked:
+      'each of those five conditions, that § 101.11 does not govern the food instead, and ' +
+      NO_CLAIMS,
   },
   'insignificant-nutrients': {
     citation: untitled(EXEMPTION, '21 CFR 101.9(j)(4)'),
@@ -164,19 +173,31 @@ const EXEMPTIONS: Record<
   'bulk-for-manufacture': {
     citation: untitled(EXEMPTION, '21 CFR 101.9(j)(9)'),
     grants:
-      'food shipped in bulk form, not for distribution to consumers in that form, for use in ' +
-      'manufacturing other foods or to be processed, labeled or repacked elsewhere',
-    unchecked: 'the facts of the shipment',
+      'food shipped in bulk form that is not for distribution to consumers in that form, and ' +
+      'that is for use solely in the manufacture of other foods or is to be processed, labeled ' +
+      'or repacked at a site other than where it was originally processed or packed',
+    unchecked:
+      'that the food is shipped in bulk form, that it is not for distribution to consumers in ' +
+      'that form, and that it is for use solely in manufacturing other foods or is to be ' +
+      'processed, labeled or repacked at another site',
   },
   'raw-produce-or-fish': {
     citation: untitled(EXEMPTION, '21 CFR 101.9(j)(10)'),
     grants: 'raw fruits, vegetables or fish subject to section 403(q)(4) of the act',
     unchecked: `what the food is, and ${NO_CLAIMS}`,
   },
+  // (ii) excepts from (j)(11), whose scope is "packaged single-ingredient products that
+  // consist of fish or game meat (i.e., animal products not covered under the Federal Meat
+  // Inspection Act or the Poultry Products Inspection Act ...)".
   'custom-processed-fish-or-game': {
     citation: untitled(EXEMPTION, '21 CFR 101.9(j)(11)(ii)'),
-    grants: 'custom processed fish or game meats',
-    unchecked: 'that the product is custom processed',
+    grants:
+      'custom processed fish or game meats, among the packaged single-ingredient products of ' +
+      'fish or game meat (j)(11) covers',
+    unchecked:
+      'that the product is a packaged single-ingredient product consisting of fish or game ' +
+      'meat not covered by the Federal Meat Inspection Act or the Poultry Products Inspection ' +
+      'Act, and that it is custom processed',
   },
   'bulk-at-retail': {
     citation: untitled(EXEMPTION, '21 CFR 101.9(j)(16)'),
@@ -430,7 +451,7 @@ function missingNutrients(panel: UsFoodNutritionFacts): Finding[] {
     finding(usFoodNutritionCompletenessRule, {
       code: FDA_NUTRITION_NUTRIENT_MISSING,
       severity: 'violation',
-      message: `The panel declares no ${entry.name}, which ${entry.reference} makes mandatory.`,
+      message: `The panel declares no ${entry.name}, which ${entry.requiredBy ?? entry.reference} makes mandatory.`,
       measurement: { actual: 'not declared', required: entry.name },
       elementId: US_FOOD_ELEMENTS.principalDisplayPanel,
     }),
@@ -822,7 +843,7 @@ export const usFoodNutritionRoundingRule: UsFoodRule = {
         (!panelDrawn || drawn.has(elementOf(entry.id))) &&
         panel.amounts[entry.id] !== undefined &&
         panel.declaredAmounts?.[entry.id] !== undefined &&
-        // 101.9(c)(8)(ii) permits "additional levels of significance" for the
+        // 101.9(c)(8)(iii) permits "additional levels of significance" for the
         // vitamins and minerals, so there is no single required value to compare
         // a declaration against and this rule has nothing to say about them.
         roundingIsCheckable(entry.id),
@@ -1001,22 +1022,30 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
       // allows the actual amount for an RDI nutrient is open (`docs/BACKLOG.md`).
       // Raised by `/code-review high` on #88.
       const [fromDeclared, fromActual] = column.bases(entry.id)
-      const permitted = [
+      const computed = [
         fromDeclared === undefined
           ? undefined
           : percentDailyValue(entry.id, fromDeclared, population),
         fromActual === undefined ? undefined : percentDailyValue(entry.id, fromActual, population),
       ].filter((value): value is number => value !== undefined)
-      if (permitted.length === 0) return []
+      if (computed.length === 0) return []
+      // (c)(8)(iii): a vitamin or mineral "present at less than 2 percent of the RDI" "may be
+      // declared by a zero". Judged on the amount present, the unrounded one where the label
+      // has it: a declared 0.3 mg of iron analyzed at 0.38 mg is 2.1 percent, and may not be
+      // declared as zero. Found by `/code-review high` on #105.
+      const present = fromActual ?? fromDeclared
+      const zeroPermitted =
+        present !== undefined && underTwoPercentOfRdi(entry.id, present, population)
 
       const declared = column.stated![entry.id]!
-      return permitted.includes(declared)
+      return computed.includes(declared) || (zeroPermitted && declared === 0)
         ? []
         : [
             {
               entry,
               declared,
-              permitted,
+              computed,
+              zeroPermitted,
               second: column.second,
               amount: fromDeclared ?? fromActual,
             },
@@ -1033,20 +1062,24 @@ export const usFoodNutritionPercentDvRule: UsFoodRule = {
     if (measured.length === 0 && wrong.length === 0) return []
 
     if (wrong.length > 0) {
-      return wrong.map(({ entry, declared, permitted, second, amount }) =>
+      return wrong.map(({ entry, declared, computed, zeroPermitted, second, amount }) =>
         finding(usFoodNutritionPercentDvRule, {
           code: FDA_NUTRITION_PERCENT_DV_WRONG,
           severity: 'violation',
           message:
             `${entry.name} shows ${declared}% of the Daily Value` +
             `${second ? ' in the second column' : ''}; ` +
-            `${[...new Set(permitted)].sort((a, b) => a - b).join('% or ')}% is what ` +
+            `${[...new Set(computed)].sort((a, b) => a - b).join('% or ')}% is what ` +
             `${amount}${entry.unit} of a ` +
             `${dailyValueFor(entry.id, population)!.amount}${entry.unit} Daily Value` +
-            `${population === 'children-1-through-3' ? ' for children 1 through 3' : ''} gives.`,
+            `${population === 'children-1-through-3' ? ' for children 1 through 3' : ''} gives` +
+            // The zero is a permission, not a figure the amount gives, and is said as one.
+            (zeroPermitted
+              ? ', and 101.9(c)(8)(iii) also permits 0% for an amount under 2 percent of the RDI.'
+              : '.'),
           measurement: {
             actual: `${declared}%`,
-            required: [...new Set(permitted)]
+            required: [...new Set([...(zeroPermitted ? [0] : []), ...computed])]
               .sort((a, b) => a - b)
               .map((p) => `${p}%`)
               .join(' or '),

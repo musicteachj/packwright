@@ -269,8 +269,7 @@ export function layOutNutritionPanel(request: NutritionPanelRequest): NutritionP
     // display is named in each of those exceptions.** (d)(3)(i) and (ii) put the
     // two servings lines at 9 point "in ... the linear display for small packages
     // as shown in paragraph (j)(13)(ii)(A)(2)"; (d)(1)(iii) puts the Calories word
-    // at 10 and its numeral at 14 in the same breath; (d)(7)(iii) puts the
-    // nutrients at 8. Drawn as one string at one size the run satisfied none of
+    // at 10 and its numeral at 14 in the same breath, and the nutrients at 8. Drawn as one string at one size the run satisfied none of
     // them — the numeral came out at 8 where 14 is required — and left the
     // type-size rule with nothing it could identify, so a panel at any size at all
     // went unreported. It is a flow of spans now, each set at its own minimum and

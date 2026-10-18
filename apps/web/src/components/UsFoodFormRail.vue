@@ -1419,6 +1419,8 @@ const unitContentLabel = computed(
 const SOLD_INDIVIDUALLY_LABEL =
   DECLINED_FACT_FIELDS['nutritionFacts.packagedAndSoldIndividually'].name
 const COLUMN_BASIS_LABEL = DECLINED_FACT_FIELDS['nutritionFacts.columns.basis'].name
+const VERTICAL_SPACE_LABEL =
+  DECLINED_FACT_FIELDS['nutritionFacts.continuousVerticalSpaceInches'].name
 
 /**
  * Each refusal said aloud, with the field it belongs to named.
@@ -2250,7 +2252,7 @@ const packaging = computed({
       <MeasurementField
         id="field-food-nf-vertical-space"
         v-model.number="continuousVerticalSpaceInchesField"
-        label="Continuous vertical space for the panel (in)"
+        :label="`${VERTICAL_SPACE_LABEL} (in)`"
         min="0"
         step="0.1"
         description="Under 101.9(d)(11)(iii), less than approximately 3 in entitles a package of any size to the tabular display."

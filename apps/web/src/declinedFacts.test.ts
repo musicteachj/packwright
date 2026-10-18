@@ -90,6 +90,16 @@ const scenarios: Array<[string, (store: Store) => void]> = [
     },
   ],
   [
+    'a food label in a tabular display over 40 in², silent on its vertical space',
+    (store) => {
+      store.labelType = 'us-food'
+      const facts = store.foodData.nutritionFacts!
+      facts.format = 'tabular'
+      facts.availableSurfaceSqInches = 60
+      delete facts.continuousVerticalSpaceInches
+    },
+  ],
+  [
     'a food label listing no ingredients, silent on whether it is one',
     (store) => {
       store.labelType = 'us-food'

@@ -33,7 +33,7 @@ import type { UnitContainerWording } from '../fda/unitContainerStatement'
  * generated ids collided with the fixed ones — `food-nutrition-heading`,
  * `-servings`, `-footnote` — so a rule selecting "the nutrient rows" by prefix
  * picked up the 6 point footnote and reported it against the 8 point minimum
- * 101.9(d)(7)(iii) sets for rows.
+ * 101.9(d)(1)(iii) sets for rows.
  */
 export const NUTRITION_ROW_PREFIX = 'food-nutrition-row-'
 
@@ -183,19 +183,23 @@ export type UsFoodIngredientsExemption =
  * - `small-business` — (j)(1), sales by a person making direct sales to consumers.
  * - `food-service` — (j)(2), food served, sold or used in establishments serving
  *   food for immediate human consumption, or sold by a distributor to them.
- * - `retail-prepared` — (j)(3), ready-to-eat food processed and prepared primarily
- *   in a retail establishment and not offered for sale outside it.
+ * - `retail-prepared`: (j)(3), food of the type (j)(2)(i) and (ii) describe, ready
+ *   for human consumption, offered for sale to consumers but not for immediate
+ *   consumption, processed and prepared primarily in a retail establishment, and not
+ *   offered for sale outside it.
  * - `insignificant-nutrients` — (j)(4), food containing insignificant amounts of
  *   all the nutrients and food components (c) requires.
  * - `medical-food` — (j)(8), a medical food as the Orphan Drug Act defines it,
  *   "subject to this exemption only if" it meets five conditions on how it is
  *   formulated and used.
- * - `bulk-for-manufacture` — (j)(9), food shipped in bulk form, not for
- *   distribution to consumers in that form.
+ * - `bulk-for-manufacture`: (j)(9), food shipped in bulk form, not for
+ *   distribution to consumers in that form, and for use solely in manufacturing
+ *   other foods or to be processed, labeled or repacked at another site.
  * - `raw-produce-or-fish` — (j)(10), raw fruits, vegetables and fish subject to
  *   section 403(q)(4) of the act.
- * - `custom-processed-fish-or-game` — (j)(11)(ii): "Nutrition information is not
- *   required for custom processed fish or game meats."
+ * - `custom-processed-fish-or-game`: (j)(11)(ii), "Nutrition information is not
+ *   required for custom processed fish or game meats", an exception within (j)(11)'s
+ *   packaged single-ingredient products of fish or game meat.
  * - `small-package` — (j)(13)(i), a package with "a total surface area available
  *   to bear labeling of less than 12 square inches", whose label bears "an address
  *   or telephone number that a consumer can use to obtain the required nutrition

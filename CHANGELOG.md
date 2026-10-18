@@ -10,6 +10,63 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **A tabular Nutrition Facts display over 40 in² waits for its vertical space instead of being reported.** The
+  format rule reported every tabular display on a package over 40 in² that did not state its vertical space, saying
+  "a reduced display is permitted only at 40 in² or less". But 21 CFR 101.9(d)(11)(iii) permits a tabular display at
+  any size where there is not "approximately 3 in" of continuous vertical space (item 2 of
+  `docs/verification-2026-10-17.md`). With the space unstated, the rule now stands down and asks for it, linking the
+  editor's existing field. Stated short, the display passes under (d)(11)(iii) as before. Stated 3 in or more, it is
+  reported, with a message naming both routes and why neither applies. While it waits, and where it refuses the
+  display, the type-size check does not certify the reduced display's lower minimums either: type that meets them
+  but not the vertical display's gets no verdict. New tests fail with either wait removed.
+
+- **A vitamin or mineral under 2% of its RDI may be declared as 0%.** 101.9(c)(8)(iii) says such amounts "may be
+  declared by a zero", and the percent Daily Value check reported 0% as the wrong figure (item 5). Zero is now one
+  more permitted figure wherever the amount present, the unrounded one where the label gives it, is under 2 percent
+  of the RDI, and the message names the zero as that permission rather than as a figure the amount gives. The
+  banded figure is still accepted beside it, and a DRV nutrient such as sodium is unaffected. New tests fail with
+  the permission removed.
+
+- **The (b)(12)(i)(C) exemption needs the second column on the label.** (C) excuses products that "provide an
+  additional column of nutrition information", and the exemption was granted from the declared column basis
+  alone, so a panel declaring an as-prepared column and drawing one column passed as exempt (item 6). It is now
+  granted only where the second column is drawn and printed in full, judged on the column's own omissions and on its
+  box lying on the label, so an unrelated defect elsewhere in the panel does not cancel it; otherwise the 200 to 300
+  percent duty stands and the column is judged like any other. Its pass now says it read the column (or, on an egg
+  carton whose panel is presented elsewhere, that the column is declared), and that the product's own qualification
+  is what it did not check. The test that had locked in the old behavior now draws the column, and
+  new tests fail with either condition removed.
+
+- **The Calories and nutrient-row type sizes cite 101.9(d)(1)(iii).** The 16 and 10 point Calories minimums were
+  cited to (d)(5), which states no size, and the 8 point nutrient rows to "(d)(7)(iii)", which does not exist (item
+  7). Both figures are in (d)(1)(iii), re-read from the eCFR on 2026-10-18, and the rule, its citation list and the
+  comments beside the figures now say so. A new test fails with either old citation restored.
+
+- **Three exempt passes name every condition they do not check.** The (j)(3) pass described a broader exemption
+  than the paragraph and left two of its five conditions off its "not checked" list: (i), the type of food
+  (j)(2)(i) and (ii) describe, and (iii), "not for immediate human consumption"; it also omitted the § 101.11
+  carve-out. The (j)(9) pass dropped "solely" and paraphrased "at a site other than where originally
+  processed or packed" as "elsewhere". The (j)(11)(ii) pass left out (j)(11)'s scope, packaged single-ingredient
+  fish or game meat outside the meat and poultry Acts (item 8). Each pass is now worded from its paragraph, and a
+  new test checks the words.
+
+- **Type between a permission's floor and the usual minimum gets no verdict.** Three provisions let type go
+  smaller on a condition this tool cannot test, and each was reported against the usual minimum (item 9 and
+  decision B). They are 101.9(d)(3)(ii), a serving size at 8 point where it "does not fit in the allocated
+  space"; 101.9(j)(13)(i)(B), 6 point on a package under 12 in², where whether that replaces (d)'s minimums is
+  unsettled (James's decision B), and down to 1/32 inch on a package of 3 in² or less, since the same sentence
+  lets an individual serving-size package follow 101.2(c)(2); and 101.2(c)(2) itself, 1/32 inch on the
+  information panel of such a package. Type in those bands is now neither reported nor counted, and the passing message names what it left
+  alone. Type below a permission's floor is still reported. 101.2(c)(1)'s soft-drink bottle exemptions reach
+  information formed onto a bottle or printed on its closure, never a paper, plastic foam jacket or foil label,
+  so they do not reach what this tool draws. `docs/WHAT-IS-NOT-CHECKED.md` records all four. New tests fail with
+  each band, and each floor, removed.
+
+- **A missing vitamin or mineral is said to be required by 101.9(c)(8)(ii).** The message named (c)(8)(iv), the RDI
+  table the figures are read from, as the paragraph making them mandatory, and comments attributed "additional
+  levels of significance" to (c)(8)(ii), though it is in (c)(8)(iii) (the (c)(8) part of item 13). The table now
+  records the mandate separately from the source of its figures, and a test fails with the old attribution.
+
 - **A single-ingredient food is no longer blocked for having no ingredient list.** An empty list was a blocking
   finding, "A packaged food must list its ingredients", cited to 21 CFR 101.4(a)(1). But the duty is FD&C Act
   §403(i)(2), which requires the name of each ingredient only "in case it is fabricated from two or more

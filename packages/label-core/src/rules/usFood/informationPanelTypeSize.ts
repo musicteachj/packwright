@@ -20,12 +20,35 @@
  * here rather than judged twice — two findings about one dimension, under two
  * citations, would read as two defects.
  *
+ * **101.2(c)'s own exemptions, read from the eCFR on 2026-10-18** (item 9 of the
+ * 2026-10-17 source verification, which found them reported):
+ * - **(c)(2)** exempts "individual serving-size packages of food served with meals in
+ *   restaurants, institutions, and on board passenger carriers, and not intended for sale
+ *   at retail" from the type size, provided the package "has a total area of 3 square
+ *   inches or less available to bear labeling", there is "insufficient area" for 1/16
+ *   inch, and the type "is not less than 1/32 inch in height". Only the area can be read
+ *   here, so on a package that may be that small, type from 1/32 inch up to 1/16 gets no
+ *   verdict. Below 1/32 it fails the exemption too, and is reported.
+ * - **(c)(1)** exempts soft drinks in bottles: information "blown, lithographed, or formed
+ *   onto the surface" of a bottle made before October 31, 1975, and information on the
+ *   bottle closure, at 1/32 inch, of a bottle with no paper, plastic foam jacket or foil
+ *   label, or a reusable bottle with a label lithographed onto it. A label this tool draws
+ *   is a label, and (c)(1)(ii)(A) keeps a bottle "bearing a paper, plastic foam jacket, or
+ *   foil label" to "all required information in the specified minimum type size", so
+ *   (c)(1) does not reach what this rule measures. `docs/WHAT-IS-NOT-CHECKED.md` says so,
+ *   for information formed, lithographed or printed on a closure instead.
+ *
  * 101.7(h)(1)'s 3:1 ratio comes in through the same sentence and is not enforced,
  * for the reason recorded in `registry.ts`: `TextPrimitive` has no horizontal
  * scale, so a rule about condensed type could never fail.
  */
 
-import { INFORMATION_PANEL_MIN_TYPE_HEIGHT_MM, regulatedGlyphBasis } from '../../geometry/pdp'
+import {
+  INFORMATION_PANEL_MIN_TYPE_HEIGHT_MM,
+  labelingSurfaceFloor,
+  regulatedGlyphBasis,
+} from '../../geometry/pdp'
+import { MM_PER_INCH } from '../../geometry/units'
 import { wasFullyDrawn } from '../../layout/omissions'
 import type { TextPrimitive } from '../../layout/types'
 import { NUTRITION_ELEMENT_PREFIX, US_FOOD_ELEMENTS } from '../../templates/usFood'
@@ -54,8 +77,8 @@ const CITATION: Citation = {
  * **The Nutrition Facts panel answers to 101.9, and that is not a nicety.**
  * 101.2(b) does list 101.9 among the sections whose information belongs on these
  * panels, so a literal reading of (c) would put the 1/16 inch floor over the
- * nutrition label too. It cannot be the reading: 101.9(d)(7)(iii) sets the
- * nutrient rows at "no smaller than 8 point" and (d)(9) the footnote at 6, and
+ * nutrition label too. It cannot be the reading: 101.9(d)(1)(iii) sets the
+ * nutrient rows at "no smaller than 8 point" and the (d)(9) footnote at 6, and
  * neither clears 1/16 inch measured the way 101.7(h)(2) measures — 8 point of
  * IBM Plex puts the lowercase "o" at 1.52 mm against a 1.59 mm floor. Applying
  * it here would report every compliant Nutrition Facts label in the country.
@@ -98,6 +121,11 @@ const insideTheNutritionPanel = (elementId: string): boolean =>
  */
 // Imported rather than written out, for the reason `nutritionTypeSize` gives.
 
+/** 101.2(c)(2)(i): "a total area of 3 square inches or less available to bear labeling". */
+const FOOD_SERVICE_PACK_MAX_SQ_INCHES = 3
+/** 101.2(c)(2)(iii): "the type size is not less than 1/32 inch in height". */
+const FOOD_SERVICE_PACK_MIN_TYPE_HEIGHT_MM = MM_PER_INCH / 32
+
 const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/information-panel-type-size',
   title: 'Every letter on the panel is at least one-sixteenth of an inch high.',
@@ -108,7 +136,7 @@ const judgedAsDrawn: UsFoodRule = {
   },
   appliesTo: 'us-food',
 
-  check({ layout }: UsFoodContext): Finding[] {
+  check({ data, layout, stock }: UsFoodContext): Finding[] {
     const drawn = layout.primitives.filter(
       (primitive): primitive is TextPrimitive =>
         primitive.kind === 'text' &&
@@ -141,8 +169,15 @@ const judgedAsDrawn: UsFoodRule = {
       })
     }
 
+    // (c)(2) may reach a package of 3 in² or less: the declared area where there is one,
+    // and never less than the label and panel the package carries.
+    const declared = data.nutritionFacts?.availableSurfaceSqInches
+    const mayBeFoodServicePack =
+      Math.max(labelingSurfaceFloor(stock, data.container).sqInches, declared ?? 0) <=
+      FOOD_SERVICE_PACK_MAX_SQ_INCHES
+
     const labels = new Map(layout.elements.map((element) => [element.elementId, element.label]))
-    const undersized = [...byElement.entries()].flatMap(([elementId, element]) => {
+    const short = [...byElement.entries()].flatMap(([elementId, element]) => {
       const actualMm = glyphHeightMm(
         element.fontSizeMm,
         element.fontFamily,
@@ -152,6 +187,11 @@ const judgedAsDrawn: UsFoodRule = {
         ? [{ elementId, actualMm }]
         : []
     })
+    const inFoodServiceBand = ({ actualMm }: { actualMm: number }) =>
+      mayBeFoodServicePack &&
+      actualMm >= FOOD_SERVICE_PACK_MIN_TYPE_HEIGHT_MM - MEASUREMENT_TOLERANCE_MM
+    const unjudged = short.filter(inFoodServiceBand)
+    const undersized = short.filter((entry) => !inFoodServiceBand(entry))
 
     if (undersized.length > 0) {
       return undersized.map(({ elementId, actualMm }) =>
@@ -179,13 +219,26 @@ const judgedAsDrawn: UsFoodRule = {
     // reported above whether or not it printed.
     if (![...byElement.keys()].every((elementId) => wasFullyDrawn(layout, elementId))) return []
 
+    // Nothing judged is nothing cleared.
+    const judged = byElement.size - unjudged.length
+    if (judged === 0) return []
+
     return [
       // 101.2(c) bounds the height of the letters on the panel: the artwork.
       passedOnArtwork(
         usFoodInformationPanelTypeSizeRule,
         FDA_PANEL_TYPE_SIZE_MET,
-        `${byElement.size} element${byElement.size === 1 ? '' : 's'} on the panel clear the ` +
-          `${required} floor.`,
+        `${judged} element${judged === 1 ? '' : 's'} on the panel clear the ${required} floor.` +
+          (unjudged.length === 0
+            ? ''
+            : ` Not judged: ${unjudged
+                .map(
+                  ({ elementId, actualMm }) =>
+                    `"${labels.get(elementId) ?? elementId}" at ${mm(actualMm)}`,
+                )
+                .join(', ')}, because on a package of 3 in² or less 101.2(c)(2) permits 1/32 ` +
+              'inch for an individual serving-size package served with meals and not for ' +
+              'retail sale, which this check cannot tell.'),
         US_FOOD_ELEMENTS.principalDisplayPanel,
       ),
     ]

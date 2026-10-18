@@ -133,6 +133,39 @@ judged: "340 G" on a label set in capitals reads as grams, though NIST's style g
 that are not SI symbols, such as "gm" or "ltr", and fractions such as "½ L", are reported: write "g", "L" or a
 decimal. Until 2026-10-17 any text in the metric field passed.
 
+### Type between a permission's floor and the usual minimum
+
+Four situations let type go smaller than the usual minimum on a condition this tool cannot test. Type in that
+band gets no verdict, neither reported nor counted in the passing message, which names what it left alone. Type
+below the permission's own floor is reported against the usual minimum, since it fails either way.
+
+- **101.9(d)(3)(ii), the serving size at 8 point.** "If the 'Serving size' declaration does not fit in the
+  allocated space a type size of no smaller than 8 point may be used on packages of any size." Whether it fits is a
+  judgment about your layout that the check does not make.
+- **101.9(j)(13)(i)(B), packages under 12 in².** On a package with less than 12 in² available to bear labeling,
+  "all required information shall be in type size no smaller than 6 point". Whether that replaces 101.9(d)'s 8,
+  10, 16 and 22 point minimums or sits beside them is not settled: the paragraph does not say, (d)(1)(iii) names
+  its own small-package exceptions, and FDA's linear illustration annotates "all type sizes are 6 point". So, by
+  James's decision of 2026-10-17, Nutrition Facts type at 6 point or more and under its usual minimum gets no
+  verdict on these packages. A package that declares no area counts as possibly this small whenever its label and
+  principal display panel are. The same sentence lets an individual serving-size package served with meals, not
+  for retail sale, follow 101.2(c)(2) instead, so on a package of 3 in² or less the band reaches down to 1/32 inch.
+- **101.2(c)(2), individual serving-size packages.** A package served with meals in restaurants, institutions
+  or on passenger carriers, not for retail sale, with 3 in² or less to bear labeling and too little room for 1/16
+  inch type, may use 1/32 inch. The check can read only the area, so on a package that may be that small, type
+  from 1/32 to 1/16 inch gets no verdict.
+- **A reduced display the package may not use.** While the Nutrition Facts display check waits for the continuous
+  vertical space (101.9(d)(11)(iii)), or where it reports the display, the reduced display's lower minimums may not
+  be the label's. Type that meets them but not the vertical display's gets no verdict; the display finding, or
+  stating the space, is what settles it.
+
+**101.2(c)(1), soft drinks in bottles, does not reach a label this tool draws.** It exempts information blown,
+lithographed or formed onto a bottle made before October 31, 1975, and lets a bottle with no paper, plastic foam
+jacket or foil label, or a reusable bottle with its label lithographed onto it, carry its information on the
+closure at 1/32 inch. A bottle with a paper, plastic foam jacket or foil label keeps "all required information in
+the specified minimum type size" ((c)(1)(ii)(A)). If your information is formed onto a bottle, lithographed onto a
+reusable one, or printed on a closure, the 101.2(c) check here does not describe it.
+
 ### A package that owes both second columns
 
 Two paragraphs of 21 CFR 101.9 can each require a second column of nutrition information. 101.9(b)(12)(i)

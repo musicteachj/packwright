@@ -14,6 +14,7 @@ export {
   dailyValueFor,
   nutrient,
   percentDailyValue,
+  underTwoPercentOfRdi,
   permittedNutrientAmounts,
   printedNutrientLine,
   printedPercentDailyValue,

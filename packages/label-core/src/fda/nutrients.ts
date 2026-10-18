@@ -37,7 +37,7 @@ export type NutrientRounding =
   | { kind: 'fat-grams' }
   | { kind: 'nearest'; increment: number }
   /**
-   * 21 CFR 101.9(c)(8)(ii): vitamin and mineral weights use "the units of
+   * 21 CFR 101.9(c)(8)(iii): vitamin and mineral weights use "the units of
    * measurement and the levels of significance given in paragraph (c)(8)(iv)
    * ... except that zeros following decimal points may be dropped, and
    * **additional levels of significance may be used**".
@@ -118,6 +118,13 @@ export interface Nutrient {
   preface?: 'Includes'
   /** The paragraph this entry is read from, for the rule that cites it. */
   reference: string
+  /**
+   * The paragraph that makes the line mandatory, where it is not `reference`. The four
+   * vitamins and minerals are read from (c)(8)(iv)'s RDI table, but (c)(8)(ii) is what
+   * says the declaration "shall include vitamin D, calcium, iron, and potassium". Re-read
+   * from the eCFR on 2026-10-18; the source verification found the two conflated (item 13).
+   */
+  requiredBy?: string
   rounding: NutrientRounding
   /**
    * The Daily Value for each population carried, and which table it came from — the
@@ -274,6 +281,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     unit: 'mcg',
     indent: 0,
     reference: '21 CFR 101.9(c)(8)(iv)',
+    requiredBy: '21 CFR 101.9(c)(8)(ii)',
     rounding: { kind: 'levels-of-significance' },
     dailyValue: {
       kind: 'rdi',
@@ -286,6 +294,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     unit: 'mg',
     indent: 0,
     reference: '21 CFR 101.9(c)(8)(iv)',
+    requiredBy: '21 CFR 101.9(c)(8)(ii)',
     rounding: { kind: 'levels-of-significance' },
     dailyValue: {
       kind: 'rdi',
@@ -298,6 +307,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     unit: 'mg',
     indent: 0,
     reference: '21 CFR 101.9(c)(8)(iv)',
+    requiredBy: '21 CFR 101.9(c)(8)(ii)',
     rounding: { kind: 'levels-of-significance' },
     dailyValue: {
       kind: 'rdi',
@@ -310,6 +320,7 @@ export const NUTRIENTS: readonly Nutrient[] = [
     unit: 'mg',
     indent: 0,
     reference: '21 CFR 101.9(c)(8)(iv)',
+    requiredBy: '21 CFR 101.9(c)(8)(ii)',
     rounding: { kind: 'levels-of-significance' },
     dailyValue: {
       kind: 'rdi',
@@ -323,7 +334,7 @@ const BY_ID = new Map(NUTRIENTS.map((nutrient) => [nutrient.id, nutrient]))
 /**
  * Whether a declared amount can be checked against a single required value.
  *
- * False for the vitamins and minerals, because 101.9(c)(8)(ii) permits
+ * False for the vitamins and minerals, because 101.9(c)(8)(iii) permits
  * "additional levels of significance" — 235 mg of potassium and 235.4 mg are
  * both proper declarations, so there is no one answer to compare against. A rule
  * that rounded them to a chosen increment would report a violation against a
@@ -515,6 +526,27 @@ export function percentDailyValue(
   if (raw <= 10) return toNearest(raw, 2)
   if (raw <= 50) return toNearest(raw, 5)
   return toNearest(raw, 10)
+}
+
+/**
+ * Whether a vitamin or mineral is present at less than 2 percent of its RDI.
+ *
+ * 101.9(c)(8)(iii): "Quantitative amounts and percentages of vitamins and minerals
+ * present at less than 2 percent of the RDI are not required to be declared in
+ * nutrition labeling but may be declared by a zero". A permission, so a zero is one
+ * more figure a label may print, never one it must. Judged on the unrounded
+ * percentage, since the paragraph speaks of the amount present. False for a DRV
+ * nutrient, which (c)(8)(iii) does not reach. Re-read from the eCFR on 2026-10-18;
+ * the source verification found 0% reported as wrong (item 5).
+ */
+export function underTwoPercentOfRdi(
+  id: NutrientId,
+  amount: number,
+  population: DailyValuePopulation,
+): boolean {
+  const dailyValue = dailyValueFor(id, population)
+  if (dailyValue?.kind !== 'rdi' || !Number.isFinite(amount)) return false
+  return (amount / dailyValue.amount) * 100 < 2
 }
 
 /**

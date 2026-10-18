@@ -19,7 +19,7 @@ import type {
   UsFoodSmallPackageExemption,
   UsFoodUnitContainerExemption,
 } from '../templates/usFood'
-import { NUTRIENT_IDS, roundNutrientAmount } from '../fda/nutrients'
+import { NUTRIENT_IDS, percentDailyValue, roundNutrientAmount } from '../fda/nutrients'
 import type { DualColumnBasis } from '../fda/nutritionFormats'
 import { UNIT_CONTAINER_STATEMENTS, UNIT_CONTAINER_WORDINGS } from '../fda/unitContainerStatement'
 import { nutritionDisplayFor, nutritionTypeForDisplay } from '../fda/nutritionPanel'
@@ -65,8 +65,11 @@ import {
   usFoodIngredientListRule,
   usFoodIngredientOrderRule,
   usFoodIngredientThresholdRule,
+  usFoodNutritionTypeSizeRule,
+  usFoodInformationPanelTypeSizeRule,
 } from './index'
 import { US_FOOD_RULES, declinedChecks, runRules } from './registry'
+import { dualColumnDutyFor } from './usFood/mandatoryColumns'
 import { codesOf } from './types'
 
 /**
@@ -654,6 +657,35 @@ describe('the 101.2(c) floor is measured the way 101.7(h)(2) says', () => {
     ).find((f) => f.code === FDA_PANEL_TYPE_TOO_SMALL)
     // 2.5 x 0.540 = 1.35, not 2.50 and not 1.745.
     expect(match!.measurement).toEqual({ actual: '1.35 mm', required: '1.59 mm' })
+  })
+
+  it('gives no verdict between 1/32 and 1/16 inch where 101.2(c)(2) may reach the package', () => {
+    // (c)(2) exempts an individual serving-size package served with meals and not for retail,
+    // of 3 in² or less, down to 1/32 inch; only the area can be read. Item 9 of the
+    // 2026-10-17 source verification. The same drawing, judged as two package sizes.
+    const at = (emMm: number, sideMm: number) => {
+      const { availableSurfaceSqInches: _area, ...facts } = US_FOOD_CONFORMANT.data.nutritionFacts!
+      const data = {
+        ...US_FOOD_CONFORMANT.data,
+        nutritionFacts: facts,
+        informationPanelFontSizeMm: emMm,
+        container: { shape: 'rectangular' as const, widthMm: sideMm, heightMm: sideMm },
+      }
+      const layout = layOutUsFoodLabel({ data, stock: US_FOOD_CONFORMANT.stock })
+      return usFoodInformationPanelTypeSizeRule
+        .check({
+          labelType: 'us-food',
+          data,
+          stock: { widthMm: sideMm, heightMm: sideMm, marginMm: 1 },
+          layout,
+        })
+        .map((f) => f.code)
+    }
+    // 2.0 mm of em puts the "o" at 1.08 mm: under 1/16 inch, over 1/32.
+    expect(at(2.0, 40), '40 × 40 mm is 2.48 in²').not.toContain(FDA_PANEL_TYPE_TOO_SMALL)
+    expect(at(2.0, 60), '60 × 60 mm is 5.58 in²').toContain(FDA_PANEL_TYPE_TOO_SMALL)
+    // 1.2 mm puts it at 0.65 mm, under 1/32 inch too.
+    expect(at(1.2, 40)).toContain(FDA_PANEL_TYPE_TOO_SMALL)
   })
 })
 
@@ -1521,7 +1553,76 @@ describe('the two clauses the Nutrition Facts rules turn on', () => {
     })
   })
 
-  describe('101.9(c)(8)(ii) permits additional significance on a mineral weight', () => {
+  describe('101.9(c)(8)(iii) lets a vitamin or mineral under 2% of its RDI be declared by a zero', () => {
+    // "may be declared by a zero". Reported as the wrong percentage until 2026-10-18
+    // (item 5 of the source verification). Iron's adult RDI is 18 mg.
+    const ironAt = (mg: number, percent: number) =>
+      withPanel({
+        amounts: { ...panel.amounts, iron: mg },
+        declaredAmounts: { ...panel.declaredAmounts, iron: mg },
+        declaredPercentDv: { ...panel.declaredPercentDv, iron: percent },
+      })
+
+    it('the premise: 0.3 mg is under 2 percent, and the banding alone gives 2', () => {
+      expect((0.3 / 18) * 100).toBeLessThan(2)
+      expect(percentDailyValue('iron', 0.3, 'adults-and-children-4-plus')).toBe(2)
+    })
+
+    it('accepts the zero, and still the banded figure', () => {
+      expect(ironAt(0.3, 0)).not.toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+      expect(ironAt(0.3, 2)).not.toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+    })
+
+    it('reports a zero at 2 percent or more', () => {
+      // 0.36 mg is exactly 2 percent: not "less than".
+      expect(ironAt(0.36, 0)).toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+      expect(ironAt(0.4, 0)).toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+    })
+
+    it('judges the zero on the amount present, not the rounded one', () => {
+      // 0.3 mg declared, 0.38 mg present: 2.1 percent, which (c)(8)(iii) does not reach.
+      // Found by `/code-review high` on #105.
+      expect(
+        withPanel({
+          amounts: { ...panel.amounts, iron: 0.38 },
+          declaredAmounts: { ...panel.declaredAmounts, iron: 0.3 },
+          declaredPercentDv: { ...panel.declaredPercentDv, iron: 0 },
+        }),
+      ).toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+    })
+
+    it('names the zero as a permission, not as a figure the amount gives', () => {
+      const wrong = findingsFor(
+        {
+          ...US_FOOD_CONFORMANT.data,
+          nutritionFacts: {
+            ...panel,
+            amounts: { ...panel.amounts, iron: 0.3 },
+            declaredAmounts: { ...panel.declaredAmounts, iron: 0.3 },
+            declaredPercentDv: { ...panel.declaredPercentDv, iron: 6 },
+          },
+        },
+        stock,
+      ).find((f) => f.code === FDA_NUTRITION_PERCENT_DV_WRONG)!
+      expect(wrong.message).toContain('2% is what 0.3mg')
+      expect(wrong.message).toContain('also permits 0% for an amount under 2 percent of the RDI')
+      expect(wrong.measurement!.required).toBe('0% or 2%')
+    })
+
+    it('does not reach a DRV nutrient', () => {
+      // 20 mg of sodium is under 2 percent of 2,300 mg, but (c)(8)(iii) is about vitamins
+      // and minerals; (d)(7)(ii) rounds sodium to 1.
+      expect(
+        withPanel({
+          amounts: { ...panel.amounts, sodium: 20 },
+          declaredAmounts: { ...panel.declaredAmounts, sodium: 20 },
+          declaredPercentDv: { ...panel.declaredPercentDv, sodium: 0 },
+        }),
+      ).toContain(FDA_NUTRITION_PERCENT_DV_WRONG)
+    })
+  })
+
+  describe('101.9(c)(8)(iii) permits additional significance on a mineral weight', () => {
     // "additional levels of significance may be used when the number of decimal
     // places indicated is not sufficient". 235 mg of potassium and 235.4 mg are
     // both proper declarations, so no single value can be demanded — which is
@@ -1626,6 +1727,8 @@ describe('findings from the stage 4 review', () => {
       'a nutrient dropped from the printed order was reported by nobody',
     ).toBeDefined()
     expect(missing!.message).toContain('Potassium')
+    // (c)(8)(ii) makes potassium mandatory; (c)(8)(iv) is the table its RDI is read from.
+    expect(missing!.message).toContain('which 21 CFR 101.9(c)(8)(ii) makes mandatory')
     expect(codes.map((f) => f.code)).not.toContain('FDA_NUTRITION_COMPLETE')
   })
 
@@ -2148,6 +2251,24 @@ describe('the §101.9(j) nutrition exemption', () => {
       expect(match!.citation.reference).toBe(PARAGRAPH[kind])
       expect(match!.message, 'and says what it cannot check').toContain('Not checked here:')
       expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_MISSING')
+    },
+  )
+
+  it.each([
+    // (j)(3)'s (iii) and the § 101.11 carve-out, which its pass left out.
+    ['retail-prepared', ['not for immediate human consumption', '§ 101.11', '(j)(2)(i) and (ii)']],
+    // (j)(9)'s "solely", and its "site other than where originally processed or packed".
+    ['bulk-for-manufacture', ['solely', 'at a site other than where it was originally']],
+    // (j)(11)'s scope, which (ii) excepts from.
+    ['custom-processed-fish-or-game', ['single-ingredient', 'Poultry Products Inspection Act']],
+  ] as const)(
+    'grants %s as its paragraph words it, and names each condition it leaves unchecked',
+    (kind, words) => {
+      // Item 8 of the 2026-10-17 source verification.
+      const pass = findingsFor({ ...withoutPanel, nutritionExemption: { kind } }, stock).find(
+        (f) => f.code === 'FDA_NUTRITION_EXEMPT',
+      )!
+      for (const word of words) expect(pass.message, word).toContain(word)
     },
   )
 
@@ -4085,13 +4206,113 @@ describe('the second column (b)(12)(i) and (b)(2)(i)(D) make mandatory', () => {
     '21 CFR 101.9(b)(12)(i)(B)',
     'a raw commodity labelled voluntarily',
   )
-  // (C) is conjunctive — it excuses a product that *already provides* a second
-  // column for another reason — so most of it falls out of the declared basis.
+  // (C) is conjunctive: it excuses a product that *provides* a second column for
+  // another reason. So the column has to be there, with figures the panel draws.
   exempt(
-    { columns: { mode: 'dual', basis: 'as-prepared' } },
+    { columns: { mode: 'dual', basis: 'as-prepared', secondAmounts: { 'total-fat': 7.5 } } },
     '21 CFR 101.9(b)(12)(i)(C)',
     'a second column already given as prepared',
   )
+  it('is not excused by (b)(12)(i)(C) where no second column is drawn', () => {
+    // An as-prepared basis declared, and no figures for it: the panel prints one column.
+    // The exemption was granted from the declaration alone, so this passed as exempt.
+    // Item 6 of the 2026-10-17 source verification.
+    const data = panel({
+      ...individually,
+      packageContent: 55,
+      columns: { mode: 'dual', basis: 'as-prepared' },
+    })
+    expect(
+      layOutUsFoodLabel({ data, stock }).elements.map((e) => e.elementId),
+      'the premise: one column drawn',
+    ).not.toContain(US_FOOD_ELEMENTS.nutritionSecondColumn)
+    const codes = findingsFor(data, stock).map((f) => f.code)
+    expect(codes).not.toContain('FDA_DUAL_COLUMN_EXEMPT')
+    expect(codes).toContain('FDA_DUAL_COLUMN_MISSING')
+  })
+  it('keeps (b)(12)(i)(C) where an unrelated part of the panel recorded an omission', () => {
+    // A serving size whose words overlap its own figures records a detail omission against
+    // the panel. The as-prepared column printed whole, and stays exempt. Found by
+    // `/code-review high` on #105.
+    const data = panel({
+      ...individually,
+      packageContent: 55,
+      servingSize: '1 cup prepared with two tablespoons of water and stirred well (240g)',
+      columns: { mode: 'dual', basis: 'as-prepared', secondAmounts: { 'total-fat': 7.5 } },
+    })
+    const layout = layOutUsFoodLabel({ data, stock })
+    expect(
+      layout.omissions.some((o) => o.elementId === US_FOOD_ELEMENTS.nutritionPanel),
+      'the premise: an omission against the panel',
+    ).toBe(true)
+    const codes = findingsFor(data, stock).map((f) => f.code)
+    expect(codes).toContain('FDA_DUAL_COLUMN_EXEMPT')
+    expect(codes).not.toContain('FDA_DUAL_COLUMN_MISSING')
+  })
+  it('says an egg carton’s (b)(12)(i)(C) column is declared, not printed', () => {
+    // (j)(14) presents the panel off this label, so nothing here was printed in full.
+    const data = {
+      ...panel({
+        ...individually,
+        packageContent: 55,
+        columns: { mode: 'dual', basis: 'as-prepared', secondAmounts: { 'total-fat': 7.5 } },
+      }),
+      nutritionExemption: { kind: 'egg-carton' as const, presentedIn: 'beneath-lid' as const },
+    }
+    const pass = findingsFor(data, stock).find((f) => f.code === 'FDA_DUAL_COLUMN_EXEMPT')!
+    expect(pass.message).not.toContain('printed in full')
+    expect(pass.message).toContain('presented off this label')
+  })
+  it('says the (b)(12)(i)(C) pass read the column, and only that', () => {
+    const exemptFor = (patch: Record<string, unknown>) =>
+      findingsFor(panel({ ...individually, packageContent: 55, ...patch }), stock).find(
+        (f) => f.code === 'FDA_DUAL_COLUMN_EXEMPT',
+      )!.message
+    expect(
+      exemptFor({
+        columns: { mode: 'dual', basis: 'as-prepared', secondAmounts: { 'total-fat': 7.5 } },
+      }),
+    ).toContain('The label carries the additional column (C) asks for')
+    // The varied-weight limb names no column, and reads none.
+    expect(exemptFor({ dualColumnExemption: { variedWeight: true } })).not.toContain(
+      'carries the additional column',
+    )
+  })
+  it('is not excused by (b)(12)(i)(C) where the second column did not print in full', () => {
+    // A column run off the stock still records its element, and provides nothing.
+    const data = panel({
+      ...individually,
+      packageContent: 55,
+      columns: { mode: 'dual', basis: 'as-prepared', secondAmounts: { 'total-fat': 7.5 } },
+    })
+    const drawn = layOutUsFoodLabel({ data, stock })
+    expect(dualColumnDutyFor(data, stock, drawn).exemption, 'the premise').toBe(
+      '21 CFR 101.9(b)(12)(i)(C)',
+    )
+    const clipped = {
+      ...drawn,
+      omissions: [
+        ...drawn.omissions,
+        {
+          elementId: US_FOOD_ELEMENTS.nutritionSecondColumn,
+          reason: 'Ran off the label.',
+          scope: 'detail' as const,
+        },
+      ],
+    }
+    expect(dualColumnDutyFor(data, stock, clipped).exemption).toBeUndefined()
+    // Run past the edge with the omission recorded against the panel, as the engine records
+    // it, and none against the column: the column's box is what tells.
+    const offTheEdge = {
+      ...drawn,
+      elements: drawn.elements.map((element) =>
+        element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn
+          ? { ...element, box: { ...element.box, xMm: stock.widthMm - 1 } }
+          : element,
+      ),
+    }
+    expect(dualColumnDutyFor(data, stock, offTheEdge).exemption).toBeUndefined()
+  })
   exempt(
     { dualColumnExemption: { variedWeight: true } },
     '21 CFR 101.9(b)(12)(i)(C)',
@@ -4615,11 +4836,43 @@ describe('the tabular display', () => {
     ).toBeCloseTo(22, 5)
   })
 
+  it('asks for the vertical space rather than refusing a tabular display over 40 in²', () => {
+    // (d)(11)(iii) permits a tabular display at any size without approximately 3 in of
+    // continuous vertical space. Item 2 of the 2026-10-17 source verification: this was
+    // reported as "permitted only at 40 in² or less".
+    const data = tabular({ availableSurfaceSqInches: 60, continuousVerticalSpaceInches: undefined })
+    const context = {
+      labelType: 'us-food' as const,
+      data,
+      stock,
+      layout: layOutUsFoodLabel({ data, stock }),
+    }
+    const codes = findingsFor(data, stock).map((f) => f.code)
+    expect(codes).not.toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+    expect(codes).not.toContain('FDA_NUTRITION_FORMAT_MET')
+    const declined = declinedChecks(context).find((d) => d.ruleId === 'us-food/nutrition-format')
+    expect(declined?.wants).toEqual(['nutritionFacts.continuousVerticalSpaceInches'])
+    expect(declined?.citation?.reference).toBe('21 CFR 101.9(d)(11)(iii)')
+    // Stated short, it is permitted; stated tall, refused, with both routes named.
+    expect(
+      findingsFor(
+        { ...data, nutritionFacts: { ...data.nutritionFacts!, continuousVerticalSpaceInches: 2 } },
+        stock,
+      ).find((f) => f.code === 'FDA_NUTRITION_FORMAT_MET')?.citation.reference,
+    ).toBe('21 CFR 101.9(d)(11)(iii)')
+    const refused = findingsFor(
+      { ...data, nutritionFacts: { ...data.nutritionFacts!, continuousVerticalSpaceInches: 6 } },
+      stock,
+    ).find((f) => f.code === 'FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+    expect(refused!.message).toContain('(d)(11)(iii)')
+  })
+
   it('refuses the small-package route on a label that rules the package out', () => {
-    // 9 in² declared on this 200 × 240 mm label, 74.4 in², with no short vertical space to
-    // fall back on. The route is (j)(13)(ii)(A)'s alone, and it is closed above 40.
+    // 9 in² declared on this 200 × 240 mm label, 74.4 in², with 6 in of vertical space
+    // stated, so (d)(11)(iii) is no fallback. The route is (j)(13)(ii)(A)'s alone, and it
+    // is closed above 40.
     const verdict = findingsFor(
-      tabular({ availableSurfaceSqInches: 9, continuousVerticalSpaceInches: undefined }),
+      tabular({ availableSurfaceSqInches: 9, continuousVerticalSpaceInches: 6 }),
       stock,
     ).find((f) => f.code === 'FDA_NUTRITION_FORMAT_NOT_PERMITTED')
     expect(verdict!.message).toContain('the label is itself 74.4 in²')
@@ -4642,7 +4895,9 @@ describe('the tabular display', () => {
     })
     expect(caloriesNumeralPt(scaled, stock), 'the premise').toBeCloseTo(16, 5)
     const numeral = findingsFor(scaled, stock).find(
-      (f) => f.citation.reference === '21 CFR 101.9(d)(1)(iii)',
+      (f) =>
+        f.citation.reference === '21 CFR 101.9(d)(1)(iii)' &&
+        f.message.startsWith('the Calories numeral'),
     )
     expect(numeral?.code).toBe('FDA_NUTRITION_TYPE_TOO_SMALL')
     expect(numeral!.measurement!.required).toBe('22 pt')
@@ -4661,7 +4916,9 @@ describe('the tabular display', () => {
     // element id, so the smaller of the two always won and an undersized numeral
     // beside a correct word could not be seen.
     const match = findingsFor(tabular({ typeScale: 0.5 }), stock).find(
-      (f) => f.citation.reference === '21 CFR 101.9(d)(1)(iii)',
+      (f) =>
+        f.citation.reference === '21 CFR 101.9(d)(1)(iii)' &&
+        f.message.startsWith('the Calories numeral'),
     )
     expect(match).toBeDefined()
     expect(match!.code).toBe('FDA_NUTRITION_TYPE_TOO_SMALL')
@@ -4669,12 +4926,152 @@ describe('the tabular display', () => {
     expect(match!.message).toContain('the Calories numeral')
   })
 
+  it('cites (d)(1)(iii), where the figures are, for the Calories word and the nutrient rows', () => {
+    // They were cited to (d)(5), which states no size, and to "(d)(7)(iii)", which does
+    // not exist. Item 7 of the 2026-10-17 source verification.
+    const undersized = findingsFor(tabular({ typeScale: 0.5 }), stock).filter(
+      (f) => f.code === 'FDA_NUTRITION_TYPE_TOO_SMALL',
+    )
+    for (const label of ['"Calories"', 'the nutrient rows']) {
+      const match = undersized.find((f) => f.message.startsWith(label))
+      expect(match, label).toBeDefined()
+      expect(match!.citation.reference, label).toBe('21 CFR 101.9(d)(1)(iii)')
+    }
+    const cited = usFoodNutritionTypeSizeRule.citations!.map((c) => c.reference)
+    expect(cited).not.toContain('21 CFR 101.9(d)(5)')
+    expect(cited).not.toContain('21 CFR 101.9(d)(7)(iii)')
+  })
+
+  it('gives no verdict on a serving size between 8 point and its usual minimum', () => {
+    // (d)(3)(ii): "If the 'Serving size' declaration does not fit in the allocated space a
+    // type size of no smaller than 8 point may be used on packages of any size." Whether it
+    // fits is not judged, so 8.1 point under this display's 9 is neither reported nor
+    // counted. Item 9 of the 2026-10-17 source verification.
+    const tooSmall = (typeScale: number) =>
+      findingsFor(tabular({ typeScale }), stock).filter(
+        (f) => f.code === 'FDA_NUTRITION_TYPE_TOO_SMALL',
+      )
+    const at81 = tooSmall(0.9)
+    expect(at81.map((f) => f.message).join(' '), 'the premise: the rows are reported').toContain(
+      'the nutrient rows',
+    )
+    expect(at81.some((f) => f.message.startsWith('"Serving size"'))).toBe(false)
+    // Below 8 it fails the permission too.
+    expect(tooSmall(0.85).some((f) => f.message.startsWith('"Serving size"'))).toBe(true)
+  })
+
+  it('gives no verdict under 12 in² on type between 6 point and its usual minimum (decision B)', () => {
+    // 101.9(j)(13)(i)(B) sets 6 point on these packages, and whether it replaces (d)'s
+    // minimums is not settled. 100 × 70 mm is 10.85 in², with 9 in² declared.
+    const codesAt = (data: UsFoodLabelData) => findingsFor(data, smallStock).map((f) => f.code)
+    const scaled = (typeScale: number, patch: Record<string, unknown> = {}) => {
+      const data = smallTabular()
+      return { ...data, nutritionFacts: { ...data.nutritionFacts!, typeScale, ...patch } }
+    }
+    // At 0.8 every figure is short of its usual minimum and none is under 6 point.
+    const at08 = codesAt(scaled(0.8))
+    expect(at08).not.toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+    expect(at08, 'nothing judged is nothing cleared').not.toContain('FDA_NUTRITION_TYPE_SIZE_MET')
+    // Under 6 point it fails both readings, and is reported.
+    expect(codesAt(scaled(0.5))).toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+    // A declared area of 12 in² or more takes the package out of (B).
+    expect(codesAt(scaled(0.8, { availableSurfaceSqInches: 20 }))).toContain(
+      'FDA_NUTRITION_TYPE_TOO_SMALL',
+    )
+  })
+
+  it('lets a pack of 3 in² or less go down to 1/32 inch, as (j)(13)(i)(B) allows by 101.2(c)(2)', () => {
+    // (B) closes: individual serving-size packages served with meals, not for retail, "may
+    // comply with § 101.2(c)(2)". Only the area can be read. Found by review of the fix.
+    const data = smallTabular()
+    const drawn = layOutUsFoodLabel({ data, stock: smallStock })
+    const setAt = (pt: number) => ({
+      ...drawn,
+      primitives: drawn.primitives.map((p) =>
+        p.kind === 'text' && p.elementId?.startsWith('food-nutrition') === true
+          ? { ...p, fontSizeMm: pt * MM_PER_POINT }
+          : p,
+      ),
+    })
+    const tiny = {
+      ...data,
+      container: { shape: 'rectangular' as const, widthMm: 40, heightMm: 40 },
+      nutritionFacts: { ...data.nutritionFacts!, availableSurfaceSqInches: 2.5 },
+    }
+    const judge = (pt: number, on: UsFoodLabelData) =>
+      usFoodNutritionTypeSizeRule
+        .check({
+          labelType: 'us-food',
+          data: on,
+          stock: { widthMm: 40, heightMm: 40, marginMm: 1 },
+          layout: setAt(pt),
+        })
+        .map((f) => f.code)
+    // 4 point: under (B)'s 6, over 1/32 inch (2.25 point).
+    expect(judge(4, tiny)).not.toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+    expect(judge(2, tiny), 'under 1/32 inch too').toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+    // Over 3 in² the floor is (B)'s 6 point again.
+    const bigger = {
+      ...tiny,
+      nutritionFacts: { ...tiny.nutritionFacts, availableSurfaceSqInches: 9 },
+    }
+    expect(judge(4, bigger)).toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+  })
+
+  it('does not certify a tabular display’s lower minimums while its entitlement waits', () => {
+    // The format rule waits on the vertical space for this 80 in² package. Its Calories word
+    // at (d)(11)'s 10 point is the tabular display's figure, and the vertical display's 16
+    // may be what it owes. Found by review of the fix for item 2.
+    const waiting = tabular({ continuousVerticalSpaceInches: undefined })
+    const findings = findingsFor(waiting, stock)
+    expect(findings.map((f) => f.code)).not.toContain('FDA_NUTRITION_TYPE_TOO_SMALL')
+    const pass = findings.find((f) => f.code === 'FDA_NUTRITION_TYPE_SIZE_MET')!
+    expect(pass.message).toContain('Not judged: "Calories"')
+    expect(pass.message).toContain('waits on the continuous vertical space')
+    // Refused outright, with room for a vertical display stated, the same: the format
+    // finding reports the display, and its lower figures are not certified. Found by
+    // `/code-review high` on #105.
+    const refused = findingsFor(tabular({ continuousVerticalSpaceInches: 6 }), stock)
+    expect(refused.map((f) => f.code)).toContain('FDA_NUTRITION_FORMAT_NOT_PERMITTED')
+    expect(refused.find((f) => f.code === 'FDA_NUTRITION_TYPE_SIZE_MET')!.message).toContain(
+      'one this package may not use',
+    )
+    // Once the space is stated short, the tabular display is the label's, and judged.
+    const entitled = findingsFor(tabular(), stock).find(
+      (f) => f.code === 'FDA_NUTRITION_TYPE_SIZE_MET',
+    )!
+    expect(entitled.message).not.toContain('Not judged')
+  })
+
+  it('names in its pass what it did not judge', () => {
+    // A panel that passes, with only its serving size set down to 8.5 point under the
+    // usual 9: the pass counts the rest and says why the serving size was left alone.
+    const data = tabular()
+    const drawn = layOutUsFoodLabel({ data, stock })
+    const layout = {
+      ...drawn,
+      primitives: drawn.primitives.map((p) =>
+        p.kind === 'text' && p.elementId === US_FOOD_ELEMENTS.nutritionServingSize
+          ? { ...p, fontSizeMm: 8.5 * MM_PER_POINT }
+          : p,
+      ),
+    }
+    const [pass] = usFoodNutritionTypeSizeRule.check({ labelType: 'us-food', data, stock, layout })
+    expect(pass!.code).toBe('FDA_NUTRITION_TYPE_SIZE_MET')
+    expect(pass!.message).toContain(
+      'Not judged: "Serving size", set at 8.5 point under the usual 9',
+    )
+    expect(pass!.message).toContain('(d)(3)(ii) permits 8 point')
+  })
+
   it('does not report the numeral on a small package drawn to its own 14 point', () => {
     // The over-strict direction. (j)(13)(ii)(A)(1) permits 14 here, and holding
     // this panel to 22 would report a label the paragraph allows.
     expect(
       findingsFor(smallTabular(), smallStock).filter(
-        (f) => f.citation.reference === '21 CFR 101.9(d)(1)(iii)',
+        (f) =>
+          f.citation.reference === '21 CFR 101.9(d)(1)(iii)' &&
+          f.message.startsWith('the Calories numeral'),
       ),
     ).toEqual([])
   })

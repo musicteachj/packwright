@@ -19,10 +19,11 @@
 
 import { labelingSurfaceFloor } from '../../geometry/pdp'
 import { SMALL_PACKAGE_ROUTE_REFERENCE, formatIsPermitted } from '../../fda/nutritionFormats'
+import type { FormatVerdict } from '../../fda/nutritionFormats'
 import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { Citation, Finding } from '../../types/index'
 import { finding, passedOnDocument, untitled } from '../finding'
-import type { UsFoodContext, UsFoodRule } from '../types'
+import type { Decline, UsFoodContext, UsFoodRule } from '../types'
 import { SIZE_UNSTATED_REASON, verdictWaitsOnADescribedLabel } from '../described'
 
 export const FDA_NUTRITION_FORMAT_NOT_PERMITTED = 'FDA_NUTRITION_FORMAT_NOT_PERMITTED'
@@ -39,6 +40,36 @@ const FORMAT_NAME = {
   tabular: 'a tabular display',
   linear: 'a linear display',
 } as const
+
+/**
+ * The verdict on the panel's display, or `undefined` where there is nothing to judge: no
+ * panel, the vertical display, or no area stated. One computation for `check`, `declines`
+ * and the type-size rule, which must not certify a display's reduced minimums while its
+ * entitlement waits, so they cannot disagree about which labels wait.
+ */
+export const nutritionFormatVerdict = ({
+  data,
+  stock,
+}: UsFoodContext): FormatVerdict | undefined => {
+  const panel = data.nutritionFacts
+  const format = panel?.format ?? 'vertical'
+  if (panel === undefined || format === 'vertical') return undefined
+  const availableSqInches = panel.availableSurfaceSqInches
+  if (availableSqInches === undefined) return undefined
+  return formatIsPermitted(format, {
+    availableSqInches,
+    floor: labelingSurfaceFloor(stock, data.container),
+    ...(panel.cannotAccommodateVertical === undefined
+      ? {}
+      : { cannotAccommodateVertical: panel.cannotAccommodateVertical }),
+    ...(panel.cannotAccommodateTabular === undefined
+      ? {}
+      : { cannotAccommodateTabular: panel.cannotAccommodateTabular }),
+    ...(panel.continuousVerticalSpaceInches === undefined
+      ? {}
+      : { continuousVerticalSpaceInches: panel.continuousVerticalSpaceInches }),
+  })
+}
 
 const judgedAsDrawn: UsFoodRule = {
   id: 'us-food/nutrition-format',
@@ -62,7 +93,26 @@ const judgedAsDrawn: UsFoodRule = {
   },
   appliesTo: 'us-food',
 
-  check({ data, stock }: UsFoodContext): Finding[] {
+  /**
+   * A tabular display no small-package route permits, on a label that has not said how
+   * much continuous vertical space it has. (d)(11)(iii) would permit it with less than
+   * approximately 3 inches, so the display is neither reported nor cleared until the
+   * space is stated.
+   */
+  declines(context: UsFoodContext): Decline | undefined {
+    const verdict = nutritionFormatVerdict(context)
+    if (verdict?.undetermined !== true) return undefined
+    return {
+      reason:
+        `Whether the tabular display is permitted cannot be told: ${verdict.reason}. State ` +
+        'the continuous vertical space and this check will run.',
+      citation: untitled(CITATION, verdict.reference),
+      wants: ['nutritionFacts.continuousVerticalSpaceInches'],
+    }
+  },
+
+  check(context: UsFoodContext): Finding[] {
+    const { data, stock } = context
     const panel = data.nutritionFacts
     const format = panel?.format ?? 'vertical'
     // The vertical display needs no entitlement and every package may use it, so
@@ -76,19 +126,9 @@ const judgedAsDrawn: UsFoodRule = {
     if (availableSqInches === undefined) return []
 
     const floor = labelingSurfaceFloor(stock, data.container)
-    const verdict = formatIsPermitted(format, {
-      availableSqInches,
-      floor,
-      ...(panel.cannotAccommodateVertical === undefined
-        ? {}
-        : { cannotAccommodateVertical: panel.cannotAccommodateVertical }),
-      ...(panel.cannotAccommodateTabular === undefined
-        ? {}
-        : { cannotAccommodateTabular: panel.cannotAccommodateTabular }),
-      ...(panel.continuousVerticalSpaceInches === undefined
-        ? {}
-        : { continuousVerticalSpaceInches: panel.continuousVerticalSpaceInches }),
-    })
+    const verdict = nutritionFormatVerdict(context)!
+    // Waiting on the vertical space: `declines` asks for it.
+    if (verdict.undetermined === true) return []
 
     if (!verdict.permitted) {
       return [

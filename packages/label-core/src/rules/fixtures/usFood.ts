@@ -1389,9 +1389,11 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
   {
     name: 'a tabular display on a package with room for a vertical one',
     defect:
-      'A 60 in² package using a reduced display. 101.9(j)(13)(ii) permits them at 40 in² or ' +
-      'less, and the second limb — a shape that cannot take a vertical column — is capped at the ' +
-      'same 40, so nothing rescues a larger package.',
+      'A 60 in² package with 4 in of continuous vertical space, using a tabular display. ' +
+      '101.9(j)(13)(ii) permits reduced displays at 40 in² or less, and its second limb, a ' +
+      'shape that cannot take a vertical column, is capped at the same 40. (d)(11)(iii) permits ' +
+      'a tabular display at any size, but only without approximately 3 in of vertical space, ' +
+      'and this package has more.',
     data: {
       ...BASE,
       nutritionFacts: {
@@ -1399,6 +1401,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
         format: 'tabular',
         availableSurfaceSqInches: 60,
         cannotAccommodateVertical: true,
+        continuousVerticalSpaceInches: 4,
       },
     },
     stock: CONFORMING_STOCK,

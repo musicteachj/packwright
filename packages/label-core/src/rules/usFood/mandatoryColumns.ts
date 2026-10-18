@@ -24,8 +24,66 @@ import {
 import type { DualColumnDuty, DualColumnFact } from '../../fda/nutritionFormats'
 import type { DeclinedFact, UsFoodContext } from '../types'
 import { labelingSurfaceFloor } from '../../geometry/pdp'
+import { willDrawSecondColumn } from '../../layout/nutritionPanel'
+import { wasFullyDrawn } from '../../layout/omissions'
+import type { ResolvedLayout } from '../../layout/types'
 import type { LabelStock } from '../../templates/stock'
+import { US_FOOD_ELEMENTS } from '../../templates/usFood'
 import type { UsFoodLabelData } from '../../templates/usFood'
+
+/**
+ * Whether the label shows a second column: drawn on the panel, or, for a panel printed
+ * somewhere other than this label (such as beneath a (j)(14) lid), declared with figures.
+ */
+export const secondColumnShown = (
+  facts: NonNullable<UsFoodLabelData['nutritionFacts']>,
+  layout: ResolvedLayout,
+): boolean =>
+  layout.elements.some((element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel)
+    ? layout.elements.some(
+        (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+      )
+    : willDrawSecondColumn(facts)
+
+/**
+ * Whether the label provides a second column, as (b)(12)(i)(C) asks: shown, and where the
+ * panel was drawn, printed in full. Stricter than `secondColumnShown`, because a column run
+ * off the stock still records its element and provides nothing to a reader. Where it fails,
+ * the duty stands and the column is judged as any other.
+ *
+ * **"In full" is the column's, not the panel's.** The panel records its clipping and its
+ * unrelated defects alike against `nutritionPanel`, at detail scope: a serving size whose
+ * words overlap its figures cancelled the exemption of a column printed whole, and the label
+ * was reported for using (C). Found by `/code-review high` on #105. So the column is held to
+ * its own omissions, to the panel being drawn at all, and to its box lying on the stock.
+ */
+const secondColumnProvided = (
+  facts: NonNullable<UsFoodLabelData['nutritionFacts']>,
+  layout: ResolvedLayout,
+  stock: LabelStock,
+): boolean => {
+  if (!secondColumnShown(facts, layout)) return false
+  const panelDrawn = layout.elements.some(
+    (element) => element.elementId === US_FOOD_ELEMENTS.nutritionPanel,
+  )
+  if (!panelDrawn) return true
+  const column = layout.elements.find(
+    (element) => element.elementId === US_FOOD_ELEMENTS.nutritionSecondColumn,
+  )!
+  const { xMm, yMm, widthMm, heightMm } = column.box
+  return (
+    wasFullyDrawn(layout, US_FOOD_ELEMENTS.nutritionSecondColumn) &&
+    !layout.omissions.some(
+      (omission) =>
+        omission.elementId === US_FOOD_ELEMENTS.nutritionPanel && omission.scope === 'element',
+    ) &&
+    // A label described without its size is judged on a stock of no area, and drawn on an
+    // edgeless one; there is no edge to have run past.
+    (stock.widthMm <= 0 ||
+      stock.heightMm <= 0 ||
+      (xMm >= 0 && yMm >= 0 && xMm + widthMm <= stock.widthMm && yMm + heightMm <= stock.heightMm))
+  )
+}
 
 /**
  * What second column, if any, this label is obliged to carry.
@@ -33,7 +91,11 @@ import type { UsFoodLabelData } from '../../templates/usFood'
  * Returns an empty duty for a label with no nutrition panel, which is the same
  * answer as a label that stated no reference amount: not cleared, not asked.
  */
-export function dualColumnDutyFor(data: UsFoodLabelData, stock: LabelStock): DualColumnDuty {
+export function dualColumnDutyFor(
+  data: UsFoodLabelData,
+  stock: LabelStock,
+  layout: ResolvedLayout,
+): DualColumnDuty {
   const panel = data.nutritionFacts
   if (panel === undefined) {
     // Asked of the one computation rather than written out: a hand-copied
@@ -73,6 +135,8 @@ export function dualColumnDutyFor(data: UsFoodLabelData, stock: LabelStock): Dua
       ? {}
       : { variedWeight: panel.dualColumnExemption.variedWeight }),
     meetsSmallPackageRequirements,
+    // (C) excuses only a product that provides the additional column, so it reads the drawing.
+    secondColumnShown: secondColumnProvided(panel, layout, stock),
   })
 }
 
@@ -128,9 +192,9 @@ export const PROVISION_FOR = (basis: 'per-container' | 'per-unit'): string =>
  * protein percent — each wait for the size when this holds, so none of them can give a
  * verdict on a column whose duty a size nobody gave decides. Raised by review.
  */
-export function sizeDecidesTheDuty({ data, stock, sizeUnstated }: UsFoodContext): boolean {
+export function sizeDecidesTheDuty({ data, layout, stock, sizeUnstated }: UsFoodContext): boolean {
   return (
     sizeUnstated === true &&
-    dualColumnDutyFor(data, stock).exemption === SMALL_PACKAGE_EXEMPTION_REFERENCE
+    dualColumnDutyFor(data, stock, layout).exemption === SMALL_PACKAGE_EXEMPTION_REFERENCE
   )
 }

@@ -246,6 +246,8 @@ export type DeclinedFact =
   | 'nutritionFacts.unitContent'
   | 'nutritionFacts.packagedAndSoldIndividually'
   | 'nutritionFacts.columns.basis'
+  // Whether a tabular display over the small-package route is permitted: 101.9(d)(11)(iii).
+  | 'nutritionFacts.continuousVerticalSpaceInches'
 
 /** What a rule says when it could not reach an answer. */
 export type Decline = DeclineBase &
