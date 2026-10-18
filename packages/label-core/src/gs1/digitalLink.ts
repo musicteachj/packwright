@@ -201,10 +201,17 @@ function segmentFor(element: Gs1Element, useAlphas: boolean): string {
  * A resolver domain without its trailing slashes, as the builder prints it, short of the
  * "//" after the scheme: `https://` became `https:` and built `https:/01/…`, faulted under
  * §4 where the empty host the user gave is one §4.11 allows (found by review).
+ *
+ * The slashes are walked off from the end rather than matched with `/\/+$/`, which is
+ * tried from every slash in a run and scans to the run's end each time: a domain with a
+ * long run of slashes inside it took 28 s (`docs/security-review-2026-10-18.md`,
+ * finding 1).
  */
 export function withoutTrailingSlashes(domain: string): string {
   const scheme = /^[a-z][a-z0-9+.-]*:\/\//i.exec(domain)?.[0] ?? ''
-  return scheme + domain.slice(scheme.length).replace(/\/+$/, '')
+  let end = domain.length
+  while (end > scheme.length && domain[end - 1] === '/') end--
+  return domain.slice(0, end)
 }
 
 export function buildDigitalLinkUri(input: DigitalLinkInput): string {
@@ -533,6 +540,42 @@ export function judgeCustomUriStem(stem: string): { fault: string } | { host: st
 }
 
 /**
+ * An http or https address taken apart into the five pieces `parseDigitalLinkUri` reads,
+ * or `undefined` where it is not one or has whitespace in it.
+ *
+ * What `/^(https?):\/\/([^/?#\s]*)([^?#\s]*)(\?[^#\s]*)?(#\S*)?$/i` matched, found by
+ * walking to the first delimiter of each piece. The pattern's host and path overlap, so a
+ * whitespace character near the end made it try every split of everything before it: a
+ * 250 KB address took 194 s (`docs/security-review-2026-10-18.md`, finding 1). Without
+ * whitespace the pattern has one parse, and this finds the same one: the fragment from the
+ * first "#", the query from the first "?" before it, the host up to the first "/", "?" or
+ * "#", and the path between. The query is "" and the fragment `undefined` where absent,
+ * as the pattern's defaults made them.
+ */
+export function splitWebAddress(
+  uri: string,
+):
+  | { scheme: string; host: string; path: string; query: string; fragment: string | undefined }
+  | undefined {
+  const scheme = /^(https?):\/\//i.exec(uri)
+  if (!scheme) return undefined
+  const rest = uri.slice(scheme[0].length)
+  if (/\s/.test(rest)) return undefined
+  const hashAt = rest.indexOf('#')
+  const beforeFragment = hashAt === -1 ? rest : rest.slice(0, hashAt)
+  const queryAt = beforeFragment.indexOf('?')
+  const beforeQuery = queryAt === -1 ? beforeFragment : beforeFragment.slice(0, queryAt)
+  const slashAt = beforeQuery.indexOf('/')
+  return {
+    scheme: scheme[1]!,
+    host: slashAt === -1 ? beforeQuery : beforeQuery.slice(0, slashAt),
+    path: slashAt === -1 ? '' : beforeQuery.slice(slashAt),
+    query: queryAt === -1 ? '' : beforeFragment.slice(queryAt),
+    fragment: hashAt === -1 ? undefined : rest.slice(hashAt),
+  }
+}
+
+/**
  * Takes apart a Digital Link URI as printed on a label, so a rule can judge the
  * string itself rather than one rebuilt from fields somebody inferred from it.
  *
@@ -573,13 +616,13 @@ export function judgeCustomUriStem(stem: string): { fault: string } | { host: st
  */
 export function parseDigitalLinkUri(printed: string): ParsedDigitalLink {
   const uri = printed.trim()
-  const match = /^(https?):\/\/([^/?#\s]*)([^?#\s]*)(\?[^#\s]*)?(#\S*)?$/i.exec(uri)
+  const match = splitWebAddress(uri)
   if (!match) {
     throw new DigitalLinkError(
       `"${uri}" is not an http or https web address with nothing but the address in it`,
     )
   }
-  const [, scheme, host = '', path = '', query = '', fragment] = match
+  const { scheme, host, path, query, fragment } = match
   // The host first, so a bad one is named before a missing key; the stem is judged
   // whole once the key is found.
   const hostFault = hostnameFault(host)

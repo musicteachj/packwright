@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { fuzzStrings } from '../testing/fuzz'
 import {
   DigitalLinkError,
   buildDigitalLinkUri,
   judgeCustomUriStem,
   parseDigitalLinkUri,
+  splitWebAddress,
+  withoutTrailingSlashes,
 } from './digitalLink'
 
 const DOMAIN = 'https://id.example.com'
@@ -876,5 +879,58 @@ describe('judgeCustomUriStem', () => {
     ['https://:443', ''],
   ])('takes %o, naming its host', (stem, host) => {
     expect(judgeCustomUriStem(stem)).toEqual({ host })
+  })
+})
+
+/**
+ * Two patterns rewritten to run in linear time (`docs/security-review-2026-10-18.md`,
+ * finding 1: 28 s and 194 s), each checked against the pattern it replaced, kept here as
+ * the oracle.
+ */
+describe('the Digital Link patterns, in linear time', () => {
+  it('strips trailing slashes as the pattern it replaced did', () => {
+    const byPattern = (domain: string): string => {
+      const scheme = /^[a-z][a-z0-9+.-]*:\/\//i.exec(domain)?.[0] ?? ''
+      return scheme + domain.slice(scheme.length).replace(/\/+$/, '')
+    }
+    for (const domain of fuzzStrings(['h', 't', 'p', 's', ':', '/', '/', '/', 'a', '.', ' '])) {
+      expect(withoutTrailingSlashes(domain), JSON.stringify(domain)).toBe(byPattern(domain))
+    }
+  })
+
+  it('takes a web address apart as the pattern it replaced did', () => {
+    const PATTERN = /^(https?):\/\/([^/?#\s]*)([^?#\s]*)(\?[^#\s]*)?(#\S*)?$/i
+    const alphabet = [
+      'h',
+      't',
+      'p',
+      's',
+      'H',
+      ':',
+      '/',
+      '/',
+      '?',
+      '#',
+      'a',
+      '0',
+      ' ',
+      '\t',
+      '\u00a0',
+    ]
+    const prefixes = ['', 'http://', 'https://', 'HTTPS://', 'http:/']
+    for (const [i, tail] of fuzzStrings(alphabet, { count: 20_000 }).entries()) {
+      const uri = prefixes[i % prefixes.length] + tail
+      const match = PATTERN.exec(uri)
+      const expected = match
+        ? {
+            scheme: match[1],
+            host: match[2] ?? '',
+            path: match[3] ?? '',
+            query: match[4] ?? '',
+            fragment: match[5],
+          }
+        : undefined
+      expect(splitWebAddress(uri), JSON.stringify(uri)).toEqual(expected)
+    }
   })
 })

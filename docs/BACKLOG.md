@@ -1186,6 +1186,11 @@ UPC-A; `EAN_UPC_MIN_X_DIMENSION_MM` is written beside `MIN_MAGNIFICATION` rather
 `isAtTheListedHeightFloor` repeats `xDimensionBand`'s edge by hand; "say the limit in the last finding" is copied
 from `gs1/digital-link` rather than shared.
 
+**From security fix 1 (2026-10-18), one line each:** the audit's extraction schema (`extractionSchema.ts`) has no
+maximums of its own, so a long extracted value is refused only when the confirmed label is saved or exported;
+`nutritionFacts.ts`'s `printedInRun` interpolates a declared percentage into a regex unescaped, so the point in
+"4.5" matches any character (no false clearance found, since the engine never prints a figure it could confuse).
+
 ---
 
 ## From phase 7, stage 2

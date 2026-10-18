@@ -200,6 +200,42 @@ describe('POST /api/labels/ghs/export', () => {
     const response = await postGhs({ ...GHS_BODY, stock: { widthMm: 0, heightMm: 0, marginMm: 0 } })
     expect(response.status).toBe(400)
   })
+
+  it('names the download after the product, cut short where the name is long', async () => {
+    // The header grew with the identifier: 40 KB was produced, and at 50 KB the client
+    // refused the response (`docs/security-review-2026-10-18.md`, finding 1).
+    const response = await postGhs({
+      ...GHS_BODY,
+      productIdentifier: 'Acetone '.repeat(30),
+      stock: { widthMm: 148, heightMm: 210, marginMm: 5 },
+    })
+    expect(response.status).toBe(200)
+    const header = String(response.headers['content-disposition'])
+    expect(header).toMatch(/^attachment; filename="Acetone-Acetone-[A-Za-z-]*\.pdf"$/)
+    expect(header.length).toBeLessThan(140)
+  })
+})
+
+/**
+ * Figures past any label's reached PDFKit, which cannot write a number of 1e21 points or
+ * more, and answered a 500 with a stack in the log (`docs/security-review-2026-10-18.md`,
+ * "Recorded, no work"). The schema's bounds refuse them now, with the field named.
+ */
+describe('the export routes refuse figures past any label', () => {
+  it('refuses a 1e308 mm stock with 400, not 500', async () => {
+    const response = await post({
+      gtin: GTIN,
+      stock: { widthMm: 1e308, heightMm: 1e308, marginMm: 0 },
+    })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('widthMm')
+  })
+
+  it('refuses a 1e300 magnification with 400, not 500', async () => {
+    const response = await post({ gtin: GTIN, magnification: 1e300 })
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(response.body)).toContain('magnification')
+  })
 })
 
 const postFood = (body: object) => supertest(app()).post('/api/labels/us-food/export').send(body)

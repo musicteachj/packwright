@@ -24,7 +24,10 @@ export function smallestOf(
   )
   if (lines.length === 0) return undefined
   return {
-    fontSizeMm: Math.min(...lines.map((line) => line.fontSizeMm)),
+    // A fold, not `Math.min(...lines)`, which fails past about 122,000 lines: an
+    // ingredient list of one-letter words on a narrow label reached that inside the body
+    // limit (`docs/security-review-2026-10-18.md`, finding 1; `layout/usFoodEngine.ts`).
+    fontSizeMm: lines.reduce((smallest, line) => Math.min(smallest, line.fontSizeMm), Infinity),
     fontFamily: lines[0]!.fontFamily,
     text: lines.map((line) => line.text).join(' '),
   }

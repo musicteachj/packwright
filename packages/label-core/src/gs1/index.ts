@@ -35,6 +35,7 @@ export {
   buildDigitalLinkUri,
   judgeCustomUriStem,
   parseDigitalLinkUri,
+  splitWebAddress,
   withoutTrailingSlashes,
 } from './digitalLink'
 export type { DigitalLinkInput, ParsedDigitalLink } from './digitalLink'

@@ -317,7 +317,11 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
   // caught exactly that; see `measuredFamilyFor`.
   const widestLineMm = (lines: readonly string[], fontSizeMm: number, bold = false): number => {
     const family = measuredFamilyFor(type.fontFamily, bold ? type.emphasisFontWeight : undefined)
-    return Math.max(0, ...lines.map((line) => measureTextMm(line, fontSizeMm, family)))
+    // A fold, not a spread, which fails past about 122,000 lines (`usFoodEngine.ts`).
+    return lines.reduce(
+      (widest, line) => Math.max(widest, measureTextMm(line, fontSizeMm, family)),
+      0,
+    )
   }
 
   function pushText(

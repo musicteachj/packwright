@@ -83,6 +83,49 @@ function anchorOffset(canvas: PdfCanvas, text: string, anchor: TextAnchor): numb
   return anchor === 'middle' ? -width / 2 : -width
 }
 
+/**
+ * The most spaces and tabs one `text()` call is given.
+ *
+ * PDFKit lays a string out in runs that end at each space or tab, and appends every run
+ * to everything laid out before it by copying (`EmbeddedFont.layout`, PDFKit 0.19.1), so
+ * one call costs its spaces times its length. A line of artwork 120 KB long blocked the
+ * server for 9 s (`docs/security-review-2026-10-18.md`, finding 1). Measured on
+ * 2026-10-18 with embedded IBM Plex Sans, 256 KB of text drawn in lines of 256 spaces
+ * took 81 ms, of 1,000 spaces 185 ms, and of 8,000 spaces 950 ms; the schema's bounds
+ * on stock width and type size still allow about 42,000 spaces in a wrapped line, which
+ * is why this is not left to them. No line of a real label comes near 256, so every real
+ * label is drawn in one call per line, as before.
+ */
+export const PDF_TEXT_SPACES_PER_CALL = 256
+
+/**
+ * The text cut after every `PDF_TEXT_SPACES_PER_CALL`th space or tab, so the pieces
+ * joined are the text.
+ *
+ * Cut after a space because PDFKit ends a run there anyway in the embedded faces the
+ * exporter registers (`EmbeddedFont.layout`): no kerning or shaping spans it, so drawing
+ * each piece at the width of those before it places every glyph where one call would
+ * have. PDFKit's standard fonts, used only where no `fontFor` maps a family, do kern
+ * across a space, so a cut line there can sit up to a twentieth of an em off; the export
+ * always maps (`renderPdf.ts`), and only a line of more than 256 spaces is cut.
+ */
+export function spaceBoundedChunks(text: string): string[] {
+  const chunks: string[] = []
+  let start = 0
+  let spaces = 0
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== ' ' && text[i] !== '\t') continue
+    spaces++
+    if (spaces === PDF_TEXT_SPACES_PER_CALL) {
+      chunks.push(text.slice(start, i + 1))
+      start = i + 1
+      spaces = 0
+    }
+  }
+  if (start < text.length || chunks.length === 0) chunks.push(text.slice(start))
+  return chunks
+}
+
 function drawPrimitive(canvas: PdfCanvas, primitive: LayoutPrimitive, options: PdfOptions): void {
   switch (primitive.kind) {
     case 'rect':
@@ -160,15 +203,20 @@ function drawPrimitive(canvas: PdfCanvas, primitive: LayoutPrimitive, options: P
       canvas.font(family)
       canvas.fontSize(pt(primitive.fontSizeMm))
       canvas.fillColor(`#${primitive.fill}`)
-      canvas.text(
-        primitive.text,
-        pt(primitive.xMm) + anchorOffset(canvas, primitive.text, primitive.anchor),
-        pt(primitive.baselineYMm),
-        // `alphabetic` puts the given y on the baseline. PDFKit's default is the
-        // top of the line box, which would drop every string by its ascent —
-        // a shift that looks like a small styling difference and is not.
-        { baseline: 'alphabetic', lineBreak: false },
-      )
+      const chunks = spaceBoundedChunks(primitive.text)
+      let x = pt(primitive.xMm) + anchorOffset(canvas, primitive.text, primitive.anchor)
+      for (const [i, chunk] of chunks.entries()) {
+        if (i > 0) x += canvas.widthOfString(chunks[i - 1]!)
+        canvas.text(
+          chunk,
+          x,
+          pt(primitive.baselineYMm),
+          // `alphabetic` puts the given y on the baseline. PDFKit's default is the
+          // top of the line box, which would drop every string by its ascent: a
+          // shift that looks like a small styling difference and is not.
+          { baseline: 'alphabetic', lineBreak: false },
+        )
+      }
       canvas.restore()
       return
     }
