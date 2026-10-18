@@ -41,13 +41,13 @@ Part 101 its row does not name, or a GS1 release other than the one its row name
 
 | document | edition used | read | link |
 |---|---|---|---|
-| **29 CFR 1910.1200, Hazard Communication (OSHA).** Labels under paragraph (f); pictograms and their precedence in Appendix C | eCFR, title 29 as issued 2026-09-09, and as of 2026-10-01 | 2026-09-12; re-read 2026-10-09 to 2026-10-11 | [eCFR](https://www.ecfr.gov/current/title-29/subtitle-B/chapter-XVII/part-1910/subpart-Z/section-1910.1200) |
+| **29 CFR 1910.1200, Hazard Communication (OSHA).** Labels under paragraph (f); pictograms and their precedence in Appendix C | eCFR, title 29 as issued 2026-09-09, and as of 2026-10-01 | 2026-09-12; re-read 2026-10-09 to 2026-10-11, and (f)(12) 2026-10-18 | [eCFR](https://www.ecfr.gov/current/title-29/subtitle-B/chapter-XVII/part-1910/subpart-Z/section-1910.1200) |
 
 ## European Union: chemicals
 
 | document | edition used | read | link |
 |---|---|---|---|
-| **Regulation (EC) No 1272/2008 (CLP)**, consolidated text in force: Articles 20 and 26, Annex I (label dimensions, small packaging), Annex III (hazard statements), Annex IV (precautionary statements), Annex V (pictograms) | Consolidation 02008R1272-20260701 | 2026-10-10; re-read 2026-10-16 | [EU Publications Office](http://publications.europa.eu/resource/celex/02008R1272-20260701) |
+| **Regulation (EC) No 1272/2008 (CLP)**, consolidated text in force: Articles 20 and 26, Annex I (label dimensions, small packaging), Annex III (hazard statements), Annex IV (precautionary statements), Annex V (pictograms) | Consolidation 02008R1272-20260701 | 2026-10-10; re-read 2026-10-16, and Article 26 and Annex I 1.2.1 and 1.5 on 2026-10-18 | [EU Publications Office](http://publications.europa.eu/resource/celex/02008R1272-20260701) |
 | The same regulation, the consolidation first built from | Consolidation 02008R1272-20250901 | 2026-09-11 | [EU Publications Office](http://publications.europa.eu/resource/celex/02008R1272-20250901) |
 | **Commission Regulation (EU) 2016/918** and **Commission Regulation (EU) 2019/521**, which reworded precautionary statements in Annex IV | As published | 2026-10-16 | [2016/918](http://publications.europa.eu/resource/celex/32016R0918), [2019/521](http://publications.europa.eu/resource/celex/32019R0521) |
 | **Regulation (EU) 2024/2865** and **Regulation (EU) 2025/2439**, the font-size table and supplier rules not yet in application, and their dates | As published | 2026-10-10 | [2024/2865](http://publications.europa.eu/resource/celex/32024R2865), [2025/2439](http://publications.europa.eu/resource/celex/32025R2439) |

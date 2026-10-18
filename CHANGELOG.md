@@ -10,6 +10,47 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **A CLP small package's inner label is held to the list Annex I 1.5 gives it.** The small-container check was
+  wrong three ways under CLP (item 10 of `docs/verification-2026-10-17.md`), read again from the 2026-07-01
+  consolidation on 2026-10-18. 1.5.1.2, as amended by 2024/2865, lists "the hazard pictograms, the signal words, the
+  product identifier ... and the name and telephone number of the suppliers", and the check left the signal word
+  out, so its pass could clear an inner label without one. It gated the tie-on tag or outer-packaging route of 1.5.1
+  on 1.5.2.1's 125 ml, which 1.5.1 does not have, so a larger package was reported for using it. And at 10 ml or
+  less it demanded the supplier's name and telephone, though 1.5.2.4.2 can lighten the inner label to the product
+  identifier and, where appropriate, GHS01, GHS05, GHS06 and/or GHS08. The signal word is now listed, and only
+  OSHA's provision stops at a capacity. At 10 ml or less, 1.5.2.4 reaches a label only where one of 1.5.2.4.1's
+  conditions holds and the product is not a plant protection product or biocide (1.5.2.5), which no label states. So
+  missing supplier details there are neither reported nor passed, and the check says so as a limit of the tool; the
+  review of the fix caught a first version that applied 1.5.2.4.2 on capacity alone. The editor's note no longer
+  gives CLP a threshold. New tests fail with each change reverted.
+
+- **The small-container check asks only for the pictograms and signal word a classification carries.** OSHA's
+  1910.1200(f)(12)(ii) lists "Pictogram(s)" and "Signal word", and CLP the same, and the check demanded both of every
+  label, including a classification with neither (the OSHA part of item 13). On a CLP label each pictogram Annex V
+  assigns, less any Article 26 makes optional, must now be there, asked of the drawing since a label may declare
+  its own; the high review caught a first version that passed a label with none. OSHA's assignments are Appendix
+  C.4's, which this tool does not hold, so a US label drawing no pictogram gets no pass and a stated limit. Which classifications
+  carry a signal word is not in this tool's tables, so a small container carrying none now gets no pass and no
+  finding, and the check says so as a limit of the tool. One that does carry one has it held to printing. New tests
+  fail with the old demands restored.
+
+- **Article 26(1)(a)'s exception is applied: GHS02 stays compulsory beside GHS01 on a Type B.** (a) makes GHS02 and
+  GHS03 optional beside GHS01 "except in cases where more than one of these hazard pictograms are compulsory", and
+  Annex V assigns a Type B self-reactive substance or organic peroxide both GHS01 and GHS02 (item 11). The precedence
+  check called GHS02 optional there, and a label declaring GHS01 alone drew only an advisory suggesting a precedence
+  rule might account for it. A classification carrying both rows of one of those classes is now read as Type B:
+  GHS02 is not called optional, and its absence is a violation cited to Article 26(1)(a), whether or not GHS01 is
+  drawn, except on a CLP inner label of 10 ml or less, where 1.5.2.4.2 may excuse it and it stays an advisory.
+  `docs/WHAT-IS-NOT-CHECKED.md` says to declare a Type B by both rows. GHS02 from another class,
+  beside a Type A, is still optional. A new fixture and tests fail with either change reverted.
+
+- **The CLP pictogram size pass no longer claims the one fifteenth it did not reach.** It said a pictogram meeting
+  Table 1.3 met 1.2.1.3's "one fifteenth" too, which at the table's own 32 mm is false: 1,024 mm² against 1,036.3
+  (the CLP part of item 13). It now says whether the drawn pictogram reaches the fraction and, where it does not,
+  that the difference is not judged, saying nothing of it for 3 litres or less, whose label size is only "if
+  possible"; `docs/WHAT-IS-NOT-CHECKED.md` says why the tabulated figure is what is
+  enforced. A new test fails with the old claim restored.
+
 - **A tabular Nutrition Facts display over 40 in² waits for its vertical space instead of being reported.** The
   format rule reported every tabular display on a package over 40 in² that did not state its vertical space, saying
   "a reduced display is permitted only at 40 in² or less". But 21 CFR 101.9(d)(11)(iii) permits a tabular display at

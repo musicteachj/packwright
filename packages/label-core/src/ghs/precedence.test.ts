@@ -51,6 +51,31 @@ describe('Article 26 applied, not merely reported', () => {
   })
 })
 
+describe('Article 26(1)(a) keeps GHS02 where its exception makes it compulsory', () => {
+  // "except in cases where more than one of these hazard pictograms are compulsory".
+  // Annex V gives a Type B organic peroxide both GHS01 ("Types A, B") and GHS02 ("Types
+  // B, C, D, E, F"). Item 11 of the 2026-10-17 source verification.
+  const typeB = ['2.15/organic-peroxides-types-a-b', '2.15/organic-peroxides-types-b-c-d-e-f']
+
+  it('does not call GHS02 optional beside GHS01 on a Type B', () => {
+    expect(requiredPictograms(typeB)).toEqual(['GHS01', 'GHS02'])
+    const optional = precedenceSuppressions(['GHS01', 'GHS02'], typeB, 'eu-clp').filter(
+      (s) => s.clause === 'Article 26(1)(a)',
+    )
+    expect(optional).toEqual([])
+  })
+
+  it('still calls it optional where GHS02 comes from another class', () => {
+    // A Type A organic peroxide with a flammable liquid: GHS01 from one, GHS02 from the
+    // other, and only one of them compulsory by the peroxide's own row.
+    const hazards = ['2.15/organic-peroxides-types-a-b', '2.6/flammable-liquids-1-2-3']
+    const optional = precedenceSuppressions(['GHS01', 'GHS02'], hazards, 'eu-clp').filter(
+      (s) => s.clause === 'Article 26(1)(a)',
+    )
+    expect(optional.map((s) => s.code)).toEqual(['GHS02'])
+  })
+})
+
 describe('a clause removes the exclamation mark only for the hazards it names', () => {
   // Article 26(1)(c) and (d) take GHS07 off "for" skin or eye irritation and
   // sensitisation, and OSHA C.2.1.2 to C.2.1.4 "where it is used for" them. A label

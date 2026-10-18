@@ -40,5 +40,10 @@ export {
   requiredPictograms,
 } from './classification'
 export type { HazardClassEntry } from './classification'
-export { applyPrecedence, derivedPictograms, precedenceSuppressions } from './precedence'
+export {
+  applyPrecedence,
+  compulsoryBesideGhs01,
+  derivedPictograms,
+  precedenceSuppressions,
+} from './precedence'
 export type { PrecedenceSuppression } from './precedence'

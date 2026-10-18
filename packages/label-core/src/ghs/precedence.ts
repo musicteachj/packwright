@@ -69,6 +69,32 @@ export interface PrecedenceSuppression {
 }
 
 /**
+ * The pictograms Article 26(1)(a)'s own exception keeps compulsory beside GHS01.
+ *
+ * (a), read from the 2026-07-01 consolidation on 2026-10-18: "if the hazard pictogram
+ * 'GHS01' applies, the use of the hazard pictograms 'GHS02' and 'GHS03' shall be optional,
+ * **except in cases where more than one of these hazard pictograms are compulsory**".
+ * Annex V assigns a Type B self-reactive substance or organic peroxide both: "Types A, B"
+ * take GHS01 and "Types B, C, D, E, F" take GHS02. So a classification carrying both rows
+ * of one of those classes is a Type B, both pictograms are compulsory, and GHS02 is not
+ * optional. Found by the 2026-10-17 source verification (item 11), where GHS02 was called
+ * optional beside GHS01 for exactly these.
+ */
+const TYPE_B_ROW_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  [
+    '2.8/self-reactive-substances-and-mixtures-types-a-b',
+    '2.8/self-reactive-substances-and-mixtures-types-b-c-d-e-f',
+  ],
+  ['2.15/organic-peroxides-types-a-b', '2.15/organic-peroxides-types-b-c-d-e-f'],
+]
+
+export function compulsoryBesideGhs01(hazardIds: readonly string[]): readonly GhsPictogramCode[] {
+  return TYPE_B_ROW_PAIRS.some(([a, b]) => hazardIds.includes(a) && hazardIds.includes(b))
+    ? ['GHS02']
+    : []
+}
+
+/**
  * Which clauses apply to a drawn pictogram set, given why each is present.
  *
  * Returns nothing when there is no classification: every conditional clause is
@@ -180,8 +206,10 @@ export function precedenceSuppressions(
   // The two CLP clauses with no OSHA equivalent, which permit rather than forbid.
   if (!isUs) {
     if (has('GHS01') && (has('GHS02') || has('GHS03'))) {
+      const compulsory = compulsoryBesideGhs01(hazardIds)
       for (const code of ['GHS02', 'GHS03'] as const) {
-        if (has(code)) {
+        // Not optional where (a)'s exception makes it compulsory: see above.
+        if (has(code) && !compulsory.includes(code)) {
           out.push({
             code,
             kind: 'optional',

@@ -30,9 +30,11 @@ control that does not exist. Those limits are in this document instead, which is
 There is one exception, and the report marks it as one. Where a regulation plainly reaches your label and this
 tool cannot represent an answer to it, staying silent would read as a pass and reporting a violation would blame
 your label for the tool's limit. That entry appears under "checks that did not run" with nothing to fill in, and
-says in so many words that the limit is this tool's. Today there are three, all below: the package owing both
-second columns; whether a US label's pictograms are the ones its classification requires; and, on a label you
-describe or photograph rather than draw here, whether each pictogram carries its symbol.
+says in so many words that the limit is this tool's. Today there are four, all below: the package owing both
+second columns; whether a US label's pictograms are the ones its classification requires; on a label you
+describe or photograph rather than draw here, whether each pictogram carries its symbol; and, for a small
+container, whether a missing signal word is owed, whether a US one drawing no pictogram owes one, and, on a CLP
+inner label of 10 ml or less, whether missing supplier details or pictograms are.
 
 ---
 
@@ -335,6 +337,43 @@ back to **1 January 2028**. This tool will not check them before then, and on a 
 check them at all until the description can carry type sizes. Read from the EU Publications Office on 2026-10-11:
 the consolidated CLP text in force (02008R1272-20260701), 2024/2865 Annex I points (2) and (3), and 2025/2439
 Article 1(c).
+
+### Small containers: the signal word, and CLP's 10 ml inner label
+
+A label relying on the small-container provision (29 CFR 1910.1200(f)(12), or CLP Annex I 1.5) must still carry what
+the provision lists. Both lists name the pictograms and the signal word, and both are the classification's: a
+classification with no pictogram, or no signal word, owes none. On a CLP label, each pictogram Annex V assigns your
+classification must be there, unless Article 26 makes it optional, and a missing one is reported. On a US label,
+OSHA assigns pictograms in Appendix C.4, which this tool does not hold, so one drawing none gets no pass and no
+finding. Which classifications carry a signal word is not in this tool's tables either, so a small container
+carrying none is treated the same way. Both appear under "checks that did not run" as limits of this tool.
+
+On a CLP label, the tie-on tag or outer-packaging route of 1.5.1 has no capacity limit, and the inner label must
+carry the pictograms, the signal word, the product identifier, and the supplier's name and telephone (1.5.1.2). At
+10 ml or less, 1.5.2.4 can lighten that to the product identifier and, where appropriate, GHS01, GHS05, GHS06
+and/or GHS08 (1.5.2.4.2), but only where one of the conditions in 1.5.2.4.1 holds, and never for a plant
+protection product or biocide (1.5.2.5). Those are facts about your product and packaging that this tool does not
+ask, so at 10 ml or less a missing supplier name, telephone or assigned pictogram is neither reported nor passed,
+and the check says so as a limit of this tool. The pictogram check behaves the same way there: a Type B's missing
+GHS02 is an advisory rather than a violation. A missing product identifier is reported either way. Whether Article 29 applies at all is
+not checked.
+
+### A Type B self-reactive substance or organic peroxide is declared by two rows
+
+Annex V lists self-reactive substances and organic peroxides in two rows each, "Types A, B" (GHS01) and "Types B, C,
+D, E, F" (GHS02), and a Type B falls in both. Declare both rows for a Type B: that is how this tool knows both
+pictograms are compulsory, and that Article 26(1)(a) does not make GHS02 optional. A Type B declared by one row is
+judged as the row says.
+
+### CLP's one fifteenth, where Table 1.3 falls short of it
+
+CLP Annex I 1.2.1.3 says each pictogram "shall cover at least one fifteenth of the minimum surface area of the
+label", and Table 1.3 gives a minimum pictogram for each band. For two bands the table's own figure misses the
+fraction by rounding: 32 mm against 1,036 mm² for 50 to 500 litres, and even its "if possible" 16 mm against
+256.5 mm² for 3 litres or less. This tool enforces Table 1.3 and does not report a pictogram that meets the regulator's own tabulated figure.
+Where a pictogram meets the table but not the fraction, its passing message says so, and that difference is not
+judged. For 3 litres or less, where the table qualifies the label itself "if possible", the message says nothing of
+the fraction.
 
 ### Whether an EU label's supplier is established in the Union
 

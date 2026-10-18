@@ -445,6 +445,8 @@ one that was. No rule cross-checks the two figures.
 
 **A type-size check with every part in a no-verdict band says nothing and asks for nothing**, though stating a package area of 12 in² or more would let it run (same review).
 
+**A Type B self-reactive substance or organic peroxide declared by one Annex V row is judged as that row**, so a Type B ticking only "Types A, B" is held to GHS01 alone; the catalog models rows, not types (high review of #106, 2026-10-18).
+
 **A tabular display of 40 in² or less waiting on its vertical space asks only for the space**, though ticking "cannot take a standard vertical column" would also settle it; the checkbox cannot say "not stated" (high review of #105, 2026-10-18).
 
 **A net quantity by count is asked for an SI declaration, and whether 15 U.S.C. 1453(a)(2) wants one for a count was not settled** (found writing the SI unit check for fix PR 2, 2026-10-17; the rule did this before).
