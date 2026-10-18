@@ -228,6 +228,24 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
     },
   },
   {
+    name: 'a Type B organic peroxide drawing GHS01 without GHS02',
+    defect:
+      'Annex V assigns a Type B organic peroxide both GHS01 and GHS02, so Article 26(1)(a)’s ' +
+      'exception, "except in cases where more than one of these hazard pictograms are ' +
+      'compulsory", keeps GHS02 on the label. It was called optional beside GHS01.',
+    data: {
+      ...BASE,
+      hazards: ['2.15/organic-peroxides-types-a-b', '2.15/organic-peroxides-types-b-c-d-e-f'],
+      pictograms: ['GHS01'],
+    },
+    stock: CONFORMING_STOCK,
+    expected: {
+      code: GHS_PICTOGRAM_MISSING,
+      severity: 'violation',
+      citation: 'Regulation (EC) No 1272/2008 (CLP), Article 26(1)(a)',
+    },
+  },
+  {
     name: 'the environment pictogram on a US label',
     defect: 'OSHA recognises eight hazard symbols; GHS09 is not among them.',
     // Declared, not derived. The engine no longer derives GHS09 for a US label —

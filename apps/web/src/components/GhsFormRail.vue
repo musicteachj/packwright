@@ -30,6 +30,7 @@ import {
   derivedPictograms,
   isPictogramRecognised,
   requiredPictograms,
+  CLP_INNER_PACKAGING_MAX_L,
   smallContainerThresholdL,
   type GhsRegime,
   type GhsSignalWord,
@@ -307,6 +308,8 @@ const smallContainer = computed({
  * telling the user 100 ml after the rule had been corrected.
  */
 const thresholdL = computed(() => smallContainerThresholdL(data.regime))
+/** CLP 1.5.2.4.2's 10 ml, from the rule that applies it. */
+const innerPackagingMaxMl = CLP_INNER_PACKAGING_MAX_L * 1000
 
 /**
  * `outerPackageStatement` is optional on the document; `TextField`'s model is
@@ -581,7 +584,15 @@ const supplierTelephone = computed({
           data.regime === 'us-osha'
             ? 'OSHA, that full-information pull-out, fold-back or tag labelling is not feasible'
             : 'CLP, the conditions in Article 29'
-        }}. The threshold is {{ thresholdL }} litres.
+        }}.
+        <template v-if="data.regime === 'us-osha'"
+          >The threshold is {{ thresholdL }} litres.</template
+        >
+        <template v-else>
+          CLP's tie-on tag or outer-packaging route (Annex I 1.5.1) has no capacity limit. At
+          {{ innerPackagingMaxMl }} ml or less, 1.5.2.4 can lighten the inner label further, on
+          conditions about the product and its packaging that this tool does not check.
+        </template>
       </p>
 
       <TextField

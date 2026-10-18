@@ -19,16 +19,25 @@
  * artefact of rounding. The smallest band's 10 x 10 is the separate 1 cm²
  * absolute floor, and 10 x 10 is exactly 1 cm².
  *
- * So the dimension check enforces both provisions, and a pictogram that clears
- * Table 1.3 clears 1.2.1.3 by construction. `ghs/labelDimensions.test.ts` pins
- * the arithmetic so this cannot quietly stop being true.
+ * So the dimension check is the one this rule enforces, and the fraction is not judged
+ * as a requirement of its own. **But the pass may say only what it measured.** It said a
+ * pictogram clearing Table 1.3 met "the one fifteenth requirement" too, which at the
+ * table's own 32 mm is false: 1,024 mm² against 1,036.3. The 2026-10-17 source
+ * verification found it (item 13); 1.2.1.3 and Table 1.3 re-read from the 2026-07-01
+ * consolidation on 2026-10-18. The pass now says whether the drawn pictogram reaches the
+ * fraction, and where it does not, that the difference is not judged.
+ * `ghs/labelDimensions.test.ts` pins the arithmetic.
  *
  * `drawnSideMm` is the square's own edge, not the width of the diamond it makes —
  * see `PICTOGRAM_DIMENSION_IS_THE_SQUARES_SIDE`, where that reading is derived
  * from the regulation rather than assumed.
  */
 
-import { dimensionBandFor } from '../../ghs/labelDimensions'
+import {
+  PICTOGRAM_MIN_AREA_SQ_MM,
+  PICTOGRAM_MIN_FRACTION_OF_LABEL,
+  dimensionBandFor,
+} from '../../ghs/labelDimensions'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
@@ -59,6 +68,12 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
 
     const findings: Finding[] = []
     const band = dimensionBandFor(data.capacityL)
+    // 1.2.1.3: "at least one fifteenth of the minimum surface area of the label dedicated to
+    // the information required by Article 17", and "not ... less than 1 cm2".
+    const fifteenthSqMm = Math.max(
+      band.labelWidthMm * band.labelHeightMm * PICTOGRAM_MIN_FRACTION_OF_LABEL,
+      PICTOGRAM_MIN_AREA_SQ_MM,
+    )
     for (const pictogram of layout.pictograms) {
       const tooSmall = pictogram.drawnSideMm < pictogram.requiredSideMm - MEASUREMENT_TOLERANCE_MM
 
@@ -86,8 +101,16 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
             ghsPictogramSizeRule,
             GHS_PICTOGRAM_SIZE_MET,
             `The ${pictogram.code} pictogram is ${mm(pictogram.drawnSideMm)} square, covering ` +
-              `${sqMm(pictogram.drawnAreaSqMm)} — meeting Table 1.3 and, with it, the one ` +
-              'fifteenth requirement.',
+              `${sqMm(pictogram.drawnAreaSqMm)}, which meets Table 1.3` +
+              (pictogram.drawnAreaSqMm >= fifteenthSqMm
+                ? ` and 1.2.1.3's one fifteenth of the label's minimum area, ${sqMm(fifteenthSqMm)}.`
+                : // The first band's label is "If possible, at least 52 × 74", no minimum to take a
+                  // fifteenth of, so nothing is said of the fraction there. Found by review.
+                  band.labelDimensionIsBestEffort
+                  ? '.'
+                  : `. It does not reach 1.2.1.3's one fifteenth of the label's minimum area, ` +
+                    `${sqMm(fifteenthSqMm)}, and nor does Table 1.3's own figure for this band; ` +
+                    'that difference is not judged here.'),
             pictogram.elementId,
           ),
         )

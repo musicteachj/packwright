@@ -3,6 +3,7 @@ import { layOutGhsLabel } from '../layout/ghsEngine'
 import { GHS_CONFORMANT, GHS_FIXTURES, HAZARDS } from './fixtures/ghs'
 import { GHS_PICTOGRAM_PRECEDENCE_OPTIONAL, GHS_PICTOGRAM_SYMBOL_MISSING } from './index'
 import { ghsPictogramSetRule } from './ghs/pictogramSet'
+import { ghsPictogramSizeRule } from './ghs/pictogramSize'
 import { GHS_RULES, declinedChecks, runRules } from './registry'
 import { codesOf } from './types'
 import type { GhsLabelData } from '../templates/ghs'
@@ -371,5 +372,67 @@ describe('rules that only one regime sets', () => {
       expect(codes).toContain('GHS_PICTOGRAM_MISSING')
       expect(declineOf(data)).toBeUndefined()
     })
+  })
+})
+
+describe('the pictogram size pass says only what it measured', () => {
+  // It said a pictogram clearing Table 1.3 met "the one fifteenth requirement" too, which at
+  // the table's own 32 mm is false: 1,024 mm² against 1,036.3 (item 13 of the 2026-10-17
+  // source verification). Checked on the rule itself, since the pass is withheld while no
+  // pictogram symbol is drawn.
+  const messageAt = (capacityL: number, pictogramSideMm: number, stock: LabelStock) => {
+    const data: GhsLabelData = {
+      regime: 'eu-clp',
+      productIdentifier: 'Example solvent',
+      capacityL,
+      hazards: [HAZARDS.flammableLiquid],
+      pictogramSideMm,
+    }
+    const [pass] = ghsPictogramSizeRule.check({
+      labelType: 'ghs-chemical',
+      data,
+      stock,
+      layout: layOutGhsLabel({ data, stock }),
+    })
+    return pass!.message
+  }
+
+  it('does not claim the fraction where Table 1.3’s own figure falls short of it', () => {
+    const message = messageAt(100, 32, { widthMm: 105, heightMm: 148, marginMm: 4 })
+    expect(message).toContain('which meets Table 1.3')
+    expect(message).toContain('does not reach 1.2.1.3’s one fifteenth'.replace('’', "'"))
+    expect(message).not.toContain('and, with it')
+  })
+
+  it('says nothing of the fraction against the first band’s "if possible" label', () => {
+    // Table 1.3 qualifies 52 × 74 "If possible", so there is no minimum to take a fifteenth
+    // of, and the pass does not say the pictogram falls short of one. Found by review.
+    const message = messageAt(1, 12, { widthMm: 52, heightMm: 74, marginMm: 3 })
+    expect(message).toContain('which meets Table 1.3.')
+    expect(message).not.toContain('one fifteenth')
+  })
+
+  it('claims it where the pictogram reaches it', () => {
+    const message = messageAt(100, 33, { widthMm: 105, heightMm: 148, marginMm: 4 })
+    expect(message).toContain("and 1.2.1.3's one fifteenth of the label's minimum area")
+  })
+})
+
+describe('GHS02 on a Type B is compulsory whether or not GHS01 is drawn', () => {
+  it('reports its absence as a violation beside a missing GHS01 too', () => {
+    // Annex V makes both compulsory for a Type B; without GHS01, Article 26(1)(a) is not
+    // even in play, so no clause can take GHS02 off. Found by review of the item 11 fix.
+    const data: GhsLabelData = {
+      regime: 'eu-clp',
+      productIdentifier: 'Example peroxide',
+      capacityL: 5,
+      hazards: ['2.15/organic-peroxides-types-a-b', '2.15/organic-peroxides-types-b-c-d-e-f'],
+      pictograms: ['GHS05'],
+    }
+    const missing = findingsFor(data, { widthMm: 74, heightMm: 105, marginMm: 4 }).filter(
+      (f) => f.code === 'GHS_PICTOGRAM_MISSING',
+    )
+    expect(missing.find((f) => f.message.startsWith('GHS02'))?.severity).toBe('violation')
+    expect(missing.find((f) => f.message.startsWith('GHS01'))?.severity).toBe('advisory')
   })
 })

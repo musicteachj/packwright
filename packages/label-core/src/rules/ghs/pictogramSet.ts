@@ -33,7 +33,11 @@
  */
 
 import { requiredPictograms } from '../../ghs/classification'
-import { derivedPictograms, precedenceSuppressions } from '../../ghs/precedence'
+import {
+  compulsoryBesideGhs01,
+  derivedPictograms,
+  precedenceSuppressions,
+} from '../../ghs/precedence'
 import type { GhsPictogramCode } from '../../ghs/pictograms'
 import { GHS_PICTOGRAM_SYMBOLS } from '../../ghs/pictograms'
 import { wasFullyDrawn } from '../../layout/omissions'
@@ -66,6 +70,12 @@ const PRECEDENCE_CITATION: Citation = {
   authority: 'EU',
   reference: 'Regulation (EC) No 1272/2008 (CLP), Article 26(1)',
   title: 'Principles of precedence for hazard pictograms',
+}
+
+/** Article 26(1)(a), for the pictogram its exception keeps compulsory beside GHS01. */
+const TYPE_B_CITATION: Citation = {
+  ...PRECEDENCE_CITATION,
+  reference: 'Regulation (EC) No 1272/2008 (CLP), Article 26(1)(a)',
 }
 
 /** What a US label's pictograms answer to, which this rule cannot judge. See the note above. */
@@ -111,10 +121,12 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
   id: 'ghs/pictogram-set',
   title: 'On an EU label, every pictogram is one the classification requires.',
   citation: CITATION,
-  citations: [CITATION, PRECEDENCE_CITATION],
+  citations: [CITATION, PRECEDENCE_CITATION, TYPE_B_CITATION],
   codes: {
     [GHS_PICTOGRAM_NOT_REQUIRED]: ['violation'],
-    [GHS_PICTOGRAM_MISSING]: ['advisory'],
+    // A violation only where no clause of Article 26 can account for the absence: GHS02
+    // beside GHS01 on a Type B, which (1)(a)'s exception keeps compulsory.
+    [GHS_PICTOGRAM_MISSING]: ['violation', 'advisory'],
     [GHS_PICTOGRAM_SET_MATCHES]: ['pass'],
   },
   appliesTo: 'ghs-chemical',
@@ -216,8 +228,33 @@ export const ghsPictogramSetRule: GhsChemicalRule = {
       )
     }
 
+    const compulsory = compulsoryBesideGhs01(hazards)
     for (const code of required) {
       if (drawnCodes.has(code)) continue
+      // **Where no clause can account for it, the absence is a violation.** GHS02 beside
+      // GHS01 on a Type B self-reactive substance or organic peroxide: Annex V assigns
+      // both, and Article 26(1)(a) makes GHS02 optional "except in cases where more than one
+      // of these hazard pictograms are compulsory". The advisory below said a precedence
+      // rule might account for it, and none does. Item 11 of the 2026-10-17 verification.
+      // Whether or not GHS01 was drawn: Annex V makes GHS02 compulsory for a Type B either
+      // way, and without GHS01 not even (a) is in play. Found by review of the fix.
+      if (compulsory.includes(code)) {
+        findings.push(
+          finding(ghsPictogramSetRule, {
+            code: GHS_PICTOGRAM_MISSING,
+            severity: 'violation',
+            message:
+              `${code} (${GHS_PICTOGRAM_SYMBOLS[code]}) is not on the label. The classification ` +
+              'is a Type B self-reactive substance or organic peroxide, to which Annex V assigns ' +
+              'both GHS01 and GHS02, and Article 26(1)(a) makes GHS02 optional beside GHS01 ' +
+              'only where not more than one of them is compulsory, so no clause of Article 26 ' +
+              'takes it off.',
+            elementId: GHS_ELEMENTS.pictograms,
+            citation: TYPE_B_CITATION,
+          }),
+        )
+        continue
+      }
       findings.push(
         finding(ghsPictogramSetRule, {
           code: GHS_PICTOGRAM_MISSING,
