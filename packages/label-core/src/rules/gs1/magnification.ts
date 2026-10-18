@@ -62,41 +62,35 @@ const judgedAsDrawn: Gs1RetailRule = {
   },
   appliesTo: 'gs1-retail',
 
-  // One test, `standsDown`, decides for both, so `check` and this cannot disagree.
+  // One reading of the bands, `banded`, decides for both, so `check` and this cannot
+  // disagree about whether the rule stood down.
   declines({ layout }: Gs1RetailContext): Decline | undefined {
-    if (!standsDown(layout.symbols)) return undefined
-    const inBand = layout.symbols.find((one) => xDimensionBand(one.xDimensionMm) === 'on-demand')!
-    const magnification = xDimensionMmToMagnification(inBand.xDimensionMm)
+    const { standsDown, inBand } = banded(layout.symbols)
+    if (!standsDown) return undefined
+    const withheld = layout.symbols.length > inBand.length
     return {
       reason:
-        `The symbol is drawn at ${magnification.toFixed(2)}x (X = ` +
-        `${xDimensionMm(inBand.xDimensionMm)}), below ${RANGE} but within the allowance ` +
-        'of GS1 General Specifications table 5-44 footnote (*), which permits X-dimensions ' +
-        `from ${xDimensionMm(ON_DEMAND_MIN_X_DIMENSION_MM)} to ` +
-        `${xDimensionMm(EAN_UPC_MIN_X_DIMENSION_MM)} only for on demand (e.g., thermal, ` +
-        'laser) print processes. Packwright cannot tell how the label is printed, so it ' +
-        'gives no verdict on the magnification here. That is a limit of this tool, not a ' +
-        'fault found in your label.',
+        `${unjudged(inBand)} That is a limit of this tool, not a fault found in your label.` +
+        (withheld ? ` ${NONE_PASSED}` : ''),
       wants: [],
       limit: true,
     }
   },
 
   check({ layout }: Gs1RetailContext): Finding[] {
-    if (standsDown(layout.symbols)) return []
-    // A symbol in footnote (*)'s band beside one that is reported: the report stands, and
-    // no other symbol's pass is said beside a symbol nobody judged.
-    const unjudged = layout.symbols.some((one) => xDimensionBand(one.xDimensionMm) === 'on-demand')
+    const { standsDown, inBand, bands } = banded(layout.symbols)
+    if (standsDown) return []
 
-    return layout.symbols.flatMap((symbol) => {
-      const band = xDimensionBand(symbol.xDimensionMm)
+    const findings = layout.symbols.flatMap((symbol, index) => {
+      const band = bands[index]!
       if (band === 'on-demand') return []
 
       const magnification = xDimensionMmToMagnification(symbol.xDimensionMm)
       const actual = `${magnification.toFixed(2)}x (X = ${xDimensionMm(symbol.xDimensionMm)})`
 
       if (band === 'in-range') {
-        if (unjudged) return []
+        // No pass beside a symbol nobody judged: a symbol in footnote (*)'s band.
+        if (inBand.length > 0) return []
         // Table 5-44 bounds the X-dimension the bars are printed at: the artwork.
         return [
           passedOnArtwork(
@@ -125,17 +119,68 @@ const judgedAsDrawn: Gs1RetailRule = {
         }),
       ]
     })
+
+    // A symbol in the band beside one reported: the rule judged, so it does not also stand
+    // down, and the limit is said in the last finding's words instead, as
+    // `gs1/digital-link` does. Silent, it read as judged and cleared. Found by
+    // `/code-review high` on #107.
+    const last = findings[findings.length - 1]
+    if (inBand.length === 0 || last === undefined) return findings
+    const withheld = bands.includes('in-range') ? ` ${NONE_PASSED}` : ''
+    findings[findings.length - 1] = {
+      ...last,
+      message:
+        `${last.message} ${unjudged(inBand, 'another')} That is a limit of this tool.` + withheld,
+    }
+    return findings
   },
 }
 
 /**
- * Whether the rule stands down: a symbol sits in footnote (*)'s band and none is out of
- * range either side. Where one is, the rule has a violation to report and does not also
- * stand down (`Rule.declines`).
+ * The drawn symbols' bands, read once. The rule stands down where a symbol sits in footnote
+ * (*)'s band and none is out of range either side; where one is, it has a violation to
+ * report and does not also stand down (`Rule.declines`).
  */
-function standsDown(symbols: readonly { xDimensionMm: number }[]): boolean {
+function banded(symbols: readonly { xDimensionMm: number }[]) {
   const bands = symbols.map((one) => xDimensionBand(one.xDimensionMm))
-  return bands.includes('on-demand') && !bands.some((band) => band === 'below' || band === 'above')
+  const inBand = symbols.filter((_, index) => bands[index] === 'on-demand')
+  const outOfRange = bands.some((band) => band === 'below' || band === 'above')
+  return { bands, inBand, standsDown: inBand.length > 0 && !outOfRange }
+}
+
+const NONE_PASSED = 'No other symbol on the label is passed beside one that was not judged.'
+
+/**
+ * What is said of the symbols in footnote (*)'s band, each named. `another` where it is said
+ * in the finding of a different symbol, so the two are not both "the symbol".
+ */
+function unjudged(
+  inBand: readonly { xDimensionMm: number }[],
+  whose: 'the' | 'another' = 'the',
+): string {
+  const subject =
+    inBand.length > 1
+      ? whose === 'the'
+        ? 'Symbols are'
+        : 'Other symbols are'
+      : whose === 'the'
+        ? 'The symbol is'
+        : 'Another symbol is'
+  const at = inBand
+    .map(
+      (one) =>
+        `${xDimensionMmToMagnification(one.xDimensionMm).toFixed(2)}x ` +
+        `(X = ${xDimensionMm(one.xDimensionMm)})`,
+    )
+    .join(' and ')
+  return (
+    `${subject} drawn at ${at}, below ${RANGE} ` +
+    'but within the allowance of GS1 General Specifications table 5-44 footnote (*), which ' +
+    `permits X-dimensions from ${xDimensionMm(ON_DEMAND_MIN_X_DIMENSION_MM)} to ` +
+    `${xDimensionMm(EAN_UPC_MIN_X_DIMENSION_MM)} only for on demand (e.g., thermal, laser) ` +
+    'print processes. Packwright cannot tell how the label is printed, so it gives no ' +
+    `verdict on ${inBand.length === 1 ? 'that' : 'their'} magnification.`
+  )
 }
 
 /** The rule as drawn, its verdict waiting on a label printed elsewhere — see `rules/described.ts`. */

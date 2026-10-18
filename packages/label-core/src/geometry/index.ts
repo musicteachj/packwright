@@ -47,6 +47,7 @@ export {
   ON_DEMAND_MIN_X_DIMENSION_MM,
   barPatternWidthMm,
   hasVerifiedQuietZone,
+  isAtTheListedHeightFloor,
   isMagnificationInRange,
   magnificationToXDimensionMm,
   nominalBarHeightMm,

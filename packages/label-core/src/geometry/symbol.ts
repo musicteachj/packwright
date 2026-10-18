@@ -133,6 +133,17 @@ export function symbolMetricsFor(symbology: SymbologyId): SymbolMetrics | undefi
 }
 
 /**
+ * True at and below table 5-44's minimum X-dimension, where the minimum bar height is the
+ * figure listed for that X rather than one scaled from the nominal. At 0.264 itself the
+ * listed figure is taken too: EAN-8's 18.23 x 0.8 is 14.584, the table lists 14.58, and a
+ * bar printed at the listed figure must not be reported. Found by `/code-review high` on
+ * #107.
+ */
+export function isAtTheListedHeightFloor(xDimensionMm: number): boolean {
+  return xDimensionMm <= EAN_UPC_MIN_X_DIMENSION_MM + X_DIMENSION_EPSILON_MM
+}
+
+/**
  * Bar height for a given X-dimension.
  *
  * The height scales with the symbol; it is not a fixed figure. GenSpec 26.0
@@ -149,8 +160,8 @@ export function symbolMetricsFor(symbology: SymbologyId): SymbolMetrics | undefi
  * **It does not scale below the minimum X-dimension.** Table 5-44 footnote (**), read
  * from the rendered page 411 on 2026-10-18: "When printing a minimum symbol with any
  * method of printing, the bar height SHALL NOT be truncated below the minimum as listed
- * in the table above." So a symbol under X = 0.264, footnote (*)'s on-demand band
- * included, still owes the height listed for 0.264. Scaling on down passed a UPC-A at
+ * in the table above." So a symbol at or under X = 0.264, footnote (*)'s on-demand band
+ * included, owes the height listed for 0.264. Scaling on down passed a UPC-A at
  * 0.77x with 17.6 mm bars, and drew one that short by default (verification record of
  * 2026-10-17, item 12).
  */
@@ -160,9 +171,7 @@ export function nominalBarHeightMm(
 ): number | undefined {
   const metrics = SYMBOL_METRICS[symbology]
   if (!metrics) return undefined
-  if (xDimensionMm < EAN_UPC_MIN_X_DIMENSION_MM - X_DIMENSION_EPSILON_MM) {
-    return metrics.minimumXHeightMm
-  }
+  if (isAtTheListedHeightFloor(xDimensionMm)) return metrics.minimumXHeightMm
   return metrics.nominalHeightMm * (xDimensionMm / EAN_UPC_NOMINAL_X_DIMENSION_MM)
 }
 

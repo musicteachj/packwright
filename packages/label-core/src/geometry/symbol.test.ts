@@ -193,6 +193,9 @@ describe('nominalBarHeightMm', () => {
     ['EAN-13', 0.249, 18.28],
     ['UPC-E', 0.255, 18.28],
     ['EAN-8', 0.249, 14.58],
+    // At the minimum itself the listed figure too, not 18.23 x 0.8 = 14.584: a bar printed
+    // at the listed 14.58 must not be reported. Found by `/code-review high` on #107.
+    ['EAN-8', EAN_UPC_NOMINAL_X_DIMENSION_MM * 0.8, 14.58],
     ['UPC-A', 0.2, 18.28],
   ] as const)(
     'is not truncated below the listed minimum: %s at X = %f is %f mm',

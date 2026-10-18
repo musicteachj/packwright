@@ -475,7 +475,7 @@ Below 0.249 mm the symbol is reported, whatever the process. The editor's magnif
 0.05 and never lands in the band (0.75x is below it), so only a label checked through the API or `check_label` can.
 
 The bar height is judged in that band all the same: footnote (**) says it "SHALL NOT be truncated below the minimum
-as listed" with any method of printing, so a symbol under X 0.264 mm owes the 18.28 mm listed for 0.264 (14.58 mm
+as listed" with any method of printing, so a symbol at or under X 0.264 mm owes the 18.28 mm listed for 0.264 (14.58 mm
 for EAN-8). Footnote (*)'s second bullet, that the area for a minimum symbol and its quiet zones "SHOULD never be
 less than" that of X 0.264 mm, is a recommendation and is not judged.
 

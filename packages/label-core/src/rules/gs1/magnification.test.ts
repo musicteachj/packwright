@@ -76,10 +76,12 @@ describe('gs1/magnification in the on-demand band', () => {
     return { ...context, layout: { ...context.layout, symbols: [symbol!, second] } }
   }
 
-  it('passes no symbol beside one in the band, and stands down', () => {
+  it('passes no symbol beside one in the band, and stands down saying so', () => {
     const context = twoSymbols(0.77)
     expect(magnificationRule.check(context)).toEqual([])
-    expect(magnificationRule.declines!(context)).toMatchObject({ limit: true })
+    const declined = magnificationRule.declines!(context)
+    expect(declined).toMatchObject({ limit: true })
+    expect(declined!.reason).toContain('No other symbol on the label is passed')
   })
 
   it('reports a symbol out of range beside one in the band, and passes none beside it', () => {
@@ -98,8 +100,14 @@ describe('gs1/magnification in the on-demand band', () => {
         ],
       },
     }
-    expect(magnificationRule.check(three).map((finding) => finding.severity)).toEqual(['violation'])
+    const findings = magnificationRule.check(three)
+    expect(findings.map((finding) => finding.severity)).toEqual(['violation'])
     expect(magnificationRule.declines!(three)).toBeUndefined()
+    // The symbol in the band is said, in the finding's words, since the rule judged and
+    // cannot also stand down. Found by `/code-review high` on #107.
+    expect(findings[0]!.message).toContain('Another symbol is drawn at 0.77x (X = 0.254 mm)')
+    expect(findings[0]!.message).toContain('No other symbol on the label is passed')
+    expect(findings[0]!.message).toContain('gives no verdict on that magnification')
   })
 
   it('still passes at the table’s own minimum, 0.80x', () => {
@@ -121,6 +129,27 @@ describe('gs1/bar-height in the on-demand band', () => {
     expect(context.layout.symbols[0]!.barHeightMm).toBe(18.28)
     const [pass] = barHeightRule.check(context)
     expect(pass).toMatchObject({ code: GS1_BAR_HEIGHT_SUFFICIENT, severity: 'pass' })
-    expect(pass!.message).toContain('18.28 mm minimum')
+    // 18.28 mm is the figure for X = 0.264, owed by footnote (**), not this X's: the table
+    // lists none below its minimum. Found by `/code-review high` on #107.
+    expect(pass!.message).toContain(
+      'meeting the 18.28 mm table 5-44 lists for its minimum X-dimension, 0.264 mm',
+    )
+    expect(pass!.message).not.toContain('for this X-dimension')
+  })
+
+  it('says the listed floor in a violation in the band', () => {
+    const context = contextFor({ gtin: VALID_GTIN, magnification: 0.77, barHeightMm: 17.6 })
+    const [found] = barHeightRule.check(context)
+    expect(found!.severity).toBe('violation')
+    expect(found!.message).toContain('requires 18.28 mm, the height table 5-44 lists')
+    expect(found!.message).toContain(
+      'footnote (**) says "When printing a minimum symbol with any method of printing, the bar ' +
+        'height SHALL NOT be truncated below the minimum as listed in the table above."',
+    )
+  })
+
+  it('still says the minimum for this X-dimension above the floor', () => {
+    const [pass] = barHeightRule.check(contextFor({ gtin: VALID_GTIN, magnification: 1 }))
+    expect(pass!.message).toContain('meeting the 22.85 mm minimum for this X-dimension')
   })
 })

@@ -20,7 +20,11 @@ into a version only when there is a reason to.
   height "SHALL NOT be truncated below the minimum as listed" with any method of printing, and the minimum height
   went on scaling down below X 0.264, so bars of 17.6 mm at 0.77x passed where 18.28 mm is listed. Below the minimum
   X-dimension the floor is now the listed height (18.28 mm, 14.58 mm for EAN-8), and the engine draws a bar height
-  left blank at that floor too. New tests fail with each change reverted.
+  left blank at that floor too. The high review of the fix caught three things in it: at X 0.264 itself EAN-8 was
+  held to a scaled 14.584 mm rather than the listed 14.58; the bar-height pass called 18.28 mm "the minimum for this
+  X-dimension" where the table lists none below its minimum, and now says whose figure it is; and a symbol in the
+  band beside one reported went unmentioned, where it is now named in the finding. New tests fail with each change
+  reverted.
 
 - **The Digital Link pass says what it checked.** For a link built from the editor's fields it said the link
   "resolves to" its URI, which nothing tested, and GS1 Digital Link URI Syntax 1.7.0 §2 says applications "SHALL NOT

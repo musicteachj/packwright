@@ -16,7 +16,11 @@
  * band (verification record of 2026-10-17, item 12).
  */
 
-import { nominalBarHeightMm } from '../../geometry/symbol'
+import {
+  EAN_UPC_MIN_X_DIMENSION_MM,
+  isAtTheListedHeightFloor,
+  nominalBarHeightMm,
+} from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, xDimensionMm } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
@@ -36,6 +40,13 @@ const CITATION: Citation = {
   title: 'EAN/UPC symbol height at nominal size, and the minimum by X-dimension',
 }
 
+// The footnote quoted, not paraphrased: it sets a floor on the height, and says nothing of
+// an X-dimension below which it starts. Found by `/code-review medium` on #107's follow-up.
+const LISTED_FLOOR =
+  `table 5-44 lists for its minimum X-dimension, ${xDimensionMm(EAN_UPC_MIN_X_DIMENSION_MM)}; ` +
+  'its footnote (**) says "When printing a minimum symbol with any method of printing, the ' +
+  'bar height SHALL NOT be truncated below the minimum as listed in the table above."'
+
 const judgedAsDrawn: Gs1RetailRule = {
   id: 'gs1/bar-height',
   title: 'Bar height meets the specification’s minimum for the symbol’s X-dimension.',
@@ -53,6 +64,11 @@ const judgedAsDrawn: Gs1RetailRule = {
       const requiredMm = nominalBarHeightMm(symbol.symbology, symbol.xDimensionMm)
       // Only the fixed-length EAN/UPC family is tabulated. No figure, no verdict.
       if (requiredMm === undefined) continue
+      // Below the minimum X the table lists no height of its own, so the figure is said as
+      // the one it is: 18.28 mm is 0.264's, owed by footnote (**), not this X-dimension's.
+      // "Minimum for this X-dimension" claimed a figure the table does not give. Found by
+      // `/code-review high` on #107.
+      const atTheFloor = isAtTheListedHeightFloor(symbol.xDimensionMm)
 
       if (symbol.barHeightMm >= requiredMm - MEASUREMENT_TOLERANCE_MM) {
         findings.push(
@@ -60,8 +76,8 @@ const judgedAsDrawn: Gs1RetailRule = {
           passedOnArtwork(
             barHeightRule,
             GS1_BAR_HEIGHT_SUFFICIENT,
-            `The bars are ${mm(symbol.barHeightMm)}, meeting the ${mm(requiredMm)} minimum ` +
-              'for this X-dimension.',
+            `The bars are ${mm(symbol.barHeightMm)}, meeting the ${mm(requiredMm)} ` +
+              (atTheFloor ? LISTED_FLOOR : 'minimum for this X-dimension.'),
             symbol.elementId,
           ),
         )
@@ -74,7 +90,8 @@ const judgedAsDrawn: Gs1RetailRule = {
           severity: 'violation',
           message:
             `The bars are ${mm(symbol.barHeightMm)}; a ${symbol.symbology} at ` +
-            `X = ${xDimensionMm(symbol.xDimensionMm)} requires ${mm(requiredMm)}.`,
+            `X = ${xDimensionMm(symbol.xDimensionMm)} requires ${mm(requiredMm)}` +
+            (atTheFloor ? `, the height ${LISTED_FLOOR}` : '.'),
           measurement: { actual: mm(symbol.barHeightMm), required: mm(requiredMm) },
           elementId: symbol.elementId,
         }),
