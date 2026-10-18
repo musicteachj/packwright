@@ -130,4 +130,45 @@ describe('loadEnv', () => {
   it('keeps a secret that is actually set', () => {
     expect(load({ ANTHROPIC_API_KEY: 'sk-test' }).ANTHROPIC_API_KEY).toBe('sk-test')
   })
+
+  /**
+   * The audit key is required where the server can spend the Anthropic key in
+   * production (`docs/security-review-2026-10-18.md`, James's decision of
+   * 2026-10-18): a deployment that left it unset opened the audit to anyone.
+   */
+  it('refuses to start in production with the Anthropic key and no audit key', () => {
+    expect(() => load({ NODE_ENV: 'production', ANTHROPIC_API_KEY: 'sk-ant-x' })).toThrow(
+      /AUDIT_API_KEY: is required in production when ANTHROPIC_API_KEY is set/,
+    )
+    expect(() =>
+      load({ NODE_ENV: 'production', ANTHROPIC_API_KEY: 'sk-ant-x', AUDIT_API_KEY: '' }),
+    ).toThrow(/AUDIT_API_KEY/)
+  })
+
+  it('starts in production with both keys, or with neither', () => {
+    expect(
+      load({ NODE_ENV: 'production', ANTHROPIC_API_KEY: 'sk-ant-x', AUDIT_API_KEY: 'the-secret' })
+        .AUDIT_API_KEY,
+    ).toBe('the-secret')
+    // No Anthropic key is no audit to spend, so nothing to protect.
+    expect(load({ NODE_ENV: 'production' }).NODE_ENV).toBe('production')
+  })
+
+  it('leaves the audit key optional outside production', () => {
+    expect(load({ ANTHROPIC_API_KEY: 'sk-ant-x' }).AUDIT_API_KEY).toBeUndefined()
+  })
+
+  it('reads the daily audit limit as a whole number, absent when blank', () => {
+    expect(load({ AUDIT_DAILY_LIMIT: '4' }).AUDIT_DAILY_LIMIT).toBe(4)
+    expect(load({ AUDIT_DAILY_LIMIT: '0' }).AUDIT_DAILY_LIMIT).toBe(0)
+    expect(load({ AUDIT_DAILY_LIMIT: '' }).AUDIT_DAILY_LIMIT).toBeUndefined()
+    expect(() => load({ AUDIT_DAILY_LIMIT: '2.5' })).toThrow(/AUDIT_DAILY_LIMIT/)
+    expect(() => load({ AUDIT_DAILY_LIMIT: '-1' })).toThrow(/AUDIT_DAILY_LIMIT/)
+    // Not 0, which would turn the audit off on a value meant as blank.
+    expect(() => load({ AUDIT_DAILY_LIMIT: ' ' })).toThrow(/AUDIT_DAILY_LIMIT/)
+  })
+
+  it('trims the audit key, as the audit page trims what is typed', () => {
+    expect(load({ AUDIT_API_KEY: 'the-secret\n' }).AUDIT_API_KEY).toBe('the-secret')
+  })
 })

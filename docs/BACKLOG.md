@@ -959,12 +959,17 @@ The routes are unauthenticated, which is also the edge's job.
 it is must-fix finding 2 of `docs/security-review-2026-10-18.md`, which also lists that review's recorded,
 no-work items.
 
+**Settled 2026-10-18 by security fix 2:** the audit route now reads its body after its limiter and its key.
+
 **The audit route's guards run after its body has been parsed.** `/api/audit`'s `express.json({ limit: '10mb'
 })` is mounted ahead of its router, so a request the quotas or the key refuse has already been buffered and
 parsed in full: ten megabytes of JSON can be read before a 401. The guards bound what the route can *spend*,
 which was their job, and nothing about what it costs to refuse. Narrower than when it was raised: the 10 MB
 limit is now on this route alone, and every other route is held to 256 KB. A limiter mounted ahead of the body
 parser would close it, at the cost of splitting the route's protections across two files.
+
+**Settled 2026-10-18 for the daily cap, by security fix 2:** the day's count is in the database
+(`audit/dailyAllowance.ts`); the hourly per-client limit below is still per process.
 
 **The audit route's quotas are per process, so two containers are two allowances.** `express-rate-limit`'s
 default store is in memory, which is the right call for one container and the wrong one for a service scaled
@@ -1203,6 +1208,14 @@ the whole printed list once per allergen, so 1,000 entries over all nine allerge
 (B)(ii)'s caveat treats overlapping names, so it wants its own fixtures. Also, one line each: the strike-out count
 test uses two allergens and has one assertion the other always implies, and the Contains text is lowercased once per
 bearing ingredient.
+
+**From security fix 2's reviews (2026-10-18), one line each:** the audit key is kept in `localStorage` with no
+expiry, and is still sent, unseen, once a server stops asking for one; requests without a key fill the same hourly
+bucket a key holder at that address uses (per address only with `TRUST_PROXY_HOPS=1`); where the status cannot be
+read, the first read goes without a key and counts against the hour before the field appears; a key with a character
+`fetch` cannot put in a header reads as a generic failure; the environment's cross-field check is skipped while
+another field fails, so a missing audit key is reported a deploy late; the key is required even where
+`AUDIT_DAILY_LIMIT=0` has turned the audit off; and line-wrapped base64 is refused as "not base64".
 
 ---
 

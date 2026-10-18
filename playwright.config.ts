@@ -79,7 +79,11 @@ export default defineConfig({
     // server process Playwright already manages, so there is no second lifetime
     // to get right: no mongod started by `--list`, none left behind when the
     // server fails to boot, and no teardown racing the thing it is tearing down.
-    command: `npm run build && PORT=${PORT} NODE_ENV=production node scripts/serve-with-memory-mongo.mjs`,
+    // `AUDIT_API_KEY` is set because production requires it wherever `ANTHROPIC_API_KEY`
+    // is, and a developer's `apps/api/.env` may carry the second: without the first the
+    // server would refuse to start and take the whole suite with it. The audit specs
+    // answer the audit routes themselves, so the key is never presented.
+    command: `npm run build && PORT=${PORT} NODE_ENV=production AUDIT_API_KEY=e2e-only node scripts/serve-with-memory-mongo.mjs`,
     url: `http://localhost:${PORT}/health`,
     reuseExistingServer: !process.env.CI,
     // The build is a Vite production build plus a tsup bundle; on a cold cache

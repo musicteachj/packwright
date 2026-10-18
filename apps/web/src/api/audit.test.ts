@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { readGhsLabel } from './audit'
+import { AUDIT_KEY_HEADER, auditStatus, readGhsLabel } from './audit'
 import type { LabelPhoto } from '../audit/normalisePhoto'
 
 const PHOTO: LabelPhoto = { mediaType: 'image/jpeg', data: 'AAAA', widthPx: 100, heightPx: 80 }
@@ -99,5 +99,36 @@ describe('asking the server to read a label', () => {
 
     vi.stubGlobal('fetch', respond({ error: 'The image is too large' }, false, 413))
     await expect(readGhsLabel(PHOTO, 'eu-clp')).rejects.toMatchObject({ status: 413 })
+  })
+})
+
+describe('the audit key and the server status', () => {
+  it('sends the key the person typed, and no key header when there is none', async () => {
+    const fetching = respond({ extraction: { fields: {}, warnings: [] }, model: 'claude-opus-5' })
+    vi.stubGlobal('fetch', fetching)
+
+    await readGhsLabel(PHOTO, 'eu-clp', 'the-secret')
+    await readGhsLabel(PHOTO, 'eu-clp')
+
+    const headersOf = (call: number) =>
+      (fetching.mock.calls[call] as [string, RequestInit])[1].headers as Record<string, string>
+    expect(headersOf(0)[AUDIT_KEY_HEADER]).toBe('the-secret')
+    expect(Object.keys(headersOf(1))).not.toContain(AUDIT_KEY_HEADER)
+  })
+
+  it('reads the status the server gives', async () => {
+    const fetching = respond({ available: true, keyRequired: true })
+    vi.stubGlobal('fetch', fetching)
+    expect(await auditStatus()).toEqual({ available: true, keyRequired: true })
+    expect(fetching.mock.calls[0]![0]).toBe('/api/audit/status')
+  })
+
+  it('answers null where the status cannot be had or makes no sense', async () => {
+    vi.stubGlobal('fetch', respond({ available: true, keyRequired: true }, false, 404))
+    expect(await auditStatus()).toBeNull()
+    vi.stubGlobal('fetch', respond({ available: 'yes' }))
+    expect(await auditStatus()).toBeNull()
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
+    expect(await auditStatus()).toBeNull()
   })
 })

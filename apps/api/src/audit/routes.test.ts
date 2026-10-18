@@ -9,9 +9,12 @@ import {
   EXTRACTION_MODEL,
   type ExtractLabel,
 } from './extract'
+import { memoryAllowance, type DailyAllowance } from './dailyAllowance'
 import { AUDIT_KEY_HEADER, MAX_PHOTO_BASE64 } from './routes'
 
-const A_PHOTO = { mediaType: 'image/png', data: 'AAAA' }
+// The opening of a real PNG, its signature and the start of its IHDR chunk: the
+// route refuses data that does not begin as its media type does (`photoSignature.ts`).
+const A_PHOTO = { mediaType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUg==' }
 const A_REQUEST = { regime: 'eu-clp', image: A_PHOTO }
 
 const EXTRACTION = {
@@ -380,4 +383,124 @@ describe('what the audit route costs to call', () => {
       for (let i = 0; i < 25; i++) expect((await send(built)).status).toBe(200)
     })
   })
+})
+
+/**
+ * Findings 2 and 3 of `docs/security-review-2026-10-18.md`: a request the guards
+ * refuse used to be parsed first, and a body that was no photograph spent a call.
+ * Whether a body was parsed is read from the answer rather than timed: a body that
+ * is not JSON draws 400 from the parser, so a refusal that arrives as 401 or 429
+ * instead was decided before anything read it.
+ */
+describe('what the audit route reads before it refuses', () => {
+  const NOT_JSON = '{"regime": "eu-clp", "image": '
+  const app = (options: Parameters<typeof createApp>[0] = {}) =>
+    createApp({ enableLogging: false, extract: reading(), ...options })
+  const postRaw = (built: ReturnType<typeof createApp>, body: string, key?: string) => {
+    const request = supertest(built).post('/api/audit/ghs').set('Content-Type', 'application/json')
+    return (key === undefined ? request : request.set(AUDIT_KEY_HEADER, key)).send(body)
+  }
+
+  it('refuses a missing key before it parses the body', async () => {
+    const response = await postRaw(app({ auditLimits: false, auditApiKey: 'the-secret' }), NOT_JSON)
+    expect(response.status).toBe(401)
+  })
+
+  it('refuses a client past its hourly allowance before it parses the body', async () => {
+    const built = app({ auditLimits: { perHour: 1, perDay: 100 } })
+    expect((await postRaw(built, NOT_JSON)).status).toBe(400)
+    expect((await postRaw(built, NOT_JSON)).status).toBe(429)
+  })
+
+  it('still parses the body of a request the guards admit', async () => {
+    const response = await postRaw(
+      app({ auditLimits: false, auditApiKey: 'the-secret' }),
+      NOT_JSON,
+      'the-secret',
+    )
+    expect(response.status).toBe(400)
+  })
+
+  it('takes a photograph larger than every other route allows', async () => {
+    // Mounted ahead of the 256 KB parser the other routes share, which would
+    // otherwise refuse every real photograph with 413 before this route saw it.
+    const extract = reading()
+    const data = Buffer.concat([
+      Buffer.from(A_PHOTO.data, 'base64'),
+      Buffer.alloc(750_000),
+    ]).toString('base64')
+    const response = await supertest(app({ auditLimits: false, extract }))
+      .post('/api/audit/ghs')
+      .send({ ...A_REQUEST, image: { ...A_PHOTO, data } })
+    expect(response.status).toBe(200)
+    expect(extract).toHaveBeenCalled()
+  })
+
+  it.each([
+    ['one character', 'A'],
+    ['text that is not base64', 'not an image at all'],
+    [
+      'a JPEG declared as a PNG',
+      Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0, 0]).toString('base64'),
+    ],
+  ])('refuses %s as the image without spending the day on it', async (_name, data) => {
+    const extract = reading()
+    const built = app({ extract, auditLimits: { perHour: 100, perDay: 1 } })
+    const refused = await supertest(built)
+      .post('/api/audit/ghs')
+      .send({ ...A_REQUEST, image: { ...A_PHOTO, data } })
+    expect(refused.status).toBe(400)
+    expect(refused.body.detail[0].path).toBe('image.data')
+    expect(extract).not.toHaveBeenCalled()
+
+    // The day's one call is still there for a photograph.
+    expect((await supertest(built).post('/api/audit/ghs').send(A_REQUEST)).status).toBe(200)
+  })
+
+  it('counts against the allowance it is given, which a restart does not reset', async () => {
+    const allowance = memoryAllowance()
+    const options = { auditLimits: { perHour: 100, perDay: 1 }, auditAllowance: allowance }
+    expect((await supertest(app(options)).post('/api/audit/ghs').send(A_REQUEST)).status).toBe(200)
+    // A second application, as after a restart, on the same count.
+    expect((await supertest(app(options)).post('/api/audit/ghs').send(A_REQUEST)).status).toBe(429)
+  })
+
+  it('refuses, and spends nothing, when the day cannot be counted', async () => {
+    const extract = reading()
+    const unreadable: DailyAllowance = { take: () => Promise.reject(new Error('no database')) }
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const response = await supertest(
+      app({ extract, auditLimits: { perHour: 100, perDay: 10 }, auditAllowance: unreadable }),
+    )
+      .post('/api/audit/ghs')
+      .send(A_REQUEST)
+    error.mockRestore()
+    expect(response.status).toBe(503)
+    expect(extract).not.toHaveBeenCalled()
+  })
+})
+
+describe('GET /api/audit/status', () => {
+  it.each([
+    [{}, { available: false, keyRequired: false }],
+    [{ extract: reading() }, { available: true, keyRequired: false }],
+    [
+      { extract: reading(), auditApiKey: 'the-secret' },
+      { available: true, keyRequired: true },
+    ],
+    // A day of no calls, which `AUDIT_DAILY_LIMIT=0` sets to turn the audit off.
+    [
+      { extract: reading(), auditLimits: { perHour: 20, perDay: 0 } },
+      { available: false, keyRequired: false },
+    ],
+  ])(
+    'says whether there is an audit and whether it needs a key (%#)',
+    async (options, expected) => {
+      const response = await supertest(createApp({ enableLogging: false, ...options })).get(
+        '/api/audit/status',
+      )
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual(expected)
+    },
+  )
 })

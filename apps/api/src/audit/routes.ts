@@ -19,7 +19,7 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 
 import Anthropic from '@anthropic-ai/sdk'
 import { GHS_REGIMES } from '@packwright/label-core'
-import {
+import express, {
   Router,
   type NextFunction,
   type Request,
@@ -28,6 +28,7 @@ import {
 } from 'express'
 import rateLimit from 'express-rate-limit'
 import { z } from 'zod'
+import { memoryAllowance, type DailyAllowance } from './dailyAllowance'
 import {
   ExtractionDeclined,
   ExtractionTruncated,
@@ -35,6 +36,7 @@ import {
   PHOTO_MEDIA_TYPES,
   type ExtractLabel,
 } from './extract'
+import { photoFault } from './photoSignature'
 
 /**
  * The largest image this route will forward, in base64 characters.
@@ -55,7 +57,12 @@ import {
 export const MAX_PHOTO_BASE64 = 8 * 1024 * 1024
 
 const HOUR_MS = 60 * 60 * 1000
-const DAY_MS = 24 * HOUR_MS
+
+/**
+ * What the audit route may weigh, because it carries a photograph. Read here, after
+ * the guards, rather than by `app.ts` ahead of them (see the order below).
+ */
+export const AUDIT_BODY_LIMIT = '10mb'
 
 /**
  * What one client may spend in an hour, and what this process may spend in a day.
@@ -69,15 +76,18 @@ const DAY_MS = 24 * HOUR_MS
  * per client and asks whether one caller is going too fast; a person auditing
  * labels by hand takes minutes over each photograph, so twenty in an hour is
  * generous for the work and useless for a script. The daily figure is
- * process-wide and asks what this deployment can lose in a day whatever the
+ * deployment-wide and asks what this deployment can lose in a day whatever the
  * traffic looks like — it is the only one of the two that still holds when
  * client addresses cannot be told apart, which is the usual case behind a proxy
  * that has not been configured for. See `trustProxyHops` in `AppOptions`.
  *
  * Both are deliberately small. Raising a limit is a decision somebody makes on
- * purpose; discovering one was never there is not.
+ * purpose; discovering one was never there is not. **The day's figure is 10 since
+ * 2026-10-18**, about $1.30 at the security review's $0.13 a call, where 200 was
+ * about $26 and would spend a $30 monthly limit in a day; `AUDIT_DAILY_LIMIT`
+ * sets it, so it can follow that limit down without a release.
  */
-export const DEFAULT_AUDIT_LIMITS = { perHour: 20, perDay: 200 } as const
+export const DEFAULT_AUDIT_LIMITS = { perHour: 20, perDay: 10 } as const
 
 export interface AuditLimits {
   /** Requests per client per hour. */
@@ -100,7 +110,8 @@ export const AUDIT_KEY_HEADER = 'x-audit-key'
  * to learn from how long it took.
  */
 /**
- * What this process may still spend today, counted in calls rather than requests.
+ * What this deployment may still spend today is counted in calls rather than
+ * requests, by a `DailyAllowance` (`dailyAllowance.ts`).
  *
  * Deliberately not an `express-rate-limit` bucket, which the first two attempts
  * at this were. A limiter counts *requests*, and the daily figure is a budget —
@@ -111,27 +122,7 @@ export const AUDIT_KEY_HEADER = 'x-audit-key'
  * allowance and lock out every real caller until the window turned. Counting
  * calls also keeps the other half honest: a reading the vision API declines
  * comes back 422, and the model still ran, so that *is* spend and is counted.
- *
- * A fixed window, like the limiter's, and in memory, like the limiter's — see
- * `docs/BACKLOG.md` on what that means for more than one container.
  */
-function dailyAllowance(limit: number) {
-  let windowStartedAt = Date.now()
-  let spent = 0
-  return {
-    /** Takes one call from today's allowance, or refuses. */
-    take(): boolean {
-      const now = Date.now()
-      if (now - windowStartedAt >= DAY_MS) {
-        windowStartedAt = now
-        spent = 0
-      }
-      if (spent >= limit) return false
-      spent += 1
-      return true
-    },
-  }
-}
 
 function keyAccepted(presented: unknown, expected: string): boolean {
   if (typeof presented !== 'string') return false
@@ -164,11 +155,12 @@ export interface AuditRouterOptions {
    *
    * Optional because the route has to keep working for a deployment that has
    * not set one, and **required the moment it is set** — a key that is checked
-   * only when the caller offers one is not a key. It is not a substitute for
-   * authentication: the client is served from this same origin, so a browser
-   * that could send the key would be shipping it to everyone who loads the
-   * page. It shuts the route to everything *except* a browser, which is what a
-   * private deployment wants and a public one cannot have.
+   * only when the caller offers one is not a key. Never built into the client,
+   * which is served from this same origin and would ship it to everyone who loads
+   * the page: the audit page asks the person for it instead, and sends what they
+   * type. **Required on a public deployment since 2026-10-18** (`env.ts`), because
+   * an anonymous daily budget can always be spent by enough addresses, however it
+   * is shared out (`docs/security-review-2026-10-18.md`, James's decision).
    */
   apiKey?: string | undefined
   /**
@@ -180,6 +172,12 @@ export interface AuditRouterOptions {
    * limits pass `false`; the ones that are pass small numbers.
    */
   limits?: AuditLimits | false | undefined
+  /**
+   * Where the day's calls are counted. Absent, in memory: right for a test, and
+   * wrong for a server, whose count must survive a restart, so `server.ts` passes
+   * `databaseAllowance`.
+   */
+  allowance?: DailyAllowance | undefined
 }
 
 export function createAuditRouter(options: AuditRouterOptions = {}): Router {
@@ -190,7 +188,21 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
   // is what makes them add up, so it is written out rather than assembled where
   // it happens to read well.
   const guards: RequestHandler[] = []
-  const today = limits === false || limits === undefined ? undefined : dailyAllowance(limits.perDay)
+  const today =
+    limits === false || limits === undefined
+      ? undefined
+      : { allowance: options.allowance ?? memoryAllowance(), perDay: limits.perDay }
+
+  // What the audit page needs to know before it asks for a photograph: whether
+  // there is anything to send one to, and whether it must ask for the key. No
+  // more than that, and nothing about the key itself.
+  // A day of no calls is no audit, though the extractor is there.
+  router.get('/status', (_request: Request, response: Response) => {
+    response.json({
+      available: extract !== undefined && (today === undefined || today.perDay > 0),
+      keyRequired: apiKey !== undefined,
+    })
+  })
 
   // 1. The per-client hourly bucket, first, so that guessing at the key costs
   //    the guesser something. `express-rate-limit` writes its own 429 rather
@@ -220,6 +232,13 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
       response.status(401).json({ error: 'A valid audit key is required' })
     })
   }
+
+  // 3. The body, third, and only now. The parser used to run in `app.ts` ahead of
+  //    this router, so a request the limiter or the key was about to refuse had
+  //    already been read and parsed in full: a nested 10 MB body cost 635 ms of
+  //    blocking CPU and 267 MB before its 401 (`docs/security-review-2026-10-18.md`,
+  //    finding 2). Its errors reach `app.ts`'s handler, which maps 400, 413 and 415.
+  guards.push(express.json({ limit: AUDIT_BODY_LIMIT }))
 
   // On the route rather than the router. Mounted with `router.use` these counted
   // every method and path under `/api/audit` — a 404, a malformed body, a 503
@@ -251,11 +270,32 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
       return
     }
 
-    // The last thing before the money is spent, and the first thing that counts
-    // against the day. Everything above this line is free to refuse.
-    if (today !== undefined && !today.take()) {
-      response.status(429).json({ error: 'This server has reached its daily audit limit' })
+    // Before the day is counted, so a body that is no photograph is refused for
+    // free rather than spending a call (`photoSignature.ts`).
+    const fault = photoFault(image.mediaType, image.data)
+    if (fault !== undefined) {
+      badRequest(response, [{ path: ['image', 'data'], message: fault }])
       return
+    }
+
+    // The last thing before the money is spent, and the first thing that counts
+    // against the day. Everything above this line is free to refuse. A count that
+    // cannot be read refuses too: a budget nobody can check is not one.
+    if (today !== undefined) {
+      let taken: boolean
+      try {
+        taken = await today.allowance.take(today.perDay)
+      } catch (error) {
+        console.error(error)
+        response
+          .status(503)
+          .json({ error: 'The daily audit count is unavailable. Try again later.' })
+        return
+      }
+      if (!taken) {
+        response.status(429).json({ error: 'This server has reached its daily audit limit' })
+        return
+      }
     }
 
     try {

@@ -59,10 +59,57 @@ export interface LabelReading {
   model: string
 }
 
-export async function readGhsLabel(photo: LabelPhoto, regime: GhsRegime): Promise<LabelReading> {
+/** The header the server reads an audit key from (`apps/api/src/audit/routes.ts`). */
+export const AUDIT_KEY_HEADER = 'X-Audit-Key'
+
+/**
+ * What the server can do for this page: whether it reads photographs at all, and
+ * whether it asks for an audit key first.
+ */
+export interface AuditStatus {
+  available: boolean
+  keyRequired: boolean
+}
+
+/**
+ * The server's answer, or `null` where it could not be had or did not make sense.
+ *
+ * `null` leaves the page as it was before the server could be asked: a photograph
+ * may be sent, and any refusal is shown in the server's own words. Guessing either
+ * way would be worse, since "no key needed" hides the field a person needs and
+ * "unavailable" hides an audit that works.
+ */
+export async function auditStatus(): Promise<AuditStatus | null> {
+  try {
+    const response = await fetch('/api/audit/status')
+    if (!response.ok) return null
+    const body = (await response.json()) as Partial<AuditStatus>
+    return typeof body.available === 'boolean' && typeof body.keyRequired === 'boolean'
+      ? { available: body.available, keyRequired: body.keyRequired }
+      : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Asks the server to read a photograph.
+ *
+ * `auditKey` is what the person typed, sent only when there is one. It is never
+ * part of this bundle: a key the client carried would be a key everyone who loads
+ * the page could read (`docs/security-review-2026-10-18.md`, James's decision).
+ */
+export async function readGhsLabel(
+  photo: LabelPhoto,
+  regime: GhsRegime,
+  auditKey = '',
+): Promise<LabelReading> {
   const response = await fetch('/api/audit/ghs', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(auditKey === '' ? {} : { [AUDIT_KEY_HEADER]: auditKey }),
+    },
     body: JSON.stringify({
       regime,
       image: { mediaType: photo.mediaType, data: photo.data },

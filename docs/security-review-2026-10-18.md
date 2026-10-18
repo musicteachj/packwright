@@ -31,8 +31,8 @@ the load balancer's liveness probe.
 | # | where | what is wrong | measured | kind |
 |---|---|---|---|---|
 | 1 | `label-core` schema and text code, reached by every public route | **Unbounded input meets superlinear code.** No free-text field has a maximum length and no array a maximum count. Stock and box dimensions are only `.positive()` (1e9 mm passes), and font sizes have no floor (5e-324 passes). Six places then grow quadratically or worse: `wrapTextMm` (`text/measure.ts`) re-measures the whole line for every word; `labelFilename`'s `/^-+|-+$/g`; `withoutTrailingSlashes`' `/\/+$/`; `parseDigitalLinkUri`'s URI pattern; the net quantity rule's `SI_AMOUNT`; and PDFKit's text layout, which is quadratic in spaces. | Through the real routes, within the 256 KB body limit: `check_label` 308 s (wrapping on 1e9 mm stock), 194 s (Digital Link), 5.3 s at 40 K (SI amount; the pattern alone 212 s at 250 K); export 29 s (filename), about 31 s (artwork text in the PDF). Re-measured here: the filename pattern 4.5 s at 100 K, the Digital Link pattern 0.76 s at 16 K, `SI_AMOUNT` 52 ms at 4 K, each quadrupling or worse per doubling. **Fixed by fix 1:** each path under 5 ms at 32 K; past a bound, refused in under 40 ms; the worst case inside the bounds, `check_label` on a list spread over all nine allergens, takes about 0.5 to 0.75 s. | denial of service |
-| 2 | `/api/audit` | **The daily spending cap does not hold.** The 10 MB body is parsed before any guard runs, and a nested body costs 653 ms of blocking CPU and about 440 MB to parse (measured here). Sixteen at once delayed `/health` by 6.4 s (the reviewer's measurement). The daily counter is in memory, so a task the load balancer replaces starts again at zero. The parse order was recorded in `docs/BACKLOG.md` ("From the pre-stage-2 security pass") as a cost of refusing; that it can reset the spending cap is new, and fix 2 settles that entry. | 653 ms and about 440 MB per 10 MB body | unbounded cost |
-| 3 | `/api/audit` | **The daily cap can be drained for free.** `image.data` is `z.string().min(1)`, and `today.take()` counts the call before anything checks the data is an image, so a one-character "image" spends one of the day's 200 calls and Anthropic rejects it at no cost. Twenty an hour from one address drains the day in ten hours; ten addresses do it in under a minute. Real users then get 429 until the window resets. | confirmed in code | denial of service |
+| 2 | `/api/audit` | **The daily spending cap does not hold.** The 10 MB body is parsed before any guard runs, and a nested body costs 653 ms of blocking CPU and about 440 MB to parse (measured here). Sixteen at once delayed `/health` by 6.4 s (the reviewer's measurement). The daily counter is in memory, so a task the load balancer replaces starts again at zero. The parse order was recorded in `docs/BACKLOG.md` ("From the pre-stage-2 security pass") as a cost of refusing; that it can reset the spending cap is new, and fix 2 settles that entry. | 653 ms and about 440 MB per 10 MB body. **Fixed by fix 2:** the body is read only after the limiter and the key, so the same body without a key is refused in 15 ms; the day's count is in the database. | unbounded cost |
+| 3 | `/api/audit` | **The daily cap can be drained for free.** `image.data` is `z.string().min(1)`, and `today.take()` counts the call before anything checks the data is an image, so a one-character "image" spends one of the day's 200 calls and Anthropic rejects it at no cost. Twenty an hour from one address drains the day in ten hours; ten addresses do it in under a minute. Real users then get 429 until the window resets. | confirmed in code. **Fixed by fix 2:** data that is not base64 opening as its declared type is refused with 400 before anything is counted, and the key is required on the public deploy. | denial of service |
 | 4 | `/api/labels` (saved labels) | **Saved labels have no owner and no write limit.** Any caller can list them, read any of them, overwrite any with `PUT`, delete any with `DELETE`, and fill the global 20-label cap so nobody else can save. No rate limiter is mounted on these routes. | confirmed in code and by the reviewer's requests | data loss |
 | 5 | `/mcp` | **Only `tools/call` is counted.** A 4.5 KB legacy batch of 100 `tools/list` returns 2.44 MB and counts as nothing; a batch of one call and 99 lists counts as one. The counter's comment says what goes uncounted is cheap, since no label is drawn, and "bounded by the body limit", but a batch multiplies the response about 500 times past the body. `subscriptions/listen` is uncounted too, and one client held all 1,024 subscription slots open in 3 s. | 2.44 MB per request; 1,024 sockets | unbounded cost |
 
@@ -44,6 +44,11 @@ or $54 if every call is retried. Findings 2 and 3 are why that figure is not a b
 
 - **Saved labels get an edit token.** Creating a label returns a secret the browser keeps, and changing or deleting
   the label requires it. Reading stays open by link, and there are still no accounts. Writes also get a rate limit.
+- **The audit is keyed on the public deploy (fix 2).** `AUDIT_API_KEY` is required in production wherever the
+  Anthropic key is set, and the audit page has a field for it: the person types the key, the browser keeps it,
+  and nothing in the bundle carries it. The daily cap is a setting, `AUDIT_DAILY_LIMIT`, 10 unless set, so it can
+  follow the spend limit below down. No per-address share of the cap: with the key required, it would protect
+  nothing a key holder cannot already be trusted with.
 - **A hard monthly spend limit on the Anthropic workspace that owns the audit key.** It needs no code, and it is the
   one bound that holds when the application's own caps do not. It is James's to set, before the deploy.
 
@@ -60,12 +65,11 @@ Four pull requests, each reviewed at `high`:
    real label is refused; upper bounds on dimensions and a floor on font sizes; `wrapTextMm` keeps a running width;
    the four patterns rewritten to run in linear time.
 2. **The audit's guards (findings 2 and 3).** The limiter and the key check run before the body is parsed; the
-   image data must be base64 whose leading bytes match its declared type before a call is counted; a per-client
-   daily limit; and the daily count is held in the database, so a restart does not reset it. **What that leaves:**
-   enough addresses sending small real images still drain a budget shared by everyone. Each such call is paid for and
-   counted, so the spend stays bounded, but real users can still be locked out for the day. An anonymous shared
-   budget always has this property; the remedies are the WAF rule, a per-client share of the cap, or requiring
-   `AUDIT_API_KEY` on the public deploy. Which one is James's choice, asked when fix 2 is planned.
+   image data must be base64 whose leading bytes match its declared type before a call is counted; and the daily
+   count is held in the database, so a restart does not reset it. An anonymous shared budget can always be drained
+   by enough addresses, so James chose to require `AUDIT_API_KEY` on the public deploy (see the decisions above),
+   with a field on the audit page to type it in, rather than a WAF rule or a per-client share. **What that leaves:**
+   a key holder can still spend the day's calls, which is the trust the key gives them.
 3. **Saved labels (finding 4).** The edit token, and a per-client limit on writes. **What that leaves:** creating a
    label needs no token, so enough addresses can still fill the global 20-label cap, and only their own tokens can
    delete those labels. The remedies are a per-client share of the cap, labels that expire, or a larger cap. That is

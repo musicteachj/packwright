@@ -56,6 +56,12 @@ test('reads a photographed label and judges it with a cited rule', async ({ page
       }),
     }),
   )
+  // Added after the catch-all, so it answers first: Playwright tries the newest
+  // route first. A server that reads photographs and needs no key, as a private
+  // deployment is; the key field has its own tests in `AuditView.test.ts`.
+  await page.route('**/api/audit/status', (route) =>
+    route.fulfill({ status: 200, json: { available: true, keyRequired: false } }),
+  )
 
   await page.setViewportSize({ width: 420, height: 900 })
   await page.goto('/audit')
@@ -122,6 +128,12 @@ test('hands the confirmed label to the editor without saving it', async ({ page 
         model: recorded.model,
       }),
     }),
+  )
+  // Added after the catch-all, so it answers first: Playwright tries the newest
+  // route first. A server that reads photographs and needs no key, as a private
+  // deployment is; the key field has its own tests in `AuditView.test.ts`.
+  await page.route('**/api/audit/status', (route) =>
+    route.fulfill({ status: 200, json: { available: true, keyRequired: false } }),
   )
 
   await page.setViewportSize({ width: 1440, height: 900 })

@@ -36,7 +36,13 @@ import {
   type LabelStock,
 } from '@packwright/label-core'
 import { useRouter } from 'vue-router'
-import { AuditError, readGhsLabel, type LabelReading } from '../api/audit'
+import {
+  AuditError,
+  auditStatus,
+  readGhsLabel,
+  type AuditStatus,
+  type LabelReading,
+} from '../api/audit'
 import { auditReport } from '../audit/report'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import FindingsRail from '../components/FindingsRail.vue'
@@ -72,6 +78,49 @@ const reading = ref<LabelReading | null>(null)
 const readingError = ref<string | null>(null)
 const readingDetail = ref<readonly string[]>([])
 const busy = ref(false)
+
+/**
+ * The audit key, where this server asks for one.
+ *
+ * Reading a photograph spends the server's allowance with Anthropic, so a public
+ * deployment opens it only to people given its key
+ * (`docs/security-review-2026-10-18.md`, James's decision of 2026-10-18). The key
+ * is what the person types, never part of this bundle, and it is kept in this
+ * browser so it is typed once. The field shows when the server says it needs a
+ * key, or when it refused one: a server that could not be asked still has its
+ * refusal shown, and still needs somewhere for the key to go.
+ */
+const AUDIT_KEY_STORAGE = 'packwright.auditKey'
+const status = ref<AuditStatus | null>(null)
+const auditKey = ref(storedAuditKey())
+/** Once refused, the field stays for the rest of the visit; the message, until the key changes. */
+const keyEverRefused = ref(false)
+const keyRefused = ref(false)
+const askForKey = computed(() => status.value?.keyRequired === true || keyEverRefused.value)
+const unavailable = computed(() => status.value?.available === false)
+
+void auditStatus().then((answer) => {
+  status.value = answer
+})
+watch(auditKey, (key) => {
+  keyRefused.value = false
+  // Storage can be refused (a private window, a full quota); the key then lasts
+  // as long as the page, which is all that is lost.
+  try {
+    if (key === '') localStorage.removeItem(AUDIT_KEY_STORAGE)
+    else localStorage.setItem(AUDIT_KEY_STORAGE, key)
+  } catch {
+    // Kept in memory only.
+  }
+})
+
+function storedAuditKey(): string {
+  try {
+    return localStorage.getItem(AUDIT_KEY_STORAGE) ?? ''
+  } catch {
+    return ''
+  }
+}
 
 /** The text of each field, which is what is shown and what is edited. */
 const texts = ref<Partial<Record<ReadingKey, string>>>({})
@@ -242,7 +291,7 @@ async function read() {
   readingError.value = null
   readingDetail.value = []
   try {
-    const result = await readGhsLabel(camera.photo.value, regime.value)
+    const result = await readGhsLabel(camera.photo.value, regime.value, auditKey.value.trim())
     if (mine !== readGeneration) return
     reading.value = result
     accepted.value = new Set()
@@ -262,6 +311,10 @@ async function read() {
         ? caught.message
         : 'The label could not be read. Please try again.'
     readingDetail.value = caught instanceof AuditError ? caught.detail : []
+    if (caught instanceof AuditError && caught.status === 401) {
+      keyEverRefused.value = true
+      keyRefused.value = true
+    }
   } finally {
     if (mine === readGeneration) busy.value = false
   }
@@ -358,7 +411,14 @@ function openInEditor() {
   void router.push('/labels/new')
 }
 
-const canRead = computed(() => camera.photo.value !== null && regime.value !== '' && !busy.value)
+const canRead = computed(
+  () =>
+    camera.photo.value !== null &&
+    regime.value !== '' &&
+    !busy.value &&
+    !unavailable.value &&
+    (!askForKey.value || auditKey.value.trim() !== ''),
+)
 </script>
 
 <template>
@@ -388,6 +448,50 @@ const canRead = computed(() => camera.photo.value !== null && regime.value !== '
         Not read from the photograph, and deliberately not defaulted. It selects which rules apply
         and which statement wording is correct, so a label judged under the wrong one is judged
         wrongly rather than approximately.
+      </p>
+    </section>
+
+    <p
+      v-if="unavailable"
+      class="border-chrome-600 text-chrome-300 max-w-2xl border-l-2 pl-4 text-sm"
+      data-test="audit-unavailable"
+    >
+      This server is not set up to read photographs, so no label can be read here.
+    </p>
+
+    <section
+      v-if="askForKey"
+      class="flex flex-col gap-4"
+      aria-labelledby="key-heading"
+      data-test="audit-key-section"
+    >
+      <h2 id="key-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
+        The audit key
+      </h2>
+      <label :class="LABEL" class="max-w-sm" for="audit-key">
+        Audit key
+        <input
+          id="audit-key"
+          v-model="auditKey"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          :class="INPUT"
+          data-test="audit-key"
+        />
+      </label>
+      <p class="text-chrome-400 max-w-2xl text-xs">
+        Reading a photograph spends this server's allowance with Anthropic, so it is open only to
+        people given its key. Ask whoever runs this deployment for one. The key is kept in this
+        browser and sent only to this server.
+      </p>
+      <p
+        v-if="keyRefused"
+        class="border-danger text-danger max-w-2xl border-l-2 pl-4 text-sm"
+        role="alert"
+        data-test="audit-key-refused"
+      >
+        <span class="font-semibold">Error:</span> the server did not accept this key.
       </p>
     </section>
 
