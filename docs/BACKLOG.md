@@ -1191,6 +1191,12 @@ maximums of its own, so a long extracted value is refused only when the confirme
 `nutritionFacts.ts`'s `printedInRun` interpolates a declared percentage into a regex unescaped, so the point in
 "4.5" matches any character (no false clearance found, since the engine never prints a figure it could confuse).
 
+**From the high review of #109 (2026-10-18), one line each:** a saved label stored before the bounds with a value
+past one now answers 500 on open, with no tolerant read (the deployed database starts empty); the `/mcp` sweep's
+guard against bound refusals also catches the older `min(1)` and `positive()` refusals; `widestLineMm` is written
+in both engines, and the two end-of-string trims are two helpers; `Math.max(...)` and `Math.min(...)` remain over
+the nutrient rows and the bars, which are bounded; and `wrapTextMm` measures a word that starts a line twice.
+
 ---
 
 ## From phase 7, stage 2

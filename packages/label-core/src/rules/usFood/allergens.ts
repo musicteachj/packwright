@@ -102,10 +102,8 @@ const SPECIFIC: Citation = {
  */
 function elementsDeclaring(
   sources: readonly string[],
-  allergenId: MajorFoodAllergenId,
-  printedList: string,
+  searchableList: string,
   printedContains: string,
-  ingredients: readonly UsFoodIngredient[],
 ): string[] {
   // Every form the source may be named by ("peanuts" or "peanut"), and any one will do.
   const needles = sources.map((source) => source.toLowerCase())
@@ -114,7 +112,25 @@ function elementsDeclaring(
   if (names(printedContains.toLowerCase())) {
     declaring.push(US_FOOD_ELEMENTS.containsStatement)
   }
+  if (names(searchableList)) declaring.push(US_FOOD_ELEMENTS.ingredients)
+  return declaring
+}
 
+/**
+ * The printed list, lowercased, with the names of every ingredient that is not this
+ * allergen struck out: what `elementsDeclaring` searches for it.
+ *
+ * Its own function, and worked out once per allergen rather than once per ingredient
+ * bearing one, because it depends on nothing else. Worked out per ingredient, the rule
+ * cost the bearing ingredients times the list's entries times its length, and 900 milk
+ * and egg entries beside a long list took 1.7 s inside the bounds
+ * (`docs/security-review-2026-10-18.md`, finding 1; found by the high review of #109).
+ */
+function listWithoutOtherNames(
+  allergenId: MajorFoodAllergenId,
+  printedList: string,
+  ingredients: readonly UsFoodIngredient[],
+): string {
   let searchable = printedList.toLowerCase()
   for (const ingredient of ingredients) {
     // A blank name is skipped, and not as a tidiness measure: `split('')` splits
@@ -139,8 +155,7 @@ function elementsDeclaring(
     if (ingredient.allergen === allergenId) continue
     searchable = searchable.split(ingredient.name.toLowerCase()).join(' ')
   }
-  if (names(searchable)) declaring.push(US_FOOD_ELEMENTS.ingredients)
-  return declaring
+  return searchable
 }
 
 export const usFoodAllergenRule: UsFoodRule = {
@@ -174,6 +189,14 @@ export const usFoodAllergenRule: UsFoodRule = {
 
     const printedList = textOf(US_FOOD_ELEMENTS.ingredients)
     const printedContains = textOf(US_FOOD_ELEMENTS.containsStatement)
+    const searchableLists = new Map<MajorFoodAllergenId, string>()
+    const searchableFor = (id: MajorFoodAllergenId): string => {
+      const known = searchableLists.get(id)
+      if (known !== undefined) return known
+      const searchable = listWithoutOtherNames(id, printedList, ingredients)
+      searchableLists.set(id, searchable)
+      return searchable
+    }
     const findings: Finding[] = []
 
     for (const ingredient of bearing) {
@@ -214,7 +237,7 @@ export const usFoodAllergenRule: UsFoodRule = {
       // Either form satisfies (w)(1). They are alternatives in the statute and
       // demanding both would report a violation against a compliant label.
       const source = sources[0]!
-      const declaring = elementsDeclaring(sources, id, printedList, printedContains, ingredients)
+      const declaring = elementsDeclaring(sources, searchableFor(id), printedContains)
       if (declaring.length > 0) {
         if (declaring.some((elementId) => wasFullyDrawn(layout, elementId))) continue
 
