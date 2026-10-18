@@ -10,6 +10,17 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The Saved labels page lists the labels this browser saved, and says plainly that only this browser can change
+  them.** The browser keeps each label's edit token in `localStorage` (`packwright.savedLabels`), with a copy in
+  memory so a refused storage still lets the visit edit what it saved; it sends the token with a save or a delete,
+  and lets go of it when the label is deleted or the server no longer has it. The page says that a label can be
+  changed or deleted only from the browser that saved it, that clearing the browser's storage loses that for good
+  while its link still opens it, and that labels are removed 30 days after their last change. It counts this
+  browser's labels, and says the app's count only when the app is full. A label opened from someone else's link
+  can be read and saved as new, and its Save is held back with the reason beside it. The medium review found two
+  ways to lose every token, both fixed: an answer without a `labels` list was read as "every label is gone", and one
+  unreadable id in storage made the server refuse every list. The end-to-end specs clean up with each label's token
+  and fail when the server refuses.
 - **Saved labels have an owner now: changing or deleting one needs the edit token its creator was handed, writes
   are limited per address, and labels expire 30 days after their last change.** Finding 4 of
   `docs/security-review-2026-10-18.md`. Any caller could list every saved label, overwrite one, delete one, and fill

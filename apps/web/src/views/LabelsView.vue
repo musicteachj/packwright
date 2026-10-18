@@ -1,6 +1,14 @@
 <script setup lang="ts">
 /**
- * The saved labels.
+ * The labels this browser saved.
+ *
+ * Only this browser's, since 2026-10-18. The page used to list every label on
+ * the server, which published every link, and anyone could then change or
+ * delete any of them (`docs/security-review-2026-10-18.md`, finding 4). Now a
+ * label can be changed only with the edit token its creator was handed, and the
+ * list is of the labels this browser holds tokens for (`api/heldLabels.ts`).
+ * The page says so in plain words, along with the two ways a label leaves it:
+ * clearing the browser's storage, and expiry thirty days after its last change.
  *
  * Deliberately thin: name, kind, when it last changed, and the two things you
  * can do with it. The list endpoint omits each label's `data`, so this page
@@ -31,10 +39,8 @@ const TYPE_NAMES: Record<string, string> = {
 }
 
 const labels = ref<SavedLabelSummary[]>([])
-/** The server's cap and count, or `null` where it gave none — then no figure is shown. */
+/** The server's cap and count, or `null` where it gave none; then no figure is shown. */
 const counted = ref<LabelCount | null>(null)
-/** The server had more than the one page asked for. Only a database from before the cap can. */
-const truncated = ref(false)
 const loading = ref(true)
 const error = ref<string | null>(null)
 /** Which row is awaiting confirmation, so the question is asked in place. */
@@ -44,18 +50,33 @@ const deleted = ref<string | null>(null)
 
 const atCap = computed(() => counted.value !== null && counted.value.count >= counted.value.cap)
 
-/** "3 of 20 labels saved.", or the plainest true sentence where there is no figure to give. */
+/**
+ * "3 saved in this browser.", counted from the list itself. The server's count
+ * is of everyone's labels, and is said only where it matters to this reader:
+ * when the app is full and nothing new can be saved.
+ */
 const tally = computed(() => {
-  if (counted.value === null) return labels.value.length === 0 ? 'No labels saved yet.' : ''
-  const { count, cap } = counted.value
-  return count === 0 ? 'No labels saved yet.' : `${count} of ${cap} labels saved.`
+  const yours = labels.value.length
+  return yours === 0 ? 'No labels saved in this browser yet.' : `${yours} saved in this browser.`
 })
+
+/** Said when the app is full, which stops this reader saving as surely as anyone. */
+const fullSentence = computed(() =>
+  counted.value === null
+    ? ''
+    : `This app keeps ${counted.value.cap} labels and has ${counted.value.count}, so nothing new can be saved until one is deleted or expires.`,
+)
+
+/** The count line, shown and said alike. */
+const countLine = computed(() =>
+  atCap.value ? `${tally.value} ${fullSentence.value}` : tally.value,
+)
 
 useAnnouncement('saved-labels', () => {
   if (loading.value) return 'Loading saved labels…'
   if (error.value !== null) return error.value
-  if (deleted.value !== null) return `Deleted “${deleted.value}”. ${tally.value}`.trim()
-  return tally.value
+  if (deleted.value !== null) return `Deleted “${deleted.value}”. ${countLine.value}`
+  return countLine.value
 })
 
 async function load() {
@@ -66,38 +87,12 @@ async function load() {
     const list = await listLabels()
     labels.value = list.labels
     counted.value = list.counted
-    truncated.value = list.truncated
   } catch (caught) {
     // The server's own sentence where there is one. A list that fails silently
     // reads as a list with nothing in it, which is the one wrong answer.
     error.value = caught instanceof Error ? caught.message : 'The saved labels could not be loaded.'
   } finally {
     loading.value = false
-  }
-}
-
-/**
- * The list again, where it was cut short, so a deleted row makes room for one
- * that was not listed. Without it, deleting every row of a cut-short list
- * read "Nothing saved yet" beside "5 of 20 saved", with those five unreachable
- * until a reload — found by review. Quiet: the deletion stays what is said, and
- * a failure here leaves the list as it stood rather than reporting the delete,
- * which succeeded, as failed.
- */
-let refillRead = 0
-async function refill() {
-  // Numbered, and only the latest kept: two quick deletes start two reads, and
-  // the older answering last put the second deleted row back. Found by review.
-  const read = ++refillRead
-  if (!truncated.value) return
-  try {
-    const list = await listLabels()
-    if (read !== refillRead) return
-    labels.value = list.labels
-    counted.value = list.counted
-    truncated.value = list.truncated
-  } catch {
-    // The list as it stood, and the next load corrects it.
   }
 }
 
@@ -117,14 +112,12 @@ async function remove(id: string) {
   try {
     await deleteLabel(id)
     forget()
-    await refill()
   } catch (caught) {
     // A label that is already gone is a delete that got what it wanted. Treating
     // 404 as a failure leaves a row for a record that no longer exists, and no
     // amount of retrying can clear it.
     if (caught instanceof SavedLabelError && caught.isMissing) {
       forget()
-      await refill()
       return
     }
     error.value = caught instanceof Error ? caught.message : 'The label could not be deleted.'
@@ -143,18 +136,30 @@ onMounted(load)
     <header class="flex flex-col gap-2">
       <h1 class="text-2xl font-semibold tracking-tight">Saved labels</h1>
       <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
-        Every label is stored with the stock it was designed at, so opening one gives you back the
-        dimensions it was drawn to rather than a default.
+        The labels saved in this browser. Each is stored with the stock it was designed at, so
+        opening one gives you back the dimensions it was drawn to rather than a default.
+      </p>
+      <!--
+        Said plainly and up front, because both are permanent and neither is
+        something a person would guess: there are no accounts, so this browser's
+        storage is the only key to its labels.
+      -->
+      <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed" data-labels-ownership>
+        A label can be changed or deleted only from the browser that saved it. Clearing this
+        browser's storage loses that for good, though anyone with a label's link can still open it.
+        Labels are removed 30 days after their last change.
       </p>
       <!--
         A count of labels, not a measurement, so it is set in the sentence's own
-        face. Shown once the server has said; a page that does not know the
-        figure does not print one.
+        face. This browser's count is the list's own; the app's is said only when
+        it is full. Not shown over an empty list, which the line below says.
       -->
-      <p v-if="!loading && counted !== null" class="text-chrome-300 text-sm" data-label-count>
-        {{ counted.count }} of {{ counted.cap }} saved<template v-if="atCap">
-          — as many as this app keeps. Delete one before saving another.</template
-        >
+      <p
+        v-if="!loading && error === null && (labels.length > 0 || atCap)"
+        class="text-chrome-300 text-sm"
+        data-label-count
+      >
+        {{ countLine }}
       </p>
     </header>
 
@@ -174,7 +179,7 @@ onMounted(load)
       v-else-if="labels.length === 0 && error === null"
       class="text-chrome-400 text-sm leading-relaxed"
     >
-      Nothing saved yet.
+      Nothing saved in this browser yet.
       <RouterLink class="text-chrome-100 underline" to="/labels/new">Open the editor</RouterLink>
       and save a label to see it here.
     </p>
@@ -230,16 +235,5 @@ onMounted(load)
         </button>
       </li>
     </ul>
-
-    <!--
-      The list is one page, and the cap keeps it one. A database from before the
-      cap can hold more than a page, and the rest are then unreachable from here —
-      which is said, rather than left to look like everything.
-    -->
-    <p v-if="truncated" class="text-chrome-300 text-sm leading-relaxed" data-labels-truncated>
-      Showing the {{ labels.length }} most recently changed<template v-if="counted !== null">
-        of {{ counted.count }}</template
-      >. The rest are stored but not listed here.
-    </p>
   </div>
 </template>

@@ -1220,6 +1220,13 @@ read, the first read goes without a key and counts against the hour before the f
 another field fails, so a missing audit key is reported a deploy late; the key is required even where
 `AUDIT_DAILY_LIMIT=0` has turned the audit off; and line-wrapped base64 is refused as "not base64".
 
+**From security fix 3's medium review (2026-10-18), one line each:** two tabs writing the held-label list in the same
+instant can drop the newer token, since each is a read and a write of one `localStorage` key; `GET /api/labels` has no
+rate limit (as reads never have) and counts the collection on every call; the editor decides whether Save may replace
+once per attached label, so a token gained or lost in another tab shows on the next open; a 201 without a token
+(only a client and server from different builds) creates a label nobody can change; and the client's 200-id ceiling
+copies `LABEL_CAP` by hand.
+
 ---
 
 ## From phase 7, stage 2

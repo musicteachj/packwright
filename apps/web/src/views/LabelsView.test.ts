@@ -2,20 +2,21 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { forgetLabels, heldLabels, holdLabel } from '../api/heldLabels'
 import LabelsView from './LabelsView.vue'
 import { withAnnouncer } from './withAnnouncer'
 
 const stubs = { RouterLink: { template: '<a><slot /></a>' } }
 const rows = [
   {
-    id: '1',
+    id: '64b7f0000000000000000001',
     name: 'Granola 340g',
     labelType: 'gs1-retail',
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-10T00:00:00.000Z',
   },
   {
-    id: '2',
+    id: '64b7f0000000000000000002',
     name: 'Acetone 5L',
     labelType: 'ghs-chemical',
     createdAt: '2026-09-02T00:00:00.000Z',
@@ -26,12 +27,19 @@ const rows = [
 const respond = (body: unknown, ok = true, status = 200) =>
   vi.fn().mockResolvedValue({ ok, status, json: async () => body } as unknown as Response)
 
-beforeEach(() => setActivePinia(createPinia()))
+beforeEach(() => {
+  setActivePinia(createPinia())
+  // This browser holds both rows, as it would had it saved them.
+  localStorage.clear()
+  forgetLabels(heldLabels().map((label) => label.id))
+  holdLabel('64b7f0000000000000000002', 'token-2')
+  holdLabel('64b7f0000000000000000001', 'token-1')
+})
 afterEach(() => vi.unstubAllGlobals())
 
-// The list endpoint answers with a page — `{ labels, nextBefore?, cap, count }`.
-// `listLabels` unwraps it, so these stubs speak the server's shape rather than
-// the function's.
+// The list endpoint answers `{ cap, count, labels }` for the ids it is asked
+// about. `listLabels` unwraps it, so these stubs speak the server's shape rather
+// than the function's.
 const mountList = async () => {
   // Beside the root's announcer, so what is asserted is what is heard.
   const wrapper = mount(withAnnouncer(LabelsView), { global: { stubs } })
@@ -55,7 +63,7 @@ describe('the saved labels list', () => {
     // request failed".
     vi.stubGlobal('fetch', respond({ labels: [] }))
     const wrapper = await mountList()
-    expect(wrapper.text()).toContain('Nothing saved yet')
+    expect(wrapper.text()).toContain('Nothing saved in this browser yet')
   })
 
   it('reports a failure instead of showing an empty list', async () => {
@@ -66,7 +74,7 @@ describe('the saved labels list', () => {
     // borrows none of the severity vocabulary — no ⊘, no "DANGER" — just the
     // word, so a reader who cannot see the red still knows what they are reading.
     expect(wrapper.get('[data-labels-error]').text()).toContain('Error')
-    expect(wrapper.text()).not.toContain('Nothing saved yet')
+    expect(wrapper.text()).not.toContain('Nothing saved')
   })
 
   it('says a failure through the announcer, and has no live region of its own', async () => {
@@ -106,132 +114,95 @@ describe('the saved labels list', () => {
     expect(heard(wrapper)).toBe('Loading saved labels…')
   })
 
-  it('says how many are saved out of how many it keeps', async () => {
-    vi.stubGlobal('fetch', respond({ labels: rows, cap: 20, count: 2 }))
-    const wrapper = await mountList()
-    expect(wrapper.get('[data-label-count]').text()).toBe('2 of 20 saved')
-    expect(heard(wrapper)).toBe('2 of 20 labels saved.')
-  })
-
-  it('says at the cap that one has to go before another is saved', async () => {
-    vi.stubGlobal('fetch', respond({ labels: rows, cap: 20, count: 20 }))
-    const wrapper = await mountList()
-    expect(wrapper.get('[data-label-count]').text()).toBe(
-      '20 of 20 saved — as many as this app keeps. Delete one before saving another.',
+  it('asks about the labels this browser holds, and no others', async () => {
+    const fetchMock = respond({ labels: rows, cap: 200, count: 9 })
+    vi.stubGlobal('fetch', fetchMock)
+    await mountList()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      '/api/labels?ids=64b7f0000000000000000001,64b7f0000000000000000002',
     )
   })
 
-  it('shows no figure the server did not give', async () => {
-    vi.stubGlobal('fetch', respond({ labels: rows }))
+  it('says plainly whose labels these are, and how they are lost', async () => {
+    // There are no accounts: this browser's storage is the only key to its
+    // labels, and neither that nor expiry is something a person would guess.
+    vi.stubGlobal('fetch', respond({ labels: rows, cap: 200, count: 2 }))
+    const wrapper = await mountList()
+    expect(wrapper.get('[data-labels-ownership]').text()).toBe(
+      "A label can be changed or deleted only from the browser that saved it. Clearing this browser's storage loses that for good, though anyone with a label's link can still open it. Labels are removed 30 days after their last change.",
+    )
+  })
+
+  it('counts the labels saved in this browser, not everyone’s', async () => {
+    vi.stubGlobal('fetch', respond({ labels: rows, cap: 200, count: 57 }))
+    const wrapper = await mountList()
+    expect(wrapper.get('[data-label-count]').text()).toBe('2 saved in this browser.')
+    expect(heard(wrapper)).toBe('2 saved in this browser.')
+  })
+
+  it('says when the app is full, since nothing new can then be saved', async () => {
+    vi.stubGlobal('fetch', respond({ labels: rows, cap: 200, count: 200 }))
+    const wrapper = await mountList()
+    const full =
+      '2 saved in this browser. This app keeps 200 labels and has 200, so nothing new can be saved until one is deleted or expires.'
+    expect(wrapper.get('[data-label-count]').text()).toBe(full)
+    expect(heard(wrapper)).toBe(full)
+  })
+
+  it('says the app is full even where this browser holds nothing', async () => {
+    vi.stubGlobal('fetch', respond({ labels: [], cap: 200, count: 200 }))
+    const wrapper = await mountList()
+    expect(wrapper.get('[data-label-count]').text()).toContain('This app keeps 200 labels')
+  })
+
+  it('shows no count over an empty list, which says so itself', async () => {
+    vi.stubGlobal('fetch', respond({ labels: [], cap: 200, count: 3 }))
     const wrapper = await mountList()
     expect(wrapper.find('[data-label-count]').exists()).toBe(false)
   })
 
-  it('says the list is cut short where the server had more', async () => {
-    vi.stubGlobal(
-      'fetch',
-      respond({ labels: rows, cap: 20, count: 25, nextBefore: '2026-09-18T00:00:00.000Z_abc' }),
-    )
-    const wrapper = await mountList()
-    expect(wrapper.get('[data-labels-truncated]').text()).toBe(
-      'Showing the 2 most recently changed of 25. The rest are stored but not listed here.',
-    )
-  })
-
-  it('says nothing about a cut when the page is everything', async () => {
-    vi.stubGlobal('fetch', respond({ labels: rows, cap: 20, count: 2 }))
-    const wrapper = await mountList()
-    expect(wrapper.find('[data-labels-truncated]').exists()).toBe(false)
-  })
-
   it('says a deletion, and counts it', async () => {
-    vi.stubGlobal('fetch', respond({ labels: rows, cap: 20, count: 2 }))
+    vi.stubGlobal('fetch', respond({ labels: rows, cap: 200, count: 2 }))
     const wrapper = await mountList()
     await wrapper.get('[aria-label="Delete Granola 340g"]').trigger('click')
     vi.stubGlobal('fetch', respond(undefined, true, 204))
     await wrapper.get('[data-confirm-delete]').trigger('click')
     await flushPromises()
-    expect(heard(wrapper)).toBe('Deleted “Granola 340g”. 1 of 20 labels saved.')
-    expect(wrapper.get('[data-label-count]').text()).toBe('1 of 20 saved')
+    expect(heard(wrapper)).toBe('Deleted “Granola 340g”. 1 saved in this browser.')
+    expect(wrapper.get('[data-label-count]').text()).toBe('1 saved in this browser.')
   })
 
-  it('fetches again after a delete from a list that was cut short', async () => {
-    const third = { ...rows[0]!, id: '3', name: 'Vinegar 1L' }
-    vi.stubGlobal(
-      'fetch',
-      respond({ labels: rows, cap: 20, count: 3, nextBefore: '2026-09-18T00:00:00.000Z_abc' }),
-    )
+  it('sends the deleted label’s token, and lets go of it', async () => {
+    vi.stubGlobal('fetch', respond({ labels: rows, cap: 200, count: 2 }))
     const wrapper = await mountList()
+    const fetchMock = respond(undefined, true, 204)
+    vi.stubGlobal('fetch', fetchMock)
     await wrapper.get('[aria-label="Delete Granola 340g"]').trigger('click')
-    const answers = [
-      { ok: true, status: 204, json: async () => undefined },
-      {
-        ok: true,
-        status: 200,
-        json: async () => ({ labels: [rows[1], third], cap: 20, count: 2 }),
-      },
-    ]
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => answers.shift() as unknown as Response),
-    )
     await wrapper.get('[data-confirm-delete]').trigger('click')
     await flushPromises()
-    expect(wrapper.get('ul').text(), 'the row that was not listed is listed now').toContain(
-      'Vinegar 1L',
-    )
-    expect(wrapper.find('[data-labels-truncated]').exists()).toBe(false)
-    expect(heard(wrapper), 'and the deletion is still what was said').toBe(
-      'Deleted “Granola 340g”. 2 of 20 labels saved.',
-    )
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    expect((init.headers as Record<string, string>)['X-Edit-Token']).toBe('token-1')
+    expect(heldLabels().map((label) => label.id)).toEqual(['64b7f0000000000000000002'])
   })
 
-  it('keeps only the latest refill when two deletes overlap', async () => {
-    const third = { ...rows[0]!, id: '3', name: 'Vinegar 1L' }
-    const fourth = { ...rows[0]!, id: '4', name: 'Bleach 2L' }
-    vi.stubGlobal(
-      'fetch',
-      respond({
-        labels: [rows[0], rows[1], third],
-        cap: 20,
-        count: 4,
-        nextBefore: '2026-09-18T00:00:00.000Z_abc',
-      }),
-    )
+  it('says the server’s sentence when a delete is refused', async () => {
+    vi.stubGlobal('fetch', respond({ labels: rows, cap: 200, count: 2 }))
     const wrapper = await mountList()
-
-    // Each list read is held until the test lets it go; deletes answer at once.
-    const held: Array<(body: unknown) => void> = []
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (_url: string, init?: RequestInit) =>
-        init?.method === 'DELETE'
-          ? ({ ok: true, status: 204, json: async () => undefined } as unknown as Response)
-          : await new Promise<Response>((resolve) =>
-              held.push((body) =>
-                resolve({ ok: true, status: 200, json: async () => body } as unknown as Response),
-              ),
-            ),
+      respond(
+        { error: 'This label can be changed only from the browser that saved it.' },
+        false,
+        403,
       ),
     )
     await wrapper.get('[aria-label="Delete Granola 340g"]').trigger('click')
     await wrapper.get('[data-confirm-delete]').trigger('click')
     await flushPromises()
-    await wrapper.get('[aria-label="Delete Acetone 5L"]').trigger('click')
-    await wrapper.get('[data-confirm-delete]').trigger('click')
-    await flushPromises()
-    expect(held, 'one refill per delete').toHaveLength(2)
-
-    // The second answers first, then the first — read before Acetone went.
-    held[1]!({ labels: [third, fourth], cap: 20, count: 2 })
-    await flushPromises()
-    held[0]!({ labels: [rows[1], third, fourth], cap: 20, count: 3 })
-    await flushPromises()
-
-    expect(wrapper.get('ul').text(), 'the second deletion stays deleted').not.toContain(
-      'Acetone 5L',
+    expect(wrapper.get('[data-labels-error]').text()).toContain(
+      'This label can be changed only from the browser that saved it.',
     )
-    expect(wrapper.get('[data-label-count]').text()).toBe('2 of 20 saved')
+    expect(wrapper.get('ul').text(), 'and the row stays').toContain('Granola 340g')
   })
 
   it('keeps the label when the question is declined', async () => {

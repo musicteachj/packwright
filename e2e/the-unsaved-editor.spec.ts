@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { deletesWhatItSaves } from './support/savedLabels'
+import { deletesWhatItSaves, holdInBrowser } from './support/savedLabels'
 
 /**
  * Unsaved work does not leave without being asked about.
@@ -74,11 +74,16 @@ test('asks before leaving a saved label that was edited and then switched type',
     },
   })
   expect(created.status(), 'the premise: the label has to save').toBe(201)
-  saved(((await created.json()) as { id: string }).id)
+  const label = (await created.json()) as { id: string; editToken: string }
+  saved(label.id, label.editToken)
 
   const prompts = countPrompts(page)
   await page.setViewportSize({ width: 1440, height: 900 })
 
+  // Saved through the API, so this browser has to be given the token it would
+  // have kept had it saved the label itself: Saved labels lists only those.
+  await page.goto('/')
+  await holdInBrowser(page, label)
   await page.goto('/labels')
   await page.getByRole('link', { name }).click()
   await expect(page).toHaveURL(/\/labels\/[0-9a-f]{24}$/)
