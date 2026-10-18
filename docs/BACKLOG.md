@@ -1197,6 +1197,13 @@ guard against bound refusals also catches the older `min(1)` and `positive()` re
 in both engines, and the two end-of-string trims are two helpers; `Math.max(...)` and `Math.min(...)` remain over
 the nutrient rows and the bars, which are bounded; and `wrapTextMm` measures a word that starts a line twice.
 
+**From the review of `75ff207` (2026-10-18):** the allergen rule still strikes every other ingredient's name out of
+the whole printed list once per allergen, so 1,000 entries over all nine allergens take about 0.5 to 0.75 s in
+`check_label`; finding each name's matches once and masking them per allergen would be linear, but it changes how
+(B)(ii)'s caveat treats overlapping names, so it wants its own fixtures. Also, one line each: the strike-out count
+test uses two allergens and has one assertion the other always implies, and the Contains text is lowercased once per
+bearing ingredient.
+
 ---
 
 ## From phase 7, stage 2

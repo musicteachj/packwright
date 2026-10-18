@@ -99,6 +99,11 @@ const SPECIFIC: Citation = {
  * search is run once per allergen, and only the names of ingredients bearing
  * *that* allergen are left standing — so a food-source word can only ever settle
  * the question it belongs to.
+ *
+ * **The striking is not done here.** `searchableList` must be the list as
+ * `listWithoutOtherNames` returns it for this allergen, which is where the names are
+ * struck out. Given the printed list as it is, this function would let the "milk" in
+ * coconut milk declare dairy again.
  */
 function elementsDeclaring(
   sources: readonly string[],
