@@ -1175,6 +1175,13 @@ version extracts the printed wording alongside the code and compares it against
 launder. It needs a field `GhsLabelData` does not have, and a decision about whether a mismatch is a finding
 or a warning — a finding would be the first rule in this project to judge text rather than geometry.
 
+**From fix PR 4's reviews (2026-10-18), one line each:** the editor, the design page, `templates/upcA.ts`, the
+engine's out-of-range error and the print test sheet still call 0.8x to 2.0x the permitted range, true outside the
+on-demand band; `gs1/magnification` applies table 5-44's EAN/UPC band to every drawn symbol, which is only ever a
+UPC-A; `EAN_UPC_MIN_X_DIMENSION_MM` is written beside `MIN_MAGNIFICATION` rather than derived from it, and
+`isAtTheListedHeightFloor` repeats `xDimensionBand`'s edge by hand; "say the limit in the last finding" is copied
+from `gs1/digital-link` rather than shared.
+
 ---
 
 ## From phase 7, stage 2

@@ -233,8 +233,9 @@ export function layOutUpcALabel(bwip: BarcodeEncoder, request: UpcALayoutRequest
     const hri = data.omitHri ? undefined : (request.hri ?? upcAHriFor(magnification))
     const quietZone = quietZoneFor('UPC-A')
     const footprintWidthMm = bars + (quietZone.leftX + quietZone.rightX) * xDimensionMm
-    // Height scales with the symbol; see `nominalBarHeightMm`. Taking the
-    // nominal figure unscaled drew a 2x symbol at half the required height.
+    // Height scales with the symbol down to the minimum X-dimension, and holds at the
+    // listed figure below it; see `nominalBarHeightMm`. Taking the nominal figure
+    // unscaled drew a 2x symbol at half the required height.
     const barHeightMm = data.barHeightMm ?? nominalHeight
     const drawnHeightMm =
       barHeightMm + GUARD_BAR_EXTENSION_MODULES * xDimensionMm + (hri?.bandMm ?? 0)

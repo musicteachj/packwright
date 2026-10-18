@@ -3,6 +3,7 @@ import {
   EAN_UPC_NOMINAL_X_DIMENSION_MM,
   barPatternWidthMm,
   nominalBarHeightMm,
+  xDimensionBand,
   symbolMetricsFor,
   GENERAL_QUIET_ZONE,
   hasVerifiedQuietZone,
@@ -93,6 +94,8 @@ describe('magnification', () => {
 
   it.each([
     [0.79, false],
+    // Footnote (*)'s on-demand band is not in range: it turns on the print process.
+    [0.77, false],
     [0.8, true],
     [1, true],
     [2, true],
@@ -179,5 +182,41 @@ describe('nominalBarHeightMm', () => {
 
   it('is undefined for a symbology with no tabulated height', () => {
     expect(nominalBarHeightMm('GS1-128', 0.33)).toBeUndefined()
+  })
+
+  // Table 5-44 footnote (**), read from the rendered page 411 of GenSpec 26.0 on
+  // 2026-10-18: "When printing a minimum symbol with any method of printing, the bar
+  // height SHALL NOT be truncated below the minimum as listed in the table above." The
+  // figures are the table's "For minimum X-dimension" column, page 410.
+  it.each([
+    ['UPC-A', 0.249, 18.28],
+    ['EAN-13', 0.249, 18.28],
+    ['UPC-E', 0.255, 18.28],
+    ['EAN-8', 0.249, 14.58],
+    // At the minimum itself the listed figure too, not 18.23 x 0.8 = 14.584: a bar printed
+    // at the listed 14.58 must not be reported. Found by `/code-review high` on #107.
+    ['EAN-8', EAN_UPC_NOMINAL_X_DIMENSION_MM * 0.8, 14.58],
+    ['UPC-A', 0.2, 18.28],
+  ] as const)(
+    'is not truncated below the listed minimum: %s at X = %f is %f mm',
+    (symbology, x, mm) => {
+      expect(nominalBarHeightMm(symbology, x)).toBe(mm)
+    },
+  )
+})
+
+describe('xDimensionBand', () => {
+  // Table 5-44: X from 0.264 to 0.660 mm; footnote (*) allows 0.249 to 0.264 to on demand
+  // print processes only. Both edges belong to the band that names them.
+  it.each([
+    [0.2489, 'below'],
+    [0.249, 'on-demand'],
+    [0.26, 'on-demand'],
+    [EAN_UPC_NOMINAL_X_DIMENSION_MM * 0.8, 'in-range'],
+    [0.33, 'in-range'],
+    [EAN_UPC_NOMINAL_X_DIMENSION_MM * 2, 'in-range'],
+    [0.661, 'above'],
+  ] as const)('X = %f mm is %s', (x, band) => {
+    expect(xDimensionBand(x)).toBe(band)
   })
 })

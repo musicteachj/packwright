@@ -59,8 +59,8 @@ the project reads and checks.
 
 | document | edition used | read | link |
 |---|---|---|---|
-| **GS1 General Specifications**: check digit (§ 7.9.1), human-readable interpretation (§ 4.14.2), symbol dimensions, magnification and quiet zones (§ 5.2.3, § 5.12.3.1, tables 5-11, 5-12, 5-44) | Release 26.0, ratified January 2026 | 2026-09-17; rendered pages re-read 2026-10-12 | [GS1 (PDF)](https://ref.gs1.org/standards/genspecs/) |
-| **GS1 Digital Link Standard: URI Syntax**: the URI grammar (§ 4) and its character sets | Release 1.7.0, ratified August 2026 | 2026-09-17; re-read 2026-10-16 and 2026-10-17 | [GS1](https://ref.gs1.org/standards/digital-link/uri-syntax/) |
+| **GS1 General Specifications**: check digit (§ 7.9.1), human-readable interpretation (§ 4.14.2), symbol dimensions, magnification and quiet zones (§ 5.2.3, § 5.12.3.1, tables 5-11, 5-12, 5-44) | Release 26.0, ratified January 2026 | 2026-09-17; rendered pages re-read 2026-10-12; table 5-44 and its footnotes (pages 410 and 411) re-read from the rendered pages 2026-10-18 | [GS1 (PDF)](https://ref.gs1.org/standards/genspecs/) |
+| **GS1 Digital Link Standard: URI Syntax**: the URI grammar (§ 4) and its character sets, and what conformance does not establish (§ 2) | Release 1.7.0, ratified August 2026 | 2026-09-17; re-read 2026-10-16 and 2026-10-17; § 2 re-read 2026-10-18 | [GS1](https://ref.gs1.org/standards/digital-link/uri-syntax/) |
 | **RFC 3986, Uniform Resource Identifier (URI): Generic Syntax**: the query and fragment a Digital Link may carry | As published | 2026-10-16 and 2026-10-17 | [RFC Editor](https://www.rfc-editor.org/rfc/rfc3986) |
 | **RFC 5234, Augmented BNF for Syntax Specifications: ABNF**: the notation the Digital Link grammar is written in | As published | named by the Digital Link standard | [RFC Editor](https://www.rfc-editor.org/rfc/rfc5234) |
 

@@ -519,7 +519,20 @@ describe('a rule that stands down says so, and only then', () => {
       layout: layOutGhsLabel({ data: fixture.data, stock: fixture.stock }),
     },
   }))
-  const everyCase = [...usFood, ...ghs]
+  // GS1 too, since `gs1/magnification` learned to stand down in footnote (*)'s band.
+  const gs1 = [...GS1_RETAIL_FIXTURES, { name: 'conformant', ...CONFORMANT_FIXTURE }].map(
+    (fixture) => ({
+      name: fixture.name,
+      rules: GS1_RETAIL_RULES,
+      context: {
+        labelType: 'gs1-retail' as const,
+        data: fixture.data,
+        stock: fixture.stock,
+        layout: layOutUpcALabel(bwip as never, { data: fixture.data, stock: fixture.stock }),
+      },
+    }),
+  )
+  const everyCase = [...usFood, ...ghs, ...gs1]
 
   it.each(everyCase.map((one) => [one.name, one] as const))(
     'never both judges and stands down: %s',

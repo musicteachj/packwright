@@ -503,3 +503,28 @@ describe('gs1/digital-link judges a configured link as built, by the printed pat
     )
   })
 })
+
+/**
+ * A pass says what was judged, the string. URI Syntax 1.7.0 §2: "Applications SHALL NOT
+ * assume that a URL that follows the syntax defined in this standard will point to a
+ * resolver." The pass for a built link said it "resolves to" its URI, which nothing tested
+ * (verification record of 2026-10-17, item 13).
+ */
+describe('gs1/digital-link passes claim only what they checked', () => {
+  const built = {
+    data: { gtin: VALID_GTIN, digitalLink: { domain: 'https://id.example.com' } },
+    subject: 'drawing',
+  } as Gs1RetailContext
+
+  it.each([
+    ['built', built],
+    ['printed', printed('https://id.example.com/01/00036000291452')],
+  ])('says a link as %s conforms, and that where it leads is not checked', (as, context) => {
+    const [pass] = digitalLinkRule.check(context)
+    expect(pass!.code).toBe(GS1_DIGITAL_LINK_VALID)
+    expect(pass!.message).toContain(`The Digital Link as ${as}, https://id.example.com/01/`)
+    expect(pass!.message).not.toContain('resolves to')
+    expect(pass!.message).toContain('Not checked: whether it points to a resolver')
+    expect(pass!.message).toContain('URI Syntax 1.7.0 §2')
+  })
+})

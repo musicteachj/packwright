@@ -7,9 +7,20 @@
  * nominal height has bars of the right width and quiet zones of the right size,
  * and merely reads as a slightly squat barcode. Nothing about it looks wrong. It
  * is non-conformant at point of sale.
+ *
+ * **It stops scaling at the minimum X-dimension.** Table 5-44 footnote (**): "When
+ * printing a minimum symbol with any method of printing, the bar height SHALL NOT be
+ * truncated below the minimum as listed in the table above." Below X = 0.264 the floor is
+ * the height listed for 0.264, whatever the print process (`nominalBarHeightMm`). Until
+ * 2026-10-18 it went on scaling, and passed a truncated bar in footnote (*)'s on-demand
+ * band (verification record of 2026-10-17, item 12).
  */
 
-import { nominalBarHeightMm } from '../../geometry/symbol'
+import {
+  EAN_UPC_MIN_X_DIMENSION_MM,
+  isAtTheListedHeightFloor,
+  nominalBarHeightMm,
+} from '../../geometry/symbol'
 import type { Citation, Finding } from '../../types/index'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork, xDimensionMm } from '../finding'
 import type { Gs1RetailContext, Gs1RetailRule } from '../types'
@@ -19,7 +30,8 @@ export const GS1_BAR_HEIGHT_BELOW_MINIMUM = 'GS1_BAR_HEIGHT_BELOW_MINIMUM'
 export const GS1_BAR_HEIGHT_SUFFICIENT = 'GS1_BAR_HEIGHT_SUFFICIENT'
 
 // GS1 General Specifications Release 26.0 (Ratified Jan 26), read from the rendered
-// pages at https://ref.gs1.org/standards/genspecs/ on 2026-10-12. 25.0's "figure
+// pages at https://ref.gs1.org/standards/genspecs/ on 2026-10-12; table 5-44 and its
+// footnotes (pages 410 and 411) re-read from the rendered pages on 2026-10-18. 25.0's "figure
 // 5.x-1" identifiers do not exist in 26.0, which numbers the tables; the figures
 // themselves are unchanged (`geometry/symbol.ts`).
 const CITATION: Citation = {
@@ -27,6 +39,13 @@ const CITATION: Citation = {
   reference: 'GS1 General Specifications 26.0 §5.2.3.2 and table 5-44',
   title: 'EAN/UPC symbol height at nominal size, and the minimum by X-dimension',
 }
+
+// The footnote quoted, not paraphrased: it sets a floor on the height, and says nothing of
+// an X-dimension below which it starts. Found by `/code-review medium` on #107's follow-up.
+const LISTED_FLOOR =
+  `table 5-44 lists for its minimum X-dimension, ${xDimensionMm(EAN_UPC_MIN_X_DIMENSION_MM)}; ` +
+  'its footnote (**) says "When printing a minimum symbol with any method of printing, the ' +
+  'bar height SHALL NOT be truncated below the minimum as listed in the table above."'
 
 const judgedAsDrawn: Gs1RetailRule = {
   id: 'gs1/bar-height',
@@ -45,6 +64,11 @@ const judgedAsDrawn: Gs1RetailRule = {
       const requiredMm = nominalBarHeightMm(symbol.symbology, symbol.xDimensionMm)
       // Only the fixed-length EAN/UPC family is tabulated. No figure, no verdict.
       if (requiredMm === undefined) continue
+      // Below the minimum X the table lists no height of its own, so the figure is said as
+      // the one it is: 18.28 mm is 0.264's, owed by footnote (**), not this X-dimension's.
+      // "Minimum for this X-dimension" claimed a figure the table does not give. Found by
+      // `/code-review high` on #107.
+      const atTheFloor = isAtTheListedHeightFloor(symbol.xDimensionMm)
 
       if (symbol.barHeightMm >= requiredMm - MEASUREMENT_TOLERANCE_MM) {
         findings.push(
@@ -52,8 +76,8 @@ const judgedAsDrawn: Gs1RetailRule = {
           passedOnArtwork(
             barHeightRule,
             GS1_BAR_HEIGHT_SUFFICIENT,
-            `The bars are ${mm(symbol.barHeightMm)}, meeting the ${mm(requiredMm)} minimum ` +
-              'for this X-dimension.',
+            `The bars are ${mm(symbol.barHeightMm)}, meeting the ${mm(requiredMm)} ` +
+              (atTheFloor ? LISTED_FLOOR : 'minimum for this X-dimension.'),
             symbol.elementId,
           ),
         )
@@ -66,7 +90,8 @@ const judgedAsDrawn: Gs1RetailRule = {
           severity: 'violation',
           message:
             `The bars are ${mm(symbol.barHeightMm)}; a ${symbol.symbology} at ` +
-            `X = ${xDimensionMm(symbol.xDimensionMm)} requires ${mm(requiredMm)}.`,
+            `X = ${xDimensionMm(symbol.xDimensionMm)} requires ${mm(requiredMm)}` +
+            (atTheFloor ? `, the height ${LISTED_FLOOR}` : '.'),
           measurement: { actual: mm(symbol.barHeightMm), required: mm(requiredMm) },
           elementId: symbol.elementId,
         }),

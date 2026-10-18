@@ -464,6 +464,21 @@ symbology actually requires and read as reassurance. You cannot currently produc
 symbologies, so this does not bite today; it is recorded because the silence is deliberate and would otherwise
 look like an oversight if it ever became reachable.
 
+### The on-demand X-dimension allowance, 0.249 to 0.264 mm
+
+GS1 General Specifications 26.0, table 5-44, sets an EAN/UPC symbol's X-dimension from 0.264 to 0.660 mm (0.80x to
+2.00x). Its footnote (*) allows X-dimensions from 0.249 to 0.264 mm, about 0.755x to 0.80x, "only" to "on demand
+(e.g., thermal, laser) print processes"; for every other process 0.264 mm "is the minimum allowable size". A label
+does not say how it is printed, so a symbol drawn in that band gets **no verdict on its magnification**, neither a
+pass nor a violation, and the report says so under "checks that did not run". Check the print process yourself.
+Below 0.249 mm the symbol is reported, whatever the process. The editor's magnification slider moves in steps of
+0.05 and never lands in the band (0.75x is below it), so only a label checked through the API or `check_label` can.
+
+The bar height is judged in that band all the same: footnote (**) says it "SHALL NOT be truncated below the minimum
+as listed" with any method of printing, so a symbol at or under X 0.264 mm owes the 18.28 mm listed for 0.264 (14.58 mm
+for EAN-8). Footnote (*)'s second bullet, that the area for a minimum symbol and its quiet zones "SHOULD never be
+less than" that of X 0.264 mm, is a recommendation and is not judged.
+
 ### A Digital Link you describe is judged as printed, and six things about it are not
 
 When a label is checked from its description (through `/mcp`'s `check_label`), its Digital Link is given exactly as
@@ -497,6 +512,10 @@ The link's stem may hold anything, segments that look like a GS1 key included: t
 path the grammar allows. `https://x.com/414/1234567890128/01/…` is a stem and a GTIN, since a GLN's path cannot go on
 with a GTIN. A resolver that reads such a link differently would not be following the standard, and the tool does not
 guess at that.
+
+Whether the link reaches anything is never tested: the tool does not fetch it. URI Syntax 1.7.0 §2 says applications
+"SHALL NOT assume" that a URI following its syntax "will point to a resolver", so a pass says the link is conformant
+and that where it leads was not checked.
 
 A query parameter that is not GS1's, `?x=1` say, is checked as URI text only: it must be text RFC 3986 allows and have
 an "=", but URI Syntax 1.7.0 §4.10.1's narrower grammar for such a key, and its reserved keywords `linkType` and

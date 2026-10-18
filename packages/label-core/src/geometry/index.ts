@@ -38,13 +38,16 @@ export type {
 } from './pdp'
 
 export {
+  EAN_UPC_MIN_X_DIMENSION_MM,
   EAN_UPC_NOMINAL_X_DIMENSION_MM,
   GENERAL_QUIET_ZONE,
   GUARD_BAR_EXTENSION_MODULES,
   MAX_MAGNIFICATION,
   MIN_MAGNIFICATION,
+  ON_DEMAND_MIN_X_DIMENSION_MM,
   barPatternWidthMm,
   hasVerifiedQuietZone,
+  isAtTheListedHeightFloor,
   isMagnificationInRange,
   magnificationToXDimensionMm,
   nominalBarHeightMm,
@@ -53,6 +56,13 @@ export {
   symbolMetricsFor,
   symbolStructureFor,
   totalSymbolWidthMm,
+  xDimensionBand,
   xDimensionMmToMagnification,
 } from './symbol'
-export type { ModuleRange, QuietZoneSpec, SymbolMetrics, SymbolStructure } from './symbol'
+export type {
+  ModuleRange,
+  QuietZoneSpec,
+  SymbolMetrics,
+  SymbolStructure,
+  XDimensionBand,
+} from './symbol'
