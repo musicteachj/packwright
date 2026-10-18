@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { deletesWhatItSaves, savedIdFrom } from './support/savedLabels'
+import { deletesWhatItSaves, savedFrom } from './support/savedLabels'
 
 /**
  * Five defects in the US food rail, reported by review and each reproduced here
@@ -88,7 +88,8 @@ test('a percentage out of range is refused in the form, not by the server', asyn
   await expect(page.locator('[data-save-state]')).toHaveText('Saved')
   // "Saved" is shown before the URL is moved to the new record, so it is waited for.
   await expect(page).toHaveURL(/\/labels\/[0-9a-f]{24}$/)
-  saved(savedIdFrom(page.url()))
+  const label = await savedFrom(page)
+  saved(label.id, label.editToken)
   await expect(page.getByText('Invalid label document')).toHaveCount(0)
 
   // Adding a row moves no row, so the refusal stays. The first version cleared every

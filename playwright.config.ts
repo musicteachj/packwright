@@ -83,7 +83,10 @@ export default defineConfig({
     // is, and a developer's `apps/api/.env` may carry the second: without the first the
     // server would refuse to start and take the whole suite with it. The audit specs
     // answer the audit routes themselves, so the key is never presented.
-    command: `npm run build && PORT=${PORT} NODE_ENV=production AUDIT_API_KEY=e2e-only node scripts/serve-with-memory-mongo.mjs`,
+    // `LABEL_CREATES_PER_HOUR` is raised because every spec saves from one address
+    // and a local server is reused between runs: at the production figure of ten an
+    // hour, about the fourth run would be refused its saves.
+    command: `npm run build && PORT=${PORT} NODE_ENV=production AUDIT_API_KEY=e2e-only LABEL_CREATES_PER_HOUR=1000 node scripts/serve-with-memory-mongo.mjs`,
     url: `http://localhost:${PORT}/health`,
     reuseExistingServer: !process.env.CI,
     // The build is a Vite production build plus a tsup bundle; on a cold cache

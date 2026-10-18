@@ -719,13 +719,14 @@ group, ALB listener rule, Route 53 record, and the three Secrets Manager entries
   document and answers 500 when it no longer matches, and `PUT` validates the same shape, so nothing in the
   application can repair one. Before any further tightening, decide on a migration or a read path that repairs.
   **Decided with James, 2026-10-11: a one-off migration script per schema change, run before the
-  deploy that needs it.** The store is capped at 20 labels in all, so a migration is seconds of work against a
-  handful of documents, and a script can be run against a copy first; a read path that repairs would carry every
+  deploy that needs it.** The store is capped at 200 labels in all (20 until 2026-10-18), so a migration is
+  seconds of work against a few hundred documents at most, and a script can be run against a copy first; a read path that repairs would carry every
   old shape forever in code that serves every request. The 500 on a document that no longer validates stays the
   alarm that one was missed.
 - **Rate limits and quotas are per process.** They hold for the single container this plan deploys; a second
   task would double the audit route's daily cap. Keep the service at one task, or move to a shared store.
-  **Decided with James, 2026-10-11: one task.** The 20-label cap, the audit route's spending caps and
+  **Decided with James, 2026-10-11: one task.** The label cap (counted in the database, and 200 since 2026-10-18),
+  the audit route's spending caps and
   `/mcp`'s allowances are all held in the process, and this app's traffic does not need a second; a shared store
   is work to do the day it does. The deployment circuit breaker still replaces a failed task. **Since 2026-10-18
   the audit route's daily count is in the database** (`audit/dailyAllowance.ts`), so neither a restart nor a
@@ -744,6 +745,14 @@ group, ALB listener rule, Route 53 record, and the three Secrets Manager entries
   audit page, once per browser. `AUDIT_DAILY_LIMIT` is the deployment's vision calls per UTC day, 10 if unset
   (about $1.30); keep it a small fraction of the Anthropic workspace's monthly spend limit, and lower it with that
   limit.
+- **Saved labels (2026-10-18, security fix 3).** Three things, each of which fails quietly if missed:
+  - Start the database empty. A label stored before edit tokens has none, so no browser can change or delete it;
+    it can only be read by its link until it expires.
+  - Check the expiry index exists once the task is up: `db.labeldocuments.getIndexes()` should show
+    `{ updatedAt: 1 }` with `expireAfterSeconds: 2592000` (30 days). Mongoose builds it when the server connects
+    and reports a failure only as an event nothing listens to, so a label would simply never expire.
+  - `TRUST_PROXY_HOPS=1` governs the saved-label write limits too: unset, the world shares one address's ten new
+    labels an hour. Leave `LABEL_CREATES_PER_HOUR` unset in production; it exists for the end-to-end suite.
 - **`/mcp` (recorded 2026-10-10, stage 18 of `docs/plans/2026-10-10-mcp.md`).** Five things, each of which
   fails quietly if missed:
   - `MCP_ALLOWED_HOSTS=packwright.jameslittlefield.net`. Without it `/mcp` answers 403 to every request,
@@ -822,7 +831,9 @@ one runs the whole suite and boots the server. Only `/api/audit` notices, and it
 - ~~Saved-label cap: the old app capped at 20; 50 is more realistic and still free-tier safe~~ **Decided
   2026-10-08: 20, across the whole collection.** The API has no owner concept, so the cap is global; `POST`
   refuses the twenty-first with a 409 and `PUT` still works at the cap. Twenty fits one page, so the list can be
-  fetched once, without "load more".
+  fetched once, without "load more". **Superseded 2026-10-18 (security fix 3):** the list of every label is gone,
+  each browser lists the labels it holds edit tokens for, labels expire 30 days after their last change, and the
+  cap is 200 (`docs/security-review-2026-10-18.md`, finding 4).
 - `barcode-crud`'s README still cites Railway under Deployment while the workflow deploys to AWS ECS — stale on
   a portfolio-facing doc, worth a one-line fix next time you're in that repo
 

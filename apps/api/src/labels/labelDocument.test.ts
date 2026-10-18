@@ -58,6 +58,15 @@ describe('LabelDocument', () => {
     ).rejects.toThrow(/gs1-pallet/)
   })
 
+  it('does not read back the edit token’s hash unless asked for it by name', async () => {
+    // So a route added later cannot serve it by forgetting to strip it.
+    const saved = await LabelDocument.create({ ...A_LABEL, editTokenHash: 'ab'.repeat(32) })
+    expect(await LabelDocument.findById(saved._id).lean()).not.toHaveProperty('editTokenHash')
+    expect((await LabelDocument.findById(saved._id, '+editTokenHash').lean())?.editTokenHash).toBe(
+      'ab'.repeat(32),
+    )
+  })
+
   it('records when it was created and last changed', async () => {
     const saved = await LabelDocument.create(A_LABEL)
     expect(saved.createdAt).toBeInstanceOf(Date)

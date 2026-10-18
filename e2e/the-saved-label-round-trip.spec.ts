@@ -34,8 +34,8 @@ test('exports a saved label at the stock it was saved with', async ({ page, requ
     },
   })
   expect(created.status(), 'the premise: the label has to save').toBe(201)
-  const { id } = (await created.json()) as { id: string }
-  saved(id)
+  const { id, editToken } = (await created.json()) as { id: string; editToken: string }
+  saved(id, editToken)
 
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(`/labels/${id}`)

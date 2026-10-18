@@ -1,10 +1,16 @@
+import { createHash } from 'node:crypto'
 import { DEFAULT_UPC_A_STOCK } from '@packwright/label-core'
 import mongoose from 'mongoose'
 import supertest from 'supertest'
 import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app'
 import { LabelDocument } from './labelDocument'
-import { LABEL_CAP } from './labelDocumentRoutes'
+import {
+  DEFAULT_LABEL_WRITE_LIMITS,
+  EDIT_TOKEN_HEADER,
+  LABEL_CAP,
+  type LabelWriteLimits,
+} from './labelDocumentRoutes'
 import { withDatabase } from '../testing/withDatabase'
 
 const app = () => createApp({ enableLogging: false })
@@ -15,6 +21,13 @@ const A_LABEL = {
   stock: STOCK,
   data: { gtin: '036000291452' },
 } as const
+
+/** A label saved through the route, with the token its creator was handed. */
+async function saved(body: object = A_LABEL): Promise<{ id: string; token: string }> {
+  const response = await supertest(app()).post('/api/labels').send(body)
+  expect(response.status).toBe(201)
+  return { id: String(response.body.id), token: String(response.body.editToken) }
+}
 
 describe('/api/labels', () => {
   withDatabase()
@@ -36,28 +49,28 @@ describe('/api/labels', () => {
 
   describe('the cap', () => {
     // Stored straight through the model, which is the one way past the route's
-    // count — so these can stand a collection at any size, including above the
+    // count, so these can stand a collection at any size, including above the
     // cap, the way a development database from before it can.
     const store = (count: number) =>
       LabelDocument.insertMany(
         Array.from({ length: count }, (_, index) => ({ ...A_LABEL, name: `Stored ${index}` })),
       )
 
-    it('is twenty', () => {
-      expect(LABEL_CAP).toBe(20)
+    it('is two hundred', () => {
+      expect(LABEL_CAP).toBe(200)
     })
 
-    it('takes the twentieth label', async () => {
-      await store(19)
+    it('takes the two hundredth label', async () => {
+      await store(199)
       expect((await supertest(app()).post('/api/labels').send(A_LABEL)).status).toBe(201)
-      expect(await LabelDocument.countDocuments({})).toBe(20)
+      expect(await LabelDocument.countDocuments({})).toBe(200)
     })
 
-    it('refuses the twenty-first, saying what to do about it', async () => {
-      await store(20)
+    it('refuses the two hundred and first, saying what to do about it', async () => {
+      await store(200)
       // Refused before the insert, not only undone after it. The recount below
-      // would also catch this, but by then a twenty-first label has existed —
-      // listed, counted and openable by anyone who asked in that moment.
+      // would also catch this, but by then an extra label has existed, counted
+      // and openable by anyone who asked in that moment.
       const create = vi.spyOn(LabelDocument, 'create')
       let response
       let inserts
@@ -72,187 +85,338 @@ describe('/api/labels', () => {
       expect(inserts, 'nothing was inserted').toBe(0)
       expect(response.status).toBe(409)
       expect(response.body.error).toBe(
-        'There are already 20 saved labels, which is as many as this app keeps. Delete one from Saved labels before saving another.',
+        'There are already 200 saved labels, which is as many as this app keeps. Labels are removed 30 days after their last change, so try again later, or delete one of yours from Saved labels.',
       )
-      expect(await LabelDocument.countDocuments({})).toBe(20)
+      expect(await LabelDocument.countDocuments({})).toBe(200)
     })
 
     it('takes its own label back out when the count it read had gone stale', async () => {
       // The race, made deterministic: another save landed between this one's
-      // count and its insert, so the count says nineteen with twenty stored.
-      await store(20)
-      const spy = vi.spyOn(LabelDocument, 'countDocuments').mockResolvedValueOnce(19 as never)
+      // count and its insert, so the count says one fewer than is stored.
+      await store(200)
+      const spy = vi.spyOn(LabelDocument, 'countDocuments').mockResolvedValueOnce(199 as never)
       try {
         const response = await supertest(app()).post('/api/labels').send(A_LABEL)
         expect(response.status).toBe(409)
       } finally {
         spy.mockRestore()
       }
-      expect(await LabelDocument.countDocuments({}), 'not twenty-one').toBe(20)
+      expect(await LabelDocument.countDocuments({}), 'not one over').toBe(200)
     })
 
     it('still replaces a label at the cap', async () => {
       // Replacing adds nothing, and refusing it would leave every label at the
-      // cap uneditable — the user's way out would be to delete their own work.
-      await store(19)
-      const last = await LabelDocument.create(A_LABEL)
+      // cap uneditable: the user's way out would be to delete their own work.
+      await store(199)
+      const { id, token } = await saved()
       const response = await supertest(app())
-        .put(`/api/labels/${last._id}`)
+        .put(`/api/labels/${id}`)
+        .set(EDIT_TOKEN_HEADER, token)
         .send({ ...A_LABEL, name: 'Renamed' })
       expect(response.status).toBe(200)
       expect(response.body.name).toBe('Renamed')
     })
 
-    it('reports the cap and the whole collection’s count with every list', async () => {
+    it('reports the cap and the whole collection’s count, naming no label', async () => {
       await store(3)
-      const response = await supertest(app()).get('/api/labels?limit=1')
-      expect(response.body.cap).toBe(20)
-      expect(response.body.count, 'the collection, not the page').toBe(3)
+      const response = await supertest(app()).get('/api/labels')
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual({ cap: 200, count: 3, labels: [] })
     })
 
     it('counts honestly above the cap, where a database predates it', async () => {
-      await store(25)
-      const response = await supertest(app()).get('/api/labels?limit=20')
-      expect(response.body.count).toBe(25)
-      expect(response.body.labels).toHaveLength(20)
-      expect(response.body.nextBefore, 'and says the page is not everything').toBeTruthy()
+      await store(205)
+      expect((await supertest(app()).get('/api/labels')).body.count).toBe(205)
     })
   })
 
-  it('lists labels newest first, without their data', async () => {
-    await LabelDocument.create({ ...A_LABEL, name: 'Older' })
-    // Mongo stores milliseconds. Two creates inside one of them tie on
-    // `updatedAt` and the sort is then arbitrary — a test that passes on the
-    // machine it was written on.
-    await new Promise((resolve) => setTimeout(resolve, 5))
-    await LabelDocument.create({ ...A_LABEL, name: 'Newer' })
-    const response = await supertest(app()).get('/api/labels')
-    expect(response.status).toBe(200)
-    expect(response.body.labels.map((entry: { name: string }) => entry.name)).toEqual([
-      'Newer',
-      'Older',
-    ])
-    // A list needs names and dates, not three nested label payloads.
-    expect(response.body.labels[0]).not.toHaveProperty('data')
-    // Nothing further to fetch, so no cursor is offered.
-    expect(response.body.nextBefore).toBeUndefined()
-  })
+  describe('the list', () => {
+    // `docs/security-review-2026-10-18.md`, finding 4: the list used to be every
+    // label there was, so anyone could read off every link and, with it, every
+    // label. A browser now lists the ids it saved, and the server answers for
+    // those alone.
+    it('names no label it was not asked about', async () => {
+      await saved({ ...A_LABEL, name: 'Somebody else’s' })
+      const response = await supertest(app()).get('/api/labels')
+      expect(response.body.labels).toEqual([])
+    })
 
-  it('pages over a cursor rather than returning everything there is', async () => {
-    // The list was an unbounded collection scan: every saved label, every call.
-    // `skip` would re-read and discard everything before the offset, so the last
-    // page of a long list would cost the most; the cursor reads from where the
-    // previous page stopped, against the index `updatedAt` already has.
-    for (const name of ['A', 'B', 'C']) {
-      await LabelDocument.create({ ...A_LABEL, name })
+    it('lists the labels it is asked about, newest first, without their data', async () => {
+      const older = await saved({ ...A_LABEL, name: 'Older' })
+      // Mongo stores milliseconds. Two creates inside one of them tie on
+      // `updatedAt` and the sort is then arbitrary.
       await new Promise((resolve) => setTimeout(resolve, 5))
-    }
+      const newer = await saved({ ...A_LABEL, name: 'Newer' })
+      await saved({ ...A_LABEL, name: 'Not asked about' })
 
-    const first = await supertest(app()).get('/api/labels?limit=2')
-    expect(first.body.labels.map((entry: { name: string }) => entry.name)).toEqual(['C', 'B'])
-    expect(first.body.nextBefore, 'there is more to fetch').toBeTruthy()
+      const response = await supertest(app()).get(`/api/labels?ids=${older.id},${newer.id}`)
 
-    const second = await supertest(app()).get(
-      `/api/labels?limit=2&before=${encodeURIComponent(String(first.body.nextBefore))}`,
-    )
-    expect(second.body.labels.map((entry: { name: string }) => entry.name)).toEqual(['A'])
-    expect(second.body.nextBefore, 'and now there is not').toBeUndefined()
-  })
-
-  it('serves the paged sort from an index rather than a collection scan', async () => {
-    // The only thing that would have caught this: the sort gained `_id` for the
-    // cursor's tie-break and the index was left covering `updatedAt` alone, so
-    // the planner quietly stopped matching it and went back to a collection scan
-    // and an in-memory sort — on the very list that had just been made cheaper to
-    // fetch, with the prose describing the change claiming the opposite. No
-    // behavioural test can see this; the plan is the only evidence.
-    await LabelDocument.syncIndexes()
-    const plan = (await LabelDocument.find({}, 'name labelType createdAt updatedAt')
-      .sort({ updatedAt: -1, _id: -1 })
-      .limit(51)
-      .explain('queryPlanner')) as never as { queryPlanner: { winningPlan: unknown } }
-
-    const winning = JSON.stringify(plan.queryPlanner.winningPlan)
-    expect(winning, 'an in-memory sort against a 32 MB ceiling').not.toContain('COLLSCAN')
-    expect(winning).toContain('updatedAt_-1__id_-1')
-  })
-
-  it('pages through labels that share a timestamp', async () => {
-    // The bug the first version of this shipped with, and the reason the test
-    // above sleeps between creates: Mongo stores milliseconds, four labels saved
-    // inside one of them tie on `updatedAt`, and a cursor of `updatedAt < x`
-    // steps over every neighbour of the boundary. Two of four came back and the
-    // list said it was finished. Nothing sleeps here — the ties are the point.
-    await LabelDocument.insertMany(
-      ['A', 'B', 'C', 'D'].map((name) => ({
-        ...A_LABEL,
-        name,
-        createdAt: new Date('2026-09-18'),
-        updatedAt: new Date('2026-09-18'),
-      })),
-      { timestamps: false },
-    )
-
-    const seen: string[] = []
-    let before: string | undefined
-    for (let page = 0; page < 5; page++) {
-      const query: string =
-        before === undefined ? '?limit=2' : `?limit=2&before=${encodeURIComponent(before)}`
-      const response = await supertest(app()).get(`/api/labels${query}`)
       expect(response.status).toBe(200)
-      seen.push(...response.body.labels.map((entry: { name: string }) => entry.name))
-      before = response.body.nextBefore
-      if (before === undefined) break
-    }
+      expect(response.body.labels.map((entry: { name: string }) => entry.name)).toEqual([
+        'Newer',
+        'Older',
+      ])
+      // A list needs names and dates, not the labels themselves.
+      expect(response.body.labels[0]).not.toHaveProperty('data')
+      expect(response.body.count, 'the collection, not the answer').toBe(3)
+    })
 
-    expect(seen.sort()).toEqual(['A', 'B', 'C', 'D'])
-  })
+    it('leaves out an id that names nothing, so a browser can forget it', async () => {
+      const kept = await saved()
+      const response = await supertest(app()).get(
+        `/api/labels?ids=${kept.id},64b7f0000000000000000000`,
+      )
+      expect(response.body.labels.map((entry: { id: string }) => entry.id)).toEqual([kept.id])
+    })
 
-  it('refuses a repeated cursor parameter, which Express hands over as an array', async () => {
-    // Reading a non-string as "no cursor" answers page one carrying the same
-    // `nextBefore` the caller just sent, which is the loop the 400 exists to
-    // stop — reached by a different door. Found by review.
-    const response = await supertest(app()).get('/api/labels?before=a_b&before=a_b')
-    expect(response.status).toBe(400)
-  })
-
-  it('refuses a cursor it cannot read rather than starting over', async () => {
-    // Ignoring it answers page one, so a client with a corrupted cursor loops
-    // over the head of the list forever with nothing to tell it why.
-    const response = await supertest(app()).get('/api/labels?before=not-a-cursor')
-    expect(response.status).toBe(400)
-    expect(response.body.error).toBe('Invalid cursor')
-  })
-
-  // Asserted against the query rather than the response, which is the whole
-  // point and was nearly missed: with only a handful of documents stored, a
-  // response of every one of them is indistinguishable from a correctly paged
-  // one. Both of the first attempts at these passed with the bound removed.
-  it.each([
-    ['nothing asked', '', 51],
-    ['a modest page', '?limit=10', 11],
-    ['more than the cap', '?limit=100000', 201],
-    // `Number('')` is 0 and passes `isFinite`, so an empty parameter used to ask
-    // for a page of one while `?limit=abc` correctly fell back to the default.
-    ['a nonsense figure', '?limit=-5', 51],
-    ['an empty figure', '?limit=', 51],
-    ['an unreadable figure', '?limit=abc', 51],
-  ])('bounds the query itself: %s', async (_case, query, expected) => {
-    // Spied rather than stubbed, so the query still runs and the route still
-    // answers — this asserts what was asked of Mongo, not what came back.
-    const spy = vi.spyOn(mongoose.Query.prototype, 'limit')
-    try {
+    it.each([
+      ['an id that is not an ObjectId', '?ids=nonsense'],
+      ['an empty entry', '?ids=64b7f0000000000000000000,'],
+      // Express parses a repeated parameter into an array.
+      ['a repeated parameter', '?ids=64b7f0000000000000000000&ids=64b7f0000000000000000001'],
+      [
+        'more ids than the app keeps labels',
+        `?ids=${Array.from({ length: 201 }, (_, index) => index.toString(16).padStart(24, '0')).join(',')}`,
+      ],
+    ])('refuses %s', async (_case, query) => {
       const response = await supertest(app()).get(`/api/labels${query}`)
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(400)
+      expect(response.body.error).toBe('Invalid label list')
+    })
+  })
 
-      // One more than the page, so "is there another page" is answered by the
-      // query rather than by a second count that could disagree with it.
-      expect(spy.mock.calls.map(([value]) => value)).toEqual([expected])
-    } finally {
-      // In a `finally`, or the failure this test exists to catch would poison
-      // every test after it with a live spy on Mongoose's prototype.
-      spy.mockRestore()
-    }
+  describe('the edit token', () => {
+    // `docs/security-review-2026-10-18.md`, finding 4: any caller could overwrite
+    // or delete any label. Creating one now returns a secret, and changing or
+    // deleting it needs that secret back. Reading stays open, by link.
+    it('is handed back once, on create, and stored only as a hash', async () => {
+      const response = await supertest(app()).post('/api/labels').send(A_LABEL)
+      expect(typeof response.body.editToken).toBe('string')
+      expect(response.body.editToken.length).toBeGreaterThanOrEqual(43)
+      expect(response.body).not.toHaveProperty('editTokenHash')
+
+      const stored = await LabelDocument.collection.findOne({
+        _id: new mongoose.Types.ObjectId(String(response.body.id)),
+      })
+      expect(stored?.editTokenHash).toBe(
+        createHash('sha256').update(String(response.body.editToken)).digest('hex'),
+      )
+      expect(JSON.stringify(stored)).not.toContain(String(response.body.editToken))
+    })
+
+    it('is never served by a read, a replace or the list', async () => {
+      const { id, token } = await saved()
+      const read = await supertest(app()).get(`/api/labels/${id}`)
+      const replaced = await supertest(app())
+        .put(`/api/labels/${id}`)
+        .set(EDIT_TOKEN_HEADER, token)
+        .send(A_LABEL)
+      const listed = await supertest(app()).get(`/api/labels?ids=${id}`)
+      for (const body of [read.body, replaced.body, listed.body]) {
+        expect(JSON.stringify(body)).not.toMatch(/editToken/)
+      }
+    })
+
+    it('belongs to a label whose id cannot be worked out from another’s', async () => {
+      // A default ObjectId keeps five bytes fixed for the life of the process,
+      // and counts up in the last three, so one saved label told its creator
+      // most of every other id: the list of every label, back by guessing. Two
+      // ids from one process sharing those five bytes is what a default looks
+      // like; random ones share them once in 2^40. Found by the high review.
+      const first = await saved()
+      const second = await saved()
+      expect(first.id.slice(8, 18)).not.toBe(second.id.slice(8, 18))
+      expect(first.id).toMatch(/^[0-9a-f]{24}$/)
+    })
+
+    it('is different for every label', async () => {
+      const first = await saved()
+      const second = await saved()
+      expect(first.token).not.toBe(second.token)
+    })
+
+    const NOT_YOURS = 'This label can be changed only from the browser that saved it.'
+
+    it.each([
+      ['no token', undefined],
+      ['a wrong token', 'not-the-token'],
+      ['an empty token', ''],
+    ])('refuses a replace with %s, and leaves the label as it was', async (_case, token) => {
+      const { id } = await saved()
+      const attempt = supertest(app()).put(`/api/labels/${id}`)
+      if (token !== undefined) attempt.set(EDIT_TOKEN_HEADER, token)
+      const response = await attempt.send({ ...A_LABEL, name: 'Overwritten' })
+
+      expect(response.status).toBe(403)
+      expect(response.body.error).toBe(NOT_YOURS)
+      expect((await LabelDocument.findById(id).lean())?.name).toBe('Granola 340g')
+    })
+
+    it.each([
+      ['no token', undefined],
+      ['a wrong token', 'not-the-token'],
+      ['an empty token', ''],
+    ])('refuses a delete with %s, and keeps the label', async (_case, token) => {
+      const { id } = await saved()
+      const attempt = supertest(app()).delete(`/api/labels/${id}`)
+      if (token !== undefined) attempt.set(EDIT_TOKEN_HEADER, token)
+      const response = await attempt
+
+      expect(response.status).toBe(403)
+      expect(response.body.error).toBe(NOT_YOURS)
+      expect(await LabelDocument.findById(id)).not.toBeNull()
+    })
+
+    it('does not let one label’s token change another', async () => {
+      const mine = await saved()
+      const theirs = await saved()
+      const put = await supertest(app())
+        .put(`/api/labels/${theirs.id}`)
+        .set(EDIT_TOKEN_HEADER, mine.token)
+        .send({ ...A_LABEL, name: 'Overwritten' })
+      const deleted = await supertest(app())
+        .delete(`/api/labels/${theirs.id}`)
+        .set(EDIT_TOKEN_HEADER, mine.token)
+      expect([put.status, deleted.status]).toEqual([403, 403])
+      expect((await LabelDocument.findById(theirs.id).lean())?.name).toBe('Granola 340g')
+    })
+
+    it('opens nothing on a label stored before there were tokens', async () => {
+      // No hash, so no token can match it: such a label is readable by its link
+      // and nothing else, until it expires.
+      const old = await LabelDocument.create(A_LABEL)
+      for (const token of ['', 'anything']) {
+        const put = await supertest(app())
+          .put(`/api/labels/${old._id}`)
+          .set(EDIT_TOKEN_HEADER, token)
+          .send(A_LABEL)
+        const deleted = await supertest(app())
+          .delete(`/api/labels/${old._id}`)
+          .set(EDIT_TOKEN_HEADER, token)
+        expect([put.status, deleted.status]).toEqual([403, 403])
+      }
+      expect((await supertest(app()).get(`/api/labels/${old._id}`)).status).toBe(200)
+    })
+
+    it('still opens the label after a replace', async () => {
+      // A replace writes exactly the fields it names, so a replacement that left
+      // the hash out would make every label uneditable after its first edit.
+      const { id, token } = await saved()
+      const put = (name: string) =>
+        supertest(app())
+          .put(`/api/labels/${id}`)
+          .set(EDIT_TOKEN_HEADER, token)
+          .send({ ...A_LABEL, name })
+      expect((await put('First edit')).status).toBe(200)
+      expect((await put('Second edit')).status).toBe(200)
+      expect(
+        (await supertest(app()).delete(`/api/labels/${id}`).set(EDIT_TOKEN_HEADER, token)).status,
+      ).toBe(204)
+    })
+
+    it('answers 404 rather than 403 for a label that does not exist', async () => {
+      const { token } = await saved()
+      const response = await supertest(app())
+        .delete('/api/labels/64b7f0000000000000000000')
+        .set(EDIT_TOKEN_HEADER, token)
+      expect(response.status).toBe(404)
+    })
+  })
+
+  describe('the write limits', () => {
+    // `docs/security-review-2026-10-18.md`, finding 4: nothing limited writes, so
+    // one caller could fill the cap in a few seconds.
+    const limited = (limits: Partial<LabelWriteLimits> = {}) =>
+      createApp({
+        enableLogging: false,
+        trustProxyHops: 1,
+        labelWriteLimits: { ...DEFAULT_LABEL_WRITE_LIMITS, ...limits },
+      })
+    const from = (test: supertest.Test, address: string) => test.set('X-Forwarded-For', address)
+
+    it('are ten creates, three hundred replaces and two hundred deletes an hour', () => {
+      expect(DEFAULT_LABEL_WRITE_LIMITS).toEqual({
+        createsPerHour: 10,
+        replacesPerHour: 300,
+        deletesPerHour: 200,
+      })
+    })
+
+    it('refuse an eleventh create from one address, and not from the next', async () => {
+      const server = limited()
+      const statuses: number[] = []
+      for (let index = 0; index < 11; index++) {
+        statuses.push(
+          (await from(supertest(server).post('/api/labels'), '203.0.113.1').send(A_LABEL)).status,
+        )
+      }
+      expect(statuses).toEqual([...Array<number>(10).fill(201), 429])
+      expect(await LabelDocument.countDocuments({}), 'the eleventh was not stored').toBe(10)
+
+      const elsewhere = await from(supertest(server).post('/api/labels'), '198.51.100.7').send(
+        A_LABEL,
+      )
+      expect(elsewhere.status).toBe(201)
+    })
+
+    it('refuse a replace past the hourly figure', async () => {
+      const server = limited({ replacesPerHour: 2 })
+      const { id, token } = await saved()
+      const statuses: number[] = []
+      for (let index = 0; index < 3; index++) {
+        statuses.push(
+          (
+            await from(supertest(server).put(`/api/labels/${id}`), '203.0.113.1')
+              .set(EDIT_TOKEN_HEADER, token)
+              .send({ ...A_LABEL, name: `Edit ${index}` })
+          ).status,
+        )
+      }
+      expect(statuses).toEqual([200, 200, 429])
+      expect((await LabelDocument.findById(id).lean())?.name).toBe('Edit 1')
+    })
+
+    it('refuse a delete past the hourly figure', async () => {
+      const server = limited({ deletesPerHour: 1 })
+      const first = await saved()
+      const second = await saved()
+      const remove = ({ id, token }: { id: string; token: string }) =>
+        from(supertest(server).delete(`/api/labels/${id}`), '203.0.113.1').set(
+          EDIT_TOKEN_HEADER,
+          token,
+        )
+      expect([(await remove(first)).status, (await remove(second)).status]).toEqual([204, 429])
+      expect(await LabelDocument.findById(second.id)).not.toBeNull()
+    })
+
+    it('count each kind of write separately, and leave reads alone', async () => {
+      const server = limited({ createsPerHour: 1 })
+      const created = await from(supertest(server).post('/api/labels'), '203.0.113.1').send(A_LABEL)
+      expect(created.status).toBe(201)
+      const id = String(created.body.id)
+      const put = await from(supertest(server).put(`/api/labels/${id}`), '203.0.113.1')
+        .set(EDIT_TOKEN_HEADER, String(created.body.editToken))
+        .send(A_LABEL)
+      expect(put.status, 'a replace is not a create').toBe(200)
+      for (let index = 0; index < 3; index++) {
+        expect((await from(supertest(server).get(`/api/labels/${id}`), '203.0.113.1')).status).toBe(
+          200,
+        )
+      }
+    })
+  })
+
+  it('expires a label thirty days after its last change', async () => {
+    // A TTL index on `updatedAt`, which every replace moves. Asserted on the
+    // index rather than by waiting: Mongo's TTL monitor runs once a minute, and
+    // `withDatabase` drops the database, indexes and all, between tests, so the
+    // index is built here first.
+    await LabelDocument.createIndexes()
+    const indexes = await LabelDocument.collection.indexes()
+    const ttl = indexes.filter((index) => index.expireAfterSeconds !== undefined)
+    expect(ttl).toHaveLength(1)
+    expect(ttl[0]?.key).toEqual({ updatedAt: 1 })
+    expect(ttl[0]?.expireAfterSeconds).toBe(30 * 24 * 60 * 60)
   })
 
   it('reads one label in full', async () => {
@@ -292,9 +456,10 @@ describe('/api/labels', () => {
   })
 
   it('replaces a label rather than merging into it', async () => {
-    const created = await LabelDocument.create(A_LABEL)
+    const { id, token } = await saved()
     const response = await supertest(app())
-      .put(`/api/labels/${created._id}`)
+      .put(`/api/labels/${id}`)
+      .set(EDIT_TOKEN_HEADER, token)
       .send({ ...A_LABEL, name: 'Renamed' })
     expect(response.status).toBe(200)
     expect(response.body.name).toBe('Renamed')
@@ -304,14 +469,15 @@ describe('/api/labels', () => {
     // `findOneAndReplace` re-dated the label on every edit, because a
     // replacement body carries no `createdAt` and mongoose fills it with the
     // current time. Nothing noticed: the test above asserts only the name.
-    const created = await LabelDocument.create(A_LABEL)
-    const before = created.createdAt.toISOString()
+    const { id, token } = await saved()
+    const before = (await LabelDocument.findById(id).lean())!.createdAt.toISOString()
     // Mongo stores milliseconds, so an edit in the same millisecond is
     // indistinguishable from no edit at all.
     await new Promise((resolve) => setTimeout(resolve, 5))
 
     const response = await supertest(app())
-      .put(`/api/labels/${created._id}`)
+      .put(`/api/labels/${id}`)
+      .set(EDIT_TOKEN_HEADER, token)
       .send({ ...A_LABEL, name: 'Renamed' })
 
     expect(response.body.createdAt, 'the label was not created again').toBe(before)
@@ -322,25 +488,24 @@ describe('/api/labels', () => {
     // A replace and not a `$set`: updating the fields the schema knows about
     // leaves anything it does not, and a stale value becomes live again the day
     // a field name is reused. Nothing becomes label data silently.
-    const created = await LabelDocument.create(A_LABEL)
-    await LabelDocument.collection.updateOne(
-      { _id: created._id },
-      { $set: { legacyField: 'stale' } },
-    )
+    const { id, token } = await saved()
+    const _id = new mongoose.Types.ObjectId(id)
+    await LabelDocument.collection.updateOne({ _id }, { $set: { legacyField: 'stale' } })
 
     await supertest(app())
-      .put(`/api/labels/${created._id}`)
+      .put(`/api/labels/${id}`)
+      .set(EDIT_TOKEN_HEADER, token)
       .send({ ...A_LABEL, name: 'Renamed' })
 
-    expect(await LabelDocument.collection.findOne({ _id: created._id })).not.toHaveProperty(
-      'legacyField',
-    )
+    expect(await LabelDocument.collection.findOne({ _id })).not.toHaveProperty('legacyField')
   })
 
   it('deletes a label', async () => {
-    const created = await LabelDocument.create(A_LABEL)
-    expect((await supertest(app()).delete(`/api/labels/${created._id}`)).status).toBe(204)
-    expect(await LabelDocument.findById(created._id)).toBeNull()
+    const { id, token } = await saved()
+    expect(
+      (await supertest(app()).delete(`/api/labels/${id}`).set(EDIT_TOKEN_HEADER, token)).status,
+    ).toBe(204)
+    expect(await LabelDocument.findById(id)).toBeNull()
   })
 
   it('reports a stored document that no longer validates rather than serving it', async () => {

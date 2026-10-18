@@ -10,6 +10,36 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The Saved labels page lists the labels this browser saved, and says plainly that only this browser can change
+  them.** The browser keeps each label's edit token in `localStorage` (`packwright.savedLabels`), with a copy in
+  memory so a refused storage still lets the visit edit what it saved; it sends the token with a save or a delete,
+  and lets go of it when the label is deleted or the server no longer has it. The page says that a label can be
+  changed or deleted only from the browser that saved it, that clearing the browser's storage loses that for good
+  while its link still opens it, and that labels are removed 30 days after their last change. It counts this
+  browser's labels, and says the app's count only when the app is full. A label opened from someone else's link
+  can be read and saved as new, and its Save is held back with the reason beside it. The medium review found two
+  ways to lose every token, both fixed: an answer without a `labels` list was read as "every label is gone", and one
+  unreadable id in storage made the server refuse every list. The end-to-end specs clean up with each label's token
+  and fail when the server refuses.
+- **Saved labels have an owner now: changing or deleting one needs the edit token its creator was handed, writes
+  are limited per address, and labels expire 30 days after their last change.** Finding 4 of
+  `docs/security-review-2026-10-18.md`. Any caller could list every saved label, overwrite one, delete one, and fill
+  the 20-label cap so nobody else could save; reproduced as two callers, the second listed, overwrote (200) and
+  deleted (204) the first's label, then filled the cap, and a third was refused. Creating a label now returns a
+  32-byte random token once, and the server keeps only its SHA-256; `PUT` and `DELETE` require it in `X-Edit-Token`,
+  compared in constant time, and answer 403 without it, carrying the hash across a replace so a label stays
+  editable after its first edit. Reading stays open by link. The list of every label is gone, because it published
+  every link: `GET /api/labels` answers the cap and count, and summaries only for the ids it is given in `?ids=`.
+  A label's id is now twelve random bytes: a default ObjectId keeps five bytes fixed per process and counts up in
+  three, so one saved label gave away most of every other id, and guessing them against `?ids=` would have rebuilt
+  the list (found by the high review).
+  Writes have per-address hourly limits beside their reasoning (ten creates, James's figure; three hundred
+  replaces, one manual Save every twelve seconds; two hundred deletes, the cap), and a TTL index on `updatedAt`
+  removes a label 30 days after its last change, which every save restarts. James chose expiry and a larger cap
+  over a per-client share, so the cap rises from 20 to 200, and its 409 now says labels expire. A label stored
+  before tokens has no hash, so it can be read and nothing else until it expires. `LABEL_CREATES_PER_HOUR` exists
+  for the end-to-end suite, which reuses one server between local runs. The list's cursor, page size and their
+  index go with it. New tests fail with each change reverted.
 - **The photo audit's spending cap now holds: the key is required on the public deploy, the body is read after the
   guards, junk images are refused for free, and the day's count survives a restart.** Findings 2 and 3 of
   `docs/security-review-2026-10-18.md`. The route parsed its 10 MB body before its limiter and key ran, so a nested

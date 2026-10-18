@@ -955,6 +955,15 @@ is held to 256 KB. A per-route daily cap on the one route that spends a key is s
 enforce, but refusing traffic cheaply belongs at the edge — an ALB rule or a WAF — and that is deployment work.
 The routes are unauthenticated, which is also the edge's job.
 
+**Settled 2026-10-18 for saved labels, by security fix 3:** changing or deleting a label needs its edit token, and
+writes are limited per address (`docs/security-review-2026-10-18.md`, finding 4).
+
+**From the high review of #111 (2026-10-18), one line each:** a save refused at the cap or for a bad body still
+spends one of the address's ten creates, so a person retrying a full app as its 409 suggests can reach 429; ten
+creates an hour is shared by everyone behind one NAT; `PUT` validates the body before it checks the token; the list
+awaits its find and its count one after the other; `PUT` checks the id twice; and the hourly limiter's settings are
+written out in four files.
+
 **Superseded 2026-10-18:** the security review found this parse order can reset the audit's spending cap, so
 it is must-fix finding 2 of `docs/security-review-2026-10-18.md`, which also lists that review's recorded,
 no-work items.
@@ -1216,6 +1225,21 @@ read, the first read goes without a key and counts against the hour before the f
 `fetch` cannot put in a header reads as a generic failure; the environment's cross-field check is skipped while
 another field fails, so a missing audit key is reported a deploy late; the key is required even where
 `AUDIT_DAILY_LIMIT=0` has turned the audit off; and line-wrapped base64 is refused as "not base64".
+
+**From security fix 3's medium review (2026-10-18), one line each:** two tabs writing the held-label list in the same
+instant can drop the newer token, since each is a read and a write of one `localStorage` key; `GET /api/labels` has no
+rate limit (as reads never have) and counts the collection on every call; the editor decides whether Save may replace
+once per attached label, so a token gained or lost in another tab shows on the next open; a 201 without a token
+(only a client and server from different builds) creates a label nobody can change; and the client's 200-id ceiling
+copies `LABEL_CAP` by hand.
+
+**From the high review of #112 (2026-10-18), one line each:** the list asks about the 200 most recently created
+held ids, not the most recently changed, so past 200 held a live label can be left off the page (its token is kept);
+with a full quota, a forgotten id stays in storage and comes back; a stored token that no longer opens its label
+leaves a row Delete cannot clear; the editor says "Opened from a link" for any label it holds no token for, and
+promises Save as new beside a full app; a full app with nothing held says so twice and still offers the editor;
+malformed ids are skipped by the list rather than dropped on read; `isNotYours` has no caller; and the e2e helpers
+copy the storage key and header name.
 
 ---
 

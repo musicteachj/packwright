@@ -28,6 +28,7 @@ import {
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import {
   SavedLabelError,
+  canChangeLabel,
   createLabel,
   readLabel,
   readLabelCount,
@@ -208,6 +209,21 @@ const savedInput = computed(() => ({
 const canSave = computed(() => savedInput.value.name.length > 0)
 
 /**
+ * Whether the label on screen can be saved over: it is attached, and this
+ * browser holds its edit token, so it saved it. A label opened from a link it
+ * did not save is readable and nothing more (`api/heldLabels.ts`), and its Save
+ * is held back with the reason beside it; Save as new keeps the changes as a
+ * label of this browser's own.
+ *
+ * Recomputed when the attached label changes, which is the only time the answer
+ * can: a token is kept when a label is created, and the editor attaches to that
+ * label in the same step.
+ */
+const canReplace = computed(() => store.savedId !== null && canChangeLabel(store.savedId))
+const notYoursReason =
+  'Opened from a link. Only the browser that saved this label can change it. Save as new keeps your changes as a label of your own.'
+
+/**
  * How many labels the application holds against how many it keeps.
  *
  * Read so that Save as new can say *before* it is pressed that it would be
@@ -219,9 +235,9 @@ const canSave = computed(() => savedInput.value.name.length > 0)
  * Read again whenever the editor attaches to a different record, which is every
  * open and every new label saved; after a refusal at the cap; and when the page
  * comes back into view. **That last is what lets a disabled button recover.**
- * The twenty are shared by every tab, and a label deleted in another left this
- * one at "20 of 20" with Save as new held back and nothing able to press it —
- * found by review. What remains is a label deleted elsewhere while this tab
+ * The cap is shared by everyone, and a label deleted or expired elsewhere left
+ * this tab full, with Save as new held back and nothing able to press it, which
+ * review found when the cap was twenty. What remains is a label deleted elsewhere while this tab
  * keeps the focus throughout, which the next return to it corrects. Each read is
  * numbered and only the latest is kept, so two in flight cannot land in the
  * wrong order.
@@ -262,7 +278,7 @@ const atCap = computed(
 const atCapReason = computed(() =>
   labelCount.value === null
     ? ''
-    : `${labelCount.value.count} of ${labelCount.value.cap} saved. Delete one to save as new.`,
+    : `${labelCount.value.count} of ${labelCount.value.cap} saved, as many as this app keeps. Delete one of yours from Saved labels, or try again later.`,
 )
 
 async function persist(mode: 'replace' | 'create') {
@@ -284,7 +300,9 @@ async function persist(mode: 'replace' | 'create') {
   try {
     const saved =
       mode === 'replace' && store.savedId !== null
-        ? await replaceLabel(store.savedId, sending)
+        ? // Held back by the button where this browser cannot change the label;
+          // were it ever pressed, the server refuses and says why, below.
+          await replaceLabel(store.savedId, sending)
         : await createLabel(sending)
     if (store.documentGeneration !== madeAbout) return
     store.markSaved(saved.id, saved.name, sending)
@@ -706,8 +724,12 @@ async function exportPdf() {
           type="button"
           :class="[BUTTON, TOOLBAR_CONTROL, 'shrink-0 px-3']"
           :disabled="
-            opening !== null || saving || !canSave || (store.savedId !== null && !store.isDirty)
+            opening !== null ||
+            saving ||
+            !canSave ||
+            (store.savedId !== null && (!store.isDirty || !canReplace))
           "
+          :title="store.savedId !== null && !canReplace ? notYoursReason : undefined"
           data-save
           @click="persist('replace')"
         >
@@ -741,6 +763,13 @@ async function exportPdf() {
           data-save-as-reason
         >
           {{ atCapReason }}
+        </p>
+        <p
+          v-if="store.savedId !== null && opening === null && !canReplace"
+          class="text-chrome-300 max-w-xs text-xs"
+          data-save-reason
+        >
+          {{ notYoursReason }}
         </p>
         <p v-if="exportError" class="text-danger max-w-md text-xs">{{ exportError }}</p>
         <p v-else-if="cannotExport" class="text-chrome-300 max-w-md text-xs">

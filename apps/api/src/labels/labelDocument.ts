@@ -53,6 +53,12 @@ const labelDocumentSchema = new Schema(
     labelType: { type: String, required: true, enum: LABEL_TYPES },
     stock: { type: stockSchema, required: true },
     data: { type: Schema.Types.Mixed, required: true },
+    // The SHA-256 of the secret the label's creator was handed, so a copy of the
+    // database is not a copy of anyone's right to edit (`labelDocumentRoutes.ts`).
+    // `select: false`, so no read returns it unless it asks by name, and a route
+    // added later cannot serve it by forgetting to strip it. Not `required`: a
+    // label stored before tokens has none, and no token then opens it.
+    editTokenHash: { type: String, select: false },
   },
   // Findings are never stored. `docs/DESIGN.md` settles it, and the reason is
   // the one the application rests on: a finding must reflect the current rule
@@ -63,18 +69,34 @@ const labelDocumentSchema = new Schema(
   { timestamps: true, versionKey: false },
 )
 
-// The list sorts on both, and an unindexed sort is done in memory against a
-// 32 MB ceiling — which is a long way off for a label collection, and a 500 with
-// no obvious cause when it arrives.
-//
-// **Compound because the sort is.** `_id` joined it when the list gained a cursor:
-// `updatedAt` alone is not unique, so paging on it silently skipped labels that
-// tied. This index was left at one key in that change, which quietly cost the
-// thing it exists for — the planner stopped matching it and went back to a
-// collection scan and an in-memory sort, on a list that had just been made
-// cheaper to fetch. Caught by review; the prose describing that change said the
-// existing index still served it, and it did not.
-labelDocumentSchema.index({ updatedAt: -1, _id: -1 })
+/** How long a label is kept after its last change: thirty days, in seconds. */
+export const LABEL_LIFETIME_SECONDS = 30 * 24 * 60 * 60
+
+/**
+ * Labels expire thirty days after their last change (James's decision,
+ * `docs/security-review-2026-10-18.md`, finding 4), so a cap filled by
+ * strangers empties again without anyone deleting anything.
+ *
+ * A TTL index on `updatedAt`, which `PUT` moves (`findOneAndReplace` with
+ * `timestamps`), so every save starts the thirty days again. What it does not
+ * promise, written down:
+ * - Mongo's TTL monitor runs about once a minute, so a label outlives its
+ *   thirty days by up to that, and a test cannot wait for it; the index is
+ *   asserted instead.
+ * - A TTL index must be on one field. The compound `{ updatedAt: -1, _id: -1 }`
+ *   it might have shared served the list of every label, which is gone, so that
+ *   index is gone too. Mongoose builds indexes and never drops them, so a
+ *   development database keeps the old one, unused and harmless; the two key
+ *   patterns differ, so they do not conflict.
+ * - Changing the figure later is a `collMod` on the live index. Building an
+ *   index with the same key and a different `expireAfterSeconds` fails with
+ *   `IndexOptionsConflict` (tried against `mongod` on 2026-10-18), which Mongoose
+ *   reports as an `index` event nothing here listens to, so the old figure
+ *   quietly stays in force.
+ * - A label stored before this index existed expires by the same rule, at once
+ *   if its last change is already more than thirty days old.
+ */
+labelDocumentSchema.index({ updatedAt: 1 }, { expireAfterSeconds: LABEL_LIFETIME_SECONDS })
 
 export const LabelDocument = model('LabelDocument', labelDocumentSchema)
 

@@ -8,6 +8,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { forgetLabels, heldLabels, holdLabel } from '../api/heldLabels'
 import EditorView from './EditorView.vue'
 import { testRouter } from './editorTestRouter'
 import { useLabelDocumentStore } from '../stores/labelDocument'
@@ -39,7 +40,14 @@ const mountAt = async (path: string) => {
   return wrapper
 }
 
-beforeEach(() => setActivePinia(createPinia()))
+beforeEach(() => {
+  setActivePinia(createPinia())
+  // This browser saved every label these tests open, so it holds their edit
+  // tokens; the tests about a label opened from someone else's link let go of one.
+  localStorage.clear()
+  forgetLabels(heldLabels().map((label) => label.id))
+  for (const id of ['def456', 'zzz999', 'abc123']) holdLabel(id, `token-${id}`)
+})
 afterEach(() => vi.unstubAllGlobals())
 
 describe('the Save control', () => {
@@ -98,6 +106,66 @@ describe('the Save control', () => {
       .map(([url, init]) => `${(init as RequestInit | undefined)?.method ?? 'GET'} ${url}`)
       .filter((call) => !call.startsWith('GET '))
     expect(writes).toEqual(['PUT /api/labels/abc123'])
+    const put = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect(
+      ((put?.[1] as RequestInit).headers as Record<string, string>)['X-Edit-Token'],
+      'with the token that opens it',
+    ).toBe('token-abc123')
+  })
+
+  describe('a label opened from a link this browser did not save', () => {
+    // `docs/security-review-2026-10-18.md`, finding 4: only the browser holding a
+    // label's edit token can change it. Anyone else can read it by its link, and
+    // keep their changes as a label of their own.
+    const NOT_YOURS =
+      'Opened from a link. Only the browser that saved this label can change it. Save as new keeps your changes as a label of your own.'
+
+    beforeEach(() => forgetLabels(['abc123']))
+
+    it('holds back Save, and says why beside it', async () => {
+      vi.stubGlobal('fetch', respond(SAVED))
+      const wrapper = await mountAt('/labels/abc123')
+      useLabelDocumentStore().data.gtin = '036000291452'
+      await flushPromises()
+
+      expect(wrapper.get('[data-save-state]').text()).toBe('Unsaved changes')
+      expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-save-reason]').text()).toBe(NOT_YOURS)
+      expect(wrapper.get('[data-save]').attributes('title')).toBe(NOT_YOURS)
+    })
+
+    it('saves the changes as a new label, which this browser can then change', async () => {
+      const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
+        init?.method === 'POST'
+          ? ({
+              ok: true,
+              status: 201,
+              json: async () => ({ ...SAVED, id: 'def789', editToken: 'token-new' }),
+            } as unknown as Response)
+          : ({ ok: true, status: 200, json: async () => SAVED } as unknown as Response),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      const wrapper = await mountAt('/labels/abc123')
+      useLabelDocumentStore().data.gtin = '036000291452'
+      await flushPromises()
+
+      expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeUndefined()
+      await wrapper.get('[data-save-as]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.vm.$router.currentRoute.value.path).toBe('/labels/def789')
+      expect(wrapper.find('[data-save-reason]').exists()).toBe(false)
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+    })
+
+    it('says nothing of the kind about a label this browser saved', async () => {
+      holdLabel('abc123', 'token-abc123')
+      vi.stubGlobal('fetch', respond(SAVED))
+      const wrapper = await mountAt('/labels/abc123')
+      expect(wrapper.find('[data-save-reason]').exists()).toBe(false)
+    })
   })
 
   it('offers Save as new only once there is something to save as', async () => {
@@ -210,8 +278,8 @@ describe('at the cap', () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET'
       const answer =
-        method === 'GET' && url === '/api/labels?limit=1'
-          ? { status: 200, body: { labels: [], cap: 20, count } }
+        method === 'GET' && url === '/api/labels'
+          ? { status: 200, body: { labels: [], cap: 200, count } }
           : method === 'POST'
             ? post
             : { status: 200, body: SAVED }
@@ -228,35 +296,35 @@ describe('at the cap', () => {
     status: 409,
     body: {
       error:
-        'There are already 20 saved labels, which is as many as this app keeps. Delete one from Saved labels before saving another.',
+        'There are already 200 saved labels, which is as many as this app keeps. Labels are removed 30 days after their last change, so try again later, or delete one of yours from Saved labels.',
     },
   }
 
   it('holds back Save as new, and says why beside it', async () => {
-    serve(20, FULL)
+    serve(200, FULL)
     const wrapper = await mountAt('/labels/abc123')
     const saveAs = wrapper.get('[data-save-as]')
     expect(saveAs.attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-save-as-reason]').text()).toBe(
-      '20 of 20 saved. Delete one to save as new.',
+      '200 of 200 saved, as many as this app keeps. Delete one of yours from Saved labels, or try again later.',
     )
     expect(saveAs.attributes('title')).toBe(wrapper.get('[data-save-as-reason]').text())
   })
 
   it('offers Save as new again once a label is deleted elsewhere', async () => {
-    // The twenty are shared by every tab. Read only on attach and after a
-    // refusal, a button held back at 20 of 20 had nothing left that could make
-    // it read again — the refusal it waited for could not be asked for.
-    let count = 20
+    // The cap is shared by everyone. Read only on attach and after a refusal, a
+    // button held back at a full cap had nothing left that could make it read
+    // again: the refusal it waited for could not be asked for.
+    let count = 200
     const fetchMock = vi.fn(async (url: string) => {
-      const body = url === '/api/labels?limit=1' ? { labels: [], cap: 20, count } : SAVED
+      const body = url === '/api/labels' ? { labels: [], cap: 200, count } : SAVED
       return { ok: true, status: 200, json: async () => body } as unknown as Response
     })
     vi.stubGlobal('fetch', fetchMock)
     const wrapper = await mountAt('/labels/abc123')
     expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeDefined()
 
-    count = 19
+    count = 199
     window.dispatchEvent(new Event('focus'))
     await flushPromises()
     expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeUndefined()
@@ -264,7 +332,7 @@ describe('at the cap', () => {
   })
 
   it('offers Save as new with a place left', async () => {
-    serve(19, { status: 201, body: SAVED })
+    serve(199, { status: 201, body: SAVED })
     const wrapper = await mountAt('/labels/abc123')
     expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-save-as-reason]').exists()).toBe(false)
@@ -278,7 +346,7 @@ describe('at the cap', () => {
   })
 
   it('shows the server’s own sentence when a new label is refused', async () => {
-    serve(20, FULL)
+    serve(200, FULL)
     const wrapper = await mountAt('/labels/new')
     useLabelDocumentStore().savedName = 'Granola 340g'
     await flushPromises()
@@ -288,13 +356,16 @@ describe('at the cap', () => {
   })
 
   it('reads the count again after a refusal, for the next Save as new', async () => {
-    const fetchMock = serve(20, FULL)
+    const fetchMock = serve(200, FULL)
     const wrapper = await mountAt('/labels/new')
     useLabelDocumentStore().savedName = 'Granola 340g'
     await flushPromises()
     await wrapper.get('[data-save]').trigger('click')
     await flushPromises()
-    expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain('/api/labels?limit=1')
+    // `GET` named, since the refused `POST` went to the same path.
+    expect(
+      fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? 'GET'} ${String(url)}`),
+    ).toContain('GET /api/labels')
   })
 })
 

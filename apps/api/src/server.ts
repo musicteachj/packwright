@@ -1,6 +1,7 @@
 import { createApp } from './app'
 import { databaseAllowance } from './audit/dailyAllowance'
 import { DEFAULT_AUDIT_LIMITS } from './audit/routes'
+import { DEFAULT_LABEL_WRITE_LIMITS } from './labels/labelDocumentRoutes'
 import { DEFAULT_EXPORT_LIMIT } from './labels/routes'
 import { DEFAULT_MCP_LIMITS } from './mcp/routes'
 import { extractGhsLabel, sendThrough, visionClient, type ExtractLabel } from './audit/extract'
@@ -58,6 +59,10 @@ const app = createApp({
   // In the database, so a restart does not start the day again at zero.
   auditAllowance: databaseAllowance(),
   exportLimit: DEFAULT_EXPORT_LIMIT,
+  labelWriteLimits: {
+    ...DEFAULT_LABEL_WRITE_LIMITS,
+    createsPerHour: env.LABEL_CREATES_PER_HOUR ?? DEFAULT_LABEL_WRITE_LIMITS.createsPerHour,
+  },
   ...(env.AUDIT_API_KEY === undefined ? {} : { auditApiKey: env.AUDIT_API_KEY }),
   ...(env.TRUST_PROXY_HOPS === undefined ? {} : { trustProxyHops: env.TRUST_PROXY_HOPS }),
   ...(env.MCP_ENABLED
