@@ -168,6 +168,14 @@ describe('loadEnv', () => {
     expect(() => load({ AUDIT_DAILY_LIMIT: ' ' })).toThrow(/AUDIT_DAILY_LIMIT/)
   })
 
+  it('reads the hourly label creates as a whole number of at least one, absent when blank', () => {
+    expect(load({ LABEL_CREATES_PER_HOUR: '1000' }).LABEL_CREATES_PER_HOUR).toBe(1000)
+    expect(load({ LABEL_CREATES_PER_HOUR: '' }).LABEL_CREATES_PER_HOUR).toBeUndefined()
+    expect(() => load({ LABEL_CREATES_PER_HOUR: '0' })).toThrow(/LABEL_CREATES_PER_HOUR/)
+    expect(() => load({ LABEL_CREATES_PER_HOUR: '2.5' })).toThrow(/LABEL_CREATES_PER_HOUR/)
+    expect(() => load({ LABEL_CREATES_PER_HOUR: ' ' })).toThrow(/LABEL_CREATES_PER_HOUR/)
+  })
+
   it('trims the audit key, as the audit page trims what is typed', () => {
     expect(load({ AUDIT_API_KEY: 'the-secret\n' }).AUDIT_API_KEY).toBe('the-secret')
   })

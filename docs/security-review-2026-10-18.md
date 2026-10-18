@@ -33,7 +33,7 @@ the load balancer's liveness probe.
 | 1 | `label-core` schema and text code, reached by every public route | **Unbounded input meets superlinear code.** No free-text field has a maximum length and no array a maximum count. Stock and box dimensions are only `.positive()` (1e9 mm passes), and font sizes have no floor (5e-324 passes). Six places then grow quadratically or worse: `wrapTextMm` (`text/measure.ts`) re-measures the whole line for every word; `labelFilename`'s `/^-+|-+$/g`; `withoutTrailingSlashes`' `/\/+$/`; `parseDigitalLinkUri`'s URI pattern; the net quantity rule's `SI_AMOUNT`; and PDFKit's text layout, which is quadratic in spaces. | Through the real routes, within the 256 KB body limit: `check_label` 308 s (wrapping on 1e9 mm stock), 194 s (Digital Link), 5.3 s at 40 K (SI amount; the pattern alone 212 s at 250 K); export 29 s (filename), about 31 s (artwork text in the PDF). Re-measured here: the filename pattern 4.5 s at 100 K, the Digital Link pattern 0.76 s at 16 K, `SI_AMOUNT` 52 ms at 4 K, each quadrupling or worse per doubling. **Fixed by fix 1:** each path under 5 ms at 32 K; past a bound, refused in under 40 ms; the worst case inside the bounds, `check_label` on a list spread over all nine allergens, takes about 0.5 to 0.75 s. | denial of service |
 | 2 | `/api/audit` | **The daily spending cap does not hold.** The 10 MB body is parsed before any guard runs, and a nested body costs 653 ms of blocking CPU and about 440 MB to parse (measured here). Sixteen at once delayed `/health` by 6.4 s (the reviewer's measurement). The daily counter is in memory, so a task the load balancer replaces starts again at zero. The parse order was recorded in `docs/BACKLOG.md` ("From the pre-stage-2 security pass") as a cost of refusing; that it can reset the spending cap is new, and fix 2 settles that entry. | 653 ms and about 440 MB per 10 MB body. **Fixed by fix 2:** the body is read only after the limiter and the key, so the same body without a key is refused in 15 ms; the day's count is in the database. | unbounded cost |
 | 3 | `/api/audit` | **The daily cap can be drained for free.** `image.data` is `z.string().min(1)`, and `today.take()` counts the call before anything checks the data is an image, so a one-character "image" spends one of the day's 200 calls and Anthropic rejects it at no cost. Twenty an hour from one address drains the day in ten hours; ten addresses do it in under a minute. Real users then get 429 until the window resets. | confirmed in code. **Fixed by fix 2:** data that is not base64 opening as its declared type is refused with 400 before anything is counted, and the key is required on the public deploy. | denial of service |
-| 4 | `/api/labels` (saved labels) | **Saved labels have no owner and no write limit.** Any caller can list them, read any of them, overwrite any with `PUT`, delete any with `DELETE`, and fill the global 20-label cap so nobody else can save. No rate limiter is mounted on these routes. | confirmed in code and by the reviewer's requests | data loss |
+| 4 | `/api/labels` (saved labels) | **Saved labels have no owner and no write limit.** Any caller can list them, read any of them, overwrite any with `PUT`, delete any with `DELETE`, and fill the global 20-label cap so nobody else can save. No rate limiter is mounted on these routes. | confirmed in code and by the reviewer's requests. Re-run as two callers before fix 3: the second listed the first's label, overwrote it (200) and deleted it (204), then filled the cap at 20, and a third was refused 409. **Fixed by fix 3:** the list names only the labels it is asked about, by id; overwrite and delete without the label's edit token are refused 403 with the label unchanged; the eleventh create in an hour from one address is refused 429 while another address still saves; the cap is 200 and labels expire 30 days after their last change. | data loss |
 | 5 | `/mcp` | **Only `tools/call` is counted.** A 4.5 KB legacy batch of 100 `tools/list` returns 2.44 MB and counts as nothing; a batch of one call and 99 lists counts as one. The counter's comment says what goes uncounted is cheap, since no label is drawn, and "bounded by the body limit", but a batch multiplies the response about 500 times past the body. `subscriptions/listen` is uncounted too, and one client held all 1,024 subscription slots open in 3 s. | 2.44 MB per request; 1,024 sockets | unbounded cost |
 
 **Worst-case audit spend while the cap holds.** The extraction calls `claude-opus-5` with `max_tokens` 4,000 and one
@@ -55,7 +55,8 @@ or $54 if every call is retried. Findings 2 and 3 are why that figure is not a b
 **A deployment requirement this review rests on.** Every per-address figure above assumes `TRUST_PROXY_HOPS=1`
 behind the load balancer. The variable is optional (`env.ts`), and unset it makes `request.ip` the balancer's
 address: every audit caller then shares one 20-an-hour bucket, every `/mcp` caller one 60-an-hour bucket, and the
-Anthropic tier never matches. Phase 8's checklist names it under `/mcp`; it governs the audit and export limits too.
+Anthropic tier never matches. Phase 8's checklist names it under `/mcp`; it governs the audit and export limits too,
+and since fix 3 the saved-label write limits, where unset it would give the whole world ten new labels an hour.
 
 ## The fixes
 
@@ -70,10 +71,15 @@ Four pull requests, each reviewed at `high`:
    by enough addresses, so James chose to require `AUDIT_API_KEY` on the public deploy (see the decisions above),
    with a field on the audit page to type it in, rather than a WAF rule or a per-client share. **What that leaves:**
    a key holder can still spend the day's calls, which is the trust the key gives them.
-3. **Saved labels (finding 4).** The edit token, and a per-client limit on writes. **What that leaves:** creating a
-   label needs no token, so enough addresses can still fill the global 20-label cap, and only their own tokens can
-   delete those labels. The remedies are a per-client share of the cap, labels that expire, or a larger cap. That is
-   James's choice too, asked when fix 3 is planned.
+3. **Saved labels (finding 4).** Creating a label returns an edit token, which the browser keeps and which `PUT`
+   and `DELETE` require, compared in constant time against a stored SHA-256; reading stays open by link. The
+   server's list of every label is gone, because it published every link: a browser lists the labels it holds
+   tokens for, by id. Writes are limited per address (ten creates, three hundred replaces and two hundred deletes
+   an hour). James chose the remedies for the cap when fix 3 was planned: labels expire 30 days after their last
+   change (a TTL index on `updatedAt`), and the cap rises from 20 to 200. Not chosen: a key to save. **What that
+   leaves:** creating a label needs no token, so enough addresses can still fill the 200, and nobody new can then
+   save until labels expire or their owners delete them. A label stored before tokens has none, so it can be read
+   and nothing else until it expires; the deployed database starts empty.
 4. **`/mcp` and the rest (finding 5).** Every message in a batch counts, and subscriptions are capped or counted.
    This PR also carries the lockfile update below and truncates validation errors.
 

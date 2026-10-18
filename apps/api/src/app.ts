@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import type { DailyAllowance } from './audit/dailyAllowance'
 import { createAuditRouter, type AuditLimits } from './audit/routes'
 import { loadClientPages, matchesClientPage } from './clientPages'
-import { createLabelDocumentRouter } from './labels/labelDocumentRoutes'
+import { createLabelDocumentRouter, type LabelWriteLimits } from './labels/labelDocumentRoutes'
 import { createLabelRouter, type ExportLimit } from './labels/routes'
 import { createMcpRouter, type McpRouterOptions } from './mcp/routes'
 import type { ExtractLabel } from './audit/extract'
@@ -78,6 +78,11 @@ export interface AppOptions {
    * a dozen PDFs is not making a statement about production quotas.
    */
   exportLimit?: ExportLimit | false | undefined
+  /**
+   * What one client may write to saved labels in an hour, or `false` for no
+   * limit. Stated rather than defaulted for the reason `exportLimit` is.
+   */
+  labelWriteLimits?: LabelWriteLimits | false | undefined
   /**
    * How many proxies sit in front of this server. See `TRUST_PROXY_HOPS`.
    *
@@ -181,6 +186,7 @@ export function createApp(options: AppOptions = {}): Express {
     auditLimits,
     auditAllowance,
     exportLimit,
+    labelWriteLimits,
     trustProxyHops,
     mcp,
   } = options
@@ -337,7 +343,7 @@ export function createApp(options: AppOptions = {}): Express {
 
   // The saved-label routes first: their paths are the shorter ones, and nothing
   // about either mount shadows the other.
-  app.use('/api/labels', createLabelDocumentRouter())
+  app.use('/api/labels', createLabelDocumentRouter({ limits: labelWriteLimits }))
   app.use('/api/labels', createLabelRouter({ limit: exportLimit }))
   if (mcp !== undefined) app.use('/mcp', createMcpRouter(mcp))
 

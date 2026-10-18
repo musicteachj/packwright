@@ -141,18 +141,38 @@ const EnvSchema = z.object({
   ),
 
   /**
+   * How many saved labels one address may create in an hour, or nothing for
+   * `DEFAULT_LABEL_WRITE_LIMITS.createsPerHour` (10).
+   *
+   * A setting for one reason: the end-to-end suite runs the production server,
+   * reused between local runs, and saves a few labels from one address each run,
+   * so it would meet the production figure on about the fourth run in an hour.
+   * `playwright.config.ts` raises it. A deployment has no reason to.
+   */
+  // Digits only, for the reason `AUDIT_DAILY_LIMIT` is; at least one, since a
+  // limit of none would refuse every save with a message about going too fast.
+  LABEL_CREATES_PER_HOUR: blankAsAbsent(
+    z
+      .string()
+      .regex(/^\d+$/, 'must be a whole number of labels, such as 10')
+      .transform(Number)
+      .pipe(z.number().min(1).max(100_000))
+      .optional(),
+  ),
+
+  /**
    * How many proxies sit in front of this server, or nothing for none.
    *
-   * The per-client quotas read it — the audit route's, the exports', and both of
-   * `/mcp`'s, which also use it to tell Anthropic's range from everyone else — and
-   * getting it wrong breaks them in one of two directions. Left unset behind a load balancer, every
-   * request appears to come from the balancer and the hourly limit becomes one
-   * bucket shared by the world — blunt, but it errs towards refusing. Set too
-   * high, a caller can forge `X-Forwarded-For` and mint themselves a fresh
-   * bucket per request, which errs towards allowing and is the worse of the
-   * two. So it is off unless stated, and stated as a hop count rather than a
-   * boolean, because `trust proxy: true` is the setting that makes forging
-   * work.
+   * The per-client quotas read it (the audit route's, the exports', the saved-label
+   * writes', and both of `/mcp`'s, which also use it to tell Anthropic's range from
+   * everyone else), and getting it wrong breaks them in one of two directions.
+   * Left unset behind a load balancer, every request appears to come from the
+   * balancer and the hourly limit becomes one bucket shared by the world: blunt,
+   * but it errs towards refusing. Set too high, a caller can forge
+   * `X-Forwarded-For` and mint themselves a fresh bucket per request, which errs
+   * towards allowing and is the worse of the two. So it is off unless stated, and
+   * stated as a hop count rather than a boolean, because `trust proxy: true` is
+   * the setting that makes forging work.
    */
   TRUST_PROXY_HOPS: blankAsAbsent(z.coerce.number().int().min(0).max(10).optional()),
 

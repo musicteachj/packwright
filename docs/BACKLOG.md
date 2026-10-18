@@ -955,6 +955,9 @@ is held to 256 KB. A per-route daily cap on the one route that spends a key is s
 enforce, but refusing traffic cheaply belongs at the edge — an ALB rule or a WAF — and that is deployment work.
 The routes are unauthenticated, which is also the edge's job.
 
+**Settled 2026-10-18 for saved labels, by security fix 3:** changing or deleting a label needs its edit token, and
+writes are limited per address (`docs/security-review-2026-10-18.md`, finding 4).
+
 **Superseded 2026-10-18:** the security review found this parse order can reset the audit's spending cap, so
 it is must-fix finding 2 of `docs/security-review-2026-10-18.md`, which also lists that review's recorded,
 no-work items.
