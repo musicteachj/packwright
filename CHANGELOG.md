@@ -30,6 +30,9 @@ into a version only when there is a reason to.
   compared in constant time, and answer 403 without it, carrying the hash across a replace so a label stays
   editable after its first edit. Reading stays open by link. The list of every label is gone, because it published
   every link: `GET /api/labels` answers the cap and count, and summaries only for the ids it is given in `?ids=`.
+  A label's id is now twelve random bytes: a default ObjectId keeps five bytes fixed per process and counts up in
+  three, so one saved label gave away most of every other id, and guessing them against `?ids=` would have rebuilt
+  the list (found by the high review).
   Writes have per-address hourly limits beside their reasoning (ten creates, James's figure; three hundred
   replaces, one manual Save every twelve seconds; two hundred deletes, the cap), and a TTL index on `updatedAt`
   removes a label 30 days after its last change, which every save restarts. James chose expiry and a larger cap
