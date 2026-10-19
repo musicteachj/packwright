@@ -14,8 +14,11 @@
   image exercises the plural field on the way in and gives the audit report
   something true to say on the way out.
 
-  Rasterised by `makeSamplePhoto.cli.ts`. Not served, not bundled, not imported
-  by anything that ships.
+  Rasterized by `scripts/make-audit-sample.mjs` (`npm run sample:photo` in
+  `apps/api`). This HTML is not served, bundled or
+  imported by anything that ships. Its PNG is, since 2026-10-19: copied to
+  `apps/web/public/samples/acetone-label.png` as the audit page's sample label,
+  beside the reading `recorded.json` holds (`apps/web/src/audit/sample.ts`).
 -->
 <html lang="en">
   <head>

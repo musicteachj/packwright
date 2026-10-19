@@ -70,7 +70,9 @@ Four pull requests, each reviewed at `high`:
    count is held in the database, so a restart does not reset it. An anonymous shared budget can always be drained
    by enough addresses, so James chose to require `AUDIT_API_KEY` on the public deploy (see the decisions above),
    with a field on the audit page to type it in, rather than a WAF rule or a per-client share. **What that leaves:**
-   a key holder can still spend the day's calls, which is the trust the key gives them.
+   a key holder can still spend the day's calls, which is the trust the key gives them. **Since 2026-10-19** the
+   page also offers a sample label to anyone, so a visitor without the key can see the audit work: the photograph
+   and a reading recorded from it are static files in the web app, and loading them sends nothing to `/api/audit`.
 3. **Saved labels (finding 4).** Creating a label returns an edit token, which the browser keeps and which `PUT`
    and `DELETE` require, compared in constant time against a stored SHA-256; reading stays open by link. The
    server's list of every label is gone, because it published every link: a browser lists the labels it holds

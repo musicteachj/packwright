@@ -26,7 +26,7 @@
  * The engine does not run here. Findings and the hand-off into the editor are
  * the stage after this one.
  */
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, toRaw, watch } from 'vue'
 import {
   confirmed,
   GHS_REGIMES,
@@ -44,8 +44,10 @@ import {
   type LabelReading,
 } from '../api/audit'
 import { auditReport } from '../audit/report'
+import { SAMPLE } from '../audit/sample'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import FindingsRail from '../components/FindingsRail.vue'
+import { normalisePhoto } from '../audit/normalisePhoto'
 import { useLabelPhoto } from '../audit/useLabelPhoto'
 import {
   FIELD_SHAPES,
@@ -75,6 +77,14 @@ const widthMm = ref('')
 const heightMm = ref('')
 
 const reading = ref<LabelReading | null>(null)
+/**
+ * Whether the reading on screen is the sample's recorded one.
+ *
+ * Derived from the reading itself rather than kept as a flag, so no path that
+ * replaces or clears the reading (a fresh read of the sample photograph, a
+ * refusal) can leave the notice saying nothing was sent.
+ */
+const sampleOnScreen = computed(() => toRaw(reading.value) === SAMPLE.reading)
 const readingError = ref<string | null>(null)
 const readingDetail = ref<readonly string[]>([])
 const busy = ref(false)
@@ -285,7 +295,9 @@ watch([() => camera.photo.value, regime], () => {
 })
 
 async function read() {
-  if (camera.photo.value === null || regime.value === '') return
+  // The button is disabled while a read is in flight; this makes that true of any
+  // caller, which `busy`'s reset in `finally` relies on.
+  if (busy.value || camera.photo.value === null || regime.value === '') return
   const mine = ++readGeneration
   busy.value = true
   readingError.value = null
@@ -293,15 +305,7 @@ async function read() {
   try {
     const result = await readGhsLabel(camera.photo.value, regime.value, auditKey.value.trim())
     if (mine !== readGeneration) return
-    reading.value = result
-    accepted.value = new Set()
-    editing.value = null
-    texts.value = Object.fromEntries(
-      READING_KEYS.flatMap((key) => {
-        const field = result.extraction.fields[key]
-        return field === undefined ? [] : [[key, formatValue(key, field.value)]]
-      }),
-    )
+    showReading(result)
   } catch (caught) {
     if (mine !== readGeneration) return
     reading.value = null
@@ -316,7 +320,76 @@ async function read() {
       keyRefused.value = true
     }
   } finally {
-    if (mine === readGeneration) busy.value = false
+    // Whatever moved the generation since. The Read button is disabled while a read
+    // is in flight, so this read is the only one there is, and leaving `busy` set
+    // because the sample, a photograph or a market arrived meanwhile left the
+    // button saying "Reading…" for the rest of the visit.
+    busy.value = false
+  }
+}
+
+/**
+ * Puts a reading on screen, every row unaccepted.
+ *
+ * One path for a fresh reading and for the sample's recorded one, so the sample
+ * cannot arrive in a state a real reading never could.
+ */
+function showReading(result: LabelReading) {
+  readingError.value = null
+  readingDetail.value = []
+  reading.value = result
+  accepted.value = new Set()
+  editing.value = null
+  texts.value = Object.fromEntries(
+    READING_KEYS.flatMap((key) => {
+      const field = result.extraction.fields[key]
+      return field === undefined ? [] : [[key, formatValue(key, field.value)]]
+    }),
+  )
+}
+
+const SAMPLE_NOT_LOADED = 'The sample label could not be loaded.'
+
+/**
+ * Puts the sample label and its recorded reading on screen, and sends nothing.
+ *
+ * For a visitor without the audit key (`audit/sample.ts`). The market is set to
+ * the one the reading was recorded under, because a reading belongs to its market
+ * (the `regime` watcher above); capacity and size stay the visitor's to type, as
+ * on any audit.
+ *
+ * **Nothing on screen changes until the sample's photograph has been decoded.**
+ * It is decoded here rather than handed to the camera, whose `take` clears the
+ * photograph on screen when a decode fails: a sample that failed to load threw
+ * away the visitor's own photograph and the rows they had accepted (found by the
+ * high review of #114). Only then is the camera let go, the photograph and the
+ * market set, and the watchers allowed to clear the screen for them before the
+ * reading goes up, so they cannot clear it.
+ */
+async function loadSample() {
+  const mine = ++readGeneration
+  readingError.value = null
+  readingDetail.value = []
+  try {
+    const response = await fetch(SAMPLE.photoUrl)
+    if (!response.ok) throw new Error(`The sample label answered ${response.status}`)
+    const photo = await normalisePhoto(await response.blob())
+    // A photograph chosen, or a market picked, while the sample was on its way:
+    // theirs, and later than this click, so it stands. Nothing of this load's own
+    // has moved the generation yet.
+    if (mine !== readGeneration) return
+    // A running camera would keep its light on, and its shutter, above the sample.
+    camera.stop()
+    camera.show(photo)
+    regime.value = SAMPLE.regime
+    // After the tick, so the watchers have cleared the screen for the photograph
+    // and the market set above and cannot clear what is put up below. No visitor
+    // event can arrive between the two.
+    await nextTick()
+    showReading(SAMPLE.reading)
+  } catch {
+    if (mine !== readGeneration) return
+    readingError.value = SAMPLE_NOT_LOADED
   }
 }
 
@@ -513,6 +586,15 @@ const canRead = computed(
             @change="onFile"
           />
         </label>
+        <!-- Needs no key and sends nothing, so it is offered whatever the server can do. -->
+        <button
+          type="button"
+          :class="[BUTTON, 'px-3 py-1.5 text-sm']"
+          data-test="sample"
+          @click="loadSample()"
+        >
+          Try the sample label
+        </button>
         <button
           v-if="camera.state.value !== 'previewing'"
           type="button"
@@ -581,6 +663,17 @@ const canRead = computed(
           {{ camera.photo.value.heightPx }} px.
         </span>
         <span v-else>No photograph yet.</span>
+      </p>
+
+      <p
+        v-if="sampleOnScreen"
+        class="border-chrome-600 text-chrome-300 max-w-2xl border-l-2 pl-4 text-sm"
+        data-test="sample-notice"
+      >
+        This is Packwright's sample label. The reading below was recorded:
+        {{ SAMPLE.reading.model }} read this photograph on {{ SAMPLE.recordedOn }}, and nothing has
+        been sent for it now. The market is set to the one it was read under. Accept what matches
+        the label, then give a package capacity and the label's size to see what the rules say.
       </p>
 
       <div>
