@@ -955,6 +955,10 @@ is held to 256 KB. A per-route daily cap on the one route that spends a key is s
 enforce, but refusing traffic cheaply belongs at the edge — an ALB rule or a WAF — and that is deployment work.
 The routes are unauthenticated, which is also the edge's job.
 
+**Narrowed 2026-10-18 for `/mcp`, by security fix 4:** a request carries one message, so what `/mcp` leaves
+uncounted is at most one 25 KB answer a request, and no subscription is held open
+(`docs/security-review-2026-10-18.md`, finding 5).
+
 **Settled 2026-10-18 for saved labels, by security fix 3:** changing or deleting a label needs its edit token, and
 writes are limited per address (`docs/security-review-2026-10-18.md`, finding 4).
 

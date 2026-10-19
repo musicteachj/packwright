@@ -1,8 +1,8 @@
 /**
  * `/mcp`: the four tools of `server.ts`, mounted on this application.
  *
- * In front of them, in this order: the `Host` check, the `Origin` check, and two
- * rate limits. Behind them, `createMcpHandler`, which builds a fresh server per
+ * In front of them, in this order: the `Host` check, the `Origin` check, a refusal
+ * of batches, and two rate limits. Behind them, `createMcpHandler`, which builds a fresh server per
  * request and serves both protocol eras — `legacy: 'stateless'`, its default,
  * because Claude's connector client still speaks the older, `initialize`-era
  * protocol, and `'reject'` would lock it out.
@@ -32,8 +32,14 @@ const HOUR_MS = 60 * 60 * 1000
  * and the same from the shared allowance on every claude.ai conversation. Both
  * eras name a call `tools/call`.
  *
- * What goes uncounted is cheap — no label is drawn — and bounded by the body
- * limit; a flood of it is the edge-level limit's to refuse (phase 8).
+ * What goes uncounted is cheap, since no label is drawn, and a request carries one
+ * message (`messagesIn`), so it gets at most one answer: the largest is
+ * `tools/list`, about 25 kB. A flood of it is the edge-level limit's to refuse
+ * (phase 8).
+ *
+ * A batch of more than one message is refused before this count is read, so it is
+ * zero or one in practice. It still counts every call in a batch, so that guards
+ * placed in another order could not make a batch of calls count as one.
  */
 export function toolCallsIn(body: unknown): number {
   const messages: unknown[] = Array.isArray(body) ? body : [body]
@@ -43,6 +49,18 @@ export function toolCallsIn(body: unknown): number {
       message !== null &&
       (message as { method?: unknown }).method === 'tools/call',
   ).length
+}
+
+/**
+ * How many JSON-RPC messages a request carries: a batch's length, and otherwise one.
+ *
+ * Only the older protocol's 2025-03-26 revision has batches; 2025-06-18 removed
+ * them, and the newer protocol never had them. A batch is answered message by
+ * message, so a hundred `tools/list` in 4.5 kB came back as 2.53 MB and counted as
+ * nothing, which is why `/mcp` takes one message a request.
+ */
+export function messagesIn(body: unknown): number {
+  return Array.isArray(body) ? body.length : 1
 }
 
 export interface McpLimits {
@@ -113,8 +131,8 @@ export interface McpRouterOptions {
 }
 
 const TOO_MANY = 'Too many tool calls to /mcp — try again later'
-const ONE_CALL_PER_REQUEST =
-  'Send one tool call per request — a batch may carry at most one tools/call'
+const ONE_MESSAGE_PER_REQUEST =
+  'Send one message per request: /mcp does not accept JSON-RPC batches'
 
 /**
  * A refusal as a JSON-RPC error, as the SDK's own `Host` and `Origin` refusals
@@ -160,27 +178,26 @@ export function createMcpRouter(options: McpRouterOptions = {}): Router {
   router.use(hostHeaderValidation([...localhostAllowedHostnames(), ...allowedHosts]))
   router.use(originValidation([...localhostAllowedOrigins(), ...allowedOrigins]))
 
+  // **One message per request.** The older protocol lets a request carry up to a
+  // hundred messages, and each is answered: a batch of calls was a hundred checks
+  // for the price of one, and a batch of `tools/list` 2.53 MB for 4.5 kB, counted
+  // as nothing (security review of 2026-10-18, finding 5). Neither Claude client
+  // batches (Claude Code 2.1.169 sent one message per request, observed 2026-10-10
+  // and again 2026-10-18), batches left the protocol in 2025-06-18, and the newer
+  // era never had them. Mounted whether or not the allowances are, since what it
+  // bounds is the size of an answer rather than what is spent.
   router.use((request: Request, response: Response, next: NextFunction) => {
+    const messages = messagesIn(request.body)
+    if (messages > 1) {
+      log(`mcp: refused a batch of ${messages} messages, from ${request.ip ?? 'unknown'}`)
+      response.status(400).json(refusal(request.body, ONE_MESSAGE_PER_REQUEST))
+      return
+    }
     response.locals.toolCalls = toolCallsIn(request.body)
     next()
   })
 
   if (limits !== false) {
-    // **A batch carries at most one tool call.** The allowances count requests, and
-    // the older protocol lets one request carry up to a hundred messages, so a
-    // batch of calls would be a hundred checks for the price of one — 6,000 an hour
-    // against the 60 the limit and `docs/USE-FROM-YOUR-AI.md` promise. Neither
-    // Claude client batches (Claude Code 2.1.169 sent one message per request,
-    // observed 2026-10-10), and the newer protocol has no batches at all.
-    router.use((request: Request, response: Response, next: NextFunction) => {
-      if (toolCallsOf(response) > 1) {
-        log(`mcp: refused a batch of tool calls, from ${request.ip ?? 'unknown'}`)
-        response.status(400).json(refusal(request.body, ONE_CALL_PER_REQUEST))
-        return
-      }
-      next()
-    })
-
     const refuse = (tier: string) => (request: Request, response: Response) => {
       log(`mcp: refused over the ${tier} limit, from ${request.ip ?? 'unknown'}`)
       response.status(429).json(refusal(request.body, TOO_MANY))

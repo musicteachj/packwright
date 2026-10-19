@@ -7,7 +7,13 @@
 import supertest from 'supertest'
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../app'
-import { DEFAULT_MCP_LIMITS, isFromAnthropic, toolCallsIn, type McpRouterOptions } from './routes'
+import {
+  DEFAULT_MCP_LIMITS,
+  isFromAnthropic,
+  messagesIn,
+  toolCallsIn,
+  type McpRouterOptions,
+} from './routes'
 
 /** A `tools/list` call, as the SDK's documentation sends one by hand. */
 const listTools = (agent: supertest.Agent | ReturnType<typeof supertest>) =>
@@ -29,6 +35,22 @@ const checkGtin = (agent: ReturnType<typeof supertest>) =>
       method: 'tools/call',
       params: { name: 'check_gtin', arguments: { gtin: '036000291452' } },
     })
+
+/** A `tools/call` message, for building batches. */
+const call = (id: number) => ({
+  jsonrpc: '2.0',
+  id,
+  method: 'tools/call',
+  params: { name: 'check_gtin', arguments: { gtin: '036000291452' } },
+})
+
+/** A legacy JSON-RPC batch, sent as one request. */
+const batch = (app: ReturnType<typeof createApp>, messages: unknown[]) =>
+  supertest(app)
+    .post('/mcp')
+    .set('Accept', 'application/json, text/event-stream')
+    .set('Content-Type', 'application/json')
+    .send(messages)
 
 function appWith(mcp: McpRouterOptions | undefined, trustProxyHops?: number) {
   const lines: string[] = []
@@ -138,22 +160,11 @@ describe('rate limits', () => {
 
   it('refuses a batch of tool calls, which would otherwise count as one', async () => {
     const { app, lines } = appWith({ limits: { anthropicPerHour: 100, perClientPerHour: 100 } }, 1)
-    const call = (id: number) => ({
-      jsonrpc: '2.0',
-      id,
-      method: 'tools/call',
-      params: { name: 'check_gtin', arguments: { gtin: '036000291452' } },
-    })
-    const response = await supertest(app)
-      .post('/mcp')
-      .set('Accept', 'application/json, text/event-stream')
-      .set('Content-Type', 'application/json')
-      .set('X-Forwarded-For', '203.0.113.5')
-      .send([call(1), call(2)])
+    const response = await batch(app, [call(1), call(2)]).set('X-Forwarded-For', '203.0.113.5')
     expect(response.status).toBe(400)
     expect(response.body).toMatchObject({ jsonrpc: '2.0', id: null })
-    expect(response.body.error.message).toContain('one tool call per request')
-    expect(lines).toEqual([expect.stringContaining('refused a batch of tool calls')])
+    expect(response.body.error.message).toContain('one message per request')
+    expect(lines).toEqual([expect.stringContaining('refused a batch of 2 messages')])
   })
 
   it('shares one allowance across Anthropic’s whole range, and spends no one else’s', async () => {
@@ -166,6 +177,48 @@ describe('rate limits', () => {
     expect(lines).toEqual([expect.stringContaining('shared Anthropic limit')])
     // An address just past the range is a client of its own.
     expect((await from(agent, '160.79.112.0')).status).toBe(200)
+  })
+})
+
+describe('batches', () => {
+  const list = (id: number) => ({ jsonrpc: '2.0', id, method: 'tools/list' })
+
+  it('refuses a batch of a hundred tools/list, which answered 2.53 MB and counted nothing', async () => {
+    const { app, lines } = appWith({}, 1)
+    const response = await batch(
+      app,
+      Array.from({ length: 100 }, (_, i) => list(i)),
+    ).set('X-Forwarded-For', '203.0.113.20')
+    expect(response.status).toBe(400)
+    expect(response.text.length).toBeLessThan(1_000)
+    expect(response.body.error.message).toContain('one message per request')
+    expect(lines).toEqual([
+      expect.stringContaining('refused a batch of 100 messages, from 203.0.113.20'),
+    ])
+  })
+
+  it('refuses a call batched with lists, and does not count it', async () => {
+    const { app } = appWith({ limits: { anthropicPerHour: 1, perClientPerHour: 1 } }, 1)
+    const refused = await batch(app, [
+      call(1),
+      ...Array.from({ length: 99 }, (_, i) => list(i)),
+    ]).set('X-Forwarded-For', '203.0.113.21')
+    expect(refused.status).toBe(400)
+    // The allowance of one is still whole.
+    expect((await checkGtin(supertest(app)).set('X-Forwarded-For', '203.0.113.21')).status).toBe(
+      200,
+    )
+  })
+
+  it('refuses a batch with the allowances switched off too', async () => {
+    const { app } = appWith({ limits: false })
+    expect((await batch(app, [list(1), list(2)])).status).toBe(400)
+  })
+
+  it('answers a batch of one message as it would the message alone', async () => {
+    const response = await batch(appWith({}).app, [list(1)])
+    expect(response.status).toBe(200)
+    expect(response.text).toContain('"name":"check_gtin"')
   })
 })
 
@@ -197,5 +250,17 @@ describe('toolCallsIn', () => {
     ['tools/call', 0],
   ] as const)('%j → %s', (body, expected) => {
     expect(toolCallsIn(body)).toBe(expected)
+  })
+})
+
+describe('messagesIn', () => {
+  it.each([
+    [{ jsonrpc: '2.0', id: 1, method: 'tools/list' }, 1],
+    [[{ method: 'tools/list' }], 1],
+    [[{ method: 'tools/list' }, { method: 'tools/call' }], 2],
+    [[], 0],
+    [undefined, 1],
+  ] as const)('%j → %s', (body, expected) => {
+    expect(messagesIn(body)).toBe(expected)
   })
 })

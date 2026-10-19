@@ -45,6 +45,7 @@ import {
 } from '../../../../packages/label-core/src/rules/fixtures/usFood'
 import { createApp } from '../app'
 import {
+  MAX_ISSUES_REPORTED,
   MAX_TOOL_INPUT_ELEMENTS,
   NOT_A_STATEMENT_OF_COMPLIANCE,
   NOT_JUDGED,
@@ -106,6 +107,12 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
       })
       expect(tool.outputSchema, tool.name).toBeDefined()
     }
+  })
+
+  it('says its tool list never changes', async () => {
+    // Said `true`, every client that asked could hold a subscription open forever.
+    const client = await connect(era)
+    expect(client.getServerCapabilities()?.tools).toEqual({ listChanged: false })
   })
 
   it('advertises every input as one object, which Anthropic’s API accepts', async () => {
@@ -695,6 +702,55 @@ describe('check_label, refusing', () => {
     expect(textOf(inStock)).toContain('marginMM')
   })
 
+  /** A GHS label carrying `count` precautionary codes no table has. */
+  const unknownCodes = (count: number) => ({
+    labelType: 'ghs-chemical',
+    data: {
+      ...GHS_CONFORMANT.data,
+      precautionaryStatementCodes: Array.from({ length: count }, (_, i) => `P${9000 + i}`),
+    },
+  })
+  const issuesIn = (args: unknown) => LabelCheckRequest.safeParse(args).error?.issues.length ?? 0
+
+  it('names the first twenty issues of a long refusal, and counts the rest', async () => {
+    // 4,900 unknown precautionary codes answered 754 kB, one issue for each
+    // (security review of 2026-10-18).
+    const args = unknownCodes(4_900)
+    const issues = issuesIn(args)
+    expect(issues).toBeGreaterThan(MAX_ISSUES_REPORTED + 1)
+    const result = await (await connect()).callTool({ name: 'check_label', arguments: args })
+    expect(result.isError).toBe(true)
+    const text = textOf(result)
+    expect(text.match(/data\.precautionaryStatementCodes/g)).toHaveLength(MAX_ISSUES_REPORTED)
+    expect(text).toContain(
+      `and ${(issues - MAX_ISSUES_REPORTED).toLocaleString('en-US')} more issues, not listed`,
+    )
+    expect(text.length).toBeLessThan(5_000)
+  })
+
+  it('counts one issue left over as one issue', async () => {
+    // One more code than the cap, so one issue past the twenty listed.
+    const args = unknownCodes(MAX_ISSUES_REPORTED + 1)
+    expect(issuesIn(args)).toBe(MAX_ISSUES_REPORTED + 1)
+    const result = await (await connect()).callTool({ name: 'check_label', arguments: args })
+    expect(textOf(result)).toContain('and 1 more issue, not listed')
+  })
+
+  it('names every issue of a short refusal', async () => {
+    const result = await (
+      await connect()
+    ).callTool({
+      name: 'check_label',
+      arguments: {
+        labelType: 'ghs-chemical',
+        data: { ...GHS_CONFORMANT.data, pictograms: ['X1', 'X2', 'X3'] },
+      },
+    })
+    expect(result.isError).toBe(true)
+    expect(textOf(result).match(/data\.pictograms\.\d/g)).toHaveLength(3)
+    expect(textOf(result)).not.toContain('more issues')
+  })
+
   it('refuses arguments with more elements than any label has, before the schema runs', async () => {
     const ingredients = Array.from({ length: MAX_TOOL_INPUT_ELEMENTS }, () => ({ name: 'Oats' }))
     const result = await (
@@ -705,6 +761,23 @@ describe('check_label, refusing', () => {
     })
     expect(result.isError).toBe(true)
     expect(textOf(result)).toContain(`maximum of ${MAX_TOOL_INPUT_ELEMENTS} elements`)
+  })
+})
+
+describe('subscriptions', () => {
+  it('acknowledges a listen with nothing to deliver, and closes it at once', async () => {
+    // One client held all 1,024 of the SDK's slots when the server advertised
+    // `listChanged: true` (security review of 2026-10-18, finding 5).
+    const subscription = await (await connect('modern')).listen({ toolsListChanged: true })
+    expect(subscription.honoredFilter).toEqual({})
+    // The guard only turns a held stream into a failure rather than a hang.
+    let guard: ReturnType<typeof setTimeout> | undefined
+    const held = new Promise<'held'>((resolve) => {
+      guard = setTimeout(() => resolve('held'), 2_000)
+    })
+    const closed = await Promise.race([subscription.closed, held])
+    clearTimeout(guard)
+    expect(closed).toBe('graceful')
   })
 })
 
