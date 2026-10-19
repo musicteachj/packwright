@@ -191,6 +191,17 @@ export function useLabelPhoto(options: LabelPhotoOptions) {
     }
   }
 
+  /**
+   * A photograph already decoded elsewhere: the audit page's sample, which is
+   * decoded before anything on screen changes, so a failure leaves the photograph
+   * on screen where it was. Taken whatever the camera is doing; a photograph still
+   * being read replaces it when it lands, as a later choice does.
+   */
+  function show(decoded: LabelPhoto): void {
+    photo.value = decoded
+    message.value = null
+  }
+
   function discard(): void {
     photo.value = null
     message.value = null
@@ -207,6 +218,7 @@ export function useLabelPhoto(options: LabelPhotoOptions) {
     stop,
     capture,
     fromFile,
+    show,
     discard,
   }
 }

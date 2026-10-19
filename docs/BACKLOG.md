@@ -955,6 +955,11 @@ is held to 256 KB. A per-route daily cap on the one route that spends a key is s
 enforce, but refusing traffic cheaply belongs at the edge — an ALB rule or a WAF — and that is deployment work.
 The routes are unauthenticated, which is also the edge's job.
 
+**From the high review of #114 (2026-10-19), one line each:** a read overtaken by a new photograph, market or the
+sample is not aborted, so it still spends a vision call and keeps Read disabled until it returns (an
+`AbortController` per read would end both); and the sample photograph is a committed copy of the fixture held equal
+by a test, where the page could import the fixture itself, at the price of the web app reaching into `apps/api`.
+
 **Narrowed 2026-10-18 for `/mcp`, by security fix 4:** a request carries one message, so what `/mcp` leaves
 uncounted is at most one 25 KB answer a request, and no subscription is held open
 (`docs/security-review-2026-10-18.md`, finding 5).

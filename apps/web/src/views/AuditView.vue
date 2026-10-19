@@ -47,6 +47,7 @@ import { auditReport } from '../audit/report'
 import { SAMPLE } from '../audit/sample'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import FindingsRail from '../components/FindingsRail.vue'
+import { normalisePhoto } from '../audit/normalisePhoto'
 import { useLabelPhoto } from '../audit/useLabelPhoto'
 import {
   FIELD_SHAPES,
@@ -347,49 +348,44 @@ function showReading(result: LabelReading) {
   )
 }
 
+const SAMPLE_NOT_LOADED = 'The sample label could not be loaded.'
+
 /**
  * Puts the sample label and its recorded reading on screen, and sends nothing.
  *
  * For a visitor without the audit key (`audit/sample.ts`). The market is set to
  * the one the reading was recorded under, because a reading belongs to its market
  * (the `regime` watcher above); capacity and size stay the visitor's to type, as
- * on any audit. The photograph and the market are set first and the watchers
- * allowed to clear the screen, then the reading goes up, so they cannot clear it.
+ * on any audit.
+ *
+ * **Nothing on screen changes until the sample's photograph has been decoded.**
+ * It is decoded here rather than handed to the camera, whose `take` clears the
+ * photograph on screen when a decode fails: a sample that failed to load threw
+ * away the visitor's own photograph and the rows they had accepted (found by the
+ * high review of #114). Only then is the camera let go, the photograph and the
+ * market set, and the watchers allowed to clear the screen for them before the
+ * reading goes up, so they cannot clear it.
  */
-const SAMPLE_NOT_LOADED = 'The sample label could not be loaded.'
-
 async function loadSample() {
   const mine = ++readGeneration
   readingError.value = null
   readingDetail.value = []
-  // A running camera would keep its light on, and its shutter, above the sample.
-  camera.stop()
   try {
     const response = await fetch(SAMPLE.photoUrl)
     if (!response.ok) throw new Error(`The sample label answered ${response.status}`)
-    const photo = await response.blob()
-    // A photograph chosen or a market changed while the sample was on its way.
+    const photo = await normalisePhoto(await response.blob())
+    // A photograph chosen, or a market picked, while the sample was on its way:
+    // theirs, and later than this click, so it stands. Nothing of this load's own
+    // has moved the generation yet.
     if (mine !== readGeneration) return
-    const previous = camera.photo.value
-    await camera.fromFile(photo)
-    const ours = camera.photo.value
-    // The camera takes no photograph while it is still reading another, and none it
-    // cannot decode; either way the photograph on screen is not the sample's, and
-    // its reading must not go up under it. Checked before the market is touched,
-    // so a load that fails leaves the visitor's market, and the reading the
-    // market's watcher would clear, as they were.
-    if (ours === null || ours === previous) {
-      readingError.value = SAMPLE_NOT_LOADED
-      return
-    }
+    // A running camera would keep its light on, and its shutter, above the sample.
+    camera.stop()
+    camera.show(photo)
     regime.value = SAMPLE.regime
     // After the tick, so the watchers have cleared the screen for the photograph
-    // and the market set above and cannot clear what is put up below.
+    // and the market set above and cannot clear what is put up below. No visitor
+    // event can arrive between the two.
     await nextTick()
-    // Compared by state, not by `readGeneration`: setting the photograph and the
-    // market above moves the generation too, so it cannot tell this load's own
-    // changes from somebody else's.
-    if (camera.photo.value !== ours || regime.value !== SAMPLE.regime) return
     showReading(SAMPLE.reading)
   } catch {
     if (mine !== readGeneration) return

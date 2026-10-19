@@ -25,7 +25,9 @@ const fixtures = join(here, '..', 'apps', 'api', 'src', 'audit', 'fixtures')
 const source = join(fixtures, 'sampleLabel.html')
 const target = join(fixtures, 'sampleLabel.png')
 // The audit page's sample label serves the same picture (`apps/web/src/audit/sample.ts`),
-// and `sampleReading.test.ts` fails if the two differ, so both are written here.
+// and `sampleReading.test.ts` fails if the two differ, so both are written here. A
+// picture that changes needs a new recording (`npm run record:extraction`, one billed
+// call) and the new hash in that test, or the page shows a reading of the old label.
 const served = join(here, '..', 'apps', 'web', 'public', 'samples', 'acetone-label.png')
 
 const browser = await chromium.launch()

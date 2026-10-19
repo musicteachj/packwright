@@ -871,53 +871,102 @@ describe('the sample label', () => {
     expect(wrapper.find('[data-field="signalWords"]').exists()).toBe(false)
   })
 
-  it('puts no reading up under another photograph the camera is still reading', async () => {
-    // Photograph A on screen, B still being read: the camera takes nothing more
-    // until B is done, so A would still be on screen when the reading went up.
+  it('puts the sample up under its own photograph while another is still being read', async () => {
+    // Photograph A on screen, B still being read. The sample is decoded by the page
+    // and shown as it is, so its reading sits under its own picture; B, chosen
+    // earlier, then lands and replaces both, as any later photograph does.
     const { wrapper } = await mountWithoutAudit(true, { available: true, keyRequired: false })
     const input = wrapper.find('[data-test="photo-file"]')
     Object.defineProperty(input.element, 'files', { value: [new Blob()], configurable: true })
     await input.trigger('change')
     await flushPromises()
-    expect(wrapper.find('[data-test="photo-preview"]').exists()).toBe(true)
 
     const { normalisePhoto } = await import('../audit/normalisePhoto')
     let finishB: () => void = () => {}
-    vi.mocked(normalisePhoto).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          finishB = () =>
-            resolve({ mediaType: 'image/jpeg', data: 'BBBB', widthPx: 10, heightPx: 10 })
-        }),
-    )
+    vi.mocked(normalisePhoto)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishB = () =>
+              resolve({ mediaType: 'image/jpeg', data: 'BBBB', widthPx: 10, heightPx: 10 })
+          }),
+      )
+      .mockResolvedValueOnce({
+        mediaType: 'image/jpeg',
+        data: 'SAMPLE',
+        widthPx: 760,
+        heightPx: 620,
+      })
     await input.trigger('change')
     await wrapper.find('[data-test="sample"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
-    expect(wrapper.find('[data-field="signalWords"]').exists()).toBe(false)
-    expect(wrapper.find('[role="alert"]').text()).toContain('The sample label could not be loaded.')
+    expect(wrapper.find('[data-test="photo-preview"]').attributes('src')).toContain('SAMPLE')
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+
     finishB()
     await flushPromises()
+    expect(wrapper.find('[data-test="photo-preview"]').attributes('src')).toContain('BBBB')
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
+    expect(wrapper.find('[data-field="signalWords"]').exists()).toBe(false)
   })
 
-  it('leaves the market alone when the sample cannot be loaded', async () => {
-    const { wrapper } = await mountWithoutAudit()
-    await wrapper.find('[data-test="regime"]').setValue('us-osha')
+  it('leaves the visitor’s own photograph, reading and market alone when the sample cannot be decoded', async () => {
+    // The camera clears its photograph when a decode fails, so a sample handed to
+    // it threw away the visitor's photograph and the rows they had accepted.
+    const { wrapper } = await mountWithoutAudit(
+      true,
+      { available: true, keyRequired: false },
+      async () => ({
+        ok: true,
+        status: 200,
+        json: async () => READING,
+      }),
+    )
+    await readALabel(wrapper)
+    await wrapper.find('[data-test="accept-productIdentifier"]').trigger('click')
+
     const { normalisePhoto } = await import('../audit/normalisePhoto')
     vi.mocked(normalisePhoto).mockRejectedValueOnce(new Error('no codec'))
     await wrapper.find('[data-test="sample"]').trigger('click')
     await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').text()).toContain('The sample label could not be loaded.')
+    expect(wrapper.find('[data-test="photo-preview"]').exists()).toBe(true)
+    expect(wrapper.find('[data-field="productIdentifier"]').attributes('data-accepted')).toBe(
+      'true',
+    )
+    expect((wrapper.find('[data-test="regime"]').element as HTMLSelectElement).value).toBe('eu-clp')
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
+    // And it does not blame a photograph the visitor never chose.
+    expect(wrapper.text()).not.toContain('That image could not be read')
+  })
+
+  it('lets a market picked while the sample is on its way stand', async () => {
+    const { normalisePhoto } = await import('../audit/normalisePhoto')
+    let finish: () => void = () => {}
+    vi.mocked(normalisePhoto).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = () =>
+            resolve({ mediaType: 'image/jpeg', data: 'SAMPLE', widthPx: 760, heightPx: 620 })
+        }),
+    )
+    const { wrapper } = await mountWithoutAudit()
+    await wrapper.find('[data-test="sample"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-test="regime"]').setValue('us-osha')
+    finish()
+    await flushPromises()
     expect((wrapper.find('[data-test="regime"]').element as HTMLSelectElement).value).toBe(
       'us-osha',
     )
-    expect(wrapper.find('[role="alert"]').text()).toContain('The sample label could not be loaded.')
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
   })
 
   it('shows one sample, and no error, when it is asked for twice at once', async () => {
-    // The first photograph is still being read when the second click arrives, so
-    // the camera refuses the second one and it says so; the first then lands, and
-    // its photograph's arrival clears that refusal as any new photograph does.
+    // The first sample is still being decoded when the second click arrives. The
+    // second goes up; the first, overtaken, then finishes and stands down.
     const { normalisePhoto } = await import('../audit/normalisePhoto')
     let finishFirst: () => void = () => {}
     vi.mocked(normalisePhoto).mockImplementationOnce(
@@ -936,6 +985,28 @@ describe('the sample label', () => {
     await flushPromises()
     expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('keeps the camera running when the sample cannot be had', async () => {
+    const stop = vi.fn()
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop }] })) },
+      configurable: true,
+    })
+    try {
+      const { wrapper } = await mountWithoutAudit(false)
+      await wrapper.find('[data-test="camera-start"]').trigger('click')
+      await flushPromises()
+      await wrapper.find('[data-test="sample"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[role="alert"]').text()).toContain(
+        'The sample label could not be loaded.',
+      )
+      expect(stop).not.toHaveBeenCalled()
+      expect(wrapper.find('[data-test="camera-capture"]').exists()).toBe(true)
+    } finally {
+      Reflect.deleteProperty(navigator, 'mediaDevices')
+    }
   })
 
   it('lets the camera go when the sample is chosen instead', async () => {

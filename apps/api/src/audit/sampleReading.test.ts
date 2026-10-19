@@ -9,6 +9,7 @@
  * drifted would show a reading of one label beside a picture of another, or a
  * mapping this server no longer performs.
  */
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
@@ -22,7 +23,22 @@ const committed = JSON.parse(readFileSync(SAMPLE_READING_PATH, 'utf8')) as {
   extraction: { fields: { signalWords?: { value: unknown } } }
 }
 
+/**
+ * SHA-256 of `fixtures/sampleLabel.png` as it was committed beside `recorded.json`
+ * in `f35f630`, the one commit to have written it. Comparing the two copies alone
+ * cannot notice a regenerated picture, because `npm run sample:photo` writes both:
+ * a changed label would then sit beside a reading of the old one (found by the
+ * high review of #114). A new picture needs a new recording, and then a new hash.
+ */
+const RECORDED_PHOTO_SHA256 = 'e021ec847fb6be66c9af860c5dfb4c20d79f0a8f8b8094fe56fff6580cd75622'
+
 describe('the audit page’s sample label', () => {
+  it('is still the picture recorded.json was recorded from', () => {
+    expect(createHash('sha256').update(readFileSync(SAMPLE_PHOTO_PATH)).digest('hex')).toBe(
+      RECORDED_PHOTO_SHA256,
+    )
+  })
+
   it('shows the picture the recorded reply was made from', () => {
     // `npm run sample:photo` writes both.
     expect(readFileSync(SERVED_SAMPLE_PHOTO_PATH).equals(readFileSync(SAMPLE_PHOTO_PATH))).toBe(
