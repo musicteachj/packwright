@@ -162,3 +162,37 @@ test('hands the confirmed label to the editor without saving it', async ({ page 
   // rebasing the baseline on mount survived.
   await expect(page.locator('[data-save-state]')).toHaveCount(0)
 })
+
+test('shows the sample label without a key, and sends nothing to be read', async ({ page }) => {
+  // A public deployment: no audit without the key, which this visitor has not got.
+  const posted: string[] = []
+  await page.route('**/api/audit/**', (route) => {
+    posted.push(route.request().url())
+    return route.fulfill({ status: 401, json: { error: 'A valid audit key is required' } })
+  })
+  await page.route('**/api/audit/status', (route) =>
+    route.fulfill({ status: 200, json: { available: true, keyRequired: true } }),
+  )
+
+  await page.setViewportSize({ width: 420, height: 900 })
+  await page.goto('/audit')
+  await page.click('[data-test="sample"]')
+
+  // The picture, normalized in a real browser from the copy the app serves, and
+  // the reading recorded from it.
+  await expect(page.locator('[data-test="photo-preview"]')).toBeVisible()
+  await expect(page.locator('[data-test="sample-notice"]')).toContainText('recorded')
+  await expect(page.locator('[data-value="signalWords"]')).toHaveText('Danger, Warning')
+  await expect(page.locator('[data-test="regime"]')).toHaveValue('eu-clp')
+  await expect(page.locator('[data-test="capacity"]')).toHaveValue('')
+
+  await page.click('[data-test="accept-productIdentifier"]')
+  await page.click('[data-test="accept-signalWords"]')
+  await page.fill('[data-test="capacity"]', '1')
+  await page.fill('[data-test="width"]', '74')
+  await page.fill('[data-test="height"]', '105')
+
+  const report = page.locator('[aria-labelledby="audit-report-heading"]')
+  await expect(report).toContainText('Regulation (EC) No 1272/2008 (CLP), Article 20(3)')
+  expect(posted, 'nothing but the status was asked of the audit').toEqual([])
+})

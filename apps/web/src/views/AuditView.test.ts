@@ -703,3 +703,260 @@ describe('the audit key', () => {
     expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeDefined()
   })
 })
+
+describe('the sample label', () => {
+  /**
+   * A server that cannot read photographs and asks for a key: the visitor the
+   * sample is for. `fetch` answers per address, and every call is kept.
+   */
+  async function mountWithoutAudit(
+    photoOk = true,
+    status = { available: false, keyRequired: true },
+    read: () => Promise<unknown> = async () => ({ ok: false, status: 500, json: async () => ({}) }),
+  ) {
+    const fetch = vi.fn(async (url: string) => {
+      if (url === '/api/audit/status') {
+        return { ok: true, status: 200, json: async () => status }
+      }
+      if (url === '/samples/acetone-label.png') {
+        return { ok: photoOk, status: photoOk ? 200 : 404, blob: async () => new Blob() }
+      }
+      return read()
+    })
+    vi.stubGlobal('fetch', fetch)
+    const wrapper = mount(AuditView, {
+      global: { plugins: [testRouter('/audit'), createPinia()], stubs: { RouterLink: true } },
+    })
+    await flushPromises()
+    return { wrapper, fetch }
+  }
+
+  async function loadTheSample(photoOk = true) {
+    const mounted = await mountWithoutAudit(photoOk)
+    await mounted.wrapper.find('[data-test="sample"]').trigger('click')
+    await flushPromises()
+    return mounted
+  }
+
+  it('shows the photograph and its recorded reading, with nothing accepted', async () => {
+    const { wrapper } = await loadTheSample()
+    expect(wrapper.find('[data-test="photo-preview"]').exists()).toBe(true)
+    expect(wrapper.find('[data-field="signalWords"]').text()).toContain('Danger')
+    for (const row of wrapper.findAll('[data-field]')) {
+      expect(row.attributes('data-accepted')).toBe('false')
+    }
+    expect(wrapper.find('[data-test="document"]').exists()).toBe(false)
+  })
+
+  it('sets the market the reading was made under, and says the reading was recorded', async () => {
+    const { wrapper } = await loadTheSample()
+    expect((wrapper.find('[data-test="regime"]').element as HTMLSelectElement).value).toBe('eu-clp')
+    const notice = wrapper.find('[data-test="sample-notice"]').text()
+    expect(notice).toContain('recorded')
+    expect(notice).toContain('2026-09-15')
+  })
+
+  it('asks the server for nothing but the picture, though it has no key and no audit', async () => {
+    const { fetch } = await loadTheSample()
+    expect(fetch.mock.calls.map(([url]) => url).sort()).toEqual([
+      '/api/audit/status',
+      '/samples/acetone-label.png',
+    ])
+  })
+
+  it('fills in neither the capacity nor the size, and still names them as missing', async () => {
+    const { wrapper } = await loadTheSample()
+    for (const field of ['capacity', 'width', 'height']) {
+      expect((wrapper.find(`[data-test="${field}"]`).element as HTMLInputElement).value).toBe('')
+    }
+    await wrapper.find('[data-test="accept-productIdentifier"]').trigger('click')
+    const missing = wrapper.find('[data-test="missing"]').text()
+    expect(missing).toContain('the package capacity')
+    expect(missing).toContain('the measured label size')
+  })
+
+  it('reports the Article 20(3) conflict once the visitor has done their part', async () => {
+    const { wrapper } = await loadTheSample()
+    await completeTheDocument(wrapper)
+    const report = wrapper.find('[aria-labelledby="audit-report-heading"]').text()
+    expect(report).toContain('Article 20(3)')
+  })
+
+  it('goes away with its reading when the market changes', async () => {
+    const { wrapper } = await loadTheSample()
+    await wrapper.find('[data-test="regime"]').setValue('us-osha')
+    await flushPromises()
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
+    expect(wrapper.find('[data-field="signalWords"]').exists()).toBe(false)
+  })
+
+  it('goes away with its reading when another photograph is chosen', async () => {
+    const { wrapper } = await loadTheSample()
+    const input = wrapper.find('[data-test="photo-file"]')
+    Object.defineProperty(input.element, 'files', { value: [new Blob()], configurable: true })
+    await input.trigger('change')
+    await flushPromises()
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
+    expect(wrapper.find('[data-field="signalWords"]').exists()).toBe(false)
+  })
+
+  it('says so when the picture cannot be had, and shows no reading without it', async () => {
+    const { wrapper } = await loadTheSample(false)
+    expect(wrapper.find('[role="alert"]').text()).toContain('The sample label could not be loaded.')
+    expect(wrapper.find('[data-field="signalWords"]').exists()).toBe(false)
+  })
+
+  it('stops calling a reading recorded once the sample photograph is read for real', async () => {
+    const { wrapper } = await mountWithoutAudit(
+      true,
+      { available: true, keyRequired: false },
+      async () => ({
+        ok: true,
+        status: 200,
+        json: async () => READING,
+      }),
+    )
+    await wrapper.find('[data-test="sample"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+
+    await wrapper.find('[data-test="read"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
+  })
+
+  it('stops calling a reading recorded once a real read of it is refused', async () => {
+    const { wrapper } = await mountWithoutAudit(
+      true,
+      { available: true, keyRequired: false },
+      async () => ({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: 'A valid audit key is required' }),
+      }),
+    )
+    await wrapper.find('[data-test="sample"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-test="read"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').text()).toContain('did not accept this key')
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
+  })
+
+  it('leaves the Read button usable when the sample arrives during a read', async () => {
+    let answer: (value: unknown) => void = () => {}
+    const { wrapper } = await mountWithoutAudit(
+      true,
+      { available: true, keyRequired: false },
+      () => new Promise((resolve) => (answer = resolve)),
+    )
+    await readALabel(wrapper)
+    expect(wrapper.find('[data-test="read"]').text()).toBe('Reading…')
+
+    await wrapper.find('[data-test="sample"]').trigger('click')
+    await flushPromises()
+    answer({ ok: true, status: 200, json: async () => READING })
+    await flushPromises()
+    expect(wrapper.find('[data-test="read"]').text()).toBe('Read this label')
+    expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeUndefined()
+    // And the late answer did not land on the sample.
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+  })
+
+  it('puts no reading up when the camera would not take the sample photograph', async () => {
+    const { normalisePhoto } = await import('../audit/normalisePhoto')
+    vi.mocked(normalisePhoto).mockRejectedValueOnce(new Error('no codec'))
+    const { wrapper } = await loadTheSample()
+    expect(wrapper.find('[role="alert"]').text()).toContain('The sample label could not be loaded.')
+    expect(wrapper.find('[data-field="signalWords"]').exists()).toBe(false)
+  })
+
+  it('puts no reading up under another photograph the camera is still reading', async () => {
+    // Photograph A on screen, B still being read: the camera takes nothing more
+    // until B is done, so A would still be on screen when the reading went up.
+    const { wrapper } = await mountWithoutAudit(true, { available: true, keyRequired: false })
+    const input = wrapper.find('[data-test="photo-file"]')
+    Object.defineProperty(input.element, 'files', { value: [new Blob()], configurable: true })
+    await input.trigger('change')
+    await flushPromises()
+    expect(wrapper.find('[data-test="photo-preview"]').exists()).toBe(true)
+
+    const { normalisePhoto } = await import('../audit/normalisePhoto')
+    let finishB: () => void = () => {}
+    vi.mocked(normalisePhoto).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishB = () =>
+            resolve({ mediaType: 'image/jpeg', data: 'BBBB', widthPx: 10, heightPx: 10 })
+        }),
+    )
+    await input.trigger('change')
+    await wrapper.find('[data-test="sample"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
+    expect(wrapper.find('[data-field="signalWords"]').exists()).toBe(false)
+    expect(wrapper.find('[role="alert"]').text()).toContain('The sample label could not be loaded.')
+    finishB()
+    await flushPromises()
+  })
+
+  it('leaves the market alone when the sample cannot be loaded', async () => {
+    const { wrapper } = await mountWithoutAudit()
+    await wrapper.find('[data-test="regime"]').setValue('us-osha')
+    const { normalisePhoto } = await import('../audit/normalisePhoto')
+    vi.mocked(normalisePhoto).mockRejectedValueOnce(new Error('no codec'))
+    await wrapper.find('[data-test="sample"]').trigger('click')
+    await flushPromises()
+    expect((wrapper.find('[data-test="regime"]').element as HTMLSelectElement).value).toBe(
+      'us-osha',
+    )
+    expect(wrapper.find('[role="alert"]').text()).toContain('The sample label could not be loaded.')
+  })
+
+  it('shows one sample, and no error, when it is asked for twice at once', async () => {
+    // The first photograph is still being read when the second click arrives, so
+    // the camera refuses the second one and it says so; the first then lands, and
+    // its photograph's arrival clears that refusal as any new photograph does.
+    const { normalisePhoto } = await import('../audit/normalisePhoto')
+    let finishFirst: () => void = () => {}
+    vi.mocked(normalisePhoto).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishFirst = () =>
+            resolve({ mediaType: 'image/jpeg', data: 'AAAA', widthPx: 760, heightPx: 620 })
+        }),
+    )
+    const { wrapper } = await mountWithoutAudit()
+    await wrapper.find('[data-test="sample"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-test="sample"]').trigger('click')
+    await flushPromises()
+    finishFirst()
+    await flushPromises()
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('lets the camera go when the sample is chosen instead', async () => {
+    const stop = vi.fn()
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop }] })) },
+      configurable: true,
+    })
+    try {
+      const { wrapper } = await mountWithoutAudit()
+      await wrapper.find('[data-test="camera-start"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-test="camera-capture"]').exists()).toBe(true)
+
+      await wrapper.find('[data-test="sample"]').trigger('click')
+      await flushPromises()
+      expect(stop).toHaveBeenCalled()
+      expect(wrapper.find('[data-test="camera-capture"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+    } finally {
+      Reflect.deleteProperty(navigator, 'mediaDevices')
+    }
+  })
+})

@@ -1,0 +1,24 @@
+{
+  "extraction": {
+    "fields": {
+      "productIdentifier": { "value": "Acetone", "confidence": 0.99 },
+      "signalWords": { "value": ["Danger", "Warning"], "confidence": 0.98 },
+      "pictograms": { "value": ["GHS02", "GHS07"], "confidence": 0.96 },
+      "supplier": {
+        "value": {
+          "name": "Northgate Solvents Ltd",
+          "address": "Unit 14, Brayford Industrial Estate, Lincoln LN6 7DQ, United Kingdom",
+          "telephone": "+44 1522 880 114"
+        },
+        "confidence": 0.96
+      },
+      "hazardStatementCodes": { "value": ["H225", "H319", "H336"], "confidence": 0.98 },
+      "precautionaryStatementCodes": {
+        "value": ["P210", "P280", "P337 + P313", "P403 + P233"],
+        "confidence": 0.97
+      }
+    },
+    "warnings": []
+  },
+  "model": "claude-opus-5"
+}

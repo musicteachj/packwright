@@ -24,6 +24,9 @@ const here = dirname(fileURLToPath(import.meta.url))
 const fixtures = join(here, '..', 'apps', 'api', 'src', 'audit', 'fixtures')
 const source = join(fixtures, 'sampleLabel.html')
 const target = join(fixtures, 'sampleLabel.png')
+// The audit page's sample label serves the same picture (`apps/web/src/audit/sample.ts`),
+// and `sampleReading.test.ts` fails if the two differ, so both are written here.
+const served = join(here, '..', 'apps', 'web', 'public', 'samples', 'acetone-label.png')
 
 const browser = await chromium.launch()
 try {
@@ -32,6 +35,7 @@ try {
   const label = page.locator('.label')
   const shot = await label.screenshot({ type: 'png' })
   writeFileSync(target, shot)
+  writeFileSync(served, shot)
   // Read out of the PNG's own header rather than from `boundingBox()`. Two
   // things were wrong with the box: it is nullable, so destructuring it throws
   // *after* the file has been written and reports a failure for a run that
@@ -39,7 +43,7 @@ try {
   // for a file that is 620. A generator that misreports what it wrote is how a
   // later reader ends up checking the wrong number.
   console.log(
-    `${target}\n${shot.readUInt32BE(16)} x ${shot.readUInt32BE(20)} px, ${shot.length} bytes`,
+    `${target}\n${served}\n${shot.readUInt32BE(16)} x ${shot.readUInt32BE(20)} px, ${shot.length} bytes`,
   )
 } finally {
   await browser.close()

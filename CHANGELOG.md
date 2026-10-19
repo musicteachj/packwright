@@ -8,6 +8,25 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **The audit page offers a sample label, so a visitor without the audit key can see the audit work.** Since
+  security fix 2 a public deployment reads photographs only for people given its key, which left everyone else a
+  page that could do nothing. "Try the sample label" puts up the acetone label the extraction was recorded against
+  (`apps/api/src/audit/fixtures/sampleLabel.png`, printed with both DANGER and WARNING) beside the reading
+  claude-opus-5 gave it on 2026-09-15, and says that the reading is a recording. Both are static files in the web
+  app, so loading them sends nothing to `/api/audit`, needs no key, and works when the server cannot read
+  photographs at all. The reading is what the server's own `extractGhsLabel` makes of `recorded.json`, written by
+  `npm run write:sample-reading` in `apps/api`, and `sampleReading.test.ts` fails if it or the copied photograph
+  drifts from its source. The market is set to EU CLP, the one the reading was made under. Every row arrives
+  unaccepted, and the capacity and size are left for the visitor to type, as on any audit. Once they are, the
+  report names the Article 20(3) conflict. Loading it lets go of a running camera, and a photograph the camera will
+  not take leaves the visitor's market and reading as they were. The notice that the reading is a recording goes
+  with it, including when the sample photograph is then read for real. Two older faults on this page came to light
+  on the way and are fixed: a read that was overtaken by a new photograph or market left "Reading…" on the button
+  for the rest of the visit, and nothing kept a second read from starting while one was in flight. James chose static files over a server route, the market alone over
+  prefilling a capacity and an invented size, and offering it always rather than only without a key.
+
 ### Fixed
 
 - **`/mcp` takes one message per request, holds no subscription open, and names at most twenty of a refusal's
