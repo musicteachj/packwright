@@ -84,16 +84,18 @@ mechanism behind an invalid state. Either re-run the `medium` before committing,
 request which parts no review has seen.
 
 **Fix what is in the current scope and record the rest in `docs/BACKLOG.md`, with the reasoning** (until Phase
-8 is deployed, one line at most: see the next paragraph). Fixing
+8 is deployed, nothing is added there: see the next paragraph). Fixing
 every finding the moment it appears turned four planned items into four unplanned commits in one session,
 and left the stage no further forward.
 
 **Until Phase 8 is deployed, a finding gets work only if it is a false clearance, a citation that does not say,
 or cannot be shown to say, what the finding claims, a crash, data loss or a security hole** (James, 2026-10-17).
 An unverifiable citation is in that list because a rule whose citation cannot be verified does not ship (see the
-correctness invariants), and so is a finding that reports a label for using a permission. Anything else gets one line
-in `docs/BACKLOG.md` at most, and no backlog entry is offered as the next piece of work. The backlog is frozen
-until then; its own notice says why.
+correctness invariants), and so is a finding that reports a label for using a permission. Anything else gets no
+work and is listed once on its pull request: a per-commit review's findings go in the description when the pull
+request opens, and a pull request review's in a comment on it. No backlog entry is offered as the next piece of work.
+**Nothing is added to `docs/BACKLOG.md` until then** (James, 2026-10-19): one line per finding still grew it with
+every review, and what is left before deployment has to be a list that ends. Its own notice says why it is frozen.
 
 **After changing any rule or the renderer, ask directly: can this rule now pass on something the engine did
 not draw?** Every false clearance this project has shipped was found by review and none by the suite — the

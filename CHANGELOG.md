@@ -30,6 +30,15 @@ into a version only when there is a reason to.
   for the rest of the visit, and nothing kept a second read from starting while one was in flight. James chose static files over a server route, the market alone over
   prefilling a capacity and an invented size, and offering it always rather than only without a key.
 
+### Changed
+
+- **Nothing is added to `docs/BACKLOG.md` until Phase 8 is deployed** (James, 2026-10-19). Since the freeze of
+  2026-10-17, every finding that was not must-fix still got one line there, so each review grew the file. Such a
+  finding is now listed once on its pull request (in the description for a per-commit review, in a comment for the
+  pull request's own) and gets no work. `CLAUDE.md` and the backlog's notice say so. The two entries the high
+  reviews of #113 and #114 had added are taken out, and their findings are listed in comments on those pull
+  requests instead. The older entries stay until the file is settled once after Phase 8, as its notice says.
+
 ### Fixed
 
 - **`/mcp` takes one message per request, holds no subscription open, and names at most twenty of a refusal's

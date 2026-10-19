@@ -3,8 +3,9 @@
 > **Frozen until Phase 8 is deployed (James's decision, 2026-10-17).** This file is a record of why things were
 > not done, not a plan of what to do next. Until then, a finding gets work only if it is a false clearance, a
 > citation that does not say, or cannot be shown to say, what the finding claims, a crash, data loss or a
-> security hole. Anything else gets
-> one line here at most, and nobody offers an entry as the next piece of work. Where a section below calls an
+> security hole. Anything else is listed on its pull request, and **nothing is added to
+> this file until then** (James, 2026-10-19: one line per finding still grew it by every review). Nobody offers
+> an entry as the next piece of work. Where a section below calls an
 > entry worth doing, schedulable or a chore to do first, this notice governs. The file was pared down from 1,802
 > lines to 888 on 2026-10-09 (`a422483`) and had grown to 1,242 eight days later, every review adding to it, and
 > a file this size reads as a to-do list whatever its header says. Once Phase 8 is deployed it is decided once:
@@ -955,21 +956,9 @@ is held to 256 KB. A per-route daily cap on the one route that spends a key is s
 enforce, but refusing traffic cheaply belongs at the edge — an ALB rule or a WAF — and that is deployment work.
 The routes are unauthenticated, which is also the edge's job.
 
-**From the high review of #114 (2026-10-19), one line each:** a read overtaken by a new photograph, market or the
-sample is not aborted, so it still spends a vision call and keeps Read disabled until it returns (an
-`AbortController` per read would end both); and the sample photograph is a committed copy of the fixture held equal
-by a test, where the page could import the fixture itself, at the price of the web app reaching into `apps/api`.
-
 **Narrowed 2026-10-18 for `/mcp`, by security fix 4:** a request carries one message, so what `/mcp` leaves
 uncounted is at most one 25 KB answer a request, and no subscription is held open
 (`docs/security-review-2026-10-18.md`, finding 5).
-
-**From the high review of #113 (2026-10-19), one line each:** a refused batch writes a log line besides morgan's
-access line, now with the allowances off too; refusing every batch also refuses ones 2025-03-26 allows and that cost
-nothing (a notification with a request), which James chose; `toolCallsIn` and `messagesIn` each read the body's
-shape, and the former's batch counting no longer runs; the export and saved-label routes still answer every issue
-(recorded in the security review); and the subscription test asks only for tool list changes, so a later prompt or
-resource would hold listens open again unseen.
 
 **Settled 2026-10-18 for saved labels, by security fix 3:** changing or deleting a label needs its edit token, and
 writes are limited per address (`docs/security-review-2026-10-18.md`, finding 4).
