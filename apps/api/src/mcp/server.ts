@@ -149,6 +149,39 @@ const memoised = (convert: typeof outlineJsonSchema.input): typeof convert => {
 }
 
 /**
+ * How many of a refused `check_label` request's issues are said back.
+ *
+ * Zod reports every bad item, and the SDK joins them all into one sentence, so
+ * 4,900 unknown precautionary codes in a 38 kB request answered 754 kB (security
+ * review of 2026-10-18). Twenty is more than any person correcting a label reads
+ * at once; the count of the rest says how far there is to go. The other three
+ * tools take one or two fixed fields each, so they cannot raise more than two.
+ */
+export const MAX_ISSUES_REPORTED = 20
+
+type Validate = StandardSchemaWithJSON['~standard']['validate']
+type ValidateResult = Awaited<ReturnType<Validate>>
+
+/** A validator that keeps the first `MAX_ISSUES_REPORTED` issues and counts the rest. */
+function reportingFewIssues(validate: Validate): Validate {
+  const truncated = (result: ValidateResult): ValidateResult => {
+    if (result.issues === undefined || result.issues.length <= MAX_ISSUES_REPORTED) return result
+    const unlisted = result.issues.length - MAX_ISSUES_REPORTED
+    const more = `${unlisted.toLocaleString('en-US')} more ${unlisted === 1 ? 'issue' : 'issues'}`
+    return {
+      issues: [
+        ...result.issues.slice(0, MAX_ISSUES_REPORTED),
+        { message: `and ${more}, not listed` },
+      ],
+    }
+  }
+  return (value, options) => {
+    const result = validate(value, options)
+    return result instanceof Promise ? result.then(truncated) : truncated(result)
+  }
+}
+
+/**
  * `check_label`'s input: advertised as one object, checked as the shared union.
  *
  * The SDK reads a tool's JSON Schema from `~standard.jsonSchema` and validates
@@ -160,6 +193,7 @@ const memoised = (convert: typeof outlineJsonSchema.input): typeof convert => {
 const CheckLabelInput = {
   '~standard': {
     ...LabelCheckRequest['~standard'],
+    validate: reportingFewIssues(LabelCheckRequest['~standard'].validate),
     // Converted once rather than on every `tools/list`: the server is built afresh
     // for every request, and this is a schema of every field of every label type.
     jsonSchema: {
@@ -490,7 +524,18 @@ const INSTRUCTIONS =
 export function createPackwrightMcpServer(): McpServer {
   const server = new McpServer(
     { name: 'packwright', version: '0.1.0' },
-    { instructions: INSTRUCTIONS, maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS },
+    {
+      instructions: INSTRUCTIONS,
+      maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
+      // **The tool list never changes**, so the server says so. The four tools are
+      // fixed for the life of the process and nothing here sends `list_changed`, but
+      // the SDK advertises `listChanged: true` unless told otherwise, and then holds a
+      // `subscriptions/listen` stream open on keep-alives for each client that asks:
+      // one client held all 1,024 of its slots in 3 s (security review of 2026-10-18,
+      // finding 5). Said `false`, a listen is acknowledged with nothing to deliver
+      // and closed at once.
+      capabilities: { tools: { listChanged: false } },
+    },
   )
 
   server.registerTool(

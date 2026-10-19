@@ -10,6 +10,27 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **`/mcp` takes one message per request, holds no subscription open, and names at most twenty of a refusal's
+  issues.** Finding 5 of `docs/security-review-2026-10-18.md`. Only `tools/call` was counted, so a 4.5 KB legacy
+  batch of 100 `tools/list` answered 2.53 MB and counted as nothing, and a call batched with 99 lists counted as
+  one. A batch of more than one message is now refused with 400 in 131 bytes, whether or not the allowances are
+  on, and counting is unchanged, so connecting still costs nothing: Claude Code 2.1.169 was re-run headless against
+  `/mcp` before and after, sent the same four single-message handshake requests both times, and spent one of its 60
+  on its one call. Batches left the protocol in revision 2025-06-18, and neither Claude client sends them. One client also held
+  all 1,024 of the SDK's subscription slots open in 3.1 s, because the SDK advertises `tools.listChanged: true`
+  unless told otherwise. The tool list never changes while the server runs, so the server now says `false`, and
+  the SDK acknowledges each `subscriptions/listen` with nothing to deliver and closes it at once: 1,030 listens
+  were all acknowledged and left 2 sockets open, where before they left 1,025. James chose both remedies over
+  counting batched messages, capping batch size, weighting by answer size, or capping subscriptions per client or
+  overall. A `check_label` input error named every bad item, so 4,900 unknown precautionary codes answered 754 KB;
+  it now names the first twenty and counts the rest (3.2 KB). The other three tools take one or two fields and
+  cannot raise more. `tools/list` is byte-identical to before.
+- **`proxy-addr` 2.0.8 and Vue 3.5.42 in the lockfile.** `npm audit --omit=dev` reported `proxy-addr` 2.0.7
+  (GHSA-jqcg-44mw-7w3h, critical) and `@vue/server-renderer` below 3.5.42 (GHSA-g2v6-rqmx-r4w6, high). Neither was
+  reachable: the server trusts a hop count rather than a subnet, and nothing renders on the server. Vue pins
+  `@vue/server-renderer` exactly, so `vue` and its nine `@vue/*` packages move together from 3.5.41, and
+  `apps/web`'s range rises to `^3.5.42`. Nothing else in the lockfile moved. The audit goes from five advisories
+  (one critical) to two, the build-only `esbuild` and `source-map-js`.
 - **The Saved labels page lists the labels this browser saved, and says plainly that only this browser can change
   them.** The browser keeps each label's edit token in `localStorage` (`packwright.savedLabels`), with a copy in
   memory so a refused storage still lets the visit edit what it saved; it sends the token with a save or a delete,

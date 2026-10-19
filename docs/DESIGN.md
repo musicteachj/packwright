@@ -739,7 +739,9 @@ group, ALB listener rule, Route 53 record, and the three Secrets Manager entries
   limit that counts every request before this process reads a byte: `/mcp`'s handshake requests and the audit
   route's 10 MB bodies included, which the in-process limits do not reach. The ALB is shared with other services,
   so the rule is scoped to this app's host; the per-client threshold, and whether Anthropic's range gets its own,
-  follow from the `/mcp` allowances below.
+  follow from the `/mcp` allowances below. Since security fix 4 (2026-10-18), `/mcp` takes one message per
+  request, so an uncounted request answers at most one `tools/list` (about 25 KB). Claude Code makes four uncounted
+  requests per connection, one of them `tools/list`.
 - **The audit key and the daily audit limit (2026-10-18).** Set `AUDIT_API_KEY` (the server will not start in
   production without it) and give it only to the people who should spend the Anthropic key; they type it on the
   audit page, once per browser. `AUDIT_DAILY_LIMIT` is the deployment's vision calls per UTC day, 10 if unset
@@ -763,7 +765,8 @@ group, ALB listener rule, Route 53 record, and the three Secrets Manager entries
     sends no `Origin` (observed 2026-10-10), but what Anthropic's hosted connector sends is documented nowhere;
     if it sends one, add its hostname to `MCP_ALLOWED_ORIGINS`, or every claude.ai call is a 403.
   - The ALB's idle timeout against SSE answers: Claude's clients speak the older protocol, which is answered as
-    an event stream.
+    an event stream. Only answers stream: since 2026-10-18 the server says its tool list never changes, so a
+    `subscriptions/listen` is acknowledged and closed at once rather than held open on keep-alives.
   - `WHAT_IS_NOT_CHECKED_URL` in `apps/api/src/mcp/server.ts` points at `dev`, because the document is not on
     `main`; move it to `main` with the release.
 - **Link-preview tags (recorded 2026-10-17).** `apps/web/public/og-image.png` (1200 × 630) ships already, but

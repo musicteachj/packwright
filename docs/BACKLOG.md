@@ -955,6 +955,17 @@ is held to 256 KB. A per-route daily cap on the one route that spends a key is s
 enforce, but refusing traffic cheaply belongs at the edge — an ALB rule or a WAF — and that is deployment work.
 The routes are unauthenticated, which is also the edge's job.
 
+**Narrowed 2026-10-18 for `/mcp`, by security fix 4:** a request carries one message, so what `/mcp` leaves
+uncounted is at most one 25 KB answer a request, and no subscription is held open
+(`docs/security-review-2026-10-18.md`, finding 5).
+
+**From the high review of #113 (2026-10-19), one line each:** a refused batch writes a log line besides morgan's
+access line, now with the allowances off too; refusing every batch also refuses ones 2025-03-26 allows and that cost
+nothing (a notification with a request), which James chose; `toolCallsIn` and `messagesIn` each read the body's
+shape, and the former's batch counting no longer runs; the export and saved-label routes still answer every issue
+(recorded in the security review); and the subscription test asks only for tool list changes, so a later prompt or
+resource would hold listens open again unseen.
+
 **Settled 2026-10-18 for saved labels, by security fix 3:** changing or deleting a label needs its edit token, and
 writes are limited per address (`docs/security-review-2026-10-18.md`, finding 4).
 

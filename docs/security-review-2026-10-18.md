@@ -34,7 +34,7 @@ the load balancer's liveness probe.
 | 2 | `/api/audit` | **The daily spending cap does not hold.** The 10 MB body is parsed before any guard runs, and a nested body costs 653 ms of blocking CPU and about 440 MB to parse (measured here). Sixteen at once delayed `/health` by 6.4 s (the reviewer's measurement). The daily counter is in memory, so a task the load balancer replaces starts again at zero. The parse order was recorded in `docs/BACKLOG.md` ("From the pre-stage-2 security pass") as a cost of refusing; that it can reset the spending cap is new, and fix 2 settles that entry. | 653 ms and about 440 MB per 10 MB body. **Fixed by fix 2:** the body is read only after the limiter and the key, so the same body without a key is refused in 15 ms; the day's count is in the database. | unbounded cost |
 | 3 | `/api/audit` | **The daily cap can be drained for free.** `image.data` is `z.string().min(1)`, and `today.take()` counts the call before anything checks the data is an image, so a one-character "image" spends one of the day's 200 calls and Anthropic rejects it at no cost. Twenty an hour from one address drains the day in ten hours; ten addresses do it in under a minute. Real users then get 429 until the window resets. | confirmed in code. **Fixed by fix 2:** data that is not base64 opening as its declared type is refused with 400 before anything is counted, and the key is required on the public deploy. | denial of service |
 | 4 | `/api/labels` (saved labels) | **Saved labels have no owner and no write limit.** Any caller can list them, read any of them, overwrite any with `PUT`, delete any with `DELETE`, and fill the global 20-label cap so nobody else can save. No rate limiter is mounted on these routes. | confirmed in code and by the reviewer's requests. Re-run as two callers before fix 3: the second listed the first's label, overwrote it (200) and deleted it (204), then filled the cap at 20, and a third was refused 409. **Fixed by fix 3:** the list names only the labels it is asked about, by an id now made of twelve random bytes, since a default ObjectId could be worked out from another; overwrite and delete without the label's edit token are refused 403 with the label unchanged; the eleventh create in an hour from one address is refused 429 while another address still saves; the cap is 200 and labels expire 30 days after their last change. | data loss |
-| 5 | `/mcp` | **Only `tools/call` is counted.** A 4.5 KB legacy batch of 100 `tools/list` returns 2.44 MB and counts as nothing; a batch of one call and 99 lists counts as one. The counter's comment says what goes uncounted is cheap, since no label is drawn, and "bounded by the body limit", but a batch multiplies the response about 500 times past the body. `subscriptions/listen` is uncounted too, and one client held all 1,024 subscription slots open in 3 s. | 2.44 MB per request; 1,024 sockets | unbounded cost |
+| 5 | `/mcp` | **Only `tools/call` is counted.** A 4.5 KB legacy batch of 100 `tools/list` returns 2.44 MB and counts as nothing; a batch of one call and 99 lists counts as one. The counter's comment says what goes uncounted is cheap, since no label is drawn, and "bounded by the body limit", but a batch multiplies the response about 500 times past the body. `subscriptions/listen` is uncounted too, and one client held all 1,024 subscription slots open in 3 s. | 2.44 MB per request; 1,024 sockets. **Fixed by fix 4:** re-measured at 2.53 MB first (the tool list had grown); a batch of more than one message is refused 400 in 131 bytes and counts as nothing, so the worst answer to a request is one `tools/list` (25 KB); the server advertises `tools.listChanged: false`, so each listen is acknowledged and closed at once, and 1,030 of them left 2 sockets open. Claude Code's handshake still costs nothing. | unbounded cost |
 
 **Worst-case audit spend while the cap holds.** The extraction calls `claude-opus-5` with `max_tokens` 4,000 and one
 retry. At the reviewer's figures of about $0.13 a call, or $0.27 when retried, the 200-a-day cap is about $26 a day,
@@ -80,17 +80,25 @@ Four pull requests, each reviewed at `high`:
    leaves:** creating a label needs no token, so enough addresses can still fill the 200, and nobody new can then
    save until labels expire or their owners delete them. A label stored before tokens has none, so it can be read
    and nothing else until it expires; the deployed database starts empty.
-4. **`/mcp` and the rest (finding 5).** Every message in a batch counts, and subscriptions are capped or counted.
-   This PR also carries the lockfile update below and truncates validation errors.
+4. **`/mcp` and the rest (finding 5).** James chose the remedies when fix 4 was planned, after a headless Claude
+   Code 2.1.169 run showed its handshake as four single-message requests (`initialize`, `notifications/initialized`,
+   a GET answered 405, `tools/list`) and no batch. **One message per request:** a batch of more than one is refused
+   400, and counting is unchanged, so the handshake stays free. Batches left the protocol in revision 2025-06-18.
+   **The tool list is said never to change:** with `tools.listChanged: false` the SDK acknowledges a
+   `subscriptions/listen` with nothing to deliver and closes it, so no slot is held. Not chosen: counting batched
+   messages, a small batch cap, weighting by answer size, and per-client, global, counted or timed subscriptions.
+   This PR also carries the lockfile update below, and truncates `check_label`'s validation errors to twenty
+   issues. **What that leaves:** a single uncounted message still answers up to 25 KB (`tools/list`, from 46
+   bytes), which is the WAF rate rule's to bound (Phase 8).
 
 ## Recorded, no work
 
 One line each, by the bar. `docs/BACKLOG.md` points here rather than repeating them:
 - `npm audit --omit=dev` reports `proxy-addr` 2.0.7 as critical (GHSA-jqcg-44mw-7w3h). It applies only to a trust
   subnet written in IPv6 notation, while this server trusts a hop count, and the `/mcp` Anthropic range check uses
-  Node's `BlockList`. The patch is in range, so it rides with fix 4.
+  Node's `BlockList`. **Updated to 2.0.8 by fix 4.**
 - `@vue/server-renderer` <3.5.42 (GHSA-g2v6-rqmx-r4w6) is a server-rendering XSS; the client renders in the browser.
-  The patch is in range, so it rides with fix 4.
+  **Updated by fix 4:** Vue pins it exactly, so `vue` and its `@vue/*` packages went from 3.5.41 to 3.5.42.
 - `source-map-js` and `esbuild` advisories are build- and dev-server-only.
 - A vision call retried by the SDK is billed twice and counted once (`VISION_MAX_RETRIES = 1`). It is bounded at
   double.
@@ -100,7 +108,8 @@ One line each, by the bar. `docs/BACKLOG.md` points here rather than repeating t
   log. Fix 1's bounds remove them.
 - `Content-Disposition` grows with the label's identifier (a 40 KB header was produced); the charset is safe. Fix 1's
   bounds cap it.
-- An `/mcp` input-validation error echoes every bad item (754 KB for 4,900 bad codes). Truncated in fix 4.
+- An `/mcp` input-validation error echoes every bad item (754 KB for 4,900 bad codes). **Truncated by fix 4** to twenty issues and a count of the rest (3.2 KB).
+- The export and saved-label routes answer every Zod issue in `detail` too. They are rate-limited, and James chose to truncate `/mcp`'s alone (2026-10-18).
 - Anyone can point a claude.ai custom connector at `/mcp` and spend the shared Anthropic tier (5,000 an hour); this
   was recorded with the tiers on 2026-10-10.
 - `/health` reports `environment` and `uptimeSeconds`. That is harmless.
