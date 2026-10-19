@@ -8,6 +8,18 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Changed
+
+- **The README describes the application as it stands before deployment.** It had stopped at phase 5. It now has
+  the photo audit as built (key-gated, with its sample label), the `/mcp` server and its evaluation, the
+  pre-deployment source verification and security review, and the documents a reader needs in its table. Its sample findings
+  were invented: one cited a superseded clause ("GS1 General Specifications 5.2.3"), and one, a "Sunrise 2027"
+  notice, is a finding the engine does not produce. They are now the engine's own findings on two of its known-bad
+  fixtures, with the citations those rules carry, and the counts beside them are said in prose. It also said unconfirmed quiet zones fall back to the general 7X
+  minimum, where the rule says nothing at all, and that extraction used the editor's schema, where it uses a
+  content-only projection of it. Spelling is American and the em dashes are gone. The live address waits for
+  phase 8, whose checklist now names it.
+
 ### Added
 
 - **The audit page offers a sample label, so a visitor without the audit key can see the audit work.** Since

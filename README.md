@@ -2,89 +2,117 @@
 
 A packaging label generator that knows **why** a label is non-compliant, and cites the rule.
 
-Barcodes are one element of a packaging label. The rest — net quantity statements, hazard pictograms,
-nutrition panels, type sizes measured in fractions of an inch — is governed by real, citable regulation.
-Packwright generates print-accurate labels and checks them against that regulation, reporting each finding
-with the provision behind it.
+Barcodes are one element of a packaging label. The rest (net quantity statements, hazard pictograms, nutrition
+panels, type sizes measured in fractions of an inch) is governed by real, citable regulation. Packwright
+generates print-accurate labels and checks them against that regulation, reporting each finding with the
+provision behind it.
 
 ```
-▲ WARNING   Quiet zone is 6.2X — UPC-A requires ≥ 9X
-            GS1 General Specifications 5.2.3
-            → highlights the offending element on the canvas
+UPC-A label, with a brand block set against the left margin
 
-▲ WARNING   Net quantity type is 2.4 mm — a 30 in² panel requires ≥ 4.8 mm (3/16")
+▲ WARNING   The left quiet zone measures 1.33 mm; UPC-A requires 2.97 mm.
+            GS1 General Specifications 26.0 §5.2.3.4, table 5-11
+
+US food label, with the net quantity's type size set to the height its letters must reach
+
+▲ WARNING   The declaration measures 2.60 mm on the lowercase "o"; a 44.6 in² panel requires 4.76 mm.
             21 CFR 101.7(i)
-
-ⓘ NOTICE    Place the 2D symbol adjacent to the linear symbol during the
-            Sunrise 2027 transition
-
-✓ 18 checks passed
 ```
+
+Those two findings, and their citations, are the engine's own output on two of its known-bad fixtures
+(`packages/label-core/src/rules/fixtures/`), run on 2026-10-19. The same runs passed 5 other checks on the UPC-A
+label and 19 on the food label, and declined one check on the food label, naming the facts it needs to run. In the
+editor, clicking a finding outlines the offending element on the label.
 
 ## What makes it non-trivial
 
 **Preview equals print, by construction.** A layout engine resolves a template plus data into a flat list of
-primitives positioned in millimetres. Two renderers consume that same resolved layout — SVG for the browser,
-PDFKit for export — so the preview cannot drift from the artifact. Compliance rules then run against the
-*resolved geometry*, which is why a rule like "the net quantity statement must sit within the bottom 30% of
-the principal display panel" can be checked at all.
+primitives positioned in millimeters. Two renderers consume that same resolved layout, SVG for the browser and
+PDFKit for export, so the preview cannot drift from the artifact. Compliance rules then run against the
+_resolved geometry_, which is why a rule like "the net quantity statement must sit within the bottom 30% of the
+principal display panel" can be checked at all. The second finding above is the same idea at the scale of a
+letter: the rule measures the lowercase "o" the font actually prints, not the type size that was asked for.
 
 **The engine is framework-free.** `label-core` imports no Vue, no Express, no Node globals. It runs in the
 browser for live preview, on the server for PDF generation, and in tests, unchanged. This is enforced
 mechanically by an ESLint rule and an empty `types: []` in its tsconfig, not by convention.
 
-**Nothing unverifiable ships.** Quiet zones for several symbologies are deliberately *not* encoded — they fall
-back to the documented general 7X minimum rather than carrying figures that couldn't be confirmed against the
-specification. A confident pass on a label that won't scan is worse than no rule at all. Golden test vectors
-are worked by hand from published algorithms, never produced by running the implementation. Every such decision
-is written down in [what is not checked](docs/WHAT-IS-NOT-CHECKED.md), because a clean report is only worth
-something if you know what it covered.
+**Nothing unverifiable ships.** Every regulatory constant is cited to a source document read for this project,
+and every rule ships with a known-bad label asserting the exact code, severity and citation it produces. Where a
+figure could not be confirmed, the rule says nothing: the quiet-zone check issues neither a pass nor a finding
+for a symbology whose figures were never confirmed, because a pass resting on the general 7X minimum would
+understate what the symbology requires. A confident pass on a label that will not scan is worse than no rule at
+all. Golden test vectors are worked by hand from published algorithms, never produced by running the
+implementation. Every such decision is written down in [what is not checked](docs/WHAT-IS-NOT-CHECKED.md),
+because a clean report is only worth something if you know what it covered.
 
 ## The AI boundary
 
-The planned label-audit feature photographs an existing label and reports its compliance. The division of
-labour is deliberate and absolute:
+The label audit photographs an existing GHS chemical label and reports its compliance. The division of labor is
+deliberate and absolute:
 
 > **The LLM reads. The rule engine judges.**
 
-Claude vision extracts what is printed on the label into a typed structure — the same Zod schema the editor
-form validates against, so extraction cannot return a shape the app can't consume. That extraction then feeds
-the existing deterministic validators. **Every finding a user sees originates in ordinary code with a real
-citation.** No compliance verdict, and no regulatory text, is ever generated by a language model — models are
-fluent at producing plausible-looking CFR references, and a user has no way to tell a real one from an
-invented one.
+Claude vision extracts what is printed on the label into a typed structure: the label's own data type, cut down to
+what a photograph can show, and re-validated with Zod before anything is read out of it. The model is asked for no
+layout and writes no prose, only values and how confident it is in each. Nothing it reads
+becomes label data until a person accepts it, field by field, and what a photograph cannot show (the market, the
+package capacity, the measured size) is typed by that person, never defaulted. The confirmed label then feeds the
+same deterministic rules as the editor. **Every finding a user sees originates in ordinary code with a real
+citation.** No compliance verdict, and no regulatory text, is ever generated by a language model: models are
+fluent at producing plausible-looking CFR references, and a user has no way to tell a real one from an invented
+one.
+
+Reading a photograph spends an Anthropic allowance, so a public deployment opens it only to people given its audit
+key. Anyone can still try the page with its sample label: a recorded reading of a label printed with both DANGER
+and WARNING, which CLP Article 20(3) forbids, and nothing is sent to be read.
+
+## Use it from your AI
+
+Packwright also serves an MCP server at `/mcp`, public once the application is deployed, so Claude or any
+assistant that speaks the Model Context Protocol can ask it about a label. Four read-only tools: `check_label`, `list_rules`, `ghs_statement_text` and `check_gtin`.
+The assistant does the explaining; Packwright supplies the verdicts and the citations, so the assistant does not
+have to recall them. [Use Packwright from your AI](docs/USE-FROM-YOUR-AI.md) says how to connect it.
+
+It was built because an assistant answering alone gets label law wrong. In an evaluation on 2026-10-10, Sonnet
+5.5's answers carrying a wrong or nonexistent citation fell from 33 of 36 to 20 with the tools, and it cleared no
+defective label (2 without); Haiku 4.5's fell from 36 of 36 to 7. The write-up, including the new failures the
+tools bring, is in [`docs/experiments/2026-10-10-mcp-with-and-without/`](docs/experiments/2026-10-10-mcp-with-and-without/),
+with the re-checks after each fix beside it.
 
 ## Status
 
-Phases 1–5 complete, phase 6 nearly so. `label-core` resolves GS1 retail, GHS chemical and FDA food labels to
-millimetre geometry, renders each to SVG and to PDF from that one resolved layout, and runs its rules against
-what was **drawn** rather than what was asked for. The editor at `/labels/new` puts the form, the label and
-the findings side by side, and clicking a finding outlines the offending element on the canvas. `/rules` lists
-every encoded rule with its citation, generated from the registry rather than written out.
+Phases 1 to 7 of [`docs/DESIGN.md`](docs/DESIGN.md) are complete, and phase 8, deployment, is next. Until then
+there is no public address.
 
-Phase 6 adds a barcode scanner that reads through `BarcodeDetector` or a bundled zxing-wasm ponyfill, a saved
-labels API, a three-pane layout that collapses to a segmented control on a phone, and a production build that
-collapses to a single artifact — `apps/web`'s static output served by `apps/api`. **One thing is still
-unverified**: scanning a real product barcode with a phone. The scan-back test rasterises the engine's own
-symbol into a fake camera and reads it back, which is what a headless browser can prove; focus, glare and a
-curved pack are not among them.
+- **Labels:** GS1 retail (UPC-A), GHS chemical (EU CLP, and US OSHA in part) and US FDA food labels, each drawn to
+  millimeter geometry, rendered to SVG and PDF from one resolved layout, and judged on what was drawn. The editor at
+  `/labels/new` puts the form, the label and the findings side by side; `/rules` lists every rule with its
+  citation, generated from the registry.
+- **Also built:** a barcode scanner (`BarcodeDetector`, or a bundled zxing-wasm reader), saved labels changed only
+  with an edit token held by the browser that saved them, the photo audit, and the `/mcp` server.
+- **Checked before deployment:** on 2026-10-17, whether any source had been revised since it was read and whether
+  each citation says what its finding claims ([`docs/verification-2026-10-17.md`](docs/verification-2026-10-17.md));
+  on 2026-10-18, a security review of everything public, whose five must-fix findings are all fixed
+  ([`docs/security-review-2026-10-18.md`](docs/security-review-2026-10-18.md)).
+- **Tests:** 3,054 passing unit tests and 95 in a real browser, as of 2026-10-19. CI runs lint, formatting, type
+  checks, the unit suite, the build, and the browser suite against the built server.
+- **Still to do by hand:** scanning a printed label with a phone. The browser suite feeds the engine's own barcode
+  to a fake camera and reads it back, which is what a headless browser can prove; a printer, paper and a real
+  camera are not among them ([the steps](docs/plans/2026-10-08-phone-scan-back.md)).
 
-Every regulatory constant is cited to a source document, and every rule ships with a known-bad label asserting
-the exact code, severity and citation it produces. 956 tests across 50 files, plus 28 in a real browser. CI
-green. The label audit from a photograph is next.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for detail and [`docs/DESIGN.md`](docs/DESIGN.md) for the full design and
-remaining phases.
+See [`CHANGELOG.md`](CHANGELOG.md) for detail.
 
 ## Stack
 
-TypeScript throughout. Vue 3 · Vite · Pinia · Tailwind v4 — Express 5 · Mongoose · MongoDB — bwip-js for
-symbology, PDFKit for print-accurate export, Zod for schemas shared across form validation, API validation and
-AI extraction. Vitest, ESLint, Prettier, `vue-tsc`, GitHub Actions.
+TypeScript throughout. Vue 3 · Vite · Pinia · Tailwind v4, Express 5 · Mongoose · MongoDB, bwip-js for
+symbology, PDFKit for print-accurate export, Zod for schemas shared across form validation, API validation and AI
+extraction. The Anthropic SDK for the photo audit, and the MCP TypeScript SDK for `/mcp`. Vitest, Playwright,
+ESLint, Prettier, `vue-tsc`, GitHub Actions.
 
 ## Running it
 
-Requires **Node 24** (pinned in `.nvmrc`) and **npm ≥ 11** — npm 10 fails to resolve this dependency graph.
+Requires **Node 24** (pinned in `.nvmrc`) and **npm ≥ 11**: npm 10 fails to resolve this dependency graph.
 
 ```bash
 npm ci
@@ -95,24 +123,32 @@ npm test
 npm run lint && npm run typecheck && npm run build
 ```
 
-The `.env` goes in `apps/api/`, not the repository root: `dotenv` resolves it
-against the working directory, and npm runs a workspace script from that
-workspace. At the root it is silently ignored.
+The `.env` goes in `apps/api/`, not the repository root: `dotenv` resolves it against the working directory, and
+npm runs a workspace script from that workspace. At the root it is silently ignored.
 
-**The API will not start without `MONGODB_URI`**, and that is deliberate: a server
-that boots with nowhere to save reports healthy to its load balancer and then
-fails on the first save, which is a worse failure than refusing to start.
+**The API will not start without `MONGODB_URI`**, and that is deliberate: a server that boots with nowhere to save
+reports healthy to its load balancer and then fails on the first save, which is a worse failure than refusing to
+start.
 
-The tests need none of this. `npm run verify:build` and the browser suite start
-their own `mongod` through `mongodb-memory-server`, and `npm test` needs no
-database at all — so a clean checkout with no Docker runs the whole suite.
+**The photo audit needs `ANTHROPIC_API_KEY`**, and without it answers 503 while everything else runs. In
+production the server also requires `AUDIT_API_KEY` whenever the Anthropic key is set, and `AUDIT_DAILY_LIMIT`
+caps the day's calls. `apps/api/.env.example` explains each variable, including the ones a deployment behind a
+load balancer must set.
+
+The tests need none of this. `npm run verify:build` and the browser suite start their own `mongod` through
+`mongodb-memory-server`, and `npm test` needs no database at all, so a clean checkout with no Docker runs the whole
+suite.
 
 ## Documentation
 
 | File | Purpose |
 |---|---|
 | [`docs/WHAT-IS-NOT-CHECKED.md`](docs/WHAT-IS-NOT-CHECKED.md) | For anyone relying on a report: the requirements this tool does not check, and why |
+| [`docs/USE-FROM-YOUR-AI.md`](docs/USE-FROM-YOUR-AI.md) | Connecting Packwright to Claude or another MCP client, and its limits |
 | [`docs/SOURCES.md`](docs/SOURCES.md) | Every official regulation, statute, standard and specification the app was built from, with editions and links |
-| [`docs/DESIGN.md`](docs/DESIGN.md) | Full design — architecture, rule sets, design system, all 8 phases |
+| [`docs/CLP-P-STATEMENT-TEXTS.md`](docs/CLP-P-STATEMENT-TEXTS.md) | Where CLP's two English texts of the precautionary statements differ, and which one is printed |
+| [`docs/verification-2026-10-17.md`](docs/verification-2026-10-17.md) | Every citation and figure re-checked against its primary source before deployment |
+| [`docs/security-review-2026-10-18.md`](docs/security-review-2026-10-18.md) | The security review before deployment, and its fixes |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Full design: architecture, rule sets, design system, all 8 phases |
 | [`CLAUDE.md`](CLAUDE.md) | Project rules and correctness invariants |
 | [`CHANGELOG.md`](CHANGELOG.md) | Development log |

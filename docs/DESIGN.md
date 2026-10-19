@@ -769,6 +769,9 @@ group, ALB listener rule, Route 53 record, and the three Secrets Manager entries
     `subscriptions/listen` is acknowledged and closed at once rather than held open on keep-alives.
   - `WHAT_IS_NOT_CHECKED_URL` in `apps/api/src/mcp/server.ts` points at `dev`, because the document is not on
     `main`; move it to `main` with the release.
+- **The live address in the docs (recorded 2026-10-19).** `README.md` says there is no public address until
+  phase 8, and `docs/USE-FROM-YOUR-AI.md` opens with a "Not live yet" notice. Once the host serves, give the
+  README the address and the deployed status, and take the notice out.
 - **Link-preview tags (recorded 2026-10-17).** `apps/web/public/og-image.png` (1200 × 630) ships already, but
   nothing points at it: `og:image` needs an absolute address, which exists only once the host serves. Add
   `og:title`, `og:description`, `og:image` (`https://packwright.jameslittlefield.net/og-image.png`), `og:url` and
