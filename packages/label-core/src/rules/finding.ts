@@ -40,7 +40,7 @@ export function finding(rule: Rule, input: FindingInput): Finding {
   if (severitiesOf(rule, input.code).length === 0) {
     throw new Error(
       `Rule "${rule.id}" emitted the code "${input.code}", which it does not declare. ` +
-        'The rule catalogue is generated from `codes`, so an undeclared code would be ' +
+        'The rule catalog is generated from `codes`, so an undeclared code would be ' +
         'invisible to a user browsing the encoded rules.',
     )
   }

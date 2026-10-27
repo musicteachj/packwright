@@ -173,4 +173,4 @@ export const TYPE_SIZE_IS_THE_TYPEFACES =
 /** The decline every size-dependent check gives on a label described without its size. */
 export const SIZE_UNSTATED_REASON =
   'The label’s size was not given, and this check is measured against it. State the ' +
-  'label’s width and height in millimetres and this check will run.'
+  'label’s width and height in millimeters and this check will run.'

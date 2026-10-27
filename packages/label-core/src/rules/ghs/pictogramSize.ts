@@ -83,8 +83,8 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
             code: GHS_PICTOGRAM_BELOW_MINIMUM_SIZE,
             severity: 'violation',
             message:
-              `The ${pictogram.code} pictogram is ${mm(pictogram.drawnSideMm)} square; a package ` +
-              `of ${band.capacityText.toLowerCase()} requires ${mm(pictogram.requiredSideMm)}.`,
+              `The ${pictogram.code} pictogram is ${mm(pictogram.drawnSideMm)} square; a package in ` +
+              `Table 1.3's "${band.capacityText}" band requires ${mm(pictogram.requiredSideMm)}.`,
             measurement: {
               actual: mm(pictogram.drawnSideMm),
               required: mm(pictogram.requiredSideMm),

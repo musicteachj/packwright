@@ -81,7 +81,7 @@ export function unusableReason(key: ReadingKey, regimeName: string): string {
     case 'precautionaryStatementCodes':
       return `this build has no verified wording for ${regimeName}`
     case 'pictograms':
-      return `not a pictogram code ${regimeName} recognises`
+      return `not a pictogram code ${regimeName} recognizes`
     case 'signalWords':
       return 'not one of the two signal words CLP Article 20 defines'
     default:

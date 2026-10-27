@@ -63,7 +63,7 @@ const magnification = ref(1)
 <template>
   <div class="flex flex-col gap-12">
     <header class="flex flex-col gap-4">
-      <h1 class="text-2xl font-semibold tracking-tight">The interface catalogue</h1>
+      <h1 class="text-2xl font-semibold tracking-tight">The interface catalog</h1>
       <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
         Generated from the same components the application renders, for the same reason
         <span class="numeric text-chrome-200">/rules</span> is generated from the rule registry
@@ -91,7 +91,7 @@ const magnification = ref(1)
       <div class="border-chrome-800 flex flex-col gap-2 border-b pb-3">
         <h2 class="text-chrome-200 text-sm font-semibold tracking-wide uppercase">Severity</h2>
         <p class="text-chrome-400 max-w-2xl text-xs leading-relaxed">
-          Five severities, each with a text colour for its own word and icon, an
+          Five severities, each with a text color for its own word and icon, an
           <span class="numeric text-chrome-200">edge</span> for a 2px rule, and a
           <span class="numeric text-chrome-200">surface</span> for a wash. Word and icon come from
           <span class="numeric text-chrome-200">severity.ts</span>'s
@@ -119,7 +119,7 @@ const magnification = ref(1)
       <div class="border-chrome-800 flex flex-col gap-2 border-b pb-3">
         <h2 class="text-chrome-200 text-sm font-semibold tracking-wide uppercase">Controls</h2>
         <p class="text-chrome-400 max-w-2xl text-xs leading-relaxed">
-          The plain cases first, then the ones a hand-written catalogue would have been tempted to
+          The plain cases first, then the ones a hand-written catalog would have been tempted to
           leave out.
         </p>
       </div>

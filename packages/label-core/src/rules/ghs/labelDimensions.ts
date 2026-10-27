@@ -68,8 +68,8 @@ const judgedAsDrawn: GhsChemicalRule = {
         passedOnArtwork(
           ghsLabelDimensionsRule,
           GHS_LABEL_SIZE_MET,
-          `The label is ${actual}, meeting the ${required} minimum for a package of ` +
-            `${band.capacityText.toLowerCase()}.`,
+          `The label is ${actual}, meeting the ${required} minimum for a package in Table 1.3's ` +
+            `"${band.capacityText}" band.`,
           GHS_ELEMENTS.border,
         ),
       ]
@@ -82,7 +82,7 @@ const judgedAsDrawn: GhsChemicalRule = {
         // "At least 74 × 105", and only the smallest band is worded that way.
         severity: band.labelDimensionIsBestEffort ? 'advisory' : 'violation',
         message:
-          `The label is ${actual}; a package of ${band.capacityText.toLowerCase()} requires ` +
+          `The label is ${actual}; a package in Table 1.3's "${band.capacityText}" band requires ` +
           `${band.labelDimensionIsBestEffort ? 'at least ' + required + ' if possible' : required}.`,
         measurement: { actual, required },
         elementId: GHS_ELEMENTS.border,

@@ -82,7 +82,7 @@ const gtin = GTIN
         None of the labels below is an image. The same three layout engines that produce the PDF
         exports run here in the browser — the retail one resolving
         <span class="numeric text-chrome-200">{{ gtin }}</span> to primitives positioned in
-        millimetres, and handing them to the SVG renderer. Both renderers read the same geometry, so
+        millimeters, and handing them to the SVG renderer. Both renderers read the same geometry, so
         the preview cannot disagree with the print.
       </p>
 
@@ -110,7 +110,7 @@ const gtin = GTIN
         </p>
         <LabelCanvas
           :layout="ghsLayout"
-          title="GHS chemical label for a five-litre solvent under EU CLP"
+          title="GHS chemical label for a five-liter solvent under EU CLP"
         />
       </div>
 

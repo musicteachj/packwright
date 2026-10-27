@@ -190,7 +190,7 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
   // Capacity selects the band every dimensional rule is measured against, so a
   // nonsensical one produces a requirement rather than a drawing failure — and
   // silently defaulting it would fabricate a requirement the user never stated.
-  assertFinitePositive(data.capacityL, 'Package capacity in litres')
+  assertFinitePositive(data.capacityL, 'Package capacity in liters')
   if (data.pictogramSideMm !== undefined) {
     assertFinitePositive(data.pictogramSideMm, 'Pictogram side')
   }

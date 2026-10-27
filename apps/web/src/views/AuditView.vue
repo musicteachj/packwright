@@ -796,7 +796,7 @@ const canRead = computed(
       </h2>
       <p class="text-chrome-400 max-w-2xl text-xs">
         Measured or looked up by you, not read by the model. None of these is filled in for you: the
-        smallest label CLP permits for a three-litre package is 74 × 105 mm, so a default here would
+        smallest label CLP permits for a three-liter package is 74 × 105 mm, so a default here would
         clear a size nobody checked.
       </p>
       <div class="grid max-w-2xl gap-4 sm:grid-cols-3">

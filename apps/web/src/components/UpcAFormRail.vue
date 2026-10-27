@@ -23,6 +23,7 @@ import TextField from './ui/TextField.vue'
 import MeasurementField from './ui/MeasurementField.vue'
 import SelectField from './ui/SelectField.vue'
 import CheckboxField from './ui/CheckboxField.vue'
+import { anchorName } from '../anchorNames'
 
 const store = useLabelDocumentStore()
 
@@ -287,7 +288,9 @@ useAnnouncement('gtin-scan', () => {
       />
 
       <SelectField id="field-placement" v-model="symbolPlacement" label="Placement">
-        <option v-for="anchor in ANCHORS" :key="anchor" :value="anchor">{{ anchor }}</option>
+        <option v-for="anchor in ANCHORS" :key="anchor" :value="anchor">
+          {{ anchorName(anchor) }}
+        </option>
       </SelectField>
 
       <CheckboxField id="field-omit-hri" v-model="omitHri" label="Omit the human-readable digits" />
@@ -334,7 +337,9 @@ useAnnouncement('gtin-scan', () => {
         <TextField id="field-artwork-text" v-model="store.data.artwork.text" label="Text" />
 
         <SelectField id="field-artwork-anchor" v-model="store.data.artwork.anchor" label="Anchor">
-          <option v-for="anchor in ANCHORS" :key="anchor" :value="anchor">{{ anchor }}</option>
+          <option v-for="anchor in ANCHORS" :key="anchor" :value="anchor">
+            {{ anchorName(anchor) }}
+          </option>
         </SelectField>
 
         <div class="grid grid-cols-2 gap-2">

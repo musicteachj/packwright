@@ -980,7 +980,7 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
         'The declaration contains a fraction. 21 CFR 101.7(h)(3) measures each component numeral ' +
         'against half the minimum height, and this engine sets the declaration as a single run ' +
         'rather than as separate numerator and denominator glyphs, so that half-height allowance ' +
-        'is not modelled and the type-size check does not cover the fraction.',
+        'is not modeled and the type-size check does not cover the fraction.',
       scope: 'detail',
     })
   }

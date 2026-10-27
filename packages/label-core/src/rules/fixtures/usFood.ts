@@ -340,8 +340,8 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     defect:
       'The panel carries two sets of values and never says which is which. 101.9(e)(1): ' +
       '"Following the serving size information there shall be two or more column headings ' +
-      'accurately describing the amount per serving size." Their wording is the labeller’s — the ' +
-      'regulation’s own examples are "Per 1/4 cup mix" and "Per prepared portion" — so an engine ' +
+      'accurately describing the amount per serving size." Their wording is the labeler’s (the ' +
+      'regulation’s own examples are "Per 1/4 cup mix" and "Per prepared portion"), so an engine ' +
       'that composed them would be authoring part of a regulated statement.',
     data: {
       ...BASE,
@@ -430,7 +430,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     defect:
       '101.9(e): "When such dual labeling is provided, equal prominence shall be given to both ' +
       'sets of values." At 70 percent of the first column’s type the package figures are the ' +
-      'ones a reader skips — which is exactly why a labeller would set them that way, and why ' +
+      'ones a reader skips, which is exactly why a labeler would set them that way, and why ' +
       'the requirement is stated at all.',
     data: {
       ...BASE,
@@ -688,7 +688,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
   {
     name: 'declaration set halfway up the panel',
     defect:
-      'The bottom 30 percent of a 158 mm panel inset 6 mm begins 116.6 mm down. A centred ' +
+      'The bottom 30 percent of a 158 mm panel inset 6 mm begins 116.6 mm down. A centered ' +
       'declaration starts around 80 mm and is nowhere near it, while sitting far enough from ' +
       'everything else that only the placement rule should fire.',
     data: { ...BASE, netQuantityAnchor: 'centre' },
@@ -774,7 +774,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
   {
     name: 'no ingredient statement, and an exemption claimed without its paragraph',
     defect:
-      'Marked exempt from ingredient labelling, the way a label saved before the paragraph was ' +
+      'Marked exempt from ingredient labeling, the way a label saved before the paragraph was ' +
       'recorded is. §101.100(a)(1) and (a)(2) put different conditions on the food, so a claim ' +
       'naming neither cannot be judged — excused, not cleared.',
     data: { ...BASE, ingredients: [], ingredientsExempt: true },
@@ -1062,7 +1062,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
   {
     name: 'a food with no nutrition label, exempt without saying under which paragraph',
     defect:
-      'Marked exempt from nutrition labelling, the way a label saved before the paragraph was ' +
+      'Marked exempt from nutrition labeling, the way a label saved before the paragraph was ' +
       'recorded is. The 101.9(j) exemptions put different conditions on the food and its label, ' +
       'so a claim naming none of them cannot be judged — excused, not cleared.',
     data: { ...WITHOUT_NUTRITION, nutritionFactsExempt: true },
@@ -1077,7 +1077,7 @@ export const US_FOOD_FIXTURES: readonly UsFoodRuleFixture[] = [
     name: 'a small package using its nutrition exemption with no line to ask for the information',
     defect:
       'An 11.5 in² package is under the 12 in² at which 101.9(j)(13)(i) exempts it from ' +
-      'nutrition labelling — but (A) says the manufacturer, packer or distributor "shall provide ' +
+      'nutrition labeling, but (A) says the manufacturer, packer or distributor "shall provide ' +
       'on the label of packages that qualify for and use this exemption an address or telephone ' +
       'number" a consumer can use to obtain it. This label bears none.',
     data: {

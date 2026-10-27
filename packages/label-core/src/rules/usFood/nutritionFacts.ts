@@ -359,7 +359,7 @@ const judgedAsDrawn: UsFoodRule = {
           code: FDA_NUTRITION_EXEMPTION_UNSTATED,
           severity: 'advisory',
           message:
-            'The label is marked exempt from nutrition labelling without saying which § 101.9(j) ' +
+            'The label is marked exempt from nutrition labeling without saying which § 101.9(j) ' +
             'exemption it claims. Each carries its own conditions, so the claim cannot be judged ' +
             'until the paragraph is stated.',
           measurement: {

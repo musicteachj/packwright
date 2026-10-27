@@ -40,7 +40,7 @@ inner label of 10 ml or less, whether missing supplier details or pictograms are
 
 ## Nutrition Facts and US food labels
 
-### Nutrition claims are not modelled at all
+### Nutrition claims are not modeled at all
 
 This is the largest gap, and it reaches further than the others.
 
@@ -93,7 +93,7 @@ If you are checking a label this tool did not draw, the footnote is worth readin
 yourself.
 
 One permitted variant is **never produced**: 101.9(d)(9) allows a shortened footnote on foods that may bear the
-§ 101.60(b) calorie-free terms. Those are claims, and claims are not modelled — so this tool cannot know your
+§ 101.60(b) calorie-free terms. Those are claims, and claims are not modeled, so this tool cannot know your
 food qualifies, and will draw the full footnote instead. A label entitled to the short form is not wrong; this
 tool simply will not produce it.
 
@@ -194,7 +194,7 @@ Two things to know:
   and no reading is satisfied by none. The same goes for a second column that counts something else, such as
   per 100 g, which is neither column on any reading. It also goes for a package whose contents differ from its
   unit's: the two columns would then carry different figures, and one column cannot carry both.
-- **How such a package should be labelled is a question for the regulation's own guidance**, not for this tool.
+- **How such a package should be labeled is a question for the regulation's own guidance**, not for this tool.
   Treat the notice as a reason to check that before you print, not as clearance.
 
 ### A second column you are not required to carry
@@ -318,7 +318,7 @@ and is not permitted on the label"), and CLP requires the symbol (Annex I, 1.2.1
 a photograph, judges a label that already exists, and Packwright's drawing of it is a reconstruction. The symbols
 are on your label, where this tool cannot see them, so the symbol check gives no verdict either way. Each pictogram
 is listed under "cannot be checked", and the check itself appears under "checks that did not run" as a limit of
-this tool — unless the label also carries a pictogram its regime does not recognise, which is reported, and then
+this tool, unless the label also carries a pictogram its regime does not recognize, which is reported, and then
 the "cannot be checked" list is where it says so. A small container's check stands down the same way where the
 unseen symbols are all it cannot confirm. On an EU label, a pictogram smaller than CLP's minimum is still reported, though none is passed for its size,
 since a pictogram whose symbol nobody has seen is not one this tool can clear. OSHA sets no minimum.
@@ -331,8 +331,8 @@ the same way, because Packwright sets them in one row of its own spacing and you
 pictogram larger than the label itself, which is listed as not fitting, since no arrangement could fit it.
 
 **And no rule checks a GHS label's type size.** CLP sets no minimum today. Regulation (EU) 2024/2865 replaces
-Table 1.3 with one that adds a minimum x-height, from 1.2 mm on a package of up to 0.5 litres to 2.0 mm above 50
-litres, and adds Annex I section 1.2.1.5 on line spacing, typeface and colour. Regulation (EU) 2025/2439 put both
+Table 1.3 with one that adds a minimum x-height, from 1.2 mm on a package of up to 0.5 liters to 2.0 mm above 50
+liters, and adds Annex I section 1.2.1.5 on line spacing, typeface and color. Regulation (EU) 2025/2439 put both
 back to **1 January 2028**. This tool will not check them before then, and on a label you describe it could not
 check them at all until the description can carry type sizes. Read from the EU Publications Office on 2026-10-11:
 the consolidated CLP text in force (02008R1272-20260701), 2024/2865 Annex I points (2) and (3), and 2025/2439
@@ -369,10 +369,10 @@ judged as the row says.
 
 CLP Annex I 1.2.1.3 says each pictogram "shall cover at least one fifteenth of the minimum surface area of the
 label", and Table 1.3 gives a minimum pictogram for each band. For two bands the table's own figure misses the
-fraction by rounding: 32 mm against 1,036 mm² for 50 to 500 litres, and even its "if possible" 16 mm against
-256.5 mm² for 3 litres or less. This tool enforces Table 1.3 and does not report a pictogram that meets the regulator's own tabulated figure.
+fraction by rounding: 32 mm against 1,036 mm² for 50 to 500 liters, and even its "if possible" 16 mm against
+256.5 mm² for 3 liters or less. This tool enforces Table 1.3 and does not report a pictogram that meets the regulator's own tabulated figure.
 Where a pictogram meets the table but not the fraction, its passing message says so, and that difference is not
-judged. For 3 litres or less, where the table qualifies the label itself "if possible", the message says nothing of
+judged. For 3 liters or less, where the table qualifies the label itself "if possible", the message says nothing of
 the fraction.
 
 ### Whether an EU label's supplier is established in the Union

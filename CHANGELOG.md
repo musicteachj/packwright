@@ -10,6 +10,27 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **What the application says is in American English.** The form labels and help text, the landing, audit and
+  design pages, the placement menus, the findings the rules report, the reasons a check did not run, the field
+  descriptions an AI client reads through `/mcp`, `docs/WHAT-IS-NOT-CHECKED.md`, which every `check_label` answer
+  points to, and the known-bad fixtures' descriptions said "litres", "millimetres", "labelling", "labeller",
+  "recognises", "catalogue", "colour", "centre" and "Untick". The worst of it was in US findings: "labelling" in
+  sentences about 21 CFR, which writes "labeling", and OSHA's precedence clause C.2.1.4 reported in CLP's words,
+  "sensitisation" and "skin and eye irritation", where OSHA writes "sensitization" and "skin or eye irritation".
+  That reason now spells and joins those words as each regime does. Quoted text keeps its spelling, because it is
+  quoted: the CLP hazard class names and H- and P-statements; the CLP Table 1.3 capacity bands, which the label-
+  and pictogram-size findings now quote as Table 1.3's "Not exceeding 3 litres" band rather than splicing them in
+  lowercase beside "liters"; and the two small-container citation titles, which are the sources' own headings. All
+  three were re-read on 2026-10-27, OSHA's from the eCFR, which heads 1910.1200(f)(12) "Small container
+  labelling", and CLP's from the Publications Office consolidation of 2026-07-01, and `docs/SOURCES.md` records
+  it. The stored placement values (`centre`, `bottom-centre`) are unchanged, because saved labels carry them; the
+  menus show them as "center". A capacity of one now reads "1 liter". A test judges every fixture, drawn and
+  described, and fails on a British spelling in a finding, a rule title, a reason a check did not run or could not
+  be made, or a field description of the schema `/mcp` publishes, excusing only the CLP bands and class name by
+  their exact words; another pins both precedence wordings. The web app's copy and the `/mcp` server's own text
+  are outside that test. Code comments, identifiers, the inputs of the recorded `withoutTool` experiment and the
+  em dashes in the interface are not in this change.
+
 - **The design system and screen descriptions in `docs/DESIGN.md` match the application as built.** They were
   copied to Claude Design on 2026-10-22, and checked against the code when that project found three of their claims
   untrue. Many more were. The severity scale was credited to ANSI Z535.1, which defines only the colors; the signal

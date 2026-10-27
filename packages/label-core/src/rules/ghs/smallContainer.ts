@@ -75,6 +75,16 @@ export const GHS_SMALL_CONTAINER_NOT_ELIGIBLE = 'GHS_SMALL_CONTAINER_NOT_ELIGIBL
 export const GHS_SMALL_CONTAINER_AVAILABLE = 'GHS_SMALL_CONTAINER_AVAILABLE'
 export const GHS_SMALL_CONTAINER_COMPLETE = 'GHS_SMALL_CONTAINER_COMPLETE'
 
+/** A capacity in words: "1 liter", "0.1 liters". */
+const liters = (capacityL: number): string => `${capacityL} ${capacityL === 1 ? 'liter' : 'liters'}`
+
+/**
+ * Both titles are the sources' own headings, so they keep the sources' spelling, re-read
+ * on 2026-10-27: the eCFR (as of 2026-10-01) heads 1910.1200(f)(12) "Small container
+ * labelling", the one place in the section OSHA writes it that way, and the CLP
+ * consolidation of 2026-07-01 heads Annex I 1.5 "Exemptions from labelling and packaging
+ * requirements". This module's own sentences are in American English.
+ */
 const US: Citation = {
   authority: 'OSHA',
   reference: '29 CFR 1910.1200(f)(12)',
@@ -241,10 +251,10 @@ export const ghsSmallContainerRule: GhsChemicalRule = {
           code: GHS_SMALL_CONTAINER_AVAILABLE,
           severity: 'guidance',
           message:
-            `At ${data.capacityL} litres this container is within the ${maxL} litre threshold for ` +
+            `At ${liters(data.capacityL)} this container is within the ${maxL} liter threshold for ` +
             (isUs
-              ? 'reduced labelling, which applies where full-information pull-out, fold-back or tag ' +
-                'labelling is not feasible.'
+              ? 'reduced labeling, which applies where full-information pull-out, fold-back or tag ' +
+                'labeling is not feasible.'
               : 'the small-package exemptions, under which some statements may be omitted for ' +
                 'certain hazard categories.'),
           citation,
@@ -260,8 +270,8 @@ export const ghsSmallContainerRule: GhsChemicalRule = {
           code: GHS_SMALL_CONTAINER_NOT_ELIGIBLE,
           severity: 'violation',
           message:
-            `This label relies on the small-container provision, but at ${data.capacityL} litres ` +
-            `the container exceeds the ${maxL} litre threshold the provision sets.`,
+            `This label relies on the small-container provision, but at ${liters(data.capacityL)} ` +
+            `the container exceeds the ${maxL} liter threshold the provision sets.`,
           measurement: { actual: `${data.capacityL} L`, required: `${maxL} L or less` },
           citation,
         }),
