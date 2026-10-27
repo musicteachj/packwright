@@ -560,10 +560,10 @@ export function createPackwrightMcpServer(): McpServer {
         'element by element, rather than reporting it as a fault; the symbol check is also ' +
         'under `declined`, unless a pictogram the regime does not recognize was reported. ' +
         'Nothing is passed on a value the request did not state: a barcode’s magnification, bar ' +
-        'height and digits wait for those fields, and the checks no field can answer — a US food ' +
-        'label’s type sizes and the net quantity’s position, a barcode’s quiet zones — appear ' +
-        'under `declined` as limits of this tool. Say so to the user rather than calling the ' +
-        'label clear on them.',
+        'height and digits, and on an EU label the smallest pictogram’s side, wait for those ' +
+        'fields. The checks no field can answer (a US food label’s type sizes and the net ' +
+        'quantity’s position, a barcode’s quiet zones) appear under `declined` as limits of this ' +
+        'tool. Say so to the user rather than calling the label clear on them.',
       inputSchema: CheckLabelInput,
       outputSchema: CheckLabelOutput,
       annotations: READ_ONLY,

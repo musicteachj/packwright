@@ -550,7 +550,13 @@ export interface UsFoodNutritionFacts {
    * most of (C) falls out of `columns.basis`, so neither is declared here.
    */
   dualColumnExemption?: {
-    /** (B) — raw fruits, vegetables and seafood under voluntary labelling. */
+    /**
+     * (B): raw fruits, vegetables and seafood "for which voluntary nutrition labeling is
+     * provided in the product labeling or advertising or when claims are made about the
+     * product" (read from the eCFR on 2026-10-27). Either limb excuses the product, so one
+     * fact stands for both. The name predates the claims limb and is kept because saved
+     * labels and `/mcp` requests carry it.
+     */
     rawCommodityVoluntary?: boolean
     /** (C)'s closing limb — varied-weight products under (b)(8)(iii). */
     variedWeight?: boolean

@@ -22,6 +22,7 @@ import {
 } from '../layout/ghsEngine'
 import { GHS_CONFORMANT, GHS_FIXTURES, HAZARDS } from '../rules/fixtures/ghs'
 import { GHS_LABEL_BELOW_MINIMUM_SIZE } from '../rules/ghs/labelDimensions'
+import { GHS_PICTOGRAM_BELOW_MINIMUM_SIZE } from '../rules/ghs/pictogramSize'
 import {
   GHS_PICTOGRAM_COMPLETE,
   GHS_PICTOGRAM_NOT_RECOGNISED,
@@ -69,6 +70,51 @@ describe('a described label is judged as drawn, less what the drawing made up', 
   })
 })
 
+describe('the pictogram size, on a label printed elsewhere', () => {
+  // With no side stated the engine draws each pictogram at its band's minimum and records
+  // that as both drawn and required, so the check measured its own default and could not
+  // fail, while the answer said an undersized pictogram "is still reported". It now waits
+  // for the side. Found by `/code-review max` on 2026-10-27.
+  const eu: GhsLabelData = { ...GHS_CONFORMANT.data, pictograms: ['GHS02'] }
+  const sizeCheck = (judgement: Judgement) =>
+    judgement.declined.find((one) => one.ruleId === 'ghs/pictogram-size')
+  const undersized = (judgement: Judgement) =>
+    judgement.findings.filter((one) => one.code === GHS_PICTOGRAM_BELOW_MINIMUM_SIZE)
+
+  it('stands down and asks for the side when none is stated', () => {
+    const described = judged(eu, GHS_CONFORMANT.stock, 'described')
+    expect(sizeCheck(described)?.wants).toEqual(['pictogramSideMm'])
+    // The smallest, because one side is drawn for every pictogram: asked for "each", a
+    // label with one large and one small could send the large and clear the small.
+    expect(sizeCheck(described)?.reason).toContain('State the side of the smallest pictogram')
+  })
+
+  it('reports a stated side under the band minimum', () => {
+    // 5 liters is Table 1.3's "Greater than 3 litres but not exceeding 50 litres" band,
+    // whose pictograms are "At least 23 × 23".
+    const described = judged({ ...eu, pictogramSideMm: 15 }, GHS_CONFORMANT.stock, 'described')
+    expect(undersized(described)).toHaveLength(1)
+    expect(sizeCheck(described)).toBeUndefined()
+  })
+
+  it('reports nothing against a stated side that meets it, and asks for nothing', () => {
+    const described = judged({ ...eu, pictogramSideMm: 23 }, GHS_CONFORMANT.stock, 'described')
+    expect(undersized(described)).toEqual([])
+    expect(sizeCheck(described)).toBeUndefined()
+  })
+
+  it('asks nothing of a US label, where OSHA sets no minimum size', () => {
+    const us = judged({ ...eu, regime: 'us-osha' }, GHS_CONFORMANT.stock, 'described')
+    expect(sizeCheck(us)).toBeUndefined()
+  })
+
+  it('still judges the drawing, and asks it for nothing', () => {
+    const drawing = judged({ ...eu, pictogramSideMm: 15 }, GHS_CONFORMANT.stock)
+    expect(undersized(drawing)).toHaveLength(1)
+    expect(sizeCheck(judged(eu, GHS_CONFORMANT.stock))).toBeUndefined()
+  })
+})
+
 describe('pictogram symbols, on a label printed elsewhere', () => {
   const us: GhsLabelData = { ...GHS_CONFORMANT.data, regime: 'us-osha', pictograms: ['GHS02'] }
 
@@ -109,7 +155,12 @@ describe('pictogram symbols, on a label printed elsewhere', () => {
     expect(integrity!.citation.reference).toBe(
       'Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2',
     )
-    expect(integrity!.reason).toContain('smaller than CLP’s minimum is still reported')
+    expect(integrity!.reason).toContain(
+      'A pictogram whose stated size is smaller than CLP’s minimum is still reported.',
+    )
+    expect(SYMBOL_NOT_SEEN_BECAUSE['eu-clp']).toContain(
+      'A pictogram whose stated size is smaller than CLP’s minimum is still reported.',
+    )
     expect(reasonsOf(described)).toContain(
       `The GHS02 symbol (flame) is not checked. ${SYMBOL_NOT_SEEN_BECAUSE['eu-clp']}`,
     )

@@ -320,8 +320,12 @@ are on your label, where this tool cannot see them, so the symbol check gives no
 is listed under "cannot be checked", and the check itself appears under "checks that did not run" as a limit of
 this tool, unless the label also carries a pictogram its regime does not recognize, which is reported, and then
 the "cannot be checked" list is where it says so. A small container's check stands down the same way where the
-unseen symbols are all it cannot confirm. On an EU label, a pictogram smaller than CLP's minimum is still reported, though none is passed for its size,
-since a pictogram whose symbol nobody has seen is not one this tool can clear. OSHA sets no minimum.
+unseen symbols are all it cannot confirm. On an EU label, a pictogram whose stated size is smaller than CLP's minimum is still reported, though none is
+passed for its size, since a pictogram whose symbol nobody has seen is not one this tool can clear. Where the size
+is not stated, the size check is listed under "checks that did not run" and asks for the side of the smallest
+pictogram, because Packwright would otherwise measure its own default, which is the minimum itself, and it draws
+every pictogram at the one side it is given. The photo audit has no field for that size, so there the check is
+listed as a limit of this tool. OSHA sets no minimum.
 
 **Type sizes are the same kind of gap.** A GHS label's description carries no type sizes, so Packwright sets its
 text at sizes of its own choosing. On a label it draws, text that runs off the edge at those sizes is reported as
@@ -531,8 +535,9 @@ description leaves out — and **nothing is passed on what it filled in.** Befor
 Packwright's own defaults, which are compliant by construction: a request carrying only a GTIN came back with
 its magnification, bar height and quiet zones passed.
 
-**Checks that wait for a value you can give.** A barcode's magnification and bar height, and whether its digits
-are printed, are design values you can read off the artwork. Leave one out and its check appears under "checks
+**Checks that wait for a value you can give.** A barcode's magnification and bar height, whether its digits
+are printed, and on an EU GHS label the side of the smallest pictogram, are design values you can read off the
+artwork. Leave one out and its check appears under "checks
 that did not run", naming the field; give it and the check runs on your figure.
 
 **Checks no description can answer.** These appear under "checks that did not run" as limits of this tool, and

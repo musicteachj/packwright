@@ -1,6 +1,6 @@
 import { DEFAULT_GHS_STOCK, type GhsLabelData } from '@packwright/label-core'
 import { describe, expect, it } from 'vitest'
-import { auditReport } from './report'
+import { auditReport, PICTOGRAM_SIZE_NOT_ASKED_HERE } from './report'
 import type { ReadingKey } from './readingRows'
 
 const A_LABEL: GhsLabelData = {
@@ -146,6 +146,25 @@ describe('what the report says it did not judge', () => {
     const integrity = result.declined.find((one) => one.ruleId === 'ghs/pictogram-integrity')
     expect(integrity?.limit).toBe(true)
     expect(integrity?.citation.reference).toContain('1910.1200')
+  })
+
+  it('says the pictogram size is a limit here, not a question it cannot take', () => {
+    // The size check waits for a pictogram's side on a label printed elsewhere, and this
+    // screen has no field for one, so "state it and this check will run" would ask for
+    // something the audit cannot take.
+    const result = report(
+      { ...A_LABEL, capacityL: 5, pictograms: ['GHS02'] },
+      {
+        widthMm: 74,
+        heightMm: 105,
+        marginMm: 4,
+      },
+    )
+    if (result.outcome !== 'reported') throw new Error('expected a report')
+    const size = result.declined.find((one) => one.ruleId === 'ghs/pictogram-size')
+    expect(size?.limit).toBe(true)
+    expect(size?.wants).toEqual([])
+    expect(size?.reason).toBe(PICTOGRAM_SIZE_NOT_ASKED_HERE)
   })
 
   it('cites the regulation the label is judged under, not the other one', () => {

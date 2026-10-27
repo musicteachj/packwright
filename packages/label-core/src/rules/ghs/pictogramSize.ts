@@ -39,6 +39,7 @@ import {
   dimensionBandFor,
 } from '../../ghs/labelDimensions'
 import type { Citation, Finding } from '../../types/index'
+import { verdictWaitsOnADescribedLabel } from '../described'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
 
@@ -53,7 +54,7 @@ const CITATION: Citation = {
 
 const sqMm = (value: number) => `${value.toFixed(1)} mm²`
 
-export const ghsPictogramSizeRule: GhsChemicalRule = {
+const judgedAsDrawn: GhsChemicalRule = {
   id: 'ghs/pictogram-size',
   title: 'Each pictogram meets the minimum dimension CLP’s Table 1.3 sets for its capacity band.',
   citation: CITATION,
@@ -121,3 +122,29 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
     return findings
   },
 }
+
+/**
+ * The rule as drawn, its verdict waiting on a label printed elsewhere: see
+ * `rules/described.ts`.
+ *
+ * With no side stated, the engine draws each pictogram at its band's own minimum
+ * (`ghsEngine.ts`) and records that as both the size drawn and the size required, so
+ * on a label it did not draw this check could never fail. It said nothing either way,
+ * while the answer told the user an undersized pictogram "is still reported".
+ * Found by `/code-review max` on 2026-10-27.
+ *
+ * **The smallest side is asked for**, because a request carries one side and the engine
+ * draws every pictogram at it. Asked for "each" pictogram's side, a label printing one
+ * at 25 mm and another at 18 could send 25, and the 18 mm one would be cleared by
+ * silence; given the smallest, any error falls on the accusing side. Found by the
+ * second `/code-review max` that day.
+ */
+export const ghsPictogramSizeRule: GhsChemicalRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
+  unstated: ({ data }) =>
+    data.pictogramSideMm === undefined ? (['pictogramSideMm'] as const) : [],
+  reason: () =>
+    'This label is described rather than drawn here, and Packwright cannot see how large its ' +
+    'pictograms are printed; its own default, the minimum for the capacity band, would decide ' +
+    'the verdict. State the side of the smallest pictogram’s square in millimeters and this ' +
+    'check will run.',
+})

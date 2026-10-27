@@ -31,6 +31,9 @@ const DESCRIBED_ONLY_FACTS: readonly DeclinedFact[] = [
   'stock',
 ]
 
+/** The same, on a GHS label: the editor draws every pictogram at its band's minimum. */
+const DESCRIBED_ONLY_GHS_FACTS: readonly DeclinedFact[] = ['pictogramSideMm']
+
 Element.prototype.scrollIntoView = vi.fn()
 
 beforeEach(() => setActivePinia(createPinia()))
@@ -174,7 +177,11 @@ describe('the fields a check that did not run links to', () => {
     }
     expect([...asked].sort()).toEqual(
       Object.keys(DECLINED_FACT_FIELDS)
-        .filter((fact) => !DESCRIBED_ONLY_FACTS.includes(fact as DeclinedFact))
+        .filter(
+          (fact) =>
+            !DESCRIBED_ONLY_FACTS.includes(fact as DeclinedFact) &&
+            !DESCRIBED_ONLY_GHS_FACTS.includes(fact as DeclinedFact),
+        )
         .sort(),
     )
   })
@@ -187,6 +194,22 @@ describe('the fields a check that did not run links to', () => {
       store.labelType = 'gs1-retail'
     })
     for (const fact of DESCRIBED_ONLY_FACTS) {
+      const { fieldId, name } = DECLINED_FACT_FIELDS[fact]
+      expect(wrapper.find(`#${fieldId}`).exists(), `${fact} links to #${fieldId}`).toBe(true)
+      expect(labelOn(wrapper, fieldId).trim(), fact).toMatch(
+        new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+      )
+    }
+    wrapper.unmount()
+  })
+})
+
+describe('the facts only a label printed elsewhere asks for, on a GHS label', () => {
+  it('land on a field the GHS form has, called what the link calls it', async () => {
+    const { wrapper } = await mountIn((store) => {
+      store.labelType = 'ghs-chemical'
+    })
+    for (const fact of DESCRIBED_ONLY_GHS_FACTS) {
       const { fieldId, name } = DECLINED_FACT_FIELDS[fact]
       expect(wrapper.find(`#${fieldId}`).exists(), `${fact} links to #${fieldId}`).toBe(true)
       expect(labelOn(wrapper, fieldId).trim(), fact).toMatch(

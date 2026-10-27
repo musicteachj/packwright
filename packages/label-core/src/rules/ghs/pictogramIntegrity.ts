@@ -155,7 +155,7 @@ export const ghsPictogramIntegrityRule: GhsChemicalRule = {
         'of this tool, not a fault found in your label.' +
         // OSHA sets no minimum size, so on a US label no size check runs to mention.
         (data.regime === 'eu-clp'
-          ? ' A pictogram smaller than CLP’s minimum is still reported.'
+          ? ' A pictogram whose stated size is smaller than CLP’s minimum is still reported.'
           : ''),
       citation: data.regime === 'us-osha' ? US : EU,
       wants: [],

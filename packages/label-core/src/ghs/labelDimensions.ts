@@ -4,7 +4,10 @@
  * **Source.** Regulation (EC) No 1272/2008 (CLP), consolidated text
  * `02008R1272 — EN — 01.09.2025 — 029.003`, Annex I section 1.2.1, retrieved
  * 2026-09-11 from EUR-Lex `CELEX:02008R1272-20250901`. Every figure below was
- * read off Table 1.3 on pages 65–66 of that document.
+ * read off Table 1.3 on pages 65–66 of that document. **Re-read on 2026-10-27** from the
+ * Publications Office consolidation of 2026-07-01 (`02008R1272-20260701`), unchanged: the
+ * `capacityText` of each band below is that table's own wording, which the size findings
+ * quote, so it keeps CLP's spelling ("litres").
  *
  * **The consolidated text, not the 2008 original.** This matters more than the
  * usual caution about currency: the original Annex I 1.2.1 has no pictogram

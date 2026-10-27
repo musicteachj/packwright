@@ -883,6 +883,8 @@ describe('a check that stood down names what would let it run', () => {
         return upcA.barHeightMm !== undefined
       case 'omitHri':
         return upcA.omitHri !== undefined
+      case 'pictogramSideMm':
+        return ghs.pictogramSideMm !== undefined
       // Stated beside the data; the loop below answers it by giving the case its size.
       case 'stock':
         return false
@@ -921,6 +923,8 @@ describe('a check that stood down names what would let it run', () => {
     if (fact === 'magnification') return { ...(data as UpcALabelData), magnification: 1 }
     if (fact === 'barHeightMm') return { ...(data as UpcALabelData), barHeightMm: 22.85 }
     if (fact === 'omitHri') return { ...(data as UpcALabelData), omitHri: false }
+    // The side a designer would measure off the artwork: 23 mm, Table 1.3's for 3 to 50 liters.
+    if (fact === 'pictogramSideMm') return { ...(data as GhsLabelData), pictogramSideMm: 23 }
     const label = data as UsFoodLabelData
     // Either answer lets the check run; a single-ingredient food is the one the rule excused wrongly.
     if (fact === 'singleIngredient') return { ...label, singleIngredient: true }
@@ -956,6 +960,7 @@ describe('a check that stood down names what would let it run', () => {
         | 'magnification'
         | 'barHeightMm'
         | 'omitHri'
+        | 'pictogramSideMm'
         | 'stock'
       >,
       object

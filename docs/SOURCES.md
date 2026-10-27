@@ -20,7 +20,7 @@ Part 101 its row does not name, or a GS1 release other than the one its row name
 
 | document | edition used | read | link |
 |---|---|---|---|
-| **21 CFR Part 101, Food Labeling.** Cited: §§ 101.2, 101.3, 101.4, 101.5, 101.7, 101.9 and 101.100; Appendix B for the Nutrition Facts graphic | eCFR, current | 2026-09-12; re-read through 2026-10-12 | [eCFR](https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101) |
+| **21 CFR Part 101, Food Labeling.** Cited: §§ 101.2, 101.3, 101.4, 101.5, 101.7, 101.9 and 101.100; Appendix B for the Nutrition Facts graphic | eCFR, current | 2026-09-12; re-read through 2026-10-12, and 101.9(b)(12)(i)(B) 2026-10-27 (as of 2026-10-01) | [eCFR](https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101) |
 | **Federal Food, Drug, and Cosmetic Act § 201(qq), 21 U.S.C. 321(qq).** The major food allergens | U.S. Code, 2023 edition; re-read in the 2024 edition, identical | 2026-09-12; re-read 2026-10-17 | [govinfo](https://www.govinfo.gov/content/pkg/USCODE-2023-title21/html/USCODE-2023-title21-chap9-subchapII-sec321.htm) |
 | **Federal Food, Drug, and Cosmetic Act § 403(i) and (w), 21 U.S.C. 343(i) and (w).** When a food owes an ingredient statement; allergen declaration and the "Contains" statement | U.S. Code, 2023 edition; § 403(i) from the 2024 edition, and (w) re-read in it, identical | (w) 2026-09-12, re-read 2026-10-11 and 2026-10-17; (i) 2026-10-17 | [govinfo](https://www.govinfo.gov/content/pkg/USCODE-2023-title21/html/USCODE-2023-title21-chap9-subchapIV-sec343.htm) |
 | **Fair Packaging and Labeling Act, 15 U.S.C. 1453.** The net quantity in both measurement systems | U.S. Code, 2023 edition; (a)(2) re-read in the 2024 edition | 2026-09-12; re-read 2026-10-17 | [govinfo](https://www.govinfo.gov/content/pkg/USCODE-2023-title15/html/USCODE-2023-title15-chap39-sec1453.htm) |
@@ -41,13 +41,13 @@ Part 101 its row does not name, or a GS1 release other than the one its row name
 
 | document | edition used | read | link |
 |---|---|---|---|
-| **29 CFR 1910.1200, Hazard Communication (OSHA).** Labels under paragraph (f); pictograms and their precedence in Appendix C | eCFR, title 29 as issued 2026-09-09, and as of 2026-10-01 | 2026-09-12; re-read 2026-10-09 to 2026-10-11, (f)(12) 2026-10-18, and (f)(12)'s heading and C.2.1.4 2026-10-27 | [eCFR](https://www.ecfr.gov/current/title-29/subtitle-B/chapter-XVII/part-1910/subpart-Z/section-1910.1200) |
+| **29 CFR 1910.1200, Hazard Communication (OSHA).** Labels under paragraph (f); pictograms and their precedence in Appendix C | eCFR, title 29 as issued 2026-09-09, and as of 2026-10-01 | 2026-09-12; re-read 2026-10-09 to 2026-10-11, (f)(12) 2026-10-18, and (f)(12)'s heading, C.2.1.4 and (c)'s definition of a signal word 2026-10-27 | [eCFR](https://www.ecfr.gov/current/title-29/subtitle-B/chapter-XVII/part-1910/subpart-Z/section-1910.1200) |
 
 ## European Union: chemicals
 
 | document | edition used | read | link |
 |---|---|---|---|
-| **Regulation (EC) No 1272/2008 (CLP)**, consolidated text in force: Articles 20 and 26, Annex I (label dimensions, small packaging), Annex III (hazard statements), Annex IV (precautionary statements), Annex V (pictograms) | Consolidation 02008R1272-20260701 | 2026-10-10; re-read 2026-10-16, Article 26 and Annex I 1.2.1 and 1.5 on 2026-10-18, and Article 26(1)(d), Annex I 1.5's heading and Table 1.3's capacity bands on 2026-10-27 | [EU Publications Office](http://publications.europa.eu/resource/celex/02008R1272-20260701) |
+| **Regulation (EC) No 1272/2008 (CLP)**, consolidated text in force: Articles 20 and 26, Annex I (label dimensions, small packaging), Annex III (hazard statements), Annex IV (precautionary statements), Annex V (pictograms) | Consolidation 02008R1272-20260701 | 2026-10-10; re-read 2026-10-16, Article 26 and Annex I 1.2.1 and 1.5 on 2026-10-18, and Articles 2(4) (in English and German), 20 and 26(1)(d), Annex I 1.5's heading and Table 1.3 on 2026-10-27 | [EU Publications Office](http://publications.europa.eu/resource/celex/02008R1272-20260701) |
 | The same regulation, the consolidation first built from | Consolidation 02008R1272-20250901 | 2026-09-11 | [EU Publications Office](http://publications.europa.eu/resource/celex/02008R1272-20250901) |
 | **Commission Regulation (EU) 2016/918** and **Commission Regulation (EU) 2019/521**, which reworded precautionary statements in Annex IV | As published | 2026-10-16 | [2016/918](http://publications.europa.eu/resource/celex/32016R0918), [2019/521](http://publications.europa.eu/resource/celex/32019R0521) |
 | **Regulation (EU) 2024/2865** and **Regulation (EU) 2025/2439**, the font-size table and supplier rules not yet in application, and their dates | As published | 2026-10-10 | [2024/2865](http://publications.europa.eu/resource/celex/32024R2865), [2025/2439](http://publications.europa.eu/resource/celex/32025R2439) |

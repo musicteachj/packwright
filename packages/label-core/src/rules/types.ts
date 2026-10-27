@@ -234,6 +234,9 @@ export type DeclinedFact =
   | 'magnification'
   | 'barHeightMm'
   | 'omitHri'
+  // A GHS pictogram's printed side, which the engine otherwise draws at its band's
+  // minimum and would then measure against that same minimum.
+  | 'pictogramSideMm'
   // The label's size, which sits beside the data rather than in it. Asked for where a
   // label printed elsewhere was described without one (`sizeUnstated`).
   | 'stock'
