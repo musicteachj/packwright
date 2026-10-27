@@ -364,7 +364,7 @@ const supplierTelephone = computed({
       <MeasurementField
         id="field-ghs-capacity"
         v-model.number="data.capacityL"
-        label="Package capacity (litres)"
+        label="Package capacity (liters)"
         min="0.001"
         step="0.1"
       />
@@ -575,18 +575,18 @@ const supplierTelephone = computed({
       <CheckboxField
         id="field-small-container"
         v-model="smallContainer"
-        label="This container uses reduced labelling for small containers"
+        label="This container uses reduced labeling for small containers"
       />
       <p class="text-chrome-400 text-xs">
         Declared, not inferred from capacity. Both regimes make this conditional on a determination
         about the packaging that no label can settle — for
         {{
           data.regime === 'us-osha'
-            ? 'OSHA, that full-information pull-out, fold-back or tag labelling is not feasible'
+            ? 'OSHA, that full-information pull-out, fold-back or tag labeling is not feasible'
             : 'CLP, the conditions in Article 29'
         }}.
         <template v-if="data.regime === 'us-osha'"
-          >The threshold is {{ thresholdL }} litres.</template
+          >The threshold is {{ thresholdL }} liters.</template
         >
         <template v-else>
           CLP's tie-on tag or outer-packaging route (Annex I 1.5.1) has no capacity limit. At

@@ -44,6 +44,25 @@ describe('Article 26 applied, not merely reported', () => {
     expect(applyPrecedence(requiredPictograms(hazards), hazards, 'eu-clp')).toEqual(['GHS08'])
   })
 
+  it('gives each regime its own words for the health-hazard clause', () => {
+    // OSHA C.2.1.4, read from the eCFR on 2026-10-27: "for respiratory sensitization ...
+    // for skin sensitization or for skin or eye irritation". CLP 26(1)(d), from the
+    // Publications Office consolidation of 2026-07-01: "for respiratory sensitisation
+    // ... for skin sensitisation or for skin and eye irritation".
+    const hazards = [RESPIRATORY, SKIN_SENSITISATION]
+    const reason = (regime: 'eu-clp' | 'us-osha') =>
+      precedenceSuppressions(['GHS07', 'GHS08'], hazards, regime).find((s) => s.code === 'GHS07')
+        ?.reason
+    expect(reason('us-osha')).toBe(
+      'The health hazard pictogram applies for respiratory sensitization, so the exclamation ' +
+        'mark may not appear for skin sensitization or for skin or eye irritation.',
+    )
+    expect(reason('eu-clp')).toBe(
+      'The health hazard pictogram applies for respiratory sensitisation, so the exclamation ' +
+        'mark may not appear for skin sensitisation or for skin and eye irritation.',
+    )
+  })
+
   it('declines entirely without a classification, rather than guessing', () => {
     // No hazards means no "why", and every conditional clause is unanswerable.
     expect(precedenceSuppressions(['GHS05', 'GHS07'], [], 'eu-clp')).toEqual([])

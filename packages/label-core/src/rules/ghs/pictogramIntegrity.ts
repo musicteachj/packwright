@@ -67,7 +67,7 @@ const EU_SYMBOLS: Citation = {
 
 export const ghsPictogramIntegrityRule: GhsChemicalRule = {
   id: 'ghs/pictogram-integrity',
-  title: 'Every pictogram carries a hazard symbol the regime recognises.',
+  title: 'Every pictogram carries a hazard symbol the regime recognizes.',
   citation: US,
   citations: [US, EU, US_SYMBOLS, EU_SYMBOLS],
   codes: {
@@ -91,7 +91,7 @@ export const ghsPictogramIntegrityRule: GhsChemicalRule = {
             severity: 'violation',
             message:
               `${code} (${pictogram.symbolName}) is not one of the ${isUs ? 'eight' : 'nine'} ` +
-              `hazard symbols this regime recognises.`,
+              `hazard symbols this regime recognizes.`,
             elementId: pictogram.elementId,
             citation: isUs ? US_SYMBOLS : EU_SYMBOLS,
           }),

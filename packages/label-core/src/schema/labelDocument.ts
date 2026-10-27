@@ -306,7 +306,7 @@ export const UpcARequest = z.object({
   barHeightMm: printedMm()
     .optional()
     .describe(
-      'The height of the bars in millimetres. Send it only if the user stated it: a value you ' +
+      'The height of the bars in millimeters. Send it only if the user stated it: a value you ' +
         'supply yourself is judged as the printed label’s. Omitted, check_label gives no ' +
         'verdict on it.',
     ),
@@ -473,7 +473,7 @@ const GhsRequestShape = z.object({
     .number()
     .positive()
     .describe(
-      'The capacity of the package in litres — not the size of the label. Selects the CLP ' +
+      'The capacity of the package in liters, not the size of the label. Selects the CLP ' +
         'Annex I Table 1.3 band the minimum label and pictogram sizes are taken from.',
     ),
   // Both enums are derived from `label-core`'s own lists rather than restated,
@@ -532,7 +532,7 @@ const GhsRequestShape = z.object({
   pictogramSideMm: printedMm()
     .optional()
     .describe(
-      'The side of each pictogram’s square in millimetres, not its diagonal. Omitted, the ' +
+      'The side of each pictogram’s square in millimeters, not its diagonal. Omitted, the ' +
         'minimum for the capacity’s CLP Table 1.3 band is drawn.',
     ),
   stock: StockSchema.optional(),
@@ -869,7 +869,7 @@ export const UsFoodRequestBase = z.object({
   containsStatementFontSizeMm: fontSizeMm()
     .optional()
     .describe(
-      'The "Contains" statement’s em size in millimetres. Omitted, it matches the ingredient ' +
+      'The "Contains" statement’s em size in millimeters. Omitted, it matches the ingredient ' +
         'list.',
     ),
   containsStatementGapMm: z.number().min(0).max(B.printedMm).optional(),
@@ -1079,7 +1079,7 @@ export const CheckStockSchema = z.strictObject(
     marginMm: StockSchema.shape.marginMm
       .optional()
       .describe(
-        'The unprinted border in millimetres, if known. Omitted, the label type’s default is ' +
+        'The unprinted border in millimeters, if known. Omitted, the label type’s default is ' +
           `used — ${DEFAULT_MARGINS_TEXT} — and the answer says it was assumed.`,
       ),
   },
@@ -1092,7 +1092,7 @@ export const CheckStockSchema = z.strictObject(
       issue.code === 'unrecognized_keys'
         ? undefined
         : '`stock` must be the printed label’s size: an object with widthMm and heightMm in ' +
-          'millimetres, and marginMm if known. If the user has not said how big the label is, ' +
+          'millimeters, and marginMm if known. If the user has not said how big the label is, ' +
           'leave `stock` out rather than guess: the checks that depend on it will say so.',
   },
 )
@@ -1199,7 +1199,7 @@ export const LabelCheckRequestOutline = z.strictObject({
         'second for ghs-chemical, the third for us-food.',
     ),
   stock: CheckStockSchema.optional().describe(
-    'The printed label’s size in millimetres — widthMm and heightMm, and marginMm if known ' +
+    'The printed label’s size in millimeters: widthMm and heightMm, and marginMm if known ' +
       '(the unprinted border; the label type’s default is used and said so if not). Beside ' +
       '`data`, not inside it. If the user has not said how big the label is, leave it out ' +
       'rather than guess: everything else is still checked, and the checks that depend on ' +

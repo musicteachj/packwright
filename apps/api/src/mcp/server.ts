@@ -549,7 +549,7 @@ export function createPackwrightMcpServer(): McpServer {
         'notice that no failures is not a statement of compliance. A label the engine cannot ' +
         'draw is answered `refused`, with the reason and a notice that it was not judged. ' +
         '`labelType` selects the shape of `data`. `stock` is the printed label’s width and ' +
-        'height in millimetres. If the user has not said how big the label is, leave it out ' +
+        'height in millimeters. If the user has not said how big the label is, leave it out ' +
         'rather than guess: everything that does not depend on the size is still checked, and ' +
         'the checks that do are listed under `declined`, asking for it — tell the user, and ' +
         'check again once they give it. The answer’s `stockUsed` says the size used, and ' +
@@ -558,7 +558,7 @@ export function createPackwrightMcpServer(): McpServer {
         'on a GHS label whether each pictogram carries its symbol, and whether the text fits at ' +
         'the label’s own type sizes, are not checked. The answer lists each under `uncheckable`, ' +
         'element by element, rather than reporting it as a fault; the symbol check is also ' +
-        'under `declined`, unless a pictogram the regime does not recognise was reported. ' +
+        'under `declined`, unless a pictogram the regime does not recognize was reported. ' +
         'Nothing is passed on a value the request did not state: a barcode’s magnification, bar ' +
         'height and digits wait for those fields, and the checks no field can answer — a US food ' +
         'label’s type sizes and the net quantity’s position, a barcode’s quiet zones — appear ' +

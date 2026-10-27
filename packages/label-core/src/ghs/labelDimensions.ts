@@ -104,7 +104,7 @@ export function dimensionBandFor(capacityL: number): GhsLabelDimensionBand {
     (candidate) => candidate.maxCapacityL === null || capacityL <= candidate.maxCapacityL,
   )
   // The last band is unbounded, so this is unreachable for any finite input.
-  if (!band) throw new Error(`No CLP dimension band covers a capacity of ${capacityL} litres`)
+  if (!band) throw new Error(`No CLP dimension band covers a capacity of ${capacityL} liters`)
   return band
 }
 

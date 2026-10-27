@@ -23,7 +23,7 @@ constrains each step. The knowledge ports; the code does not.
 | Editing model | Guided template wizard (not a free-form canvas) |
 | Scanning | Yes — modern lib, feeding the retail wizard |
 | AI | Vision-based label audit only. LLM extracts; deterministic engine judges. |
-| Design | New system, derived from print production. ANSI Z535.1 severity scale, IBM Plex, graphite/paper. |
+| Design | New system, derived from print production. ANSI Z535.4 severity scale in Z535.1 colors, IBM Plex, graphite/paper. |
 | Stack | Vue 3 + Vite + TS + Pinia, Tailwind v4 + shadcn-vue, Express + Mongoose + MongoDB |
 
 The wizard model is deliberate: because the template owns layout, compliance can be **enforced** rather than
@@ -410,61 +410,74 @@ data enters the wizard's normal path → existing validators run unchanged.
 
 ### The idea
 
-The visual language comes from **print production and technical specification** — die lines, registration
-marks, dimension callouts, spec sheets — not from SaaS dashboard convention. That isn't decoration: it is the
+The visual language comes from **print production and technical specification**: die lines, registration
+marks, dimension callouts and spec sheets, not SaaS dashboard convention. That isn't decoration. It is the
 actual visual vocabulary of the industry the app serves, and it is almost unused on the web.
 
-### Severity colours are ANSI Z535.1
+### Severity follows ANSI Z535
 
-The decision everything else follows from. [ANSI Z535.1](https://www.safetysign.com/what-is-ansiz5351) is the
-US safety colour standard, and it defines exactly a five-level scale: **DANGER red, WARNING orange, CAUTION
-yellow, NOTICE blue, green for safety instructions.** That is precisely the shape of a compliance findings
-panel — and it is the colour system printed on the very labels this app generates.
+The decision everything else follows from. Two standards are involved, and citing the wrong one is easy:
+**ANSI Z535.4** (Product Safety Signs and Labels) defines the signal words, and therefore the scale: DANGER,
+WARNING, CAUTION, NOTICE. **[ANSI Z535.1](https://www.safetysign.com/what-is-ansiz5351)** (Safety Colors)
+defines only the colors they are printed in: red, orange, yellow and blue, with green for safety instructions.
+That scale is precisely the shape of a compliance findings panel.
 
 So the app's own error states use the hazard-communication standard of its own subject matter. Nothing
 arbitrary, and it explains itself in one sentence during a demo.
 
-| Finding severity | ANSI signal | Meaning |
+| Finding severity | Signal word and color | A finding the rules produce |
 |---|---|---|
-| Blocking | DANGER / red | Non-compliant as drawn — export warns |
-| Violation | WARNING / orange | Fails a required rule |
-| Advisory | CAUTION / yellow | Allowed, but near a tolerance limit |
-| Guidance | NOTICE / blue | Best practice — e.g. 2D placement for Sunrise 2027 |
-| Pass | green | Check ran and passed |
+| Blocking | DANGER, red | A GTIN whose check digit is wrong, so no symbol can be drawn |
+| Violation | WARNING, orange | A quiet zone narrower than the specification requires |
+| Advisory | CAUTION, yellow | A Digital Link that uses the deprecated convenience alphas |
+| Guidance | NOTICE, blue | A container small enough for the small-container exemption |
 
-Never colour alone — every severity carries an icon and a text label.
+A blocking finding means the label is non-compliant as drawn. Where part of the label could not be drawn at
+all, as with that check digit, Export is disabled; otherwise Export asks for confirmation before it goes ahead.
+A check that passed is shown in green with the word PASS, which is the app's own word, not a Z535.4 signal
+word, and the passes are collapsed at the bottom of the list.
+
+Never color alone: every severity carries an icon and a text label.
+
+Two kinds of entry are deliberately not verdicts, and sit apart below the findings, under a divider headed "Not
+verdicts". **Cannot be checked** is something the engine cannot certify on this drawing,
+such as a pictogram frame with no symbol in it. **Checks that did not run** names a rule that stood down
+because the label has not stated what it needs; each entry says what to state, with "State" links that jump to
+the field, and carries an "A limit of this tool" tag where the limit is the tool's rather than the label's.
+Neither uses a severity color.
 
 ### Chrome and canvas
 
-**Deep graphite chrome, true paper-white canvas** — the design-tool convention (Figma, InDesign), where the
+**Deep graphite chrome, true paper-white canvas**: the design-tool convention (Figma, InDesign), where the
 artboard floats on a neutral field. Two reasons it's right here rather than merely conventional:
 
 1. **The label must read as paper.** It is the artifact; everything else is apparatus.
-2. **The ANSI palette requires it.** Safety colours are high-chroma by design — meant to be legible across a
+2. **The ANSI palette requires it.** Safety colors are high-chroma by design, meant to be legible across a
    factory floor. On white they are aggressive; on graphite they are calm and readable. The chrome is derived
    from the palette, not chosen ahead of it.
 
-Graphite is warm-neutral (ink, not blue-black) so paper-white reads warm against it rather than glaring.
+Graphite is warm-neutral (ink, not blue-black) so paper-white reads warm against it rather than glaring. The
+interface is dark only.
 
 ### Typography
 
-**IBM Plex Sans + IBM Plex Mono** ([OFL, open source](https://github.com/IBM/plex)).
+**IBM Plex Sans + IBM Plex Mono** ([OFL, open source](https://github.com/IBM/plex)), each in two weights only,
+Regular (400) and SemiBold (600).
 
-- Designed as the typeface of an engineering company, for technical UI — the brief matches exactly
+- Designed as the typeface of an engineering company, for technical UI: the brief matches exactly
 - Plex Sans's figures sit cleanly alongside Plex Mono in tabular contexts. This matters concretely: dimensions
   update live as you type, and non-tabular figures make the readout jitter on every keystroke
-- Plex Sans Condensed for dense data columns
 - It does not carry the Inter/Roboto "generated app" signal
 
-Mono for anything that is an identifier or a measurement — GTINs, SSCCs, element strings
-`(01)09506000134352(10)ABC7`, H-codes, millimetre values. Sans for everything else.
+Mono for anything that is an identifier or a measurement: GTINs, element strings
+`(01)09506000134352(10)ABC7`, H-codes, millimeter values. Sans for everything else.
 
 ### Motifs
 
-- **Dimension callouts** — thin rules with tick ends and a measurement label, straight out of engineering
-  drawing. Used literally on the canvas (label dimensions, quiet-zone widths, type heights) and echoed as
-  section dividers in the UI. The app is about measuring things against a standard, so measurement notation
-  *is* the brand.
+- **Dimension callouts**: thin rules with tick ends and a measurement label, straight out of engineering
+  drawing. Used literally on the canvas: the label's size under every preview, and, with the Dimensions overlay
+  on, a callout under each barcode symbol. The app is about measuring things against a standard, so
+  measurement notation *is* the brand.
 - **Registration target on a dimension line**: the logo mark (`BrandMark.vue`), chosen in Claude Design on
   2026-10-17 as direction 2b. A registration target whose horizontal arm ends in dimension ticks, set in
   `chrome-100`; until then the mark was the font glyph ⊕ in `notice` blue. The rounds, the masters and the reasons
@@ -475,8 +488,8 @@ Mono for anything that is an identifier or a measurement — GTINs, SSCCs, eleme
 
 ### Density and anti-patterns
 
-Spec-sheet dense, on a 4px rhythm. Hairline rules in preference to cards; small label type (12–13px) with
-generous line-height. Lavish whitespace reads as marketing — this is a professional instrument.
+Spec-sheet dense, on a 4px rhythm. Hairline rules in preference to cards; small interface type (mostly 12 and
+14px) with generous line-height. Lavish whitespace reads as marketing; this is a professional instrument.
 
 Explicitly avoided: **purple/pink gradients** (the current generated-app signature), glassmorphism, floating
 cards with large shadows, emoji as icons, uniformly rounded corners. The subject matter is exacting; the
@@ -488,73 +501,85 @@ interface should look exacting.
 
 | Route | Purpose |
 |---|---|
-| `/` | Landing — portfolio front door. Live-rendering label, the three types, the audit demo. |
-| `/labels` | Saved labels. Type badge and compliance status per card. |
-| `/labels/new` | Type chooser — three cards, each showing a real rendered example rather than an icon. |
-| `/labels/:id` | **The editor.** This is the app. |
-| `/audit` | Photo/camera label audit (mobile-first). |
-| `/rules` | The rule catalogue — every encoded rule with its citation, browsable. |
+| `/` | Landing, the portfolio front door. Three labels (GS1, GHS, FDA food) rendered live in the page by the same engines the PDF export uses, and a grid of dimensions traced to their sources. |
+| `/labels` | Saved labels: the labels this browser saved, one row each with its name, type, date and a Delete that confirms inline. The app keeps 200 labels and removes each one 30 days after its last change. |
+| `/labels/new` | The editor, on a new, unsaved document: the GS1 starter label on a fresh load, or otherwise whatever the editor last held, unnamed and no longer attached to a saved label. The audit's "Open in the editor" also lands here. The label type is chosen with the select in the editor header. |
+| `/labels/:id` | **The editor**, on a saved label. This is the app. Only the browser that saved a label can change it; anyone else can Save as new. |
+| `/audit` | Photo or camera label audit (mobile-first), with a sample label that needs no audit key. |
+| `/rules` | The rule catalog: every encoded rule with its citation, browsable. |
+| `/design` | The interface catalog: the severity colors and every form control, rendered by the app's own components. |
+| any other path | A 404 page that names the missing path. |
 
-`/rules` is nearly free, since it just renders the rule registry that already exists — and it is the single
-strongest proof of domain depth anywhere in the app. Worth building.
+`/rules` renders the rule registry directly, and it is the single strongest proof of domain depth anywhere in
+the app.
 
 ### The editor
 
 ```
-┌─ ⊕ label ─────────────────────────────────────────────────────┐
-│ Form rail  │           canvas               │  findings       │
-│            │      ┌──────────────┐          │                 │
-│ ▸ Product  │   ⌐  │              │  ⌐       │ ▲ WARNING       │
-│ ▸ Hazards  │      │  paper-white │          │   Quiet zone    │
-│ ▸ Supplier │      │    label     │          │   6.2X — needs  │
-│ ▸ Stock    │      │              │          │   ≥ 9X (UPC-A)  │
-│            │   ⌐  │              │  ⌐       │   GenSpec 5.2.3 │
-│            │      └──────────────┘          │                 │
-│            │      |◄─── 52 mm ───►|         │ ⓘ NOTICE        │
-│            │                                │   Place 2D near │
-│            │   fit · 100% · 200%            │   the linear    │
-│            │   ☑ quiet zones  ☐ PDP  ☑ dims │                 │
-│            │                                │ ✓ 18 passed  ▾  │
+┌─ mark · type ▾ · name ─── Save · Save as new · Export PDF ────┐
+│ Form       │            Preview             │ Compliance      │
+│            │                                │ ▲ 1  ✓ 5  □ 1   │
+│ Product    │      ┌──────────────┐          │ ▲ WARNING       │
+│ Symbol     │   ⌐  │              │  ⌐       │   Left quiet    │
+│ Stock      │      │  paper-white │          │   zone 1.33 mm, │
+│ Artwork    │      │    label     │          │   needs 2.97 mm │
+│ Digital    │   ⌐  │              │  ⌐       │   GS1 Gen Specs │
+│ Link       │      └──────────────┘          │                 │
+│            │      |◄── 60.00 mm ──►|        │ NOT VERDICTS    │
+│            │                                │ □ Cannot be     │
+│            │   Fit · 100% · 200%            │   checked       │
+│            │   ☑ Quiet zones  ☐ Dimensions  │                 │
+│            │                                │ ▸ ✓ 5 passed    │
 └────────────┴────────────────────────────────┴─────────────────┘
 ```
 
-- **Left rail (~380px) — the form.** Sectioned, **not stepped**. A linear stepper fights label editing, where
-  you jump between fields constantly. Sections stay open, each with a completeness indicator.
-- **Centre — the canvas.** True-scale SVG on the neutral field. Zoom (fit / 100% / 200%), a live dimension
-  readout, and overlay toggles: quiet zones (hatched), PDP boundary, safe margins, bleed/die line, dimensions.
-- **Right rail (~320px) — findings.** Grouped by ANSI severity. Each states the claim, the measured-vs-required
-  value, and the citation. Passes collapsed at the bottom — "18 checks passed" is both reassuring and evidence
-  of thoroughness.
+- **Header.** The mark, the label type select, the label's name (required to save), its save state, Save,
+  Save as new (on saved labels only), and Export PDF.
+- **Left rail (380px): the form.** Sectioned, **not stepped**. A linear stepper fights label editing, where you
+  jump between fields constantly. Sections stay open, and many show a status figure in their heading, such as
+  "12 digits" or "60 × 40 mm".
+- **Center: the preview.** True-scale SVG on the neutral field, with crop marks and the label's dimensions
+  beneath. Zoom (Fit / 100% / 200%), a live readout (for GS1: the GTIN, X-dimension, clear space and the quiet
+  zone it needs), and two overlay toggles: Quiet zones (hatched, on by default) and Dimensions. A "Label contents
+  as text" table sits under the preview.
+- **Right rail (340px): compliance.** A count strip, then findings grouped by ANSI severity. Each states the
+  claim, the measured-vs-required value, and the citation. Below them, the "Not verdicts" entries. Passes are
+  collapsed at the bottom: "6 checks passed" is both reassuring and evidence of thoroughness.
 
 ### The signature interaction
 
-**Click a finding → the offending element outlines on the canvas, the canvas scrolls to it, and the responsible
-form field highlights.** Bidirectional: focus a field and its element highlights.
+**Click a finding, and the element it is about is outlined on the canvas; where a form section drives that
+element, the section is highlighted and scrolled into view.** It works both ways: focusing a field selects the
+element its section drives.
 
 That one link is what turns the compliance engine from a wall of text into something you can *see*. It is also
-the demo moment. It belongs in phase 3, alongside the rule engine — not in polish afterwards.
+the demo moment.
 
 ### Responsive
 
 An honest split rather than one-size-fits-all:
 
 - **Editor: desktop-first.** A phone is a bad place to lay out a 100 × 150 mm label, and pretending otherwise
-  produces a worse desktop tool. Below 1024px the three panes collapse to a segmented control —
-  Form / Preview / Checks.
-- **Scan and audit: mobile-first.** These are inherently phone tasks — camera in hand, label on the shelf.
+  produces a worse desktop tool. Below 1024px the three panes become Form / Preview / Checks tabs, opening on
+  Preview.
+- **Scan and audit: mobile-first.** These are inherently phone tasks: camera in hand, label on the shelf.
 
 ### Accessibility
 
-Beyond the baseline (visible labels, focus order, focus-first-invalid-field on submit, `role="alert"` on
-findings, 4.5:1 contrast):
+Beyond the baseline (visible labels, focus order, a skip link):
 
-- **Severity never by colour alone** — icon plus text on every finding.
+- **Severity never by color alone**: icon plus text on every finding.
 - **The canvas is an SVG and needs a text equivalent.** A "label contents as text" view listing every element
-  and its position. It's an accessibility requirement that turns out to be broadly useful — it is also the
+  and its position. It's an accessibility requirement that turns out to be broadly useful: it is also the
   fastest way to eyeball what the layout engine actually produced.
-- **GHS pictograms carry a `<title>`** naming the hazard, not just "pictogram".
-- Motion is near-zero by default and respects `prefers-reduced-motion`. The only animation that earns its place
-  is a dimension callout drawing itself when an overlay toggles, and a finding's highlight on the canvas.
+- **GHS pictograms are named by their hazard symbol**, not just "pictogram": the text view lists each one as,
+  for example, "GHS02 pictogram (flame)". The SVG carries one `<title>` for the whole drawing.
+- **In the editor, findings are announced politely, as one summary line**, through a single announcer, rather
+  than as alerts. The audit's findings are not announced. A save or an open that fails is said with
+  `role="alert"`.
+- **Motion is near-zero.** The interface has no animation; the only motion is the smooth scroll that brings a
+  form section into view. `prefers-reduced-motion` shortens CSS animations and transitions to almost nothing,
+  but it does not reach that scripted scroll.
 
 ---
 
@@ -807,7 +832,8 @@ copy-adapt from the old repo.
   `"refusal"` and `content` is empty.
 - **Accessibility pass** — keyboard-only walk of the editor; contrast-check every ANSI severity pairing against
   the graphite chrome (safety colours are chosen for factory-floor legibility, not for screens, so none of them
-  can be assumed to pass); confirm findings announce via `role="alert"`; confirm the canvas text-equivalent
+  can be assumed to pass); confirm the editor announces its findings politely, as one summary line, and that
+  a failed save or open is said with `role="alert"`; confirm the canvas text-equivalent
   view lists every element.
 - **Responsive check** at 375 / 768 / 1024 / 1440, including the three-pane → segmented-control collapse, and
   with `prefers-reduced-motion` enabled.

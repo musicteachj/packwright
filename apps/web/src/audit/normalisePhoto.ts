@@ -50,7 +50,7 @@ export function scaleFor(
 ): { readonly widthPx: number; readonly heightPx: number } {
   const longest = Math.max(widthPx, heightPx)
   if (!Number.isFinite(longest) || longest <= 0) {
-    throw new Error('A photograph with no dimensions cannot be normalised.')
+    throw new Error('A photograph with no dimensions cannot be normalized.')
   }
   if (longest <= MAX_LONG_EDGE_PX) return { widthPx, heightPx }
 

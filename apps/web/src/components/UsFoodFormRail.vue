@@ -75,6 +75,7 @@ import TextField from './ui/TextField.vue'
 import MeasurementField from './ui/MeasurementField.vue'
 import SelectField from './ui/SelectField.vue'
 import CheckboxField from './ui/CheckboxField.vue'
+import { anchorName } from '../anchorNames'
 
 const store = useLabelDocumentStore()
 const data = store.foodData
@@ -1663,7 +1664,7 @@ const packaging = computed({
         placeholder="(340 g)"
       />
       <p class="text-chrome-400 text-xs">
-        Typed, not converted. Working out the equivalent is the labeller's job — this tool will not
+        Typed, not converted. Working out the equivalent is the labeler's job; this tool will not
         author half of a regulated statement.
       </p>
 
@@ -1715,7 +1716,9 @@ const packaging = computed({
       </p>
 
       <SelectField id="field-food-anchor" v-model="anchor" label="Placement on the panel">
-        <option v-for="value in ANCHORS" :key="value" :value="value">{{ value }}</option>
+        <option v-for="value in ANCHORS" :key="value" :value="value">
+          {{ anchorName(value) }}
+        </option>
       </SelectField>
       <p class="text-chrome-400 text-xs">
         21 CFR 101.7(f) wants the declaration in the bottom 30% of the panel, on all but the
@@ -1737,7 +1740,7 @@ const packaging = computed({
       <SelectField
         id="field-food-ing-exemption"
         v-model="ingredientsExemption"
-        label="Exemption from ingredient labelling"
+        label="Exemption from ingredient labeling"
       >
         <option value="">None claimed</option>
         <option v-if="ingredientsExemption === 'unstated'" value="unstated">
@@ -2002,7 +2005,7 @@ const packaging = computed({
       <SelectField
         id="field-food-nf-exemption"
         v-model="nutritionExemption"
-        label="Exemption from nutrition labelling"
+        label="Exemption from nutrition labeling"
       >
         <option value="">None claimed</option>
         <option v-if="nutritionExemption === 'unstated'" value="unstated">
@@ -2014,7 +2017,7 @@ const packaging = computed({
       </SelectField>
       <p v-if="exemptionUnused" class="text-chrome-300 text-xs" data-exemption-unused>
         The label prints a Nutrition Facts panel, so it is not using this exemption, and the panel
-        is judged like any other. Untick the panel below to rely on the exemption instead.
+        is judged like any other. Uncheck the panel below to rely on the exemption instead.
       </p>
 
       <template v-if="nutritionExemption === 'small-package'">
@@ -2348,7 +2351,7 @@ const packaging = computed({
       <CheckboxField
         id="field-food-nf-raw-commodity"
         v-model="rawCommodityVoluntary"
-        label="A raw fruit, vegetable or seafood labelled voluntarily — (b)(12)(i)(B)"
+        label="A raw fruit, vegetable or seafood labeled voluntarily — (b)(12)(i)(B)"
       />
 
       <CheckboxField

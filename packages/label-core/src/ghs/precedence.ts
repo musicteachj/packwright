@@ -113,6 +113,7 @@ export function precedenceSuppressions(
   const why07 = hazardsRequiring(hazardIds, 'GHS07')
   const why08 = hazardsRequiring(hazardIds, 'GHS08')
   const isUs = regime === 'us-osha'
+  const sensitization = isUs ? 'sensitization' : 'sensitisation'
   const out: PrecedenceSuppression[] = []
 
   // **The exclamation mark goes only when every reason for it is barred.**
@@ -175,9 +176,13 @@ export function precedenceSuppressions(
       bars: sensitisationOrIrritation,
       outright: false,
       clause: isUs ? 'C.2.1.4' : 'Article 26(1)(d)',
+      // Two words follow each regime's text: OSHA C.2.1.4 writes "sensitization" and
+      // "skin or eye irritation", CLP 26(1)(d) "sensitisation", its hazard class name, and
+      // "skin and eye irritation". The rest of the sentence is this tool's.
       reason:
-        'The health hazard pictogram applies for respiratory sensitisation, so the exclamation ' +
-        'mark may not appear for skin sensitisation or skin and eye irritation.',
+        `The health hazard pictogram applies for respiratory ${sensitization}, so the ` +
+        `exclamation mark may not appear for skin ${sensitization} or for skin ` +
+        `${isUs ? 'or' : 'and'} eye irritation.`,
     },
   ]
   if (has('GHS07')) {

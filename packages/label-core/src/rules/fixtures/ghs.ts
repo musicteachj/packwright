@@ -133,7 +133,7 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
   },
   {
     name: 'a label smaller than its capacity band allows',
-    defect: 'A 5-litre package requires at least 74 × 105 mm; this label is 50 × 70 mm.',
+    defect: 'A 5-liter package requires at least 74 × 105 mm; this label is 50 × 70 mm.',
     data: { ...BASE, hazards: [HAZARDS.flammableLiquid] },
     stock: { widthMm: 50, heightMm: 70, marginMm: 3 },
     expected: {
@@ -149,7 +149,7 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
     // `violation` alone passed every test while misdescribing the code.
     name: 'a label smaller than the best-effort size for a small package',
     defect:
-      'A 1-litre package should, if possible, carry at least 52 × 74 mm; this label is 40 × 60 mm.',
+      'A 1-liter package should, if possible, carry at least 52 × 74 mm; this label is 40 × 60 mm.',
     data: { ...BASE, capacityL: 1, hazards: [HAZARDS.flammableLiquid] },
     stock: { widthMm: 40, heightMm: 60, marginMm: 3 },
     expected: {
@@ -160,7 +160,7 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
   },
   {
     name: 'a pictogram below the minimum for its band',
-    defect: 'A 5-litre package requires 23 mm pictograms; these are drawn at 8 mm.',
+    defect: 'A 5-liter package requires 23 mm pictograms; these are drawn at 8 mm.',
     data: { ...BASE, hazards: [HAZARDS.flammableLiquid], pictogramSideMm: 8 },
     stock: CONFORMING_STOCK,
     expected: {
@@ -247,7 +247,7 @@ export const GHS_FIXTURES: readonly GhsRuleFixture[] = [
   },
   {
     name: 'the environment pictogram on a US label',
-    defect: 'OSHA recognises eight hazard symbols; GHS09 is not among them.',
+    defect: 'OSHA recognizes eight hazard symbols; GHS09 is not among them.',
     // Declared, not derived. The engine no longer derives GHS09 for a US label —
     // drawing it and then reporting it blamed the label for the tool — so this
     // fixture holds what `ghs/pictogram-integrity` reports of a label that prints it.

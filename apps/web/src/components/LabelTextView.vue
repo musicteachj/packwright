@@ -38,7 +38,7 @@ const rows = computed(() =>
 
     <table class="mt-3 w-full text-left text-xs">
       <caption class="sr-only">
-        Every element on the label, with its position and size in millimetres
+        Every element on the label, with its position and size in millimeters
       </caption>
       <thead class="text-chrome-400">
         <tr>

@@ -308,7 +308,7 @@ export const usFoodIngredientListRule: UsFoodRule = {
           code: FDA_INGREDIENTS_EXEMPTION_UNSTATED,
           severity: 'advisory',
           message:
-            'The label is marked exempt from ingredient labelling without saying which § 101.100 ' +
+            'The label is marked exempt from ingredient labeling without saying which § 101.100 ' +
             'exemption it claims. Each carries its own conditions, so the claim cannot be judged ' +
             'until the paragraph is stated.',
           measurement: {
