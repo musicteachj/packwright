@@ -68,17 +68,21 @@ export interface AuditRefusal {
  * will run" would ask for something the screen cannot take. It is said as a limit of
  * the tool instead. Found by `/code-review max` on 2026-10-27.
  */
-const NOT_ASKED_HERE: readonly DeclinedFact[] = ['pictogramSideMm']
-
 export const PICTOGRAM_SIZE_NOT_ASKED_HERE =
   'The audit has no field for how large the pictograms are printed, and Packwright would ' +
   'otherwise measure its own default, the minimum for the capacity band. So it gives no verdict ' +
   'on their size here. That is a limit of this tool, not a fault found in your label.'
 
-const asTheAuditCanAnswer = (check: DeclinedCheck): DeclinedCheck =>
-  check.wants.length > 0 && check.wants.every((fact) => NOT_ASKED_HERE.includes(fact))
-    ? { ...check, reason: PICTOGRAM_SIZE_NOT_ASKED_HERE, wants: [], limit: true }
-    : check
+/** Each fact this screen cannot take, with what to say in place of asking for it. */
+const NOT_ASKED_HERE: Readonly<Partial<Record<DeclinedFact, string>>> = {
+  pictogramSideMm: PICTOGRAM_SIZE_NOT_ASKED_HERE,
+}
+
+const asTheAuditCanAnswer = (check: DeclinedCheck): DeclinedCheck => {
+  const said = check.wants.map((fact) => NOT_ASKED_HERE[fact])
+  if (said.length === 0 || said.some((reason) => reason === undefined)) return check
+  return { ...check, reason: [...new Set(said)].join(' '), wants: [], limit: true }
+}
 
 export function auditReport(
   data: GhsLabelData,

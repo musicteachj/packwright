@@ -38,6 +38,7 @@ import {
   PICTOGRAM_MIN_FRACTION_OF_LABEL,
   dimensionBandFor,
 } from '../../ghs/labelDimensions'
+import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { Citation, Finding } from '../../types/index'
 import { verdictWaitsOnADescribedLabel } from '../described'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
@@ -64,7 +65,7 @@ const judgedAsDrawn: GhsChemicalRule = {
   },
   appliesTo: 'ghs-chemical',
 
-  check({ data, layout }: GhsChemicalContext): Finding[] {
+  check({ data, layout, subject }: GhsChemicalContext): Finding[] {
     if (data.regime !== 'eu-clp') return []
 
     const findings: Finding[] = []
@@ -75,7 +76,23 @@ const judgedAsDrawn: GhsChemicalRule = {
       band.labelWidthMm * band.labelHeightMm * PICTOGRAM_MIN_FRACTION_OF_LABEL,
       PICTOGRAM_MIN_AREA_SQ_MM,
     )
-    for (const pictogram of layout.pictograms) {
+    // On a label printed elsewhere the request states one side, the smallest the label
+    // prints, and every pictogram is drawn at it. Judged pictogram by pictogram, a 25 mm
+    // GHS02 beside a 15 mm GHS07 came back as "The GHS02 pictogram is 15.0 mm square", a
+    // compliant pictogram misstated as undersized. So there the stated side is judged once,
+    // about the pictograms as a row. Found by `/code-review high` on #118.
+    const judged =
+      subject === 'described'
+        ? layout.pictograms.slice(0, 1).map((pictogram) => ({
+            ...pictogram,
+            named: 'The smallest pictogram is stated as',
+            elementId: GHS_ELEMENTS.pictograms,
+          }))
+        : layout.pictograms.map((pictogram) => ({
+            ...pictogram,
+            named: `The ${pictogram.code} pictogram is`,
+          }))
+    for (const pictogram of judged) {
       const tooSmall = pictogram.drawnSideMm < pictogram.requiredSideMm - MEASUREMENT_TOLERANCE_MM
 
       if (tooSmall) {
@@ -84,7 +101,7 @@ const judgedAsDrawn: GhsChemicalRule = {
             code: GHS_PICTOGRAM_BELOW_MINIMUM_SIZE,
             severity: 'violation',
             message:
-              `The ${pictogram.code} pictogram is ${mm(pictogram.drawnSideMm)} square; a package in ` +
+              `${pictogram.named} ${mm(pictogram.drawnSideMm)} square; a package in ` +
               `Table 1.3's "${band.capacityText}" band requires ${mm(pictogram.requiredSideMm)}.`,
             measurement: {
               actual: mm(pictogram.drawnSideMm),
@@ -101,7 +118,7 @@ const judgedAsDrawn: GhsChemicalRule = {
           passedOnArtwork(
             ghsPictogramSizeRule,
             GHS_PICTOGRAM_SIZE_MET,
-            `The ${pictogram.code} pictogram is ${mm(pictogram.drawnSideMm)} square, covering ` +
+            `${pictogram.named} ${mm(pictogram.drawnSideMm)} square, covering ` +
               `${sqMm(pictogram.drawnAreaSqMm)}, which meets Table 1.3` +
               // The first band's label is "If possible, at least 52 × 74", no minimum to take a
               // fifteenth of, so nothing is said of the fraction there, either way. Found by

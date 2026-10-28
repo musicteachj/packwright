@@ -58,8 +58,19 @@ describe('a described label is judged as drawn, less what the drawing made up', 
 
     // Removed, never added: a described label's findings are a subset of the
     // drawing's, so no pass can have appeared by standing a rule down.
-    expect(described.findings).toEqual(
-      drawing.findings.filter((one) => one.code !== GHS_PICTOGRAM_SYMBOL_MISSING),
+    const size = (one: { code: string }) => one.code === GHS_PICTOGRAM_BELOW_MINIMUM_SIZE
+    expect(described.findings.filter((one) => !size(one))).toEqual(
+      drawing.findings.filter((one) => one.code !== GHS_PICTOGRAM_SYMBOL_MISSING && !size(one)),
+    )
+    // The size verdict is the drawing's, said once about the stated side rather than once per
+    // pictogram (every pictogram is drawn at that one side): same code, severity and figures.
+    const verdict = ({ code, severity, measurement }: Judgement['findings'][number]) => ({
+      code,
+      severity,
+      measurement,
+    })
+    expect(described.findings.filter(size).map(verdict)).toEqual(
+      drawing.findings.filter(size).map(verdict).slice(0, 1),
     )
     // The omissions themselves still stand, element by element, so every pass the
     // drawing withheld is withheld here too.
@@ -95,6 +106,22 @@ describe('the pictogram size, on a label printed elsewhere', () => {
     const described = judged({ ...eu, pictogramSideMm: 15 }, GHS_CONFORMANT.stock, 'described')
     expect(undersized(described)).toHaveLength(1)
     expect(sizeCheck(described)).toBeUndefined()
+  })
+
+  it('judges the stated side once, without naming a pictogram it did not measure', () => {
+    // A 25 mm GHS02 beside a 15 mm GHS07, described by its smallest side: judged pictogram
+    // by pictogram it came back as "The GHS02 pictogram is 15.0 mm square". Found by
+    // `/code-review high` on #118.
+    const two = judged(
+      { ...eu, pictograms: ['GHS02', 'GHS07'], pictogramSideMm: 15 },
+      GHS_CONFORMANT.stock,
+      'described',
+    )
+    const [only, ...more] = undersized(two)
+    expect(more).toEqual([])
+    expect(only!.message).toMatch(/^The smallest pictogram is stated as 15\.00 mm square/)
+    expect(only!.message).not.toMatch(/GHS0\d/)
+    expect(only!.elementId).toBe(GHS_ELEMENTS.pictograms)
   })
 
   it('reports nothing against a stated side that meets it, and asks for nothing', () => {
@@ -155,12 +182,12 @@ describe('pictogram symbols, on a label printed elsewhere', () => {
     expect(integrity!.citation.reference).toBe(
       'Regulation (EC) No 1272/2008 (CLP), Annex I, 1.2.1.2',
     )
-    expect(integrity!.reason).toContain(
-      'A pictogram whose stated size is smaller than CLP’s minimum is still reported.',
-    )
-    expect(SYMBOL_NOT_SEEN_BECAUSE['eu-clp']).toContain(
-      'A pictogram whose stated size is smaller than CLP’s minimum is still reported.',
-    )
+    // Conditional, because the photo audit can state no size at all. Found by
+    // `/code-review high` on #118.
+    const promise =
+      'Where a pictogram’s size is stated, one smaller than CLP’s minimum is still reported.'
+    expect(integrity!.reason).toContain(promise)
+    expect(SYMBOL_NOT_SEEN_BECAUSE['eu-clp']).toContain(promise)
     expect(reasonsOf(described)).toContain(
       `The GHS02 symbol (flame) is not checked. ${SYMBOL_NOT_SEEN_BECAUSE['eu-clp']}`,
     )

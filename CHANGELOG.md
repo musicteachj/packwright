@@ -16,19 +16,22 @@ into a version only when there is a reason to.
   check could never fail and said nothing, while the answer told the user that a pictogram smaller than CLP's
   minimum "is still reported". It now appears under the checks that did not run and asks for the side of the
   smallest pictogram: the request carries one side, drawn for every pictogram, and asked for "each" a label with
-  one large pictogram and one small could send the large and clear the small. The field's description and
-  `check_label`'s description say so, on an EU label only, since OSHA sets no minimum; the two sentences that
-  promised the report now say it is a stated size that is reported. The photo audit has no field for the size, so
-  there the check is listed as a limit of this tool, which `docs/WHAT-IS-NOT-CHECKED.md` says, and the backlog
-  entry that anticipated this fix is gone. Found by `/code-review max` on 2026-10-27.
+  one large pictogram and one small could send the large and clear the small. Because that one side may stand for
+  several sizes, the check judges it once, as the smallest pictogram's, rather than pictogram by pictogram, which
+  told a compliant 25 mm pictogram it was 15 mm. The field's description and `check_label`'s description say so,
+  on an EU label only, since OSHA sets no minimum, and the two sentences that promised the report now say that
+  where a pictogram's size is stated, one smaller than CLP's minimum is reported. The photo audit has no field for
+  the size, so there the check is listed as a limit of this tool, which `docs/WHAT-IS-NOT-CHECKED.md` says, and
+  the backlog entry that anticipated this fix is gone. Found by `/code-review max` on 2026-10-27, and the judging
+  once by `/code-review high` on #118.
 
 - **A raw fruit, vegetable or seafood that makes a claim can claim 21 CFR 101.9(b)(12)(i)(B).** (B) excuses "raw
   fruits, vegetables, and seafood for which voluntary nutrition labeling is provided in the product labeling or
   advertising or when claims are made about the product" (read from the eCFR on 2026-10-27), and the form's box
   for it said only "labeled voluntarily", so a raw fillet carrying a claim left it unticked and was reported for a
-  second column the regulation excuses. The box, the field's note and its `/mcp` description now name both limbs.
-  The stored field keeps its name, `rawCommodityVoluntary`, because saved labels and requests carry it. Found by
-  `/code-review max` on 2026-10-27.
+  second column the regulation excuses. The box, the field's note and its `/mcp` description now name both limbs,
+  the description in the regulation's own words. The stored field keeps its name, `rawCommodityVoluntary`, because
+  saved labels and requests carry it. Found by `/code-review max` on 2026-10-27.
 
 - **The audit no longer cites a regulation for a signal word it cannot carry.** It explained one as "not one of
   the two signal words CLP Article 20 defines" on every audit, a US one included, and Article 20 defines nothing:

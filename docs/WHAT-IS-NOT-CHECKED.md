@@ -320,11 +320,12 @@ are on your label, where this tool cannot see them, so the symbol check gives no
 is listed under "cannot be checked", and the check itself appears under "checks that did not run" as a limit of
 this tool, unless the label also carries a pictogram its regime does not recognize, which is reported, and then
 the "cannot be checked" list is where it says so. A small container's check stands down the same way where the
-unseen symbols are all it cannot confirm. On an EU label, a pictogram whose stated size is smaller than CLP's minimum is still reported, though none is
+unseen symbols are all it cannot confirm. On an EU label, where a pictogram's size is stated, one smaller than CLP's minimum is still reported, though none is
 passed for its size, since a pictogram whose symbol nobody has seen is not one this tool can clear. Where the size
 is not stated, the size check is listed under "checks that did not run" and asks for the side of the smallest
 pictogram, because Packwright would otherwise measure its own default, which is the minimum itself, and it draws
-every pictogram at the one side it is given. The photo audit has no field for that size, so there the check is
+every pictogram at the one side it is given; that side is judged once, as the smallest pictogram's, so a finding
+about it never names a pictogram the request did not measure. The photo audit has no field for that size, so there the check is
 listed as a limit of this tool. OSHA sets no minimum.
 
 **Type sizes are the same kind of gap.** A GHS label's description carries no type sizes, so Packwright sets its

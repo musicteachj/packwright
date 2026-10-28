@@ -804,9 +804,10 @@ export const NutritionFactsSchema = z.object({
         .boolean()
         .optional()
         .describe(
-          'True for a raw fruit, vegetable or seafood whose nutrition labeling is voluntary, ' +
-            'or about which a claim is made: either way 21 CFR 101.9(b)(12)(i)(B) excuses it ' +
-            'from a second column. Leave it out for any other food.',
+          'True for a raw fruit, vegetable or seafood for which voluntary nutrition labeling ' +
+            'is provided in its labeling or advertising, or about which a claim is made: either ' +
+            'way 21 CFR 101.9(b)(12)(i)(B) excuses it from a second column. Leave it out for ' +
+            'any other food.',
         ),
       variedWeight: z.boolean().optional(),
     })
