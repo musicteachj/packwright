@@ -78,6 +78,11 @@ export function noVerdictOnADescribedLabel<TContext extends RuleContext>(
  * drawing, violations included — the fields named here are the design values the
  * regulation measures (GS1's magnification, bar height and whether the digits are
  * printed), so a verdict on them is a verdict on the label.
+ *
+ * A GHS pictogram's side waits here too, with one difference: the request carries one
+ * side, the smallest pictogram's, for a label that may print several sizes. A verdict on
+ * it is a verdict on that smallest pictogram, not on each, which `ghs/pictogram-size`
+ * says by judging it once, as a row.
  */
 export function verdictWaitsOnADescribedLabel<TContext extends RuleContext>(
   rule: Rule<TContext>,

@@ -210,6 +210,12 @@ describe.each(['legacy', 'modern'] as const)('in the %s protocol era', (era) => 
     expect(advertised).toContain('not the size of the label')
     expect(advertised).toContain('Leave it out entirely if the label has no')
     expect(advertised).toContain(`${DEFAULT_US_FOOD_STOCK.marginMm} mm for us-food`)
+    // 21 CFR 101.9(b)(12)(i)(B)'s second limb (2026-10-27): without it a raw commodity
+    // making a claim is reported for a second column the regulation excuses.
+    expect(advertised).toContain('for which voluntary nutrition labeling is provided')
+    expect(advertised).toContain('or about which a claim is made')
+    // One side is drawn for every pictogram, so the smallest is asked for (2026-10-27).
+    expect(advertised).toContain('The side of the smallest pictogram’s square')
   })
 
   it('answers check_label with the judge’s verdict, in both forms', async () => {

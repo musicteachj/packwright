@@ -8,6 +8,44 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Fixed
+
+- **On a GHS label printed elsewhere, the pictogram-size check waits for the size rather than measuring its own
+  default.** With no `pictogramSideMm` stated, the engine draws each pictogram at its CLP Table 1.3 band's minimum
+  and records that as both the size drawn and the size required, so on a label checked through `check_label` the
+  check could never fail and said nothing, while the answer told the user that a pictogram smaller than CLP's
+  minimum "is still reported". It now appears under the checks that did not run and asks for the side of the
+  smallest pictogram: the request carries one side, drawn for every pictogram, and asked for "each" a label with
+  one large pictogram and one small could send the large and clear the small. Because that one side may stand for
+  several sizes, the check judges it once, as the smallest pictogram's, rather than pictogram by pictogram, which
+  told a compliant 25 mm pictogram it was 15 mm. The field's description and `check_label`'s description say so,
+  on an EU label only, since OSHA sets no minimum, and the two sentences that promised the report now say that
+  where a pictogram's size is stated, one smaller than CLP's minimum is reported. The photo audit has no field for
+  the size, so there the check is listed as a limit of this tool, which `docs/WHAT-IS-NOT-CHECKED.md` says, and
+  the backlog entry that anticipated this fix is gone. Found by `/code-review max` on 2026-10-27, and the judging
+  once by `/code-review high` on #118.
+
+- **A raw fruit, vegetable or seafood that makes a claim can claim 21 CFR 101.9(b)(12)(i)(B).** (B) excuses "raw
+  fruits, vegetables, and seafood for which voluntary nutrition labeling is provided in the product labeling or
+  advertising or when claims are made about the product" (read from the eCFR on 2026-10-27), and the form's box
+  for it said only "labeled voluntarily", so a raw fillet carrying a claim left it unticked and was reported for a
+  second column the regulation excuses. The box, the field's note and its `/mcp` description now name both limbs,
+  the description in the regulation's own words. The stored field keeps its name, `rawCommodityVoluntary`, because
+  saved labels and requests carry it. Found by `/code-review max` on 2026-10-27.
+
+- **The audit no longer cites a regulation for a signal word it cannot carry.** It explained one as "not one of
+  the two signal words CLP Article 20 defines" on every audit, a US one included, and Article 20 defines nothing:
+  it requires the relevant signal word on the label and bars "Warning" beside "Danger". Citing CLP Article 2(4),
+  which does define the two words, would have been untrue as well, because it defines them in every official
+  language, and a German label's "Gefahr" is a correct signal word this build does not carry. It now says what is
+  true of every audit: not one of the two signal words this build carries, Danger and Warning. Articles 2(4) and
+  20 and 29 CFR 1910.1200(c) read on 2026-10-27. Found by `/code-review max` twice that day.
+
+- **The audit's help text gives the CLP minimum for the right band.** It called 74 × 105 mm "the smallest label
+  CLP permits for a three-liter package", but Table 1.3 puts a 3 liter package in its first band, "If possible, at
+  least 52 × 74"; 74 × 105 is the next band's hard minimum. It now says that 74 × 105 is required for a package of
+  more than 3 liters and up to 50. Found by `/code-review max` on 2026-10-27.
+
 ### Changed
 
 - **What the application says is in American English.** The form labels and help text, the landing, audit and

@@ -827,6 +827,18 @@ describe('the Nutrition Facts displays, from the editor', () => {
       expect(store.failures.map((f) => f.code)).toContain('FDA_DUAL_COLUMN_MISSING')
     })
 
+    it('offers (B) to a raw commodity that makes a claim, not only to one labeled voluntarily', async () => {
+      // 21 CFR 101.9(b)(12)(i)(B), read from the eCFR on 2026-10-27: "raw fruits,
+      // vegetables, and seafood for which voluntary nutrition labeling is provided ... or
+      // when claims are made about the product". The box once said only "labeled
+      // voluntarily", so a raw fillet carrying a claim left it unticked and was reported
+      // for a second column the regulation excuses.
+      const { wrapper } = await mountFood()
+      const label = wrapper.find('label[for="field-food-nf-raw-commodity"]').text()
+      expect(label).toMatch(/voluntary nutrition labeling/)
+      expect(label).toMatch(/claim is made/)
+    })
+
     it('forgets the whole reference amount when its figure is cleared', async () => {
       // A blank is not a zero. The three sub-fields travel together, so clearing the
       // amount removes the record rather than leaving a category claiming a row of

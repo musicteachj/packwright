@@ -191,6 +191,19 @@ describe('what the photograph cannot show', () => {
     }
   })
 
+  it('gives the CLP minimum for the band it belongs to', async () => {
+    // CLP Annex I Table 1.3, read from the Publications Office consolidation of 2026-07-01:
+    // "Not exceeding 3 litres: If possible, at least 52 × 74", and "Greater than 3 litres
+    // but not exceeding 50 litres: At least 74 × 105". The help text once called 74 × 105
+    // "the smallest label CLP permits for a three-liter package", which is the next band's
+    // hard minimum given to a package in the first band.
+    const wrapper = await readALabel(await mountAudit())
+    const help = wrapper.findAll('p').find((p) => p.text().startsWith('Measured or looked up'))!
+    expect(help.text()).toContain('more than 3 liters and up to 50')
+    expect(help.text()).toContain('Table 1.3')
+    expect(help.text()).not.toMatch(/three-liter package/)
+  })
+
   it('names what is still missing rather than counting it', async () => {
     const wrapper = await readALabel(await mountAudit())
     const missing = wrapper.find('[data-test="missing"]').text()

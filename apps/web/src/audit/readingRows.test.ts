@@ -141,7 +141,18 @@ describe('which statement codes a label can actually carry', () => {
     // about a rejected pictogram code.
     expect(unusableReason('hazardStatementCodes', 'EU')).toContain('verified wording')
     expect(unusableReason('pictograms', 'EU')).toContain('pictogram code')
-    expect(unusableReason('signalWords', 'EU')).toContain('Article 20')
+  })
+
+  it('says what is true of a rejected signal word, and cites nothing', () => {
+    // It once said "not one of the two signal words CLP Article 20 defines" on every audit,
+    // a US one included. Article 20 defines nothing; Article 2(4) does, in every official
+    // language, so a German label's "Gefahr" is a correct signal word this build does not
+    // carry. Read on 2026-10-27.
+    for (const name of ['EU', 'US']) {
+      expect(unusableReason('signalWords', name)).toBe(
+        'not one of the two signal words this build carries, Danger and Warning',
+      )
+    }
   })
 
   it('accepts a code spelled the way the server accepts it', () => {

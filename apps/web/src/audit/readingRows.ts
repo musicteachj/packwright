@@ -83,7 +83,12 @@ export function unusableReason(key: ReadingKey, regimeName: string): string {
     case 'pictograms':
       return `not a pictogram code ${regimeName} recognizes`
     case 'signalWords':
-      return 'not one of the two signal words CLP Article 20 defines'
+      // No citation, because none is true everywhere: CLP Article 2(4) defines its two words
+      // in every official language ("Gefahr" and "Achtung" in German), and a label in one of
+      // them carries a correct signal word this build does not. It said "CLP Article 20
+      // defines" on every audit, a US one included, and Article 20 defines nothing. Found by
+      // `/code-review max` twice on 2026-10-27.
+      return 'not one of the two signal words this build carries, Danger and Warning'
     default:
       return 'not a value this build can carry'
   }

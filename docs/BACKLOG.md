@@ -294,12 +294,6 @@ general fix is for the layout to record which values it defaulted and the omissi
 described wording, as the GHS ones do; worth doing with the measured-letter-height work, which touches the same
 inputs.
 
-**`GHS_PICTOGRAM_SIZE_MET` will need to wait for `pictogramSideMm` on a described label.** The engine draws the
-band's minimum where no side is stated, so the pass is compliant by construction, the same shape as the barcode's
-magnification. It is withheld today only because every pictogram carries the unseen-symbol omission; the day
-pictogram artwork is drawn, it becomes a false clearance through `check_label`. The fix is
-`verdictWaitsOnADescribedLabel` with a new `DeclinedFact`, which needs an editor field for the side — the GHS form has none.
-
 **Requiring the label's size stopped a check before it started — fixed on 2026-10-12.** The re-check of that day
 found 43 of 72 answers asking for a size and checking nothing. James chose to judge the rest: `stock` is optional, a
 sizeless label is drawn edgeless and its rules see a stock of no area, so the size checks wait and nothing is assumed

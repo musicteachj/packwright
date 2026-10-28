@@ -38,7 +38,9 @@ import {
   PICTOGRAM_MIN_FRACTION_OF_LABEL,
   dimensionBandFor,
 } from '../../ghs/labelDimensions'
+import { GHS_ELEMENTS } from '../../templates/ghs'
 import type { Citation, Finding } from '../../types/index'
+import { verdictWaitsOnADescribedLabel } from '../described'
 import { MEASUREMENT_TOLERANCE_MM, finding, mm, passedOnArtwork } from '../finding'
 import type { GhsChemicalContext, GhsChemicalRule } from '../types'
 
@@ -53,7 +55,7 @@ const CITATION: Citation = {
 
 const sqMm = (value: number) => `${value.toFixed(1)} mm²`
 
-export const ghsPictogramSizeRule: GhsChemicalRule = {
+const judgedAsDrawn: GhsChemicalRule = {
   id: 'ghs/pictogram-size',
   title: 'Each pictogram meets the minimum dimension CLP’s Table 1.3 sets for its capacity band.',
   citation: CITATION,
@@ -63,7 +65,7 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
   },
   appliesTo: 'ghs-chemical',
 
-  check({ data, layout }: GhsChemicalContext): Finding[] {
+  check({ data, layout, subject }: GhsChemicalContext): Finding[] {
     if (data.regime !== 'eu-clp') return []
 
     const findings: Finding[] = []
@@ -74,7 +76,23 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
       band.labelWidthMm * band.labelHeightMm * PICTOGRAM_MIN_FRACTION_OF_LABEL,
       PICTOGRAM_MIN_AREA_SQ_MM,
     )
-    for (const pictogram of layout.pictograms) {
+    // On a label printed elsewhere the request states one side, the smallest the label
+    // prints, and every pictogram is drawn at it. Judged pictogram by pictogram, a 25 mm
+    // GHS02 beside a 15 mm GHS07 came back as "The GHS02 pictogram is 15.0 mm square", a
+    // compliant pictogram misstated as undersized. So there the stated side is judged once,
+    // about the pictograms as a row. Found by `/code-review high` on #118.
+    const judged =
+      subject === 'described'
+        ? layout.pictograms.slice(0, 1).map((pictogram) => ({
+            ...pictogram,
+            named: 'The smallest pictogram is stated as',
+            elementId: GHS_ELEMENTS.pictograms,
+          }))
+        : layout.pictograms.map((pictogram) => ({
+            ...pictogram,
+            named: `The ${pictogram.code} pictogram is`,
+          }))
+    for (const pictogram of judged) {
       const tooSmall = pictogram.drawnSideMm < pictogram.requiredSideMm - MEASUREMENT_TOLERANCE_MM
 
       if (tooSmall) {
@@ -83,7 +101,7 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
             code: GHS_PICTOGRAM_BELOW_MINIMUM_SIZE,
             severity: 'violation',
             message:
-              `The ${pictogram.code} pictogram is ${mm(pictogram.drawnSideMm)} square; a package in ` +
+              `${pictogram.named} ${mm(pictogram.drawnSideMm)} square; a package in ` +
               `Table 1.3's "${band.capacityText}" band requires ${mm(pictogram.requiredSideMm)}.`,
             measurement: {
               actual: mm(pictogram.drawnSideMm),
@@ -100,7 +118,7 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
           passedOnArtwork(
             ghsPictogramSizeRule,
             GHS_PICTOGRAM_SIZE_MET,
-            `The ${pictogram.code} pictogram is ${mm(pictogram.drawnSideMm)} square, covering ` +
+            `${pictogram.named} ${mm(pictogram.drawnSideMm)} square, covering ` +
               `${sqMm(pictogram.drawnAreaSqMm)}, which meets Table 1.3` +
               // The first band's label is "If possible, at least 52 × 74", no minimum to take a
               // fifteenth of, so nothing is said of the fraction there, either way. Found by
@@ -121,3 +139,29 @@ export const ghsPictogramSizeRule: GhsChemicalRule = {
     return findings
   },
 }
+
+/**
+ * The rule as drawn, its verdict waiting on a label printed elsewhere: see
+ * `rules/described.ts`.
+ *
+ * With no side stated, the engine draws each pictogram at its band's own minimum
+ * (`ghsEngine.ts`) and records that as both the size drawn and the size required, so
+ * on a label it did not draw this check could never fail. It said nothing either way,
+ * while the answer told the user an undersized pictogram "is still reported".
+ * Found by `/code-review max` on 2026-10-27.
+ *
+ * **The smallest side is asked for**, because a request carries one side and the engine
+ * draws every pictogram at it. Asked for "each" pictogram's side, a label printing one
+ * at 25 mm and another at 18 could send 25, and the 18 mm one would be cleared by
+ * silence; given the smallest, any error falls on the accusing side. Found by the
+ * second `/code-review max` that day.
+ */
+export const ghsPictogramSizeRule: GhsChemicalRule = verdictWaitsOnADescribedLabel(judgedAsDrawn, {
+  unstated: ({ data }) =>
+    data.pictogramSideMm === undefined ? (['pictogramSideMm'] as const) : [],
+  reason: () =>
+    'This label is described rather than drawn here, and Packwright cannot see how large its ' +
+    'pictograms are printed; its own default, the minimum for the capacity band, would decide ' +
+    'the verdict. State the side of the smallest pictogram’s square in millimeters and this ' +
+    'check will run.',
+})

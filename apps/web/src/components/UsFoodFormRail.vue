@@ -2351,13 +2351,13 @@ const packaging = computed({
       <CheckboxField
         id="field-food-nf-raw-commodity"
         v-model="rawCommodityVoluntary"
-        label="A raw fruit, vegetable or seafood labeled voluntarily — (b)(12)(i)(B)"
+        label="A raw fruit, vegetable or seafood with voluntary nutrition labeling, or about which a claim is made: (b)(12)(i)(B)"
       />
 
       <CheckboxField
         id="field-food-nf-varied-weight"
         v-model="variedWeight"
-        label="A varied-weight product under (b)(8)(iii) — (b)(12)(i)(C)"
+        label="A varied-weight product under (b)(8)(iii): (b)(12)(i)(C)"
       />
 
       <CheckboxField

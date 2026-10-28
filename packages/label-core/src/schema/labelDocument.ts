@@ -532,8 +532,11 @@ const GhsRequestShape = z.object({
   pictogramSideMm: printedMm()
     .optional()
     .describe(
-      'The side of each pictogram’s square in millimeters, not its diagonal. Omitted, the ' +
-        'minimum for the capacity’s CLP Table 1.3 band is drawn.',
+      'The side of the smallest pictogram’s square in millimeters, not its diagonal: every ' +
+        'pictogram is drawn at this one side, so give the smallest the label prints. Send it ' +
+        'only if the user stated it. Omitted, the minimum for the capacity’s CLP Table 1.3 band ' +
+        'is drawn, and on an EU label printed elsewhere the pictogram-size check gives no ' +
+        'verdict and asks for it. OSHA sets no minimum pictogram size.',
     ),
   stock: StockSchema.optional(),
 })
@@ -797,7 +800,15 @@ export const NutritionFactsSchema = z.object({
   packagedAndSoldIndividually: z.boolean().optional(),
   dualColumnExemption: z
     .object({
-      rawCommodityVoluntary: z.boolean().optional(),
+      rawCommodityVoluntary: z
+        .boolean()
+        .optional()
+        .describe(
+          'True for a raw fruit, vegetable or seafood for which voluntary nutrition labeling ' +
+            'is provided in its labeling or advertising, or about which a claim is made: either ' +
+            'way 21 CFR 101.9(b)(12)(i)(B) excuses it from a second column. Leave it out for ' +
+            'any other food.',
+        ),
       variedWeight: z.boolean().optional(),
     })
     .optional(),

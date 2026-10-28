@@ -120,7 +120,8 @@ export const SYMBOL_NOT_SEEN_BECAUSE: Readonly<Record<GhsLabelData['regime'], st
   // Found by review.
   'eu-clp':
     'Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so ' +
-    'it gives no verdict on it. A pictogram smaller than CLP’s minimum is still reported.',
+    'it gives no verdict on it. Where a pictogram’s size is stated, one smaller than CLP’s ' +
+    'minimum is still reported.',
   'us-osha':
     'Packwright draws no pictogram artwork and cannot see the symbol printed on the label, so ' +
     'it gives no verdict on it.',
