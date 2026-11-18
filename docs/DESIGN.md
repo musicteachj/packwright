@@ -90,7 +90,7 @@ the browser for live preview and on the server for PDF generation.
 - **Zod** — one schema per label type, shared between client form validation and API validation. It also
   doubles as the vision-extraction contract via `zodOutputFormat` (see the AI layer below), so a single schema
   definition drives three consumers.
-- **`@anthropic-ai/sdk`** — Claude vision extraction on the API server. Model `claude-opus-5`.
+- **`@anthropic-ai/sdk`**: Claude vision extraction on the API server. Model `claude-opus-5-5`, at effort `high`.
 
 ### Tooling
 
@@ -381,14 +381,15 @@ the wizard can't consume". Two things in that are wrong.
 
 Three things to get right, all easy to miss:
 
-- **Check `stop_reason === "refusal"` before reading `response.content`.** Claude Opus 5 runs safety
-  classifiers; a declined request returns HTTP 200 with empty or partial content.
+- **Check `stop_reason === "refusal"` before reading `response.content`.** Claude Opus 5.5 runs safety
+  classifiers, biology among them since 5.5 ("What's new in Claude Opus 5.5", read 2026-11-18), which a
+  chemical label can brush against; a declined request returns HTTP 200 with empty or partial content.
 - **Find the text block by type, never by position.** This entry used to say that indexing `content[0]`
   breaks on a refusal, which understates it in the more awkward direction. Two live calls with identical
   parameters returned different layouts — `[thinking, text]` against one image, `[text]` against another,
   because adaptive thinking decides per request. A positional read is *intermittently* wrong on the success
   path, which is the kind of wrong that survives a green suite.
-- **High-resolution vision is automatic** on Opus 5 — 2576 px on the long edge — so don't downsample below
+- **High-resolution vision is automatic** on Opus 5.5, 2576 px on the long edge, so don't downsample below
   it. Do normalise to it: the API downsamples anything larger anyway, so capping the long edge at 2576 loses
   nothing and keeps the request small. And Claude receives **no image metadata**, so a phone photograph
   carrying EXIF orientation 6 is read on its side unless the pixels themselves are rotated first.

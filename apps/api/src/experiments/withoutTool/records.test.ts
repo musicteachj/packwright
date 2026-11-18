@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  answeredByRetiredModels,
   answeringChangedPrompts,
   finishedKeys,
   keyOf,
@@ -7,6 +8,7 @@ import {
   parseRecorded,
   promptsInCasesMd,
   promptsThatChanged,
+  retiredModelRefusal,
   sha256,
   type Recorded,
 } from './records'
@@ -77,6 +79,36 @@ describe('answeringChangedPrompts', () => {
     const same = record({ run: 2, promptSha256: sha256(now) })
     const legacy = record({ run: 3 })
     expect(answeringChangedPrompts([changed, same, legacy], () => now)).toEqual([changed])
+  })
+})
+
+describe('answeredByRetiredModels', () => {
+  it('names each model a record holds that the runner no longer calls, once', () => {
+    const records = [
+      record({ run: 1 }),
+      record({ run: 2 }),
+      record({ model: 'claude-sonnet-5-5' }),
+      record({ model: 'claude-haiku-5-5' }),
+    ]
+    expect(answeredByRetiredModels(records, ['claude-sonnet-5-5', 'claude-haiku-5-5'])).toEqual([
+      'claude-haiku-4-5',
+    ])
+  })
+
+  it('passes a record made only by the models the runner calls', () => {
+    const records = [record({ model: 'claude-sonnet-5-5' }), record({ model: 'claude-haiku-5-5' })]
+    expect(answeredByRetiredModels(records, ['claude-sonnet-5-5', 'claude-haiku-5-5'])).toEqual([])
+  })
+
+  it('refuses with the record and the model named, and never says to move the record', () => {
+    const calling = ['claude-sonnet-5-5', 'claude-haiku-5-5']
+    const refusal = retiredModelRefusal([record()], calling, 'study/responses.jsonl')
+    expect(refusal).toContain('study/responses.jsonl holds answers from claude-haiku-4-5')
+    expect(refusal).toContain('give the study a new directory')
+    expect(refusal).not.toMatch(/move/i)
+    expect(
+      retiredModelRefusal([record({ model: 'claude-haiku-5-5' })], calling, 'x'),
+    ).toBeUndefined()
   })
 })
 

@@ -10,8 +10,10 @@
  * baked in before the bytes leave.
  *
  * **The long edge is capped at 2576 px.** That is the high-resolution tier's own
- * limit on Claude Opus 5: anything larger is downscaled to it by the API before
- * the model sees it. So capping here loses nothing the model would have used and
+ * limit on Claude Opus 5.5: anything larger is downscaled to it by the API before
+ * the model sees it. The vision documentation gives 2,576 px to "Claude 4.7 and
+ * later models" (platform.claude.com/docs/en/build-with-claude/vision, read
+ * 2026-11-18). So capping here loses nothing the model would have used and
  * saves sending megabytes that get thrown away. This is **not** the downsampling
  * `docs/DESIGN.md` warns against, which is about going *below* that figure — and
  * the distinction is worth keeping straight, because the naive reading of that
@@ -23,7 +25,7 @@
  * none.
  */
 
-/** The long-edge limit of Claude Opus 5's high-resolution tier. */
+/** The long-edge limit of Claude Opus 5.5's high-resolution tier. */
 export const MAX_LONG_EDGE_PX = 2576
 
 /** JPEG, and quality high enough that small type survives. */

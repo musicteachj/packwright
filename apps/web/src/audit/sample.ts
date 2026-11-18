@@ -10,8 +10,8 @@
  *   into `public/`: a hand-authored acetone label printed with both DANGER and
  *   WARNING, which CLP Article 20(3) forbids.
  * - **The reading** is what the server's own `extractGhsLabel` makes of
- *   `recorded.json`, the reply claude-opus-5 gave to that photograph when it was
- *   recorded, under `eu-clp`. It is written by `npm run write:sample-reading` in
+ *   `recorded.json`, the reply claude-opus-5-5 gave to that photograph when it
+ *   was recorded on 2026-11-18, under `eu-clp`. It is written by `npm run write:sample-reading` in
  *   `apps/api`.
  *
  * `apps/api/src/audit/sampleReading.test.ts` fails if either copy drifts from its

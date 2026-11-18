@@ -11,7 +11,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 describe('asking the server to read a label', () => {
   it('sends the photograph and the regime, and nothing else', async () => {
-    const fetching = respond({ extraction: { fields: {}, warnings: [] }, model: 'claude-opus-5' })
+    const fetching = respond({ extraction: { fields: {}, warnings: [] }, model: 'claude-opus-5-5' })
     vi.stubGlobal('fetch', fetching)
 
     await readGhsLabel(PHOTO, 'eu-clp')
@@ -104,7 +104,7 @@ describe('asking the server to read a label', () => {
 
 describe('the audit key and the server status', () => {
   it('sends the key the person typed, and no key header when there is none', async () => {
-    const fetching = respond({ extraction: { fields: {}, warnings: [] }, model: 'claude-opus-5' })
+    const fetching = respond({ extraction: { fields: {}, warnings: [] }, model: 'claude-opus-5-5' })
     vi.stubGlobal('fetch', fetching)
 
     await readGhsLabel(PHOTO, 'eu-clp', 'the-secret')

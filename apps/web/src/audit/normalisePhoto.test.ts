@@ -17,7 +17,7 @@ describe('the size a photograph is drawn at', () => {
 
   it('caps the long edge at the figure the API itself downscales to', () => {
     // A 12 MP phone photograph. 2576 is the high-resolution tier's own limit on
-    // Claude Opus 5, so this loses nothing the model would have seen.
+    // Claude Opus 5.5, so this loses nothing the model would have seen.
     const { widthPx, heightPx } = scaleFor(4032, 3024)
     expect(widthPx).toBe(MAX_LONG_EDGE_PX)
     expect(heightPx).toBe(1932)

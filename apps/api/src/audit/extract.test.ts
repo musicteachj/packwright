@@ -31,6 +31,7 @@ import {
   refused,
   refusedWithContent,
   refusedWithoutDetails,
+  textOnly,
   thinkingFirst,
   unknownCodes,
   wrongShape,
@@ -105,6 +106,17 @@ describe('the request', () => {
     const [params] = (send as unknown as { mock: { calls: [Anthropic.MessageCreateParams][] } })
       .mock.calls[0]!
     expect(params.output_config?.format?.type).toBe('json_schema')
+  })
+
+  it('asks for the effort the readings on record were made at', async () => {
+    // Claude Opus 5.5 defaults to `medium` where Opus 5 defaulted to `high`, so
+    // a request that names no effort reads every label less carefully than the
+    // recordings this suite replays were read.
+    const send = replying(recorded)
+    await extractGhsLabel(send, PHOTO, 'eu-clp')
+    const [params] = (send as unknown as { mock: { calls: [Anthropic.MessageCreateParams][] } })
+      .mock.calls[0]!
+    expect(params.output_config?.effort).toBe('high')
   })
 })
 
@@ -209,11 +221,11 @@ describe('the signal words, as a label actually prints them', () => {
 
 describe('reading the recorded reply', () => {
   it('finds the text block by type, not by position', async () => {
-    // Both layouts are ordinary: the recording run returned `[text]` with zero
-    // thinking tokens, and a call with identical parameters against another
-    // image returned `[thinking, text]`. A positional read passes against one
-    // and fails against the other.
-    const fromText = await extract(recorded)
+    // Both layouts are ordinary: Opus 5's recording returned `[text]` with zero
+    // thinking tokens, and Opus 5.5's of the same label returned
+    // `[thinking, text]`. A positional read passes against one and fails
+    // against the other.
+    const fromText = await extract(textOnly)
     const fromThinkingFirst = await extract(thinkingFirst)
     expect(fromThinkingFirst).toEqual(fromText)
   })
@@ -221,7 +233,7 @@ describe('reading the recorded reply', () => {
   it('reports the model that answered, not the one this server asked for', async () => {
     // Asserted against a reply from a *different* model on purpose. The obvious
     // version compares `reading.model` to `recorded.model` — and `recorded.model`
-    // is `claude-opus-5`, which is also `EXTRACTION_MODEL`, so it passes
+    // is `claude-opus-5-5`, which is also `EXTRACTION_MODEL`, so it passes
     // whichever of the two the code reports. It was written that way first and
     // survived the mutation that replaced the observation with the claim.
     const reading = await readingOf(answeredByAnotherModel)
@@ -233,9 +245,10 @@ describe('reading the recorded reply', () => {
     const result = await extract(recorded)
     expect(result.fields.productIdentifier?.value).toBe('Acetone')
 
-    // Read out of the fixture rather than written here as a number. Two
-    // recordings of the same label came back with the same values and different
-    // confidences — 0.99 and 0.98 on the signal words — so a literal here would
+    // Read out of the fixture rather than written here as a number. Three
+    // recordings of the same label, two by Opus 5 and one by Opus 5.5, came back
+    // with the same values and different confidences (0.99, 0.98 and 0.97 on the
+    // signal words), so a literal here would
     // fail on the next re-record for no reason anyone could act on. Parsed
     // independently of the mapping under test, so what this asserts is that the
     // model's figure reaches the result unaltered, which is the property that

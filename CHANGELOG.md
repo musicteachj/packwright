@@ -8,6 +8,33 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Changed
+
+- **Label photographs are read by Claude Opus 5.5, at the effort Opus 5 read them at, and the experiment runners
+  call Haiku 5.5.** `EXTRACTION_MODEL` moves from `claude-opus-5` to `claude-opus-5-5`. The request already had the
+  shape Opus 5.5 requires: adaptive thinking, structured output through `output_config.format`, no forced
+  `tool_choice`, and the refusal checked before the content. One thing would have changed without anyone seeing
+  it: Opus 5.5 thinks at effort `medium` when none is named, where Opus 5 thought at `high`, and every reading on
+  record was made at `high`. The request now names it (`EXTRACTION_EFFORT`), and a test asserts it. Opus 5.5 costs
+  a fifth less ($4 and $20 per million input and output tokens, against $5 and $25), and its safety classifiers
+  now include biology, which a chemical label can brush against; a decline was already an outcome the route
+  answers (`ExtractionDeclined`). `apps/api/src/audit/fixtures/recorded.json` is re-recorded from Opus 5.5, and the
+  audit page's sample reading regenerated from it: every field reads exactly as Opus 5 read it, each confidence
+  0.01 lower or the same, in 488 output tokens (221 of them thinking) against Opus 5's 267. Its reply now opens with
+  a thinking block where Opus 5's had none, so `textOnly` and `thinkingFirst` are now built from the text block
+  rather than from the recording's own layout, which would have left the text-only layout untested. A second,
+  timed call took 4.7 s for 416 tokens, about 88 a second, so the 40-a-second floor that keeps the 4,000-token
+  budget reachable inside the two-minute timeout still holds. The two calls cost about $0.04. The MCP experiment
+  runners call `claude-haiku-5-5` where they called `claude-haiku-4-5`; Sonnet was already 5.5. Every record of
+  those experiments holds Haiku 4.5's answers, and a resume pends every case, model and run it has no answer for,
+  so a resume after the switch would have paid for a whole set of Haiku 5.5 answers and appended them to a record
+  of Haiku 4.5's. Both runners now refuse to start on such a record (`retiredModelRefusal`), all seven records on
+  file among them, and say to give a new run its own directory rather than move a committed record aside. The
+  notes in `mcp/server.ts` and `label-core` that cite what Haiku 4.5 did in those experiments stay as written. The
+  prices, the two default efforts, the biology classifier and the 2,576 px image limit were each checked against
+  Anthropic's pricing, effort, vision and "What's new in Claude Opus 5.5" pages on 2026-11-18, and each note that
+  states one says so.
+
 ### Fixed
 
 - **One request could stop the server, and one could make it hold 200 MB; body-parser 2.4.0 and Zod 4.6.6 close

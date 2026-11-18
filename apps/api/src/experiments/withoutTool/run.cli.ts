@@ -32,19 +32,28 @@ import {
   finishedKeys,
   keyOf,
   parseRecorded,
+  retiredModelRefusal,
   sha256,
   type Recorded,
 } from './records'
 import { describeCases } from './describe'
 
 /**
- * The two models, at their API defaults. Sonnet 5.5 runs adaptive thinking at
- * effort `high` when neither is set; Haiku 4.5 runs without thinking. Prices are
- * USD per million tokens, from the claude-api reference cached 2026-09-25.
+ * The two models, at their API defaults. Both run adaptive thinking when neither
+ * thinking nor effort is set: Sonnet 5.5 at effort `high`, Haiku 5.5 at `medium`.
+ * Prices are USD per million tokens: Sonnet's from the claude-api reference
+ * cached 2026-09-25, Haiku 5.5's from platform.claude.com/docs/en/about-claude/pricing,
+ * read 2026-11-18, at its rate for prompts of 100,000 tokens or fewer ($0.50 and
+ * $2.50 above that), which no prompt here comes near. The defaults are from
+ * platform.claude.com/docs/en/build-with-claude/effort, read the same day.
+ *
+ * Haiku 4.5 until 2026-11-18, which ran without thinking, so every record before
+ * then holds its answers, not Haiku 5.5's, and `retiredModelRefusal` keeps the two
+ * from sharing a record.
  */
 const MODELS = [
   { id: 'claude-sonnet-5-5', inputPerMTok: 2, outputPerMTok: 10 },
-  { id: 'claude-haiku-4-5', inputPerMTok: 1, outputPerMTok: 5 },
+  { id: 'claude-haiku-5-5', inputPerMTok: 0.1, outputPerMTok: 0.5 },
 ] as const
 
 const RUNS = 3
@@ -133,6 +142,15 @@ async function main(): Promise<void> {
   const client = new Anthropic({ apiKey, timeout: 600_000, maxRetries: 2 })
 
   const recorded = readRecorded()
+  const refusal = retiredModelRefusal(
+    recorded,
+    MODELS.map((model) => model.id),
+    RESPONSES,
+  )
+  if (refusal !== undefined) {
+    console.error(refusal)
+    process.exit(1)
+  }
   const changed = answeringChangedPrompts(recorded, (caseId) => prompts.get(caseId))
   if (changed.length > 0) {
     console.error(
