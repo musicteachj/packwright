@@ -247,8 +247,34 @@ const CASES: Case[] = [
   },
 ]
 
+/** A Zod issue as far as its paths go: `invalid_union` carries each branch's issues. */
+interface IssueLike {
+  readonly code: string
+  readonly path: readonly PropertyKey[]
+  readonly errors?: readonly (readonly IssueLike[])[]
+}
+
+/**
+ * Every path an issue names. Since Zod 4.6.6 a list past its bound fails without its
+ * elements being read, and inside a union that fails its branch outright, so the union
+ * reports `invalid_union` at its own path with each branch's issues inside, relative to
+ * it. The over-long `mayBePresent` of an assortment is refused that way, and its path is
+ * named here in full. Every branch's issues are named, so a field another branch also
+ * failed on would match as well. The two unions that hold a bound, the ingredients and
+ * nutrition exemptions, have no other branch with a field of a bounded field's name, so
+ * only the branch that holds the field can name it.
+ */
+const pathsOf = (issue: IssueLike, prefix: readonly PropertyKey[] = []): string[] => {
+  const path = [...prefix, ...issue.path]
+  const inside =
+    issue.code === 'invalid_union'
+      ? (issue.errors ?? []).flat().flatMap((nested) => pathsOf(nested, path))
+      : []
+  return [path.join('.'), ...inside]
+}
+
 const issuePaths = (result: ReturnType<typeof LabelDocumentInput.safeParse>) =>
-  result.success ? [] : result.error.issues.map((issue) => issue.path.join('.'))
+  result.success ? [] : result.error.issues.flatMap((issue) => pathsOf(issue))
 
 describe('every bound in INPUT_BOUNDS', () => {
   it('accepts every base document, so each refusal below is the bound’s', () => {
@@ -294,6 +320,19 @@ describe('every bound in INPUT_BOUNDS', () => {
     ]) {
       expect(values.length).toBeLessThan(B.closedList)
     }
+  })
+
+  it('refuses a list past its bound as one issue, without judging what it holds', () => {
+    // GHSA-mrhx-c7xc-m3w5. Before Zod 4.6.6 a list refused for its length was still
+    // judged item by item, and every item kept an issue: 4,900 unknown precautionary
+    // codes made 4,900, which `/mcp` once answered in 754 kB, and 254 KB of numbers made
+    // 127,002 on an export route (`docs/security-review-2026-10-18.md`). The length is now
+    // the one issue.
+    const codes = Array.from({ length: B.statementCodes + 1 }, (_, i) => `P${9000 + i}`)
+    const refused = LabelDocumentInput.safeParse(
+      documentWith(GHS, [...D, 'precautionaryStatementCodes'], codes),
+    )
+    expect(issuePaths(refused)).toEqual(['data.precautionaryStatementCodes'])
   })
 })
 

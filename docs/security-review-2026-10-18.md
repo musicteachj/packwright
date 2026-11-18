@@ -93,6 +93,25 @@ Four pull requests, each reviewed at `high`:
    issues. **What that leaves:** a single uncounted message still answers up to 25 KB (`tools/list`, from 46
    bytes), which is the WAF rate rule's to bound (Phase 8).
 
+## Advisories published since, 2026-11-17
+
+`npm audit --omit=dev`, run on `dev` at `53409a8`, reported advisories published after this review, and two were
+reachable by anyone:
+- **A crash.** body-parser 2.3.0 (GHSA-27r3-jxmh-p828) left a finished decompression stream piped to the request with
+  nothing listening for its errors, so a gzip body followed by a zero byte and more bytes was answered and then ended
+  the process. Both JSON parsers here use it with its defaults, the one in `app.ts` ahead of every route. Fixed by
+  body-parser 2.4.0; `app.test.ts` sends the payload.
+- **Memory.** Zod 4.4.3 (GHSA-mrhx-c7xc-m3w5) judged every item of a list it was refusing for its length. 254 KB of
+  numbers sent to an export route as precautionary codes was answered with 127,002 issues in 13.4 MB, after 264 ms
+  and 208 MB of heap; the saved-label routes judged the same way, and `/mcp` was spared by its 5,000-element guard.
+  This is the 754 KB `/mcp` answer recorded below, by another door and larger. Fixed by Zod 4.6.6, which refuses such
+  a list for its length alone (22 ms and 5 MB for the same request; the lockfile takes 4.6.7); `bounds.test.ts` holds
+  it to one issue.
+
+Mongoose, `hono`, `@hono/node-server`, `ip-address` and `qs` moved within their ranges at the same time; none of their
+advisories was reachable here, and `CHANGELOG.md` gives the reason for each. What the audit still reports runs only
+at build time or in Vite's dev server, plus `@hono/node-server`'s `serveStatic`, which nothing here calls.
+
 ## Recorded, no work
 
 One line each, by the bar. `docs/BACKLOG.md` points here rather than repeating them:

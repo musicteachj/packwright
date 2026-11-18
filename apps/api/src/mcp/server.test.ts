@@ -25,7 +25,7 @@ import {
   type Severity,
   type UpcALabelData,
 } from '@packwright/label-core'
-import { LabelCheckRequest } from '@packwright/label-core/schema'
+import { INPUT_BOUNDS, LabelCheckRequest } from '@packwright/label-core/schema'
 import * as bwip from 'bwip-js/generic'
 import supertest from 'supertest'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -720,8 +720,10 @@ describe('check_label, refusing', () => {
 
   it('names the first twenty issues of a long refusal, and counts the rest', async () => {
     // 4,900 unknown precautionary codes answered 754 kB, one issue for each
-    // (security review of 2026-10-18).
-    const args = unknownCodes(4_900)
+    // (security review of 2026-10-18). Since Zod 4.6.6 a list past its bound is
+    // refused for its length alone, so the longest refusal is now a list at its
+    // bound, every code in it unknown.
+    const args = unknownCodes(INPUT_BOUNDS.statementCodes)
     const issues = issuesIn(args)
     expect(issues).toBeGreaterThan(MAX_ISSUES_REPORTED + 1)
     const result = await (await connect()).callTool({ name: 'check_label', arguments: args })

@@ -10,6 +10,42 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **One request could stop the server, and one could make it hold 200 MB; body-parser 2.4.0 and Zod 4.6.6 close
+  them.** `npm audit --omit=dev` on 2026-11-17 reported advisories published since the security review of
+  2026-10-18, and two were reachable, without a key. body-parser 2.3.0 (GHSA-27r3-jxmh-p828) left the decompression
+  stream piped to the request once a compressed body had been read, with nothing listening for its errors. A gzip
+  body followed by a zero byte and more bytes was read and answered, and then the bytes after it failed in the
+  finished decoder and ended the process. The `express.json` parser in `app.ts` runs before any route, so any
+  address would do, and the audit route's own parser had the same flaw behind its key. Zod 4.4.3
+  (GHSA-mrhx-c7xc-m3w5) still judged every item of a list it was refusing for its length, so 254 KB of numbers sent
+  to an export route as precautionary codes was answered with 127,002 issues in 13.4 MB, after 264 ms and 208 MB of
+  heap, at 60 requests an hour per address; the saved-label routes judged the same way. `/mcp` was not exposed, since
+  it refuses more than 5,000 elements before its schema runs. Both were measured against this app before the update.
+  body-parser 2.4.0 detaches the stream, and Zod 4.6.6, the first release its advisory names as patched, refuses a
+  list past its bound for its length alone: the same export request now takes 22 ms and 5 MB on 4.6.6 and on the
+  4.6.7 the lockfile takes. `app.test.ts` sends the body-parser payload, the one body-parser's own
+  regression test sends, and `bounds.test.ts` holds a list past its bound to one issue; each fails with the old
+  version put back. Two tests changed with Zod. `/mcp`'s long-refusal test sent 4,900 codes, which now make one
+  issue, and sends a list at its bound instead. And an assortment's over-long `mayBePresent` is still refused, but
+  inside its union Zod now reports `invalid_union` at `data.ingredientsExemption` with the length issue inside it,
+  so the bounds test reads the issues inside a union, and a caller's error names the exemption rather than the list.
+  The rest were not reachable here and are taken because their patches fall within the ranges already declared. Mongoose's
+  four (GHSA-gg4r-jv3p-qx3c, GHSA-wr5m-5jph-8m96, GHSA-8332-j7wj-wjw4, GHSA-6972-9mcm-vhwj) need a connection-level
+  `sanitizeFilter`, discriminators, a schema built from input, or keys the caller chooses, and this server sets none
+  of the first three and hands Mongoose only what the Zod schema accepts, which has no free-form keys. `ip-address`
+  only ever reads `request.ip`, `qs`'s advisory is in `stringify`, which the server never calls, and the MCP adapter
+  takes only `getRequestListener` from `@hono/node-server`. The lockfile moves
+  body-parser 2.3.0 to 2.4.0 (with its own `content-type`, 2.0.0 to 2.1.0), Mongoose 9.9.2 to 9.12.2 (bringing the `mongodb` driver from 7.5.0 to 7.8.0, with
+  `kareem`, `mquery`, `sift` and `@mongodb-js/saslprep`), Zod 4.4.3 to 4.6.7, `hono` 4.13.13 to 4.13.19,
+  `@hono/node-server` 1.19.17 to 1.19.19, `ip-address` 10.7.2 to 10.7.6 and `qs` 6.16.0 to 6.17.1, and nothing
+  else. The declared ranges rise to the first patched releases, `zod` to `^4.6.6` in all three workspaces and
+  `mongoose` to `^9.11.4`, so an install that resolves afresh cannot land below them; body-parser comes through
+  Express, whose range already admits 2.4.0, and `app.test.ts` holds it. `npm audit fix` was tried first and moved 74 packages, most of them
+  build and lint tooling, so these were updated by name instead. What the audit still reports runs only at build
+  time or in Vite's dev server (`picomatch`, `source-map-js` and `esbuild`, through Vite and Vue Router's build
+  integration), plus `@hono/node-server`'s `serveStatic`, which nothing here calls and which is fixed only in its
+  next major version.
+
 - **On a GHS label printed elsewhere, the pictogram-size check waits for the size rather than measuring its own
   default.** With no `pictogramSideMm` stated, the engine draws each pictogram at its CLP Table 1.3 band's minimum
   and records that as both the size drawn and the size required, so on a label checked through `check_label` the
