@@ -13,8 +13,9 @@
  * implementation, and each is built by changing exactly one thing about the
  * recorded reply, so what a test is exercising is the difference.
  *
- * **Re-recording moves the confidences.** Two recordings of the same label
- * returned identical values and confidences differing in the second decimal.
+ * **Re-recording moves the confidences.** Three recordings of the same label,
+ * two by Opus 5 and one by Opus 5.5, returned identical values and confidences
+ * differing in the second decimal.
  * Tests therefore read a confidence out of this fixture rather than writing one
  * down, so re-recording changes the expected figure and the assertion at the
  * same time — the alternative is a test that fails on noise, which is a test
@@ -37,15 +38,24 @@ const textBlock = (text: string): Anthropic.ContentBlock =>
 const thinkingBlock = (): Anthropic.ContentBlock =>
   ({ type: 'thinking', thinking: '', signature: '' }) as unknown as Anthropic.ContentBlock
 
+/** The recorded reply's text, without whatever came before it. */
+const recordedText = recorded.content.filter((block) => block.type === 'text')
+
 /**
- * The same reply with a thinking block in front of the text.
+ * The recorded answer in the two layouts a reply comes in: the text alone, and
+ * the text after a thinking block.
  *
- * Not a hypothetical. The recording run returned `[text]` with zero thinking
- * tokens; a call with identical parameters against a different image returned
- * `[thinking, text]`. Adaptive thinking decides per request, so both layouts are
- * ordinary and a reader that indexes `content[0]` works until it does not.
+ * Not a hypothetical. Opus 5's recording of 2026-09-15 returned `[text]` with
+ * zero thinking tokens, and a call with identical parameters against a different
+ * image returned `[thinking, text]`; Opus 5.5's recording of 2026-11-18, at effort
+ * `high`, returned `[thinking, text]` for the same label. Adaptive thinking
+ * decides per request, so both layouts are ordinary and a reader that indexes
+ * `content[0]` works until it does not. Built from the text block rather than from
+ * the recording's own layout, so a re-record cannot quietly leave one of the two
+ * untested.
  */
-export const thinkingFirst = variant({ content: [thinkingBlock(), ...recorded.content] })
+export const textOnly = variant({ content: recordedText })
+export const thinkingFirst = variant({ content: [thinkingBlock(), ...recordedText] })
 
 /** Declined. HTTP 200, no content, and a category to report. */
 export const refused = variant({
@@ -205,7 +215,7 @@ export const unspacedCombinationCode = variant({
  * The same reading, answered by a model this server did not ask for.
  *
  * Exists because the obvious assertion is a tautology: `recorded.model` is
- * `claude-opus-5`, which is also `EXTRACTION_MODEL`, so a test comparing the
+ * `claude-opus-5-5`, which is also `EXTRACTION_MODEL`, so a test comparing the
  * two passes whichever one the code reports. This fixture is the only way to
  * tell an observed provenance from a claimed one.
  */

@@ -159,6 +159,44 @@ export function promptsThatChanged(
     .map(([id]) => id)
 }
 
+/**
+ * The models a record holds answers from that this runner no longer calls, sorted.
+ *
+ * A resume pends every (case, model, run) it has no answer for, so once a model in
+ * `MODELS` is replaced, resuming a finished study would pay for a whole new set of
+ * answers and append them to a record whose README describes the earlier model. The
+ * runners refuse to start when this is not empty. Moving to Haiku 5.5 on 2026-11-18
+ * is what made it reachable: every record before then holds Haiku 4.5's answers.
+ */
+export function answeredByRetiredModels(
+  records: readonly Recorded[],
+  calling: readonly string[],
+): string[] {
+  return [...new Set(records.map((record) => record.model))]
+    .filter((model) => !calling.includes(model))
+    .sort()
+}
+
+/**
+ * What a runner says when it refuses a record of models it no longer calls, or
+ * nothing when it need not refuse. One message for both runners, because the remedy
+ * is the same: the record is finished, and moving it aside to make room would
+ * damage a committed experiment its README describes.
+ */
+export function retiredModelRefusal(
+  records: readonly Recorded[],
+  calling: readonly string[],
+  path: string,
+): string | undefined {
+  const retired = answeredByRetiredModels(records, calling)
+  if (retired.length === 0) return undefined
+  return (
+    `${path} holds answers from ${retired.join(', ')}, which this runner no longer calls. ` +
+    "It is a finished record of that model, and a run would add another model's answers to it. " +
+    'To run the current models, give the study a new directory and leave this one as it is.'
+  )
+}
+
 /** Records that answer a prompt other than the one this case now produces. */
 export function answeringChangedPrompts(
   records: readonly Recorded[],

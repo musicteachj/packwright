@@ -74,6 +74,7 @@ import {
   finishedKeys,
   keyOf,
   parseRecorded,
+  retiredModelRefusal,
   sha256,
   lostSpendIn,
   type Arm,
@@ -84,13 +85,20 @@ import { ConversationFailed, converse } from './converse'
 import { connectMcpTools, type McpTools } from './mcpTools'
 
 /**
- * The two models of 2026-10-09, at their API defaults, for a like-for-like
- * comparison. Prices are USD per million tokens, from the claude-api reference
- * cached 2026-09-25, unchanged since the first run.
+ * The two models, at their API defaults. Prices are USD per million tokens:
+ * Sonnet's from the claude-api reference cached 2026-09-25, Haiku 5.5's from
+ * platform.claude.com/docs/en/about-claude/pricing, read 2026-11-18, at its rate
+ * for prompts of 100,000 tokens or fewer ($0.50 and $2.50 above that), which no
+ * request here comes near.
+ *
+ * These were the models of 2026-10-09 until 2026-11-18, when Haiku 4.5 gave way to
+ * Haiku 5.5. Every study recorded before then holds Haiku 4.5's answers, so a new
+ * run compares with those across a change of model, not like for like, and
+ * `retiredModelRefusal` keeps the two from sharing a record.
  */
 const MODELS = [
   { id: 'claude-sonnet-5-5', inputPerMTok: 2, outputPerMTok: 10 },
-  { id: 'claude-haiku-4-5', inputPerMTok: 1, outputPerMTok: 5 },
+  { id: 'claude-haiku-5-5', inputPerMTok: 0.1, outputPerMTok: 0.5 },
 ] as const
 
 const RUNS = 3
@@ -193,7 +201,7 @@ const INSTRUCTIONS_RECHECK: Study = {
   out: join(EXPERIMENTS, '2026-10-16-mcp-recheck-instructions'),
   capUsd: 2,
   describeMode: '--instructions-describe',
-  runsByModel: { 'claude-haiku-4-5': 6, 'claude-sonnet-5-5': 1 },
+  runsByModel: { 'claude-haiku-5-5': 6, 'claude-sonnet-5-5': 1 },
 }
 
 /**
@@ -366,6 +374,15 @@ async function main(): Promise<void> {
   const client = new Anthropic({ apiKey, timeout: 600_000, maxRetries: 2 })
 
   const recorded = readRecorded()
+  const refusal = retiredModelRefusal(
+    recorded,
+    MODELS.map((model) => model.id),
+    RESPONSES,
+  )
+  if (refusal !== undefined) {
+    console.error(refusal)
+    process.exit(1)
+  }
   const changed = answeringChangedPrompts(recorded, (caseId) => prompts.get(caseId))
   if (changed.length > 0) {
     console.error(

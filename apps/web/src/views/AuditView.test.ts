@@ -33,7 +33,7 @@ const READING = {
     },
     warnings: [],
   },
-  model: 'claude-opus-5',
+  model: 'claude-opus-5-5',
 }
 
 const respond = (body: unknown, ok = true, status = 200) =>

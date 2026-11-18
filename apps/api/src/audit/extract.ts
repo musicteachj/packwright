@@ -33,7 +33,18 @@ import {
 import { toSupplier } from '@packwright/label-core/schema'
 import { EXTRACTED_FIELDS, GhsExtraction } from './extractionSchema'
 
-export const EXTRACTION_MODEL = 'claude-opus-5'
+export const EXTRACTION_MODEL = 'claude-opus-5-5'
+
+/**
+ * How hard the model thinks before it answers, stated rather than left to the default.
+ *
+ * Claude Opus 5 thought at `high` when nothing was said, and every reading on
+ * record was made that way. Claude Opus 5.5 defaults to `medium`, so moving the
+ * model alone would also have quietly made each reading a shallower one. Thinking
+ * is always on for Opus 5.5, so effort is the only control left. Both defaults
+ * are from platform.claude.com/docs/en/build-with-claude/effort, read 2026-11-18.
+ */
+export const EXTRACTION_EFFORT = 'high'
 
 /** The four formats Claude accepts. GIF and WebP are here because it does. */
 export const PHOTO_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const
@@ -88,8 +99,8 @@ export class ExtractionDeclined extends Error {
  * cut-off JSON, so without this it falls through to `JSON.parse` and comes back
  * as "the image could not be read as a label" — blaming a photograph for a
  * budget this server set. Adaptive thinking draws on the same `max_tokens` as
- * the answer, so it is reachable on a dense label even though the recorded
- * reading spent 267 output tokens of 16,000.
+ * the answer, so it is reachable on a dense label even though Opus 5's recorded
+ * reading spent 267 output tokens of 16,000 and Opus 5.5's 488 of 4,000.
  */
 export class ExtractionTruncated extends Error {
   constructor() {
@@ -308,7 +319,7 @@ export async function extractGhsLabel(
     max_tokens: VISION_MAX_TOKENS,
     thinking: { type: 'adaptive' },
     system: SYSTEM_PROMPT,
-    output_config: { format: zodOutputFormat(GhsExtraction) },
+    output_config: { effort: EXTRACTION_EFFORT, format: zodOutputFormat(GhsExtraction) },
     messages: [
       {
         role: 'user',
@@ -396,8 +407,9 @@ export async function extractGhsLabel(
  * The SDK's defaults are built for a script: ten minutes and two retries, which
  * is up to half an hour of a browser waiting before it is told the service
  * could not be reached. This is a request somebody is holding a phone through.
- * The recorded call takes about five seconds, so two minutes is generous and one
- * retry still covers a dropped connection.
+ * A reading of the sample label takes about five seconds, on Opus 5 and on Opus
+ * 5.5 alike (4.7 s, timed 2026-11-18), so two minutes is generous and one retry
+ * still covers a dropped connection.
  *
  * Here rather than in `server.ts` so that a test can assert it. `server.ts`
  * opens a database and listens on a port, which is why nothing in this
@@ -411,22 +423,27 @@ export const VISION_MAX_RETRIES = 1
  *
  * These two numbers are one decision and were first written as two: 16,000
  * tokens against a sixty-second timeout, which cannot both be true at any rate
- * this model has produced — the recorded call managed 267 tokens in about five
- * seconds, so roughly fifty a second. The budget was unreachable, which made
+ * Opus 5 produced: its recorded call managed 267 tokens in about five seconds,
+ * so roughly fifty a second. The budget was unreachable, which made
  * `ExtractionTruncated` a guard for something the timeout always got to first
  * and turned a genuinely long reading into two billed attempts reported as "the
  * service could not be reached".
  *
  * Both numbers moved: the timeout to two minutes, the budget to four thousand.
- * A reading is a small JSON object — the recorded one is 267 tokens, and
- * adaptive thinking draws on the same budget — so four thousand is generous for
- * a dense label and deliverable inside two minutes with room to spare.
+ * A reading is a small JSON object, and adaptive thinking draws on the same
+ * budget: Opus 5's recorded reading was 267 tokens, and Opus 5.5's at effort
+ * `high` 488 (221 of them thinking). Four thousand is generous for a dense label
+ * and deliverable inside two minutes with room to spare.
  * `extract.test.ts` asserts that they still agree, rather than leaving it to
  * whoever edits one of them next.
  */
 export const VISION_MAX_TOKENS = 4_000
 
-/** The slowest generation rate observed, rounded down hard. Used only to check the two above agree. */
+/**
+ * The slowest generation rate observed, rounded down hard. Used only to check the
+ * two above agree. Measured on Opus 5; Opus 5.5 managed 416 tokens in 4.7 s over a
+ * whole call on 2026-11-18, about 88 a second, so the floor still holds.
+ */
 export const SLOWEST_TOKENS_PER_SECOND = 40
 
 export function visionClient(apiKey: string): Anthropic {
