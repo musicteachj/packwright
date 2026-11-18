@@ -322,13 +322,18 @@ describe('every bound in INPUT_BOUNDS', () => {
     }
   })
 
-  it('refuses a list past its bound as one issue, without judging what it holds', () => {
+  it.each([
+    ['numbers, which fail as items', Array.from({ length: B.statementCodes + 1 }, () => 0)],
+    [
+      'unknown codes, which fail the regime check',
+      Array.from({ length: B.statementCodes + 1 }, (_, i) => `P${9000 + i}`),
+    ],
+  ])('refuses a list past its bound as one issue: %s', (_kind, codes) => {
     // GHSA-mrhx-c7xc-m3w5. Before Zod 4.6.6 a list refused for its length was still
-    // judged item by item, and every item kept an issue: 4,900 unknown precautionary
-    // codes made 4,900, which `/mcp` once answered in 754 kB, and 254 KB of numbers made
-    // 127,002 on an export route (`docs/security-review-2026-10-18.md`). The length is now
-    // the one issue.
-    const codes = Array.from({ length: B.statementCodes + 1 }, (_, i) => `P${9000 + i}`)
+    // judged: 254 KB of numbers made 127,002 issues on an export route, one per item,
+    // and 4,900 unknown precautionary codes made 4,900 from the refinement that checks
+    // codes against the regime, which `/mcp` once answered in 754 kB
+    // (`docs/security-review-2026-10-18.md`). The length is now the one issue.
     const refused = LabelDocumentInput.safeParse(
       documentWith(GHS, [...D, 'precautionaryStatementCodes'], codes),
     )

@@ -205,6 +205,7 @@ describe('a request the server cannot accept', () => {
     // process. One request, no key, and the parser runs before any route, so any
     // address would do. Fixed in body-parser 2.4.0; the payload is the one its
     // own regression test sends.
+    type Answer = { status: number | undefined; text: string }
     const uncaught: unknown[] = []
     const record = (error: unknown) => uncaught.push(error)
     process.on('uncaughtException', record)
@@ -217,7 +218,7 @@ describe('a request the server cannot accept', () => {
         Buffer.from([0x00]),
         Buffer.alloc(100 * 1024, 0x58),
       ])
-      const status = await new Promise<number | undefined>((resolve, reject) => {
+      const answer = await new Promise<Answer>((resolve, reject) => {
         const sent = http.request(
           {
             host: '127.0.0.1',
@@ -232,8 +233,10 @@ describe('a request the server cannot accept', () => {
             },
           },
           (response) => {
-            response.resume()
-            response.on('end', () => resolve(response.statusCode))
+            let text = ''
+            response.setEncoding('utf8')
+            response.on('data', (chunk: string) => (text += chunk))
+            response.on('end', () => resolve({ status: response.statusCode, text }))
           },
         )
         sent.on('error', reject)
@@ -242,8 +245,10 @@ describe('a request the server cannot accept', () => {
       // Give the bytes after the zero time to reach the decoder before looking.
       await new Promise((resolve) => setTimeout(resolve, 200))
 
-      // 400 is the export route refusing `{"a":1}` as a label: the body was read.
-      expect(status).toBe(400)
+      // The export route refusing `{"a":1}` as a label, so the body was read and
+      // parsed; the parser's own refusal is a 400 too, worded "Bad request".
+      expect(answer.status).toBe(400)
+      expect(JSON.parse(answer.text)).toMatchObject({ error: 'Invalid label request' })
       expect(uncaught).toEqual([])
     } finally {
       process.off('uncaughtException', record)

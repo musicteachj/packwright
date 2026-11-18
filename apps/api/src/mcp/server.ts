@@ -153,7 +153,10 @@ const memoised = (convert: typeof outlineJsonSchema.input): typeof convert => {
  *
  * Zod reports every bad item, and the SDK joins them all into one sentence, so
  * 4,900 unknown precautionary codes in a 38 kB request answered 754 kB (security
- * review of 2026-10-18). Twenty is more than any person correcting a label reads
+ * review of 2026-10-18). Since Zod 4.6.6 a list past its bound is refused for its
+ * length alone, but within the bounds 500 unknown hazard codes and 500 unknown
+ * precautionary codes, about 8 kB, still raise a thousand issues, so the cap
+ * stays. Twenty is more than any person correcting a label reads
  * at once; the count of the rest says how far there is to go. The other three
  * tools take one or two fixed fields each, so they cannot raise more than two.
  */

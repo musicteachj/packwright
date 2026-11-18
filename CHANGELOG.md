@@ -39,8 +39,11 @@ into a version only when there is a reason to.
   `kareem`, `mquery`, `sift` and `@mongodb-js/saslprep`), Zod 4.4.3 to 4.6.7, `hono` 4.13.13 to 4.13.19,
   `@hono/node-server` 1.19.17 to 1.19.19, `ip-address` 10.7.2 to 10.7.6 and `qs` 6.16.0 to 6.17.1, and nothing
   else. The declared ranges rise to the first patched releases, `zod` to `^4.6.6` in all three workspaces and
-  `mongoose` to `^9.11.4`, so an install that resolves afresh cannot land below them; body-parser comes through
-  Express, whose range already admits 2.4.0, and `app.test.ts` holds it. `npm audit fix` was tried first and moved 74 packages, most of them
+  `mongoose` to `^9.11.4`, so an install that resolves afresh cannot land below them, and body-parser, which comes
+  through Express, gets `^2.4.0` from an `overrides` entry in the root `package.json`, because Express's own range
+  (`^2.2.1`) still admits 2.3.0. Zod 4.6.7 also changes the JSON Schema `/mcp` advertises for the nutrition
+  panel's two column headings (`items: false`, with a minimum and maximum of two); Claude Code 2.1.311, run
+  headless against the built server, still lists all four tools, and its `check_label` call was judged. `npm audit fix` was tried first and moved 74 packages, most of them
   build and lint tooling, so these were updated by name instead. What the audit still reports runs only at build
   time or in Vite's dev server (`picomatch`, `source-map-js` and `esbuild`, through Vite and Vue Router's build
   integration), plus `@hono/node-server`'s `serveStatic`, which nothing here calls and which is fixed only in its
