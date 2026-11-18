@@ -1,3 +1,6 @@
+import http from 'node:http'
+import type { AddressInfo } from 'node:net'
+import { gzipSync } from 'node:zlib'
 import request from 'supertest'
 import { describe, expect, it, vi } from 'vitest'
 import { createApp } from './app'
@@ -191,6 +194,66 @@ describe('a request the server cannot accept', () => {
 
     expect(response.status).toBe(400)
     expect(response.body).toEqual({ error: 'Bad request' })
+  })
+
+  it('survives a compressed body with bytes after its end', async () => {
+    // GHSA-27r3-jxmh-p828. body-parser 2.3.0 left the decompression stream piped
+    // to the request after reading a body, with nothing listening for its errors.
+    // Node's gunzip takes a zero byte after a member for padding and stops there,
+    // so the parser read `{"a":1}` and the route answered; the bytes still
+    // arriving were then read as a new member, failed, and the error ended the
+    // process. One request, no key, and the parser runs before any route, so any
+    // address would do. Fixed in body-parser 2.4.0; the payload is the one its
+    // own regression test sends.
+    type Answer = { status: number | undefined; text: string }
+    const uncaught: unknown[] = []
+    const record = (error: unknown) => uncaught.push(error)
+    process.on('uncaughtException', record)
+    const server = http.createServer(app)
+    try {
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+      const { port } = server.address() as AddressInfo
+      const body = Buffer.concat([
+        gzipSync(Buffer.from('{"a":1}')),
+        Buffer.from([0x00]),
+        Buffer.alloc(100 * 1024, 0x58),
+      ])
+      const answer = await new Promise<Answer>((resolve, reject) => {
+        const sent = http.request(
+          {
+            host: '127.0.0.1',
+            port,
+            method: 'POST',
+            path: '/api/labels/upc-a/export',
+            agent: false,
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Encoding': 'gzip',
+              'Content-Length': body.length,
+            },
+          },
+          (response) => {
+            let text = ''
+            response.setEncoding('utf8')
+            response.on('data', (chunk: string) => (text += chunk))
+            response.on('end', () => resolve({ status: response.statusCode, text }))
+          },
+        )
+        sent.on('error', reject)
+        sent.end(body)
+      })
+      // Give the bytes after the zero time to reach the decoder before looking.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      // The export route refusing `{"a":1}` as a label, so the body was read and
+      // parsed; the parser's own refusal is a 400 too, worded "Bad request".
+      expect(answer.status).toBe(400)
+      expect(JSON.parse(answer.text)).toMatchObject({ error: 'Invalid label request' })
+      expect(uncaught).toEqual([])
+    } finally {
+      process.off('uncaughtException', record)
+      await new Promise((resolve) => server.close(resolve))
+    }
   })
 })
 
