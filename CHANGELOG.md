@@ -8,6 +8,12 @@ into a version only when there is a reason to.
 
 ## [Unreleased]
 
+### Added
+
+- **The plan for Packwright's public portfolio demo** (`docs/plans/2026-11-19-portfolio-demo-readiness.md`): the
+  production image, a paced AI budget, public photo reads behind a bot check, and the local checks that precede
+  deployment.
+
 ### Changed
 
 - **Label photographs are read by Claude Opus 5.5, at the effort Opus 5 read them at, and the experiment runners
