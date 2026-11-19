@@ -11,6 +11,7 @@ import {
 } from './extract'
 import { memoryAllowance, type DailyAllowance } from './dailyAllowance'
 import { AUDIT_KEY_HEADER, MAX_PHOTO_BASE64 } from './routes'
+import { recorded } from './fixtures/responses'
 
 // The opening of a real PNG, its signature and the start of its IHDR chunk: the
 // route refuses data that does not begin as its media type does (`photoSignature.ts`).
@@ -24,7 +25,11 @@ const EXTRACTION = {
 
 /** A model name that is not the one this server asks for, so the two cannot be confused. */
 const ANSWERED_BY = 'claude-opus-5-some-other-snapshot'
-const READING = { extraction: EXTRACTION, model: ANSWERED_BY }
+const READING = {
+  extraction: EXTRACTION,
+  model: ANSWERED_BY,
+  billed: { model: ANSWERED_BY, usage: recorded.usage },
+}
 
 // `auditLimits: false` everywhere below, stated rather than inherited: these
 // cases are about what the route does with a body, and a quota counting down
@@ -58,6 +63,7 @@ describe('POST /api/audit/ghs', () => {
     const response = await post(A_REQUEST, reading())
     expect(response.status).toBe(200)
     expect(response.body).toEqual({ extraction: EXTRACTION, model: ANSWERED_BY })
+    expect(response.body).not.toHaveProperty('billed')
     expect(response.body.model).not.toBe(EXTRACTION_MODEL)
   })
 

@@ -8,10 +8,10 @@ import {
   ExtractionUnreadable,
   extractGhsLabel,
   SLOWEST_TOKENS_PER_SECOND,
-  VISION_MAX_RETRIES,
   VISION_MAX_TOKENS,
   VISION_TIMEOUT_MS,
   visionClient,
+  sendThrough,
   type SendMessage,
 } from './extract'
 import {
@@ -39,6 +39,12 @@ import {
 
 const PHOTO = { mediaType: 'image/png', data: 'AAAA' } as const
 
+const PARAMS: Anthropic.MessageCreateParamsNonStreaming = {
+  model: 'claude-opus-5-5',
+  max_tokens: 1,
+  messages: [{ role: 'user', content: 'x' }],
+}
+
 const replying = (message: Anthropic.Message): SendMessage => vi.fn().mockResolvedValue(message)
 
 /** The reading alone. `readingOf` is for the tests that care about the envelope. */
@@ -63,13 +69,12 @@ describe('the client the request goes out on', () => {
     // The SDK's defaults are ten minutes and two retries, which is up to half an
     // hour of a browser waiting to be told the service could not be reached.
     // Constructed by a factory rather than inline in `server.ts` so that this
-    // can be asserted at all — `server.ts` opens a database and listens on a
+    // can be asserted at all, since `server.ts` opens a database and listens on a
     // port, so nothing imports it.
     const client = visionClient('sk-ant-not-a-real-key')
-    expect(client.timeout).toBe(VISION_TIMEOUT_MS)
-    expect(client.maxRetries).toBe(VISION_MAX_RETRIES)
-    expect(VISION_TIMEOUT_MS).toBeLessThan(10 * 60_000)
-    expect(VISION_MAX_RETRIES).toBeLessThan(2)
+    expect(client.timeout).toBe(60_000)
+    expect(client.maxRetries).toBe(0)
+    expect(VISION_TIMEOUT_MS).toBeLessThan(120_000) // the load balancer's idle timeout
   })
 
   it('cannot want more tokens than the timeout allows it to receive', () => {
@@ -79,9 +84,47 @@ describe('the client the request goes out on', () => {
     // happens, and turns a long reading into two billed attempts reported as an
     // unreachable service. Asserted rather than left in a comment, because the
     // next person to change either number will change only one.
+    // The floor of 70 tokens a second rests on one timed call: 416 tokens in
+    // 4.7 s on 2026-11-18, about 88 a second. A whole-call rate includes the time
+    // to the first token, so it understates the generation rate (Opus 5's
+    // recorded call, also a whole-call figure, managed about fifty). A slower
+    // 4,000-token read times out; once the spend ledger exists (plan Tasks 4
+    // and 5) it keeps its full reservation, so it is over-counted and never
+    // under-counted. Measuring more needs paid calls, ruled out before launch.
     const secondsToSpend = VISION_MAX_TOKENS / SLOWEST_TOKENS_PER_SECOND
     expect(secondsToSpend).toBeLessThan(VISION_TIMEOUT_MS / 1000)
   })
+})
+
+describe('what a reading was billed for', () => {
+  it('comes back with every reading', async () => {
+    const reading = await extractGhsLabel(replying(recorded), PHOTO, 'eu-clp')
+    expect(reading.billed).toEqual({ model: recorded.model, usage: recorded.usage })
+  })
+
+  it.each([
+    ['a decline', refused],
+    ['a reply cut short', truncated],
+    ['prose where JSON was asked for', notJson],
+  ])('comes back with %s, which is billed too', async (_, message) => {
+    await expect(extractGhsLabel(replying(message), PHOTO, 'eu-clp')).rejects.toMatchObject({
+      billed: { model: message.model, usage: message.usage },
+    })
+  })
+})
+
+it("passes the caller's abort signal to the port", async () => {
+  const send = vi.fn().mockResolvedValue(recorded)
+  const signal = new AbortController().signal
+  await extractGhsLabel(send, PHOTO, 'eu-clp', { signal })
+  expect(send).toHaveBeenCalledWith(expect.anything(), { signal })
+})
+
+it('hands the signal to the SDK', async () => {
+  const create = vi.fn().mockResolvedValue(recorded)
+  const signal = new AbortController().signal
+  await sendThrough({ messages: { create } } as unknown as Anthropic)(PARAMS, { signal })
+  expect(create).toHaveBeenCalledWith(PARAMS, { signal })
 })
 
 describe('the request', () => {

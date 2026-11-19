@@ -25,6 +25,19 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **A photograph is read in one attempt, in 60 seconds at most, and every reading says what it was billed.** The
+  SDK retried a failed read once, which billed a read twice and let a request run to four minutes; there are now no
+  SDK retries (`VISION_MAX_RETRIES` is 0), because each attempt will have to carry its own reservation against the
+  spend budget, which arrives with the spend ledger (plan Tasks 4 and 5). The timeout drops from 120 s to 60 s,
+  below the load balancer's 120 s idle timeout, and the floor for generation speed rises from 40 to 70 tokens a
+  second: it rests on one timed call, 416 tokens in 4.7 s on 2026-11-18, about 88 a second. A whole-call rate
+  includes the time to the first token, so it understates the generation rate, and a slower 4,000-token read times
+  out and, once the ledger exists, keeps its full reservation, so it is over-counted and never under-counted. Every
+  reading now carries `billed: { model, usage }` taken from the reply, and so do the three errors a billed reply
+  can end in (a decline, a truncation, an unreadable reply), through a new `ExtractionError` base class, because a
+  read that failed was still paid for. The send port, `ExtractLabel` and `sendThrough` now take an abort signal; the
+  server wires one in a later change. The route still returns only the extraction and the model, so `billed` does
+  not reach the client.
 - **Label photographs are read by Claude Opus 5.5, at the effort Opus 5 read them at, and the experiment runners
   call Haiku 5.5.** `EXTRACTION_MODEL` moves from `claude-opus-5` to `claude-opus-5-5`. The request already had the
   shape Opus 5.5 requires: adaptive thinking, structured output through `output_config.format`, no forced
