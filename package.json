@@ -29,6 +29,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify:build": "bash scripts/verify-build.sh",
+    "verify:image": "bash scripts/verify-image.sh",
     "generate:font-metrics": "node scripts/generate-font-metrics.mjs"
   },
   "devDependencies": {

@@ -10,6 +10,15 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **A production image, and a check that it is fit to ship.** A two-stage `Dockerfile` (`node:24-slim` pinned by
+  digest) builds the client and the API, prunes to production dependencies, and runs as the unprivileged `node` user
+  with the bundle owned by root. `.dockerignore` keeps every `.env*` file but `.env.example` out of the build
+  context (`apps/api/.env` holds a real key, and dotenv reads `.env` from the working directory), and the check of
+  the build stage is what proves it. `npm run verify:image`
+  builds it and fails unless the image holds no `.env` file, runs as non-root on Node 24 with npm 11 or newer,
+  carries no `sk-ant-` key or Turnstile test site key in the client bundle, and boots read-only with every
+  capability dropped, answering `/health`, serving the client and exporting a PDF. Compose gains a `prod` profile
+  (`docker compose --profile prod up -d --build`) that runs the image on `127.0.0.1:8080` against its own database.
 - **The plan for Packwright's public portfolio demo** (`docs/plans/2026-11-19-portfolio-demo-readiness.md`): the
   production image, a paced AI budget, public photo reads behind a bot check, and the local checks that precede
   deployment.
