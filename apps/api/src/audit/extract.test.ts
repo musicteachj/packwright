@@ -7,8 +7,11 @@ import {
   ExtractionTruncated,
   ExtractionUnreadable,
   extractGhsLabel,
+  MAX_IMAGE_TOKENS,
   SLOWEST_TOKENS_PER_SECOND,
+  VISION_INPUT_TOKEN_BOUND,
   VISION_MAX_TOKENS,
+  VISION_RESERVATION_MICROS,
   VISION_TIMEOUT_MS,
   visionClient,
   sendThrough,
@@ -93,6 +96,27 @@ describe('the client the request goes out on', () => {
     // under-counted. Measuring more needs paid calls, ruled out before launch.
     const secondsToSpend = VISION_MAX_TOKENS / SLOWEST_TOKENS_PER_SECOND
     expect(secondsToSpend).toBeLessThan(VISION_TIMEOUT_MS / 1000)
+  })
+})
+
+describe('what a reading may cost', () => {
+  it("reserves a read's worst case", () => {
+    // 8,000 input x $4 / MTok + 4,000 output x $20 / MTok = 32,000 + 80,000 micro-dollars,
+    // from Anthropic's pricing page, read on 2026-11-19.
+    expect(VISION_RESERVATION_MICROS).toBe(112_000)
+  })
+
+  it('bounds the input by the largest image plus what the recorded request spent besides its image', () => {
+    // sampleLabel.png is 760 x 620. Anthropic's vision page (read on 2026-11-19) prices an
+    // image at ceil(width / 28) x ceil(height / 28) tokens: 28 x 23 = 644.
+    const recordedImageTokens = Math.ceil(760 / 28) * Math.ceil(620 / 28)
+    expect(recordedImageTokens).toBe(644)
+    // The same page caps an image at 4,784 visual tokens on Claude 4.7 and later models.
+    expect(MAX_IMAGE_TOKENS).toBe(4_784)
+    // 4,784 + (2,537 - 644) = 4,784 + 1,893 = 6,677
+    expect(VISION_INPUT_TOKEN_BOUND).toBeGreaterThanOrEqual(
+      MAX_IMAGE_TOKENS + recorded.usage.input_tokens - recordedImageTokens,
+    )
   })
 })
 

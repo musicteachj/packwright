@@ -10,6 +10,22 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **A paced spend ledger for photo reads, in integer micro-dollars.** The public demo gets a fixed monthly AI
+  budget, so every read will reserve its worst case before it is sent and settle at what its reply says it cost
+  (`apps/api/src/audit/ledger.ts`, with the database store in `ledgerStore.ts`; the server and the route use it in
+  the next change). Today may spend `min(left, max(floor(multiplier x left / daysLeft), floor))`, where `left` is
+  the month's budget less everything dated before today, settled or still open, and `daysLeft` counts today, so a
+  quiet start to the month is not spent in one afternoon and a late one still has a floor. Each step is one guarded
+  `$inc` that raises the day or the month only while it stays under its ceiling, so ten reads at once cannot pass
+  either; no lock is held across a model call, because an open reservation already counts at its full amount; a
+  reservation open for more than ten minutes is charged at what it reserved; and a crash between two updates
+  over-counts, never under-counts. A read settles into the day and month it began in, even across midnight. The
+  worst case is $0.112 a read: 8,000 input tokens at $4 per million and 4,000 output tokens at $20 per million
+  (`VISION_RESERVATION_MICROS`). The input bound is the largest image Claude reads, 4,784 visual tokens, plus the
+  1,893 the recorded request spent besides its image, rounded up from 6,677. Prices are pinned for Claude Opus 5.5
+  only (`apps/api/src/audit/pricing.ts`), from Anthropic's pricing page, and the image cap from its vision page,
+  both read on 2026-11-19 and added to `docs/SOURCES.md`; a reply from any other model, or one reporting 1-hour
+  cache writes the request never asks for, has no price and settles at its full reservation.
 - **A production image, and a check that it is fit to ship.** A two-stage `Dockerfile` (`node:24-slim` pinned by
   digest) builds the client and the API, prunes to production dependencies, and runs as the unprivileged `node` user
   with the bundle owned by root. `.dockerignore` keeps every `.env*` file but `.env.example` out of the build

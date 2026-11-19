@@ -32,6 +32,7 @@ import {
 } from '@packwright/label-core'
 import { toSupplier } from '@packwright/label-core/schema'
 import { EXTRACTED_FIELDS, GhsExtraction } from './extractionSchema'
+import { reservationMicros } from './pricing'
 
 export const EXTRACTION_MODEL = 'claude-opus-5-5'
 
@@ -493,6 +494,39 @@ export const VISION_MAX_TOKENS = 4_000
  * calls, which are ruled out before launch.
  */
 export const SLOWEST_TOKENS_PER_SECOND = 70
+
+/**
+ * The most visual tokens one image can cost: 4,784.
+ *
+ * Source: Anthropic, "Vision", platform.claude.com/docs/en/build-with-claude/vision, read on
+ * 2026-11-19, § Resolution and token cost. An image costs `⌈width / 28⌉ × ⌈height / 28⌉` visual
+ * tokens, one per 28 x 28 px patch, and Claude 4.7 and later models (the high-resolution tier)
+ * downscale any image above a 2,576 px long edge or 4,784 visual tokens until it fits both. So no
+ * photograph, however large, is read as more than 4,784 input tokens.
+ */
+export const MAX_IMAGE_TOKENS = 4_784
+
+/**
+ * The most input tokens a reading can be billed for, rounded up to 8,000.
+ *
+ * The largest image plus everything else the request is billed for besides it: the two prompts
+ * and whatever the output format adds. Those are the same on every read, and the recorded
+ * reading measures them: 2,537 input tokens for `sampleLabel.png`, which at 760 x 620 is 28 x 23 = 644 visual
+ * tokens, leaves 1,893. So 4,784 + 1,893 = 6,677, rounded up to 8,000 for a prompt that grows a
+ * little. `extract.test.ts` holds the sum to the bound.
+ */
+export const VISION_INPUT_TOKEN_BOUND = 8_000
+
+/**
+ * What one read reserves against the spend budget before it is sent: its worst case, 8,000
+ * input tokens at $4 / MTok and 4,000 output tokens at $20 / MTok, 32,000 + 80,000 = 112,000
+ * micro-dollars ($0.112). The read then settles at what its reply reports it cost.
+ */
+export const VISION_RESERVATION_MICROS = reservationMicros(
+  EXTRACTION_MODEL,
+  VISION_INPUT_TOKEN_BOUND,
+  VISION_MAX_TOKENS,
+)
 
 export function visionClient(apiKey: string): Anthropic {
   return new Anthropic({
