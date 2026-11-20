@@ -1,5 +1,5 @@
-import type Anthropic from '@anthropic-ai/sdk'
-import { describe, expect, it, vi } from 'vitest'
+import Anthropic from '@anthropic-ai/sdk'
+import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { GhsRequest } from '@packwright/label-core/schema'
 import {
   EXTRACTION_MODEL,
@@ -7,6 +7,7 @@ import {
   ExtractionTruncated,
   ExtractionUnreadable,
   extractGhsLabel,
+  liveExtractor,
   MAX_IMAGE_TOKENS,
   SLOWEST_TOKENS_PER_SECOND,
   VISION_INPUT_TOKEN_BOUND,
@@ -149,6 +150,27 @@ it('hands the signal to the SDK', async () => {
   const signal = new AbortController().signal
   await sendThrough({ messages: { create } } as unknown as Anthropic)(PARAMS, { signal })
   expect(create).toHaveBeenCalledWith(PARAMS, { signal })
+})
+
+describe('the live extractor', () => {
+  let create: MockInstance<Anthropic.Messages['create']> | undefined
+  afterEach(() => {
+    create?.mockRestore()
+    create = undefined
+  })
+
+  it("the live extractor hands the caller's signal to the SDK", async () => {
+    // `server.ts` used to compose the production extractor inline and dropped the options on
+    // the way, and nothing imports `server.ts`, so this is the only place the composition the
+    // server runs can be caught doing it again. The SDK's own method is replaced, so no request
+    // leaves the process and the key is never sent anywhere.
+    create = vi.spyOn(Anthropic.Messages.prototype, 'create').mockResolvedValue(recorded)
+    const signal = new AbortController().signal
+    await liveExtractor('sk-ant-not-a-real-key')(PHOTO, 'eu-clp', { signal })
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(create.mock.calls[0]![1]).toEqual({ signal })
+    expect(create.mock.calls[0]![1]?.signal).toBe(signal)
+  })
 })
 
 describe('the request', () => {

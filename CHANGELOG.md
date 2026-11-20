@@ -41,6 +41,30 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **Every live photo read is reserved and settled against a monthly AI budget, and a visitor who leaves stops the
+  call.** The audit route wraps its extractor once in `metered` (`apps/api/src/audit/spend.ts`): a read reserves its
+  worst case, $0.112, before the model is called, and is refused with a 429 that points at the sample label when the
+  day has no room; a reply, or a failure that was billed (a decline, a truncation, an unreadable reply), settles at
+  what it cost, or at the whole reservation for a model with no price; a provider error the portfolio's shared
+  ledger rule treats as unbilled, because each is a refusal of the request (401, 402, 403, a usage limit you set,
+  any 429, an overload), settles at nothing; and anything else, a timeout or a 500 among them, keeps its whole
+  reservation for the ledger's sweep to charge. A visitor who has gone before the call is made is not read for,
+  and one who leaves while the reservation is being made has it given back. A
+  ledger that cannot reserve answers 503 and never calls the model, and one that cannot settle is logged and does
+  not take the reading away. Every provider error now answers one friendly 503, "Live photo reading is not available
+  right now. Try the sample label.", where a 400 used to answer 422 and a rate limit or an outage 503 or 502,
+  because none of them is the visitor's to fix and none should blame the photograph; an unreadable reply's 422 now
+  says the reading came back in a form Packwright could not use. When the visitor's connection closes before the
+  answer, the route aborts the call through the signal the SDK now receives, and the reservation stays counted.
+  `/api/audit/status` reports no read available when the day has no room. The production extractor is built by
+  `liveExtractor` in `extract.ts`, because the composition `server.ts` used to build inline dropped the signal and
+  nothing tests `server.ts`. Three settings: `AI_MONTHLY_BUDGET_USD` (required in production whenever
+  `ANTHROPIC_API_KEY` is set, blank is 0 elsewhere, and 0 turns live reads off), `AI_PACING_MULTIPLIER` (3) and
+  `AI_DAILY_FLOOR_USD` (0.5); the browser suite runs with a budget of 0, so a developer key is never spent by it.
+  Each error's status and type, and the usage-limit wording, come from Anthropic's errors and rate-limits pages,
+  read on 2026-11-19 and added to `docs/SOURCES.md`; those pages say nothing about what any of these errors is billed. The shared rule also
+  lists a 400 saying the credit balance is too low, but neither page gives its wording, so it is not matched and
+  keeps its reservation.
 - **A photograph is read in one attempt, in 60 seconds at most, and every reading says what it was billed.** The
   SDK retried a failed read once, which billed a read twice and let a request run to four minutes; there are now no
   SDK retries (`VISION_MAX_RETRIES` is 0), because each attempt will have to carry its own reservation against the

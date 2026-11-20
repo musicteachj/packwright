@@ -541,3 +541,22 @@ export const sendThrough =
   (client: Anthropic): SendMessage =>
   (params, options) =>
     client.messages.create(params, options)
+
+/**
+ * The extractor `server.ts` runs: the bounded client (60 s, no retries) behind the port.
+ *
+ * Here rather than inline in `server.ts`, which is where it used to be built, as
+ * `(photo, regime) => extractGhsLabel(send, photo, regime)`. That dropped the call options, so a
+ * visitor who left mid-read could never stop the call, and nothing noticed: `server.ts` opens a
+ * database and listens on a port, so nothing imports it and no test could see the composition.
+ * As a function here, `extract.test.ts` asserts that the caller's signal reaches the SDK.
+ *
+ * Optional on purpose, as the key is: `MONGODB_URI` was made required in phase 6 and broke every
+ * harness that boots the server, and this key has an external service and a cost per call behind
+ * it, so `server.ts` builds this only when `ANTHROPIC_API_KEY` is set and the audit answers 503
+ * without it.
+ */
+export function liveExtractor(apiKey: string): ExtractLabel {
+  const send = sendThrough(visionClient(apiKey))
+  return (photo, regime, options) => extractGhsLabel(send, photo, regime, options)
+}

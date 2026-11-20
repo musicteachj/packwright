@@ -36,7 +36,9 @@ import {
   PHOTO_MEDIA_TYPES,
   type ExtractLabel,
 } from './extract'
+import type { SpendLedger } from './ledger'
 import { photoFault } from './photoSignature'
+import { metered, SpendRefused, SpendUnavailable } from './spend'
 
 /**
  * The largest image this route will forward, in base64 characters.
@@ -83,9 +85,11 @@ export const AUDIT_BODY_LIMIT = '10mb'
  *
  * Both are deliberately small. Raising a limit is a decision somebody makes on
  * purpose; discovering one was never there is not. **The day's figure is 10 since
- * 2026-10-18**, about $1.30 at the security review's $0.13 a call, where 200 was
- * about $26 and would spend a $30 monthly limit in a day; `AUDIT_DAILY_LIMIT`
- * sets it, so it can follow that limit down without a release.
+ * 2026-10-18**; `AUDIT_DAILY_LIMIT` sets it, so it can follow a monthly limit down
+ * without a release. A typical read costs about $0.02 to $0.04 (the recorded one,
+ * 19,908 micro-dollars) and $0.112 at worst (`VISION_RESERVATION_MICROS`), so ten is
+ * at most $1.12 a day. The money itself is held by the spend ledger (`AuditSpend`),
+ * which reserves every read's worst case before it is sent.
  */
 export const DEFAULT_AUDIT_LIMITS = { perHour: 20, perDay: 10 } as const
 
@@ -148,6 +152,33 @@ const badRequest = (
     detail: issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
   })
 
+/**
+ * The ledger every live read reserves against, and what one read reserves.
+ *
+ * With it, the extractor is wrapped once in `metered` (`spend.ts`): a read is refused before
+ * the model is called when the day has no room, and settled at what it cost once it answers.
+ */
+export interface AuditSpend {
+  ledger: SpendLedger
+  reservationMicros: number
+}
+
+/** What a visitor is told when the budget has no room for a read. */
+const PAUSED = {
+  error: 'Live photo reads are paused for now. Try the sample label.',
+  reason: 'budget',
+} as const
+
+/**
+ * What a visitor is told for every provider error and for a ledger that cannot be asked. None
+ * of them is anything a visitor can fix, so all of them point at the sample; the detail goes to
+ * the log.
+ */
+const UNAVAILABLE = {
+  error: 'Live photo reading is not available right now. Try the sample label.',
+  reason: 'unavailable',
+} as const
+
 export interface AuditRouterOptions {
   extract?: ExtractLabel | undefined
   /**
@@ -178,11 +209,18 @@ export interface AuditRouterOptions {
    * `databaseAllowance`.
    */
   allowance?: DailyAllowance | undefined
+  /** The spend ledger, or nothing to read without one. See `AuditSpend`. */
+  spend?: AuditSpend | undefined
 }
 
 export function createAuditRouter(options: AuditRouterOptions = {}): Router {
   const router = Router()
-  const { extract, apiKey, limits } = options
+  const { apiKey, limits, spend } = options
+  // Wrapped once, here, so that no path through the handler can reach the model unreserved.
+  const extract =
+    options.extract === undefined || spend === undefined
+      ? options.extract
+      : metered(options.extract, spend.ledger, spend.reservationMicros)
 
   // **Order is the whole of this.** Each guard is cheap to state and the sequence
   // is what makes them add up, so it is written out rather than assembled where
@@ -196,12 +234,19 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
   // What the audit page needs to know before it asks for a photograph: whether
   // there is anything to send one to, and whether it must ask for the key. No
   // more than that, and nothing about the key itself.
-  // A day of no calls is no audit, though the extractor is there.
-  router.get('/status', (_request: Request, response: Response) => {
-    response.json({
-      available: extract !== undefined && (today === undefined || today.perDay > 0),
-      keyRequired: apiKey !== undefined,
-    })
+  // A day of no calls is no audit, though the extractor is there, and so is a day whose budget
+  // has no room for one more read. A ledger that cannot be asked reads as no room.
+  router.get('/status', async (_request: Request, response: Response) => {
+    let available = extract !== undefined && (today === undefined || today.perDay > 0)
+    if (available && spend !== undefined) {
+      try {
+        available = (await spend.ledger.roomTodayMicros()) >= spend.reservationMicros
+      } catch (error) {
+        console.error('The spend ledger could not be read for the audit status.', error)
+        available = false
+      }
+    }
+    response.json({ available, keyRequired: apiKey !== undefined })
   })
 
   // 1. The per-client hourly bucket, first, so that guessing at the key costs
@@ -246,6 +291,16 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
   // was exhaustible with requests that cost nothing. The second thing the first
   // review of this change found.
   router.post('/ghs', ...guards, async (request: Request, response: Response) => {
+    // A visitor who leaves stops the call: the signal reaches the SDK, which abandons the request.
+    // Its reservation stays counted (`spend.ts`), since what an abandoned call was billed is not
+    // known. `writableFinished` tells a connection that closed after the answer from one that
+    // closed before it. Registered before the first `await` below, because a connection that
+    // closes during one emits `close` once, and a hook added after it would never hear it.
+    const abort = new AbortController()
+    response.on('close', () => {
+      if (!response.writableFinished) abort.abort()
+    })
+
     if (extract === undefined) {
       // Before the body is looked at. The endpoint is not unavailable for this
       // request; it is unavailable.
@@ -298,14 +353,32 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
       }
     }
 
+    // Gone while the day was being counted: there is nobody to read for.
+    if (abort.signal.aborted) return
+
     try {
       // `model` comes out of the reading rather than from `EXTRACTION_MODEL`.
       // The constant is what this server asked for; the reading carries what
       // answered, and reporting the first as the second is a claim dressed as
       // an observation.
-      const { extraction, model } = await extract(image, regime)
+      const { extraction, model } = await extract(image, regime, { signal: abort.signal })
+      // Nobody is left to write to.
+      if (abort.signal.aborted) return
       response.json({ extraction, model })
     } catch (error) {
+      if (abort.signal.aborted) {
+        if (!(error instanceof Anthropic.APIUserAbortError)) console.error(error)
+        return
+      }
+      if (error instanceof SpendRefused) {
+        response.status(429).json(PAUSED)
+        return
+      }
+      if (error instanceof SpendUnavailable) {
+        // Logged by `metered`, with the ledger's own error.
+        response.status(503).json(UNAVAILABLE)
+        return
+      }
       if (error instanceof ExtractionDeclined) {
         response.status(422).json({
           error: 'Reading this image was declined',
@@ -318,7 +391,8 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
       }
       if (error instanceof ExtractionUnreadable) {
         response.status(422).json({
-          error: 'The image could not be read as a label',
+          error:
+            'The reading came back in a form Packwright could not use. Try again, or try the sample label.',
           detail:
             error.detail.length === 0
               ? [error.message]
@@ -334,37 +408,14 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
         return
       }
       if (error instanceof Anthropic.APIError) {
-        // The upstream detail goes to the log, not to the client — it can carry
-        // request identifiers and, on an authentication failure, a hint about
-        // the key.
+        // Every provider error, connection failures and timeouts included, is one answer. A
+        // usage limit, a revoked key, an empty credit balance and an outage are none of them
+        // the visitor's to fix, and a 400 cannot be told from a fault of this server's except
+        // by prose in its message, so no answer here blames the photograph. The upstream detail
+        // goes to the log, not to the client: it can carry request identifiers and, on an
+        // authentication failure, a hint about the key.
         console.error(error)
-
-        // Sorted, because one message for every upstream failure was wrong in
-        // both directions: a rejected image and a revoked key both read as "the
-        // service could not be reached", which is false of the first and sends
-        // whoever is debugging the second to look at the network.
-        if (error instanceof Anthropic.BadRequestError) {
-          // Worded to say what is known, which is less than it first appeared.
-          // A 400 here is `invalid_request_error` whether the image was
-          // undecodable or this server sent a parameter the API has stopped
-          // accepting, and the two are told apart only by prose in the message
-          // — which is the string-matching the SDK's own guidance warns off.
-          // The first version said "it may be corrupt", which tells every user
-          // their photograph is bad on the strength of a fault that may be
-          // entirely ours. The detail is in the log above.
-          response.status(422).json({
-            error: 'The vision service could not process this request',
-            detail: [
-              'The image may be unreadable, or this server may have asked for something the service no longer accepts. The detail is in the server log.',
-            ],
-          })
-          return
-        }
-        if (error instanceof Anthropic.RateLimitError) {
-          response.status(503).json({ error: 'Vision extraction is busy — try again shortly' })
-          return
-        }
-        response.status(502).json({ error: 'The extraction service could not be reached' })
+        response.status(503).json(UNAVAILABLE)
         return
       }
       throw error

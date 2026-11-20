@@ -4,7 +4,7 @@ import helmet from 'helmet'
 import morgan from 'morgan'
 import { join } from 'node:path'
 import type { DailyAllowance } from './audit/dailyAllowance'
-import { createAuditRouter, type AuditLimits } from './audit/routes'
+import { createAuditRouter, type AuditLimits, type AuditSpend } from './audit/routes'
 import { loadClientPages, matchesClientPage } from './clientPages'
 import { createLabelDocumentRouter, type LabelWriteLimits } from './labels/labelDocumentRoutes'
 import { createLabelRouter, type ExportLimit } from './labels/routes'
@@ -70,6 +70,13 @@ export interface AppOptions {
    * restart resets; `server.ts` passes the database's (`audit/dailyAllowance.ts`).
    */
   auditAllowance?: DailyAllowance | undefined
+  /**
+   * The spend ledger every live read reserves against, or nothing to read without one.
+   *
+   * Injected for the reason `extract` is. `server.ts` passes the database's whenever it has an
+   * extractor; a route test passes a ledger in memory, or none when it is not about money.
+   */
+  auditSpend?: AuditSpend | undefined
   /**
    * What one client may export in an hour, or `false` for no limit.
    *
@@ -185,6 +192,7 @@ export function createApp(options: AppOptions = {}): Express {
     auditApiKey,
     auditLimits,
     auditAllowance,
+    auditSpend,
     exportLimit,
     labelWriteLimits,
     trustProxyHops,
@@ -306,6 +314,7 @@ export function createApp(options: AppOptions = {}): Express {
       apiKey: auditApiKey,
       limits: auditLimits,
       allowance: auditAllowance,
+      spend: auditSpend,
     }),
   )
 
