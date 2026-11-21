@@ -32,6 +32,7 @@ import {
 } from '@packwright/label-core'
 import { toSupplier } from '@packwright/label-core/schema'
 import { EXTRACTED_FIELDS, GhsExtraction } from './extractionSchema'
+import { reservationMicros } from './pricing'
 
 export const EXTRACTION_MODEL = 'claude-opus-5-5'
 
@@ -59,7 +60,23 @@ export interface LabelPhoto {
 /** The port. One method, so a fake is three lines and a fixture. */
 export type SendMessage = (
   params: Anthropic.MessageCreateParamsNonStreaming,
+  options?: CallOptions,
 ) => Promise<Anthropic.Message>
+
+/** Per-call options. The signal lets a caller abandon a read it no longer wants. */
+export interface CallOptions {
+  signal?: AbortSignal | undefined
+}
+
+/**
+ * What a call was billed for, taken from the reply rather than from the request.
+ * A decline, a truncation and an unreadable reply are all billed, so the error
+ * classes carry it too.
+ */
+export interface Billed {
+  model: string
+  usage: Anthropic.Usage
+}
 
 /**
  * A reading, and the model that produced it.
@@ -75,7 +92,25 @@ export interface LabelReading {
   model: string
 }
 
-export type ExtractLabel = (photo: LabelPhoto, regime: GhsRegime) => Promise<LabelReading>
+/** A reading and what it was billed for. */
+export interface MeteredReading extends LabelReading {
+  billed: Billed
+}
+
+export type ExtractLabel = (
+  photo: LabelPhoto,
+  regime: GhsRegime,
+  options?: CallOptions,
+) => Promise<MeteredReading>
+
+/**
+ * Every way a reply can fail to be a reading. The reply was billed whether or
+ * not it could be read, so `billed` is filled in by `extractGhsLabel` once the
+ * reply has arrived.
+ */
+export abstract class ExtractionError extends Error {
+  billed: Billed | undefined
+}
 
 /**
  * Claude declined the request.
@@ -85,7 +120,7 @@ export type ExtractLabel = (photo: LabelPhoto, regime: GhsRegime) => Promise<Lab
  * code has to look for. Carried as its own class so the route maps an outcome
  * rather than matching on a message.
  */
-export class ExtractionDeclined extends Error {
+export class ExtractionDeclined extends ExtractionError {
   constructor(readonly category: string | null) {
     super('The request to read this image was declined.')
     this.name = 'ExtractionDeclined'
@@ -102,7 +137,7 @@ export class ExtractionDeclined extends Error {
  * the answer, so it is reachable on a dense label even though Opus 5's recorded
  * reading spent 267 output tokens of 16,000 and Opus 5.5's 488 of 4,000.
  */
-export class ExtractionTruncated extends Error {
+export class ExtractionTruncated extends ExtractionError {
   constructor() {
     super('The reading was cut short before it finished.')
     this.name = 'ExtractionTruncated'
@@ -110,7 +145,7 @@ export class ExtractionTruncated extends Error {
 }
 
 /** The reply arrived and could not be read as an extraction. */
-export class ExtractionUnreadable extends Error {
+export class ExtractionUnreadable extends ExtractionError {
   constructor(
     message: string,
     readonly detail: readonly { path: string; message: string }[] = [],
@@ -313,138 +348,183 @@ export async function extractGhsLabel(
   send: SendMessage,
   photo: LabelPhoto,
   regime: GhsRegime,
-): Promise<LabelReading> {
-  const response = await send({
-    model: EXTRACTION_MODEL,
-    max_tokens: VISION_MAX_TOKENS,
-    thinking: { type: 'adaptive' },
-    system: SYSTEM_PROMPT,
-    output_config: { effort: EXTRACTION_EFFORT, format: zodOutputFormat(GhsExtraction) },
-    messages: [
-      {
-        role: 'user',
-        // The image before the text, which is the ordering the vision
-        // documentation recommends for exactly this shape of request.
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: photo.mediaType, data: photo.data },
-          },
-          { type: 'text', text: USER_PROMPT },
-        ],
-      },
-    ],
-  })
+  options: CallOptions = {},
+): Promise<MeteredReading> {
+  const response = await send(
+    {
+      model: EXTRACTION_MODEL,
+      max_tokens: VISION_MAX_TOKENS,
+      thinking: { type: 'adaptive' },
+      system: SYSTEM_PROMPT,
+      output_config: { effort: EXTRACTION_EFFORT, format: zodOutputFormat(GhsExtraction) },
+      messages: [
+        {
+          role: 'user',
+          // The image before the text, which is the ordering the vision
+          // documentation recommends for exactly this shape of request.
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: photo.mediaType, data: photo.data },
+            },
+            { type: 'text', text: USER_PROMPT },
+          ],
+        },
+      ],
+    },
+    options,
+  )
 
-  // Before `content`. A declined request is HTTP 200 with empty or partial
-  // content, and `stop_details` is null on every other stop reason.
-  if (response.stop_reason === 'refusal') {
-    throw new ExtractionDeclined(response.stop_details?.category ?? null)
-  }
-
-  if (response.stop_reason === 'max_tokens') {
-    throw new ExtractionTruncated()
-  }
-
-  // By type, not by position — and the reason is worse than "a refusal returns
-  // no text". Two live calls with identical parameters came back with different
-  // block layouts: `[thinking, text]` against one image, `[text]` against
-  // another, because adaptive thinking decides per request. A positional read
-  // is therefore intermittently wrong on the success path, which is the kind
-  // that survives a green suite.
-  const text = response.content.find(isTextBlock)
-  if (text === undefined) {
-    throw new ExtractionUnreadable('The reply carried no text to read.')
-  }
-
-  let body: unknown
+  const billed: Billed = { model: response.model, usage: response.usage }
   try {
-    body = JSON.parse(text.text)
-  } catch {
-    throw new ExtractionUnreadable('The reply was not the JSON it was asked for.')
-  }
-
-  const warnings: ExtractionWarning[] = []
-  const read = validate(canonicaliseSignalWords(body), warnings)
-  const fields: ExtractionResult<GhsLabelData>['fields'] = {}
-
-  if (read.productIdentifier !== undefined) fields.productIdentifier = read.productIdentifier
-  if (read.signalWords !== undefined) fields.signalWords = read.signalWords
-  if (read.pictograms !== undefined) fields.pictograms = read.pictograms
-  if (read.outerPackageStatement !== undefined) {
-    fields.outerPackageStatement = read.outerPackageStatement
-  }
-  if (read.supplier !== undefined) {
-    // The same key-by-key reconciliation the export routes do, reused rather
-    // than rewritten: Zod's `string | undefined` is not `label-core`'s
-    // genuinely-absent optional under `exactOptionalPropertyTypes`.
-    fields.supplier = {
-      value: toSupplier(read.supplier.value),
-      confidence: read.supplier.confidence,
+    // Before `content`. A declined request is HTTP 200 with empty or partial
+    // content, and `stop_details` is null on every other stop reason.
+    if (response.stop_reason === 'refusal') {
+      throw new ExtractionDeclined(response.stop_details?.category ?? null)
     }
-  }
-  if (read.hazardStatementCodes !== undefined) {
-    fields.hazardStatementCodes = {
-      ...read.hazardStatementCodes,
-      value: resolvable(read.hazardStatementCodes.value, regime, 'hazard'),
-    }
-    warnings.push(...classifyCodes(read.hazardStatementCodes.value, regime, 'hazard'))
-  }
-  if (read.precautionaryStatementCodes !== undefined) {
-    fields.precautionaryStatementCodes = {
-      ...read.precautionaryStatementCodes,
-      value: resolvable(read.precautionaryStatementCodes.value, regime, 'precautionary'),
-    }
-    warnings.push(...classifyCodes(read.precautionaryStatementCodes.value, regime, 'precautionary'))
-  }
 
-  return { extraction: { fields, warnings }, model: response.model }
+    if (response.stop_reason === 'max_tokens') {
+      throw new ExtractionTruncated()
+    }
+
+    // By type, not by position, and the reason is worse than "a refusal returns
+    // no text". Two live calls with identical parameters came back with different
+    // block layouts: `[thinking, text]` against one image, `[text]` against
+    // another, because adaptive thinking decides per request. A positional read
+    // is therefore intermittently wrong on the success path, which is the kind
+    // that survives a green suite.
+    const text = response.content.find(isTextBlock)
+    if (text === undefined) {
+      throw new ExtractionUnreadable('The reply carried no text to read.')
+    }
+
+    let body: unknown
+    try {
+      body = JSON.parse(text.text)
+    } catch {
+      throw new ExtractionUnreadable('The reply was not the JSON it was asked for.')
+    }
+
+    const warnings: ExtractionWarning[] = []
+    const read = validate(canonicaliseSignalWords(body), warnings)
+    const fields: ExtractionResult<GhsLabelData>['fields'] = {}
+
+    if (read.productIdentifier !== undefined) fields.productIdentifier = read.productIdentifier
+    if (read.signalWords !== undefined) fields.signalWords = read.signalWords
+    if (read.pictograms !== undefined) fields.pictograms = read.pictograms
+    if (read.outerPackageStatement !== undefined) {
+      fields.outerPackageStatement = read.outerPackageStatement
+    }
+    if (read.supplier !== undefined) {
+      // The same key-by-key reconciliation the export routes do, reused rather
+      // than rewritten: Zod's `string | undefined` is not `label-core`'s
+      // genuinely-absent optional under `exactOptionalPropertyTypes`.
+      fields.supplier = {
+        value: toSupplier(read.supplier.value),
+        confidence: read.supplier.confidence,
+      }
+    }
+    if (read.hazardStatementCodes !== undefined) {
+      fields.hazardStatementCodes = {
+        ...read.hazardStatementCodes,
+        value: resolvable(read.hazardStatementCodes.value, regime, 'hazard'),
+      }
+      warnings.push(...classifyCodes(read.hazardStatementCodes.value, regime, 'hazard'))
+    }
+    if (read.precautionaryStatementCodes !== undefined) {
+      fields.precautionaryStatementCodes = {
+        ...read.precautionaryStatementCodes,
+        value: resolvable(read.precautionaryStatementCodes.value, regime, 'precautionary'),
+      }
+      warnings.push(
+        ...classifyCodes(read.precautionaryStatementCodes.value, regime, 'precautionary'),
+      )
+    }
+
+    return { extraction: { fields, warnings }, model: response.model, billed }
+  } catch (error) {
+    if (error instanceof ExtractionError) error.billed = billed
+    throw error
+  }
 }
 
 /**
- * How long one reading may take, and how often it may be retried.
+ * How long one reading may take, and that it is never retried by the SDK.
  *
- * The SDK's defaults are built for a script: ten minutes and two retries, which
- * is up to half an hour of a browser waiting before it is told the service
- * could not be reached. This is a request somebody is holding a phone through.
- * A reading of the sample label takes about five seconds, on Opus 5 and on Opus
- * 5.5 alike (4.7 s, timed 2026-11-18), so two minutes is generous and one retry
- * still covers a dropped connection.
+ * One attempt, and 60 seconds. The SDK's defaults are built for a script: ten
+ * minutes and two retries, which is up to half an hour of a browser waiting. This
+ * is a request somebody is holding a phone through, and it must finish below the
+ * load balancer's 120 s idle timeout. There are no SDK retries because each
+ * attempt carries its own reservation against the spend budget (spec 5.2,
+ * `spend.ts`); a hidden retry would bill a read twice against one reservation.
+ * A reading of the sample label takes about five seconds (4.7 s, timed 2026-11-18).
  *
  * Here rather than in `server.ts` so that a test can assert it. `server.ts`
  * opens a database and listens on a port, which is why nothing in this
  * workspace imports it.
  */
-export const VISION_TIMEOUT_MS = 120_000
-export const VISION_MAX_RETRIES = 1
+export const VISION_TIMEOUT_MS = 60_000
+export const VISION_MAX_RETRIES = 0
 
 /**
  * The output budget, sized so that reaching it is possible before the timeout.
  *
  * These two numbers are one decision and were first written as two: 16,000
  * tokens against a sixty-second timeout, which cannot both be true at any rate
- * Opus 5 produced: its recorded call managed 267 tokens in about five seconds,
- * so roughly fifty a second. The budget was unreachable, which made
- * `ExtractionTruncated` a guard for something the timeout always got to first
- * and turned a genuinely long reading into two billed attempts reported as "the
- * service could not be reached".
- *
- * Both numbers moved: the timeout to two minutes, the budget to four thousand.
- * A reading is a small JSON object, and adaptive thinking draws on the same
- * budget: Opus 5's recorded reading was 267 tokens, and Opus 5.5's at effort
- * `high` 488 (221 of them thinking). Four thousand is generous for a dense label
- * and deliverable inside two minutes with room to spare.
- * `extract.test.ts` asserts that they still agree, rather than leaving it to
- * whoever edits one of them next.
+ * Opus 5 produced. The budget was unreachable, which made `ExtractionTruncated`
+ * a guard for something the timeout always got to first. A reading is a small
+ * JSON object, and adaptive thinking draws on the same budget: Opus 5's recorded
+ * reading was 267 tokens, and Opus 5.5's at effort `high` 488 (221 of them
+ * thinking). Four thousand is generous for a dense label and deliverable inside
+ * the timeout with room to spare. `extract.test.ts` asserts that they still
+ * agree, rather than leaving it to whoever edits one of them next.
  */
 export const VISION_MAX_TOKENS = 4_000
 
 /**
- * The slowest generation rate observed, rounded down hard. Used only to check the
- * two above agree. Measured on Opus 5; Opus 5.5 managed 416 tokens in 4.7 s over a
- * whole call on 2026-11-18, about 88 a second, so the floor still holds.
+ * The slowest generation rate to plan for, rounded down hard. Used only to check
+ * the two above agree. It rests on one timed call: 416 tokens in 4.7 s on
+ * 2026-11-18, about 88 a second on Opus 5.5. Opus 5's recorded call managed 267
+ * tokens in about five seconds, roughly fifty a second, also a whole-call
+ * figure. A whole-call rate includes the time to the first token, so it
+ * understates the generation rate. A slower 4,000-token read times out and
+ * keeps its full reservation, so it is over-counted and never under-counted.
+ * Measuring more needs paid calls, which are ruled out before launch.
  */
-export const SLOWEST_TOKENS_PER_SECOND = 40
+export const SLOWEST_TOKENS_PER_SECOND = 70
+
+/**
+ * The most visual tokens one image can cost: 4,784.
+ *
+ * Source: Anthropic, "Vision", platform.claude.com/docs/en/build-with-claude/vision, read on
+ * 2026-11-19, § Resolution and token cost. An image costs `⌈width / 28⌉ × ⌈height / 28⌉` visual
+ * tokens, one per 28 x 28 px patch, and Claude 4.7 and later models (the high-resolution tier)
+ * downscale any image above a 2,576 px long edge or 4,784 visual tokens until it fits both. So no
+ * photograph, however large, is read as more than 4,784 input tokens.
+ */
+export const MAX_IMAGE_TOKENS = 4_784
+
+/**
+ * The most input tokens a reading can be billed for, rounded up to 8,000.
+ *
+ * The largest image plus everything else the request is billed for besides it: the two prompts
+ * and whatever the output format adds. Those are the same on every read, and the recorded
+ * reading measures them: 2,537 input tokens for `sampleLabel.png`, which at 760 x 620 is 28 x 23 = 644 visual
+ * tokens, leaves 1,893. So 4,784 + 1,893 = 6,677, rounded up to 8,000 for a prompt that grows a
+ * little. `extract.test.ts` holds the sum to the bound.
+ */
+export const VISION_INPUT_TOKEN_BOUND = 8_000
+
+/**
+ * What one read reserves against the spend budget before it is sent: its worst case, 8,000
+ * input tokens at $4 / MTok and 4,000 output tokens at $20 / MTok, 32,000 + 80,000 = 112,000
+ * micro-dollars ($0.112). The read then settles at what its reply reports it cost.
+ */
+export const VISION_RESERVATION_MICROS = reservationMicros(
+  EXTRACTION_MODEL,
+  VISION_INPUT_TOKEN_BOUND,
+  VISION_MAX_TOKENS,
+)
 
 export function visionClient(apiKey: string): Anthropic {
   return new Anthropic({
@@ -457,5 +537,24 @@ export function visionClient(apiKey: string): Anthropic {
 /** The production port: the SDK, bound to one client. */
 export const sendThrough =
   (client: Anthropic): SendMessage =>
-  (params) =>
-    client.messages.create(params)
+  (params, options) =>
+    client.messages.create(params, options)
+
+/**
+ * The extractor `server.ts` runs: the bounded client (60 s, no retries) behind the port.
+ *
+ * Here rather than inline in `server.ts`, which is where it used to be built, as
+ * `(photo, regime) => extractGhsLabel(send, photo, regime)`. That dropped the call options, so a
+ * visitor who left mid-read could never stop the call, and nothing noticed: `server.ts` opens a
+ * database and listens on a port, so nothing imports it and no test could see the composition.
+ * As a function here, `extract.test.ts` asserts that the caller's signal reaches the SDK.
+ *
+ * Optional on purpose, as the key is: `MONGODB_URI` was made required in phase 6 and broke every
+ * harness that boots the server, and this key has an external service and a cost per call behind
+ * it, so `server.ts` builds this only when `ANTHROPIC_API_KEY` is set and the audit answers 503
+ * without it.
+ */
+export function liveExtractor(apiKey: string): ExtractLabel {
+  const send = sendThrough(visionClient(apiKey))
+  return (photo, regime, options) => extractGhsLabel(send, photo, regime, options)
+}

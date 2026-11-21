@@ -1,10 +1,13 @@
 import { createApp } from './app'
 import { databaseAllowance } from './audit/dailyAllowance'
-import { DEFAULT_AUDIT_LIMITS } from './audit/routes'
+import { createLedger } from './audit/ledger'
+import { mongoLedgerStore } from './audit/ledgerStore'
+import { usdToMicros } from './audit/pricing'
+import { DEFAULT_AUDIT_LIMITS, type AuditSpend } from './audit/routes'
 import { DEFAULT_LABEL_WRITE_LIMITS } from './labels/labelDocumentRoutes'
 import { DEFAULT_EXPORT_LIMIT } from './labels/routes'
 import { DEFAULT_MCP_LIMITS } from './mcp/routes'
-import { extractGhsLabel, sendThrough, visionClient, type ExtractLabel } from './audit/extract'
+import { liveExtractor, VISION_RESERVATION_MICROS } from './audit/extract'
 import { connectToDatabase, databaseStatus } from './db'
 import { loadDotenv } from './dotenv'
 import { loadEnv } from './env'
@@ -27,27 +30,34 @@ const webRoot = resolveWebRoot()
 // which is what `env.ts` refuses at startup and what this completes.
 await connectToDatabase(env.MONGODB_URI)
 
+/** Vision extraction, if this deployment has a key for it. See `liveExtractor`. */
+const extract =
+  env.ANTHROPIC_API_KEY === undefined ? undefined : liveExtractor(env.ANTHROPIC_API_KEY)
+
 /**
- * Vision extraction, if this deployment has a key for it.
- *
- * Optional on purpose. `MONGODB_URI` was made required in phase 6 and broke
- * every harness that boots the server; this key has an external service and a
- * cost per call behind it, so the same move would be worse. Without one the
- * audit endpoint answers 503 and the rest of the application is untouched.
+ * What every live read reserves and settles against, in the database so that a restart does not
+ * start the month again. Blank is 0 outside production, which turns live reads off; production
+ * with a key refuses to start without a figure (`env.ts`).
  */
-const extract: ExtractLabel | undefined =
-  env.ANTHROPIC_API_KEY === undefined
+const monthlyBudgetUsd = env.AI_MONTHLY_BUDGET_USD ?? 0
+const auditSpend: AuditSpend | undefined =
+  extract === undefined
     ? undefined
-    : (() => {
-        const send = sendThrough(visionClient(env.ANTHROPIC_API_KEY))
-        return (photo, regime) => extractGhsLabel(send, photo, regime)
-      })()
+    : {
+        ledger: createLedger(mongoLedgerStore(), {
+          monthlyBudgetMicros: usdToMicros(monthlyBudgetUsd),
+          pacingMultiplier: env.AI_PACING_MULTIPLIER,
+          dailyFloorMicros: usdToMicros(env.AI_DAILY_FLOOR_USD),
+        }),
+        reservationMicros: VISION_RESERVATION_MICROS,
+      }
 
 const app = createApp({
   enableLogging: env.NODE_ENV !== 'test',
   webRoot,
   databaseStatus,
   extract,
+  auditSpend,
   // The quotas are stated here rather than defaulted inside `createApp`, which
   // builds the same application every time it is called. This is the only place
   // that knows it is a real server rather than a test harness, so it is the
@@ -94,6 +104,9 @@ app.listen(env.PORT, () => {
       ? 'no ANTHROPIC_API_KEY — /api/audit will answer 503'
       : 'vision extraction configured',
   )
+  if (auditSpend !== undefined) {
+    console.log(`live photo reads: $${monthlyBudgetUsd} a month (0 means off)`)
+  }
   console.log(
     env.MCP_ENABLED
       ? `/mcp enabled, answering to localhost${env.MCP_ALLOWED_HOSTS.map((host) => `, ${host}`).join('')}`

@@ -1,6 +1,8 @@
+import { createServer } from 'node:http'
+
 import Anthropic from '@anthropic-ai/sdk'
 import supertest from 'supertest'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app'
 import {
   ExtractionDeclined,
@@ -10,7 +12,9 @@ import {
   type ExtractLabel,
 } from './extract'
 import { memoryAllowance, type DailyAllowance } from './dailyAllowance'
+import { createLedger, memoryLedgerStore, type BudgetConfig } from './ledger'
 import { AUDIT_KEY_HEADER, MAX_PHOTO_BASE64 } from './routes'
+import { recorded } from './fixtures/responses'
 
 // The opening of a real PNG, its signature and the start of its IHDR chunk: the
 // route refuses data that does not begin as its media type does (`photoSignature.ts`).
@@ -24,7 +28,11 @@ const EXTRACTION = {
 
 /** A model name that is not the one this server asks for, so the two cannot be confused. */
 const ANSWERED_BY = 'claude-opus-5-some-other-snapshot'
-const READING = { extraction: EXTRACTION, model: ANSWERED_BY }
+const READING = {
+  extraction: EXTRACTION,
+  model: ANSWERED_BY,
+  billed: { model: ANSWERED_BY, usage: recorded.usage },
+}
 
 // `auditLimits: false` everywhere below, stated rather than inherited: these
 // cases are about what the route does with a body, and a quota counting down
@@ -58,13 +66,16 @@ describe('POST /api/audit/ghs', () => {
     const response = await post(A_REQUEST, reading())
     expect(response.status).toBe(200)
     expect(response.body).toEqual({ extraction: EXTRACTION, model: ANSWERED_BY })
+    expect(response.body).not.toHaveProperty('billed')
     expect(response.body.model).not.toBe(EXTRACTION_MODEL)
   })
 
   it('hands the extractor the regime it was asked for', async () => {
     const extract = reading()
     await post({ ...A_REQUEST, regime: 'us-osha' }, extract)
-    expect(extract).toHaveBeenCalledWith(A_PHOTO, 'us-osha')
+    expect(extract).toHaveBeenCalledWith(A_PHOTO, 'us-osha', {
+      signal: expect.any(AbortSignal),
+    })
   })
 
   it('refuses a regime that is not one of the two', async () => {
@@ -126,7 +137,9 @@ describe('POST /api/audit/ghs', () => {
       ),
     )
     expect(response.status).toBe(422)
-    expect(response.body.error).toBe('The image could not be read as a label')
+    expect(response.body.error).toBe(
+      'The reading came back in a form Packwright could not use. Try again, or try the sample label.',
+    )
     expect(response.body.detail[0]).toContain('productIdentifier.confidence')
   })
 
@@ -136,49 +149,23 @@ describe('POST /api/audit/ghs', () => {
     expect(response.body.error).toBe('The reading was cut short')
   })
 
-  it('does not blame the photograph for a fault it cannot attribute', async () => {
-    // A 400 from upstream is `invalid_request_error` whether the image was
-    // undecodable or this server sent a parameter the API has stopped
-    // accepting. The first wording said the image "may be corrupt", which tells
-    // every user their photograph is bad on the strength of a fault that may be
-    // entirely ours.
-    const rejected = new Anthropic.BadRequestError(
-      400,
-      {
-        type: 'error',
-        error: { type: 'invalid_request_error', message: 'could not decode image' },
-      },
-      'bad request',
-      new Headers(),
-    )
-    const response = await post(A_REQUEST, failing(rejected))
-    expect(response.status).toBe(422)
-    expect(response.body.error).toBe('The vision service could not process this request')
-    expect(JSON.stringify(response.body)).not.toContain('corrupt')
-  })
-
-  it('reports being rate limited as busy rather than as unreachable', async () => {
-    const limited = new Anthropic.RateLimitError(
-      429,
-      { type: 'error', error: { type: 'rate_limit_error', message: 'slow down' } },
-      'rate limited',
-      new Headers(),
-    )
-    const response = await post(A_REQUEST, failing(limited))
-    expect(response.status).toBe(503)
-    expect(response.body.error).toContain('busy')
-  })
-
-  it('reports an upstream failure as an upstream failure, and leaks nothing', async () => {
+  it('reports an upstream failure as unavailable, points at the sample, and leaks nothing', async () => {
+    // Every provider error is one refusal: nothing about it is the visitor's to fix, and the
+    // detail, which can carry request identifiers and a hint about the key, goes to the log.
     const upstream = new Anthropic.InternalServerError(
       503,
       { type: 'error', error: { type: 'overloaded_error', message: 'sk-ant-leaky' } },
       'overloaded',
       new Headers(),
     )
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     const response = await post(A_REQUEST, failing(upstream))
-    expect(response.status).toBe(502)
-    expect(response.body).toEqual({ error: 'The extraction service could not be reached' })
+    logged.mockRestore()
+    expect(response.status).toBe(503)
+    expect(response.body).toEqual({
+      error: 'Live photo reading is not available right now. Try the sample label.',
+      reason: 'unavailable',
+    })
     expect(JSON.stringify(response.body)).not.toContain('sk-ant')
   })
 
@@ -382,6 +369,266 @@ describe('what the audit route costs to call', () => {
       const built = app({ auditLimits: false })
       for (let i = 0; i < 25; i++) expect((await send(built)).status).toBe(200)
     })
+  })
+})
+
+/** Built the way the SDK builds one from a reply's JSON body. */
+const apiError = (
+  status: number,
+  type: string,
+  message: string,
+  details: Record<string, unknown> | null = null,
+) =>
+  Anthropic.APIError.generate(
+    status,
+    { type: 'error', error: { type, message, details } },
+    undefined,
+    new Headers(),
+  )
+
+describe('what a read may spend', () => {
+  /** $10 a month on 2026-11-19, as in `spend.test.ts`. */
+  const CONFIG: BudgetConfig = {
+    monthlyBudgetMicros: 10_000_000,
+    pacingMultiplier: 3,
+    dailyFloorMicros: 500_000,
+  }
+  const clock = () => new Date('2026-11-19T12:00:00Z')
+
+  const spending = (extract: ExtractLabel, config: BudgetConfig = CONFIG) => {
+    const ledger = createLedger(memoryLedgerStore(), config, clock)
+    const app = createApp({
+      enableLogging: false,
+      extract,
+      auditLimits: false,
+      auditSpend: { ledger, reservationMicros: 112_000 },
+    })
+    return { app, roomTodayMicros: () => ledger.roomTodayMicros() }
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('refuses cleanly when the budget is zero', async () => {
+    const extract = reading()
+    const { app } = spending(extract, { ...CONFIG, monthlyBudgetMicros: 0 })
+    const response = await supertest(app).post('/api/audit/ghs').send(A_REQUEST)
+    expect(response.status).toBe(429)
+    expect(response.body).toEqual({
+      error: 'Live photo reads are paused for now. Try the sample label.',
+      reason: 'budget',
+    })
+    expect(response.body.error).toMatch(/sample/)
+    expect(extract).not.toHaveBeenCalled()
+  })
+
+  it('says no read is possible when the day has no room', async () => {
+    const { app } = spending(reading(), { ...CONFIG, monthlyBudgetMicros: 0 })
+    const response = await supertest(app).get('/api/audit/status')
+    expect(response.body.available).toBe(false)
+  })
+
+  it('says a read is possible when the day has room for one', async () => {
+    const { app } = spending(reading())
+    const response = await supertest(app).get('/api/audit/status')
+    expect(response.body.available).toBe(true)
+  })
+
+  it('reads a ledger it cannot ask as no read possible', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ledger = createLedger(memoryLedgerStore(), CONFIG, clock)
+    const app = createApp({
+      enableLogging: false,
+      extract: reading(),
+      auditLimits: false,
+      auditSpend: {
+        ledger: { ...ledger, roomTodayMicros: () => Promise.reject(new Error('no database')) },
+        reservationMicros: 112_000,
+      },
+    })
+    const response = await supertest(app).get('/api/audit/status')
+    expect(response.status).toBe(200)
+    expect(response.body.available).toBe(false)
+    expect(logged).toHaveBeenCalled()
+  })
+
+  it('answers unavailable, and spends nothing, when the ledger cannot reserve', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const extract = reading()
+    const ledger = createLedger(memoryLedgerStore(), CONFIG, clock)
+    const app = createApp({
+      enableLogging: false,
+      extract,
+      auditLimits: false,
+      auditSpend: {
+        ledger: { ...ledger, reserve: () => Promise.reject(new Error('no database')) },
+        reservationMicros: 112_000,
+      },
+    })
+    const response = await supertest(app).post('/api/audit/ghs').send(A_REQUEST)
+    expect(response.status).toBe(503)
+    expect(response.body).toEqual({
+      error: 'Live photo reading is not available right now. Try the sample label.',
+      reason: 'unavailable',
+    })
+    expect(extract).not.toHaveBeenCalled()
+    expect(logged).toHaveBeenCalled()
+  })
+
+  // The two usage-limit messages open as Anthropic documents them ("Rate limits", § Setting
+  // your own spend limit, read 2026-11-19); the rest of each is elided rather than made up.
+  it.each([
+    [
+      'the workspace usage limit (400)',
+      apiError(
+        400,
+        'invalid_request_error',
+        'You have reached your specified workspace API usage limits. ...',
+      ),
+    ],
+    [
+      'the organization usage limit (400)',
+      apiError(
+        400,
+        'invalid_request_error',
+        'You have reached your specified API usage limits. ...',
+      ),
+    ],
+    ['any other bad request (400)', apiError(400, 'invalid_request_error', 'image too large')],
+    ['a revoked key (401)', apiError(401, 'authentication_error', 'invalid x-api-key')],
+    ['a billing error (402)', apiError(402, 'billing_error', 'credit balance too low')],
+    ['a forbidden key (403)', apiError(403, 'permission_error', 'not allowed')],
+    [
+      'the spend cap (429)',
+      apiError(429, 'rate_limit_error', 'spend limit', {
+        error_code: 'enforced_spend_limit_reached',
+      }),
+    ],
+    ['a plain rate limit (429)', apiError(429, 'rate_limit_error', 'slow down')],
+    ['an overload (529)', apiError(529, 'overloaded_error', 'Overloaded')],
+    ['a server error (500)', apiError(500, 'api_error', 'oops')],
+    ['a timeout', new Anthropic.APIConnectionTimeoutError()],
+    ['a connection failure', new Anthropic.APIConnectionError({ message: 'Connection error.' })],
+  ])('a provider limit points at the sample, never at the photo: %s', async (_, error) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { app } = spending(failing(error))
+    const response = await supertest(app).post('/api/audit/ghs').send(A_REQUEST)
+    expect(response.status).toBe(503)
+    expect(response.body).toEqual({
+      error: 'Live photo reading is not available right now. Try the sample label.',
+      reason: 'unavailable',
+    })
+    expect(JSON.stringify(response.body)).not.toMatch(/unreadable|corrupt|try again in a moment/i)
+  })
+
+  it('a visitor who leaves mid-read stops the call, and the reservation stays counted', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let fired = false
+    let markEntered!: () => void
+    const entered = new Promise<void>((resolve) => {
+      markEntered = resolve
+    })
+    let markRejected!: () => void
+    const rejected = new Promise<void>((resolve) => {
+      markRejected = resolve
+    })
+    const extract = vi.fn<ExtractLabel>(
+      (_photo, _regime, options) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener('abort', () => {
+            fired = true
+            reject(new Anthropic.APIUserAbortError())
+            markRejected()
+          })
+          markEntered()
+        }),
+    )
+    const { app, roomTodayMicros } = spending(extract)
+    const before = await roomTodayMicros()
+
+    // The visitor leaves once the read is under way: not on a timer, which could fire before
+    // the handler reached the call, or after.
+    const request = supertest(app).post('/api/audit/ghs').send(A_REQUEST)
+    const settled = request.then(
+      () => undefined,
+      () => undefined,
+    )
+    await entered
+    request.abort()
+    await settled
+
+    // The server's rejection, and the settle it must not make, run after the client has gone.
+    await vi.waitFor(async () => expect(await roomTodayMicros()).not.toBe(before), {
+      timeout: 2_000,
+    })
+    await rejected
+    await new Promise((resolve) => setImmediate(resolve))
+
+    expect(fired).toBe(true)
+    expect(await roomTodayMicros()).toBe(before - 112_000)
+  })
+
+  it('a visitor who leaves while the day is being counted is never read for', async () => {
+    // The connection closes during the first await of the handler. A close hook registered
+    // after that await has missed the event, so the read would go out for nobody.
+    const extract = reading()
+    const ledger = createLedger(memoryLedgerStore(), CONFIG, clock)
+    const roomTodayMicros = () => ledger.roomTodayMicros()
+
+    let markTaking!: () => void
+    const taking = new Promise<void>((resolve) => {
+      markTaking = resolve
+    })
+    let release!: () => void
+    const released = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let markTaken!: () => void
+    const taken = new Promise<void>((resolve) => {
+      markTaken = resolve
+    })
+    const slowDay: DailyAllowance = {
+      take: async () => {
+        markTaking()
+        await released
+        markTaken()
+        return true
+      },
+    }
+
+    const app = createApp({
+      enableLogging: false,
+      extract,
+      auditLimits: { perHour: 100, perDay: 10 },
+      auditAllowance: slowDay,
+      auditSpend: { ledger, reservationMicros: 112_000 },
+    })
+    // Its own server, so the test can see the server side of the connection close.
+    const server = createServer(app)
+    let markClosed!: () => void
+    const closed = new Promise<void>((resolve) => {
+      markClosed = resolve
+    })
+    server.on('request', (_request, response) => response.on('close', () => markClosed()))
+    const before = await roomTodayMicros()
+
+    const request = supertest(server).post('/api/audit/ghs').send(A_REQUEST)
+    const settled = request.then(
+      () => undefined,
+      () => undefined,
+    )
+    await taking
+    request.abort()
+    await settled
+    await closed
+    release()
+    await taken
+    // What the handler does after the count resolves, given every chance to run.
+    for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve))
+
+    expect(extract).not.toHaveBeenCalled()
+    expect(await roomTodayMicros()).toBe(before)
   })
 })
 

@@ -1,5 +1,5 @@
-import type Anthropic from '@anthropic-ai/sdk'
-import { describe, expect, it, vi } from 'vitest'
+import Anthropic from '@anthropic-ai/sdk'
+import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { GhsRequest } from '@packwright/label-core/schema'
 import {
   EXTRACTION_MODEL,
@@ -7,11 +7,15 @@ import {
   ExtractionTruncated,
   ExtractionUnreadable,
   extractGhsLabel,
+  liveExtractor,
+  MAX_IMAGE_TOKENS,
   SLOWEST_TOKENS_PER_SECOND,
-  VISION_MAX_RETRIES,
+  VISION_INPUT_TOKEN_BOUND,
   VISION_MAX_TOKENS,
+  VISION_RESERVATION_MICROS,
   VISION_TIMEOUT_MS,
   visionClient,
+  sendThrough,
   type SendMessage,
 } from './extract'
 import {
@@ -39,6 +43,12 @@ import {
 
 const PHOTO = { mediaType: 'image/png', data: 'AAAA' } as const
 
+const PARAMS: Anthropic.MessageCreateParamsNonStreaming = {
+  model: 'claude-opus-5-5',
+  max_tokens: 1,
+  messages: [{ role: 'user', content: 'x' }],
+}
+
 const replying = (message: Anthropic.Message): SendMessage => vi.fn().mockResolvedValue(message)
 
 /** The reading alone. `readingOf` is for the tests that care about the envelope. */
@@ -63,13 +73,12 @@ describe('the client the request goes out on', () => {
     // The SDK's defaults are ten minutes and two retries, which is up to half an
     // hour of a browser waiting to be told the service could not be reached.
     // Constructed by a factory rather than inline in `server.ts` so that this
-    // can be asserted at all — `server.ts` opens a database and listens on a
+    // can be asserted at all, since `server.ts` opens a database and listens on a
     // port, so nothing imports it.
     const client = visionClient('sk-ant-not-a-real-key')
-    expect(client.timeout).toBe(VISION_TIMEOUT_MS)
-    expect(client.maxRetries).toBe(VISION_MAX_RETRIES)
-    expect(VISION_TIMEOUT_MS).toBeLessThan(10 * 60_000)
-    expect(VISION_MAX_RETRIES).toBeLessThan(2)
+    expect(client.timeout).toBe(60_000)
+    expect(client.maxRetries).toBe(0)
+    expect(VISION_TIMEOUT_MS).toBeLessThan(120_000) // the load balancer's idle timeout
   })
 
   it('cannot want more tokens than the timeout allows it to receive', () => {
@@ -79,8 +88,88 @@ describe('the client the request goes out on', () => {
     // happens, and turns a long reading into two billed attempts reported as an
     // unreachable service. Asserted rather than left in a comment, because the
     // next person to change either number will change only one.
+    // The floor of 70 tokens a second rests on one timed call: 416 tokens in
+    // 4.7 s on 2026-11-18, about 88 a second. A whole-call rate includes the time
+    // to the first token, so it understates the generation rate (Opus 5's
+    // recorded call, also a whole-call figure, managed about fifty). A slower
+    // 4,000-token read times out and keeps its full reservation, so it is
+    // over-counted and never under-counted. Measuring more needs paid calls,
+    // ruled out before launch.
     const secondsToSpend = VISION_MAX_TOKENS / SLOWEST_TOKENS_PER_SECOND
     expect(secondsToSpend).toBeLessThan(VISION_TIMEOUT_MS / 1000)
+  })
+})
+
+describe('what a reading may cost', () => {
+  it("reserves a read's worst case", () => {
+    // 8,000 input x $4 / MTok + 4,000 output x $20 / MTok = 32,000 + 80,000 micro-dollars,
+    // from Anthropic's pricing page, read on 2026-11-19.
+    expect(VISION_RESERVATION_MICROS).toBe(112_000)
+  })
+
+  it('bounds the input by the largest image plus what the recorded request spent besides its image', () => {
+    // sampleLabel.png is 760 x 620. Anthropic's vision page (read on 2026-11-19) prices an
+    // image at ceil(width / 28) x ceil(height / 28) tokens: 28 x 23 = 644.
+    const recordedImageTokens = Math.ceil(760 / 28) * Math.ceil(620 / 28)
+    expect(recordedImageTokens).toBe(644)
+    // The same page caps an image at 4,784 visual tokens on Claude 4.7 and later models.
+    expect(MAX_IMAGE_TOKENS).toBe(4_784)
+    // 4,784 + (2,537 - 644) = 4,784 + 1,893 = 6,677
+    expect(VISION_INPUT_TOKEN_BOUND).toBeGreaterThanOrEqual(
+      MAX_IMAGE_TOKENS + recorded.usage.input_tokens - recordedImageTokens,
+    )
+  })
+})
+
+describe('what a reading was billed for', () => {
+  it('comes back with every reading', async () => {
+    const reading = await extractGhsLabel(replying(recorded), PHOTO, 'eu-clp')
+    expect(reading.billed).toEqual({ model: recorded.model, usage: recorded.usage })
+  })
+
+  it.each([
+    ['a decline', refused],
+    ['a reply cut short', truncated],
+    ['prose where JSON was asked for', notJson],
+  ])('comes back with %s, which is billed too', async (_, message) => {
+    await expect(extractGhsLabel(replying(message), PHOTO, 'eu-clp')).rejects.toMatchObject({
+      billed: { model: message.model, usage: message.usage },
+    })
+  })
+})
+
+it("passes the caller's abort signal to the port", async () => {
+  const send = vi.fn().mockResolvedValue(recorded)
+  const signal = new AbortController().signal
+  await extractGhsLabel(send, PHOTO, 'eu-clp', { signal })
+  expect(send).toHaveBeenCalledWith(expect.anything(), { signal })
+})
+
+it('hands the signal to the SDK', async () => {
+  const create = vi.fn().mockResolvedValue(recorded)
+  const signal = new AbortController().signal
+  await sendThrough({ messages: { create } } as unknown as Anthropic)(PARAMS, { signal })
+  expect(create).toHaveBeenCalledWith(PARAMS, { signal })
+})
+
+describe('the live extractor', () => {
+  let create: MockInstance<Anthropic.Messages['create']> | undefined
+  afterEach(() => {
+    create?.mockRestore()
+    create = undefined
+  })
+
+  it("the live extractor hands the caller's signal to the SDK", async () => {
+    // `server.ts` used to compose the production extractor inline and dropped the options on
+    // the way, and nothing imports `server.ts`, so this is the only place the composition the
+    // server runs can be caught doing it again. The SDK's own method is replaced, so no request
+    // leaves the process and the key is never sent anywhere.
+    create = vi.spyOn(Anthropic.Messages.prototype, 'create').mockResolvedValue(recorded)
+    const signal = new AbortController().signal
+    await liveExtractor('sk-ant-not-a-real-key')(PHOTO, 'eu-clp', { signal })
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(create.mock.calls[0]![1]).toEqual({ signal })
+    expect(create.mock.calls[0]![1]?.signal).toBe(signal)
   })
 })
 

@@ -20,6 +20,8 @@ describe('loadEnv', () => {
       MCP_ENABLED: true,
       MCP_ALLOWED_HOSTS: [],
       MCP_ALLOWED_ORIGINS: [],
+      AI_PACING_MULTIPLIER: 3,
+      AI_DAILY_FLOOR_USD: 0.5,
       ...REQUIRED,
     })
   })
@@ -147,8 +149,12 @@ describe('loadEnv', () => {
 
   it('starts in production with both keys, or with neither', () => {
     expect(
-      load({ NODE_ENV: 'production', ANTHROPIC_API_KEY: 'sk-ant-x', AUDIT_API_KEY: 'the-secret' })
-        .AUDIT_API_KEY,
+      load({
+        NODE_ENV: 'production',
+        ANTHROPIC_API_KEY: 'sk-ant-x',
+        AUDIT_API_KEY: 'the-secret',
+        AI_MONTHLY_BUDGET_USD: '10',
+      }).AUDIT_API_KEY,
     ).toBe('the-secret')
     // No Anthropic key is no audit to spend, so nothing to protect.
     expect(load({ NODE_ENV: 'production' }).NODE_ENV).toBe('production')
@@ -174,6 +180,45 @@ describe('loadEnv', () => {
     expect(() => load({ LABEL_CREATES_PER_HOUR: '0' })).toThrow(/LABEL_CREATES_PER_HOUR/)
     expect(() => load({ LABEL_CREATES_PER_HOUR: '2.5' })).toThrow(/LABEL_CREATES_PER_HOUR/)
     expect(() => load({ LABEL_CREATES_PER_HOUR: ' ' })).toThrow(/LABEL_CREATES_PER_HOUR/)
+  })
+
+  it('reads the monthly AI budget in dollars, absent when blank', () => {
+    expect(load({ AI_MONTHLY_BUDGET_USD: '10' }).AI_MONTHLY_BUDGET_USD).toBe(10)
+    expect(load({ AI_MONTHLY_BUDGET_USD: '0.5' }).AI_MONTHLY_BUDGET_USD).toBe(0.5)
+    expect(load({ AI_MONTHLY_BUDGET_USD: '0' }).AI_MONTHLY_BUDGET_USD).toBe(0)
+    expect(load({ AI_MONTHLY_BUDGET_USD: '0.000001' }).AI_MONTHLY_BUDGET_USD).toBe(0.000001)
+    expect(load({ AI_MONTHLY_BUDGET_USD: '' }).AI_MONTHLY_BUDGET_USD).toBeUndefined()
+    for (const value of ['-1', 'ten', '1e3', '1001', '0.0000001', ' ']) {
+      expect(() => load({ AI_MONTHLY_BUDGET_USD: value }), value).toThrow(/AI_MONTHLY_BUDGET_USD/)
+    }
+  })
+
+  it('paces the budget at three times an even share, with a fifty-cent floor, unless told otherwise', () => {
+    const env = load({})
+    expect(env.AI_PACING_MULTIPLIER).toBe(3)
+    expect(env.AI_DAILY_FLOOR_USD).toBe(0.5)
+    expect(load({ AI_PACING_MULTIPLIER: '1' }).AI_PACING_MULTIPLIER).toBe(1)
+    expect(load({ AI_PACING_MULTIPLIER: '31' }).AI_PACING_MULTIPLIER).toBe(31)
+    expect(load({ AI_DAILY_FLOOR_USD: '0' }).AI_DAILY_FLOOR_USD).toBe(0)
+    expect(load({ AI_DAILY_FLOOR_USD: '' }).AI_DAILY_FLOOR_USD).toBe(0.5)
+    for (const value of ['0', '32', 'three']) {
+      expect(() => load({ AI_PACING_MULTIPLIER: value }), value).toThrow(/AI_PACING_MULTIPLIER/)
+    }
+    for (const value of ['-1', '1001', 'half']) {
+      expect(() => load({ AI_DAILY_FLOOR_USD: value }), value).toThrow(/AI_DAILY_FLOOR_USD/)
+    }
+  })
+
+  it('production that can spend the Anthropic key states its budget', () => {
+    const production = { NODE_ENV: 'production', ANTHROPIC_API_KEY: 'k', AUDIT_API_KEY: 'a' }
+    expect(() => load(production)).toThrow(/AI_MONTHLY_BUDGET_USD/)
+    expect(() => load({ ...production, AI_MONTHLY_BUDGET_USD: '' })).toThrow(
+      /AI_MONTHLY_BUDGET_USD/,
+    )
+    expect(load({ ...production, AI_MONTHLY_BUDGET_USD: '0' }).AI_MONTHLY_BUDGET_USD).toBe(0)
+    // Outside production, or without the key, there is nothing to spend or a developer's own.
+    expect(load({ ANTHROPIC_API_KEY: 'k' }).AI_MONTHLY_BUDGET_USD).toBeUndefined()
+    expect(load({ NODE_ENV: 'production' }).AI_MONTHLY_BUDGET_USD).toBeUndefined()
   })
 
   it('trims the audit key, as the audit page trims what is typed', () => {

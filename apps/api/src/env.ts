@@ -54,6 +54,22 @@ const hostnameList = (name: string) =>
     )
 
 /**
+ * An amount in dollars: digits, and up to six decimals, which is a whole number of
+ * micro-dollars, the unit the spend ledger counts in. No sign, no exponent and no
+ * spaces, so `1e3` and `-1` are refused rather than read, and `' '` is not 0 the way
+ * `z.coerce.number()` would read it. Blank is absent.
+ */
+const dollars = (name: string) =>
+  z
+    .string()
+    .regex(
+      /^\d+(?:\.\d{1,6})?$/,
+      `${name} must be an amount in dollars with up to six decimals, such as 10 or 0.5`,
+    )
+    .transform(Number)
+    .pipe(z.number().max(1_000, `${name} must be at most 1000`))
+
+/**
  * The highest port number TCP can express. Without an upper bound a typo like
  * `PORT=80800` passes validation and fails later inside `listen`, by which point
  * the error no longer points at the config that caused it.
@@ -125,9 +141,10 @@ const EnvSchema = z.object({
    * How many vision calls the audit route may make in a UTC day, across the
    * deployment, or nothing for `DEFAULT_AUDIT_LIMITS.perDay` (10).
    *
-   * A setting so that it can follow the Anthropic workspace's monthly spend limit
-   * down without a release: at about $0.13 a call, a day's figure should be a small
-   * fraction of that month's. Zero turns live audits off.
+   * A setting so that it can follow a monthly limit down without a release. A typical
+   * read costs about $0.02 to $0.04 and $0.112 at worst, so the default of 10 is at most
+   * $1.12 a day. Zero turns live audits off. The money itself is held by the spend
+   * ledger (`AI_MONTHLY_BUDGET_USD`, below).
    */
   // Digits only, rather than `z.coerce.number()`, which reads " " as 0 and would
   // turn the audit off on a value meant as blank.
@@ -139,6 +156,41 @@ const EnvSchema = z.object({
       .pipe(z.number().max(10_000))
       .optional(),
   ),
+
+  /**
+   * What every live photo read is reserved and settled against, in dollars a month, or
+   * nothing for 0, which turns live reads off. Up to $1,000.
+   *
+   * **Required in production wherever `ANTHROPIC_API_KEY` is set** (`loadEnv`, below), so
+   * that a deployment that can spend the key has said how much. Outside production a
+   * blank is 0, so a developer key in `.env` is never spent by accident.
+   */
+  AI_MONTHLY_BUDGET_USD: blankAsAbsent(dollars('AI_MONTHLY_BUDGET_USD').optional()),
+
+  /**
+   * How far ahead of an even pace one day may spend: today may reserve this many times an
+   * even share of what is left of the month over the days left in it (`ledger.ts`). 3
+   * unless set; 1 to 31, where 31 lets any one day spend the whole month.
+   */
+  AI_PACING_MULTIPLIER: blankAsAbsent(
+    z
+      .string()
+      .regex(/^\d+(?:\.\d{1,6})?$/, 'AI_PACING_MULTIPLIER must be a number, such as 3')
+      .transform(Number)
+      .pipe(
+        z
+          .number()
+          .min(1, 'AI_PACING_MULTIPLIER must be at least 1')
+          .max(31, 'AI_PACING_MULTIPLIER must be at most 31'),
+      )
+      .default(3),
+  ),
+
+  /**
+   * The least any day may spend, in dollars, so a month that is nearly spent still allows
+   * a read or two a day until what is left runs out. $0.50 unless set; up to $1,000.
+   */
+  AI_DAILY_FLOOR_USD: blankAsAbsent(dollars('AI_DAILY_FLOOR_USD').default(0.5)),
 
   /**
    * How many saved labels one address may create in an hour, or nothing for
@@ -216,11 +268,12 @@ export type Env = z.infer<typeof EnvSchema>
 export const ENV_NAMES = Object.keys(EnvSchema.shape) as readonly (keyof Env)[]
 
 /**
- * The schema, and the one rule that spans two of its fields: a production server
- * that can spend the Anthropic key must ask for the audit key. Without it the
- * server refuses to start, as it does without a database, so a deployment cannot go
- * out with the audit open to anyone by leaving a secret unset. Applied here, not
- * on `EnvSchema`, whose `shape` `ENV_NAMES` reads and a refinement would hide.
+ * The schema, and the two rules that span its fields: a production server that can
+ * spend the Anthropic key must ask for the audit key, and must state its monthly AI
+ * budget. Without either the server refuses to start, as it does without a database,
+ * so a deployment cannot go out with the audit open to anyone, or with no figure for
+ * what it may spend, by leaving a setting unset. Applied here, not on `EnvSchema`,
+ * whose `shape` `ENV_NAMES` reads and a refinement would hide.
  */
 const CheckedEnvSchema = EnvSchema.superRefine((env, context) => {
   if (
@@ -234,6 +287,17 @@ const CheckedEnvSchema = EnvSchema.superRefine((env, context) => {
       message:
         'is required in production when ANTHROPIC_API_KEY is set, so that only the people ' +
         'given the key can spend it on the photo audit',
+    })
+  }
+  if (
+    env.NODE_ENV === 'production' &&
+    env.ANTHROPIC_API_KEY !== undefined &&
+    env.AI_MONTHLY_BUDGET_USD === undefined
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['AI_MONTHLY_BUDGET_USD'],
+      message: 'is required in production when ANTHROPIC_API_KEY is set; 0 turns live reads off',
     })
   }
 })

@@ -27,11 +27,12 @@ export const SAMPLE_READING_PATH = join(web, 'src/audit/sampleReading.json')
  * recorded under. It makes no call: the reply is replayed, and the photograph is
  * handed over only because `extractGhsLabel` takes one.
  */
-export function replaySampleReading(): Promise<LabelReading> {
+export async function replaySampleReading(): Promise<LabelReading> {
   const photo = {
     mediaType: 'image/png',
     data: readFileSync(SAMPLE_PHOTO_PATH).toString('base64'),
   } as const
   const replay = async (): Promise<Anthropic.Message> => recorded
-  return extractGhsLabel(replay, photo, 'eu-clp')
+  const { extraction, model } = await extractGhsLabel(replay, photo, 'eu-clp')
+  return { extraction, model }
 }
