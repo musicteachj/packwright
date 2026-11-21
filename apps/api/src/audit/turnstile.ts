@@ -18,13 +18,19 @@
  * **Three outcomes, and only one lets a request through.** `failed` is a token that is wrong
  * (refused, for another host or action, empty, oversized); `unavailable` is Cloudflare that could
  * not be asked (a network error, a non-2xx status, an unreadable reply, a timeout), or a refusal
- * whose `error-codes` blame this server or Cloudflare rather than the token. Those codes come from
- * the same page's "Error codes reference" table: `missing-input-secret` ("Secret parameter not
- * provided"), `invalid-input-secret` ("Secret key is invalid or expired") and `internal-error`
- * ("Internal error occurred"). A wrong secret in production would otherwise tell every visitor to
- * complete the check again, so these log through `console.error` and not `console.warn`. A caller
- * refuses both outcomes, and tells them apart only in what it says to the visitor. There is no
- * outcome in which a failure to ask is read as a pass.
+ * whose `error-codes` most likely blame this server or Cloudflare rather than the token. Those
+ * codes come from the same page's "Error codes reference" table: `missing-input-secret` ("Secret
+ * parameter not provided"), `invalid-input-secret` ("Secret key is invalid or expired"),
+ * `bad-request` ("Request is malformed", with the action "Check request format and parameters")
+ * and `internal-error` ("Internal error occurred"). `bad-request` is the one judgment call: this
+ * module builds the request, so a malformed one most likely means the fault is on this side, but
+ * the request carries the visitor's token and the page does not say whether a token can cause
+ * it. Reading it as `unavailable` costs at most that visitor being told to try later rather than
+ * to redo the check, since the read is refused either way and the hourly limiter, which runs
+ * before this check, bounds how often one address can log it. A wrong secret in production would
+ * otherwise tell every visitor to complete the check again, so these log through `console.error`
+ * and not `console.warn`. A caller refuses both outcomes, and tells them apart only in what it
+ * says to the visitor. There is no outcome in which a failure to ask is read as a pass.
  *
  * **The test secrets are answered here, with no request.** Cloudflare answers them itself, but a
  * development machine and the test suite should never depend on reaching it. Production refuses
@@ -64,14 +70,16 @@ export const TEST_SECRET_FAILS = '2x0000000000000000000000000000000AA'
 const DEFAULT_TIMEOUT_MS = 5_000
 
 /**
- * The siteverify error codes that say nothing about the visitor's token: this server's secret is
- * wrong or missing, or Cloudflare failed (see the module note). Each makes the check
- * `unavailable`, never `failed`.
+ * The siteverify error codes that most likely say nothing about the visitor's token: this
+ * server's secret is wrong or missing, the request was malformed, or Cloudflare failed (see the
+ * module note, which says why `bad-request` is here). Each makes the check `unavailable`, never
+ * `failed`.
  */
 const SERVER_FAULT_CODES: ReadonlySet<string> = new Set([
   'invalid-input-secret',
   'missing-input-secret',
   'internal-error',
+  'bad-request',
 ])
 
 export type TurnstileOutcome = 'passed' | 'failed' | 'unavailable'

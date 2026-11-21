@@ -101,7 +101,7 @@ describe('siteverify', () => {
   describe("reads a fault on this server's side, or Cloudflare's, as unavailable", () => {
     const check = { token: TOKEN, remoteIp: undefined }
 
-    it.each(['invalid-input-secret', 'missing-input-secret', 'internal-error'])(
+    it.each(['invalid-input-secret', 'missing-input-secret', 'internal-error', 'bad-request'])(
       '%s is unavailable and logged as an error',
       async (code) => {
         const fetchImpl = vi.fn(async () => reply({ success: false, 'error-codes': [code] }))

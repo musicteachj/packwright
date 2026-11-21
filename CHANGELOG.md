@@ -132,12 +132,12 @@ into a version only when there is a reason to.
   after the day's last read.** Three findings from the review of PR #122. A router built with a Turnstile check and
   no limits counted no visitor, so every token that passed read until the ledger stopped it; it is now refused when
   it is built, "A Turnstile check needs limits." A siteverify refusal whose `error-codes` include
-  `invalid-input-secret`, `missing-input-secret` or `internal-error` was `failed`, so a wrong secret in production
-  would have told every visitor to complete the check again; it is now `unavailable` and logged as an error, and the
-  three codes and their descriptions come from Cloudflare's "Error codes reference", read on 2026-11-21. And the
-  status's five-second ledger read is dropped whenever a read reaches the metered call, however it ends, and a
-  ledger read still in flight at that moment is not kept, so a read that took the last reservation is not followed
-  by a status saying another is possible.
+  `invalid-input-secret`, `missing-input-secret`, `bad-request` or `internal-error` was `failed`, so a wrong secret
+  in production would have told every visitor to complete the check again; it is now `unavailable` and logged as an
+  error, and the four codes and their descriptions come from Cloudflare's "Error codes reference", read on
+  2026-11-21. And the status's five-second ledger read is dropped whenever a read reaches the metered call, however
+  it ends, and a ledger read still in flight at that moment is not kept, so a read that took the last reservation is
+  not followed by a status saying another is possible.
 - **One request could stop the server, and one could make it hold 200 MB; body-parser 2.4.0 and Zod 4.6.6 close
   them.** `npm audit --omit=dev` on 2026-11-17 reported advisories published since the security review of
   2026-10-18, and two were reachable, without a key. body-parser 2.3.0 (GHSA-27r3-jxmh-p828) left the decompression
