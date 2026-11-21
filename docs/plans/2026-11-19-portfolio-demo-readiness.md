@@ -815,15 +815,15 @@ git commit -m "feat(api): public photo reads behind Turnstile, a per-visitor all
   - bot-check: "The bot check didn't go through. Complete it again to read your photo, or try the sample label."
   - The module note says this is the copy a visitor sees; the server's `REFUSALS` strings (Task 8) exist for API callers and the logs, and the page never shows them.
 
-- [ ] **Step 1: Write the failing client tests** (`api/audit.test.ts`)
+- [x] **Step 1: Write the failing client tests** (`api/audit.test.ts`)
 
 Replace `describe('the audit key and the server status')` with `describe('the server status and the bot check')`: `auditStatus()` returns the new shape; returns `null` for `{ available: true, keyRequired: false }`, for a `reason` outside the three, for a non-string `siteKey`, and for any non-200 answer (a 429 from the status limiter, a 500); `readGhsLabel(photo, 'eu-clp', 'tok')` sends `X-Turnstile-Token: tok`; with `null` it sends no such header; it never sends `X-Audit-Key`; a 429 `{ error, reason: 'ip' }` becomes an `AuditError` with `reason: 'ip'`; an unknown `reason` becomes `null`. `'speaks the server's action and refusal reasons, which are copied on purpose'`: `TURNSTILE_ACTION` (from `../audit/turnstile`) is `'audit'`, and `Object.keys(REFUSAL_COPY).sort()` equals `['bot-check', 'budget', 'ip', 'unavailable', 'unconfigured']`, the server's `AuditRefusal` list (decision recorded in both notes: the duplication is accepted, and this test is its check).
 
-- [ ] **Step 2: Write the failing widget tests** (`audit/turnstile.test.ts`)
+- [x] **Step 2: Write the failing widget tests** (`audit/turnstile.test.ts`)
 
 Install a fake `window.turnstile = { render, reset, remove }` before each test (the loader resolves at once when it exists, so no script is added). `'renders once both the box and the site key are there'` (render called with `{ sitekey, action: 'audit', callback, 'expired-callback', 'error-callback' }`); `'holds the token the widget hands back'`; `'forgets a token that expired, and marks a failed check'`; `'reset forgets the token and asks the widget for a new one'`; `'removes the widget with its scope'`; `'adds the script once, however many widgets there are'` (no `window.turnstile`: `document.head` gains exactly one `script[src="<TURNSTILE_SCRIPT_URL>"]`).
 
-- [ ] **Step 3: Write the failing page tests** (`AuditView.test.ts`)
+- [x] **Step 3: Write the failing page tests** (`AuditView.test.ts`)
 
 Mock the widget: build `widget = { token: ref<string | null>(null), failed: ref(false), reset: vi.fn(() => { widget.token.value = null }) }` inside `vi.hoisted` (importing `ref` from `vue` there, since `vi.mock` is hoisted above ordinary imports), then `vi.mock('../audit/turnstile', () => ({ useTurnstile: () => widget }))`; reset its token, `failed` and the spy in `beforeEach`. Delete `describe('the audit key')`. New tests:
 - `'asks for no bot check where the server needs none'` (status with `siteKey: null`): no `[data-test="bot-check"]`; Read enabled once a market and a photo are chosen.
@@ -836,12 +836,12 @@ Mock the widget: build `widget = { token: ref<string | null>(null), failed: ref(
 - `'forgets an audit key an earlier version kept'`: `localStorage.setItem('packwright.auditKey', 'x')` before mount; `null` after.
 - `'says where a photo goes'`: `[data-test="photo-privacy"]` mentions Anthropic, Cloudflare, MongoDB Atlas, AWS and 14 days.
 
-- [ ] **Step 4: Run them to see them fail**
+- [x] **Step 4: Run them to see them fail**
 
 Run: `npx vitest run apps/web/src/api/audit.test.ts apps/web/src/audit/turnstile.test.ts apps/web/src/views/AuditView.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 5: Implement**
+- [x] **Step 5: Implement**
 
 `useTurnstile`: a module-level promise that appends the script once and resolves on `load`; `watchEffect` renders when both refs are set and `window.turnstile` is ready; callbacks set `token` and `failed`; `reset()` calls `window.turnstile.reset(id)` and clears `token`; `onScopeDispose` calls `remove(id)`. Declare `window.turnstile` in a small `declare global` block in the same file.
 
@@ -849,15 +849,15 @@ Expected: FAIL.
 
 `api/audit.ts`: the new types, header and parsing (`auditStatus()` returns `null` for any non-200); the module note loses the key paragraph and says the reason unions copy the server's `refusals.ts` on purpose (the web app does not import the API), checked by the test in Step 1.
 
-- [ ] **Step 6: Update and add the browser tests**
+- [x] **Step 6: Update and add the browser tests**
 
 `e2e/the-label-audit.spec.ts`: the status route answers `{ available: true, reason: null, siteKey: null }` and the comment says a server that needs no bot check. Delete the case at `:174` that stubs `keyRequired: true` for the key UI this task removes (or rewrite it as a status with `available: false, reason: 'unconfigured'` showing the unavailable block and the sample). Create `e2e/the-bot-check.spec.ts`, `'the bot check loads under the CSP and its token goes with the read'`: an init script records `securitypolicyviolation` events; `page.route('https://challenges.cloudflare.com/turnstile/v0/api.js*', ...)` fulfills a fake script that defines `window.turnstile` whose `render` appends an `iframe` with `src` `https://challenges.cloudflare.com/fake-frame` and calls `callback('XXXX.DUMMY.TOKEN.XXXX')` on a timeout; that frame URL is fulfilled with a tiny HTML page; status answers `{ available: true, reason: null, siteKey: '1x00000000000000000000AA' }`; `**/api/audit/ghs` records the `x-turnstile-token` header and fulfills the recorded reading. Assert: the iframe is attached, Read becomes enabled, the recorded header is `XXXX.DUMMY.TOKEN.XXXX`, Read is disabled again after the read, and no CSP violation was recorded. Nothing reaches Cloudflare: every `challenges.cloudflare.com` request is fulfilled by a route.
 
-- [ ] **Step 7: Run everything**
+- [x] **Step 7: Run everything**
 
 Run all checks. Expected: PASS.
 
-- [ ] **Step 8: Mutation test**
+- [x] **Step 8: Mutation test**
 
 Drop `widget.reset()` from `finally`: the "no token is sent twice" test fails. Drop `!sampleOnScreen` from `canRead`: its test fails. Make a `null` status read as available (drop the `status.value === null` branch of `unavailableReason`): "a status that could not be fetched offers the sample, not a read" fails. Remove `https://challenges.cloudflare.com` from `frame-src` in `app.ts`: `the-bot-check.spec.ts` fails. Restore all four.
 

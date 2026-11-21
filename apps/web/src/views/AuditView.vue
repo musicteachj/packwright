@@ -40,10 +40,13 @@ import {
   AuditError,
   auditStatus,
   readGhsLabel,
+  type AuditRefusalReason,
   type AuditStatus,
   type LabelReading,
 } from '../api/audit'
 import { auditReport } from '../audit/report'
+import { REFUSAL_COPY } from '../audit/refusalCopy'
+import { useTurnstile } from '../audit/turnstile'
 import { SAMPLE } from '../audit/sample'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import FindingsRail from '../components/FindingsRail.vue'
@@ -90,47 +93,51 @@ const readingDetail = ref<readonly string[]>([])
 const busy = ref(false)
 
 /**
- * The audit key, where this server asks for one.
+ * What the server can do, and the bot check it asks for.
  *
- * Reading a photograph spends the server's allowance with Anthropic, so a public
- * deployment opens it only to people given its key
- * (`docs/security-review-2026-10-18.md`, James's decision of 2026-10-18). The key
- * is what the person types, never part of this bundle, and it is kept in this
- * browser so it is typed once. The field shows when the server says it needs a
- * key, or when it refused one: a server that could not be asked still has its
- * refusal shown, and still needs somewhere for the key to go.
+ * Reading a photograph spends this demo's allowance with Anthropic, so a public
+ * deployment puts Cloudflare's bot check in front of every read, counts reads per
+ * network, and stops at a budget (James's decision of 2026-11-18). The status says
+ * which: whether a read is possible now, why not if not, and the bot check's site
+ * key where there is one. A status that could not be had is read as no read being
+ * possible, and the sample is offered instead.
  */
-const AUDIT_KEY_STORAGE = 'packwright.auditKey'
 const status = ref<AuditStatus | null>(null)
-const auditKey = ref(storedAuditKey())
-/** Once refused, the field stays for the rest of the visit; the message, until the key changes. */
-const keyEverRefused = ref(false)
-const keyRefused = ref(false)
-const askForKey = computed(() => status.value?.keyRequired === true || keyEverRefused.value)
-const unavailable = computed(() => status.value?.available === false)
+/** True once the status has been asked for and answered, whatever it said. */
+const statusLoaded = ref(false)
 
-void auditStatus().then((answer) => {
-  status.value = answer
-})
-watch(auditKey, (key) => {
-  keyRefused.value = false
-  // Storage can be refused (a private window, a full quota); the key then lasts
-  // as long as the page, which is all that is lost.
-  try {
-    if (key === '') localStorage.removeItem(AUDIT_KEY_STORAGE)
-    else localStorage.setItem(AUDIT_KEY_STORAGE, key)
-  } catch {
-    // Kept in memory only.
-  }
-})
-
-function storedAuditKey(): string {
-  try {
-    return localStorage.getItem(AUDIT_KEY_STORAGE) ?? ''
-  } catch {
-    return ''
-  }
+function refreshStatus() {
+  return auditStatus().then((answer) => {
+    status.value = answer
+    statusLoaded.value = true
+  })
 }
+void refreshStatus()
+
+// An earlier version kept an audit key in this browser. The key is gone, so is
+// what it left behind. Storage can be refused (a private window), which leaves
+// nothing to forget.
+try {
+  localStorage.removeItem('packwright.auditKey')
+} catch {
+  // Nothing to remove.
+}
+
+const unavailableReason = computed<AuditRefusalReason | null>(() =>
+  !statusLoaded.value
+    ? null
+    : status.value === null
+      ? 'unavailable'
+      : status.value.available === false
+        ? (status.value.reason ?? 'unconfigured')
+        : null,
+)
+const siteKey = computed(() => (status.value?.available === true ? status.value.siteKey : null))
+const botCheck = shallowRef<HTMLElement | null>(null)
+const widget = useTurnstile(botCheck, siteKey)
+
+/** Why the last read was refused, where the server said; shown in place of an error. */
+const refusal = ref<AuditRefusalReason | null>(null)
 
 /** The text of each field, which is what is shown and what is edited. */
 const texts = ref<Partial<Record<ReadingKey, string>>>({})
@@ -156,6 +163,7 @@ function forgetReading() {
   editing.value = null
   readingError.value = null
   readingDetail.value = []
+  refusal.value = null
 }
 
 const rows = computed(() =>
@@ -302,22 +310,30 @@ async function read() {
   busy.value = true
   readingError.value = null
   readingDetail.value = []
+  refusal.value = null
   try {
-    const result = await readGhsLabel(camera.photo.value, regime.value, auditKey.value.trim())
+    const result = await readGhsLabel(camera.photo.value, regime.value, widget.token.value)
     if (mine !== readGeneration) return
     showReading(result)
   } catch (caught) {
+    const reason = caught instanceof AuditError ? caught.reason : null
+    // These three are what the status reports, so it is asked again and the page
+    // stops offering a read the server has just said it will refuse. Asked whatever
+    // has moved since: it is about the server, not the photograph.
+    if (reason === 'budget' || reason === 'ip' || reason === 'unconfigured') void refreshStatus()
     if (mine !== readGeneration) return
     reading.value = null
     texts.value = {}
-    readingError.value =
-      caught instanceof AuditError
-        ? caught.message
-        : 'The label could not be read. Please try again.'
-    readingDetail.value = caught instanceof AuditError ? caught.detail : []
-    if (caught instanceof AuditError && caught.status === 401) {
-      keyEverRefused.value = true
-      keyRefused.value = true
+    if (reason !== null) {
+      // A refusal with a reason is the server working as meant, not an error, so it
+      // is said plainly and the sample is offered.
+      refusal.value = reason
+    } else {
+      readingError.value =
+        caught instanceof AuditError
+          ? caught.message
+          : 'The label could not be read. Please try again.'
+      readingDetail.value = caught instanceof AuditError ? caught.detail : []
     }
   } finally {
     // Whatever moved the generation since. The Read button is disabled while a read
@@ -325,6 +341,9 @@ async function read() {
     // because the sample, a photograph or a market arrived meanwhile left the
     // button saying "Reading…" for the rest of the visit.
     busy.value = false
+    // A token is good for one check, and the server has spent this one whatever it
+    // answered, so the next read needs a new one.
+    if (siteKey.value !== null) widget.reset()
   }
 }
 
@@ -353,8 +372,9 @@ const SAMPLE_NOT_LOADED = 'The sample label could not be loaded.'
 /**
  * Puts the sample label and its recorded reading on screen, and sends nothing.
  *
- * For a visitor without the audit key (`audit/sample.ts`). The market is set to
- * the one the reading was recorded under, because a reading belongs to its market
+ * For a visitor this server cannot read for, or who would rather send nothing
+ * (`audit/sample.ts`). The market is set to the one the reading was recorded
+ * under, because a reading belongs to its market
  * (the `regime` watcher above); capacity and size stay the visitor's to type, as
  * on any audit.
  *
@@ -370,6 +390,7 @@ async function loadSample() {
   const mine = ++readGeneration
   readingError.value = null
   readingDetail.value = []
+  refusal.value = null
   try {
     const response = await fetch(SAMPLE.photoUrl)
     if (!response.ok) throw new Error(`The sample label answered ${response.status}`)
@@ -484,13 +505,21 @@ function openInEditor() {
   void router.push('/labels/new')
 }
 
+/**
+ * Whether a read may be asked for now.
+ *
+ * Not while the sample's own reading is on screen: its answer is on record, and a
+ * read of it would spend a live one to be told what the page already shows.
+ */
 const canRead = computed(
   () =>
+    statusLoaded.value &&
     camera.photo.value !== null &&
     regime.value !== '' &&
     !busy.value &&
-    !unavailable.value &&
-    (!askForKey.value || auditKey.value.trim() !== ''),
+    unavailableReason.value === null &&
+    !sampleOnScreen.value &&
+    (siteKey.value === null || widget.token.value !== null),
 )
 </script>
 
@@ -524,50 +553,6 @@ const canRead = computed(
       </p>
     </section>
 
-    <p
-      v-if="unavailable"
-      class="border-chrome-600 text-chrome-300 max-w-2xl border-l-2 pl-4 text-sm"
-      data-test="audit-unavailable"
-    >
-      This server is not set up to read photographs, so no label can be read here.
-    </p>
-
-    <section
-      v-if="askForKey"
-      class="flex flex-col gap-4"
-      aria-labelledby="key-heading"
-      data-test="audit-key-section"
-    >
-      <h2 id="key-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
-        The audit key
-      </h2>
-      <label :class="LABEL" class="max-w-sm" for="audit-key">
-        Audit key
-        <input
-          id="audit-key"
-          v-model="auditKey"
-          type="password"
-          autocomplete="off"
-          spellcheck="false"
-          :class="INPUT"
-          data-test="audit-key"
-        />
-      </label>
-      <p class="text-chrome-400 max-w-2xl text-xs">
-        Reading a photograph spends this server's allowance with Anthropic, so it is open only to
-        people given its key. Ask whoever runs this deployment for one. The key is kept in this
-        browser and sent only to this server.
-      </p>
-      <p
-        v-if="keyRefused"
-        class="border-danger text-danger max-w-2xl border-l-2 pl-4 text-sm"
-        role="alert"
-        data-test="audit-key-refused"
-      >
-        <span class="font-semibold">Error:</span> the server did not accept this key.
-      </p>
-    </section>
-
     <section class="flex flex-col gap-4" aria-labelledby="photo-heading">
       <h2 id="photo-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
         The photograph
@@ -586,7 +571,7 @@ const canRead = computed(
             @change="onFile"
           />
         </label>
-        <!-- Needs no key and sends nothing, so it is offered whatever the server can do. -->
+        <!-- Needs no bot check and sends nothing to be read, so it is offered whatever the server can do. -->
         <button
           type="button"
           :class="[BUTTON, 'px-3 py-1.5 text-sm']"
@@ -676,17 +661,77 @@ const canRead = computed(
         the label, then give a package capacity and the label's size to see what the rules say.
       </p>
 
-      <div>
+      <!--
+            Where no read is possible, the bot check and the Read button are not
+            drawn at all: a button that can never work, beside a check that
+            would be spent for nothing, is replaced by why, and by the sample.
+          -->
+      <div v-if="unavailableReason !== null" class="flex max-w-2xl flex-col items-start gap-3">
+        <p
+          class="border-chrome-600 text-chrome-300 border-l-2 pl-4 text-sm"
+          data-test="audit-unavailable"
+        >
+          {{ REFUSAL_COPY[unavailableReason] }}
+        </p>
         <button
           type="button"
-          :class="[BUTTON, 'px-4 py-2 text-sm']"
-          :disabled="!canRead"
-          data-test="read"
-          @click="read()"
+          :class="[BUTTON, 'px-3 py-1.5 text-sm']"
+          data-test="unavailable-sample"
+          @click="loadSample()"
         >
-          {{ busy ? 'Reading…' : 'Read this label' }}
+          Try the sample label
         </button>
       </div>
+
+      <template v-else>
+        <div v-if="siteKey !== null" class="flex flex-col gap-2">
+          <p id="bot-check-label" class="text-chrome-200 text-xs tracking-widest uppercase">
+            Bot check
+          </p>
+          <div
+            ref="botCheck"
+            role="group"
+            aria-labelledby="bot-check-label"
+            data-test="bot-check"
+          ></div>
+          <p v-if="widget.failed.value" class="text-chrome-300 max-w-2xl text-xs">
+            {{ REFUSAL_COPY['bot-check'] }}
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div>
+            <button
+              type="button"
+              :class="[BUTTON, 'px-4 py-2 text-sm']"
+              :disabled="!canRead"
+              data-test="read"
+              @click="read()"
+            >
+              {{ busy ? 'Reading…' : 'Read this label' }}
+            </button>
+          </div>
+          <p class="text-chrome-400 max-w-2xl text-xs" data-test="photo-privacy">
+            Reading a photo sends it to Anthropic, whose Claude model reads it; Packwright doesn't
+            keep the photo. The bot check is run by Cloudflare. To share live reads fairly,
+            Packwright counts them per network for two days, and keeps that count and its reading
+            budget in MongoDB Atlas. It runs on AWS, and its server logs, which include IP
+            addresses, are kept for 14 days.
+          </p>
+        </div>
+
+        <div
+          v-if="refusal !== null"
+          class="border-chrome-600 flex max-w-2xl flex-col items-start gap-3 border-l-2 pl-4"
+          role="status"
+          data-test="read-refused"
+        >
+          <p class="text-chrome-300 text-sm">{{ REFUSAL_COPY[refusal] }}</p>
+          <button type="button" :class="[BUTTON, 'px-3 py-1.5 text-sm']" @click="loadSample()">
+            Try the sample label
+          </button>
+        </div>
+      </template>
 
       <p
         v-if="readingError !== null"

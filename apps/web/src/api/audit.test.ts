@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AUDIT_KEY_HEADER, auditStatus, readGhsLabel } from './audit'
+import { AuditError, auditStatus, readGhsLabel, TURNSTILE_HEADER } from './audit'
+import { REFUSAL_COPY } from '../audit/refusalCopy'
+import { TURNSTILE_ACTION } from '../audit/turnstile'
 import type { LabelPhoto } from '../audit/normalisePhoto'
 
 const PHOTO: LabelPhoto = { mediaType: 'image/jpeg', data: 'AAAA', widthPx: 100, heightPx: 80 }
@@ -14,7 +16,7 @@ describe('asking the server to read a label', () => {
     const fetching = respond({ extraction: { fields: {}, warnings: [] }, model: 'claude-opus-5-5' })
     vi.stubGlobal('fetch', fetching)
 
-    await readGhsLabel(PHOTO, 'eu-clp')
+    await readGhsLabel(PHOTO, 'eu-clp', null)
 
     const [, init] = fetching.mock.calls[0] as [string, RequestInit]
     expect(JSON.parse(init.body as string)).toEqual({
@@ -31,7 +33,7 @@ describe('asking the server to read a label', () => {
       'fetch',
       respond({ extraction: { fields: {}, warnings: [] }, model: 'some-other-model' }),
     )
-    const reading = await readGhsLabel(PHOTO, 'eu-clp')
+    const reading = await readGhsLabel(PHOTO, 'eu-clp', null)
     expect(reading.model).toBe('some-other-model')
   })
 
@@ -44,7 +46,7 @@ describe('asking the server to read a label', () => {
         422,
       ),
     )
-    await expect(readGhsLabel(PHOTO, 'eu-clp')).rejects.toMatchObject({
+    await expect(readGhsLabel(PHOTO, 'eu-clp', null)).rejects.toMatchObject({
       message: 'Reading this image was declined',
       status: 422,
       detail: ['No reason was given.'],
@@ -65,7 +67,7 @@ describe('asking the server to read a label', () => {
         400,
       ),
     )
-    await expect(readGhsLabel(PHOTO, 'eu-clp')).rejects.toMatchObject({
+    await expect(readGhsLabel(PHOTO, 'eu-clp', null)).rejects.toMatchObject({
       detail: ['image.mediaType Invalid option'],
     })
   })
@@ -83,7 +85,7 @@ describe('asking the server to read a label', () => {
         },
       } as unknown as Response),
     )
-    await expect(readGhsLabel(PHOTO, 'eu-clp')).rejects.toMatchObject({
+    await expect(readGhsLabel(PHOTO, 'eu-clp', null)).rejects.toMatchObject({
       status: 502,
       message: 'The server refused the request (502).',
     })
@@ -95,40 +97,103 @@ describe('asking the server to read a label', () => {
     // getter was wrong half the time and had no caller to be wrong for. The
     // status is the fact; what it means is the server's sentence to tell.
     vi.stubGlobal('fetch', respond({ error: 'Vision extraction is not configured' }, false, 503))
-    await expect(readGhsLabel(PHOTO, 'eu-clp')).rejects.toMatchObject({ status: 503 })
+    await expect(readGhsLabel(PHOTO, 'eu-clp', null)).rejects.toMatchObject({ status: 503 })
 
     vi.stubGlobal('fetch', respond({ error: 'The image is too large' }, false, 413))
-    await expect(readGhsLabel(PHOTO, 'eu-clp')).rejects.toMatchObject({ status: 413 })
+    await expect(readGhsLabel(PHOTO, 'eu-clp', null)).rejects.toMatchObject({ status: 413 })
   })
 })
 
-describe('the audit key and the server status', () => {
-  it('sends the key the person typed, and no key header when there is none', async () => {
-    const fetching = respond({ extraction: { fields: {}, warnings: [] }, model: 'claude-opus-5-5' })
-    vi.stubGlobal('fetch', fetching)
-
-    await readGhsLabel(PHOTO, 'eu-clp', 'the-secret')
-    await readGhsLabel(PHOTO, 'eu-clp')
-
-    const headersOf = (call: number) =>
-      (fetching.mock.calls[call] as [string, RequestInit])[1].headers as Record<string, string>
-    expect(headersOf(0)[AUDIT_KEY_HEADER]).toBe('the-secret')
-    expect(Object.keys(headersOf(1))).not.toContain(AUDIT_KEY_HEADER)
-  })
-
+describe('the server status and the bot check', () => {
   it('reads the status the server gives', async () => {
-    const fetching = respond({ available: true, keyRequired: true })
+    const fetching = respond({ available: true, reason: null, siteKey: 'site-key' })
     vi.stubGlobal('fetch', fetching)
-    expect(await auditStatus()).toEqual({ available: true, keyRequired: true })
+    expect(await auditStatus()).toEqual({ available: true, reason: null, siteKey: 'site-key' })
     expect(fetching.mock.calls[0]![0]).toBe('/api/audit/status')
+
+    vi.stubGlobal('fetch', respond({ available: false, reason: 'ip', siteKey: null }))
+    expect(await auditStatus()).toEqual({ available: false, reason: 'ip', siteKey: null })
   })
 
   it('answers null where the status cannot be had or makes no sense', async () => {
-    vi.stubGlobal('fetch', respond({ available: true, keyRequired: true }, false, 404))
+    // The shape an earlier server gave, which this page no longer reads.
+    vi.stubGlobal('fetch', respond({ available: true, keyRequired: false }))
     expect(await auditStatus()).toBeNull()
-    vi.stubGlobal('fetch', respond({ available: 'yes' }))
+    vi.stubGlobal('fetch', respond({ available: false, reason: 'tired', siteKey: null }))
+    expect(await auditStatus()).toBeNull()
+    vi.stubGlobal('fetch', respond({ available: true, reason: null, siteKey: 42 }))
+    expect(await auditStatus()).toBeNull()
+    vi.stubGlobal('fetch', respond({ available: 'yes', reason: null, siteKey: null }))
     expect(await auditStatus()).toBeNull()
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
     expect(await auditStatus()).toBeNull()
+  })
+
+  it('answers null for any answer but a 200, whatever its body says', async () => {
+    const good = { available: true, reason: null, siteKey: null }
+    // The status limiter's own refusal, and a server error.
+    vi.stubGlobal('fetch', respond(good, false, 429))
+    expect(await auditStatus()).toBeNull()
+    vi.stubGlobal('fetch', respond(good, false, 500))
+    expect(await auditStatus()).toBeNull()
+    vi.stubGlobal('fetch', respond(good, true, 204))
+    expect(await auditStatus()).toBeNull()
+  })
+
+  it("sends the bot check's token, and no such header when there is none", async () => {
+    const fetching = respond({ extraction: { fields: {}, warnings: [] }, model: 'claude-opus-5-5' })
+    vi.stubGlobal('fetch', fetching)
+
+    await readGhsLabel(PHOTO, 'eu-clp', 'tok')
+    await readGhsLabel(PHOTO, 'eu-clp', null)
+
+    const headersOf = (call: number) =>
+      (fetching.mock.calls[call] as [string, RequestInit])[1].headers as Record<string, string>
+    expect(TURNSTILE_HEADER).toBe('X-Turnstile-Token')
+    expect(headersOf(0)['X-Turnstile-Token']).toBe('tok')
+    expect(Object.keys(headersOf(1))).not.toContain('X-Turnstile-Token')
+    for (const call of [0, 1]) {
+      expect(Object.keys(headersOf(call)).map((name) => name.toLowerCase())).not.toContain(
+        'x-audit-key',
+      )
+    }
+  })
+
+  it('keeps the reason a refusal gives, and only a reason it knows', async () => {
+    vi.stubGlobal(
+      'fetch',
+      respond(
+        { error: 'This network has used its live photo reads for now.', reason: 'ip' },
+        false,
+        429,
+      ),
+    )
+    const refused = await readGhsLabel(PHOTO, 'eu-clp', 'tok').catch((caught: unknown) => caught)
+    expect(refused).toBeInstanceOf(AuditError)
+    expect(refused).toMatchObject({ status: 429, reason: 'ip' })
+
+    vi.stubGlobal('fetch', respond({ error: 'Something else', reason: 'tired' }, false, 503))
+    await expect(readGhsLabel(PHOTO, 'eu-clp', null)).rejects.toMatchObject({
+      status: 503,
+      reason: null,
+    })
+
+    vi.stubGlobal('fetch', respond({ error: 'Reading this image was declined' }, false, 422))
+    await expect(readGhsLabel(PHOTO, 'eu-clp', null)).rejects.toMatchObject({ reason: null })
+  })
+
+  it("speaks the server's action and refusal reasons, which are copied on purpose", () => {
+    // The web app does not import the API, and `label-core` is not the place for
+    // its wire format, so these are declared again here (see `api/audit.ts` and
+    // `apps/api/src/audit/refusals.ts`). This is the check on that duplication:
+    // the server's `TURNSTILE_ACTION` and its `AuditRefusal` list.
+    expect(TURNSTILE_ACTION).toBe('audit')
+    expect(Object.keys(REFUSAL_COPY).sort()).toEqual([
+      'bot-check',
+      'budget',
+      'ip',
+      'unavailable',
+      'unconfigured',
+    ])
   })
 })

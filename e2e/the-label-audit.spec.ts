@@ -57,10 +57,10 @@ test('reads a photographed label and judges it with a cited rule', async ({ page
     }),
   )
   // Added after the catch-all, so it answers first: Playwright tries the newest
-  // route first. A server that reads photographs and needs no key, as a private
-  // deployment is; the key field has its own tests in `AuditView.test.ts`.
+  // route first. A server that reads photographs and needs no bot check, as a
+  // private deployment is; the bot check has its own test in `the-bot-check.spec.ts`.
   await page.route('**/api/audit/status', (route) =>
-    route.fulfill({ status: 200, json: { available: true, keyRequired: false } }),
+    route.fulfill({ status: 200, json: { available: true, reason: null, siteKey: null } }),
   )
 
   await page.setViewportSize({ width: 420, height: 900 })
@@ -130,10 +130,10 @@ test('hands the confirmed label to the editor without saving it', async ({ page 
     }),
   )
   // Added after the catch-all, so it answers first: Playwright tries the newest
-  // route first. A server that reads photographs and needs no key, as a private
-  // deployment is; the key field has its own tests in `AuditView.test.ts`.
+  // route first. A server that reads photographs and needs no bot check, as a
+  // private deployment is; the bot check has its own test in `the-bot-check.spec.ts`.
   await page.route('**/api/audit/status', (route) =>
-    route.fulfill({ status: 200, json: { available: true, keyRequired: false } }),
+    route.fulfill({ status: 200, json: { available: true, reason: null, siteKey: null } }),
   )
 
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -163,20 +163,35 @@ test('hands the confirmed label to the editor without saving it', async ({ page 
   await expect(page.locator('[data-save-state]')).toHaveCount(0)
 })
 
-test('shows the sample label without a key, and sends nothing to be read', async ({ page }) => {
-  // A public deployment: no audit without the key, which this visitor has not got.
+test('shows the sample label where no photograph can be read, and sends nothing to be read', async ({
+  page,
+}) => {
+  // A server that reads no photographs live: the visitor the sample is for.
   const posted: string[] = []
   await page.route('**/api/audit/**', (route) => {
     posted.push(route.request().url())
-    return route.fulfill({ status: 401, json: { error: 'A valid audit key is required' } })
+    return route.fulfill({
+      status: 503,
+      json: { error: 'This server does not read photographs live.', reason: 'unconfigured' },
+    })
   })
   await page.route('**/api/audit/status', (route) =>
-    route.fulfill({ status: 200, json: { available: true, keyRequired: true } }),
+    route.fulfill({
+      status: 200,
+      json: { available: false, reason: 'unconfigured', siteKey: null },
+    }),
   )
 
   await page.setViewportSize({ width: 420, height: 900 })
   await page.goto('/audit')
-  await page.click('[data-test="sample"]')
+  // Said plainly where the Read button would be, with the sample beside it, and
+  // no button offered that could only be refused.
+  await expect(page.locator('[data-test="audit-unavailable"]')).toHaveText(
+    "This server doesn't read photographs live. The sample label shows the whole audit, with a reading Claude made earlier.",
+  )
+  await expect(page.locator('[data-test="read"]')).toHaveCount(0)
+  await expect(page.locator('[data-test="bot-check"]')).toHaveCount(0)
+  await page.click('[data-test="unavailable-sample"]')
 
   // The picture, normalized in a real browser from the copy the app serves, and
   // the reading recorded from it.

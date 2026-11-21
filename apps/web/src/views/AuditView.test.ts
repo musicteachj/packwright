@@ -5,6 +5,27 @@ import AuditView from './AuditView.vue'
 import { testRouter } from './editorTestRouter'
 import { useLabelDocumentStore } from '../stores/labelDocument'
 import { SEVERITY_STYLES } from '../severity'
+import { REFUSAL_COPY } from '../audit/refusalCopy'
+
+/**
+ * The bot check, faked. Cloudflare's widget cannot run in jsdom, and what these
+ * tests are for is what the page does with a token, so the page is handed one
+ * whose token a test sets by hand. `useTurnstile` itself is tested in
+ * `audit/turnstile.test.ts`. Built in `vi.hoisted` because `vi.mock` is hoisted
+ * above the imports, `ref` included.
+ */
+const widget = await vi.hoisted(async () => {
+  const { ref } = await import('vue')
+  const fake = {
+    token: ref<string | null>(null),
+    failed: ref(false),
+    reset: vi.fn(() => {
+      fake.token.value = null
+    }),
+  }
+  return fake
+})
+vi.mock('../audit/turnstile', () => ({ useTurnstile: () => widget }))
 
 /**
  * The encode path is stubbed, not the reading.
@@ -36,8 +57,16 @@ const READING = {
   model: 'claude-opus-5-5',
 }
 
+/** A server that reads photographs and asks for no bot check, as a private deployment is. */
+const AVAILABLE = { available: true, reason: null, siteKey: null }
+
+/** The status answered as `AVAILABLE`, and every other request with `body`. */
 const respond = (body: unknown, ok = true, status = 200) =>
-  vi.fn().mockResolvedValue({ ok, status, json: async () => body } as unknown as Response)
+  vi.fn(async (url: string) =>
+    url === '/api/audit/status'
+      ? ({ ok: true, status: 200, json: async () => AVAILABLE } as unknown as Response)
+      : ({ ok, status, json: async () => body } as unknown as Response),
+  )
 
 async function mountAudit(body: unknown = READING, ok = true, status = 200) {
   vi.stubGlobal('fetch', respond(body, ok, status))
@@ -65,6 +94,9 @@ beforeEach(() => {
   vi.clearAllMocks()
   // The screen hands a confirmed document to the editor's store, so it needs one.
   setActivePinia(createPinia())
+  widget.token.value = null
+  widget.failed.value = false
+  localStorage.clear()
 })
 afterEach(() => vi.unstubAllGlobals())
 
@@ -270,12 +302,15 @@ describe('a reading still in flight', () => {
     // photo B, repopulating the rows under a preview of a different label —
     // exactly what that watcher exists to prevent.
     let answer: ((value: unknown) => void) | undefined
+    const reading = new Promise((resolve) => {
+      answer = () => resolve({ ok: true, status: 200, json: async () => READING } as Response)
+    })
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockReturnValue(
-        new Promise((resolve) => {
-          answer = () => resolve({ ok: true, status: 200, json: async () => READING } as Response)
-        }),
+      vi.fn(async (url: string) =>
+        url === '/api/audit/status'
+          ? ({ ok: true, status: 200, json: async () => AVAILABLE } as unknown as Response)
+          : reading,
       ),
     )
     const wrapper = mount(AuditView, {
@@ -607,21 +642,25 @@ describe('when the server refuses', () => {
 })
 
 /**
- * The audit key, which a public deployment asks for before it spends its allowance
- * with Anthropic (`docs/security-review-2026-10-18.md`, James's decision of
- * 2026-10-18). The server's two answers are faked by path.
+ * The bot check, and every way the server can say no read is possible. The
+ * server's answers are faked by path, and every call is kept.
  */
-describe('the audit key', () => {
-  const serving = (status: unknown, reading: { body: unknown; ok?: boolean; code?: number }) =>
-    vi.fn(async (url: string) =>
-      url === '/api/audit/status'
-        ? ({ ok: true, status: 200, json: async () => status } as unknown as Response)
-        : ({
-            ok: reading.ok ?? true,
-            status: reading.code ?? 200,
-            json: async () => reading.body,
-          } as unknown as Response),
-    )
+describe('the bot check and the server status', () => {
+  const ON_CHECK = { available: true, reason: null, siteKey: 'site-key' }
+  const ok = (body: unknown) =>
+    ({ ok: true, status: 200, json: async () => body }) as unknown as Response
+
+  const serving = (
+    status: unknown | (() => Promise<Response>),
+    read: () => Promise<unknown> = async () => ok(READING),
+  ) =>
+    vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url === '/api/audit/status') return typeof status === 'function' ? status() : ok(status)
+      if (url === '/samples/acetone-label.png') {
+        return { ok: true, status: 200, blob: async () => new Blob() } as unknown as Response
+      }
+      return read()
+    })
 
   async function mountServing(fetching: ReturnType<typeof serving>) {
     vi.stubGlobal('fetch', fetching)
@@ -640,91 +679,159 @@ describe('the audit key', () => {
     await flushPromises()
   }
 
-  const headersOfRead = (fetching: ReturnType<typeof serving>) => {
-    const call = fetching.mock.calls.find(([url]) => url === '/api/audit/ghs') as
-      [string, RequestInit] | undefined
-    return call?.[1].headers as Record<string, string> | undefined
-  }
+  const reads = (fetching: ReturnType<typeof serving>) =>
+    fetching.mock.calls.filter(([url]) => url === '/api/audit/ghs') as [string, RequestInit][]
+  const headersOfRead = (fetching: ReturnType<typeof serving>, call: number) =>
+    reads(fetching)[call]?.[1].headers as Record<string, string> | undefined
+  const statusAsks = (fetching: ReturnType<typeof serving>) =>
+    fetching.mock.calls.filter(([url]) => url === '/api/audit/status').length
 
-  beforeEach(() => localStorage.clear())
+  const readButton = (wrapper: Awaited<ReturnType<typeof mountServing>>) =>
+    wrapper.find('[data-test="read"]')
 
-  it('is asked for where the server needs one, and sent with the photograph', async () => {
-    const fetching = serving({ available: true, keyRequired: true }, { body: READING })
+  it('asks for no bot check where the server needs none', async () => {
+    const wrapper = await mountServing(serving(AVAILABLE))
+    expect(wrapper.find('[data-test="bot-check"]').exists()).toBe(false)
+    await choosePhotograph(wrapper)
+    expect(readButton(wrapper).attributes('disabled')).toBeUndefined()
+  })
+
+  it('waits for the bot check before it will read', async () => {
+    const wrapper = await mountServing(serving(ON_CHECK))
+    expect(wrapper.find('[data-test="bot-check"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Bot check')
+    await choosePhotograph(wrapper)
+    expect(readButton(wrapper).attributes('disabled')).toBeDefined()
+
+    widget.token.value = 'tok'
+    await flushPromises()
+    expect(readButton(wrapper).attributes('disabled')).toBeUndefined()
+  })
+
+  it('resets the bot check after every attempt, so no token is sent twice', async () => {
+    // Cloudflare rejects a token it has seen before, so a token kept after a read
+    // would make the next one fail the check.
+    const answers = [
+      async () => ok(READING),
+      async () =>
+        ({
+          ok: false,
+          status: 429,
+          json: async () => ({
+            error: 'This network has used its live photo reads.',
+            reason: 'ip',
+          }),
+        }) as unknown as Response,
+    ]
+    const fetching = serving(ON_CHECK, () => answers.shift()!())
     const wrapper = await mountServing(fetching)
     await choosePhotograph(wrapper)
 
-    expect(wrapper.find('[data-test="audit-key"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeDefined()
-
-    await wrapper.find('[data-test="audit-key"]').setValue('the-secret')
-    await wrapper.find('[data-test="read"]').trigger('click')
+    widget.token.value = 'tok'
     await flushPromises()
-
-    expect(headersOfRead(fetching)?.['X-Audit-Key']).toBe('the-secret')
+    await readButton(wrapper).trigger('click')
+    await flushPromises()
+    expect(headersOfRead(fetching, 0)?.['X-Turnstile-Token']).toBe('tok')
     expect(wrapper.find('[data-value="productIdentifier"]').text()).toBe('Acetone')
+    expect(widget.reset).toHaveBeenCalledTimes(1)
+    expect(readButton(wrapper).attributes('disabled')).toBeDefined()
+
+    widget.token.value = 'tok-2'
+    await flushPromises()
+    await readButton(wrapper).trigger('click')
+    await flushPromises()
+    expect(headersOfRead(fetching, 1)?.['X-Turnstile-Token']).toBe('tok-2')
+    expect(wrapper.find('[data-test="read-refused"]').exists()).toBe(true)
+    expect(widget.reset).toHaveBeenCalledTimes(2)
+    expect(readButton(wrapper).attributes('disabled')).toBeDefined()
   })
 
-  it('is kept in this browser, so it is typed once', async () => {
-    const first = await mountServing(
-      serving({ available: true, keyRequired: true }, { body: READING }),
-    )
-    await first.find('[data-test="audit-key"]').setValue('the-secret')
-    first.unmount()
+  it.each(['budget', 'ip', 'unconfigured'] as const)(
+    'hides the bot check and the read button when no read is possible, and offers the sample (%s)',
+    async (reason) => {
+      const wrapper = await mountServing(serving({ available: false, reason, siteKey: 'site-key' }))
+      await choosePhotograph(wrapper)
+      expect(wrapper.find('[data-test="audit-unavailable"]').text()).toBe(REFUSAL_COPY[reason])
+      expect(wrapper.find('[data-test="bot-check"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="read"]').exists()).toBe(false)
 
-    const again = await mountServing(
-      serving({ available: true, keyRequired: true }, { body: READING }),
-    )
-    expect((again.find('[data-test="audit-key"]').element as HTMLInputElement).value).toBe(
-      'the-secret',
-    )
-  })
+      await wrapper.find('[data-test="unavailable-sample"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+    },
+  )
 
-  it('is not asked for where the server needs none', async () => {
+  it('a status that could not be fetched offers the sample, not a read', async () => {
+    let answerStatus: (response: Response) => void = () => {}
     const wrapper = await mountServing(
-      serving({ available: true, keyRequired: false }, { body: READING }),
+      serving(() => new Promise<Response>((resolve) => (answerStatus = resolve))),
     )
-    expect(wrapper.find('[data-test="audit-key-section"]').exists()).toBe(false)
+    await choosePhotograph(wrapper)
+    // Still being asked: nothing is said yet, and nothing can be read.
+    expect(wrapper.find('[data-test="audit-unavailable"]').exists()).toBe(false)
+    expect(readButton(wrapper).attributes('disabled')).toBeDefined()
+
+    answerStatus({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)
+    await flushPromises()
+    expect(wrapper.find('[data-test="audit-unavailable"]').text()).toBe(REFUSAL_COPY.unavailable)
+    expect(wrapper.find('[data-test="read"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="bot-check"]').exists()).toBe(false)
+
+    await wrapper.find('[data-test="unavailable-sample"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
   })
 
-  it('is asked for once the server refuses one, and the refusal is said', async () => {
-    // A server whose status could not be read still answers 401 where it needs a
-    // key, and the person then needs somewhere to put one.
-    const fetching = serving(
-      { unexpected: true },
-      { body: { error: 'A valid audit key is required' }, ok: false, code: 401 },
-    )
+  it('a refused read says so plainly and points at the sample', async () => {
+    const fetching = serving(AVAILABLE, async () => ({
+      ok: false,
+      status: 429,
+      json: async () => ({ error: 'This network has used its live photo reads.', reason: 'ip' }),
+    }))
     const wrapper = await mountServing(fetching)
     await choosePhotograph(wrapper)
-    expect(wrapper.find('[data-test="audit-key-section"]').exists()).toBe(false)
+    expect(statusAsks(fetching)).toBe(1)
 
-    await wrapper.find('[data-test="read"]').trigger('click')
+    await readButton(wrapper).trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-test="audit-key-refused"]').exists()).toBe(true)
+    const refused = wrapper.find('[data-test="read-refused"]')
+    expect(refused.text()).toContain(REFUSAL_COPY.ip)
+    expect(refused.attributes('role')).toBe('status')
+    expect(refused.find('button').text()).toBe('Try the sample label')
+    // Not an error: nothing went wrong, the visitor has simply had their reads.
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    // And the status is asked again, since it may now say no read is possible.
+    expect(statusAsks(fetching)).toBe(2)
 
-    // Typing a new key clears the refusal, and the field stays while it is typed.
-    await wrapper.find('[data-test="audit-key"]').setValue('another')
-    expect(wrapper.find('[data-test="audit-key-refused"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="audit-key"]').exists()).toBe(true)
+    await refused.find('button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="read-refused"]').exists()).toBe(false)
   })
 
-  it('says so, and reads nothing, where the server reads no photographs', async () => {
-    const wrapper = await mountServing(
-      serving({ available: false, keyRequired: false }, { body: READING }),
-    )
-    await choosePhotograph(wrapper)
-    expect(wrapper.find('[data-test="audit-unavailable"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeDefined()
+  it('forgets an audit key an earlier version kept', async () => {
+    localStorage.setItem('packwright.auditKey', 'x')
+    await mountServing(serving(AVAILABLE))
+    expect(localStorage.getItem('packwright.auditKey')).toBeNull()
+  })
+
+  it('says where a photo goes', async () => {
+    const wrapper = await mountServing(serving(AVAILABLE))
+    const privacy = wrapper.find('[data-test="photo-privacy"]').text()
+    for (const named of ['Anthropic', 'Cloudflare', 'MongoDB Atlas', 'AWS', '14 days']) {
+      expect(privacy).toContain(named)
+    }
   })
 })
 
 describe('the sample label', () => {
   /**
-   * A server that cannot read photographs and asks for a key: the visitor the
-   * sample is for. `fetch` answers per address, and every call is kept.
+   * A server that cannot read photographs: the visitor the sample is for.
+   * `fetch` answers per address, and every call is kept.
    */
   async function mountWithoutAudit(
     photoOk = true,
-    status = { available: false, keyRequired: true },
+    status: unknown = { available: false, reason: 'unconfigured', siteKey: null },
     read: () => Promise<unknown> = async () => ({ ok: false, status: 500, json: async () => ({}) }),
   ) {
     const fetch = vi.fn(async (url: string) => {
@@ -769,7 +876,7 @@ describe('the sample label', () => {
     expect(notice).toContain('2026-09-15')
   })
 
-  it('asks the server for nothing but the picture, though it has no key and no audit', async () => {
+  it('asks the server for nothing but the picture, though it has no audit', async () => {
     const { fetch } = await loadTheSample()
     expect(fetch.mock.calls.map(([url]) => url).sort()).toEqual([
       '/api/audit/status',
@@ -819,48 +926,27 @@ describe('the sample label', () => {
     expect(wrapper.find('[data-field="signalWords"]').exists()).toBe(false)
   })
 
-  it('stops calling a reading recorded once the sample photograph is read for real', async () => {
-    const { wrapper } = await mountWithoutAudit(
-      true,
-      { available: true, keyRequired: false },
-      async () => ({
-        ok: true,
-        status: 200,
-        json: async () => READING,
-      }),
-    )
+  it("will not read while the sample's own reading is on screen", async () => {
+    // The reading is already there, recorded, so a read would spend a live one
+    // on a photograph whose answer is known.
+    const { wrapper } = await mountWithoutAudit(true, AVAILABLE)
     await wrapper.find('[data-test="sample"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeDefined()
 
-    await wrapper.find('[data-test="read"]').trigger('click')
+    const input = wrapper.find('[data-test="photo-file"]')
+    Object.defineProperty(input.element, 'files', { value: [new Blob()], configurable: true })
+    await input.trigger('change')
     await flushPromises()
-    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
-  })
-
-  it('stops calling a reading recorded once a real read of it is refused', async () => {
-    const { wrapper } = await mountWithoutAudit(
-      true,
-      { available: true, keyRequired: false },
-      async () => ({
-        ok: false,
-        status: 401,
-        json: async () => ({ error: 'A valid audit key is required' }),
-      }),
-    )
-    await wrapper.find('[data-test="sample"]').trigger('click')
-    await flushPromises()
-    await wrapper.find('[data-test="read"]').trigger('click')
-    await flushPromises()
-    expect(wrapper.find('[role="alert"]').text()).toContain('did not accept this key')
-    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeUndefined()
   })
 
   it('leaves the Read button usable when the sample arrives during a read', async () => {
     let answer: (value: unknown) => void = () => {}
     const { wrapper } = await mountWithoutAudit(
       true,
-      { available: true, keyRequired: false },
+      AVAILABLE,
       () => new Promise((resolve) => (answer = resolve)),
     )
     await readALabel(wrapper)
@@ -871,9 +957,16 @@ describe('the sample label', () => {
     answer({ ok: true, status: 200, json: async () => READING })
     await flushPromises()
     expect(wrapper.find('[data-test="read"]').text()).toBe('Read this label')
-    expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeUndefined()
     // And the late answer did not land on the sample.
     expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+
+    // Disabled while the sample's own reading is up, and usable again for a
+    // photograph of the visitor's own.
+    const input = wrapper.find('[data-test="photo-file"]')
+    Object.defineProperty(input.element, 'files', { value: [new Blob()], configurable: true })
+    await input.trigger('change')
+    await flushPromises()
+    expect(wrapper.find('[data-test="read"]').attributes('disabled')).toBeUndefined()
   })
 
   it('puts no reading up when the camera would not take the sample photograph', async () => {
@@ -888,7 +981,7 @@ describe('the sample label', () => {
     // Photograph A on screen, B still being read. The sample is decoded by the page
     // and shown as it is, so its reading sits under its own picture; B, chosen
     // earlier, then lands and replaces both, as any later photograph does.
-    const { wrapper } = await mountWithoutAudit(true, { available: true, keyRequired: false })
+    const { wrapper } = await mountWithoutAudit(true, AVAILABLE)
     const input = wrapper.find('[data-test="photo-file"]')
     Object.defineProperty(input.element, 'files', { value: [new Blob()], configurable: true })
     await input.trigger('change')
@@ -927,15 +1020,11 @@ describe('the sample label', () => {
   it('leaves the visitor’s own photograph, reading and market alone when the sample cannot be decoded', async () => {
     // The camera clears its photograph when a decode fails, so a sample handed to
     // it threw away the visitor's photograph and the rows they had accepted.
-    const { wrapper } = await mountWithoutAudit(
-      true,
-      { available: true, keyRequired: false },
-      async () => ({
-        ok: true,
-        status: 200,
-        json: async () => READING,
-      }),
-    )
+    const { wrapper } = await mountWithoutAudit(true, AVAILABLE, async () => ({
+      ok: true,
+      status: 200,
+      json: async () => READING,
+    }))
     await readALabel(wrapper)
     await wrapper.find('[data-test="accept-productIdentifier"]').trigger('click')
 
