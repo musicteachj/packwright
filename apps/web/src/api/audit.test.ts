@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AuditError, auditStatus, readGhsLabel, TURNSTILE_HEADER } from './audit'
+import {
+  AuditError,
+  auditStatus,
+  readGhsLabel,
+  REFUSAL_REASONS,
+  TURNSTILE_HEADER,
+  UNAVAILABLE_REASONS,
+} from './audit'
 import { REFUSAL_COPY } from '../audit/refusalCopy'
 import { TURNSTILE_ACTION } from '../audit/turnstile'
 import type { LabelPhoto } from '../audit/normalisePhoto'
@@ -186,14 +193,12 @@ describe('the server status and the bot check', () => {
     // The web app does not import the API, and `label-core` is not the place for
     // its wire format, so these are declared again here (see `api/audit.ts` and
     // `apps/api/src/audit/refusals.ts`). This is the check on that duplication:
-    // the server's `TURNSTILE_ACTION` and its `AuditRefusal` list.
+    // the action, the copy's keys and the two lists that parse the server's
+    // answers, each against the server's names written out here.
+    const refusals = ['bot-check', 'budget', 'ip', 'unavailable', 'unconfigured']
     expect(TURNSTILE_ACTION).toBe('audit')
-    expect(Object.keys(REFUSAL_COPY).sort()).toEqual([
-      'bot-check',
-      'budget',
-      'ip',
-      'unavailable',
-      'unconfigured',
-    ])
+    expect(Object.keys(REFUSAL_COPY).sort()).toEqual(refusals)
+    expect([...REFUSAL_REASONS].sort()).toEqual(refusals)
+    expect([...UNAVAILABLE_REASONS].sort()).toEqual(['budget', 'ip', 'unconfigured'])
   })
 })

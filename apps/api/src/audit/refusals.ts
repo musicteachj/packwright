@@ -8,8 +8,11 @@
  *
  * **The reason unions are declared again in `apps/web/src/api/audit.ts`, on purpose.**
  * `label-core` is not the place for them (it holds the engine, not this API's wire format), and
- * the web app does not import the API. A web test pins the client's list against these. The
- * duplication is accepted, not an oversight.
+ * the web app does not import the API. "keeps the refusal reasons the web app copies" in
+ * `routes.test.ts` pins the keys of `REFUSALS` (the unions here are types only) to the five names
+ * written out in it; the web app's `api/audit.test.ts` pins its `REFUSAL_COPY` keys,
+ * `REFUSAL_REASONS` and `UNAVAILABLE_REASONS` to the same names written out there. The two sides
+ * agree by being written the same. The duplication is accepted, not an oversight.
  */
 
 import type { Response } from 'express'

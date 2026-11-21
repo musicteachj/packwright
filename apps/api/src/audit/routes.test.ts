@@ -1260,4 +1260,16 @@ describe('refusals', () => {
   it('every refusal points at the sample label', () => {
     for (const refusal of Object.values(REFUSALS)) expect(refusal.error).toMatch(/sample label/)
   })
+
+  it('keeps the refusal reasons the web app copies', () => {
+    // Pins `REFUSALS`'s keys (the only runtime list here) to the five names written out below.
+    // apps/web/src/api/audit.test.ts pins the web app's lists to the same names written out there.
+    expect(Object.keys(REFUSALS).sort()).toEqual([
+      'bot-check',
+      'budget',
+      'ip',
+      'unavailable',
+      'unconfigured',
+    ])
+  })
 })

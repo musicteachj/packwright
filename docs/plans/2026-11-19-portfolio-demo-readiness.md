@@ -808,7 +808,7 @@ git commit -m "feat(api): public photo reads behind Turnstile, a per-visitor all
   - `export interface TurnstileWidget { token: Readonly<Ref<string | null>>; failed: Readonly<Ref<boolean>>; reset(): void }`
   - `export function useTurnstile(container: Readonly<ShallowRef<HTMLElement | null>>, siteKey: Readonly<Ref<string | null>>): TurnstileWidget`
 - Produces, `audit/refusalCopy.ts`: `export const REFUSAL_COPY: Readonly<Record<AuditRefusalReason, string>>`:
-  - budget: "Live photo reads are paused for now: this demo's reading budget is used up. The sample label shows the whole audit, with a reading Claude made earlier."
+  - budget: "Live photo reads are paused for now. The sample label shows the whole audit, with a reading Claude made earlier."
   - ip: "You've used the live photo reads this network gets for now. The sample label shows the whole audit, with a reading Claude made earlier."
   - unconfigured: "This server doesn't read photographs live. The sample label shows the whole audit, with a reading Claude made earlier."
   - unavailable: "Live photo reading isn't available right now. The sample label shows the whole audit, with a reading Claude made earlier."
@@ -889,7 +889,7 @@ git commit -m "feat(web): public photo reads with a bot check, and the sample on
 
 Run: `npx vitest run apps/web/src/views/LandingView.test.ts apps/web/src/views/AuditView.test.ts` (FAIL). In the landing `header`, add a row of three `RouterLink`s styled with `BUTTON`: duplicate the editor link (today in a `section` below, reading "Open the editor →") into the header row as the first of the three, and keep the lower one. In `AuditView.vue`, `onMounted(() => { if (route.query.sample === '1') void loadSample() })` using `useRoute()`. Run again: PASS.
 
-- [ ] **Step 3: Checks, CHANGELOG, commit**
+- [x] **Step 3: Checks, CHANGELOG, commit**
 
 Run all checks (PASS). CHANGELOG `### Added`: the landing page links straight to a live audit and to the sample. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash

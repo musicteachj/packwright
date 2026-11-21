@@ -782,6 +782,142 @@ describe('the bot check and the server status', () => {
     expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
   })
 
+  it('a status that could not be fetched can be asked again', async () => {
+    const answers = [
+      async () => ({ ok: false, status: 500, json: async () => ({}) }) as unknown as Response,
+      async () => ok(AVAILABLE),
+    ]
+    const fetching = serving(() => answers.shift()!())
+    const wrapper = await mountServing(fetching)
+    expect(wrapper.find('[data-test="audit-unavailable"]').text()).toBe(REFUSAL_COPY.unavailable)
+    const retry = wrapper.find('[data-test="status-retry"]')
+    expect(retry.text()).toBe('Try again')
+
+    await retry.trigger('click')
+    await flushPromises()
+    expect(statusAsks(fetching)).toBe(2)
+    expect(wrapper.find('[data-test="read"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="audit-unavailable"]').exists()).toBe(false)
+
+    // This network's reads and an unconfigured server are answers that asking
+    // again cannot change.
+    for (const reason of ['ip', 'unconfigured'] as const) {
+      const answered = await mountServing(serving({ available: false, reason, siteKey: null }))
+      expect(answered.find('[data-test="audit-unavailable"]').text()).toBe(REFUSAL_COPY[reason])
+      expect(answered.find('[data-test="status-retry"]').exists()).toBe(false)
+    }
+  })
+
+  it('a budget status can be asked again, since a database blip answers it too', async () => {
+    // The server answers `budget` when it cannot read its counts (it fails closed),
+    // so the budget copy may stand for a moment's outage rather than a spent month.
+    const answers = [
+      async () => ok({ available: false, reason: 'budget', siteKey: null }),
+      async () => ok(AVAILABLE),
+    ]
+    const fetching = serving(() => answers.shift()!())
+    const wrapper = await mountServing(fetching)
+    expect(wrapper.find('[data-test="audit-unavailable"]').text()).toBe(REFUSAL_COPY.budget)
+
+    await wrapper.find('[data-test="status-retry"]').trigger('click')
+    await flushPromises()
+    expect(statusAsks(fetching)).toBe(2)
+    expect(wrapper.find('[data-test="read"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="audit-unavailable"]').exists()).toBe(false)
+  })
+
+  it('does not ask for the status twice at once, and says it is asking', async () => {
+    const failed = () => ({ ok: false, status: 500, json: async () => ({}) }) as unknown as Response
+    let answerRetry: (response: Response) => void = () => {}
+    const answers = [
+      async () => failed(),
+      () => new Promise<Response>((resolve) => (answerRetry = resolve)),
+    ]
+    const fetching = serving(() => answers.shift()!())
+    const wrapper = await mountServing(fetching)
+    const retry = () => wrapper.find('[data-test="status-retry"]')
+
+    await retry().trigger('click')
+    await flushPromises()
+    expect(retry().attributes('disabled')).toBeDefined()
+    expect(retry().text()).toBe('Trying again')
+    await retry().trigger('click')
+    expect(statusAsks(fetching)).toBe(2)
+
+    answerRetry(failed())
+    await flushPromises()
+    expect(retry().attributes('disabled')).toBeUndefined()
+    expect(retry().text()).toBe('Try again')
+  })
+
+  it('a refusal goes once a retry finds reads available again', async () => {
+    const statusAnswers = [
+      async () => ok(AVAILABLE),
+      async () => ok({ available: false, reason: 'budget', siteKey: null }),
+      async () => ok(AVAILABLE),
+    ]
+    const fetching = serving(
+      () => statusAnswers.shift()!(),
+      async () =>
+        ({
+          ok: false,
+          status: 429,
+          json: async () => ({ error: 'Live photo reads are paused.', reason: 'budget' }),
+        }) as unknown as Response,
+    )
+    const wrapper = await mountServing(fetching)
+    await choosePhotograph(wrapper)
+
+    await readButton(wrapper).trigger('click')
+    await flushPromises()
+    // The premise: the status was asked again and says the budget.
+    expect(statusAsks(fetching)).toBe(2)
+    expect(wrapper.find('[data-test="audit-unavailable"]').text()).toBe(REFUSAL_COPY.budget)
+
+    await wrapper.find('[data-test="status-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-test="read"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="read-refused"]').exists()).toBe(false)
+  })
+
+  it('lets only the latest status request land, whichever answers last', async () => {
+    // Two refused reads each ask the status again. The newer answer (the budget)
+    // arrives first; the older one (available) then lands late and must not stand.
+    const pending: ((response: Response) => void)[] = []
+    const statusAnswers = [
+      async () => ok(AVAILABLE),
+      () => new Promise<Response>((resolve) => pending.push(resolve)),
+      () => new Promise<Response>((resolve) => pending.push(resolve)),
+    ]
+    const refused = (reason: string) =>
+      ({
+        ok: false,
+        status: 429,
+        json: async () => ({ error: 'Refused.', reason }),
+      }) as unknown as Response
+    const readAnswers = [async () => refused('ip'), async () => refused('budget')]
+    const fetching = serving(
+      () => statusAnswers.shift()!(),
+      () => readAnswers.shift()!(),
+    )
+    const wrapper = await mountServing(fetching)
+    await choosePhotograph(wrapper)
+
+    await readButton(wrapper).trigger('click')
+    await flushPromises()
+    await readButton(wrapper).trigger('click')
+    await flushPromises()
+    expect(statusAsks(fetching)).toBe(3)
+    const [older, newer] = pending
+
+    newer!(ok({ available: false, reason: 'budget', siteKey: null }))
+    await flushPromises()
+    older!(ok(AVAILABLE))
+    await flushPromises()
+    expect(wrapper.find('[data-test="audit-unavailable"]').text()).toBe(REFUSAL_COPY.budget)
+    expect(wrapper.find('[data-test="read"]').exists()).toBe(false)
+  })
+
   it('a refused read says so plainly and points at the sample', async () => {
     const fetching = serving(AVAILABLE, async () => ({
       ok: false,

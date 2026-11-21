@@ -64,6 +64,7 @@ import {
 } from '../audit/readingRows'
 import { BUTTON } from '../components/chrome'
 import { INPUT, LABEL } from '../components/formStyles'
+import SelectField from '../components/ui/SelectField.vue'
 
 const REGIME_NAMES: Readonly<Record<GhsRegime, string>> = {
   'eu-clp': 'European Union — CLP',
@@ -105,12 +106,35 @@ const busy = ref(false)
 const status = ref<AuditStatus | null>(null)
 /** True once the status has been asked for and answered, whatever it said. */
 const statusLoaded = ref(false)
+/** True while the status is being asked for, so "Try again" cannot start a second request. */
+const statusRefreshing = ref(false)
 
-function refreshStatus() {
-  return auditStatus().then((answer) => {
+/**
+ * Bumped by every status request, so only the latest may land.
+ *
+ * The status is asked on mount, by "Try again" and after a refused read, so two
+ * can be in flight at once; without this the older answer could land last and
+ * stand, and the first to finish would re-enable "Try again" under the other.
+ */
+let statusGeneration = 0
+
+async function refreshStatus() {
+  const mine = ++statusGeneration
+  statusRefreshing.value = true
+  try {
+    const answer = await auditStatus()
+    if (mine !== statusGeneration) return
+    // Reads possible again after a status that said they were not: a refusal from
+    // before (the budget during a database blip, say) no longer says anything true
+    // and must not sit under Read. Only on that change, so the status asked after a
+    // refusal, still saying "available", does not wipe the refusal it was asked for.
+    const readsReturned = status.value?.available !== true && answer?.available === true
     status.value = answer
     statusLoaded.value = true
-  })
+    if (readsReturned) refusal.value = null
+  } finally {
+    if (mine === statusGeneration) statusRefreshing.value = false
+  }
 }
 void refreshStatus()
 
@@ -543,15 +567,22 @@ const canRead = computed(
       <h2 id="market-heading" class="text-chrome-200 text-sm tracking-widest uppercase">
         The market this label is for
       </h2>
-      <label :class="LABEL" class="max-w-sm" for="audit-regime">
-        Regime
-        <select id="audit-regime" v-model="regime" :class="INPUT" data-test="regime">
-          <option value="">Choose a market</option>
-          <option v-for="value in GHS_REGIMES" :key="value" :value="value">
-            {{ REGIME_NAMES[value] }}
-          </option>
-        </select>
-      </label>
+      <!--
+        SelectField, like every other select in the app: its own chevron, drawn 8px in
+        from the edge, where the browser's arrow sat flush against it.
+      -->
+      <SelectField
+        id="audit-regime"
+        v-model="regime"
+        label="Regime"
+        class="max-w-sm"
+        data-test="regime"
+      >
+        <option value="">Choose a market</option>
+        <option v-for="value in GHS_REGIMES" :key="value" :value="value">
+          {{ REGIME_NAMES[value] }}
+        </option>
+      </SelectField>
       <p class="text-chrome-400 max-w-2xl text-xs">
         Not read from the photograph, and deliberately not defaulted. It selects which rules apply
         and which statement wording is correct, so a label judged under the wrong one is judged
@@ -679,14 +710,35 @@ const canRead = computed(
         >
           {{ REFUSAL_COPY[unavailableReason] }}
         </p>
-        <button
-          type="button"
-          :class="[BUTTON, 'px-3 py-1.5 text-sm']"
-          data-test="unavailable-sample"
-          @click="loadSample()"
-        >
-          Try the sample label
-        </button>
+        <div class="flex flex-wrap gap-3">
+          <button
+            type="button"
+            :class="[BUTTON, 'px-3 py-1.5 text-sm']"
+            data-test="unavailable-sample"
+            @click="loadSample()"
+          >
+            Try the sample label
+          </button>
+          <!--
+            Where the status could not be had (a network blip, or the status
+            limit on an address many people share), and for the budget, which
+            the server also answers when it cannot read its counts: either would
+            otherwise hide Read until a reload. Asking again when the budget
+            really is spent costs one cached request and changes nothing. This
+            network's reads and an unconfigured server are answers that asking
+            again cannot change, so they get no retry.
+          -->
+          <button
+            v-if="unavailableReason === 'unavailable' || unavailableReason === 'budget'"
+            type="button"
+            :class="[BUTTON, 'px-3 py-1.5 text-sm']"
+            :disabled="statusRefreshing"
+            data-test="status-retry"
+            @click="refreshStatus()"
+          >
+            {{ statusRefreshing ? 'Trying again' : 'Try again' }}
+          </button>
+        </div>
       </div>
 
       <template v-else>

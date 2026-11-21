@@ -73,8 +73,13 @@ export type AuditUnavailableReason = 'budget' | 'ip' | 'unconfigured'
 /** Why a read was refused: the status's reasons, and two only a read can meet. */
 export type AuditRefusalReason = AuditUnavailableReason | 'unavailable' | 'bot-check'
 
-const UNAVAILABLE_REASONS: readonly string[] = ['budget', 'ip', 'unconfigured']
-const REFUSAL_REASONS: readonly string[] = [...UNAVAILABLE_REASONS, 'unavailable', 'bot-check']
+/** The reasons this page accepts from the server, at run time; pinned in `audit.test.ts`. */
+export const UNAVAILABLE_REASONS: readonly string[] = ['budget', 'ip', 'unconfigured']
+export const REFUSAL_REASONS: readonly string[] = [
+  ...UNAVAILABLE_REASONS,
+  'unavailable',
+  'bot-check',
+]
 
 /** The header the server reads the bot check's token from (`apps/api/src/audit/turnstile.ts`). */
 export const TURNSTILE_HEADER = 'X-Turnstile-Token'
