@@ -10,6 +10,13 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **Turnstile verification on the server, and a CSP that lets the widget load.** `siteverify`
+  (`apps/api/src/audit/turnstile.ts`) posts a token to Cloudflare and passes it only when Cloudflare accepts it,
+  for one of this site's hostnames and for the `audit` action. It fails closed: an empty or oversized token is
+  refused without asking, and a network error, a non-2xx answer, an unreadable reply or a timeout is
+  `unavailable`, never a pass. Cloudflare's test secrets are answered locally. helmet's `script-src` and a new
+  `frame-src` admit `https://challenges.cloudflare.com` and nothing else; `'unsafe-eval'` and `'unsafe-inline'`
+  stay out. Not wired into any route yet.
 - **A paced spend ledger for photo reads, in integer micro-dollars.** The public demo gets a fixed monthly AI
   budget, so every read reserves its worst case before it is sent and settles at what its reply says it cost
   (`apps/api/src/audit/ledger.ts`, with the database store in `ledgerStore.ts`; the server meters every live read

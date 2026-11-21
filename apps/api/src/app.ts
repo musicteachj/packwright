@@ -229,6 +229,14 @@ export function createApp(options: AppOptions = {}): Express {
    * application, which is the grant this policy exists to withhold. The first
    * permits WebAssembly compilation and nothing else.
    *
+   * **The second widening: Cloudflare's bot check.** The public photo audit puts a
+   * Turnstile widget in front of every read. Its script loads from
+   * `https://challenges.cloudflare.com` (`script-src`) and it draws its challenge
+   * in an iframe from the same origin (`frame-src`, which the defaults do not set,
+   * so it would otherwise fall back to `default-src 'self'` and refuse it). Each
+   * grant names that one origin and no wildcard, and neither `'unsafe-inline'` nor
+   * `'unsafe-eval'` is added; a test pins both.
+   *
    * Everything else is left alone deliberately. The client was confirmed to run
    * clean under the untouched defaults when it was first served from this server,
    * so each directive still carries its weight and any further widening should
@@ -239,7 +247,8 @@ export function createApp(options: AppOptions = {}): Express {
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-          'script-src': ["'self'", "'wasm-unsafe-eval'"],
+          'script-src': ["'self'", "'wasm-unsafe-eval'", 'https://challenges.cloudflare.com'],
+          'frame-src': ["'self'", 'https://challenges.cloudflare.com'],
         },
       },
     }),

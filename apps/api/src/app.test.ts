@@ -28,6 +28,20 @@ describe('GET /health', () => {
   })
 })
 
+describe('content security policy', () => {
+  it('the CSP lets the bot check load and frame itself, and nothing else new', async () => {
+    const response = await request(app).get('/health')
+    const csp = response.headers['content-security-policy'] as string
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com")
+    expect(csp).toContain("frame-src 'self' https://challenges.cloudflare.com")
+    const scriptSrc = csp.split(';').find((d) => d.trim().split(' ')[0] === 'script-src')
+    expect(scriptSrc).toBeDefined()
+    const tokens = scriptSrc!.trim().split(' ')
+    expect(tokens).not.toContain("'unsafe-eval'")
+    expect(tokens).not.toContain("'unsafe-inline'")
+  })
+})
+
 describe('unknown routes', () => {
   it('404s as JSON rather than HTML', async () => {
     const response = await request(app).get('/nope')

@@ -609,7 +609,7 @@ Run `git diff --shortstat dev...HEAD` and `/security-review`. Draft the PR (base
   - `export type VerifyTurnstile = (check: { token: string; remoteIp: string | undefined }) => Promise<TurnstileOutcome>`
   - `export function siteverify(options: { secretKey: string; hostnames: readonly string[]; timeoutMs?: number; fetchImpl?: typeof fetch }): VerifyTurnstile` (timeout default 5,000 ms; a test secret is answered locally, without `fetchImpl`)
 
-- [ ] **Step 1: Write the failing tests** (`turnstile.test.ts`; `fetchImpl` is a `vi.fn`, Cloudflare is never called)
+- [x] **Step 1: Write the failing tests** (`turnstile.test.ts`; `fetchImpl` is a `vi.fn`, Cloudflare is never called)
 
 - `'passes a token Cloudflare accepts for this host and action'`: reply `{ success: true, hostname: 'packwright.example', action: 'audit' }` gives `'passed'`; the request was a POST to `SITEVERIFY_URL` carrying `secret`, `response` and `remoteip`.
 - `'fails a token for another host'` (`hostname: 'opendoor.example'`), `'fails a token for another action'` (`action: 'sandbox'`), `'fails a refused token'` (`success: false, 'error-codes': ['invalid-input-response']`).
@@ -621,16 +621,16 @@ Run `git diff --shortstat dev...HEAD` and `/security-review`. Draft the PR (base
 
 `app.test.ts`: `'the CSP lets the bot check load and frame itself, and nothing else new'`: `content-security-policy` on `GET /health` contains `script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com` and `frame-src 'self' https://challenges.cloudflare.com`; splitting the `script-src` directive on spaces gives no token equal to `'unsafe-eval'` or `'unsafe-inline'` (a substring check would trip on `'wasm-unsafe-eval'`).
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npx vitest run apps/api/src/audit/turnstile.test.ts apps/api/src/app.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Read Cloudflare's server-side validation and testing pages first; record the siteverify fields, the test keys and the date in the module note, and add both pages to `docs/SOURCES.md` under "The photo audit". `siteverify` answers `TEST_SECRET_PASSES` with `'passed'` and `TEST_SECRET_FAILS` with `'failed'` without a request (after the token length check), the note saying why: dev and tests never reach Cloudflare, and production refuses these keys except on a local host (Task 8). Otherwise it posts form-encoded `secret`, `response`, `remoteip` (when known) with `AbortSignal.timeout(timeoutMs)`; `'passed'` only when `success === true`, `hostnames.includes(hostname)` and `action === TURNSTILE_ACTION`; on a failure it logs the `error-codes`, `hostname` and `action` it saw. The note above `TURNSTILE_ACTION` says the web app declares the same value in `apps/web/src/audit/turnstile.ts` on purpose: `label-core` is not the place for it and the web app does not import the API, so a web test (Task 9) pins the client's copy to `'audit'`. In `app.ts`, add `https://challenges.cloudflare.com` to `script-src` and `'frame-src': ["'self'", 'https://challenges.cloudflare.com']`, and extend the comment above the helmet block: the second widening, argued for the same way.
 
-- [ ] **Step 4: Run the tests, mutation test, checks, CHANGELOG**
+- [x] **Step 4: Run the tests, mutation test, checks, CHANGELOG**
 
 Run: `npx vitest run apps/api` (PASS). Remove the hostname comparison: the other-host test fails; restore. Remove the local answer for test secrets: "answers Cloudflare's test secrets itself" fails (`fetchImpl` is called); restore. Run `npm run lint && npm run typecheck`. Run `npm run test:e2e`: the existing pages still load under the widened policy. CHANGELOG `### Added`: siteverify with hostname and action, failing closed; the CSP admits Turnstile.
 
