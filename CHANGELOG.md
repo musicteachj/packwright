@@ -10,6 +10,9 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The landing page links straight to a live audit and to the sample.** Its header offers the editor, "Audit a
+  label photo" and "Try the sample label"; `/audit?sample=1` puts the sample on screen on arrival, whatever the
+  server's status says.
 - **Per-visitor daily reads, counted in the database.** `apps/api/src/audit/visitorAllowance.ts` counts each
   visitor's live reads per UTC day, under an HMAC-SHA256 of their network (IPv6 grouped by /56) rather than the
   address or an unkeyed hash of it, and a TTL index forgets each visitor within two days. The public audit path
@@ -54,6 +57,25 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **A status the audit page could not fetch, or a budget status, can be asked again, and the budget refusal no
+  longer says the budget is spent.** Where `/api/audit/status` could not be had (a network blip, or the status limit
+  on a shared address) or answered `budget`, the unavailable block offers "Try again" beside the sample, reading
+  "Trying again" and disabled while the request is in flight. `budget` is included because the server also answers
+  it when it cannot read its counts; it is not offered for `ip` or `unconfigured`. Only the latest status request
+  may land. `REFUSAL_COPY.budget` now says only that live reads are paused, for the same reason. A server test now
+  pins `REFUSALS`'s reasons to the same five names the web app's test writes out.
+- **The audit page drops the key, shows the bot check only when a read is possible, explains every refusal and
+  offers the sample, and says where a photo goes.** It reads the new `{ available, reason, siteKey }` status and,
+  where there is a site key, draws Cloudflare's Turnstile widget (`apps/web/src/audit/turnstile.ts`, which loads
+  Cloudflare's script only then) and sends its token as `X-Turnstile-Token`, resetting the widget after every
+  attempt so no token is sent twice. Where no read is possible (the budget, this network's reads, a server that
+  reads no photographs, or a status that could not be fetched), neither the bot check nor the Read button is drawn;
+  the page says why in the visitor's own terms (`apps/web/src/audit/refusalCopy.ts`, keyed on the server's `reason`,
+  never the server's sentence) and offers the sample. A read refused with a reason says so plainly, without an
+  error, with the sample beside it, and asks the status again. Read stays disabled while the sample's recorded
+  reading is on screen. A note under the Read button names Anthropic, Cloudflare, MongoDB Atlas and AWS and the
+  14 days logs are kept. The audit key field, its storage and its 401 handling are gone, and a key an earlier
+  version kept in `localStorage` is removed.
 - **Live photo reads are public, behind Turnstile, a per-visitor daily allowance and the budget** (James, 2026-11-18,
   reversing the 2026-10-18 shared key). With `AUDIT_PUBLIC=true`, `POST /api/audit/ghs` checks its hourly limit, then
   the `X-Turnstile-Token` with Cloudflare before it reads a byte of the body, then the body, the photograph, the
@@ -127,6 +149,12 @@ into a version only when there is a reason to.
   states one says so.
 
 ### Fixed
+
+- **The audit page's market select draws its chevron like every other select.** It was the one bare `<select>`
+  left, with the browser's own arrow flush against its right edge; it is now a `SelectField`, whose chevron sits
+  8px in. Measured in a browser, every select on the audit page and in all three editor label types now has the
+  browser's arrow off, 32px of right padding and the chevron 8px from the edge, centered. `selectChevrons.test.ts`
+  allows a bare `<select>` only in `SelectField.vue` and the editor's toolbar, which draws the same chevron by hand.
 
 - **The public audit path counts every visitor, blames a bad secret on the server, and stops saying available
   after the day's last read.** Three findings from the review of PR #122. A router built with a Turnstile check and

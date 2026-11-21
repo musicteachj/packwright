@@ -72,6 +72,17 @@ const gtin = GTIN
         Print-accurate GS1 retail, GHS chemical and FDA food labels, with an engine that reports why
         a label is non-compliant and cites the regulation for every finding.
       </p>
+      <div class="flex flex-wrap gap-3">
+        <RouterLink :class="[BUTTON, 'px-4 py-2 text-sm']" to="/labels/new">
+          Open the editor
+        </RouterLink>
+        <RouterLink :class="[BUTTON, 'px-4 py-2 text-sm']" to="/audit">
+          Audit a label photo
+        </RouterLink>
+        <RouterLink :class="[BUTTON, 'px-4 py-2 text-sm']" to="/audit?sample=1">
+          Try the sample label
+        </RouterLink>
+      </div>
     </header>
 
     <section class="flex flex-col gap-4">
