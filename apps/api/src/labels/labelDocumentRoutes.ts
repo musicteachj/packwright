@@ -101,39 +101,72 @@ const notYours = (response: Response) => response.status(403).json({ error: NOT_
  * Twenty from 2026-10-08, the old `barcode-crud` app's figure, chosen when twenty
  * fitted one page of a list of every label. That list is gone (finding 4 of
  * `docs/security-review-2026-10-18.md`), and with it the reason for twenty.
- * **Two hundred since 2026-10-18**, James's figure, because the cap is shared by
- * everyone and nothing else stopped a stranger filling it. With ten creates an
- * hour from one address, one address needs twenty hours to fill it alone; and
- * every label expires thirty days after its last change, so a filled cap empties
- * again by itself. The worst case it stores is 200 labels at the 256 KB body
- * limit, about 51 MB.
+ * Two hundred from 2026-10-18, James's figure, because the cap is shared by
+ * everyone and nothing else stopped a stranger filling it. **One thousand since
+ * 2026-11-18**, for the public demo (the portfolio deployment design, section
+ * 5.4), alongside a lifetime cut to seven days and a size limit on each label,
+ * `LABEL_MAX_BYTES`: 1,000 labels at 64 KB is about 64 MB of labels, of the
+ * 512 MB the shared M0 cluster holds. With ten creates an hour from one
+ * address, one address needs a hundred hours, about four days, to fill it alone;
+ * and every label expires seven days after its last change, so a filled cap
+ * empties again by itself.
  *
  * **What that leaves:** many addresses together can still fill it, and then
  * nobody new can save until labels expire or their owners delete them. There is
  * still no owner a per-user share could be counted against. `PUT` is not
  * counted: replacing a label adds nothing.
  */
-export const LABEL_CAP = 200
+export const LABEL_CAP = 1_000
+
+/**
+ * The most ids one list asks about. Two hundred, the cap until it became 1,000,
+ * and kept apart from it since: a URL naming 1,000 ids is about 25 KB, past the
+ * 16 KB Node allows a request's headers by default, so the request would be
+ * refused before any route saw it. A browser holding more asks in turns
+ * (`apps/web/src/api/savedLabels.ts`).
+ */
+export const MAX_IDS_PER_LIST = 200
+
+/**
+ * The largest label the application stores, as the JSON of what was validated:
+ * 64 KB, against the 256 KB any request body may be (`app.ts`). Measured after
+ * validation, on the parsed document, so what is counted is what would be
+ * written, and checked before any count or write, so a label refused here
+ * changes nothing. A second, smaller body parser would have measured the raw
+ * body instead, whitespace and stripped keys included.
+ */
+export const LABEL_MAX_BYTES = 64 * 1024
+
+const TOO_LARGE =
+  'This label is too large to save: a saved label can be at most 64 KB. Shorten its longest fields, or export it as a PDF instead.'
+
+/** Whether a validated label is past `LABEL_MAX_BYTES`, measured as UTF-8 JSON. */
+const tooLarge = (validated: unknown) =>
+  Buffer.byteLength(JSON.stringify(validated), 'utf8') > LABEL_MAX_BYTES
+
+const refuseTooLarge = (response: Response) => response.status(413).json({ error: TOO_LARGE })
 
 /** Said by the 409, and shown by the editor as written. */
-const AT_CAP = `There are already ${LABEL_CAP} saved labels, which is as many as this app keeps. Labels are removed ${LABEL_LIFETIME_SECONDS / (24 * 60 * 60)} days after their last change, so try again later, or delete one of yours from Saved labels.`
+const AT_CAP = `There are already ${LABEL_CAP.toLocaleString('en-US')} saved labels, which is as many as this app keeps. Labels are removed ${(LABEL_LIFETIME_SECONDS / (24 * 60 * 60)).toLocaleString('en-US')} days after their last change, so try again later, or delete one of yours from Saved labels.`
 
 const atCap = (response: Response) => response.status(409).json({ error: AT_CAP })
 
 /**
  * The ids a list asks about, or a refusal.
  *
- * A comma-separated `ids`, at most as many as the cap, since a browser cannot
- * hold more live labels than the application keeps. Anything else present is
- * refused rather than ignored: a repeated parameter, which Express hands over as
- * an array, an empty entry, or an id that is not an ObjectId.
+ * A comma-separated `ids`, at most `MAX_IDS_PER_LIST` of them. Anything else
+ * present is refused rather than ignored: a repeated parameter, which Express
+ * hands over as an array, an empty entry, or an id that is not an ObjectId.
  */
 function readIds(raw: unknown): Types.ObjectId[] | 'malformed' {
   if (raw === undefined) return []
   if (typeof raw !== 'string') return 'malformed'
   if (raw === '') return []
   const ids = raw.split(',')
-  if (ids.length > LABEL_CAP || !ids.every((id) => isValidObjectId(id) && id.length === 24)) {
+  if (
+    ids.length > MAX_IDS_PER_LIST ||
+    !ids.every((id) => isValidObjectId(id) && id.length === 24)
+  ) {
     return 'malformed'
   }
   return ids.map((id) => new Types.ObjectId(id))
@@ -150,7 +183,7 @@ function readIds(raw: unknown): Types.ObjectId[] | 'malformed' {
 export interface LabelWriteLimits {
   /**
    * `POST`. Ten, James's figure: a person starts a few labels in an hour, and at
-   * ten one address needs twenty hours to fill the cap.
+   * ten one address needs a hundred hours to fill the cap.
    */
   createsPerHour: number
   /**
@@ -163,8 +196,9 @@ export interface LabelWriteLimits {
    */
   replacesPerHour: number
   /**
-   * `DELETE`. Two hundred, the cap: enough to clear every label the application
-   * can hold in one sitting.
+   * `DELETE`. Two hundred, the cap when it was set, and left there when the cap
+   * rose to 1,000: a browser can delete only the labels it saved, and two hundred
+   * of those clears twenty hours of creates from one address.
    */
   deletesPerHour: number
 }
@@ -217,15 +251,15 @@ export function createLabelDocumentRouter(
     if (ids === 'malformed') {
       response.status(400).json({
         error: 'Invalid label list',
-        detail: [`\`ids\` must be up to ${LABEL_CAP} label ids, separated by commas.`],
+        detail: [`\`ids\` must be up to ${MAX_IDS_PER_LIST} label ids, separated by commas.`],
       })
       return
     }
 
     // `data` is excluded in the query rather than stripped afterwards, so the
     // cost of a list does not grow with the size of the labels in it. At most
-    // `LABEL_CAP` rows, found by `_id`'s own index, so the sort is in memory and
-    // small.
+    // `MAX_IDS_PER_LIST` rows, found by `_id`'s own index, so the sort is in
+    // memory and small.
     const found =
       ids.length === 0
         ? []
@@ -253,6 +287,7 @@ export function createLabelDocumentRouter(
   router.post('/', ...creates, async (request: Request, response: Response) => {
     const parsed = LabelDocumentInput.safeParse(request.body)
     if (!parsed.success) return badRequest(response, parsed.error.issues)
+    if (tooLarge(parsed.data)) return refuseTooLarge(response)
     if ((await LabelDocument.countDocuments({})) >= LABEL_CAP) return atCap(response)
     const { token, hash } = newEditToken()
     const created = await LabelDocument.create({
@@ -359,6 +394,8 @@ export function createLabelDocumentRouter(
     if (!isValidObjectId(id)) return notFound(response)
     const parsed = LabelDocumentInput.safeParse(request.body)
     if (!parsed.success) return badRequest(response, parsed.error.issues)
+    // Before the label is opened, so an oversized replace touches nothing stored.
+    if (tooLarge(parsed.data)) return refuseTooLarge(response)
 
     const existing = await opened(request, response)
     if (existing === undefined) return

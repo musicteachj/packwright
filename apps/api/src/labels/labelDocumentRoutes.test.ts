@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { DEFAULT_UPC_A_STOCK } from '@packwright/label-core'
+import { INPUT_BOUNDS, LabelDocumentInput } from '@packwright/label-core/schema'
 import mongoose from 'mongoose'
 import supertest from 'supertest'
 import { describe, expect, it, vi } from 'vitest'
@@ -21,6 +22,42 @@ const A_LABEL = {
   stock: STOCK,
   data: { gtin: '036000291452' },
 } as const
+
+/**
+ * A valid `us-food` label whose validated form is exactly `bytes` long as JSON.
+ *
+ * Measured on what `LabelDocumentInput` hands back, because that is what the
+ * route measures: it may strip or default fields, and a body measured raw could
+ * pass here and fail there. One ingredient name stops at
+ * `INPUT_BOUNDS.ingredientName` characters, so the length is spread across
+ * several, each an ASCII `x` run (one byte a character), and the last one takes
+ * whatever is left over.
+ */
+function labelOfBytes(bytes: number) {
+  const ingredients: { name: string }[] = [{ name: '' }]
+  const label = {
+    name: 'A long ingredient list',
+    labelType: 'us-food',
+    stock: STOCK,
+    data: {
+      statementOfIdentity: 'Granola',
+      netQuantity: { inchPound: 'NET WT 12 OZ' },
+      container: { shape: 'rectangular', widthMm: 120, heightMm: 240 },
+      ingredients,
+    },
+  }
+  const measure = () => Buffer.byteLength(JSON.stringify(LabelDocumentInput.parse(label)), 'utf8')
+  const most = INPUT_BOUNDS.ingredientName
+  while (bytes - measure() > most) {
+    ingredients[ingredients.length - 1] = { name: 'x'.repeat(most) }
+    ingredients.push({ name: '' })
+  }
+  const left = bytes - measure()
+  expect(left, 'the last ingredient can take what is left').toBeGreaterThanOrEqual(0)
+  ingredients[ingredients.length - 1] = { name: 'x'.repeat(left) }
+  expect(measure()).toBe(bytes)
+  return label
+}
 
 /** A label saved through the route, with the token its creator was handed. */
 async function saved(body: object = A_LABEL): Promise<{ id: string; token: string }> {
@@ -56,18 +93,18 @@ describe('/api/labels', () => {
         Array.from({ length: count }, (_, index) => ({ ...A_LABEL, name: `Stored ${index}` })),
       )
 
-    it('is two hundred', () => {
-      expect(LABEL_CAP).toBe(200)
+    it('is one thousand', () => {
+      expect(LABEL_CAP).toBe(1000)
     })
 
-    it('takes the two hundredth label', async () => {
-      await store(199)
+    it('takes the thousandth label', async () => {
+      await store(999)
       expect((await supertest(app()).post('/api/labels').send(A_LABEL)).status).toBe(201)
-      expect(await LabelDocument.countDocuments({})).toBe(200)
+      expect(await LabelDocument.countDocuments({})).toBe(1000)
     })
 
-    it('refuses the two hundred and first, saying what to do about it', async () => {
-      await store(200)
+    it('refuses the thousand and first, saying what to do about it', async () => {
+      await store(1000)
       // Refused before the insert, not only undone after it. The recount below
       // would also catch this, but by then an extra label has existed, counted
       // and openable by anyone who asked in that moment.
@@ -85,29 +122,29 @@ describe('/api/labels', () => {
       expect(inserts, 'nothing was inserted').toBe(0)
       expect(response.status).toBe(409)
       expect(response.body.error).toBe(
-        'There are already 200 saved labels, which is as many as this app keeps. Labels are removed 30 days after their last change, so try again later, or delete one of yours from Saved labels.',
+        'There are already 1,000 saved labels, which is as many as this app keeps. Labels are removed 7 days after their last change, so try again later, or delete one of yours from Saved labels.',
       )
-      expect(await LabelDocument.countDocuments({})).toBe(200)
+      expect(await LabelDocument.countDocuments({})).toBe(1000)
     })
 
     it('takes its own label back out when the count it read had gone stale', async () => {
       // The race, made deterministic: another save landed between this one's
       // count and its insert, so the count says one fewer than is stored.
-      await store(200)
-      const spy = vi.spyOn(LabelDocument, 'countDocuments').mockResolvedValueOnce(199 as never)
+      await store(1000)
+      const spy = vi.spyOn(LabelDocument, 'countDocuments').mockResolvedValueOnce(999 as never)
       try {
         const response = await supertest(app()).post('/api/labels').send(A_LABEL)
         expect(response.status).toBe(409)
       } finally {
         spy.mockRestore()
       }
-      expect(await LabelDocument.countDocuments({}), 'not one over').toBe(200)
+      expect(await LabelDocument.countDocuments({}), 'not one over').toBe(1000)
     })
 
     it('still replaces a label at the cap', async () => {
       // Replacing adds nothing, and refusing it would leave every label at the
       // cap uneditable: the user's way out would be to delete their own work.
-      await store(199)
+      await store(999)
       const { id, token } = await saved()
       const response = await supertest(app())
         .put(`/api/labels/${id}`)
@@ -121,12 +158,12 @@ describe('/api/labels', () => {
       await store(3)
       const response = await supertest(app()).get('/api/labels')
       expect(response.status).toBe(200)
-      expect(response.body).toEqual({ cap: 200, count: 3, labels: [] })
+      expect(response.body).toEqual({ cap: 1000, count: 3, labels: [] })
     })
 
     it('counts honestly above the cap, where a database predates it', async () => {
-      await store(205)
-      expect((await supertest(app()).get('/api/labels')).body.count).toBe(205)
+      await store(1005)
+      expect((await supertest(app()).get('/api/labels')).body.count).toBe(1005)
     })
   })
 
@@ -174,14 +211,58 @@ describe('/api/labels', () => {
       ['an empty entry', '?ids=64b7f0000000000000000000,'],
       // Express parses a repeated parameter into an array.
       ['a repeated parameter', '?ids=64b7f0000000000000000000&ids=64b7f0000000000000000001'],
-      [
-        'more ids than the app keeps labels',
-        `?ids=${Array.from({ length: 201 }, (_, index) => index.toString(16).padStart(24, '0')).join(',')}`,
-      ],
     ])('refuses %s', async (_case, query) => {
       const response = await supertest(app()).get(`/api/labels${query}`)
       expect(response.status).toBe(400)
       expect(response.body.error).toBe('Invalid label list')
+    })
+
+    it('a list asks about at most 200 ids', async () => {
+      // Not the cap: a URL naming 1,000 ids is about 25 KB, past Node's 16 KB
+      // header limit, so a browser holding more asks in turns.
+      const ids = (count: number) =>
+        Array.from({ length: count }, (_, index) => index.toString(16).padStart(24, '0')).join(',')
+      expect((await supertest(app()).get(`/api/labels?ids=${ids(200)}`)).status).toBe(200)
+      const response = await supertest(app()).get(`/api/labels?ids=${ids(201)}`)
+      expect(response.status).toBe(400)
+      expect(response.body.error).toBe('Invalid label list')
+      expect(response.body.detail.join(' ')).toContain('up to 200')
+    })
+  })
+
+  describe('the size of a label', () => {
+    const TOO_LARGE =
+      'This label is too large to save: a saved label can be at most 64 KB. Shorten its longest fields, or export it as a PDF instead.'
+
+    it('refuses a label past 64 KB, on create and on replace', async () => {
+      const over = labelOfBytes(65_537)
+      const created = await supertest(app()).post('/api/labels').send(over)
+      expect(created.status).toBe(413)
+      expect(created.body.error).toBe(TOO_LARGE)
+      expect(await LabelDocument.countDocuments({}), 'nothing stored').toBe(0)
+
+      const { id, token } = await saved()
+      const replaced = await supertest(app())
+        .put(`/api/labels/${id}`)
+        .set(EDIT_TOKEN_HEADER, token)
+        .send(over)
+      expect(replaced.status).toBe(413)
+      expect(replaced.body.error).toBe(TOO_LARGE)
+      const kept = await LabelDocument.findById(id).lean()
+      expect(kept?.name, 'the stored label is as it was').toBe('Granola 340g')
+      expect(kept?.labelType).toBe('gs1-retail')
+    })
+
+    it('takes a label of exactly 64 KB, on create and on replace', async () => {
+      const most = labelOfBytes(65_536)
+      expect((await supertest(app()).post('/api/labels').send(most)).status).toBe(201)
+      const { id, token } = await saved()
+      const replaced = await supertest(app())
+        .put(`/api/labels/${id}`)
+        .set(EDIT_TOKEN_HEADER, token)
+        .send(most)
+      expect(replaced.status).toBe(200)
+      expect(replaced.body.labelType).toBe('us-food')
     })
   })
 
@@ -406,7 +487,7 @@ describe('/api/labels', () => {
     })
   })
 
-  it('expires a label thirty days after its last change', async () => {
+  it('expires a label seven days after its last change', async () => {
     // A TTL index on `updatedAt`, which every replace moves. Asserted on the
     // index rather than by waiting: Mongo's TTL monitor runs once a minute, and
     // `withDatabase` drops the database, indexes and all, between tests, so the
@@ -416,7 +497,7 @@ describe('/api/labels', () => {
     const ttl = indexes.filter((index) => index.expireAfterSeconds !== undefined)
     expect(ttl).toHaveLength(1)
     expect(ttl[0]?.key).toEqual({ updatedAt: 1 })
-    expect(ttl[0]?.expireAfterSeconds).toBe(30 * 24 * 60 * 60)
+    expect(ttl[0]?.expireAfterSeconds).toBe(604800)
   })
 
   it('reads one label in full', async () => {

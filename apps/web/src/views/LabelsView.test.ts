@@ -129,7 +129,7 @@ describe('the saved labels list', () => {
     vi.stubGlobal('fetch', respond({ labels: rows, cap: 200, count: 2 }))
     const wrapper = await mountList()
     expect(wrapper.get('[data-labels-ownership]').text()).toBe(
-      "A label can be changed or deleted only from the browser that saved it. Clearing this browser's storage loses that for good, though anyone with a label's link can still open it. Labels are removed 30 days after their last change.",
+      "A label can be changed or deleted only from the browser that saved it. Clearing this browser's storage loses that for good, though anyone with a label's link can still open it. Labels are removed 7 days after their last change. They're stored in MongoDB Atlas, and Packwright runs on AWS.",
     )
   })
 
@@ -141,18 +141,18 @@ describe('the saved labels list', () => {
   })
 
   it('says when the app is full, since nothing new can then be saved', async () => {
-    vi.stubGlobal('fetch', respond({ labels: rows, cap: 200, count: 200 }))
+    vi.stubGlobal('fetch', respond({ labels: rows, cap: 1000, count: 1000 }))
     const wrapper = await mountList()
     const full =
-      '2 saved in this browser. This app keeps 200 labels and has 200, so nothing new can be saved until one is deleted or expires.'
+      '2 saved in this browser. This app keeps 1,000 labels and has 1,000, so nothing new can be saved until one is deleted or expires.'
     expect(wrapper.get('[data-label-count]').text()).toBe(full)
     expect(heard(wrapper)).toBe(full)
   })
 
   it('says the app is full even where this browser holds nothing', async () => {
-    vi.stubGlobal('fetch', respond({ labels: [], cap: 200, count: 200 }))
+    vi.stubGlobal('fetch', respond({ labels: [], cap: 1000, count: 1000 }))
     const wrapper = await mountList()
-    expect(wrapper.get('[data-label-count]').text()).toContain('This app keeps 200 labels')
+    expect(wrapper.get('[data-label-count]').text()).toContain('This app keeps 1,000 labels')
   })
 
   it('shows no count over an empty list, which says so itself', async () => {

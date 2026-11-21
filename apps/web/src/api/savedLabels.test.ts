@@ -75,6 +75,45 @@ describe('the saved-labels client', () => {
     expect(list.counted).toEqual({ cap: 200, count: 7 })
   })
 
+  it('lists every held label, 200 ids to a request', async () => {
+    // The server reads at most 200 ids a list, and a browser can now hold more,
+    // since the app keeps 1,000. Sliced to the newest 200, the rest could not be
+    // listed, opened or deleted from this page.
+    const ids = Array.from({ length: 250 }, (_, index) => index.toString(16).padStart(24, '0'))
+    for (const id of ids) holdLabel(id, `t-${id}`)
+    // Last changed in an order unrelated to the order held, so the joined list
+    // has to be sorted again rather than read off request by request.
+    const changed = (id: string) =>
+      new Date(Date.UTC(2026, 10, 1) + ((parseInt(id, 16) * 7) % 250) * 60_000).toISOString()
+    const fetchMock = vi.fn(async (url: string) => {
+      const asked = new URL(url, 'http://localhost').searchParams.get('ids')?.split(',') ?? []
+      const labels = asked
+        .map((id) => ({ ...A_LABEL, id, updatedAt: changed(id) }))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ labels, cap: 1000, count: 250 }),
+      } as unknown as Response
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const list = await listLabels()
+
+    const asked = fetchMock.mock.calls.map(([url]) =>
+      new URL(String(url), 'http://localhost').searchParams.get('ids')!.split(','),
+    )
+    expect(asked.map((chunk) => chunk.length)).toEqual([200, 50])
+    expect(new Set(asked.flat())).toEqual(new Set(ids))
+    expect(list.labels).toHaveLength(250)
+    const updated = list.labels.map((label) => label.updatedAt)
+    expect(updated, 'newest first across both answers').toEqual(
+      [...updated].sort((a, b) => b.localeCompare(a)),
+    )
+    expect(list.counted).toEqual({ cap: 1000, count: 250 })
+    expect(heldLabels(), 'nothing let go of').toHaveLength(250)
+  })
+
   it('asks about no label at all where this browser holds none', async () => {
     const fetchMock = respond(200, { labels: [], cap: 200, count: 7 })
     vi.stubGlobal('fetch', fetchMock)

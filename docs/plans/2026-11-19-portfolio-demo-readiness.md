@@ -897,7 +897,7 @@ git add apps/web CHANGELOG.md
 git commit -m "feat(web): link the audit and the sample from the landing page"
 ```
 
-- [ ] **Step 4: PR checkpoint (stage boundary: public mode)**
+- [x] **Step 4: PR checkpoint (stage boundary: public mode)**
 
 As in Task 5 Step 9: `git diff --shortstat dev...HEAD`, `/security-review`, draft "Public photo reads behind a bot check, with the sample as the free path" (Tasks 6 to 10, and the reversal of the 2026-10-18 shared-key decision); suggest `/code-review high <PR#>`. Stop for James's OK to push; stop again for his OK to open the PR.
 
@@ -911,7 +911,7 @@ As in Task 5 Step 9: `git diff --shortstat dev...HEAD`, `/security-review`, draf
 **Interfaces:**
 - Produces: `LABEL_LIFETIME_SECONDS = 7 * 24 * 60 * 60` (604,800); `LABEL_CAP = 1_000`; `MAX_IDS_PER_LIST = 200`; `LABEL_MAX_BYTES = 64 * 1024`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 - `labelDocument.test.ts`: the TTL index has `expireAfterSeconds: 604800`.
 - `labelDocumentRoutes.test.ts`: `expect(LABEL_CAP).toBe(1000)`; the cap tests store 1,000 (one `insertMany`); the 409 body is exactly `'There are already 1,000 saved labels, which is as many as this app keeps. Labels are removed 7 days after their last change, so try again later, or delete one of yours from Saved labels.'`; the list's `cap` is 1000; `'a list asks about at most 200 ids'` (201 ids gives 400 and the detail says "up to 200"); `'refuses a label past 64 KB, on create and on replace'` (a valid `us-food` document of exactly 65,537 bytes: 413 with `error` `'This label is too large to save: a saved label can be at most 64 KB. Shorten its longest fields, or export it as a PDF instead.'`, nothing stored; one of exactly 65,536 bytes, built the same way, is accepted). One ingredient name cannot get there (`INPUT_BOUNDS` allows 16,000 characters, and Zod counts UTF-16 units), so pad across several ingredients (the list allows 1,000 entries) with a small helper in the test file, `labelOfBytes(bytes)`: start from a valid `us-food` document; add ingredients whose names are ASCII `'x'` runs of up to 16,000 characters (one byte each); measure `Buffer.byteLength(JSON.stringify(validated), 'utf8')`, where `validated` is the document parsed by the schema the route validates with (it may strip or default fields, and the route measures what it parsed); lengthen the last name by the difference until the measure is exactly `bytes`, and assert that it is before returning the raw document.
@@ -919,16 +919,16 @@ As in Task 5 Step 9: `git diff --shortstat dev...HEAD`, `/security-review`, draf
 - `EditorSaveView.test.ts:299, :309`: the 409 text above, and "1,000 of 1,000 saved, as many as this app keeps. ...".
 - `e2e/the-label-cap.spec.ts`: `FULL` and the faked `cap` and `count` move to 1,000 and 7 days.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npx vitest run apps/api/src/labels apps/web/src/views`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `labelDocument.ts`: the lifetime and its note (seven days since 2026-11-18, spec 5.4; the `collMod` note stays and now matters: a database that already has the 30-day index keeps it, so the production database starts empty and is checked with `getIndexes()` at go-live). `labelDocumentRoutes.ts`: `LABEL_CAP` with a rewritten note (1,000 x 64 KB is about 64 MB of the shared 512 MB M0); `MAX_IDS_PER_LIST` used by `readIds` (`:136`) with its own note (a URL of 1,000 ids is about 25 KB, past Node's 16 KB header limit); `AT_CAP` formats with `toLocaleString('en-US')`; POST and PUT check `Buffer.byteLength(JSON.stringify(parsed.data), 'utf8') > LABEL_MAX_BYTES` after validation and before any write. `savedLabels.ts:126`: `MOST_IDS` stays 200 with its comment rewritten (it matches `MAX_IDS_PER_LIST`, no longer the cap), and `listLabels` (`:157`) stops slicing to the newest 200: it asks in chunks of `MOST_IDS`, one request each, and joins the answers, so a browser that holds more than 200 labels (possible once the cap is 1,000) still lists, opens and deletes every one. `savedLabels.test.ts`: `'lists every held label, 200 ids to a request'` (250 held ids: two requests of 200 and 50, 250 labels listed). `LabelsView.vue:150`: "Labels are removed 7 days after their last change. They're stored in MongoDB Atlas, and Packwright runs on AWS."; the count line and `EditorView.vue:281` format numbers with `toLocaleString('en-US')`.
 
-- [ ] **Step 4: Run all checks, mutation test**
+- [x] **Step 4: Run all checks, mutation test**
 
 Run all checks (PASS). Remove the byte check from PUT only: the replace case fails; restore. Put back `.slice(0, MOST_IDS)` in `listLabels`: the 250-id test fails; restore.
 

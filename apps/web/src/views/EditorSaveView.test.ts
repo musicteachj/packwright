@@ -279,7 +279,7 @@ describe('at the cap', () => {
       const method = init?.method ?? 'GET'
       const answer =
         method === 'GET' && url === '/api/labels'
-          ? { status: 200, body: { labels: [], cap: 200, count } }
+          ? { status: 200, body: { labels: [], cap: 1000, count } }
           : method === 'POST'
             ? post
             : { status: 200, body: SAVED }
@@ -296,17 +296,17 @@ describe('at the cap', () => {
     status: 409,
     body: {
       error:
-        'There are already 200 saved labels, which is as many as this app keeps. Labels are removed 30 days after their last change, so try again later, or delete one of yours from Saved labels.',
+        'There are already 1,000 saved labels, which is as many as this app keeps. Labels are removed 7 days after their last change, so try again later, or delete one of yours from Saved labels.',
     },
   }
 
   it('holds back Save as new, and says why beside it', async () => {
-    serve(200, FULL)
+    serve(1000, FULL)
     const wrapper = await mountAt('/labels/abc123')
     const saveAs = wrapper.get('[data-save-as]')
     expect(saveAs.attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-save-as-reason]').text()).toBe(
-      '200 of 200 saved, as many as this app keeps. Delete one of yours from Saved labels, or try again later.',
+      '1,000 of 1,000 saved, as many as this app keeps. Delete one of yours from Saved labels, or try again later.',
     )
     expect(saveAs.attributes('title')).toBe(wrapper.get('[data-save-as-reason]').text())
   })
@@ -315,16 +315,16 @@ describe('at the cap', () => {
     // The cap is shared by everyone. Read only on attach and after a refusal, a
     // button held back at a full cap had nothing left that could make it read
     // again: the refusal it waited for could not be asked for.
-    let count = 200
+    let count = 1000
     const fetchMock = vi.fn(async (url: string) => {
-      const body = url === '/api/labels' ? { labels: [], cap: 200, count } : SAVED
+      const body = url === '/api/labels' ? { labels: [], cap: 1000, count } : SAVED
       return { ok: true, status: 200, json: async () => body } as unknown as Response
     })
     vi.stubGlobal('fetch', fetchMock)
     const wrapper = await mountAt('/labels/abc123')
     expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeDefined()
 
-    count = 199
+    count = 999
     window.dispatchEvent(new Event('focus'))
     await flushPromises()
     expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeUndefined()
@@ -332,7 +332,7 @@ describe('at the cap', () => {
   })
 
   it('offers Save as new with a place left', async () => {
-    serve(199, { status: 201, body: SAVED })
+    serve(999, { status: 201, body: SAVED })
     const wrapper = await mountAt('/labels/abc123')
     expect(wrapper.get('[data-save-as]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-save-as-reason]').exists()).toBe(false)
@@ -346,7 +346,7 @@ describe('at the cap', () => {
   })
 
   it('shows the server’s own sentence when a new label is refused', async () => {
-    serve(200, FULL)
+    serve(1000, FULL)
     const wrapper = await mountAt('/labels/new')
     useLabelDocumentStore().savedName = 'Granola 340g'
     await flushPromises()
@@ -356,7 +356,7 @@ describe('at the cap', () => {
   })
 
   it('reads the count again after a refusal, for the next Save as new', async () => {
-    const fetchMock = serve(200, FULL)
+    const fetchMock = serve(1000, FULL)
     const wrapper = await mountAt('/labels/new')
     useLabelDocumentStore().savedName = 'Granola 340g'
     await flushPromises()

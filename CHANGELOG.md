@@ -57,6 +57,13 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **Saved labels are kept 7 days after their last change, up to 1,000 of them, and each is at most 64 KB.** The
+  lifetime was 30 days and the cap 200. A label whose validated JSON is past 64 KB is refused `413` on create and on
+  replace, before anything is counted or written. The list still asks about at most 200 ids a request
+  (`MAX_IDS_PER_LIST`), so the web client now asks in turns of 200 and joins the answers, newest first, rather than
+  listing only the newest 200. The Saved labels page says labels are stored in MongoDB Atlas and that Packwright
+  runs on AWS, and the cap's figures read "1,000". A database that already has the 30-day TTL index keeps it until
+  it is changed by hand.
 - **A status the audit page could not fetch, or a budget status, can be asked again, and the budget refusal no
   longer says the budget is spent.** Where `/api/audit/status` could not be had (a network blip, or the status limit
   on a shared address) or answered `budget`, the unavailable block offers "Try again" beside the sample, reading
