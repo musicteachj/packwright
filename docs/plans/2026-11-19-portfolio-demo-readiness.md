@@ -4,7 +4,7 @@
 
 **Goal:** Make Packwright ready, on James's machine, to run as a public no-sign-up demo: live photo reads paid from a fixed, paced monthly budget behind a bot check and a per-visitor allowance, a free path (the editor and the recorded sample) on the first screen, and a production image that holds no secrets.
 
-**Architecture:** Every live read goes through one metered wrapper: it reserves the worst case in a Mongo ledger (integer micro-dollars, atomic guarded `$inc` on a day total and a month total), calls Claude with SDK retries off, a 60 s timeout and an abort signal tied to the visitor's connection, then settles from the reply's usage (or keeps the reservation when the outcome is unknown). Public mode replaces the shared audit key with a Cloudflare Turnstile check that runs before the photo body is read, a per-visitor daily count in Mongo, and a status endpoint (`{available, reason, siteKey}`) the audit page reads before it shows the bot check. The image is a two-stage `node:24-slim` build that runs as `node`, with a `.dockerignore` that keeps every `.env` out.
+**Architecture:** Every live read goes through one metered wrapper: it reserves the worst case in a Mongo ledger (integer micro-dollars, atomic guarded `$inc` on a day total and a month total), calls Claude with SDK retries off, a 60 s timeout and an abort signal tied to the visitor's connection, then settles from the reply's usage (or keeps the reservation when the outcome is unknown). Public mode replaces the shared audit key with a Cloudflare Turnstile check that runs before the photo body is read, a per-visitor daily count in Mongo, and a status endpoint (`{available, reason, siteKey}`) the audit page reads before it shows the bot check. The image is a three-stage `node:24-slim` build (build, the API's run-time dependencies, run) that runs as `node`, with a `.dockerignore` that keeps every `.env` out.
 
 **Tech Stack:** Node 24 and npm 11, Express 5, Mongoose 9, Zod 4, `@anthropic-ai/sdk` 0.116, `express-rate-limit` 8.7, Vue 3 and Vite 8, Vitest 4, Playwright, Docker (`node:24-slim`, `mongo:8`), Cloudflare Turnstile, GitHub Actions.
 
@@ -105,7 +105,7 @@ Stop: show the command and wait for James's explicit OK before creating the bran
 
 Under `## [Unreleased]`, add an `### Added` bullet: "**The plan for Packwright's public portfolio demo** (`docs/plans/2026-11-19-portfolio-demo-readiness.md`): the production image, a paced AI budget, public photo reads behind a bot check, and the local checks that precede deployment." No em dashes.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -124,7 +124,7 @@ git commit -m "docs: plan Packwright's portfolio demo readiness"
 **Interfaces:**
 - Produces: image tag `packwright:local`; `npm run verify:image` (env `IMAGE`, default `packwright:local`; `PLATFORM`, default `linux/amd64`); compose service `app` under profile `prod`, published on `127.0.0.1:8080`.
 
-- [ ] **Step 1: Write the image check first** (`scripts/verify-image.sh`, `set -euo pipefail`, a `fail()` that prints the container log tail, a `trap` that removes everything it started)
+- [x] **Step 1: Write the image check first** (`scripts/verify-image.sh`, `set -euo pipefail`, a `fail()` that prints the container log tail, a `trap` that removes everything it started)
 
 It builds `docker build --platform "$PLATFORM" -t "$IMAGE" .` and then fails unless all of these hold:
 1. `docker run --rm --entrypoint sh "$IMAGE" -c 'find / -name ".env*" -not -path "/proc/*" 2>/dev/null'` prints nothing.
@@ -135,12 +135,12 @@ It builds `docker build --platform "$PLATFORM" -t "$IMAGE" .` and then fails unl
 
 Add `"verify:image": "bash scripts/verify-image.sh"` to the root `package.json`.
 
-- [ ] **Step 2: Run it to see it fail**
+- [x] **Step 2: Run it to see it fail**
 
 Run: `npm run verify:image`
 Expected: FAIL at the build (no `Dockerfile`).
 
-- [ ] **Step 3: Write `.dockerignore`**
+- [x] **Step 3: Write `.dockerignore`**
 
 ```
 # Secrets first. apps/api/.env holds a real key, and dotenv reads .env from the working directory.
@@ -165,7 +165,7 @@ e2e
 ```
 Keep `assets/` (tsup copies `assets/fonts/ttf` into the bundle) and `scripts/`.
 
-- [ ] **Step 4: Write the `Dockerfile`**
+- [x] **Step 4: Write the `Dockerfile`**
 
 Pin `node:24-slim` by tag and digest: run `docker pull node:24-slim` and `docker inspect --format '{{index .RepoDigests 0}}' node:24-slim`, and record the date in a comment (Open Door pinned `sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9` on 2026-11-10; use whatever is current). The layout:
 
@@ -198,7 +198,9 @@ CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "apps/api/dist/
 ```
 Comments in the file say why: the bundle imports express, mongoose, pdfkit and the rest from `node_modules` at run time (only `label-core` is bundled, `apps/api/tsup.config.ts:15-18`); the workspace `package.json` files keep `node_modules/@packwright/*` links valid; files stay owned by root so the app cannot rewrite itself; exec-form `CMD` so `node` is PID 1 and receives SIGTERM.
 
-- [ ] **Step 5: Add the `prod` profile to `docker-compose.yml`**
+Changed after the independent review of PR #121 (2026-11-21): `npm prune --omit=dev` kept the web workspace's run-time dependencies (vue, pinia, zxing-wasm, barcode-detector), which the server never loads. A third stage, `deps`, now runs `npm ci --omit=dev --omit=optional --workspace=@packwright/api --include-workspace-root=false` from the manifests alone (`--omit=optional` because the lockfile marks tsx, typescript, esbuild and rollup `devOptional`, which `--omit=dev` alone keeps; nothing the bundle imports is optional), and the final stage takes `node_modules` and the api and label-core `package.json` files from it, and only `apps/api/dist` from `build`. `apps/web/package.json` is no longer copied, since there is no `@packwright/web` link to keep valid. `verify-image.sh` gains check 4b, which fails if `node_modules` holds vue, vue-router, pinia, zxing-wasm, barcode-detector, vite, typescript, tsx, esbuild or rollup; the old Dockerfile fails it, and so does the new one without `--omit=optional`.
+
+- [x] **Step 5: Add the `prod` profile to `docker-compose.yml`**
 
 ```yaml
   app:
@@ -220,20 +222,20 @@ Comments in the file say why: the bundle imports express, mongoose, pdfkit and t
 ```
 Update the file's header comment: `docker compose up -d` still starts only Mongo; `docker compose --profile prod up -d --build` adds the production image, on its own database so its indexes are built fresh.
 
-- [ ] **Step 6: Run the image check**
+- [x] **Step 6: Run the image check**
 
 Run: `npm run verify:image`
 Expected: PASS. On Apple silicon the amd64 build runs under emulation and can take several minutes; `PLATFORM=linux/arm64 npm run verify:image` is a faster smoke check, but the final verification (Task 18) uses amd64. If check 1 lists a file inside `node_modules`, stop and show James: do not widen the check.
 
-- [ ] **Step 7: Mutation test**
+- [x] **Step 7: Mutation test**
 
 Remove the `**/.env*` line, create a throwaway `apps/api/.env.verify-probe` containing `X=1`, run check 1 only (`docker build` then the `find`): it must list the probe. Restore the line, delete the probe, re-run `npm run verify:image`: PASS.
 
-- [ ] **Step 8: Checks and CHANGELOG**
+- [x] **Step 8: Checks and CHANGELOG**
 
 Run: `npm run format:check && npm run lint`. Expected: PASS. Add a CHANGELOG `### Added` bullet: the production image, its `.dockerignore`, `npm run verify:image`, and the compose `prod` profile.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -259,7 +261,7 @@ git commit -m "build: add the production image, with every .env kept out of it"
   - `extractGhsLabel(send, photo, regime, options?: CallOptions): Promise<MeteredReading>`
   - `VISION_TIMEOUT_MS = 60_000`, `VISION_MAX_RETRIES = 0`, `SLOWEST_TOKENS_PER_SECOND = 70`, `VISION_MAX_TOKENS = 4_000` (unchanged)
 
-- [ ] **Step 1: Write the failing tests** in `extract.test.ts`
+- [x] **Step 1: Write the failing tests** in `extract.test.ts`
 
 ```ts
 it('is bounded, because somebody is holding a phone through this', async () => {
@@ -301,29 +303,29 @@ it('hands the signal to the SDK', async () => {
 ```
 `refused`, `truncated` and `notJson` are the names `fixtures/responses.ts` already exports. `extract.test.ts` has no `PARAMS` today: define it in the test file as a minimal `Anthropic.MessageCreateParamsNonStreaming` (`{ model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'x' }] }`), used only by "hands the signal to the SDK". Update the coherence test's comment with the four points of decision 6: the floor of 70 rests on one timed call (416 tokens in 4.7 s, 2026-11-18, about 88 a second); a whole-call rate includes the time to the first token, so it understates the generation rate; a slower 4,000-token read times out and keeps its full reservation (over-counted, never under-counted); measuring more needs paid calls, ruled out before launch.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npx vitest run apps/api/src/audit/extract.test.ts`
 Expected: FAIL (`timeout` is 120000, `billed` undefined, the port called with one argument).
 
-- [ ] **Step 3: Implement** in `extract.ts`
+- [x] **Step 3: Implement** in `extract.ts`
 
 `extractGhsLabel` wraps everything after `send` returns in `try { ... } catch (error) { if (error instanceof ExtractionError) error.billed = billed; throw error }`, where `billed = { model: response.model, usage: response.usage }`, and returns `{ extraction, model: response.model, billed }`. `sendThrough(client)` returns `(params, options) => client.messages.create(params, options)`. Rewrite the `VISION_TIMEOUT_MS` note: one attempt, below the load balancer's 120 s idle timeout, no SDK retries because each attempt must carry its own reservation (spec 5.2). Rewrite the `SLOWEST_TOKENS_PER_SECOND` note (it says "Measured on Opus 5" today) with the same four points as the coherence test's comment: one timed call, 416 tokens in 4.7 s on 2026-11-18; a whole-call rate includes the time to the first token and so understates the generation rate; a slower 4,000-token read times out and keeps its full reservation, so it is over-counted and never under-counted; measuring more needs paid calls, which are ruled out before launch. `replaySampleReading()` in `sampleReading.ts` returns only `{ extraction, model }` so the committed `sampleReading.json` still equals it. In `routes.test.ts`, the `READING` fake gains `billed: { model: 'claude-opus-5-5', usage: recorded.usage }`.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `npx vitest run apps/api/src/audit`
 Expected: PASS, `sampleReading.test.ts` included.
 
-- [ ] **Step 5: Mutation test**
+- [x] **Step 5: Mutation test**
 
 Set `VISION_MAX_RETRIES` back to 1: "is bounded" fails. Remove the `billed` assignment in the catch: the `it.each` fails. Restore both.
 
-- [ ] **Step 6: Checks and CHANGELOG**
+- [x] **Step 6: Checks and CHANGELOG**
 
 Run: `npm run lint && npm run typecheck && npm test`. Expected: PASS. CHANGELOG `### Changed`: one attempt per read (no SDK retry, which billed a read twice), 60 s timeout below the load balancer's 120 s, the floor at 70 tokens a second, and readings and their errors carry what they were billed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -359,7 +361,7 @@ git commit -am "feat(api): one billed attempt per read, with its usage carried o
   - `export function memoryLedgerStore(): LedgerStore`
 - Produces, `ledgerStore.ts`: `export function mongoLedgerStore(): LedgerStore`; models `AiSpend` (collection `ai_spend`: `_id: string`, `micros: number`) and `AiReservation` (collection `ai_reservations`: `day`, `micros`, `state: 'open' | 'settled' | 'charged'`, `actualMicros?`, `createdAt`, `closedAt?`; indexes `{ state: 1, createdAt: 1 }` and a TTL of 35 days on `createdAt`).
 
-- [ ] **Step 1: Write the failing pricing tests** (`pricing.test.ts`; vectors worked by hand from the published prices)
+- [x] **Step 1: Write the failing pricing tests** (`pricing.test.ts`; vectors worked by hand from the published prices)
 
 ```ts
 it('prices the recorded reading at list price', () => {
@@ -391,7 +393,7 @@ it('bounds the input by the largest image plus what the recorded request spent b
 ```
 Before writing `MAX_IMAGE_TOKENS`, read Anthropic's vision page and record the cap, the 28 px patch formula and the date beside it (the `VISION_INPUT_TOKEN_BOUND` note gives the sum of decision 5: 4,784 + 1,893 = 6,677, rounded up to 8,000); if the documented cap is above 4,784, raise both constants accordingly. Read Anthropic's pricing page for `PRICES` the same way. Both pages are read for the first time here: add their lines to `docs/SOURCES.md` under "The photo audit".
 
-- [ ] **Step 2: Write the failing ledger tests** (`ledger.test.ts`, memory store, fixed clock; `$10 = 10_000_000`, floor `500_000`, multiplier 3)
+- [x] **Step 2: Write the failing ledger tests** (`ledger.test.ts`, memory store, fixed clock; `$10 = 10_000_000`, floor `500_000`, multiplier 3)
 
 Pacing vectors, worked by hand:
 
@@ -415,7 +417,7 @@ Behavior tests:
 - `'a read that crosses midnight at the end of a month settles into the month it began in'` (Review Focus 2): reserve at `2026-11-30T23:59:59Z`, settle 20,000 at `2026-12-01T00:00:01Z`; `store.totals(['2026-11', '2026-11-30', '2026-12'])` equals `{ '2026-11': 20_000, '2026-11-30': 20_000, '2026-12': 0 }`; `roomTodayMicros()` on Dec 1 is 967,741.
 - `'holds the month even when its totals were read before another reservation landed'`: the pacing alone already keeps a day inside the month, so the month guard matters only in a race, and the test builds one. Budget 300,000, floor 1,000,000, clock 2026-11-19; seed `store.add(['2026-11', '2026-11-18'], 200_000)`; wrap the memory store so `totals` reports the month 200,000 lower than it is (a reservation dated yesterday that landed after the read). `reserve(112_000)` must be `undefined`, and the month total must stay 200,000.
 
-- [ ] **Step 3: Write the failing Mongo store tests** (`ledgerStore.test.ts`, `withDatabase()`)
+- [x] **Step 3: Write the failing Mongo store tests** (`ledgerStore.test.ts`, `withDatabase()`)
 
 - `'adds within a ceiling, and refuses past it'`: `addWithin('2026-11-19', 100, 250)` true twice, false the third time; `totals` shows 200.
 - `'reports 0 for a period it has never seen'`: on an empty store, `totals(['2026-11', '2026-11-19'])` equals `{ '2026-11': 0, '2026-11-19': 0 }`.
@@ -423,12 +425,12 @@ Behavior tests:
 - `'closes a reservation once'`: `closeReservation` true, then false.
 - `'charges only stale open reservations'`: one opened at T, one at T + 11 min; `chargeStale(T + 10 min)` returns 1, and only the first is `charged`.
 
-- [ ] **Step 4: Run them to see them fail**
+- [x] **Step 4: Run them to see them fail**
 
 Run: `npx vitest run apps/api/src/audit/pricing.test.ts apps/api/src/audit/ledger.test.ts apps/api/src/audit/ledgerStore.test.ts`
 Expected: FAIL (modules missing).
 
-- [ ] **Step 5: Implement**
+- [x] **Step 5: Implement**
 
 `allowanceTodayMicros`: `left = max(0, budget - spentBefore)`; `daysLeft = daysInUtcMonth(now) - now.getUTCDate() + 1` with `daysInUtcMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate()`; return `Math.min(left, Math.max(Math.floor((multiplier * left) / daysLeft), floor))`.
 
@@ -456,20 +458,20 @@ roomTodayMicros():
 ```
 Memory store: `Map`s, synchronous bodies behind `async`. In both stores `totals` fills every requested period, 0 where there is no entry or document. Mongo store: `addWithin` first upserts `{ $setOnInsert: { micros: 0 } }` with an equality filter (Mongo retries that race itself), then `updateOne({ _id, micros: { $lte: ceiling - micros } }, { $inc: { micros } })` and returns `modifiedCount === 1` (false at once when `ceiling - micros < 0`); `closeReservation` is `updateOne({ _id, state: 'open' }, { $set: { state: 'settled', actualMicros, closedAt } })`; `chargeStale` is `updateMany({ state: 'open', createdAt: { $lt: before } }, { $set: { state: 'charged', closedAt: before } })`. Module notes say why: no lock is held across the model call, open reservations already count at their full amount, and a crash between two updates over-counts, never under-counts.
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `npx vitest run apps/api/src/audit`
 Expected: PASS.
 
-- [ ] **Step 7: Mutation test**
+- [x] **Step 7: Mutation test**
 
 Drop the month `addWithin`: "holds the month even when its totals were read before another reservation landed" fails. Replace the guarded `$inc` with a plain one: "ten reservations at once" fails. Remove `chargeStale`: the stale test fails. Make the Mongo `totals` return only the periods it found: "reports 0 for a period it has never seen" fails. Restore all four.
 
-- [ ] **Step 8: Checks and CHANGELOG**
+- [x] **Step 8: Checks and CHANGELOG**
 
 Run: `npm run lint && npm run typecheck && npm test`. Expected: PASS. CHANGELOG `### Added`: the ledger, with the pacing formula and the worst case of $0.112 a read.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -496,7 +498,7 @@ git commit -m "feat(api): a paced spend ledger in micro-dollars"
 - Produces, `routes.ts`: `export interface AuditSpend { ledger: SpendLedger; reservationMicros: number }`; `AuditRouterOptions.spend?: AuditSpend`. Produces, `app.ts`: `AppOptions.auditSpend?: AuditSpend`.
 - Produces, `env.ts`: `AI_MONTHLY_BUDGET_USD?: number` (optional; 0 to 1,000, up to six decimals), `AI_PACING_MULTIPLIER: number` (default 3, 1 to 31), `AI_DAILY_FLOOR_USD: number` (default 0.5, 0 to 1,000).
 
-- [ ] **Step 1: Write the failing `spend.test.ts`**
+- [x] **Step 1: Write the failing `spend.test.ts`**
 
 Build SDK errors the way the SDK does: `Anthropic.APIError.generate(status, { type: 'error', error: { type, message, details } }, undefined, new Headers())`. Read Anthropic's errors page first and record the usage-limit wording, the credit-balance-too-low wording and the date in the `knownUnbilled` note; the page is read for the first time here, so add its line to `docs/SOURCES.md` under "The photo audit".
 
@@ -534,7 +536,7 @@ it.each([
 
 `extract.test.ts`, `'the live extractor hands the caller's signal to the SDK'`: `const create = vi.spyOn(Anthropic.Messages.prototype, 'create').mockResolvedValue(recorded)` (a value import of the SDK, not `import type`; no network is reached); `await liveExtractor('sk-ant-not-a-real-key')(PHOTO, 'eu-clp', { signal })`; `create`'s second argument is `{ signal }` with the same `signal`. Restore the spy in `afterEach` (`mockRestore`).
 
-- [ ] **Step 2: Write the failing route and env tests**
+- [x] **Step 2: Write the failing route and env tests**
 
 `routes.test.ts`, new `describe('what a read may spend')`, app built with `auditSpend: { ledger: createLedger(memoryLedgerStore(), config, clock), reservationMicros: 112_000 }`:
 - `'refuses cleanly when the budget is zero'`: budget 0; `POST /api/audit/ghs` with a valid photo answers 429 with `reason: 'budget'` and an `error` naming the sample; extract not called.
@@ -549,12 +551,12 @@ Replace the existing 422 "vision service could not process this request" and 502
 - defaults: `AI_PACING_MULTIPLIER` 3, `AI_DAILY_FLOOR_USD` 0.5.
 - `'production that can spend the Anthropic key states its budget'`: `{ NODE_ENV: 'production', ANTHROPIC_API_KEY: 'k', AUDIT_API_KEY: 'a' }` throws `/AI_MONTHLY_BUDGET_USD/`; adding `AI_MONTHLY_BUDGET_USD: '0'` parses.
 
-- [ ] **Step 3: Run them to see them fail**
+- [x] **Step 3: Run them to see them fail**
 
 Run: `npx vitest run apps/api/src/audit apps/api/src/env.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 `knownUnbilled`: true for `AuthenticationError`, `PermissionDeniedError`, any `APIError` with `status === 402`, a `BadRequestError` whose `message` matches `/reached your specified (?:workspace |organization )?API usage limits/i` (adjust to the documented organization wording), any `RateLimitError` (status 429, which includes the spend-cap 429 with `error_code` `enforced_spend_limit_reached` and a plain rate limit: both are rejected before any work is done; shared rule update 2026-11-19 in `portfolio-infra/PLAN.md`), a `BadRequestError` whose message says the credit balance is too low (matched on the errors page's wording, recorded with its date), and any `APIError` with `status === 529` or `type === 'overloaded_error'` (a non-streaming request produced no output). False for everything else. No `error_code` is read anywhere (decision 8): every provider error maps to the one `unavailable` refusal, because a spend cap is not something a visitor can fix and the `budget` copy belongs to the ledger.
 
@@ -566,20 +568,20 @@ Route (`routes.ts`): when `spend` is set, wrap `extract` with `metered` once at 
 
 `extract.ts`: `liveExtractor(apiKey)` as in the interface, with a note saying why it exists (the composition `server.ts` used to build inline dropped `options`, and nothing tests `server.ts`). `app.ts`: pass `auditSpend` to the router. `server.ts`: `const extract = env.ANTHROPIC_API_KEY === undefined ? undefined : liveExtractor(env.ANTHROPIC_API_KEY)`, replacing the inline composition (its comment moves to `liveExtractor`'s note); build `createLedger(mongoLedgerStore(), { monthlyBudgetMicros: usdToMicros(env.AI_MONTHLY_BUDGET_USD ?? 0), pacingMultiplier: env.AI_PACING_MULTIPLIER, dailyFloorMicros: usdToMicros(env.AI_DAILY_FLOOR_USD) })` and pass `auditSpend: { ledger, reservationMicros: VISION_RESERVATION_MICROS }` whenever `extract` exists; log `live photo reads: $<budget> a month (0 means off)`. `.env.example`: the three settings, with "Blank means 0 outside production: live reads off." `playwright.config.ts`: add `AI_MONTHLY_BUDGET_USD=0` to the `webServer` command, so a developer key in the environment can never be spent by the browser suite.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `npx vitest run apps/api`
 Expected: PASS.
 
-- [ ] **Step 6: Mutation test**
+- [x] **Step 6: Mutation test**
 
 Make `knownUnbilled` always return false: the "at nothing" cases fail. Remove the `response.on('close')` hook: the mid-read test fails. Map `BadRequestError` back to 422: the "points at the sample" case fails. Drop `options` in `liveExtractor` (`(photo, regime) => extractGhsLabel(send, photo, regime)`): "the live extractor hands the caller's signal to the SDK" fails. Drop the third argument in `metered`'s call to `extract`: "passes the signal through" fails. Restore all five.
 
-- [ ] **Step 7: All checks and CHANGELOG**
+- [x] **Step 7: All checks and CHANGELOG**
 
 Run all checks. Expected: PASS. CHANGELOG `### Changed`: every read is reserved and settled; provider limit, credit and outage errors answer a friendly 503 that points at the sample; a visitor leaving stops the call.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -587,7 +589,7 @@ git add apps/api playwright.config.ts docs/SOURCES.md CHANGELOG.md
 git commit -m "feat(api): reserve and settle every live read against a monthly budget"
 ```
 
-- [ ] **Step 9: PR checkpoint (stage boundary: the image and the money)**
+- [x] **Step 9: PR checkpoint (stage boundary: the image and the money)**
 
 Run `git diff --shortstat dev...HEAD` and `/security-review`. Draft the PR (base `dev`): title "The production image and a paced AI budget", body listing Tasks 1 to 5, the review findings left out of scope, and the test plan; suggest `/code-review high <PR#>` once it exists, since a defect here costs money. Stop: wait for James's explicit OK before `git push -u origin feat/portfolio-demo-readiness`. Stop again: wait for his explicit OK before `gh pr create --base dev`. Merging is James's. Continue on this branch; at the next checkpoint, if this PR is still open, ask James whether to wait or to stack.
 
@@ -750,6 +752,10 @@ POST `/ghs` guard order, written out in the router as today ("Order is the whole
 7. the metered call (`SpendRefused` gives `refuse('budget')`; a ledger store that throws while reserving surfaces from `metered` as `SpendUnavailable` (Task 5) and gives `refuse('unavailable')`, logged, never Express's generic 500). Route test: `'a ledger that cannot reserve answers unavailable, not a 500'`.
 
 Status: `GET /status` sits behind its own per-IP limiter (`express-rate-limit`, `limits.statusPerMinute` a minute, `message: { error: 'Too many status checks. Try again in a minute.' }`). Then, in order: no extractor, or `apiKey` set, gives `unconfigured`; ledger room below the reservation gives `budget`; `visitors.allowance.left(visitorKey(visitors.ipHashKey, request.ip), ...) === 0` gives `ip`; any read that throws gives `budget` (logged); otherwise `available: true, reason: null`. `siteKey` is `turnstile?.siteKey ?? null` in every answer. The status module note says why the answer is `Cache-Control: no-store` although the shared conventions call it a cached flag: the `ip` reason is per visitor, so no cache between the visitor and the app may share it.
+
+From the independent review of PR #121 (2026-11-21):
+- No path may call a live extractor unmetered. Today `createAuditRouter` passes `extract` through unwrapped when `spend` is absent, and only `server.ts` building both together keeps production metered. Make the router throw `Error('An extractor needs a spend ledger.')` when `extract` is given without `spend`; route and app tests that are not about spending pass a ledger over `memoryLedgerStore()` with a budget large enough never to refuse. Test: `'an extractor without a spend ledger is refused when the router is built'`.
+- The status's ledger read (`roomTodayMicros`) is cached in memory for 5 s, so a flood of status checks from many addresses reads Atlas at most once every 5 s for the budget. A read that throws is not cached, the per-visitor `ip` count is still read per request, and the HTTP answer stays `Cache-Control: no-store`. A stale answer costs nothing, because the read itself still reserves. Test: `'two status checks within five seconds read the ledger once'` (a fake clock; a third after 5 s reads it again).
 
 Rewrite the two notes that state the old body limits with the new figures: the note above the 256 KB parser in `app.ts` (`:313`, "A fortieth of the audit route's ten megabytes") and the `MAX_PHOTO_BASE64` note in `routes.ts` ("8 MB clears both readings of the upstream limit ...": now 5 MiB under a 6 MB body limit, still well above a 2576 px JPEG at quality 0.92).
 
@@ -1097,7 +1103,7 @@ git commit -m "ci: scan for leaked secrets, audit dependencies weekly, pin every
 
 - [ ] **Step 1: `docs/DESIGN.md` § Phase 8 (`:718-813`)**
 
-- *Build* (`:723-725`): the Dockerfile is two-stage (`npm ci`, the root `npm run build`, `npm prune --omit=dev`, ship `node_modules` and `apps/api/dist`); `label-core` has no build step (tsup bundles it); AWS resources move to `portfolio-infra` (CDK, ECS on one EC2 instance, SSM Parameter Store, not Secrets Manager), and this plan is the Phase 1 record.
+- *Build* (`:723-725`): the Dockerfile is three-stage (`npm ci` and the root `npm run build`; a `deps` stage that installs the API workspace's run-time dependencies alone, `npm ci --omit=dev --omit=optional --workspace=@packwright/api`; ship that `node_modules` and `apps/api/dist`); `label-core` has no build step (tsup bundles it); AWS resources move to `portfolio-infra` (CDK, ECS on one EC2 instance, SSM Parameter Store, not Secrets Manager), and this plan is the Phase 1 record.
 - *Done when* (`:727-733`): liveness `/health/live` for the target group; readiness `/health` for smoke tests; secrets from SSM; the bundle grep includes the Turnstile site key.
 - Replace "The audit key and the daily audit limit" (`:771-775`) with "Public photo reads (James, 2026-11-18)": reverses the 2026-10-18 shared key; Turnstile before the body, a per-visitor allowance of 5 a day, the paced ledger (`AI_MONTHLY_BUDGET_USD` 10, multiplier 3, floor $0.50), `AI_MONTHLY_BUDGET_USD=0` as the off switch, `TRUST_PROXY_HOPS=1` required, `AUDIT_IP_HASH_KEY` (at least 32 characters) keying the per-visitor hash; draining the budget is accepted as an availability outcome bounded in dollars, with the sample as the fallback.
 - "Rate limits and quotas are per process" (`:752-759`): the per-visitor count and the ledger are in Mongo; only the hourly limiters are per process.

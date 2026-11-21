@@ -455,10 +455,9 @@ export async function extractGhsLabel(
  * minutes and two retries, which is up to half an hour of a browser waiting. This
  * is a request somebody is holding a phone through, and it must finish below the
  * load balancer's 120 s idle timeout. There are no SDK retries because each
- * attempt will have to carry its own reservation against the spend budget (spec
- * 5.2), which arrives with the spend ledger (plan Tasks 4 and 5); a hidden retry
- * billed a read twice without anyone having reserved for it. A
- * reading of the sample label takes about five seconds (4.7 s, timed 2026-11-18).
+ * attempt carries its own reservation against the spend budget (spec 5.2,
+ * `spend.ts`); a hidden retry would bill a read twice against one reservation.
+ * A reading of the sample label takes about five seconds (4.7 s, timed 2026-11-18).
  *
  * Here rather than in `server.ts` so that a test can assert it. `server.ts`
  * opens a database and listens on a port, which is why nothing in this
@@ -489,9 +488,8 @@ export const VISION_MAX_TOKENS = 4_000
  * tokens in about five seconds, roughly fifty a second, also a whole-call
  * figure. A whole-call rate includes the time to the first token, so it
  * understates the generation rate. A slower 4,000-token read times out and
- * keeps its full reservation, so, once the spend ledger exists (plan Tasks 4
- * and 5), it is over-counted and never under-counted. Measuring more needs paid
- * calls, which are ruled out before launch.
+ * keeps its full reservation, so it is over-counted and never under-counted.
+ * Measuring more needs paid calls, which are ruled out before launch.
  */
 export const SLOWEST_TOKENS_PER_SECOND = 70
 

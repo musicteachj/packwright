@@ -6,7 +6,7 @@
 #   IMAGE=packwright:test npm run verify:image
 #
 # The checks are about what must NOT be in the image (any .env file, a key, a
-# site key) and about whether it runs the way production will run it: as a
+# site key, the web app's packages or the build tools) and about whether it runs the way production will run it: as a
 # non-root user, on a read-only filesystem, with every capability dropped.
 set -euo pipefail
 
@@ -104,6 +104,19 @@ if [ -n "$baked" ]; then
   fail "a key or site key is baked into the client (files listed above)"
 fi
 echo "PASS: nothing baked in"
+
+# The server loads none of these: the client ships as built files, and tsx,
+# typescript, esbuild and rollup are build tools the lockfile marks devOptional,
+# so --omit=dev alone keeps them (the Dockerfile's deps stage says why). The
+# test for express first makes sure this is looking at a real node_modules.
+echo "==> 4b. Only the server's run-time packages in node_modules"
+search "$IMAGE" "0" '( test -d /app/node_modules/express || exit 99; for p in vue vue-router pinia zxing-wasm barcode-detector vite typescript tsx esbuild rollup; do test -e "/app/node_modules/$p" && echo "$p"; done; true )'
+extra="$FOUND"
+if [ -n "$extra" ]; then
+  echo "$extra" >&2
+  fail "node_modules holds packages the server never loads (listed above)"
+fi
+echo "PASS: only the server's packages"
 
 echo "==> 5. Boots read-only with all capabilities dropped, and serves"
 docker network create "$NETWORK" >/dev/null

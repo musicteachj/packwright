@@ -92,9 +92,9 @@ describe('the client the request goes out on', () => {
     // 4.7 s on 2026-11-18, about 88 a second. A whole-call rate includes the time
     // to the first token, so it understates the generation rate (Opus 5's
     // recorded call, also a whole-call figure, managed about fifty). A slower
-    // 4,000-token read times out; once the spend ledger exists (plan Tasks 4
-    // and 5) it keeps its full reservation, so it is over-counted and never
-    // under-counted. Measuring more needs paid calls, ruled out before launch.
+    // 4,000-token read times out and keeps its full reservation, so it is
+    // over-counted and never under-counted. Measuring more needs paid calls,
+    // ruled out before launch.
     const secondsToSpend = VISION_MAX_TOKENS / SLOWEST_TOKENS_PER_SECOND
     expect(secondsToSpend).toBeLessThan(VISION_TIMEOUT_MS / 1000)
   })

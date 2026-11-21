@@ -11,9 +11,9 @@ into a version only when there is a reason to.
 ### Added
 
 - **A paced spend ledger for photo reads, in integer micro-dollars.** The public demo gets a fixed monthly AI
-  budget, so every read will reserve its worst case before it is sent and settle at what its reply says it cost
-  (`apps/api/src/audit/ledger.ts`, with the database store in `ledgerStore.ts`; the server and the route use it in
-  the next change). Today may spend `min(left, max(floor(multiplier x left / daysLeft), floor))`, where `left` is
+  budget, so every read reserves its worst case before it is sent and settles at what its reply says it cost
+  (`apps/api/src/audit/ledger.ts`, with the database store in `ledgerStore.ts`; the server meters every live read
+  through it). Today may spend `min(left, max(floor(multiplier x left / daysLeft), floor))`, where `left` is
   the month's budget less everything dated before today, settled or still open, and `daysLeft` counts today, so a
   quiet start to the month is not spent in one afternoon and a late one still has a floor. Each step is one guarded
   `$inc` that raises the day or the month only while it stays under its ceiling, so ten reads at once cannot pass
@@ -26,15 +26,17 @@ into a version only when there is a reason to.
   only (`apps/api/src/audit/pricing.ts`), from Anthropic's pricing page, and the image cap from its vision page,
   both read on 2026-11-19 and added to `docs/SOURCES.md`; a reply from any other model, or one reporting 1-hour
   cache writes the request never asks for, has no price and settles at its full reservation.
-- **A production image, and a check that it is fit to ship.** A two-stage `Dockerfile` (`node:24-slim` pinned by
-  digest) builds the client and the API, prunes to production dependencies, and runs as the unprivileged `node` user
-  with the bundle owned by root. `.dockerignore` keeps every `.env*` file but `.env.example` out of the build
-  context (`apps/api/.env` holds a real key, and dotenv reads `.env` from the working directory), and the check of
-  the build stage is what proves it. `npm run verify:image`
-  builds it and fails unless the image holds no `.env` file, runs as non-root on Node 24 with npm 11 or newer,
-  carries no `sk-ant-` key or Turnstile test site key in the client bundle, and boots read-only with every
-  capability dropped, answering `/health`, serving the client and exporting a PDF. Compose gains a `prod` profile
-  (`docker compose --profile prod up -d --build`) that runs the image on `127.0.0.1:8080` against its own database.
+- **A production image, and a check that it is fit to ship.** A three-stage `Dockerfile` (`node:24-slim` pinned by
+  digest) builds the client and the API, installs the API workspace's run-time dependencies alone (pruning the full
+  install would have kept the web app's vue, pinia and zxing-wasm, and the build tools tsx, typescript and esbuild,
+  none of which the server loads), and runs as the unprivileged `node` user with the bundle owned by root.
+  `.dockerignore` keeps every `.env*` file but `.env.example` out of the build context (`apps/api/.env` holds a real
+  key, and dotenv reads `.env` from the working directory), and the check of the build stage is what proves it.
+  `npm run verify:image` builds it and fails unless the image holds no `.env` file, runs as non-root on Node 24 with
+  npm 11 or newer, carries no `sk-ant-` key or Turnstile test site key in the client bundle, holds none of the web
+  app's packages or the build tools, and boots read-only with every capability dropped, answering `/health`, serving
+  the client and exporting a PDF. Compose gains a `prod` profile (`docker compose --profile prod up -d --build`) that
+  runs the image on `127.0.0.1:8080` against its own database.
 - **The plan for Packwright's public portfolio demo** (`docs/plans/2026-11-19-portfolio-demo-readiness.md`): the
   production image, a paced AI budget, public photo reads behind a bot check, and the local checks that precede
   deployment.
@@ -45,39 +47,37 @@ into a version only when there is a reason to.
   call.** The audit route wraps its extractor once in `metered` (`apps/api/src/audit/spend.ts`): a read reserves its
   worst case, $0.112, before the model is called, and is refused with a 429 that points at the sample label when the
   day has no room; a reply, or a failure that was billed (a decline, a truncation, an unreadable reply), settles at
-  what it cost, or at the whole reservation for a model with no price; a provider error the portfolio's shared
-  ledger rule treats as unbilled, because each is a refusal of the request (401, 402, 403, a usage limit you set,
-  any 429, an overload), settles at nothing; and anything else, a timeout or a 500 among them, keeps its whole
-  reservation for the ledger's sweep to charge. A visitor who has gone before the call is made is not read for,
-  and one who leaves while the reservation is being made has it given back. A
-  ledger that cannot reserve answers 503 and never calls the model, and one that cannot settle is logged and does
-  not take the reading away. Every provider error now answers one friendly 503, "Live photo reading is not available
-  right now. Try the sample label.", where a 400 used to answer 422 and a rate limit or an outage 503 or 502,
-  because none of them is the visitor's to fix and none should blame the photograph; an unreadable reply's 422 now
-  says the reading came back in a form Packwright could not use. When the visitor's connection closes before the
-  answer, the route aborts the call through the signal the SDK now receives, and the reservation stays counted.
-  `/api/audit/status` reports no read available when the day has no room. The production extractor is built by
-  `liveExtractor` in `extract.ts`, because the composition `server.ts` used to build inline dropped the signal and
-  nothing tests `server.ts`. Three settings: `AI_MONTHLY_BUDGET_USD` (required in production whenever
-  `ANTHROPIC_API_KEY` is set, blank is 0 elsewhere, and 0 turns live reads off), `AI_PACING_MULTIPLIER` (3) and
-  `AI_DAILY_FLOOR_USD` (0.5); the browser suite runs with a budget of 0, so a developer key is never spent by it.
-  Each error's status and type, and the usage-limit wording, come from Anthropic's errors and rate-limits pages,
-  read on 2026-11-19 and added to `docs/SOURCES.md`; those pages say nothing about what any of these errors is billed. The shared rule also
-  lists a 400 saying the credit balance is too low, but neither page gives its wording, so it is not matched and
-  keeps its reservation.
-- **A photograph is read in one attempt, in 60 seconds at most, and every reading says what it was billed.** The
-  SDK retried a failed read once, which billed a read twice and let a request run to four minutes; there are now no
-  SDK retries (`VISION_MAX_RETRIES` is 0), because each attempt will have to carry its own reservation against the
-  spend budget, which arrives with the spend ledger (plan Tasks 4 and 5). The timeout drops from 120 s to 60 s,
-  below the load balancer's 120 s idle timeout, and the floor for generation speed rises from 40 to 70 tokens a
-  second: it rests on one timed call, 416 tokens in 4.7 s on 2026-11-18, about 88 a second. A whole-call rate
-  includes the time to the first token, so it understates the generation rate, and a slower 4,000-token read times
-  out and, once the ledger exists, keeps its full reservation, so it is over-counted and never under-counted. Every
-  reading now carries `billed: { model, usage }` taken from the reply, and so do the three errors a billed reply
-  can end in (a decline, a truncation, an unreadable reply), through a new `ExtractionError` base class, because a
-  read that failed was still paid for. The send port, `ExtractLabel` and `sendThrough` now take an abort signal; the
-  server wires one in a later change. The route still returns only the extraction and the model, so `billed` does
-  not reach the client.
+  what it cost, or at the whole reservation for a model with no price; a provider error the portfolio's shared ledger
+  rule treats as unbilled, because each is a refusal of the request (401, 402, 403, a usage limit you set, any 429, an
+  overload), settles at nothing; and anything else, a timeout or a 500 among them, keeps its whole reservation for the
+  ledger's sweep to charge. A visitor who has gone before the call is made is not read for, and one who leaves while
+  the reservation is being made has it given back. A ledger that cannot reserve answers 503 and never calls the model,
+  and one that cannot settle is logged and does not take the reading away. Every provider error now answers one
+  friendly 503, "Live photo reading is not available right now. Try the sample label.", where a 400 used to answer 422
+  and a rate limit or an outage 503 or 502, because none of them is the visitor's to fix and none should blame the
+  photograph; an unreadable reply's 422 now says the reading came back in a form Packwright could not use. When the
+  visitor's connection closes before the answer, the route aborts the call through the signal the SDK now receives,
+  and the reservation stays counted. `/api/audit/status` reports no read available when the day has no room. The
+  production extractor is built by `liveExtractor` in `extract.ts`, because the composition `server.ts` used to build
+  inline dropped the signal and nothing tests `server.ts`. Three settings: `AI_MONTHLY_BUDGET_USD` (required in
+  production whenever `ANTHROPIC_API_KEY` is set, blank is 0 elsewhere, and 0 turns live reads off),
+  `AI_PACING_MULTIPLIER` (3) and `AI_DAILY_FLOOR_USD` (0.5); the browser suite runs with a budget of 0, so a developer
+  key is never spent by it. Each error's status and type, and the usage-limit wording, come from Anthropic's errors
+  and rate-limits pages, read on 2026-11-19 and added to `docs/SOURCES.md`; those pages say nothing about what any of
+  these errors is billed. The shared rule also lists a 400 saying the credit balance is too low, but neither page
+  gives its wording, so it is not matched and keeps its reservation.
+- **A photograph is read in one attempt, in 60 seconds at most, and every reading says what it was billed.** The SDK
+  retried a failed read once, which billed a read twice and let a request run to four minutes; there are now no SDK
+  retries (`VISION_MAX_RETRIES` is 0), because each attempt carries its own reservation against the spend budget. The
+  timeout drops from 120 s to 60 s, below the load balancer's 120 s idle timeout, and the floor for generation speed
+  rises from 40 to 70 tokens a second: it rests on one timed call, 416 tokens in 4.7 s on 2026-11-18, about 88 a
+  second. A whole-call rate includes the time to the first token, so it understates the generation rate, and a slower
+  4,000-token read times out and keeps its full reservation, so it is over-counted and never under-counted. Every
+  reading now carries `billed: { model, usage }` taken from the reply, and so do the three errors a billed reply can
+  end in (a decline, a truncation, an unreadable reply), through a new `ExtractionError` base class, because a read
+  that failed was still paid for. The send port, `ExtractLabel` and `sendThrough` now take an abort signal, which the
+  route passes and `liveExtractor` carries to the SDK. The route still returns only the extraction and the model, so
+  `billed` does not reach the client.
 - **Label photographs are read by Claude Opus 5.5, at the effort Opus 5 read them at, and the experiment runners
   call Haiku 5.5.** `EXTRACTION_MODEL` moves from `claude-opus-5` to `claude-opus-5-5`. The request already had the
   shape Opus 5.5 requires: adaptive thinking, structured output through `output_config.format`, no forced
