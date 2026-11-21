@@ -1,0 +1,20 @@
+# Secrets first. apps/api/.env holds a real key, and dotenv reads .env from the working directory.
+**/.env*
+!**/.env.example
+.git
+.github
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.DS_Store
+test-results
+playwright-report
+blob-report
+label.pdf
+print-test-sheet*.pdf
+Cd-response
+docs
+e2e
+.superpowers
+.claude

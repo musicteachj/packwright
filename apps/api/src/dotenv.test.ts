@@ -35,6 +35,9 @@ describe('loading .env over an environment that already has blanks in it', () =>
     // is the thing that would silently stop being true.
     expect([...ENV_NAMES].sort()).toEqual(
       [
+        'AI_DAILY_FLOOR_USD',
+        'AI_MONTHLY_BUDGET_USD',
+        'AI_PACING_MULTIPLIER',
         'ANTHROPIC_API_KEY',
         'AUDIT_API_KEY',
         'AUDIT_DAILY_LIMIT',

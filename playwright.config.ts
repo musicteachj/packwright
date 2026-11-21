@@ -86,7 +86,10 @@ export default defineConfig({
     // `LABEL_CREATES_PER_HOUR` is raised because every spec saves from one address
     // and a local server is reused between runs: at the production figure of ten an
     // hour, about the fourth run would be refused its saves.
-    command: `npm run build && PORT=${PORT} NODE_ENV=production AUDIT_API_KEY=e2e-only LABEL_CREATES_PER_HOUR=1000 node scripts/serve-with-memory-mongo.mjs`,
+    // `AI_MONTHLY_BUDGET_USD=0` for the reason `AUDIT_API_KEY` is set, and for a second one:
+    // production requires it wherever the Anthropic key is set, and at 0 the spend ledger refuses
+    // every live read, so a developer key in the environment can never be spent by this suite.
+    command: `npm run build && PORT=${PORT} NODE_ENV=production AUDIT_API_KEY=e2e-only AI_MONTHLY_BUDGET_USD=0 LABEL_CREATES_PER_HOUR=1000 node scripts/serve-with-memory-mongo.mjs`,
     url: `http://localhost:${PORT}/health`,
     reuseExistingServer: !process.env.CI,
     // The build is a Vite production build plus a tsup bundle; on a cold cache

@@ -5,6 +5,10 @@
 # suite all run on a clean checkout with no Docker installed. This exists for the
 # one case that genuinely wants a database outliving the process that used it:
 # developing against data you put there yourself.
+#
+# `docker compose up -d` still starts only Mongo. `docker compose --profile prod
+# up -d --build` adds the production image, on its own database
+# (packwright_prodlike) so its indexes are built fresh.
 services:
   mongo:
     image: mongo:8
@@ -15,6 +19,22 @@ services:
       - '127.0.0.1:27017:27017'
     volumes:
       - packwright-mongo:/data/db
+  app:
+    profiles: ['prod']
+    build: .
+    image: packwright:local
+    platform: linux/amd64
+    depends_on: [mongo]
+    ports:
+      - '127.0.0.1:8080:3000'
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/packwright_prodlike
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 768m
+    stop_grace_period: 30s
 
 volumes:
   packwright-mongo:

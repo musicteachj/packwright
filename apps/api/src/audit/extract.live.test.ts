@@ -40,10 +40,9 @@ const wanted = (value: string | undefined) => value !== undefined && value !== '
 describe.skipIf(!wanted(apiKey) || !wanted(optedIn))('against the real API', () => {
   it(
     'reads the sample label into an extraction the contract accepts',
-    // Derived, not typed in. A flat 120 s was exactly one attempt of a client
-    // configured for one retry, so the retry this test exists to exercise could
-    // never finish inside it — the test would fail on its own budget and report
-    // it as the API being slow.
+    // Derived, not typed in. A single attempt may take the whole client
+    // timeout, so the test budget is that plus a margin; a flat number would
+    // fail on its own budget and report it as the API being slow.
     { timeout: VISION_TIMEOUT_MS * (VISION_MAX_RETRIES + 1) + 30_000 },
     async () => {
       const photo = {
