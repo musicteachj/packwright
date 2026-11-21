@@ -278,7 +278,16 @@ describe('the audit endpoint', () => {
     // state the server serves happily, not one it refuses to start in.
     const response = await request(app).post('/api/audit/ghs').send({})
     expect(response.status).toBe(503)
-    expect(response.body).toEqual({ error: 'Vision extraction is not configured' })
+    expect(response.body).toEqual({
+      error: 'This server does not read photographs live. Try the sample label.',
+      reason: 'unconfigured',
+    })
+  })
+
+  it('says so on its status, with no site key to hand out', async () => {
+    const response = await request(app).get('/api/audit/status')
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual({ available: false, reason: 'unconfigured', siteKey: null })
   })
 
   it('is not swallowed by the client history fallback', async () => {

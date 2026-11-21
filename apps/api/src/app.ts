@@ -3,8 +3,13 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import helmet from 'helmet'
 import morgan from 'morgan'
 import { join } from 'node:path'
-import type { DailyAllowance } from './audit/dailyAllowance'
-import { createAuditRouter, type AuditLimits, type AuditSpend } from './audit/routes'
+import {
+  createAuditRouter,
+  type AuditLimits,
+  type AuditSpend,
+  type AuditVisitors,
+} from './audit/routes'
+import type { VerifyTurnstile } from './audit/turnstile'
 import { loadClientPages, matchesClientPage } from './clientPages'
 import { createLabelDocumentRouter, type LabelWriteLimits } from './labels/labelDocumentRoutes'
 import { createLabelRouter, type ExportLimit } from './labels/routes'
@@ -48,13 +53,20 @@ export interface AppOptions {
    */
   extract?: ExtractLabel | undefined
   /**
-   * The shared secret the audit route requires, or nothing to require none.
+   * The shared secret the audit route requires, or nothing to require none: the
+   * owner's path, exclusive with `auditTurnstile`.
    *
    * Injected for the reason `extract` is: reading it here would make every
    * route test in this workspace depend on the environment to build an
    * application that checks nothing.
    */
   auditApiKey?: string | undefined
+  /**
+   * The public path's bot check and the site key the status hands the browser, or
+   * nothing. `server.ts` passes Cloudflare's `siteverify` when `AUDIT_PUBLIC` is true;
+   * a route test passes a fake.
+   */
+  auditTurnstile?: { siteKey: string; verify: VerifyTurnstile } | undefined
   /**
    * The audit route's quotas, or `false` to enforce none.
    *
@@ -66,15 +78,17 @@ export interface AppOptions {
    */
   auditLimits?: AuditLimits | false | undefined
   /**
-   * Where the audit route counts the day's calls. Absent, in memory, which a
-   * restart resets; `server.ts` passes the database's (`audit/dailyAllowance.ts`).
+   * Where the public path counts each visitor's reads, and the key their network is
+   * hashed under. Required with `auditTurnstile`; `server.ts` passes the database's
+   * (`audit/visitorAllowance.ts`) in public mode only, and key mode gets none (decision 1).
    */
-  auditAllowance?: DailyAllowance | undefined
+  auditVisitors?: AuditVisitors | undefined
   /**
-   * The spend ledger every live read reserves against, or nothing to read without one.
+   * The spend ledger every live read reserves against. Required with `extract`: the
+   * audit router refuses to be built with an extractor and no ledger.
    *
    * Injected for the reason `extract` is. `server.ts` passes the database's whenever it has an
-   * extractor; a route test passes a ledger in memory, or none when it is not about money.
+   * extractor; a route test passes a ledger in memory, a roomy one when it is not about money.
    */
   auditSpend?: AuditSpend | undefined
   /**
@@ -190,8 +204,9 @@ export function createApp(options: AppOptions = {}): Express {
     databaseStatus,
     extract,
     auditApiKey,
+    auditTurnstile,
     auditLimits,
-    auditAllowance,
+    auditVisitors,
     auditSpend,
     exportLimit,
     labelWriteLimits,
@@ -306,9 +321,9 @@ export function createApp(options: AppOptions = {}): Express {
   /**
    * The audit route, ahead of the body parser every other route shares.
    *
-   * It reads its own body, up to ten megabytes because it carries a photograph,
-   * and only after its limiter and its key have let the request through
-   * (`audit/routes.ts`). It used to be parsed here, at the top, so a request the
+   * It reads its own body, up to six megabytes because it carries a photograph,
+   * and only after its limiter and its key or its bot check have let the request
+   * through (`audit/routes.ts`). It used to be parsed here, at the top, so a request the
    * guards were about to refuse had been read in full first
    * (`docs/security-review-2026-10-18.md`, finding 2). Mounted first so the
    * parser below never sees one of its requests: Express hands the request to
@@ -321,17 +336,18 @@ export function createApp(options: AppOptions = {}): Express {
     createAuditRouter({
       extract,
       apiKey: auditApiKey,
+      turnstile: auditTurnstile,
       limits: auditLimits,
-      allowance: auditAllowance,
+      visitors: auditVisitors,
       spend: auditSpend,
     }),
   )
 
   /**
-   * A fortieth of the audit route's ten megabytes, for everything else.
+   * A twenty-fourth of the audit route's six megabytes, for everything else.
    *
-   * The generous figure used to be global, which meant every route on this server
-   * would buffer and parse ten megabytes before anything looked at it, including
+   * The generous figure used to be global (ten megabytes then), which meant every
+   * route on this server would buffer and parse that much before anything looked at it, including
    * the ones that take a label document, which is a few kilobytes of JSON. A label
    * document that genuinely needs more than 256 KB of JSON does not exist (the
    * largest field is an ingredient list, bounded in `INPUT_BOUNDS`), and a request

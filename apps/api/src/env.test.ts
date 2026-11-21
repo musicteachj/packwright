@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { TEST_SECRET_FAILS, TEST_SECRET_PASSES, TEST_SITE_KEY } from './audit/turnstile'
 import { loadEnv } from './env'
 
 /**
@@ -22,6 +23,9 @@ describe('loadEnv', () => {
       MCP_ALLOWED_ORIGINS: [],
       AI_PACING_MULTIPLIER: 3,
       AI_DAILY_FLOOR_USD: 0.5,
+      AUDIT_PUBLIC: false,
+      TURNSTILE_HOSTNAMES: [],
+      AUDIT_READS_PER_IP_PER_DAY: 5,
       ...REQUIRED,
     })
   })
@@ -136,7 +140,8 @@ describe('loadEnv', () => {
   /**
    * The audit key is required where the server can spend the Anthropic key in
    * production (`docs/security-review-2026-10-18.md`, James's decision of
-   * 2026-10-18): a deployment that left it unset opened the audit to anyone.
+   * 2026-10-18): a deployment that left it unset opened the audit to anyone. Since
+   * 2026-11-18 the public path (`AUDIT_PUBLIC`, below) is the other way to start.
    */
   it('refuses to start in production with the Anthropic key and no audit key', () => {
     expect(() => load({ NODE_ENV: 'production', ANTHROPIC_API_KEY: 'sk-ant-x' })).toThrow(
@@ -162,16 +167,6 @@ describe('loadEnv', () => {
 
   it('leaves the audit key optional outside production', () => {
     expect(load({ ANTHROPIC_API_KEY: 'sk-ant-x' }).AUDIT_API_KEY).toBeUndefined()
-  })
-
-  it('reads the daily audit limit as a whole number, absent when blank', () => {
-    expect(load({ AUDIT_DAILY_LIMIT: '4' }).AUDIT_DAILY_LIMIT).toBe(4)
-    expect(load({ AUDIT_DAILY_LIMIT: '0' }).AUDIT_DAILY_LIMIT).toBe(0)
-    expect(load({ AUDIT_DAILY_LIMIT: '' }).AUDIT_DAILY_LIMIT).toBeUndefined()
-    expect(() => load({ AUDIT_DAILY_LIMIT: '2.5' })).toThrow(/AUDIT_DAILY_LIMIT/)
-    expect(() => load({ AUDIT_DAILY_LIMIT: '-1' })).toThrow(/AUDIT_DAILY_LIMIT/)
-    // Not 0, which would turn the audit off on a value meant as blank.
-    expect(() => load({ AUDIT_DAILY_LIMIT: ' ' })).toThrow(/AUDIT_DAILY_LIMIT/)
   })
 
   it('reads the hourly label creates as a whole number of at least one, absent when blank', () => {
@@ -223,5 +218,162 @@ describe('loadEnv', () => {
 
   it('trims the audit key, as the audit page trims what is typed', () => {
     expect(load({ AUDIT_API_KEY: 'the-secret\n' }).AUDIT_API_KEY).toBe('the-secret')
+  })
+})
+
+/**
+ * The public photo audit (James, 2026-11-18): live reads behind Cloudflare's bot check and a
+ * per-visitor daily count, instead of the shared key. Each rule names its variable, so a
+ * deployment that will not start says which setting to fix.
+ */
+describe('the public photo audit', () => {
+  /** A 32-character key, the shortest `AUDIT_IP_HASH_KEY` takes. */
+  const HASH_KEY = '0123456789abcdef0123456789abcdef'
+  /** Every public setting, with keys that are not Cloudflare's test keys. */
+  const PUBLIC = {
+    AUDIT_PUBLIC: 'true',
+    TURNSTILE_SITE_KEY: '0x4AAAAAAAreal-site-key',
+    TURNSTILE_SECRET_KEY: '0x4AAAAAAAreal-secret-key',
+    TURNSTILE_HOSTNAMES: 'packwright.example',
+    AUDIT_IP_HASH_KEY: HASH_KEY,
+  }
+  /** Production that can spend the Anthropic key, in public mode, as it is deployed. */
+  const PRODUCTION = {
+    ...PUBLIC,
+    NODE_ENV: 'production',
+    ANTHROPIC_API_KEY: 'sk-ant-x',
+    AI_MONTHLY_BUDGET_USD: '10',
+    TRUST_PROXY_HOPS: '1',
+  }
+
+  it('production with the Anthropic key needs the audit key or the public path', () => {
+    const production = {
+      NODE_ENV: 'production',
+      ANTHROPIC_API_KEY: 'k',
+      AI_MONTHLY_BUDGET_USD: '10',
+    }
+    expect(() => load(production)).toThrow(/AUDIT_API_KEY/)
+    expect(() => load(production)).toThrow(/unless AUDIT_PUBLIC is true/)
+  })
+
+  it('a complete public production config starts without AUDIT_API_KEY', () => {
+    const env = load(PRODUCTION)
+    expect(env.AUDIT_PUBLIC).toBe(true)
+    expect(env.AUDIT_API_KEY).toBeUndefined()
+    expect(env.TURNSTILE_SITE_KEY).toBe('0x4AAAAAAAreal-site-key')
+    expect(env.TURNSTILE_SECRET_KEY).toBe('0x4AAAAAAAreal-secret-key')
+    expect(env.TURNSTILE_HOSTNAMES).toEqual(['packwright.example'])
+    expect(env.AUDIT_IP_HASH_KEY).toBe(HASH_KEY)
+    expect(env.AUDIT_READS_PER_IP_PER_DAY).toBe(5)
+  })
+
+  it('refuses the public path and the key together, in any environment', () => {
+    for (const NODE_ENV of ['development', 'production']) {
+      expect(
+        () => load({ ...PRODUCTION, NODE_ENV, AUDIT_API_KEY: 'the-secret' }),
+        NODE_ENV,
+      ).toThrow(/AUDIT_PUBLIC: cannot be true while AUDIT_API_KEY is set/)
+    }
+  })
+
+  it.each(['TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY', 'TURNSTILE_HOSTNAMES'])(
+    'the public path needs %s, in any environment',
+    (name) => {
+      for (const NODE_ENV of ['development', 'production']) {
+        const missing = new RegExp(`${name}: is required when AUDIT_PUBLIC is true`)
+        expect(() => load({ ...PRODUCTION, NODE_ENV, [name]: undefined }), NODE_ENV).toThrow(
+          missing,
+        )
+        expect(() => load({ ...PRODUCTION, NODE_ENV, [name]: '' }), NODE_ENV).toThrow(missing)
+      }
+    },
+  )
+
+  it('the public path needs AUDIT_IP_HASH_KEY of at least 32 characters, development included', () => {
+    expect(() => load({ ...PUBLIC, AUDIT_IP_HASH_KEY: undefined })).toThrow(
+      /AUDIT_IP_HASH_KEY: is required when AUDIT_PUBLIC is true, at least 32 characters/,
+    )
+    expect(() => load({ ...PUBLIC, AUDIT_IP_HASH_KEY: '' })).toThrow(/AUDIT_IP_HASH_KEY/)
+    expect(() => load({ ...PUBLIC, AUDIT_IP_HASH_KEY: 'a'.repeat(31) })).toThrow(
+      /AUDIT_IP_HASH_KEY/,
+    )
+    // Trimmed first, so padding does not make a short key long enough.
+    expect(() => load({ ...PUBLIC, AUDIT_IP_HASH_KEY: ` ${'a'.repeat(31)} ` })).toThrow(
+      /AUDIT_IP_HASH_KEY/,
+    )
+    expect(load({ ...PUBLIC, AUDIT_IP_HASH_KEY: 'a'.repeat(32) }).AUDIT_IP_HASH_KEY).toBe(
+      'a'.repeat(32),
+    )
+  })
+
+  it.each([
+    ['unset', undefined],
+    ['0', '0'],
+    ['2', '2'],
+  ])('public production refuses TRUST_PROXY_HOPS %s', (_name, hops) => {
+    expect(() => load({ ...PRODUCTION, TRUST_PROXY_HOPS: hops })).toThrow(
+      /TRUST_PROXY_HOPS: must be exactly 1 in production when AUDIT_PUBLIC is true/,
+    )
+  })
+
+  it('public production starts with TRUST_PROXY_HOPS 1', () => {
+    expect(load(PRODUCTION).TRUST_PROXY_HOPS).toBe(1)
+  })
+
+  it("production refuses Cloudflare's test keys", () => {
+    expect(() => load({ ...PRODUCTION, TURNSTILE_SITE_KEY: TEST_SITE_KEY })).toThrow(
+      /TURNSTILE_SITE_KEY: is one of Cloudflare's test keys/,
+    )
+    for (const secret of [TEST_SECRET_PASSES, TEST_SECRET_FAILS]) {
+      expect(() => load({ ...PRODUCTION, TURNSTILE_SECRET_KEY: secret }), secret).toThrow(
+        /TURNSTILE_SECRET_KEY: is one of Cloudflare's test keys/,
+      )
+    }
+  })
+
+  it('the test keys start production on a local host only', () => {
+    const testKeys = {
+      ...PRODUCTION,
+      TURNSTILE_SITE_KEY: TEST_SITE_KEY,
+      TURNSTILE_SECRET_KEY: TEST_SECRET_PASSES,
+    }
+    expect(load({ ...testKeys, TURNSTILE_HOSTNAMES: 'localhost' }).TURNSTILE_SITE_KEY).toBe(
+      TEST_SITE_KEY,
+    )
+    expect(
+      load({ ...testKeys, TURNSTILE_HOSTNAMES: 'localhost,127.0.0.1' }).TURNSTILE_HOSTNAMES,
+    ).toEqual(['localhost', '127.0.0.1'])
+    expect(() =>
+      load({ ...testKeys, TURNSTILE_HOSTNAMES: 'localhost,packwright.example' }),
+    ).toThrow(/TURNSTILE_SITE_KEY: is one of Cloudflare's test keys/)
+    // Outside production the test keys are what a developer runs on, whatever the hosts.
+    expect(
+      load({ ...testKeys, NODE_ENV: 'development', TURNSTILE_HOSTNAMES: 'packwright.example' })
+        .TURNSTILE_SECRET_KEY,
+    ).toBe(TEST_SECRET_PASSES)
+  })
+
+  it('reads AUDIT_PUBLIC as true or false and nothing else', () => {
+    expect(load({}).AUDIT_PUBLIC).toBe(false)
+    expect(load({ AUDIT_PUBLIC: '' }).AUDIT_PUBLIC).toBe(false)
+    expect(load({ AUDIT_PUBLIC: 'false' }).AUDIT_PUBLIC).toBe(false)
+    expect(() => load({ AUDIT_PUBLIC: 'yes' })).toThrow(/AUDIT_PUBLIC/)
+  })
+
+  it('reads the reads per visitor as a whole number, 5 unless set, at most 1000', () => {
+    expect(load({}).AUDIT_READS_PER_IP_PER_DAY).toBe(5)
+    expect(load({ AUDIT_READS_PER_IP_PER_DAY: '' }).AUDIT_READS_PER_IP_PER_DAY).toBe(5)
+    expect(load({ AUDIT_READS_PER_IP_PER_DAY: '12' }).AUDIT_READS_PER_IP_PER_DAY).toBe(12)
+    for (const value of ['2.5', '-1', ' ', '1001', 'five']) {
+      expect(() => load({ AUDIT_READS_PER_IP_PER_DAY: value }), value).toThrow(
+        /AUDIT_READS_PER_IP_PER_DAY/,
+      )
+    }
+  })
+
+  it('reads TURNSTILE_HOSTNAMES as bare hostnames', () => {
+    expect(() => load({ TURNSTILE_HOSTNAMES: 'https://packwright.example' })).toThrow(
+      /TURNSTILE_HOSTNAMES takes bare hostnames/,
+    )
   })
 })

@@ -27,8 +27,23 @@ services:
     depends_on: [mongo]
     ports:
       - '127.0.0.1:8080:3000'
+    # The public path as production runs it, with nothing that can spend money. The
+    # Anthropic key is a dummy that is never called, because the budget is fixed at 0
+    # here rather than read from a variable: the ledger refuses every live read before
+    # the model is asked. A real key here would be a paid run, which needs James's OK.
     environment:
       MONGODB_URI: mongodb://mongo:27017/packwright_prodlike
+      ANTHROPIC_API_KEY: sk-ant-local-dummy-never-called
+      AI_MONTHLY_BUDGET_USD: '0'
+      AUDIT_PUBLIC: 'true'
+      # Cloudflare's public test keys: the site key and the secret that always pass.
+      TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+      TURNSTILE_SECRET_KEY: 1x0000000000000000000000000000000AA
+      # The only reason production starts with the test keys: every host is local.
+      TURNSTILE_HOSTNAMES: localhost
+      # A fixed local dummy, used only here and not a secret. Production's lives in SSM.
+      AUDIT_IP_HASH_KEY: local-only-not-a-secret-0123456789abcdef
+      TRUST_PROXY_HOPS: '1'
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]

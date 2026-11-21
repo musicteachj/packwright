@@ -677,7 +677,7 @@ Run: `npx vitest run apps/api/src/audit/visitorAllowance.test.ts` (FAIL, then PA
 
 Remove the duplicate-key retry: the "two first reads" test fails (run it a few times if it is timing dependent); restore. Replace the HMAC with an unkeyed `createHash('sha256')`: "gives the same address a different visitor under another key" and "stores no address, and no unkeyed hash of one" fail; restore. Run `npm run lint && npm run typecheck`. CHANGELOG `### Added`: per-visitor daily reads, under a keyed hash of the network, kept two days.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -707,7 +707,7 @@ git commit -m "feat(api): count each visitor's live reads per UTC day"
 - Produces, `app.ts`: `AppOptions.auditTurnstile?`, `AppOptions.auditVisitors?: AuditVisitors` (replaces `auditAllowance`).
 - Produces, `env.ts`: `AUDIT_PUBLIC: boolean` (`'true' | 'false'`, default false, like `MCP_ENABLED`), `TURNSTILE_SITE_KEY?`, `TURNSTILE_SECRET_KEY?`, `TURNSTILE_HOSTNAMES: string[]` (`hostnameList`), `AUDIT_IP_HASH_KEY?: string` (trimmed, at least 32 characters; decision 23), `AUDIT_READS_PER_IP_PER_DAY: number` (digits, default 5, max 1,000); `AUDIT_DAILY_LIMIT` removed.
 
-- [ ] **Step 1: Write the failing env tests** (`env.test.ts`)
+- [x] **Step 1: Write the failing env tests** (`env.test.ts`)
 
 Cross-field rules, each asserting the message names the variable:
 - production + `ANTHROPIC_API_KEY` + budget, with neither `AUDIT_API_KEY` nor `AUDIT_PUBLIC`: throws `/AUDIT_API_KEY/` and the message mentions `AUDIT_PUBLIC`.
@@ -720,7 +720,7 @@ Cross-field rules, each asserting the message names the variable:
 - `'a complete public production config starts without AUDIT_API_KEY'` (with non-test keys and a 32-character `AUDIT_IP_HASH_KEY`).
 - `AUDIT_PUBLIC: 'yes'` throws; `AUDIT_READS_PER_IP_PER_DAY` defaults to 5; `TURNSTILE_HOSTNAMES: 'https://packwright.example'` throws.
 
-- [ ] **Step 2: Write the failing route tests** (`routes.test.ts`, public app: `turnstile: { siteKey: '1x00000000000000000000AA', verify }` with `verify` a `vi.fn`, `visitors: { allowance: memoryVisitorAllowance(), ipHashKey: 'k'.repeat(32) }`, memory ledger with a $10 budget)
+- [x] **Step 2: Write the failing route tests** (`routes.test.ts`, public app: `turnstile: { siteKey: '1x00000000000000000000AA', verify }` with `verify` a `vi.fn`, `visitors: { allowance: memoryVisitorAllowance(), ipHashKey: 'k'.repeat(32) }`, memory ledger with a $10 budget)
 
 Key and public modes are now exclusive, so Task 5's `describe('what a read may spend')` tests move to this public harness, with `verify` resolving `'passed'` and an `X-Turnstile-Token` header on each POST. Delete or rewrite against the per-visitor count the existing tests this task invalidates: the status table at `routes.test.ts:485-494` (the `keyRequired` shape), and the deployment-wide day-count tests at `:272`, `:324`, `:349`, `:365`, `:460` and `:468` (the `AuditDay` count is retired, decision 2).
 
@@ -735,12 +735,12 @@ Key and public modes are now exclusive, so Task 5's `describe('what a read may s
 - Status: `'status hands the browser the site key'` (`siteKey: '1x00000000000000000000AA'`, `available: true`, `reason: null`); `'status says unconfigured without an extractor, or in key mode'`; `'status says budget when the day has no room'`; `'status says ip once this address has used its reads'` (Review Focus 5); `'a status that cannot read its counts says paused'` (visitors `left` rejects: `available: false, reason: 'budget'`); `'status is never cached'`; `'the 61st status check in a minute is refused'` (default limits: 60 `GET /api/audit/status` answer 200, the 61st answers 429 with `{ error: 'Too many status checks. Try again in a minute.' }`).
 - Key mode keeps its 401 tests (`describe('the shared secret')`). `'key mode is not counted per visitor'` (decision 1): a key-mode app built with memory visitors anyway, `perVisitorPerDay: 1` and a fake extractor; two reads with the key both answer 200, neither is 429 `reason: 'ip'`, and the visitor's `left` is still 1. Body limits: the 413 test uses the new figures, and `MAX_PHOTO_BASE64` stays below `AUDIT_BODY_LIMIT`.
 
-- [ ] **Step 3: Run them to see them fail**
+- [x] **Step 3: Run them to see them fail**
 
 Run: `npx vitest run apps/api/src/env.test.ts apps/api/src/audit/routes.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 POST `/ghs` guard order, written out in the router as today ("Order is the whole of this"):
 1. hourly per-IP limiter (`express-rate-limit`, `message: { error: REFUSALS.unavailable.error, reason: 'unavailable' }`: not `ip`, because the status checks only the daily count, so an `ip` answer here would be followed by a status that says a read is possible);
@@ -765,16 +765,16 @@ Rewrite the two notes that state the old body limits with the new figures: the n
 
 `.env.example`: `AUDIT_PUBLIC`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` (with the test keys, and a note that they are Cloudflare's public test values, which production refuses unless every `TURNSTILE_HOSTNAMES` entry is `localhost` or `127.0.0.1`), `TURNSTILE_HOSTNAMES`, `AUDIT_IP_HASH_KEY` (blank, with "required when AUDIT_PUBLIC is true; at least 32 characters; generate with openssl rand -hex 32"), `AUDIT_READS_PER_IP_PER_DAY`; remove `AUDIT_DAILY_LIMIT`. `docker-compose.yml` `app.environment` adds: `ANTHROPIC_API_KEY: sk-ant-local-dummy-never-called`, `AUDIT_PUBLIC: 'true'`, the test site key and always-pass secret, `TURNSTILE_HOSTNAMES: localhost` (the only reason production starts with the test keys, decision 22), `AUDIT_IP_HASH_KEY: local-only-not-a-secret-0123456789abcdef` (40 characters, with a comment that it is a fixed local dummy, used only here, and that production's value lives in SSM), `AI_MONTHLY_BUDGET_USD: '0'` (fixed, not a variable: the dummy key must never be called), `TRUST_PROXY_HOPS: '1'`, with a comment saying a real key here would be a paid run that needs James's OK.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `npx vitest run apps/api`
 Expected: PASS.
 
-- [ ] **Step 6: Mutation test**
+- [x] **Step 6: Mutation test**
 
 Move `express.json` above the Turnstile guard: the "before it reads a byte" test fails. Key the daily count on `request.get('x-forwarded-for')` instead of `request.ip`: "does not change the daily count" fails. Drop the `TRUST_PROXY_HOPS` rule: its env test fails; relax it to "1 or more": the `'2'` case fails. Drop the test-key refusal: "production refuses Cloudflare's test keys" fails. Drop the localhost exception (refuse the test keys in every production): "the test keys start production on a local host only" fails. Drop the `AUDIT_IP_HASH_KEY` rule: its env test fails. Remove the public-mode condition on step 6: "key mode is not counted per visitor" fails. Remove the status limiter: "the 61st status check in a minute is refused" fails. Restore all eight.
 
-- [ ] **Step 7: All checks and CHANGELOG**
+- [x] **Step 7: All checks and CHANGELOG**
 
 Run all checks, then `docker compose --profile prod config` (it validates the compose file this task changed; expected: exit 0, the `app` environment printed with the values above), then `npm run verify:image`, because the start-up rules the image runs under changed. Expected: PASS. CHANGELOG `### Changed`: live photo reads are public behind Turnstile, a per-visitor daily allowance under a keyed hash (`AUDIT_IP_HASH_KEY`) and the budget (James, 2026-11-18, reversing the 2026-10-18 shared key); production refuses Cloudflare's test keys except on a local host; `AUDIT_DAILY_LIMIT` removed; the body limit cut to 6 MB.
 

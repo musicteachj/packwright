@@ -28,7 +28,6 @@ import express, {
 } from 'express'
 import rateLimit from 'express-rate-limit'
 import { z } from 'zod'
-import { memoryAllowance, type DailyAllowance } from './dailyAllowance'
 import {
   ExtractionDeclined,
   ExtractionTruncated,
@@ -38,7 +37,10 @@ import {
 } from './extract'
 import type { SpendLedger } from './ledger'
 import { photoFault } from './photoSignature'
+import { refuse, REFUSALS, type AuditUnavailableReason } from './refusals'
 import { metered, SpendRefused, SpendUnavailable } from './spend'
+import { TURNSTILE_HEADER, type TurnstileOutcome, type VerifyTurnstile } from './turnstile'
+import { visitorKey, type VisitorAllowance } from './visitorAllowance'
 
 /**
  * The largest image this route will forward, in base64 characters.
@@ -51,53 +53,63 @@ import { metered, SpendRefused, SpendUnavailable } from './spend'
  * the defect this codebase has found in a validator, a template field and a
  * rule, and it would have been one here too.
  *
- * 8 MB clears both readings of the upstream limit — whether its "10 MB" counts
- * 10,000,000 bytes or 10,485,760 — and is enormous for the traffic this route
- * expects, since the client caps the long edge at 2576 px and encodes JPEG,
- * which lands between one and two megabytes.
+ * 5 MiB (5,242,880 base64 characters) sits under a 6 MB body limit with room for
+ * the JSON around it, and below the upstream limit on either reading of its
+ * "10 MB". It is still well above what this route expects: the client caps the
+ * long edge at 2576 px and encodes JPEG at quality 0.92, which lands between one
+ * and two megabytes.
  */
-export const MAX_PHOTO_BASE64 = 8 * 1024 * 1024
+export const MAX_PHOTO_BASE64 = 5 * 1024 * 1024
 
 const HOUR_MS = 60 * 60 * 1000
+const MINUTE_MS = 60 * 1000
+
+/** How long the status keeps the ledger's room for today before it asks again. */
+const LEDGER_READ_TTL_MS = 5_000
 
 /**
  * What the audit route may weigh, because it carries a photograph. Read here, after
  * the guards, rather than by `app.ts` ahead of them (see the order below).
  */
-export const AUDIT_BODY_LIMIT = '10mb'
+export const AUDIT_BODY_LIMIT = '6mb'
 
 /**
- * What one client may spend in an hour, and what this process may spend in a day.
+ * What one client may ask in an hour, what one visitor may read in a day, and how often
+ * one client may ask the status.
  *
- * Every call here reaches a paid vision API on a key the server holds, so an
- * unprotected route does not cost a slow server — it costs somebody else's
- * money, and it does so quietly, because nothing about a spent quota looks like
- * an incident until the bill arrives.
+ * Every read here reaches a paid vision API on a key the server holds, so an
+ * unprotected route does not cost a slow server: it costs somebody else's money,
+ * and it does so quietly, because nothing about a spent quota looks like an
+ * incident until the bill arrives.
  *
- * **Two windows, because they answer different questions.** The hourly figure is
+ * **Three figures, because they answer different questions.** The hourly figure is
  * per client and asks whether one caller is going too fast; a person auditing
  * labels by hand takes minutes over each photograph, so twenty in an hour is
- * generous for the work and useless for a script. The daily figure is
- * deployment-wide and asks what this deployment can lose in a day whatever the
- * traffic looks like — it is the only one of the two that still holds when
- * client addresses cannot be told apart, which is the usual case behind a proxy
- * that has not been configured for. See `trustProxyHops` in `AppOptions`.
+ * generous for the work and useless for a script. The daily figure is per visitor,
+ * on the public path only, and shares the day's reads out between visitors
+ * (`visitorAllowance.ts`); `AUDIT_READS_PER_IP_PER_DAY` sets it. The status figure
+ * keeps a page that polls, or a script that floods it, from reading the counts
+ * behind it without end. What the deployment may lose whatever the traffic looks
+ * like is the spend ledger's to hold (`AuditSpend`), which reserves every read's
+ * worst case, $0.112 (`VISION_RESERVATION_MICROS`), before it is sent; a typical
+ * read costs about $0.02 to $0.04 (the recorded one, 19,908 micro-dollars).
  *
- * Both are deliberately small. Raising a limit is a decision somebody makes on
- * purpose; discovering one was never there is not. **The day's figure is 10 since
- * 2026-10-18**; `AUDIT_DAILY_LIMIT` sets it, so it can follow a monthly limit down
- * without a release. A typical read costs about $0.02 to $0.04 (the recorded one,
- * 19,908 micro-dollars) and $0.112 at worst (`VISION_RESERVATION_MICROS`), so ten is
- * at most $1.12 a day. The money itself is held by the spend ledger (`AuditSpend`),
- * which reserves every read's worst case before it is sent.
+ * All are deliberately small. Raising a limit is a decision somebody makes on
+ * purpose; discovering one was never there is not.
  */
-export const DEFAULT_AUDIT_LIMITS = { perHour: 20, perDay: 10 } as const
+export const DEFAULT_AUDIT_LIMITS = {
+  perHour: 20,
+  perVisitorPerDay: 5,
+  statusPerMinute: 60,
+} as const
 
 export interface AuditLimits {
-  /** Requests per client per hour. */
+  /** `POST /ghs` requests per client per hour. */
   perHour: number
-  /** Requests per process per day, whatever the client. */
-  perDay: number
+  /** Live reads per visitor per UTC day, on the public path only. */
+  perVisitorPerDay: number
+  /** `GET /status` requests per client per minute. */
+  statusPerMinute: number
 }
 
 /** The header a configured key is presented in. */
@@ -113,21 +125,6 @@ export const AUDIT_KEY_HEADER = 'x-audit-key'
  * digests are always 32 bytes, so there is nothing to compare first and nothing
  * to learn from how long it took.
  */
-/**
- * What this deployment may still spend today is counted in calls rather than
- * requests, by a `DailyAllowance` (`dailyAllowance.ts`).
- *
- * Deliberately not an `express-rate-limit` bucket, which the first two attempts
- * at this were. A limiter counts *requests*, and the daily figure is a budget —
- * it is denominated in money, and money is spent at the moment `extract` is
- * called and at no other. Counting requests instead meant a malformed body, an
- * oversized image or a 503 from an unconfigured server each drew down the day,
- * so a caller sending nothing but rubbish could exhaust a deployment's whole
- * allowance and lock out every real caller until the window turned. Counting
- * calls also keeps the other half honest: a reading the vision API declines
- * comes back 422, and the model still ran, so that *is* spend and is counted.
- */
-
 function keyAccepted(presented: unknown, expected: string): boolean {
   if (typeof presented !== 'string') return false
   const digest = (value: string) => createHash('sha256').update(value).digest()
@@ -163,37 +160,37 @@ export interface AuditSpend {
   reservationMicros: number
 }
 
-/** What a visitor is told when the budget has no room for a read. */
-const PAUSED = {
-  error: 'Live photo reads are paused for now. Try the sample label.',
-  reason: 'budget',
-} as const
-
 /**
- * What a visitor is told for every provider error and for a ledger that cannot be asked. None
- * of them is anything a visitor can fix, so all of them point at the sample; the detail goes to
- * the log.
+ * Where the public path counts each visitor's reads, and the key their network is hashed under
+ * (`visitorAllowance.ts`). Only the public path counts visitors: the owner's key is bounded by
+ * the hourly limiter and the ledger (decision 1).
  */
-const UNAVAILABLE = {
-  error: 'Live photo reading is not available right now. Try the sample label.',
-  reason: 'unavailable',
-} as const
+export interface AuditVisitors {
+  allowance: VisitorAllowance
+  ipHashKey: string
+}
 
 export interface AuditRouterOptions {
   extract?: ExtractLabel | undefined
   /**
-   * The shared secret this route requires, or nothing to require none.
+   * The shared secret this route requires, or nothing to require none: the owner's path.
    *
    * Optional because the route has to keep working for a deployment that has
-   * not set one, and **required the moment it is set** — a key that is checked
+   * not set one, and **required the moment it is set**: a key that is checked
    * only when the caller offers one is not a key. Never built into the client,
    * which is served from this same origin and would ship it to everyone who loads
-   * the page: the audit page asks the person for it instead, and sends what they
-   * type. **Required on a public deployment since 2026-10-18** (`env.ts`), because
-   * an anonymous daily budget can always be spent by enough addresses, however it
-   * is shared out (`docs/security-review-2026-10-18.md`, James's decision).
+   * the page. Metered by the ledger and the hourly limiter, and not counted per
+   * visitor. **Since 2026-11-18 it is no longer the public path**, which is the
+   * Turnstile check below; the two are exclusive, and the status tells a browser
+   * in key mode that this server does not read photographs live.
    */
   apiKey?: string | undefined
+  /**
+   * The public path: Cloudflare's bot check, and the site key the status hands the
+   * browser for its widget. Set, every read must carry a token that passes, and is
+   * counted against its visitor (`visitors`).
+   */
+  turnstile?: { siteKey: string; verify: VerifyTurnstile } | undefined
   /**
    * The quotas to enforce, or `false` for none.
    *
@@ -204,56 +201,140 @@ export interface AuditRouterOptions {
    */
   limits?: AuditLimits | false | undefined
   /**
-   * Where the day's calls are counted. Absent, in memory: right for a test, and
-   * wrong for a server, whose count must survive a restart, so `server.ts` passes
-   * `databaseAllowance`.
+   * Where the public path counts each visitor's reads. Required with `turnstile`, and
+   * ignored without it (decision 1). `server.ts` passes the database's, so a restart
+   * does not give every visitor their day again.
    */
-  allowance?: DailyAllowance | undefined
-  /** The spend ledger, or nothing to read without one. See `AuditSpend`. */
+  visitors?: AuditVisitors | undefined
+  /** The spend ledger. Required with `extract`; see `AuditSpend`. */
   spend?: AuditSpend | undefined
+  /** The clock the status's ledger read is kept by, in milliseconds. A test moves it. */
+  now?: (() => number) | undefined
 }
 
 export function createAuditRouter(options: AuditRouterOptions = {}): Router {
   const router = Router()
-  const { apiKey, limits, spend } = options
+  const { apiKey, turnstile, limits, visitors, spend } = options
+  const now = options.now ?? Date.now
+
+  // No path may call a live extractor unmetered, so a router that would is never built.
+  if (options.extract !== undefined && spend === undefined) {
+    throw new Error('An extractor needs a spend ledger.')
+  }
+  // The two modes are exclusive (decision 1); `loadEnv` refuses both set, and so does this.
+  if (apiKey !== undefined && turnstile !== undefined) {
+    throw new Error('An audit router takes an API key or a Turnstile check, not both.')
+  }
+  // A public path with nowhere to count visitors would read for anyone, as often as they liked.
+  if (turnstile !== undefined && visitors === undefined) {
+    throw new Error('A Turnstile check needs a visitor allowance.')
+  }
+
   // Wrapped once, here, so that no path through the handler can reach the model unreserved.
   const extract =
     options.extract === undefined || spend === undefined
-      ? options.extract
+      ? undefined
       : metered(options.extract, spend.ledger, spend.reservationMicros)
+
+  /**
+   * The public path's per-visitor count, or nothing. Only where a Turnstile check is
+   * configured (decision 1): in key mode it is skipped even when `visitors` is given.
+   */
+  const perVisitor =
+    turnstile !== undefined && visitors !== undefined && limits !== false && limits !== undefined
+      ? { visitors, perDay: limits.perVisitorPerDay }
+      : undefined
+  const visitorOf = (request: Request, counted: AuditVisitors): string =>
+    visitorKey(counted.ipHashKey, request.ip)
+
+  /**
+   * Today's room in the ledger, kept for five seconds, so a flood of status checks from
+   * many addresses asks the database for the budget at most once every five seconds. A
+   * stale answer costs nothing, because the read itself still reserves. A read that
+   * throws is not kept.
+   */
+  let ledgerRead: { at: number; roomMicros: number } | undefined
+  const roomTodayMicros = async (ledger: SpendLedger): Promise<number> => {
+    const at = now()
+    if (ledgerRead !== undefined && at - ledgerRead.at < LEDGER_READ_TTL_MS) {
+      return ledgerRead.roomMicros
+    }
+    const roomMicros = await ledger.roomTodayMicros()
+    ledgerRead = { at, roomMicros }
+    return roomMicros
+  }
+
+  /**
+   * `GET /status`: whether a read is possible now, and if not why, with the site key the
+   * page's widget needs.
+   *
+   * **`Cache-Control: no-store`, though the shared conventions call this a cached flag.**
+   * The `ip` reason is per visitor, so no cache between the visitor and this app may
+   * share one visitor's answer with another. Only the ledger read behind it is kept, in
+   * this process, and only for five seconds (`roomTodayMicros`, above).
+   *
+   * In order: no extractor, or the owner's key, is `unconfigured` (the page has no key
+   * field, so in key mode a browser cannot read); a day without room for one reservation
+   * is `budget`; a visitor who has used their reads is `ip`; and a count or a ledger
+   * that cannot be read is `budget` too, logged, since a budget nobody can check is not
+   * one.
+   */
+  const statusGuards: RequestHandler[] = []
+  if (limits !== false && limits !== undefined) {
+    statusGuards.push(
+      rateLimit({
+        windowMs: MINUTE_MS,
+        limit: limits.statusPerMinute,
+        standardHeaders: 'draft-7',
+        legacyHeaders: false,
+        message: { error: 'Too many status checks. Try again in a minute.' },
+      }),
+    )
+  }
+  router.get('/status', ...statusGuards, async (request: Request, response: Response) => {
+    const answer = (reason: AuditUnavailableReason | null) => {
+      response.set('Cache-Control', 'no-store')
+      response.json({ available: reason === null, reason, siteKey: turnstile?.siteKey ?? null })
+    }
+    if (extract === undefined || spend === undefined || apiKey !== undefined) {
+      answer('unconfigured')
+      return
+    }
+    try {
+      if ((await roomTodayMicros(spend.ledger)) < spend.reservationMicros) {
+        answer('budget')
+        return
+      }
+      if (
+        perVisitor !== undefined &&
+        (await perVisitor.visitors.allowance.left(
+          visitorOf(request, perVisitor.visitors),
+          perVisitor.perDay,
+        )) === 0
+      ) {
+        answer('ip')
+        return
+      }
+    } catch (error) {
+      console.error('The audit status could not read its counts.', error)
+      answer('budget')
+      return
+    }
+    answer(null)
+  })
 
   // **Order is the whole of this.** Each guard is cheap to state and the sequence
   // is what makes them add up, so it is written out rather than assembled where
   // it happens to read well.
   const guards: RequestHandler[] = []
-  const today =
-    limits === false || limits === undefined
-      ? undefined
-      : { allowance: options.allowance ?? memoryAllowance(), perDay: limits.perDay }
 
-  // What the audit page needs to know before it asks for a photograph: whether
-  // there is anything to send one to, and whether it must ask for the key. No
-  // more than that, and nothing about the key itself.
-  // A day of no calls is no audit, though the extractor is there, and so is a day whose budget
-  // has no room for one more read. A ledger that cannot be asked reads as no room.
-  router.get('/status', async (_request: Request, response: Response) => {
-    let available = extract !== undefined && (today === undefined || today.perDay > 0)
-    if (available && spend !== undefined) {
-      try {
-        available = (await spend.ledger.roomTodayMicros()) >= spend.reservationMicros
-      } catch (error) {
-        console.error('The spend ledger could not be read for the audit status.', error)
-        available = false
-      }
-    }
-    response.json({ available, keyRequired: apiKey !== undefined })
-  })
-
-  // 1. The per-client hourly bucket, first, so that guessing at the key costs
-  //    the guesser something. `express-rate-limit` writes its own 429 rather
-  //    than passing an error along, which matters: `app.ts`'s handler maps
-  //    exactly 400, 413 and 415, so a 429 arriving through `next(error)` would
-  //    reach the caller as 500.
+  // 1. The per-client hourly bucket, first, so that guessing at the key or
+  //    failing the bot check costs the caller something. `express-rate-limit`
+  //    writes its own 429 rather than passing an error along, which matters:
+  //    `app.ts`'s handler maps exactly 400, 413 and 415, so a 429 arriving through
+  //    `next(error)` would reach the caller as 500. Its reason is `unavailable`,
+  //    not `ip`: the status reads only the daily count, so an `ip` here would be
+  //    followed by a status saying a read is possible.
   if (limits !== false && limits !== undefined) {
     guards.push(
       rateLimit({
@@ -261,13 +342,14 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
         limit: limits.perHour,
         standardHeaders: 'draft-7',
         legacyHeaders: false,
-        message: { error: 'Too many audit requests — try again later' },
+        message: { error: REFUSALS.unavailable.error, reason: 'unavailable' },
       }),
     )
   }
 
-  // 2. The key, second. Written here rather than handed to `next` for the
-  //    reason above — 401 is not in that map either.
+  // 2. The key in key mode, or the bot check on the public path, second, and both
+  //    before a byte of the body is read. Written here rather than handed to
+  //    `next` for the reason above: 401 and 403 are not in that map either.
   if (apiKey !== undefined) {
     guards.push((request: Request, response: Response, next: NextFunction) => {
       if (keyAccepted(request.get(AUDIT_KEY_HEADER), apiKey)) {
@@ -275,6 +357,30 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
         return
       }
       response.status(401).json({ error: 'A valid audit key is required' })
+    })
+  }
+  if (turnstile !== undefined) {
+    guards.push(async (request: Request, response: Response, next: NextFunction) => {
+      // A missing token is a failed check, decided here without asking Cloudflare.
+      const token = request.get(TURNSTILE_HEADER)
+      if (token === undefined || token === '') {
+        refuse(response, 'bot-check')
+        return
+      }
+      let outcome: TurnstileOutcome
+      try {
+        outcome = await turnstile.verify({ token, remoteIp: request.ip })
+      } catch (error) {
+        // `siteverify` answers `unavailable` rather than throwing; this is for one that does.
+        console.error('The bot check could not be asked.', error)
+        refuse(response, 'unavailable')
+        return
+      }
+      if (outcome === 'passed') {
+        next()
+        return
+      }
+      refuse(response, outcome === 'unavailable' ? 'unavailable' : 'bot-check')
     })
   }
 
@@ -286,8 +392,8 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
   guards.push(express.json({ limit: AUDIT_BODY_LIMIT }))
 
   // On the route rather than the router. Mounted with `router.use` these counted
-  // every method and path under `/api/audit` — a 404, a malformed body, a 503
-  // from an unconfigured server — so a budget denominated in paid vision calls
+  // every method and path under `/api/audit` (a 404, a malformed body, a 503
+  // from an unconfigured server), so a budget denominated in paid vision calls
   // was exhaustible with requests that cost nothing. The second thing the first
   // review of this change found.
   router.post('/ghs', ...guards, async (request: Request, response: Response) => {
@@ -301,13 +407,14 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
       if (!response.writableFinished) abort.abort()
     })
 
+    // 4. No extractor, before the body is looked at. The endpoint is not
+    //    unavailable for this request; it is unavailable.
     if (extract === undefined) {
-      // Before the body is looked at. The endpoint is not unavailable for this
-      // request; it is unavailable.
-      response.status(503).json({ error: 'Vision extraction is not configured' })
+      refuse(response, 'unconfigured')
       return
     }
 
+    // 5. The shape, the size and the photograph's signature, all free to refuse.
     const parsed = AuditRequest.safeParse(request.body)
     if (!parsed.success) {
       badRequest(response, parsed.error.issues)
@@ -325,37 +432,40 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
       return
     }
 
-    // Before the day is counted, so a body that is no photograph is refused for
-    // free rather than spending a call (`photoSignature.ts`).
+    // Before the visitor is counted, so a body that is no photograph is refused for
+    // free rather than spending a read (`photoSignature.ts`).
     const fault = photoFault(image.mediaType, image.data)
     if (fault !== undefined) {
       badRequest(response, [{ path: ['image', 'data'], message: fault }])
       return
     }
 
-    // The last thing before the money is spent, and the first thing that counts
-    // against the day. Everything above this line is free to refuse. A count that
-    // cannot be read refuses too: a budget nobody can check is not one.
-    if (today !== undefined) {
+    // 6. The visitor's day, on the public path only (decision 1), and the first thing
+    //    that counts against anything. Taken before the reservation and not given back
+    //    if the budget then refuses (decision 9). A count that cannot be read refuses
+    //    too: a budget nobody can check is not one.
+    if (perVisitor !== undefined) {
       let taken: boolean
       try {
-        taken = await today.allowance.take(today.perDay)
+        taken = await perVisitor.visitors.allowance.take(
+          visitorOf(request, perVisitor.visitors),
+          perVisitor.perDay,
+        )
       } catch (error) {
-        console.error(error)
-        response
-          .status(503)
-          .json({ error: 'The daily audit count is unavailable. Try again later.' })
+        console.error('The visitor count could not be read, so no read was sent.', error)
+        refuse(response, 'unavailable')
         return
       }
       if (!taken) {
-        response.status(429).json({ error: 'This server has reached its daily audit limit' })
+        refuse(response, 'ip')
         return
       }
     }
 
-    // Gone while the day was being counted: there is nobody to read for.
+    // Gone while the visitor was being counted: there is nobody to read for.
     if (abort.signal.aborted) return
 
+    // 7. The metered call, which reserves before it reads (`spend.ts`).
     try {
       // `model` comes out of the reading rather than from `EXTRACTION_MODEL`.
       // The constant is what this server asked for; the reading carries what
@@ -371,12 +481,12 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
         return
       }
       if (error instanceof SpendRefused) {
-        response.status(429).json(PAUSED)
+        refuse(response, 'budget')
         return
       }
       if (error instanceof SpendUnavailable) {
         // Logged by `metered`, with the ledger's own error.
-        response.status(503).json(UNAVAILABLE)
+        refuse(response, 'unavailable')
         return
       }
       if (error instanceof ExtractionDeclined) {
@@ -415,7 +525,7 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
         // goes to the log, not to the client: it can carry request identifiers and, on an
         // authentication failure, a hint about the key.
         console.error(error)
-        response.status(503).json(UNAVAILABLE)
+        refuse(response, 'unavailable')
         return
       }
       throw error

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TEST_SECRET_FAILS, TEST_SECRET_PASSES, TEST_SITE_KEY } from './audit/turnstile'
 
 /**
  * Environment is parsed once, at startup, and fails loudly if it is wrong.
@@ -121,40 +122,77 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: optionalSecret,
 
   /**
-   * A shared secret the audit route requires, or nothing to require none.
+   * A shared secret the audit route requires: the owner's path.
    *
    * Server-side only, like the key above and for a sharper reason: the audit
    * route spends `ANTHROPIC_API_KEY` on every call, so this is what stands
    * between an open origin and somebody else's bill. Set it and the route is
-   * shut to everything that cannot present it — including this project's own
-   * browser client unless the person using it types the key in, which the
-   * audit page asks for. **Required in production wherever `ANTHROPIC_API_KEY`
-   * is set** (`loadEnv`, below), since 2026-10-18: the quotas alone left a budget
-   * shared by every anonymous caller, which enough addresses can always spend
-   * (`docs/security-review-2026-10-18.md`, James's decision).
+   * shut to everything that cannot present it. Metered by the spend ledger and
+   * the hourly limiter, and not counted per visitor. **Since 2026-11-18 it is no
+   * longer the public path** (spec section 10): that is `AUDIT_PUBLIC`, below,
+   * and the two are exclusive. In production with `ANTHROPIC_API_KEY` set, one
+   * of the two is required (`loadEnv`, below), so a deployment cannot open the
+   * audit to anyone by leaving both unset.
    */
   // Trimmed, as the audit page trims what is typed, so a key pasted into a console
   // with a trailing newline is still one a person can match.
   AUDIT_API_KEY: blankAsAbsent(z.string().trim().min(1).optional()),
 
   /**
-   * How many vision calls the audit route may make in a UTC day, across the
-   * deployment, or nothing for `DEFAULT_AUDIT_LIMITS.perDay` (10).
-   *
-   * A setting so that it can follow a monthly limit down without a release. A typical
-   * read costs about $0.02 to $0.04 and $0.112 at worst, so the default of 10 is at most
-   * $1.12 a day. Zero turns live audits off. The money itself is held by the spend
-   * ledger (`AI_MONTHLY_BUDGET_USD`, below).
+   * The public path: live photo reads behind Cloudflare's bot check, counted per
+   * visitor and metered by the spend ledger (James, 2026-11-18). `true` and `false`
+   * and nothing else, false unless set, for the reason `MCP_ENABLED` is read that way.
+   * Requires the three `TURNSTILE_` settings and `AUDIT_IP_HASH_KEY`, in every
+   * environment, and in production `TRUST_PROXY_HOPS=1` (`loadEnv`, below).
    */
-  // Digits only, rather than `z.coerce.number()`, which reads " " as 0 and would
-  // turn the audit off on a value meant as blank.
-  AUDIT_DAILY_LIMIT: blankAsAbsent(
+  AUDIT_PUBLIC: blankAsAbsent(
+    z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+  ),
+
+  /**
+   * The Turnstile widget's site key, which the status hands the browser. Public by
+   * design, so not a secret, but required with `AUDIT_PUBLIC`.
+   */
+  TURNSTILE_SITE_KEY: blankAsAbsent(z.string().trim().min(1).optional()),
+
+  /** The Turnstile secret `siteverify` is asked with. Server-side only. */
+  TURNSTILE_SECRET_KEY: blankAsAbsent(z.string().trim().min(1).optional()),
+
+  /**
+   * The hostnames a passing token may have been issued on, comma-separated
+   * (`audit/turnstile.ts` compares siteverify's `hostname` against them).
+   */
+  TURNSTILE_HOSTNAMES: hostnameList('TURNSTILE_HOSTNAMES'),
+
+  /**
+   * The HMAC key each visitor's network is hashed under before their count is stored
+   * (`audit/visitorAllowance.ts`). At least 32 characters, trimmed first, so that a
+   * leaked collection cannot be reversed by trying every IPv4 address (decision 23).
+   */
+  AUDIT_IP_HASH_KEY: blankAsAbsent(
     z
       .string()
-      .regex(/^\d+$/, 'must be a whole number of calls, such as 10')
-      .transform(Number)
-      .pipe(z.number().max(10_000))
+      .trim()
+      .min(32, 'must be at least 32 characters (generate one with openssl rand -hex 32)')
       .optional(),
+  ),
+
+  /**
+   * How many live reads one visitor may make in a UTC day on the public path, or
+   * nothing for 5. Up to 1,000.
+   */
+  // Digits only, rather than `z.coerce.number()`, which reads " " as 0 and would
+  // refuse every visitor on a value meant as blank.
+  AUDIT_READS_PER_IP_PER_DAY: blankAsAbsent(
+    z
+      .string()
+      .regex(/^\d+$/, 'AUDIT_READS_PER_IP_PER_DAY must be a whole number of reads, such as 5')
+      .transform(Number)
+      .pipe(z.number().max(1_000, 'AUDIT_READS_PER_IP_PER_DAY must be at most 1000'))
+      .default(5),
   ),
 
   /**
@@ -201,7 +239,7 @@ const EnvSchema = z.object({
    * so it would meet the production figure on about the fourth run in an hour.
    * `playwright.config.ts` raises it. A deployment has no reason to.
    */
-  // Digits only, for the reason `AUDIT_DAILY_LIMIT` is; at least one, since a
+  // Digits only, for the reason `AUDIT_READS_PER_IP_PER_DAY` is; at least one, since a
   // limit of none would refuse every save with a message about going too fast.
   LABEL_CREATES_PER_HOUR: blankAsAbsent(
     z
@@ -267,38 +305,88 @@ export type Env = z.infer<typeof EnvSchema>
  */
 export const ENV_NAMES = Object.keys(EnvSchema.shape) as readonly (keyof Env)[]
 
+/** The hosts on which production accepts Cloudflare's test keys. */
+const LOCAL_HOSTS: readonly string[] = ['localhost', '127.0.0.1']
+
 /**
- * The schema, and the two rules that span its fields: a production server that can
- * spend the Anthropic key must ask for the audit key, and must state its monthly AI
- * budget. Without either the server refuses to start, as it does without a database,
- * so a deployment cannot go out with the audit open to anyone, or with no figure for
- * what it may spend, by leaving a setting unset. Applied here, not on `EnvSchema`,
- * whose `shape` `ENV_NAMES` reads and a refinement would hide.
+ * The schema, and the rules that span its fields. Applied here, not on `EnvSchema`, whose
+ * `shape` `ENV_NAMES` reads and a refinement would hide. Without any of them the server
+ * refuses to start, as it does without a database, so a deployment cannot go out with the
+ * audit open to anyone, with no figure for what it may spend, or with a bot check that
+ * checks nothing, by leaving a setting unset.
  */
 const CheckedEnvSchema = EnvSchema.superRefine((env, context) => {
-  if (
-    env.NODE_ENV === 'production' &&
-    env.ANTHROPIC_API_KEY !== undefined &&
-    env.AUDIT_API_KEY === undefined
-  ) {
-    context.addIssue({
-      code: 'custom',
-      path: ['AUDIT_API_KEY'],
-      message:
-        'is required in production when ANTHROPIC_API_KEY is set, so that only the people ' +
-        'given the key can spend it on the photo audit',
-    })
+  const issue = (name: keyof Env, message: string) =>
+    context.addIssue({ code: 'custom', path: [name], message })
+  const production = env.NODE_ENV === 'production'
+  const spendsTheKey = production && env.ANTHROPIC_API_KEY !== undefined
+
+  // A production server that can spend the Anthropic key chooses a path, and states its budget.
+  if (spendsTheKey && env.AUDIT_API_KEY === undefined && !env.AUDIT_PUBLIC) {
+    issue(
+      'AUDIT_API_KEY',
+      'is required in production when ANTHROPIC_API_KEY is set, unless AUDIT_PUBLIC is true',
+    )
+  }
+  if (spendsTheKey && env.AI_MONTHLY_BUDGET_USD === undefined) {
+    issue(
+      'AI_MONTHLY_BUDGET_USD',
+      'is required in production when ANTHROPIC_API_KEY is set; 0 turns live reads off',
+    )
+  }
+
+  if (!env.AUDIT_PUBLIC) return
+
+  // The public path, in every environment: exclusive with the key, and complete.
+  if (env.AUDIT_API_KEY !== undefined) {
+    issue(
+      'AUDIT_PUBLIC',
+      'cannot be true while AUDIT_API_KEY is set: choose the public bot-checked path or the key',
+    )
+  }
+  if (env.TURNSTILE_SITE_KEY === undefined) {
+    issue('TURNSTILE_SITE_KEY', 'is required when AUDIT_PUBLIC is true')
+  }
+  if (env.TURNSTILE_SECRET_KEY === undefined) {
+    issue('TURNSTILE_SECRET_KEY', 'is required when AUDIT_PUBLIC is true')
+  }
+  if (env.TURNSTILE_HOSTNAMES.length === 0) {
+    issue('TURNSTILE_HOSTNAMES', 'is required when AUDIT_PUBLIC is true')
+  }
+  if (env.AUDIT_IP_HASH_KEY === undefined) {
+    issue(
+      'AUDIT_IP_HASH_KEY',
+      'is required when AUDIT_PUBLIC is true, at least 32 characters: it keys the hash each ' +
+        "visitor's count is stored under (generate one with openssl rand -hex 32)",
+    )
+  }
+
+  if (!production) return
+
+  // Production's public path: one proxy believed, and no test keys off a local host.
+  if (env.TRUST_PROXY_HOPS !== 1) {
+    issue(
+      'TRUST_PROXY_HOPS',
+      'must be exactly 1 in production when AUDIT_PUBLIC is true: one load balancer stands in ' +
+        'front of the app, so 0 counts the load balancer instead of the visitor, and more than ' +
+        '1 lets a visitor forge an X-Forwarded-For entry',
+    )
+  }
+  // Decision 22. Cloudflare's test keys pass, or fail, every token without asking, so in
+  // production they are accepted only where the only hosts are this machine.
+  const onlyLocal = env.TURNSTILE_HOSTNAMES.every((host) => LOCAL_HOSTS.includes(host))
+  const testKeyMessage =
+    "is one of Cloudflare's test keys, which production accepts only when every " +
+    'TURNSTILE_HOSTNAMES entry is localhost or 127.0.0.1'
+  if (!onlyLocal && env.TURNSTILE_SITE_KEY === TEST_SITE_KEY) {
+    issue('TURNSTILE_SITE_KEY', testKeyMessage)
   }
   if (
-    env.NODE_ENV === 'production' &&
-    env.ANTHROPIC_API_KEY !== undefined &&
-    env.AI_MONTHLY_BUDGET_USD === undefined
+    !onlyLocal &&
+    (env.TURNSTILE_SECRET_KEY === TEST_SECRET_PASSES ||
+      env.TURNSTILE_SECRET_KEY === TEST_SECRET_FAILS)
   ) {
-    context.addIssue({
-      code: 'custom',
-      path: ['AI_MONTHLY_BUDGET_USD'],
-      message: 'is required in production when ANTHROPIC_API_KEY is set; 0 turns live reads off',
-    })
+    issue('TURNSTILE_SECRET_KEY', testKeyMessage)
   }
 })
 

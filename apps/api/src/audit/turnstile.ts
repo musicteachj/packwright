@@ -22,9 +22,9 @@
  * which a failure to ask is read as a pass.
  *
  * **The test secrets are answered here, with no request.** Cloudflare answers them itself, but a
- * development machine and the test suite should never depend on reaching it. Production is to
- * refuse these keys except on a local host; the environment check that does so belongs to the env
- * settings and is not in place yet.
+ * development machine and the test suite should never depend on reaching it. Production refuses
+ * these keys except on a local host: `apps/api/src/env.ts` accepts them in production only when
+ * every `TURNSTILE_HOSTNAMES` entry is localhost or 127.0.0.1.
  *
  * **The local answer is looser than Cloudflare's own.** Its testing page says "Test secret keys:
  * Only accept the dummy token, reject real tokens." This module passes any token within the

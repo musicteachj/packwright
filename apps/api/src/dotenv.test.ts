@@ -40,7 +40,9 @@ describe('loading .env over an environment that already has blanks in it', () =>
         'AI_PACING_MULTIPLIER',
         'ANTHROPIC_API_KEY',
         'AUDIT_API_KEY',
-        'AUDIT_DAILY_LIMIT',
+        'AUDIT_IP_HASH_KEY',
+        'AUDIT_PUBLIC',
+        'AUDIT_READS_PER_IP_PER_DAY',
         'LABEL_CREATES_PER_HOUR',
         'MCP_ALLOWED_HOSTS',
         'MCP_ALLOWED_ORIGINS',
@@ -49,6 +51,9 @@ describe('loading .env over an environment that already has blanks in it', () =>
         'NODE_ENV',
         'PORT',
         'TRUST_PROXY_HOPS',
+        'TURNSTILE_HOSTNAMES',
+        'TURNSTILE_SECRET_KEY',
+        'TURNSTILE_SITE_KEY',
       ].sort(),
     )
   })
