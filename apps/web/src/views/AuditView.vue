@@ -26,7 +26,7 @@
  * The engine does not run here. Findings and the hand-off into the editor are
  * the stage after this one.
  */
-import { computed, nextTick, ref, shallowRef, toRaw, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, shallowRef, toRaw, watch } from 'vue'
 import {
   confirmed,
   GHS_REGIMES,
@@ -35,7 +35,7 @@ import {
   type GhsRegime,
   type LabelStock,
 } from '@packwright/label-core'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   AuditError,
   auditStatus,
@@ -489,6 +489,12 @@ const report = computed(() => {
 })
 
 const router = useRouter()
+const route = useRoute()
+
+// `/audit?sample=1` is the landing page's free path: the sample on arrival, whatever the status says.
+onMounted(() => {
+  if (route.query.sample === '1') void loadSample()
+})
 const store = useLabelDocumentStore()
 
 /**

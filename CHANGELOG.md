@@ -10,6 +10,9 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The landing page links straight to a live audit and to the sample.** Its header offers the editor, "Audit a
+  label photo" and "Try the sample label"; `/audit?sample=1` puts the sample on screen on arrival, whatever the
+  server's status says.
 - **Per-visitor daily reads, counted in the database.** `apps/api/src/audit/visitorAllowance.ts` counts each
   visitor's live reads per UTC day, under an HMAC-SHA256 of their network (IPv6 grouped by /56) rather than the
   address or an unkeyed hash of it, and a TTL index forgets each visitor within two days. The public audit path

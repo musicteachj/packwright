@@ -858,6 +858,28 @@ describe('the sample label', () => {
     return mounted
   }
 
+  it('arrives with the sample on screen when asked', async () => {
+    const fetch = vi.fn(async (url: string) => {
+      if (url === '/api/audit/status') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ available: true, reason: null, siteKey: 'site' }),
+        }
+      }
+      return { ok: true, status: 200, blob: async () => new Blob() }
+    })
+    vi.stubGlobal('fetch', fetch)
+    const router = testRouter('/audit?sample=1')
+    await router.isReady()
+    const wrapper = mount(AuditView, {
+      global: { plugins: [router, createPinia()], stubs: { RouterLink: true } },
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-test="sample-notice"]').exists()).toBe(true)
+    expect(fetch.mock.calls.filter(([url]) => url === '/samples/acetone-label.png')).toHaveLength(1)
+  })
+
   it('shows the photograph and its recorded reading, with nothing accepted', async () => {
     const { wrapper } = await loadTheSample()
     expect(wrapper.find('[data-test="photo-preview"]').exists()).toBe(true)

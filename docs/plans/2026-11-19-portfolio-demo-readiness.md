@@ -861,7 +861,7 @@ Run all checks. Expected: PASS.
 
 Drop `widget.reset()` from `finally`: the "no token is sent twice" test fails. Drop `!sampleOnScreen` from `canRead`: its test fails. Make a `null` status read as available (drop the `status.value === null` branch of `unavailableReason`): "a status that could not be fetched offers the sample, not a read" fails. Remove `https://challenges.cloudflare.com` from `frame-src` in `app.ts`: `the-bot-check.spec.ts` fails. Restore all four.
 
-- [ ] **Step 9: CHANGELOG and commit**
+- [x] **Step 9: CHANGELOG and commit**
 
 CHANGELOG `### Changed`: the audit page drops the key, shows Turnstile only when a read is possible, explains every refusal and offers the sample, and says where a photo goes. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -881,11 +881,11 @@ git commit -m "feat(web): public photo reads with a bot check, and the sample on
 - Consumes: `loadSample()` in `AuditView.vue`.
 - Produces: `/audit?sample=1` loads the sample on arrival.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `LandingView.test.ts` (mount with `testRouter('/')`): `'offers the editor, a live audit and the sample in its header'`: inside `header`, links with text "Open the editor" to `/labels/new`, "Audit a label photo" to `/audit`, and "Try the sample label" to `/audit?sample=1`. `AuditView.test.ts`: `'arrives with the sample on screen when asked'`: mounting at `/audit?sample=1` shows `[data-test="sample-notice"]` with no click, and fetched `/samples/acetone-label.png` exactly once.
 
-- [ ] **Step 2: Run to fail, implement, run to pass**
+- [x] **Step 2: Run to fail, implement, run to pass**
 
 Run: `npx vitest run apps/web/src/views/LandingView.test.ts apps/web/src/views/AuditView.test.ts` (FAIL). In the landing `header`, add a row of three `RouterLink`s styled with `BUTTON`: duplicate the editor link (today in a `section` below, reading "Open the editor →") into the header row as the first of the three, and keep the lower one. In `AuditView.vue`, `onMounted(() => { if (route.query.sample === '1') void loadSample() })` using `useRoute()`. Run again: PASS.
 
