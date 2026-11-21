@@ -1,9 +1,10 @@
 import { createApp } from './app'
-import { databaseAllowance } from './audit/dailyAllowance'
 import { createLedger } from './audit/ledger'
 import { mongoLedgerStore } from './audit/ledgerStore'
 import { usdToMicros } from './audit/pricing'
 import { DEFAULT_AUDIT_LIMITS, type AuditSpend } from './audit/routes'
+import { siteverify } from './audit/turnstile'
+import { databaseVisitorAllowance } from './audit/visitorAllowance'
 import { DEFAULT_LABEL_WRITE_LIMITS } from './labels/labelDocumentRoutes'
 import { DEFAULT_EXPORT_LIMIT } from './labels/routes'
 import { DEFAULT_MCP_LIMITS } from './mcp/routes'
@@ -64,10 +65,28 @@ const app = createApp({
   // place that decides what the route may spend.
   auditLimits: {
     perHour: DEFAULT_AUDIT_LIMITS.perHour,
-    perDay: env.AUDIT_DAILY_LIMIT ?? DEFAULT_AUDIT_LIMITS.perDay,
+    perVisitorPerDay: env.AUDIT_READS_PER_IP_PER_DAY,
+    statusPerMinute: DEFAULT_AUDIT_LIMITS.statusPerMinute,
   },
-  // In the database, so a restart does not start the day again at zero.
-  auditAllowance: databaseAllowance(),
+  // The public path only (decision 1): key mode gets no visitors, so it is never counted per
+  // visitor. `loadEnv` has refused AUDIT_PUBLIC without every setting read here, so the `!`s
+  // state what it checked. The count is in the database, so a restart does not give every
+  // visitor their day again.
+  ...(env.AUDIT_PUBLIC
+    ? {
+        auditTurnstile: {
+          siteKey: env.TURNSTILE_SITE_KEY!,
+          verify: siteverify({
+            secretKey: env.TURNSTILE_SECRET_KEY!,
+            hostnames: env.TURNSTILE_HOSTNAMES,
+          }),
+        },
+        auditVisitors: {
+          allowance: databaseVisitorAllowance(),
+          ipHashKey: env.AUDIT_IP_HASH_KEY!,
+        },
+      }
+    : {}),
   exportLimit: DEFAULT_EXPORT_LIMIT,
   labelWriteLimits: {
     ...DEFAULT_LABEL_WRITE_LIMITS,
@@ -106,6 +125,11 @@ app.listen(env.PORT, () => {
   )
   if (auditSpend !== undefined) {
     console.log(`live photo reads: $${monthlyBudgetUsd} a month (0 means off)`)
+    console.log(
+      env.AUDIT_PUBLIC
+        ? 'live photo reads are public, behind Turnstile'
+        : 'live photo reads need AUDIT_API_KEY',
+    )
   }
   console.log(
     env.MCP_ENABLED

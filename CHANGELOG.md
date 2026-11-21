@@ -10,6 +10,17 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **Per-visitor daily reads, counted in the database.** `apps/api/src/audit/visitorAllowance.ts` counts each
+  visitor's live reads per UTC day, under an HMAC-SHA256 of their network (IPv6 grouped by /56) rather than the
+  address or an unkeyed hash of it, and a TTL index forgets each visitor within two days. The public audit path
+  counts against it.
+- **Turnstile verification on the server, and a CSP that lets the widget load.** `siteverify`
+  (`apps/api/src/audit/turnstile.ts`) posts a token to Cloudflare and passes it only when Cloudflare accepts it,
+  for one of this site's hostnames and for the `audit` action. It fails closed: an empty or oversized token is
+  refused without asking, and a network error, a non-2xx answer, an unreadable reply or a timeout is
+  `unavailable`, never a pass. Cloudflare's test secrets are answered locally. helmet's `script-src` and a new
+  `frame-src` admit `https://challenges.cloudflare.com` and nothing else; `'unsafe-eval'` and `'unsafe-inline'`
+  stay out. The public audit path checks every read with it.
 - **A paced spend ledger for photo reads, in integer micro-dollars.** The public demo gets a fixed monthly AI
   budget, so every read reserves its worst case before it is sent and settles at what its reply says it cost
   (`apps/api/src/audit/ledger.ts`, with the database store in `ledgerStore.ts`; the server meters every live read
@@ -43,6 +54,18 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **Live photo reads are public, behind Turnstile, a per-visitor daily allowance and the budget** (James, 2026-11-18,
+  reversing the 2026-10-18 shared key). With `AUDIT_PUBLIC=true`, `POST /api/audit/ghs` checks its hourly limit, then
+  the `X-Turnstile-Token` with Cloudflare before it reads a byte of the body, then the body, the photograph, the
+  visitor's day (`AUDIT_READS_PER_IP_PER_DAY`, 5, counted under an HMAC keyed by `AUDIT_IP_HASH_KEY`, at least 32
+  characters) and the ledger, in that order. Every refusal is `{ error, reason }` (`apps/api/src/audit/refusals.ts`).
+  `GET /api/audit/status` now answers `{ available, reason, siteKey }`, uncached and limited to 60 a minute, and
+  reads the ledger at most once every five seconds. The key is the owner's path, exclusive with the public one, and
+  is not counted per visitor. Production on the public path requires `TRUST_PROXY_HOPS=1` and refuses Cloudflare's
+  test keys except when every `TURNSTILE_HOSTNAMES` entry is a local host; the compose `prod` profile runs the
+  public path that way, with a dummy key and a budget of 0. An extractor without a ledger is refused when the router
+  is built. `AUDIT_DAILY_LIMIT` and the deployment-wide day count are removed, and the audit body limit is cut from
+  10 MB to 6 MB (5 MiB of base64 for the image).
 - **Every live photo read is reserved and settled against a monthly AI budget, and a visitor who leaves stops the
   call.** The audit route wraps its extractor once in `metered` (`apps/api/src/audit/spend.ts`): a read reserves its
   worst case, $0.112, before the model is called, and is refused with a 429 that points at the sample label when the
@@ -105,6 +128,16 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The public audit path counts every visitor, blames a bad secret on the server, and stops saying available
+  after the day's last read.** Three findings from the review of PR #122. A router built with a Turnstile check and
+  no limits counted no visitor, so every token that passed read until the ledger stopped it; it is now refused when
+  it is built, "A Turnstile check needs limits." A siteverify refusal whose `error-codes` include
+  `invalid-input-secret`, `missing-input-secret`, `bad-request` or `internal-error` was `failed`, so a wrong secret
+  in production would have told every visitor to complete the check again; it is now `unavailable` and logged as an
+  error, and the four codes and their descriptions come from Cloudflare's "Error codes reference", read on
+  2026-11-21. And the status's five-second ledger read is dropped whenever a read reaches the metered call, however
+  it ends, and a ledger read still in flight at that moment is not kept, so a read that took the last reservation is
+  not followed by a status saying another is possible.
 - **One request could stop the server, and one could make it hold 200 MB; body-parser 2.4.0 and Zod 4.6.6 close
   them.** `npm audit --omit=dev` on 2026-11-17 reported advisories published since the security review of
   2026-10-18, and two were reachable, without a key. body-parser 2.3.0 (GHSA-27r3-jxmh-p828) left the decompression
