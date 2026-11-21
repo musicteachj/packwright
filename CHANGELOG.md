@@ -10,6 +10,10 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **Per-visitor daily reads, counted in the database.** `apps/api/src/audit/visitorAllowance.ts` counts each
+  visitor's live reads per UTC day, under an HMAC-SHA256 of their network (IPv6 grouped by /56) rather than the
+  address or an unkeyed hash of it, and a TTL index forgets each visitor within two days. Not yet wired into a
+  route.
 - **Turnstile verification on the server, and a CSP that lets the widget load.** `siteverify`
   (`apps/api/src/audit/turnstile.ts`) posts a token to Cloudflare and passes it only when Cloudflare accepts it,
   for one of this site's hostnames and for the `audit` action. It fails closed: an empty or oversized token is

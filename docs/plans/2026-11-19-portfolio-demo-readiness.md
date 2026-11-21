@@ -634,7 +634,7 @@ Read Cloudflare's server-side validation and testing pages first; record the sit
 
 Run: `npx vitest run apps/api` (PASS). Remove the hostname comparison: the other-host test fails; restore. Remove the local answer for test secrets: "answers Cloudflare's test secrets itself" fails (`fetchImpl` is called); restore. Run `npm run lint && npm run typecheck`. Run `npm run test:e2e`: the existing pages still load under the widened policy. CHANGELOG `### Added`: siteverify with hostname and action, failing closed; the CSP admits Turnstile.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -657,7 +657,7 @@ git commit -m "feat(api): verify Turnstile tokens by host and action, and let th
   - `export function databaseVisitorAllowance(now?: () => Date): VisitorAllowance` (model `AuditVisitorDay`, collection `audit_visitor_days`: `_id: '<YYYY-MM-DD>:<visitor>'`, `reads: number`, `expiresAt: Date` with a TTL index at `expireAfterSeconds: 0`; `expiresAt` is 00:00 UTC two days after the counted day)
   - `export function memoryVisitorAllowance(now?: () => Date): VisitorAllowance`
 
-- [ ] **Step 1: Write the failing tests** (run each behavior against both implementations with `describe.each`; the database one inside `withDatabase()`)
+- [x] **Step 1: Write the failing tests** (run each behavior against both implementations with `describe.each`; the database one inside `withDatabase()`)
 
 - `'takes reads until the limit, then refuses'`: limit 5; five `take` true, the sixth false; `left` goes 5, 4, ... 0.
 - `'counts each visitor apart'`.
@@ -669,11 +669,11 @@ git commit -m "feat(api): verify Turnstile tokens by host and action, and let th
 - `'groups an IPv6 visitor by its /56'`: `2001:db8:0:100::1` and `2001:db8:0:1ff::1` share a /56 but not a /64, and give the same `visitorKey(KEY, ...)`; `2001:db8:0:100::1` and `2001:db8:0:200::1` sit in different /56s and differ; `visitorKey(KEY, '203.0.113.7') !== visitorKey(KEY, '203.0.113.8')`. (Addresses that share a /64 would pass for /64 grouping too, and prove nothing about /56.)
 - `'forgets a visitor within two days'`: the stored `expiresAt` for a read on 2026-11-19 is `2026-11-21T00:00:00.000Z`.
 
-- [ ] **Step 2: Run to fail, implement, run to pass**
+- [x] **Step 2: Run to fail, implement, run to pass**
 
 Run: `npx vitest run apps/api/src/audit/visitorAllowance.test.ts` (FAIL, then PASS). Port the upsert-with-guard and duplicate-key retry from `dailyAllowance.ts:64-86` (its notes explain why the first read of a day is tried twice), keyed by `_id: day:visitor` with `$setOnInsert: { expiresAt }`. `left` reads the document and returns `max(0, limit - reads)`.
 
-- [ ] **Step 3: Mutation test, checks, CHANGELOG**
+- [x] **Step 3: Mutation test, checks, CHANGELOG**
 
 Remove the duplicate-key retry: the "two first reads" test fails (run it a few times if it is timing dependent); restore. Replace the HMAC with an unkeyed `createHash('sha256')`: "gives the same address a different visitor under another key" and "stores no address, and no unkeyed hash of one" fail; restore. Run `npm run lint && npm run typecheck`. CHANGELOG `### Added`: per-visitor daily reads, under a keyed hash of the network, kept two days.
 
