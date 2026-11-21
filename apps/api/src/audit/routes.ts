@@ -197,7 +197,9 @@ export interface AuditRouterOptions {
    * Stated rather than defaulted, because `createApp` builds the same
    * application every time it is called and a limiter that switched itself off
    * by sniffing `NODE_ENV` would break that. Tests that are not about the
-   * limits pass `false`; the ones that are pass small numbers.
+   * limits pass `false`; the ones that are pass small numbers. **Required with
+   * `turnstile`**: the daily figure is what counts each visitor, so a public path
+   * without limits is refused when the router is built.
    */
   limits?: AuditLimits | false | undefined
   /**
@@ -229,6 +231,8 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
   if (turnstile !== undefined && visitors === undefined) {
     throw new Error('A Turnstile check needs a visitor allowance.')
   }
+  // Without limits there is no daily figure to count against, so every pass would read.
+  if (turnstile !== undefined && !limits) throw new Error('A Turnstile check needs limits.')
 
   // Wrapped once, here, so that no path through the handler can reach the model unreserved.
   const extract =
@@ -251,16 +255,22 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
    * Today's room in the ledger, kept for five seconds, so a flood of status checks from
    * many addresses asks the database for the budget at most once every five seconds. A
    * stale answer costs nothing, because the read itself still reserves. A read that
-   * throws is not kept.
+   * throws is not kept. **The kept answer is dropped whenever a read reaches the metered
+   * call**, whatever it ends in, so a read that took the day's last reservation is not
+   * followed by a status saying another is possible. A read refused before that call
+   * reserved nothing and leaves it. A ledger read still in flight when a read drops the
+   * answer is not kept (`ledgerGeneration`), since it may predate that read's reservation.
    */
   let ledgerRead: { at: number; roomMicros: number } | undefined
+  let ledgerGeneration = 0
   const roomTodayMicros = async (ledger: SpendLedger): Promise<number> => {
     const at = now()
     if (ledgerRead !== undefined && at - ledgerRead.at < LEDGER_READ_TTL_MS) {
       return ledgerRead.roomMicros
     }
+    const generation = ledgerGeneration
     const roomMicros = await ledger.roomTodayMicros()
-    ledgerRead = { at, roomMicros }
+    if (generation === ledgerGeneration) ledgerRead = { at, roomMicros }
     return roomMicros
   }
 
@@ -529,6 +539,11 @@ export function createAuditRouter(options: AuditRouterOptions = {}): Router {
         return
       }
       throw error
+    } finally {
+      // The read may have taken the day's last room, so the status asks the ledger again,
+      // and a ledger read already under way is not kept either.
+      ledgerRead = undefined
+      ledgerGeneration += 1
     }
   })
 

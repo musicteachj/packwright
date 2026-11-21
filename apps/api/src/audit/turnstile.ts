@@ -17,9 +17,14 @@
  *
  * **Three outcomes, and only one lets a request through.** `failed` is a token that is wrong
  * (refused, for another host or action, empty, oversized); `unavailable` is Cloudflare that could
- * not be asked (a network error, a non-2xx status, an unreadable reply, a timeout). A caller
- * refuses both, and tells them apart only in what it says to the visitor. There is no outcome in
- * which a failure to ask is read as a pass.
+ * not be asked (a network error, a non-2xx status, an unreadable reply, a timeout), or a refusal
+ * whose `error-codes` blame this server or Cloudflare rather than the token. Those codes come from
+ * the same page's "Error codes reference" table: `missing-input-secret` ("Secret parameter not
+ * provided"), `invalid-input-secret` ("Secret key is invalid or expired") and `internal-error`
+ * ("Internal error occurred"). A wrong secret in production would otherwise tell every visitor to
+ * complete the check again, so these log through `console.error` and not `console.warn`. A caller
+ * refuses both outcomes, and tells them apart only in what it says to the visitor. There is no
+ * outcome in which a failure to ask is read as a pass.
  *
  * **The test secrets are answered here, with no request.** Cloudflare answers them itself, but a
  * development machine and the test suite should never depend on reaching it. Production refuses
@@ -57,6 +62,17 @@ export const TEST_SECRET_PASSES = '1x0000000000000000000000000000000AA'
 export const TEST_SECRET_FAILS = '2x0000000000000000000000000000000AA'
 
 const DEFAULT_TIMEOUT_MS = 5_000
+
+/**
+ * The siteverify error codes that say nothing about the visitor's token: this server's secret is
+ * wrong or missing, or Cloudflare failed (see the module note). Each makes the check
+ * `unavailable`, never `failed`.
+ */
+const SERVER_FAULT_CODES: ReadonlySet<string> = new Set([
+  'invalid-input-secret',
+  'missing-input-secret',
+  'internal-error',
+])
 
 export type TurnstileOutcome = 'passed' | 'failed' | 'unavailable'
 
@@ -123,6 +139,17 @@ export function siteverify(options: {
       reply.action === TURNSTILE_ACTION
     ) {
       return 'passed'
+    }
+
+    const codes = Array.isArray(reply['error-codes']) ? (reply['error-codes'] as unknown[]) : []
+    const serverFault = codes.find(
+      (code): code is string => typeof code === 'string' && SERVER_FAULT_CODES.has(code),
+    )
+    if (reply.success !== true && serverFault !== undefined) {
+      console.error(
+        `turnstile: siteverify could not judge the token (error-codes ${JSON.stringify(codes)})`,
+      )
+      return 'unavailable'
     }
 
     console.warn(

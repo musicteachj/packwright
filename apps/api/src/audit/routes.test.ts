@@ -13,7 +13,7 @@ import {
   EXTRACTION_MODEL,
   type ExtractLabel,
 } from './extract'
-import { createLedger, memoryLedgerStore, type BudgetConfig } from './ledger'
+import { createLedger, memoryLedgerStore, type BudgetConfig, type SpendLedger } from './ledger'
 import { REFUSALS } from './refusals'
 import {
   AUDIT_BODY_LIMIT,
@@ -307,6 +307,29 @@ describe('how the audit router is built', () => {
     expect(() =>
       createAuditRouter({ turnstile: { siteKey: SITE_KEY, verify: vi.fn<VerifyTurnstile>() } }),
     ).toThrow('A Turnstile check needs a visitor allowance.')
+  })
+
+  it('refuses a bot check with no limits, which would count no visitor', () => {
+    const turnstile = { siteKey: SITE_KEY, verify: vi.fn<VerifyTurnstile>() }
+    const visitors = { allowance: memoryVisitorAllowance(), ipHashKey: 'k'.repeat(32) }
+    expect(() => createAuditRouter({ turnstile, visitors, limits: false })).toThrow(
+      'A Turnstile check needs limits.',
+    )
+    expect(() => createAuditRouter({ turnstile, visitors })).toThrow(
+      'A Turnstile check needs limits.',
+    )
+    expect(() =>
+      createApp({
+        enableLogging: false,
+        auditTurnstile: turnstile,
+        auditVisitors: visitors,
+        auditLimits: false,
+      }),
+    ).toThrow('A Turnstile check needs limits.')
+    expect(() =>
+      createApp({ enableLogging: false, auditTurnstile: turnstile, auditVisitors: visitors }),
+    ).toThrow('A Turnstile check needs limits.')
+    expect(() => createAuditRouter({ turnstile, visitors, limits: GENEROUS })).not.toThrow()
   })
 })
 
@@ -647,9 +670,10 @@ const apiError = (
 
 describe('what a read may spend', () => {
   // On the public path, which is the one the budget exists for: key and public modes are
-  // exclusive, and every read here carries a token the check passes.
+  // exclusive, and every read here carries a token the check passes. `GENEROUS` rather than
+  // `false`, which the public path refuses, so only the ledger can refuse a read here.
   const spending = (extract: ExtractLabel, config: BudgetConfig = CONFIG) => {
-    const { app, roomTodayMicros } = publicAudit({ extract, config, auditLimits: false })
+    const { app, roomTodayMicros } = publicAudit({ extract, config, auditLimits: GENEROUS })
     return { app, roomTodayMicros }
   }
 
@@ -1112,20 +1136,30 @@ describe('GET /api/audit/status', () => {
 
   describe('the ledger read behind it', () => {
     /** The router alone, on a clock the test moves. */
-    const routerOn = (roomTodayMicros: () => Promise<number>) => {
+    const routerOn = (
+      roomTodayMicros: () => Promise<number>,
+      overrides: { extract?: ExtractLabel; reserve?: SpendLedger['reserve'] } = {},
+    ) => {
       let at = 1_000_000
       const ledger = createLedger(memoryLedgerStore(), CONFIG, clock)
       const app = express().use(
         '/api/audit',
         createAuditRouter({
-          extract: reading(),
+          extract: overrides.extract ?? reading(),
           limits: false,
-          spend: { ledger: { ...ledger, roomTodayMicros }, reservationMicros: 112_000 },
+          spend: {
+            ledger: { ...ledger, roomTodayMicros, reserve: overrides.reserve ?? ledger.reserve },
+            reservationMicros: 112_000,
+          },
           now: () => at,
         }),
       )
       return {
         check: () => supertest(app).get('/api/audit/status'),
+        read: (body: unknown = A_REQUEST) =>
+          supertest(app)
+            .post('/api/audit/ghs')
+            .send(body as object),
         advance: (ms: number) => {
           at += ms
         },
@@ -1154,6 +1188,70 @@ describe('GET /api/audit/status', () => {
       expect((await check()).body.reason).toBe('budget')
       expect((await check()).body).toEqual({ available: true, reason: null, siteKey: null })
       expect(room).toHaveBeenCalledTimes(2)
+    })
+
+    // The day's last reservation can go to a read made inside the five seconds; a kept answer
+    // would then say available until it expired.
+    it('a read that reaches the metered call drops the kept answer', async () => {
+      const room = vi
+        .fn<() => Promise<number>>()
+        .mockResolvedValueOnce(112_000)
+        .mockResolvedValue(0)
+      const { check, read } = routerOn(room)
+      expect((await check()).body.available).toBe(true)
+      expect((await check()).body.available).toBe(true)
+      expect(room).toHaveBeenCalledTimes(1)
+      expect((await read()).status).toBe(200)
+      expect((await check()).body).toEqual({ available: false, reason: 'budget', siteKey: null })
+      expect(room).toHaveBeenCalledTimes(2)
+    })
+
+    it.each([
+      ['a refused reservation', { reserve: async () => undefined }, 429],
+      ['a declined reading', { extract: failing(new ExtractionDeclined('cyber')) }, 422],
+    ])(
+      'the kept answer is dropped when the metered call throws (%s)',
+      async (_name, overrides, code) => {
+        const room = vi.fn(async () => 2_500_000)
+        const { check, read } = routerOn(room, overrides)
+        expect((await check()).body.available).toBe(true)
+        expect(room).toHaveBeenCalledTimes(1)
+        expect((await read()).status).toBe(code)
+        expect((await check()).body.available).toBe(true)
+        expect(room).toHaveBeenCalledTimes(2)
+      },
+    )
+
+    // A status already waiting on the ledger when a read finishes saw the room from before that
+    // read reserved, and must not store it after the read dropped the kept answer.
+    it('a ledger read that was in flight across a read is not kept', async () => {
+      let release: (micros: number) => void = () => {}
+      const room = vi
+        .fn<() => Promise<number>>()
+        .mockImplementationOnce(
+          () =>
+            new Promise<number>((resolve) => {
+              release = resolve
+            }),
+        )
+        .mockResolvedValue(0)
+      const { check, read } = routerOn(room)
+      const held = check().then((response) => response)
+      await vi.waitFor(() => expect(room).toHaveBeenCalledTimes(1))
+      expect((await read()).status).toBe(200)
+      release(112_000)
+      expect((await held).body.available).toBe(true)
+      expect((await check()).body).toEqual({ available: false, reason: 'budget', siteKey: null })
+      expect(room).toHaveBeenCalledTimes(2)
+    })
+
+    it('a read refused before the metered call keeps the answer', async () => {
+      const room = vi.fn(async () => 2_500_000)
+      const { check, read } = routerOn(room)
+      expect((await check()).body.available).toBe(true)
+      expect((await read({ regime: 'nowhere', image: A_PHOTO })).status).toBe(400)
+      expect((await check()).body.available).toBe(true)
+      expect(room).toHaveBeenCalledTimes(1)
     })
   })
 })

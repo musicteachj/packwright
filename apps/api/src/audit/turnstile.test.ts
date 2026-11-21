@@ -98,6 +98,75 @@ describe('siteverify', () => {
     ).toBe('failed')
   })
 
+  describe("reads a fault on this server's side, or Cloudflare's, as unavailable", () => {
+    const check = { token: TOKEN, remoteIp: undefined }
+
+    it.each(['invalid-input-secret', 'missing-input-secret', 'internal-error'])(
+      '%s is unavailable and logged as an error',
+      async (code) => {
+        const fetchImpl = vi.fn(async () => reply({ success: false, 'error-codes': [code] }))
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        expect(await verifierWith(fetchImpl as unknown as typeof fetch)(check)).toBe('unavailable')
+        expect(error).toHaveBeenCalledTimes(1)
+        expect(String(error.mock.calls[0]![0])).toContain(code)
+        expect(warn).not.toHaveBeenCalled()
+        const logged = JSON.stringify(error.mock.calls)
+        expect(logged).not.toContain(TOKEN)
+        expect(logged).not.toContain(SECRET)
+      },
+    )
+
+    it('is unavailable when a server code arrives beside an ordinary one', async () => {
+      const fetchImpl = vi.fn(async () =>
+        reply({ success: false, 'error-codes': ['invalid-input-response', 'internal-error'] }),
+      )
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect(await verifierWith(fetchImpl as unknown as typeof fetch)(check)).toBe('unavailable')
+      expect(error).toHaveBeenCalledTimes(1)
+    })
+
+    it.each(['invalid-input-response', 'timeout-or-duplicate'])(
+      'an ordinary code (%s) is still failed and logged as a warning',
+      async (code) => {
+        const fetchImpl = vi.fn(async () => reply({ success: false, 'error-codes': [code] }))
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        expect(await verifierWith(fetchImpl as unknown as typeof fetch)(check)).toBe('failed')
+        expect(warn).toHaveBeenCalledTimes(1)
+        expect(error).not.toHaveBeenCalled()
+      },
+    )
+
+    it.each([
+      ['a string', 'internal-error'],
+      ['an object', { code: 'invalid-input-secret' }],
+      ['a number', 7],
+      ['null', null],
+    ])('a malformed error-codes (%s) does not throw and is failed', async (_name, codes) => {
+      const fetchImpl = vi.fn(async () => reply({ success: false, 'error-codes': codes }))
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      expect(await verifierWith(fetchImpl as unknown as typeof fetch)(check)).toBe('failed')
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(error).not.toHaveBeenCalled()
+    })
+
+    it('a reply with success true keeps its handling whatever its codes say', async () => {
+      const passes = vi.fn(async () => reply({ ...okBody, 'error-codes': ['internal-error'] }))
+      expect(await verifierWith(passes as unknown as typeof fetch)(check)).toBe('passed')
+
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const otherHost = vi.fn(async () =>
+        reply({ ...okBody, hostname: 'opendoor.example', 'error-codes': ['internal-error'] }),
+      )
+      expect(await verifierWith(otherHost as unknown as typeof fetch)(check)).toBe('failed')
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(error).not.toHaveBeenCalled()
+    })
+  })
+
   it('fails an empty or oversized token without asking', async () => {
     const fetchImpl = vi.fn(async () => reply(okBody))
     const verify = verifierWith(fetchImpl as unknown as typeof fetch)

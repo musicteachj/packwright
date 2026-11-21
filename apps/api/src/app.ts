@@ -74,7 +74,9 @@ export interface AppOptions {
    * the same application every time it is called and an application that
    * quietly drops its own spending limits under one environment variable is not
    * the same application. `server.ts` passes the defaults; a test that is not
-   * about the quotas passes `false`.
+   * about the quotas passes `false`. Required with `auditTurnstile`, whose
+   * visitors are counted against them: the audit router refuses to be built
+   * with a Turnstile check and no limits.
    */
   auditLimits?: AuditLimits | false | undefined
   /**

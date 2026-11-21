@@ -778,7 +778,7 @@ Move `express.json` above the Turnstile guard: the "before it reads a byte" test
 
 Run all checks, then `docker compose --profile prod config` (it validates the compose file this task changed; expected: exit 0, the `app` environment printed with the values above), then `npm run verify:image`, because the start-up rules the image runs under changed. Expected: PASS. CHANGELOG `### Changed`: live photo reads are public behind Turnstile, a per-visitor daily allowance under a keyed hash (`AUDIT_IP_HASH_KEY`) and the budget (James, 2026-11-18, reversing the 2026-10-18 shared key); production refuses Cloudflare's test keys except on a local host; `AUDIT_DAILY_LIMIT` removed; the body limit cut to 6 MB.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
