@@ -1054,7 +1054,7 @@ git add apps/web playwright.config.ts scripts/verify-build.sh CHANGELOG.md
 git commit -m "fix(web): date the sample, add link previews, and keep /design out of production"
 ```
 
-- [ ] **Step 6: PR checkpoint (stage boundary: hardening)**
+- [x] **Step 6: PR checkpoint (stage boundary: hardening)**
 
 As in Task 5 Step 9, for Tasks 11 to 14 ("Saved labels, server lifecycle, MCP and small fixes for the demo"). Two stops: push, then PR.
 
@@ -1068,23 +1068,23 @@ As in Task 5 Step 9, for Tasks 11 to 14 ("Saved labels, server lifecycle, MCP an
 
 **Interfaces:** none (CI only).
 
-- [ ] **Step 1: Harden `ci.yml`**
+- [x] **Step 1: Harden `ci.yml`**
 
 Add top-level `permissions: contents: read`. Pin, with the version as a trailing comment (Open Door's pins, `open-door/.github/workflows/security.yml:27`, `:78`, `ci.yml:348`): `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1` with `persist-credentials: false`; `actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0` (keep `node-version-file` and `cache: 'npm'`); `actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2`. If the network is available, confirm each with `gh api repos/actions/<name>/commits/<sha> --jq .sha`.
 
-- [ ] **Step 2: Write `security.yml`**
+- [x] **Step 2: Write `security.yml`**
 
 Modeled on `open-door/.github/workflows/security.yml`: on push to `main` and `dev`, pull requests, `schedule: - cron: '0 13 * * 1'` (Mondays, weekly), and `workflow_dispatch`; the same `concurrency` block; `permissions: contents: read`. Job `secrets` (gitleaks 8.30.1, downloaded and checked against its published checksum, `fetch-depth: 0`, `./gitleaks git --redact --verbose --exit-code 1`), copied as is. Job `dependencies`: checkout and setup-node (pinned as above), then `npm audit --audit-level=high` (it reads `package-lock.json`; no install).
 
-- [ ] **Step 3: No `dependabot.yml`**
+- [x] **Step 3: No `dependabot.yml`**
 
 James decided on 2026-11-19: no routine version-update PRs. Dependabot security updates come from the GitHub repository setting (master plan Phase 0), plus this workflow's weekly `npm audit`. Nothing to write in this step; it stays so the step numbers below don't shift.
 
-- [ ] **Step 4: Verify locally**
+- [x] **Step 4: Verify locally**
 
 Run: `npm run format:check` (PASS; Prettier parses the YAML). Run: `grep -nE '^\s*-?\s*uses:' .github/workflows/*.yml | grep -vE '@[0-9a-f]{40} # v'` (expected: no output). Run: `npm audit --audit-level=high` (expected: exit 0; if it fails, stop and show James the advisories: no exceptions are added silently). If `gitleaks` is installed (`gitleaks version`), run `gitleaks git --redact --verbose --exit-code 1` over the full history (expected: no leaks; otherwise CI runs it on the first push).
 
-- [ ] **Step 5: CHANGELOG and commit**
+- [x] **Step 5: CHANGELOG and commit**
 
 CHANGELOG `### Added`: gitleaks over the whole history, a weekly dependency audit, read-only workflow permissions and SHA-pinned actions. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1101,7 +1101,7 @@ git commit -m "ci: scan for leaked secrets, audit dependencies weekly, pin every
 
 **Interfaces:** none.
 
-- [ ] **Step 1: `docs/DESIGN.md` § Phase 8 (`:718-813`)**
+- [x] **Step 1: `docs/DESIGN.md` § Phase 8 (`:718-813`)**
 
 - *Build* (`:723-725`): the Dockerfile is three-stage (`npm ci` and the root `npm run build`; a `deps` stage that installs the API workspace's run-time dependencies alone, `npm ci --omit=dev --omit=optional --workspace=@packwright/api`; ship that `node_modules` and `apps/api/dist`); `label-core` has no build step (tsup bundles it); AWS resources move to `portfolio-infra` (CDK, ECS on one EC2 instance, SSM Parameter Store, not Secrets Manager), and this plan is the Phase 1 record.
 - *Done when* (`:727-733`): liveness `/health/live` for the target group; readiness `/health` for smoke tests; secrets from SSM; the bundle grep includes the Turnstile site key.
@@ -1112,19 +1112,19 @@ git commit -m "ci: scan for leaked secrets, audit dependencies weekly, pin every
 - `/mcp` (`:784-797`): `MCP_ANTHROPIC_CALLS_PER_HOUR` (1,000), both ranges; `WHAT_IS_NOT_CHECKED_URL` now names `main`, and resolves once the Phase 3 release fast-forwards `main` to `dev` (`docs/WHAT-IS-NOT-CHECKED.md` is not on `main` yet).
 - "The live address in the docs" and "Link-preview tags" (`:798-804`): mark done, with the date.
 
-- [ ] **Step 2: `docs/security-review-2026-10-18.md`**
+- [x] **Step 2: `docs/security-review-2026-10-18.md`**
 
 Append "## Addendum, 2026-11-19: public photo reads": James's decision of 2026-11-18 (spec section 10) reverses the shared key of fix 2; what now bounds the spend (Turnstile, per-visitor reads, the ledger, Anthropic's $12 workspace limit); the stale "$0.13 a call" (`:39-41`) is Opus 5 pricing, and a read now costs about $0.02 to $0.04, $0.112 at worst; closed: "a vision call retried by the SDK is billed twice" (`:124`, `maxRetries` 0) and "a vision call keeps running after the client disconnects" (`:126-127`, the abort signal, which `liveExtractor` hands to the SDK in production, and a 60 s timeout below the 120 s idle timeout). Leave the original findings as written.
 
-- [ ] **Step 3: `docs/BACKLOG.md` (frozen: mark entries settled, add none)**
+- [x] **Step 3: `docs/BACKLOG.md` (frozen: mark entries settled, add none)**
 
 In the existing "**Settled <date> ...**" style: the key's `localStorage` and the key lines (`:1220-1226`) settled by the key's removal from the page; "Edge-level limits are phase 8's" (`:946`) settled by the shared WAF in `portfolio-infra`; "The audit route's quotas are per process" (`:982`) narrowed: the per-visitor count and the ledger are in Mongo.
 
-- [ ] **Step 4: README, USE-FROM-YOUR-AI, the old road**
+- [x] **Step 4: README, USE-FROM-YOUR-AI, the old road**
 
 `README.md` § Status (`:85-86`): the public demo is at `https://packwright.jameslittlefield.net` once Phase 3 deploys it; § Running it: "Run the production image locally" (`docker compose --profile prod up -d --build`, port 8080, live reads off, and `npm run verify:image`). `docs/USE-FROM-YOUR-AI.md:3-4`: replace the "Not live yet" notice with the connector address and one line saying it serves once the deployment is live. `docs/plans/2026-10-08-road-to-deployment.md`: a note under the title: "Its deployment parts are superseded by `docs/plans/2026-11-19-portfolio-demo-readiness.md` (2026-11-19) and the portfolio-infra design."
 
-- [ ] **Step 5: Checks, CHANGELOG, commit**
+- [x] **Step 5: Checks, CHANGELOG, commit**
 
 Run: `EM=$(printf '\342\200\224'); git diff dev -- docs README.md | grep '^+' | grep -n "$EM"` (expected: no output, so no new line carries an em dash). CHANGELOG `### Changed` (docs). Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1142,24 +1142,24 @@ git commit -m "docs: record public photo reads, the budget, and the new deployme
 
 **Interfaces:** none. Out of scope (decision 20): `packages/label-core`, MCP tool output, code comments.
 
-- [ ] **Step 1: Write the failing guard test**
+- [x] **Step 1: Write the failing guard test**
 
 `noEmDashes.test.ts`: for every `.vue` file under `apps/web/src`, take the `<template>` block, strip HTML comments, and expect no em dash (write it in the test as the JavaScript escape for U+2014 (backslash, u, 2014), never as the literal character); the failure lists `file:line`. Also assert `apps/web/index.html` outside comments has none.
 
-- [ ] **Step 2: Run it to see it fail**
+- [x] **Step 2: Run it to see it fail**
 
 Run: `npx vitest run apps/web/src/noEmDashes.test.ts`
 Expected: FAIL with about 40 template lines listed (42 on 2026-11-19). The guard covers templates only; about 39 more lines in `.vue` script blocks are found by Step 3's grep.
 
-- [ ] **Step 3: Replace them**
+- [x] **Step 3: Replace them**
 
 Rewrite each with a colon, a comma, parentheses or two sentences, reading each in place (no blind substitution). Keep en dashes in ranges (U+2013, as in the landing page's magnification range). Find the script-side strings with `EM=$(printf '\342\200\224')`, then `grep -rn "$EM" apps/web/src --include='*.ts' --include='*.vue'` (for `.vue` files, the lines outside `<template>`: string literals in the script blocks, such as `REGIME_NAMES`) and `grep -rnE "(error|message): .*$EM" apps/api/src`, skipping comments. Update the tests that assert the old strings.
 
-- [ ] **Step 4: Run all checks**
+- [x] **Step 4: Run all checks**
 
 Run all checks. Expected: PASS.
 
-- [ ] **Step 5: CHANGELOG and commit**
+- [x] **Step 5: CHANGELOG and commit**
 
 CHANGELOG `### Changed`: visitor-facing text no longer uses em dashes. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash

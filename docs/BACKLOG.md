@@ -950,6 +950,10 @@ is held to 256 KB. A per-route daily cap on the one route that spends a key is s
 enforce, but refusing traffic cheaply belongs at the edge — an ALB rule or a WAF — and that is deployment work.
 The routes are unauthenticated, which is also the edge's job.
 
+**Settled 2026-11-22, by the shared firewall in `portfolio-infra`:** the deployment design of 2026-11-18 (section
+5.5) puts a web ACL of three rate-based rules in front of the load balancer, one of them scoped to `/api/audit/*`, the
+PDF exports and `/mcp`, and the public audit checks Turnstile before it reads a photo (`docs/DESIGN.md`, Phase 8).
+
 **Narrowed 2026-10-18 for `/mcp`, by security fix 4:** a request carries one message, so what `/mcp` leaves
 uncounted is at most one 25 KB answer a request, and no subscription is held open
 (`docs/security-review-2026-10-18.md`, finding 5).
@@ -986,6 +990,10 @@ the figure that was set. Nothing is wrong today — this runs as a single contai
 `label-core` through tsup is for — and a shared store is a dependency and a Redis to run, which is not worth
 adding before there is a second task. Worth remembering as part of any move to more than one, alongside the
 edge-level limits in "Edge-level limits are phase 8's".
+
+**Narrowed 2026-11-22:** the daily cap is retired, and what stops a deployment spending its key, the per-visitor
+daily reads and the spend ledger, is in the database (`audit/visitorAllowance.ts`, `audit/ledgerStore.ts`). Only the
+hourly limiters are still per process.
 
 **Three dev-only advisories remain.** `vitest` and `@vitest/mocker` (a path traversal in the mocker's redirect
 handling) and `esbuild` (arbitrary file read via the dev server, on Windows). None ships: `esbuild` is only
@@ -1224,6 +1232,12 @@ read, the first read goes without a key and counts against the hour before the f
 `fetch` cannot put in a header reads as a generic failure; the environment's cross-field check is skipped while
 another field fails, so a missing audit key is reported a deploy late; the key is required even where
 `AUDIT_DAILY_LIMIT=0` has turned the audit off; and line-wrapped base64 is refused as "not base64".
+
+**Settled 2026-11-22 for the key's lines, by its removal from the page on 2026-11-21 (`eec06e7`):** the audit
+page has no key field, keeps no key and removes one an older build stored, so no key is kept, sent unseen, missing
+from a first read before its field appears, or sent with a character a header cannot carry. The other lines stand, and the one about a key required where the audit is off
+survives in a new form: production still requires `AUDIT_API_KEY`, unless `AUDIT_PUBLIC` is true, with
+`AI_MONTHLY_BUDGET_USD=0`.
 
 **From security fix 3's medium review (2026-10-18), one line each:** two tabs writing the held-label list in the same
 instant can drop the newer token, since each is a read and a write of one `localStorage` key; `GET /api/labels` has no

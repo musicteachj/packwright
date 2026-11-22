@@ -163,3 +163,30 @@ One line each, by the bar. `docs/BACKLOG.md` points here rather than repeating t
   it starts as the JSON API alone and logs that; `npm run verify:build` and Phase 8's checks are what catch an image
   built without the client.
 - **CORS.** None is mounted, by design (`app.ts`).
+
+## Addendum, 2026-11-22: public photo reads
+
+James's decision of 2026-11-18 (section 10 of the portfolio-infra deployment design) reverses the shared key of fix
+2: the public demo reads photographs for anyone, with no key. The findings above stand as written; this records what
+now bounds the spend, and what the change closed.
+
+**What bounds the spend.** A Cloudflare Turnstile check runs on each read before its body is read, and is refused
+for a token minted on another hostname or for another action. Each visitor, counted under an HMAC-SHA256 of their
+network keyed by `AUDIT_IP_HASH_KEY`, gets 5 live reads a UTC day. A paced ledger in the database reserves each
+read's worst case before it is sent, against `AI_MONTHLY_BUDGET_USD` (set to 10 for the demo), with no day allowed more than 3 times an
+even share of what is left of the month, or $0.50 if that is more, and settles at what the reply says it cost. And the
+Anthropic workspace that owns the key has its own monthly limit of $12, the one bound that holds if the
+application's do not. `TRUST_PROXY_HOPS=1` is required in production on this path, for the reason the requirement
+above gives.
+
+**What a read costs.** The "$0.13 a call" above is Opus 5 pricing. The extraction now runs on Opus 5.5, at $4 per
+million input tokens and $20 per million output: the recorded read (2,537 input tokens, 488 output) cost about $0.02,
+a larger photograph about $0.04, and the reservation, the worst case, is $0.112 (8,000 input tokens and 4,000 output;
+`apps/api/src/audit/pricing.ts` and `extract.ts`).
+
+**Closed by the change:**
+- "A vision call retried by the SDK is billed twice and counted once" (Recorded, no work). `VISION_MAX_RETRIES` is
+  0: a failed read is not sent again.
+- "A vision call keeps running after the client disconnects" (Recorded, no work). The read's abort signal follows the
+  visitor's connection, and `liveExtractor` hands it to the SDK, so a closed tab stops the call; its reservation
+  stays counted. A read also times out at 60 s, below the load balancer's 120 s idle timeout.

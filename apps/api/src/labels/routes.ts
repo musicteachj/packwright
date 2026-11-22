@@ -96,7 +96,7 @@ export function createLabelRouter(
             limit: limit.perHour,
             standardHeaders: 'draft-7',
             legacyHeaders: false,
-            message: { error: 'Too many exports — try again later' },
+            message: { error: 'Too many exports. Try again later.' },
           }),
         ]
 

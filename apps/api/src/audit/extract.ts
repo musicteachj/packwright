@@ -211,7 +211,7 @@ function classifyCodes(
     return [
       {
         code: 'GHS_STATEMENT_TABLE_EMPTY',
-        message: `This build carries no verified ${regime} statement text, so none of the ${codes.length} code(s) read from this label can be carried into one here — the saved-label and export routes admit only codes with verified text. That is a gap in this application, not a defect on the label.`,
+        message: `This build carries no verified ${regime} statement text, so none of the ${codes.length} code(s) read from this label can be carried into one here: the saved-label and export routes admit only codes with verified text. That is a gap in this application, not a defect on the label.`,
         path,
       },
     ]

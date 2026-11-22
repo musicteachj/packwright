@@ -1138,7 +1138,9 @@ describe('the nutrient readout beside each field', () => {
     const protein = wrapper.find('[data-testid="field-food-nf-readout-protein"]')
     expect(protein.exists()).toBe(true)
     expect(protein.text()).toContain('5g')
-    expect(protein.text()).not.toContain('%')
+    // No figure: the readout says so in words, as `no %DV`, rather than a number.
+    expect(protein.text()).not.toMatch(/\d\s*%/)
+    expect(protein.text()).toContain('no %DV')
 
     // A nutrient that does print one, so the assertion above is about protein
     // rather than about the column being empty.

@@ -358,16 +358,16 @@ describe('a change of market', () => {
     expect(store.ghsData.precautionaryStatementCodes).toBeUndefined()
     // Said under each statements section, where the codes went missing from.
     expect(wrapper.get('[data-statements-set-aside="hazard"]').text()).toBe(
-      'H225 is set aside: this build has no verified US — OSHA HazCom wording for it. ' +
-        'Switch the market back to EU — CLP and it returns. It is held in this form only, so changing the label type or opening another label lets it go.',
+      'H225 is set aside: this build has no verified US OSHA HazCom wording for it. ' +
+        'Switch the market back to EU CLP and it returns. It is held in this form only, so changing the label type or opening another label lets it go.',
     )
     expect(wrapper.get('[data-statements-set-aside="precautionary"]').text()).toBe(
-      'P210 is set aside: this build has no verified US — OSHA HazCom wording for it. ' +
-        'Switch the market back to EU — CLP and it returns. It is held in this form only, so changing the label type or opening another label lets it go.',
+      'P210 is set aside: this build has no verified US OSHA HazCom wording for it. ' +
+        'Switch the market back to EU CLP and it returns. It is held in this form only, so changing the label type or opening another label lets it go.',
     )
     // And once through the announcer, since the switch happened away from both.
     expect(wrapper.get('[aria-live]').text()).toContain(
-      'H225, P210 are set aside: this build has no verified US — OSHA HazCom wording for them.',
+      'H225, P210 are set aside: this build has no verified US OSHA HazCom wording for them.',
     )
 
     await wrapper.find('#field-ghs-regime').setValue('eu-clp')

@@ -82,8 +82,11 @@ with the re-checks after each fix beside it.
 
 ## Status
 
-Phases 1 to 7 of [`docs/DESIGN.md`](docs/DESIGN.md) are complete, and phase 8, deployment, is next. Until then
-there is no public address.
+Phases 1 to 7 of [`docs/DESIGN.md`](docs/DESIGN.md) are complete, and phase 8, deployment, is under way. The
+public demo will be at `https://packwright.jameslittlefield.net` once the portfolio deployment, which has its own
+phases, reaches its Phase 3, deploy and go-live; Packwright's part of its Phase 1 is
+[`docs/plans/2026-11-19-portfolio-demo-readiness.md`](docs/plans/2026-11-19-portfolio-demo-readiness.md). Until
+then there is no public address.
 
 - **Labels:** GS1 retail (UPC-A), GHS chemical (EU CLP, and US OSHA in part) and US FDA food labels, each drawn to
   millimeter geometry, rendered to SVG and PDF from one resolved layout, and judged on what was drawn. The editor at
@@ -130,10 +133,18 @@ npm runs a workspace script from that workspace. At the root it is silently igno
 reports healthy to its load balancer and then fails on the first save, which is a worse failure than refusing to
 start.
 
-**The photo audit needs `ANTHROPIC_API_KEY`**, and without it answers 503 while everything else runs. In
-production the server also requires `AUDIT_API_KEY` whenever the Anthropic key is set, and `AUDIT_DAILY_LIMIT`
-caps the day's calls. `apps/api/.env.example` explains each variable, including the ones a deployment behind a
-load balancer must set.
+**The photo audit needs `ANTHROPIC_API_KEY`**, and without it answers 503 while everything else runs. Every live
+read is also paid from a monthly budget, `AI_MONTHLY_BUDGET_USD`, which production requires with the key and which
+is 0, live reads off, wherever it is unset outside production. In production the server takes one of two paths:
+`AUDIT_PUBLIC=true`, open to anyone behind a Cloudflare Turnstile bot check and a per-visitor daily allowance, or
+`AUDIT_API_KEY`, for the owner alone. `apps/api/.env.example` explains each variable, including the ones a
+deployment behind a load balancer must set.
+
+**Run the production image locally** with `docker compose --profile prod up -d --build`. It serves at
+`http://localhost:8080`, on its own database (`packwright_prodlike`), on the public audit path with Cloudflare's test
+keys, and with live reads off: its budget is fixed at 0, so nothing in it can spend money. `npm run verify:image`
+builds the image and checks it the way production will run it: no `.env` inside, running as `node`, no key baked
+into the client, liveness and readiness, a PDF export, and a clean stop within 30 s.
 
 The tests need none of this. `npm run verify:build` and the browser suite start their own `mongod` through
 `mongodb-memory-server`, and `npm test` needs no database at all, so a clean checkout with no Docker runs the whole

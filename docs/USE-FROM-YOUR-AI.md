@@ -1,7 +1,7 @@
 # Use Packwright from your AI
 
-> **Not live yet.** Packwright has no public address until it is deployed (phase 8 of `docs/DESIGN.md`). Until
-> then, `https://packwright.jameslittlefield.net/mcp` below is where it will be, not where it is.
+> **The connector's address is `https://packwright.jameslittlefield.net/mcp`.** It serves once the deployment is
+> live.
 
 Packwright can be added to Claude, or to any assistant that speaks the Model Context Protocol, as a set of tools.
 Ask your assistant about a label and it can have Packwright draw the label, run the rules this website runs, and

@@ -30,7 +30,7 @@ const SECTIONS: Record<LabelType, { name: string; blurb: string }> = {
   'gs1-retail': {
     name: 'GS1 retail',
     blurb:
-      'Judged against the resolved geometry — the symbol as drawn, at the size and position it ' +
+      'Judged against the resolved geometry: the symbol as drawn, at the size and position it ' +
       'was drawn, not as it was requested.',
   },
   'ghs-chemical': {

@@ -10,6 +10,18 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **Secret scanning, a weekly dependency audit, and CI that cannot write.** A new `security.yml` runs gitleaks
+  8.30.1 over the whole history, its download checked against a SHA-256 written in the workflow (read from the
+  release's checksums file on 2026-11-22 and matched by the tarball and by GitHub's digest of the asset), not
+  against a checksums file a tampered release could replace with it, and
+  `npm audit --audit-level=high` over the lockfile, on every push to `main` and `dev` and on every pull request.
+  It also runs weekly on Mondays, so an advisory against an unchanged dependency still surfaces, and on demand,
+  but GitHub runs both of those only from the default branch, so they start once the release brings the file to
+  `main`. gitleaks found one value in the history, the 32-character `AUDIT_IP_HASH_KEY` fixture in
+  `env.test.ts`, which is not a secret; `.gitleaksignore` lists that one finding by fingerprint. Both workflows
+  now run with a read-only token, check out without keeping the credentials, and pin every action by commit with
+  its version beside it (checkout v7.0.1, setup-node v7.1.0, upload-artifact v7.0.2, Open Door's vetted pins,
+  each confirmed against its tag on 2026-11-22), because a tag can be moved to other code and a commit cannot.
 - **Link-preview tags.** `index.html` carries Open Graph tags (title, the page's own description, absolute
   `og:url` and `og:image`, the image's 1200 x 630 size and alt text) and `twitter:card` `summary_large_image`,
   held by `apps/web/src/linkPreview.test.ts`.
@@ -66,6 +78,30 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **Visitor-facing text no longer uses em dashes.** Every `.vue` template, the strings in script blocks a visitor
+  reads (the market names, the US food rail's options and exemption names, the severity heading, the export
+  confirmation, the audit's hints), and the server messages that reach a person (the export and `/mcp` rate limits,
+  and the audit's note on codes it cannot carry) now use a colon, a comma, parentheses or two sentences, each
+  rewritten where it stands. The markets read "EU CLP" and "US OSHA HazCom" (the audit's "European Union CLP" and
+  "United States OSHA HazCom"), a percentage the panel does not print shows "no %DV", and the rate limits say "Try
+  again later." as a sentence. En dashes in ranges stay. `apps/web/src/noEmDashes.test.ts` holds every template and
+  `index.html` to it, and the code of every script block and non-test `.ts` file under `apps/web/src`, read
+  with TypeScript's own scanner so comments are skipped exactly, and names the file and line it finds.
+  `label-core`'s finding text and regulatory tables, MCP tool output, the extraction prompt and code comments are
+  left as they are.
+- **The docs say what the public demo now is, and how it deploys.** `docs/DESIGN.md` Phase 8 describes the
+  three-stage image and moves the AWS resources to `portfolio-infra` (ECS on one EC2 instance, SSM Parameter Store
+  rather than Secrets Manager); the target group checks `/health/live`, and the bundle grep looks for the Turnstile
+  site key too. "The audit key and the daily audit limit" gives way to "Public photo reads": Turnstile, 5 reads a
+  visitor a day, the paced ledger and the workspace's own limit, with `AI_MONTHLY_BUDGET_USD=0` as the off switch.
+  The saved-label, `/mcp`, quota and edge entries are brought to 7 days and 1,000 labels, the 1,000-an-hour
+  Anthropic allowance, the database-held counts and the shared web ACL, and the old deployment section is marked
+  superseded. `docs/security-review-2026-10-18.md` gains an addendum on what bounds the spend now and the two
+  recorded items the change closed (SDK retries, a read outliving its visitor), and says its $0.13 a call was
+  Opus 5 pricing.
+  `docs/BACKLOG.md`, still frozen, marks three entries settled or narrowed and gains none. The README names the
+  demo's address and how to run the production image locally, the connector page drops its "Not live yet"
+  notice, and the old road to deployment points at the plan that replaced it.
 - **`/mcp` recognizes both of Anthropic's outbound ranges, and its shared allowance is a setting.** The ranges are
   `160.79.104.0/21` and `153.61.208.0/20` (Anthropic's IP addresses page, read 2026-11-22), sharing one bucket.
   That bucket defaults to 1,000 calls an hour, down from 5,000, and `MCP_ANTHROPIC_CALLS_PER_HOUR` (1 to 100,000)
@@ -176,6 +212,19 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **No high or critical advisory left in the lockfile.** The new audit gate failed on its first run on
+  2026-11-22: 22 advisories, two critical and four high, all in tools that run while building or testing and
+  none in the image, which `verify:image` holds to the server's own packages. `npm audit fix` moved the lockfile
+  alone, and no range this repository declares changed: `shell-quote` 1.9.0 to 1.12.0 (GHSA-pqg4-j6r4-53mv, critical) under
+  `concurrently` 10.0.4 to 10.0.7, `brace-expansion` to 1.1.22, 2.1.8 and 5.0.13 (GHSA-q2hr-2g5m-vwhr,
+  GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p), `follow-redirects` 1.16.0 to 1.16.3 (GHSA-q3jh-wrc6-jgq8),
+  `source-map-js` 1.2.1 to 1.2.4 (GHSA-68fv-2mgg-jv7q) and Vite 8.2.1 to 8.3.8 (GHSA-9jrq-w75r-8gcw and five
+  more, its dev server's), with `rolldown` 1.2.3 to 1.2.19 and `postcss` 8.5.26 to 8.5.33 behind them, and typescript-eslint
+  8.67.0 to 8.73.0, whose own new range takes the top-level `minimatch` from 10.2.6 to 11.0.9. The nine left are
+  moderate or low, and `npm audit fix` left them in place: Vitest's mocker,
+  esbuild's Windows dev server, `glob`, `minimatch` and `editorconfig` under `js-beautify`, all build or test
+  tools, and `@hono/node-server`'s `serveStatic`, which the MCP adapter never calls (it takes only
+  `getRequestListener`), and whose patched 2.x is outside the adapter's declared range.
 - **The sample's notice gives the date it was really read.** The sample reading was re-recorded on 2026-11-18
   (`569fdce`), and the notice still said 2026-09-15.
 - **The design catalog is hidden in production builds.** `/design` is a workbench for the components, not a

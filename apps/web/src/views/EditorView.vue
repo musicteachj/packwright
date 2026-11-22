@@ -557,7 +557,7 @@ async function exportPdf() {
   // prevented; the warning simply makes sure the finding was seen.
   if (store.hasBlocking) {
     const proceed = window.confirm(
-      'This label has a blocking finding — it is non-compliant as drawn. Export anyway?',
+      'This label has a blocking finding: it is non-compliant as drawn. Export anyway?',
     )
     if (!proceed) return
   }
@@ -773,7 +773,7 @@ async function exportPdf() {
         </p>
         <p v-if="exportError" class="text-danger max-w-md text-xs">{{ exportError }}</p>
         <p v-else-if="cannotExport" class="text-chrome-300 max-w-md text-xs">
-          Nothing to export — part of the label could not be drawn.
+          Nothing to export: part of the label could not be drawn.
         </p>
         <!--
           After the pair above, not between them. Inserted in the middle, these

@@ -1,5 +1,8 @@
 # The road to MCP and deployment
 
+> **Its deployment parts are superseded** by `docs/plans/2026-11-19-portfolio-demo-readiness.md` (2026-11-19) and
+> the portfolio-infra deployment design.
+
 > Agreed with James on 2026-10-08. A one-page order of work, not a detailed plan: each stage is planned in
 > detail when it starts, as every stage so far has been. Merging stays James's; every commit, push and PR needs
 > his yes.

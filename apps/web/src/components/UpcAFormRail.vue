@@ -282,7 +282,7 @@ useAnnouncement('gtin-scan', () => {
       <MeasurementField
         id="field-bar-height"
         v-model="barHeightMm"
-        label="Bar height, mm — blank uses the specification’s minimum"
+        label="Bar height, mm (blank uses the specification’s minimum)"
         min="1"
         step="0.5"
       />

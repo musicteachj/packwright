@@ -74,7 +74,7 @@ const magnification = ref(1)
         <span class="numeric text-chrome-200">TextField</span>,
         <span class="numeric text-chrome-200">MeasurementField</span>,
         <span class="numeric text-chrome-200">SelectField</span> and
-        <span class="numeric text-chrome-200">CheckboxField</span> — imported, not recreated.
+        <span class="numeric text-chrome-200">CheckboxField</span>, imported rather than recreated.
       </p>
       <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
         It renders the awkward variants on purpose, not only the pretty ones: a label that is named
@@ -82,8 +82,8 @@ const magnification = ref(1)
         <span class="numeric text-chrome-200">v-model</span> to bind at all. Every one of those
         shapes has a real call site in
         <span class="numeric text-chrome-200">UsFoodFormRail.vue</span> or
-        <span class="numeric text-chrome-200">UpcAFormRail.vue</span> — the last rails left to
-        migrate — so this page has to meet its hardest consumer before either of them does.
+        <span class="numeric text-chrome-200">UpcAFormRail.vue</span>, the last rails left to
+        migrate, so this page has to meet its hardest consumer before either of them does.
       </p>
     </header>
 
@@ -95,7 +95,7 @@ const magnification = ref(1)
           <span class="numeric text-chrome-200">edge</span> for a 2px rule, and a
           <span class="numeric text-chrome-200">surface</span> for a wash. Word and icon come from
           <span class="numeric text-chrome-200">severity.ts</span>'s
-          <span class="numeric text-chrome-200">SEVERITY_STYLES</span> — nothing here is a second
+          <span class="numeric text-chrome-200">SEVERITY_STYLES</span>: nothing here is a second
           copy of the glyphs.
         </p>
       </div>
@@ -140,9 +140,9 @@ const magnification = ref(1)
               this mid-word, with no ellipsis to say more was cut.
             -->
         <SelectField id="design-container-shape" v-model="containerShape" label="Container shape">
-          <option value="rectangular">Rectangular — one face is the principal display panel</option>
-          <option value="cylindrical">Cylindrical — 40% of height × circumference</option>
-          <option value="other">Other shape — 40% of total surface</option>
+          <option value="rectangular">Rectangular: one face is the principal display panel</option>
+          <option value="cylindrical">Cylindrical: 40% of height × circumference</option>
+          <option value="other">Other shape: 40% of total surface</option>
         </SelectField>
 
         <!--
@@ -166,7 +166,7 @@ const magnification = ref(1)
           v-model="ingredientOnePercent"
           label="Ingredient 1 percent by weight"
           label-hidden
-          description="The field above this line has a label — you just cannot see it. Its name is
+          description="The field above this line has a label. You just cannot see it. Its name is
                 “Ingredient 1 percent by weight”, which a screen reader reads and the column heading
                 supplies for everyone else."
         />
@@ -221,7 +221,7 @@ const magnification = ref(1)
             />
           </template>
           <template #description>
-            {{ magnification.toFixed(2) }}x — GS1's 80–200% range for a UPC-A symbol.
+            {{ magnification.toFixed(2) }}x, within GS1's 80–200% range for a UPC-A symbol.
           </template>
         </FormField>
       </div>

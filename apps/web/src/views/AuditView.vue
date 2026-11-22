@@ -67,8 +67,8 @@ import { INPUT, LABEL } from '../components/formStyles'
 import SelectField from '../components/ui/SelectField.vue'
 
 const REGIME_NAMES: Readonly<Record<GhsRegime, string>> = {
-  'eu-clp': 'European Union — CLP',
-  'us-osha': 'United States — OSHA HazCom',
+  'eu-clp': 'European Union CLP',
+  'us-osha': 'United States OSHA HazCom',
 }
 
 const video = shallowRef<HTMLVideoElement | null>(null)
@@ -681,7 +681,7 @@ const canRead = computed(
       >
         <span v-if="camera.message.value !== null">{{ camera.message.value }}</span>
         <span v-else-if="camera.photo.value !== null" data-test="photo-taken">
-          A photograph is ready — {{ camera.photo.value.widthPx }} ×
+          A photograph is ready: {{ camera.photo.value.widthPx }} ×
           {{ camera.photo.value.heightPx }} px.
         </span>
         <span v-else>No photograph yet.</span>
@@ -796,8 +796,8 @@ const canRead = computed(
         class="border-danger text-danger max-w-2xl border-l-2 pl-4 text-sm"
         role="alert"
       >
-        <span class="font-semibold">Error</span> — {{ readingError }}
-        <span v-if="readingDetail.length > 0"> — {{ readingDetail.join('; ') }}</span>
+        <span class="font-semibold">Error:</span> {{ readingError }}
+        <span v-if="readingDetail.length > 0"> ({{ readingDetail.join('; ') }})</span>
       </p>
     </section>
 
@@ -848,7 +848,7 @@ const canRead = computed(
             class="border-chrome-400 text-chrome-300 border-l border-dashed pl-3 text-xs"
             :data-unusable="row.key"
           >
-            {{ row.unusable.join(', ') }} — {{ row.unusableReason }}. It cannot be carried into a
+            {{ row.unusable.join(', ') }}: {{ row.unusableReason }}. It cannot be carried into a
             label here, and accepting this field takes the rest only.
           </p>
 
@@ -968,7 +968,7 @@ const canRead = computed(
         class="border-danger text-danger border-l-2 pl-4 text-sm"
         role="alert"
       >
-        <span class="font-semibold">Error</span> — {{ report.reason }}
+        <span class="font-semibold">Error:</span> {{ report.reason }}
       </p>
 
       <template v-else>
@@ -988,7 +988,7 @@ const canRead = computed(
         >
           <p class="text-chrome-200 text-xs">
             These findings describe a label built from what you confirmed above, drawn by this
-            application — not the photograph itself. Anything you did not confirm is not in it.
+            application, not the photograph itself. Anything you did not confirm is not in it.
           </p>
           <p
             v-if="report.unconfirmed.length > 0"
