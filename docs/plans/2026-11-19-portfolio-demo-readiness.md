@@ -981,7 +981,7 @@ Run all checks, then `npm run verify:image`. Expected: PASS.
 
 Remove `configureTimeouts(server)`'s `headersTimeout` line: its test fails. Remove `closeAllConnections`: the never-ending request test times out. Remove the database-name regex: its env cases fail. Restore all three.
 
-- [ ] **Step 6: CHANGELOG and commit**
+- [x] **Step 6: CHANGELOG and commit**
 
 CHANGELOG `### Added` and `### Changed`: `/health/live`; keep-alive 130 s; graceful stop; a pool of 10; the database name required; production refuses to start without its client build. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -999,11 +999,11 @@ git commit -m "feat(api): liveness, keep-alive past the load balancer, and a gra
 **Interfaces:**
 - Produces: `DEFAULT_MCP_LIMITS = { anthropicPerHour: 1_000, perClientPerHour: 60 }`; env `MCP_ANTHROPIC_CALLS_PER_HOUR?: number` (digits, 1 to 100,000); `isFromAnthropic` recognizes `160.79.104.0/21` and `153.61.208.0/20`; `WHAT_IS_NOT_CHECKED_URL = 'https://github.com/musicteachj/packwright/blob/main/docs/WHAT-IS-NOT-CHECKED.md'`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `routes.test.ts`, extend the range table at `:227`: `['153.61.207.255', false]`, `['153.61.208.0', true]`, `['153.61.223.255', true]`, `['153.61.224.0', false]`, `['::ffff:153.61.208.1', true]`; the shared bucket test also shares one bucket across both ranges. `expect(DEFAULT_MCP_LIMITS.anthropicPerHour).toBe(1000)`. `env.test.ts`: `MCP_ANTHROPIC_CALLS_PER_HOUR` parses `'1000'`, refuses `'0'` and `'many'`. `server.test.ts`: the URL points at `main`.
 
-- [ ] **Step 2: Run to fail, implement, run to pass**
+- [x] **Step 2: Run to fail, implement, run to pass**
 
 Run: `npx vitest run apps/api/src/mcp apps/api/src/env.test.ts` (FAIL). Re-read Anthropic's IP addresses page and record both outbound ranges and the date in the note above `ANTHROPIC_OUTBOUND`; add the subnet; rewrite the `anthropicPerHour` note (the spec's trade-off: about 0.2 vCPU at worst, and the shared claude.ai allowance can be used up five times faster). `server.ts`: `limits: { ...DEFAULT_MCP_LIMITS, anthropicPerHour: env.MCP_ANTHROPIC_CALLS_PER_HOUR ?? DEFAULT_MCP_LIMITS.anthropicPerHour }`. Run again: PASS.
 

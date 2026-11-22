@@ -63,6 +63,11 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **`/mcp` recognizes both of Anthropic's outbound ranges, and its shared allowance is a setting.** The ranges are
+  `160.79.104.0/21` and `153.61.208.0/20` (Anthropic's IP addresses page, read 2026-11-22), sharing one bucket.
+  That bucket defaults to 1,000 calls an hour, down from 5,000, and `MCP_ANTHROPIC_CALLS_PER_HOUR` (1 to 100,000)
+  sets it. The "what is not checked" link points at `main`.
+
 - **Keep-alive outlasts the load balancer, the Mongo pool is 10, and production refuses a bad start.** Node keeps
   an idle connection 130 s (headers 131 s), past the load balancer's 120 s, so the balancer always closes first.
   The connection pool is 10, not the driver's 100. `MONGODB_URI` must name its database in every environment,

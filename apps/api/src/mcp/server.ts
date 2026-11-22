@@ -58,11 +58,13 @@ import { z } from 'zod'
 /**
  * Where a reader finds what this tool does not check.
  *
- * On `dev` because the document is not on `main` yet: `main` has not been
- * released to since it was written. Phase 8's release moves this to `main`.
+ * On `main`, which production is deployed from. The document is on `dev` and reaches
+ * `main` with the release that precedes deployment (Phase 3 fast-forwards `main` to
+ * `dev`), so until then this link answers 404; the release, not this constant, is
+ * what makes it resolve.
  */
 export const WHAT_IS_NOT_CHECKED_URL =
-  'https://github.com/musicteachj/packwright/blob/dev/docs/WHAT-IS-NOT-CHECKED.md'
+  'https://github.com/musicteachj/packwright/blob/main/docs/WHAT-IS-NOT-CHECKED.md'
 
 /**
  * Said with every judgement, whatever it found.

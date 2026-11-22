@@ -191,6 +191,20 @@ describe('loadEnv', () => {
     expect(load({ ANTHROPIC_API_KEY: 'sk-ant-x' }).AUDIT_API_KEY).toBeUndefined()
   })
 
+  it('reads the shared Anthropic allowance as a whole number from 1 to 100,000, absent when blank', () => {
+    expect(load({ MCP_ANTHROPIC_CALLS_PER_HOUR: '1000' }).MCP_ANTHROPIC_CALLS_PER_HOUR).toBe(1000)
+    expect(load({ MCP_ANTHROPIC_CALLS_PER_HOUR: '' }).MCP_ANTHROPIC_CALLS_PER_HOUR).toBeUndefined()
+    expect(() => load({ MCP_ANTHROPIC_CALLS_PER_HOUR: '0' })).toThrow(
+      /MCP_ANTHROPIC_CALLS_PER_HOUR/,
+    )
+    expect(() => load({ MCP_ANTHROPIC_CALLS_PER_HOUR: 'many' })).toThrow(
+      /MCP_ANTHROPIC_CALLS_PER_HOUR/,
+    )
+    expect(() => load({ MCP_ANTHROPIC_CALLS_PER_HOUR: '100001' })).toThrow(
+      /MCP_ANTHROPIC_CALLS_PER_HOUR/,
+    )
+  })
+
   it('reads the hourly label creates as a whole number of at least one, absent when blank', () => {
     expect(load({ LABEL_CREATES_PER_HOUR: '1000' }).LABEL_CREATES_PER_HOUR).toBe(1000)
     expect(load({ LABEL_CREATES_PER_HOUR: '' }).LABEL_CREATES_PER_HOUR).toBeUndefined()

@@ -46,6 +46,7 @@ describe('loading .env over an environment that already has blanks in it', () =>
         'LABEL_CREATES_PER_HOUR',
         'MCP_ALLOWED_HOSTS',
         'MCP_ALLOWED_ORIGINS',
+        'MCP_ANTHROPIC_CALLS_PER_HOUR',
         'MCP_ENABLED',
         'MONGODB_URI',
         'NODE_ENV',

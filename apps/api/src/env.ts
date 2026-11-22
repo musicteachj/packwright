@@ -260,6 +260,22 @@ const EnvSchema = z.object({
   ),
 
   /**
+   * Tool calls an hour shared by everything arriving from Anthropic's outbound
+   * ranges, or nothing for `DEFAULT_MCP_LIMITS.anthropicPerHour` (1,000).
+   *
+   * Digits only, for the reason `LABEL_CREATES_PER_HOUR` is; at least one, since
+   * none would refuse every call from claude.ai.
+   */
+  MCP_ANTHROPIC_CALLS_PER_HOUR: blankAsAbsent(
+    z
+      .string()
+      .regex(/^\d+$/, 'must be a whole number of calls, such as 1000')
+      .transform(Number)
+      .pipe(z.number().min(1).max(100_000))
+      .optional(),
+  ),
+
+  /**
    * How many proxies sit in front of this server, or nothing for none.
    *
    * The per-client quotas read it (the audit route's, the exports', the saved-label

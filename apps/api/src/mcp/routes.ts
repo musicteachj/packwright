@@ -65,7 +65,7 @@ export function messagesIn(body: unknown): number {
 
 export interface McpLimits {
   /**
-   * Tool calls an hour shared by everything arriving from Anthropic's outbound range.
+   * Tool calls an hour shared by everything arriving from Anthropic's outbound ranges.
    *
    * claude.ai, Claude Desktop, mobile and Cowork call a connector "from
    * Anthropic's infrastructure" (Claude's connector testing docs, read
@@ -85,27 +85,37 @@ export interface McpLimits {
 /**
  * Starting points, to be tuned after launch (decision 2 in the MCP plan).
  *
- * A check costs a fraction of a millisecond and no money — 0.26 ms for the
- * conformant food label, measured 2026-10-10 — so the shared tier is set for a
- * crowd rather than for cost.
+ * A check costs a fraction of a millisecond and no money (0.26 ms for the
+ * conformant food label, measured 2026-10-10), so no figure here is set for
+ * cost. The shared tier is 1,000 an hour, down from 5,000: at worst that is
+ * about 0.2 vCPU spent on checks, and the trade-off is that one caller can use
+ * up the shared claude.ai allowance five times faster than before (the
+ * portfolio deployment design, section 5.4, Packwright). It is a setting,
+ * `MCP_ANTHROPIC_CALLS_PER_HOUR`, so it can be raised or lowered without a
+ * release.
  */
-export const DEFAULT_MCP_LIMITS: McpLimits = { anthropicPerHour: 5_000, perClientPerHour: 60 }
+export const DEFAULT_MCP_LIMITS: McpLimits = { anthropicPerHour: 1_000, perClientPerHour: 60 }
 
 /**
- * Anthropic's outbound addresses: `160.79.104.0/21`, IPv4 only.
+ * Anthropic's outbound addresses: `160.79.104.0/21` and `153.61.208.0/20`,
+ * IPv4 only.
  *
- * From <https://platform.claude.com/docs/en/api/ip-addresses>, "Outbound IP
- * addresses", re-read 2026-10-10 — "the stable IP addresses that Anthropic uses
- * for outbound requests (for example, when making MCP tool calls to external
- * servers)". The IPv6 range on that page is inbound and does not belong here.
+ * Source: "IP addresses", <https://platform.claude.com/docs/en/api/ip-addresses>
+ * (the old docs.anthropic.com URL answers 301 to it), "Outbound IP addresses",
+ * read on 2026-11-22: "the stable IP addresses that Anthropic uses for outbound
+ * requests (for example, when making MCP tool calls to external servers)". The
+ * page lists no outbound IPv6 range. Its inbound API ranges (`160.79.104.0/23`,
+ * `153.61.224.0/22`, `2607:6bc0::/48`) and its phased-out single addresses are
+ * not outbound and do not belong here.
  */
 const ANTHROPIC_OUTBOUND = new BlockList()
 ANTHROPIC_OUTBOUND.addSubnet('160.79.104.0', 21, 'ipv4')
+ANTHROPIC_OUTBOUND.addSubnet('153.61.208.0', 20, 'ipv4')
 
 /**
- * Whether a caller's address is in Anthropic's outbound range.
+ * Whether a caller's address is in one of Anthropic's outbound ranges.
  *
- * The address is Express's `request.ip`, which honours `TRUST_PROXY_HOPS` the
+ * The address is Express's `request.ip`, which honors `TRUST_PROXY_HOPS` the
  * way the other limiters' does. A dual-stack listener reports an IPv4 caller as
  * `::ffff:160.79.104.1`, which is unwrapped first.
  */

@@ -102,7 +102,11 @@ const app = createApp({
         mcp: {
           allowedHosts: env.MCP_ALLOWED_HOSTS,
           allowedOrigins: env.MCP_ALLOWED_ORIGINS,
-          limits: DEFAULT_MCP_LIMITS,
+          limits: {
+            ...DEFAULT_MCP_LIMITS,
+            anthropicPerHour:
+              env.MCP_ANTHROPIC_CALLS_PER_HOUR ?? DEFAULT_MCP_LIMITS.anthropicPerHour,
+          },
         },
       }
     : {}),
