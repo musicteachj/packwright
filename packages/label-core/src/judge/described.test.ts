@@ -370,7 +370,7 @@ describe('text set at the default type sizes, on a label printed elsewhere', () 
     expect(frame).toEqual([
       expect.stringMatching(/^The GHS02 symbol \(flame\) is not checked\. /),
       'At the size Packwright draws it when none is given, the GHS02 pictogram, set at a point, ' +
-        'is 32.53 mm across — wider than a 30.00 mm label, so it does not fit on the label ' +
+        'is 32.53 mm across, wider than a 30.00 mm label, so it does not fit on the label ' +
         'however the label is arranged.',
     ])
   })
@@ -387,7 +387,7 @@ describe('text set at the default type sizes, on a label printed elsewhere', () 
       .filter((one) => one.elementId === `${GHS_ELEMENTS.pictograms}-GHS02`)
       .flatMap((one) => one.reasons.map((reason) => reason.text))
     expect(frame).toContain(
-      'The GHS02 pictogram, set at a point, is 65.05 mm across — wider than a 50.00 mm label, ' +
+      'The GHS02 pictogram, set at a point, is 65.05 mm across, wider than a 50.00 mm label, ' +
         'so it does not fit on the label however the label is arranged.',
     )
     expect(frame.filter((text) => text.includes('is not printed'))).toEqual([])

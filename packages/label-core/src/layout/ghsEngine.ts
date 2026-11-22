@@ -506,8 +506,8 @@ export function layOutGhsLabel(request: GhsLayoutRequest): ResolvedLayout {
               tooLarge:
                 (data.pictogramSideMm === undefined
                   ? `At the size Packwright draws it when none is given, the ${code} ` +
-                    `pictogram, set at a point, is ${mmText(boxMm)} across — `
-                  : `The ${code} pictogram, set at a point, is ${mmText(boxMm)} across — `) +
+                    `pictogram, set at a point, is ${mmText(boxMm)} across, `
+                  : `The ${code} pictogram, set at a point, is ${mmText(boxMm)} across, `) +
                 (tooWide && tooTall
                   ? `larger than a ${mmText(stock.widthMm)} by ${mmText(stock.heightMm)} label`
                   : tooWide

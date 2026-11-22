@@ -78,6 +78,18 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The engine's own text and what `/mcp` sends no longer use em dashes either.** Citation titles (the three net
+  quantity rules, the two SI exemptions, the GS1 magnification table and the pictogram frame rule), finding and
+  layout messages, the label schema's field descriptions, the symbology descriptions, and `/mcp`'s instructions and
+  its notice that a report without failures is not a statement of compliance now use a colon, a comma, parentheses
+  or two sentences, each read in place. Finding codes and citation references are unchanged; only wording moves,
+  those seven titles included. Verbatim regulatory text keeps its dashes: the five CLP Annex V hazard class names in
+  `ghs/classification.ts` stay as the annex prints them. `noEmDashes.test.ts` now reads the code of every non-test
+  file in `packages/label-core/src` (outside `rules/fixtures/`) and what `/mcp` sends
+  (`apps/api/src/mcp/server.ts` and `routes.ts`), catching an em dash written as an escape as well as one typed,
+  with an allowlist of those five names and the font tables' em dash glyph, each with its reason. An entry spares
+  only a string that is exactly it, and a second check fails when an entry is no longer a whole string in its file,
+  word for word.
 - **Visitor-facing text no longer uses em dashes.** Every `.vue` template, the strings in script blocks a visitor
   reads (the market names, the US food rail's options and exemption names, the severity heading, the export
   confirmation, the audit's hints), and the server messages that reach a person (the export and `/mcp` rate limits,

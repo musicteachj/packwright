@@ -129,7 +129,7 @@ describe('what the report says it did not judge', () => {
       expect(declined.citation.reference).toBeTruthy()
       // Written for somebody in a browser, so it names what to do and not where
       // a file lives in this repository. Found by review.
-      expect(declined.reason).toContain('classify the substance')
+      expect(declined.reason).toContain('Classify the substance')
       expect(declined.reason).not.toContain('docs/')
     }
   })

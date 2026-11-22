@@ -99,7 +99,7 @@ export function normaliseScannedGtin(raw: string): ScannedGtin {
       scanned,
       reason:
         `The check digit for ${narrowed.gtin} is wrong, so this is not a valid GTIN. It was ` +
-        'read as printed rather than corrected — a transposed digit is a different product, ' +
+        'read as printed rather than corrected: a transposed digit is a different product, ' +
         'not a typo to fix.',
     }
   }
@@ -127,7 +127,7 @@ function narrow(scanned: string): ScannedGtin {
       ok: false,
       scanned,
       reason:
-        'This is a GTIN-13 — a 13-digit identifier in its own right, not a GTIN-12 with a digit ' +
+        'This is a GTIN-13: a 13-digit identifier in its own right, not a GTIN-12 with a digit ' +
         'in front. Dropping one would name a different product. A UPC-A cannot carry it.',
     }
   }

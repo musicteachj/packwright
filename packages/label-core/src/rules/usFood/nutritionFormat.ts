@@ -159,8 +159,8 @@ const judgedAsDrawn: UsFoodRule = {
         // The area that decided it, which is the floor where the label or panel is larger
         // than the figure declared — a review found this quoting the declaration anyway.
         (floor.sqInches > availableSqInches
-          ? `A package of at least ${floor.sqInches.toFixed(1)} in² — its ${floor.what}, more ` +
-            `than the ${availableSqInches.toFixed(1)} in² declared — `
+          ? `A package of at least ${floor.sqInches.toFixed(1)} in² (its ${floor.what}, more ` +
+            `than the ${availableSqInches.toFixed(1)} in² declared) `
           : `A package of ${availableSqInches.toFixed(1)} in² `) +
           `may present its nutrition information in ${FORMAT_NAME[format]}.`,
         US_FOOD_ELEMENTS.nutritionPanel,

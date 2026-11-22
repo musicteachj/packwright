@@ -141,8 +141,8 @@ const EXEMPTIONS: Record<
       'food served, sold or used in establishments that serve food for immediate human ' +
       'consumption, or sold by a distributor who principally sells to them',
     unchecked:
-      `which of (j)(2)’s five cases applies and the conditions each attaches — for the first ` +
-      `three, ${NO_CLAIMS}`,
+      `which of (j)(2)’s five cases applies and the conditions each attaches (for the first ` +
+      `three, ${NO_CLAIMS})`,
   },
   // (j)(3) is five conditions, all of which must hold, under "Except as provided in
   // § 101.11", with the no-claims proviso on the last.
@@ -204,8 +204,8 @@ const EXEMPTIONS: Record<
     grants: 'food sold from bulk containers',
     unchecked:
       'that the nutrition information is displayed to consumers on the bulk container’s ' +
-      'labeling plainly in view, or as (a)(2) provides — a condition on the display, not on ' +
-      'this label',
+      'labeling plainly in view, or as (a)(2) provides. That is a condition on the display, ' +
+      'not on this label',
   },
   'low-volume': {
     citation: untitled(EXEMPTION, '21 CFR 101.9(j)(18)'),
@@ -513,8 +513,8 @@ function eggCarton(claimed: UsFoodEggCartonExemption, { data }: UsFoodContext): 
         '101.9’s order, rounding and percentages, and it must declare any second column the ' +
         'package owes. Not checked here: that the lid is designed to conform to the shape of the ' +
         'eggs, that the information is clearly presented where it is declared to be, and how it ' +
-        'is laid out there — its type sizes, a second column’s headings and separation, and ' +
-        'whether a second column states every figure the first does — none of which this engine ' +
+        'is laid out there (its type sizes, a second column’s headings and separation, and ' +
+        'whether a second column states every figure the first does), none of which this engine ' +
         'draws.',
       US_FOOD_ELEMENTS.principalDisplayPanel,
       EGG_CARTON,
@@ -1199,7 +1199,7 @@ export const usFoodServingSizeRule: UsFoodRule = {
         usFoodServingSizeRule,
         FDA_SERVING_SIZE_MET,
         `The panel declares a serving size of ${panel.servingSize.trim()}. Whether that amount ` +
-          'follows the reference amount in §101.12(b) is not checked — that table is not carried ' +
+          'follows the reference amount in §101.12(b) is not checked: that table is not carried ' +
           'here.',
         US_FOOD_ELEMENTS.nutritionServingSize,
       ),

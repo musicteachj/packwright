@@ -44,7 +44,7 @@ export const GHS_PICTOGRAM_COMPLETE = 'GHS_PICTOGRAM_COMPLETE'
 const US: Citation = {
   authority: 'OSHA',
   reference: '29 CFR 1910.1200, Appendix C, C.2.3.1',
-  title: 'Pictograms — a frame without a hazard symbol is not a pictogram',
+  title: 'Pictograms: a frame without a hazard symbol is not a pictogram',
 }
 
 const EU: Citation = {

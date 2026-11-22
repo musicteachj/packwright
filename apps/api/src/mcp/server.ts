@@ -75,8 +75,8 @@ export const WHAT_IS_NOT_CHECKED_URL =
  */
 export const NOT_A_STATEMENT_OF_COMPLIANCE =
   'A report with no failures is not a statement that this label is compliant. It says only that ' +
-  'the checks this tool performs found nothing. Some requirements are not checked at all — see ' +
-  '`whatIsNotChecked` — and the checks listed under `declined` did not run on this label.'
+  'the checks this tool performs found nothing. Some requirements are not checked at all (see ' +
+  '`whatIsNotChecked`), and the checks listed under `declined` did not run on this label.'
 
 /**
  * Said instead when the engine declined to draw the label.
@@ -515,8 +515,8 @@ export function checkGtin(gtin: string): z.infer<typeof CheckGtinOutput> {
  * followed so faithfully that 43 of 72 answers asked and checked nothing.
  */
 const INSTRUCTIONS =
-  'Packwright checks packaging labels — GS1 retail barcodes (UPC-A), GHS chemical hazard labels ' +
-  '(EU CLP; US OSHA in part) and US FDA food labels — against the rules it implements, by drawing ' +
+  'Packwright checks GS1 retail barcodes (UPC-A), GHS chemical hazard labels ' +
+  '(EU CLP; US OSHA in part) and US FDA food labels against the rules it implements, by drawing ' +
   'the label and measuring what was drawn. Every finding carries the citation of the provision it ' +
   'enforces; quote those rather than recalling citations. A report with no failures is not a ' +
   'statement of compliance: always tell the user which checks did not run and what is not checked. ' +
@@ -556,7 +556,7 @@ export function createPackwrightMcpServer(): McpServer {
         '`labelType` selects the shape of `data`. `stock` is the printed label’s width and ' +
         'height in millimeters. If the user has not said how big the label is, leave it out ' +
         'rather than guess: everything that does not depend on the size is still checked, and ' +
-        'the checks that do are listed under `declined`, asking for it — tell the user, and ' +
+        'the checks that do are listed under `declined`, asking for it. Tell the user, and ' +
         'check again once they give it. The answer’s `stockUsed` says the size used, and ' +
         'whether the margin was assumed, or that no size was given. ' +
         'Packwright draws no pictogram artwork and a GHS label’s input carries no type sizes, so ' +

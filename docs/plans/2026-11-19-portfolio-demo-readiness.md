@@ -50,7 +50,7 @@
 17. **`/audit?sample=1` loads the sample on arrival,** so the landing page's "Try the sample label" is one click into sample data.
 18. **No privacy page exists,** so the processors and retention copy goes in two short notes: on `/audit` (photo reads, bot check, logs, and MongoDB Atlas, which holds the per-network count and the budget ledger) and on `/labels` (7 days, MongoDB Atlas, AWS).
 19. **CI pins reuse Open Door's vetted SHAs** (`actions/checkout` v7.0.1, `actions/setup-node` v7.1.0, `actions/upload-artifact` v7.0.2), a major bump from v5 and v4.
-20. **Em dashes are replaced in `apps/web` templates, visitor-visible strings in `apps/web/src`, `index.html`, and server error strings that reach the page.** `packages/label-core` (finding text, regulatory tables) and code comments are left alone: changing regulatory text is forbidden, and rule text triggers the `high` review ladder.
+20. **Em dashes are replaced in `apps/web` templates, visitor-visible strings in `apps/web/src`, `index.html`, and server error strings that reach the page.** `packages/label-core` (finding text, regulatory tables) and code comments are left alone: changing regulatory text is forbidden, and rule text triggers the `high` review ladder. **Narrowed by Task 17b (James, 2026-11-22):** `label-core`'s own wording (citation titles, finding and layout messages, schema descriptions) and the strings `/mcp` sends follow the rule too, under a `high` review; verbatim regulatory text and code comments are still left alone.
 21. **Local production run:** a `prod` profile on the existing `docker-compose.yml` (`docker compose --profile prod up`), so a plain `docker compose up -d` still starts only Mongo. It uses its own database, `packwright_prodlike`, so the new 7-day TTL index is built fresh rather than colliding with the development database's 30-day one.
 22. **Cloudflare's test keys** (James, 2026-11-19). `siteverify` answers Cloudflare's test secrets itself, with no network call: the always-pass secret `1x0000000000000000000000000000000AA` gives `passed`, the always-fail secret `2x0000000000000000000000000000000AA` gives `failed`. Production (`NODE_ENV=production`) refuses the test site key `1x00000000000000000000AA` or either test secret **unless every `TURNSTILE_HOSTNAMES` entry is `localhost` or `127.0.0.1`**, so the local production-like compose stack (Task 8, Task 18) still starts while a deployed host cannot run on keys that pass every visitor. The controller records this in the spec's decisions log; this plan does not edit the spec.
 23. **New setting `AUDIT_IP_HASH_KEY`** (James, 2026-11-19): the HMAC key of decision 10, at least 32 characters, required whenever `AUDIT_PUBLIC` is true, in any environment. The compose `prod` profile carries a fixed local dummy, commented as local only; the real value goes into SSM in Phase 3.
@@ -1170,6 +1170,47 @@ git commit -m "style: take em dashes out of visitor-facing text"
 - [ ] **Step 6: PR checkpoint (stage boundary: CI, docs and copy)**
 
 As in Task 5 Step 9, for Tasks 15 to 17. Two stops: push, then PR.
+
+---
+
+### Task 17b: Em dashes out of `label-core`'s visitor-visible text and the MCP server's strings
+
+Added by James on 2026-11-22, after #125 merged, and done before Task 18. It narrows decision 20: the text a visitor
+reads on `/rules`, in the findings rail and from `/mcp` follows the same writing rule as the app's own copy, while
+verbatim regulatory text stays exactly as its source prints it.
+
+**Files:**
+- Modify: visitor-visible strings in `packages/label-core/src` (rule titles, finding messages, layout messages) and
+  the strings `apps/api/src/mcp/server.ts` sends; `apps/web/src/noEmDashes.test.ts`; every unit and browser test
+  that pins a changed string; `CHANGELOG.md`
+- Leave alone: verbatim regulatory text (the hazard class descriptions in `ghs/classification.ts`, any H- or
+  P-statement wording, any other string quoted from a source), code comments, and `rules/fixtures/`
+
+**Interfaces:** none. Finding codes and citation references are unchanged; message wording and citation titles change.
+
+- [x] **Step 1: Extend the guard**
+
+`noEmDashes.test.ts`: a case over the code of every non-test `.ts` file in `packages/label-core/src` (outside
+`rules/fixtures/`) and over `apps/api/src/mcp/server.ts`, read with the same TypeScript scanner, with a short
+allowlist of the verbatim regulatory strings by file and the exact text, each with its source. Run it and see it
+fail on the strings to rewrite.
+
+- [x] **Step 2: Rewrite them**
+
+Each with a colon, a comma, parentheses or two sentences, read in place. Before changing any string, confirm it is
+the app's own wording and not quoted from a regulation or standard; a quoted string goes on the allowlist instead.
+Update the tests that pin the old text.
+
+- [ ] **Step 3: Run all checks, mutation test, CHANGELOG, commit**
+
+All checks. Mutation: an em dash put back in one rule title and one finding message fails the guard at that line;
+an allowlisted string changed fails the allowlist's own check. CHANGELOG `### Changed`. This touches rule text, so
+the review is `/code-review high` on the uncommitted diff (CLAUDE.md's ladder). Stop: show the diff summary and the
+proposed commit message, and wait for James's explicit OK before committing.
+
+- [ ] **Step 4: PR into `dev`**
+
+Two stops: push, then PR. Task 18 starts after it merges.
 
 ---
 

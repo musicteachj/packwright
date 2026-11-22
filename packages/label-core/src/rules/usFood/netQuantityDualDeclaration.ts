@@ -78,7 +78,7 @@ const EXEMPTION: Record<
     citation: {
       authority: 'FDA',
       reference: '15 U.S.C. 1453(a)(3)(A)(ii)',
-      title: 'Random packages — SI declaration permitted, not required',
+      title: 'Random packages: SI declaration permitted, not required',
     },
     why: 'this is a random package',
   },
@@ -86,7 +86,7 @@ const EXEMPTION: Record<
     citation: {
       authority: 'FDA',
       reference: '15 U.S.C. 1453(a)(6)',
-      title: 'Foods packaged at the retail store level — SI requirement does not apply',
+      title: 'Foods packaged at the retail store level: SI requirement does not apply',
     },
     why: 'this food is packaged at the retail store level',
   },

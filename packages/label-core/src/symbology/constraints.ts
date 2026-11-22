@@ -39,7 +39,7 @@ const CONSTRAINTS: readonly SymbologyConstraints[] = [
   {
     id: 'CODE128',
     label: 'Code 128',
-    description: 'Most versatile — supports the full ASCII set',
+    description: 'Most versatile: supports the full ASCII set',
     numericOnly: false,
     payloadLength: { min: 1, max: 80 },
     appendsCheckDigit: false,
@@ -48,7 +48,7 @@ const CONSTRAINTS: readonly SymbologyConstraints[] = [
   {
     id: 'EAN-13',
     label: 'EAN-13',
-    description: 'European Article Number — 12 digits plus a check digit',
+    description: 'European Article Number: 12 digits plus a check digit',
     numericOnly: true,
     payloadLength: { min: 12, max: 12 },
     appendsCheckDigit: true,
@@ -57,7 +57,7 @@ const CONSTRAINTS: readonly SymbologyConstraints[] = [
   {
     id: 'EAN-8',
     label: 'EAN-8',
-    description: 'Compact EAN for small packs — 7 digits plus a check digit',
+    description: 'Compact EAN for small packs: 7 digits plus a check digit',
     numericOnly: true,
     payloadLength: { min: 7, max: 7 },
     appendsCheckDigit: true,
@@ -66,7 +66,7 @@ const CONSTRAINTS: readonly SymbologyConstraints[] = [
   {
     id: 'UPC-A',
     label: 'UPC-A',
-    description: 'Universal Product Code — 11 digits plus a check digit',
+    description: 'Universal Product Code: 11 digits plus a check digit',
     numericOnly: true,
     payloadLength: { min: 11, max: 11 },
     appendsCheckDigit: true,
@@ -84,7 +84,7 @@ const CONSTRAINTS: readonly SymbologyConstraints[] = [
   {
     id: 'ITF-14',
     label: 'ITF-14',
-    description: 'Interleaved 2 of 5 — shipping cartons, 13 digits plus a check digit',
+    description: 'Interleaved 2 of 5: shipping cartons, 13 digits plus a check digit',
     numericOnly: true,
     payloadLength: { min: 13, max: 13 },
     appendsCheckDigit: true,
@@ -93,7 +93,7 @@ const CONSTRAINTS: readonly SymbologyConstraints[] = [
   {
     id: 'GS1-128',
     label: 'GS1-128',
-    description: 'Code 128 carrying GS1 Application Identifiers — logistics labels',
+    description: 'Code 128 carrying GS1 Application Identifiers: logistics labels',
     numericOnly: false,
     payloadLength: { min: 1, max: 80 },
     appendsCheckDigit: false,
@@ -102,7 +102,7 @@ const CONSTRAINTS: readonly SymbologyConstraints[] = [
   {
     id: 'CODE39',
     label: 'Code 39',
-    description: 'Alphanumeric — uppercase letters and digits',
+    description: 'Alphanumeric: uppercase letters and digits',
     numericOnly: false,
     payloadLength: { min: 1, max: 40 },
     appendsCheckDigit: false,
@@ -111,7 +111,7 @@ const CONSTRAINTS: readonly SymbologyConstraints[] = [
   {
     id: 'MSI',
     label: 'MSI',
-    description: 'Modified Plessey — inventory and shelf marking',
+    description: 'Modified Plessey: inventory and shelf marking',
     numericOnly: true,
     payloadLength: { min: 1, max: 12 },
     appendsCheckDigit: false,

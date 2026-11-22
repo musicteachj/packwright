@@ -5372,8 +5372,8 @@ describe('the second column, reported in the right direction', () => {
 
     const match = incompleteFinding(data)
     expect(match, 'a row declared in one column only must be reported').toBeDefined()
-    expect(match!.message).toMatch(/second column only — Iron/)
-    expect(match!.message).not.toMatch(/first column only — Iron/)
+    expect(match!.message).toMatch(/second column only \(Iron\)/)
+    expect(match!.message).not.toMatch(/first column only \(Iron\)/)
   })
 
   it('names the second column when the first is the one carrying the figure', () => {
@@ -5396,7 +5396,7 @@ describe('the second column, reported in the right direction', () => {
 
     const match = incompleteFinding(data)
     expect(match, 'a row declared in one column only must be reported').toBeDefined()
-    expect(match!.message).toMatch(/first column only — Iron/)
+    expect(match!.message).toMatch(/first column only \(Iron\)/)
   })
 })
 
