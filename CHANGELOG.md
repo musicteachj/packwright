@@ -224,6 +224,11 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **One em dash a visitor still saw.** The findings rail's heading over results that are not verdicts wrote its em
+  dash as the character reference `&#8212;`, which the browser renders as the character but the em dash guard did
+  not read as one. Task 18's walk through the production image found it on 2026-11-22. The heading now reads "Not
+  verdicts: no provision is being applied", and `noEmDashes.test.ts` catches an em dash written as `&#8212;`,
+  `&#x2014;` or `&mdash;` in a template or `index.html`, as well as the character.
 - **No high or critical advisory left in the lockfile.** The new audit gate failed on its first run on
   2026-11-22: 22 advisories, two critical and four high, all in tools that run while building or testing and
   none in the image, which `verify:image` holds to the server's own packages. `npm audit fix` moved the lockfile

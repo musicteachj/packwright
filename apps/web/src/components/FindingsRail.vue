@@ -344,7 +344,7 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
         v-if="uncertifiable.length || (declined ?? []).length"
         class="text-chrome-400 border-chrome-800 mt-4 border-t px-4 pt-3 pb-1 text-[10px] font-semibold tracking-wider uppercase"
       >
-        Not verdicts &#8212; no provision is being applied
+        Not verdicts: no provision is being applied
       </p>
 
       <section

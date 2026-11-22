@@ -48,11 +48,24 @@ function withoutComments(text: string): string {
   return text.replace(/<!--[\s\S]*?-->/g, (comment) => comment.replace(/[^\n]/g, ''))
 }
 
-/** `file:line` for each line of `text` (which starts at `firstLine`) that holds an em dash. */
+/**
+ * An em dash written as a character reference, which the browser renders as one:
+ * `&#8212;`, `&#x2014;` (either case of x, with or without leading zeros) or
+ * `&mdash;` (entity names are case-sensitive, so `&MDash;` is not one). A numeric
+ * one renders even without its closing semicolon, so the digits are bounded instead. One got past
+ * this guard in `FindingsRail.vue` until the production-image check of 2026-11-22.
+ */
+const EM_DASH_REFERENCE = /&(?:#0*8212(?![0-9])|#[xX]0*2014(?![0-9a-fA-F])|mdash;)/
+
+/** `file:line` for each line of markup `text` (from `firstLine`) that shows an em dash. */
 function linesWithEmDash(file: string, text: string, firstLine: number): string[] {
   return text
     .split('\n')
-    .flatMap((line, index) => (line.includes(EM_DASH) ? [`${file}:${firstLine + index}`] : []))
+    .flatMap((line, index) =>
+      line.includes(EM_DASH) || EM_DASH_REFERENCE.test(line)
+        ? [`${file}:${firstLine + index}`]
+        : [],
+    )
 }
 
 /** The template block, comments blanked, with the line it starts on. */
@@ -250,6 +263,20 @@ describe('no em dashes in visitor-facing markup', () => {
   it('would catch one: an em dash in a template is reported with its line', () => {
     const text = withoutComments(`<p>fine</p>\n<p>a ${EM_DASH} b</p>\n<!-- a ${EM_DASH} b -->`)
     expect(linesWithEmDash('X.vue', text, 10)).toEqual(['X.vue:11'])
+  })
+
+  it('would catch one written as a character reference, in any of its spellings', () => {
+    const text = withoutComments(
+      [
+        '<p>a &#8212; b</p>',
+        '<p>a &#x2014; b</p>',
+        '<p>a &mdash; b</p>',
+        '<p>a &#8211; and &MDash; and &#82120; b</p>',
+        '<p>a &#8212 b</p>',
+        '<!-- a &mdash; b -->',
+      ].join('\n'),
+    )
+    expect(linesWithEmDash('X.vue', text, 1)).toEqual(['X.vue:1', 'X.vue:2', 'X.vue:3', 'X.vue:5'])
   })
 })
 

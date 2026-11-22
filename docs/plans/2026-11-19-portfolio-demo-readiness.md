@@ -1167,7 +1167,7 @@ git add apps e2e CHANGELOG.md
 git commit -m "style: take em dashes out of visitor-facing text"
 ```
 
-- [ ] **Step 6: PR checkpoint (stage boundary: CI, docs and copy)**
+- [x] **Step 6: PR checkpoint (stage boundary: CI, docs and copy)**
 
 As in Task 5 Step 9, for Tasks 15 to 17. Two stops: push, then PR.
 
@@ -1201,14 +1201,14 @@ Each with a colon, a comma, parentheses or two sentences, read in place. Before 
 the app's own wording and not quoted from a regulation or standard; a quoted string goes on the allowlist instead.
 Update the tests that pin the old text.
 
-- [ ] **Step 3: Run all checks, mutation test, CHANGELOG, commit**
+- [x] **Step 3: Run all checks, mutation test, CHANGELOG, commit**
 
 All checks. Mutation: an em dash put back in one rule title and one finding message fails the guard at that line;
 an allowlisted string changed fails the allowlist's own check. CHANGELOG `### Changed`. This touches rule text, so
 the review is `/code-review high` on the uncommitted diff (CLAUDE.md's ladder). Stop: show the diff summary and the
 proposed commit message, and wait for James's explicit OK before committing.
 
-- [ ] **Step 4: PR into `dev`**
+- [x] **Step 4: PR into `dev`**
 
 Two stops: push, then PR. Task 18 starts after it merges.
 
@@ -1221,28 +1221,28 @@ Runs on the finished branch (or on `dev` once every PR is merged). Nothing here 
 **Files:**
 - Modify: `/Users/jameslittlefield/Documents/github_things/portfolio-infra/PLAN.md` (Packwright's Phase 1 row only)
 
-- [ ] **Step 1: Every automated check**
+- [x] **Step 1: Every automated check**
 
 Run all checks and `npm run verify:image` (amd64). Expected: PASS.
 
-- [ ] **Step 2: Start the production-like stack**
+- [x] **Step 2: Start the production-like stack**
 
 Run: `docker compose --profile prod up -d --build` and wait until `docker compose ps` shows `app` healthy.
 Settings in force (from `docker-compose.yml`): `NODE_ENV=production`, `AUDIT_PUBLIC=true`, the test site key and always-pass secret (accepted in production only because `TURNSTILE_HOSTNAMES=localhost`, decision 22), `TURNSTILE_HOSTNAMES=localhost`, the local dummy `AUDIT_IP_HASH_KEY`, local Mongo (`packwright_prodlike`), dummy Anthropic key, `AI_MONTHLY_BUDGET_USD=0`, `TRUST_PROXY_HOPS=1`, read-only root, all capabilities dropped, 768 MiB.
 
-- [ ] **Step 3: Liveness and readiness**
+- [x] **Step 3: Liveness and readiness**
 
 `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/health/live` gives 200; `/health` gives 200 with `"database":"connected"`. `docker stop $(docker compose ps -q mongo)` (not `docker compose stop mongo`, which can stop the dependent `app` service with it): `/health/live` stays 200 throughout, and `/health` turns 503 within about 30 s (the driver notices on its next heartbeat, every 10 s by default; poll once a second rather than reading once). `docker start $(docker compose ps -aq mongo)`: `/health` returns to 200.
 
-- [ ] **Step 4: Landing, editor, pages**
+- [x] **Step 4: Landing, editor, pages**
 
 `/`, `/labels/new`, `/audit`, `/rules` each answer 200 with `<div id="app">`; `/design` answers 404 with the client. In a browser at `http://127.0.0.1:8080/`: the header offers "Open the editor", "Audit a label photo" and "Try the sample label"; the editor draws a label and exports a PDF.
 
-- [ ] **Step 5: The sample works with no key, and budget 0 shows the free path**
+- [x] **Step 5: The sample works with no key, and budget 0 shows the free path**
 
 `curl -s http://127.0.0.1:8080/api/audit/status | jq -e '.available == false and .reason == "budget" and .siteKey == "1x00000000000000000000AA"'` prints `true` and exits 0 (field by field, so the order the handler writes its keys in does not matter). In the browser, `/audit` shows the budget copy and a "Try the sample label" button, and no bot check and no Read button. "Try the sample label" (and `/audit?sample=1` directly) shows the sample photo, the recorded reading dated 2026-11-18, and the sample notice; accepting fields and typing capacity and size gives findings. `docker compose logs app` shows no call to Anthropic. `curl -s -X POST http://127.0.0.1:8080/api/audit/ghs -H 'Content-Type: application/json' -d '{}'` gives 403 with `"reason":"bot-check"`.
 
-- [ ] **Step 6: A forged X-Forwarded-For does not change the rate-limit key**
+- [x] **Step 6: A forged X-Forwarded-For does not change the rate-limit key**
 
 Post a label export three times with the same rightmost entry and different leftmost ones, reading the `RateLimit` header (`draft-7`: `limit=60, remaining=<n>`):
 ```bash
@@ -1254,23 +1254,23 @@ done
 ```
 Expected: `remaining` falls by one each time (one key for all three). The same request with `X-Forwarded-For: 198.51.100.9, 203.0.113.8` shows a fresh `remaining=59`.
 
-- [ ] **Step 7: Headers**
+- [x] **Step 7: Headers**
 
 `curl -sI http://127.0.0.1:8080/` shows `content-security-policy` with `script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com` and `frame-src 'self' https://challenges.cloudflare.com`, plus `x-content-type-options: nosniff`, `x-frame-options`, and `strict-transport-security`, which helmet's defaults in `app.ts` already send.
 
-- [ ] **Step 8: No .env in the image, and nothing secret in the bundle**
+- [x] **Step 8: No .env in the image, and nothing secret in the bundle**
 
 Run: `docker run --rm --entrypoint sh packwright:local -c 'find / -name ".env*" -not -path "/proc/*" 2>/dev/null'`. Expected: no output. Run: `docker run --rm --entrypoint sh packwright:local -c 'grep -rlE "sk-ant-|1x00000000000000000000AA" /app/apps/api/dist/public || echo clean'`. Expected: `clean`. Run: `docker run --rm --entrypoint id packwright:local -u`. Expected: not `0`.
 
-- [ ] **Step 9: The expiry index**
+- [x] **Step 9: The expiry index**
 
 Run: `docker compose exec mongo mongosh packwright_prodlike --quiet --eval 'db.labeldocuments.getIndexes()'`. Expected: the `updatedAt_1` index with `expireAfterSeconds: 604800` (save one label first if the collection does not exist yet).
 
-- [ ] **Step 10: Memory and a graceful stop**
+- [x] **Step 10: Memory and a graceful stop**
 
 Load `/`, the editor, `/audit?sample=1`, and export three PDFs; then `docker stats --no-stream` shows the `app` container under 768 MiB (record the figure for the Phase 2 task definition). `time docker compose stop app` takes under 30 s, and `docker inspect -f '{{.State.ExitCode}}' $(docker compose ps -aq app)` is 0.
 
-- [ ] **Step 11: Not walked here: the real widget**
+- [x] **Step 11: Not walked here: the real widget**
 
 The real Turnstile widget only renders when a read is possible, which needs a budget above 0, and the compose file fixes it at 0 so the dummy key is never called. That the widget's script and frame load under the CSP is proven by `e2e/the-bot-check.spec.ts`; the live widget is a Phase 3 go-live check with real keys. Record this in the PLAN.md row.
 
@@ -1296,5 +1296,5 @@ The real Turnstile widget only renders when a read is possible, which needs a bu
 - AWS WAF rules (including Packwright's expensive paths: `/api/audit/*`, PDF exports, `/mcp`).
 - Go-live checks on AWS: smoke tests, a second-network visitor and the real-IP check, budget 0 on the live host, the failover drill, `docker stats` on the instance, and the security checks of spec 5.10.
 - GitHub repository settings (master plan Phase 0): secret scanning, Dependabot security updates, branch protection.
-- Hand-testing the claude.ai connector against the live host, and `MCP_ALLOWED_ORIGINS` if it sends an `Origin`.
+- Hand-testing the claude.ai connector against the live host, and `MCP_ALLOWED_ORIGINS` if it sends an `Origin`. Since Task 17b reworded `/mcp`'s instructions and schema descriptions (punctuation, and the "packaging labels" lead-in dropped), watch that a check still returns its `declined` and `whatIsNotChecked` notes to the user (review of #126, 2026-11-22).
 - Fast-forwarding `main` to `dev` (the Phase 3 release step, with James's OK).
