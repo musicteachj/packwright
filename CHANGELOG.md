@@ -11,7 +11,9 @@ into a version only when there is a reason to.
 ### Added
 
 - **Secret scanning, a weekly dependency audit, and CI that cannot write.** A new `security.yml` runs gitleaks
-  8.30.1 over the whole history, its download checked against the release's published checksum, and
+  8.30.1 over the whole history, its download checked against a SHA-256 written in the workflow (read from the
+  release's checksums file on 2026-11-22 and matched by the tarball and by GitHub's digest of the asset), not
+  against a checksums file a tampered release could replace with it, and
   `npm audit --audit-level=high` over the lockfile, on every push to `main` and `dev` and on every pull request.
   It also runs weekly on Mondays, so an advisory against an unchanged dependency still surfaces, and on demand,
   but GitHub runs both of those only from the default branch, so they start once the release brings the file to
@@ -83,8 +85,10 @@ into a version only when there is a reason to.
   rewritten where it stands. The markets read "EU CLP" and "US OSHA HazCom" (the audit's "European Union CLP" and
   "United States OSHA HazCom"), a percentage the panel does not print shows "no %DV", and the rate limits say "Try
   again later." as a sentence. En dashes in ranges stay. `apps/web/src/noEmDashes.test.ts` holds every template and
-  `index.html` to it, comments aside, and names the file and line it finds. `label-core`'s finding text and
-  regulatory tables, MCP tool output, the extraction prompt and code comments are left as they are.
+  `index.html` to it, and the code of every script block and non-test `.ts` file under `apps/web/src`, read
+  with TypeScript's own scanner so comments are skipped exactly, and names the file and line it finds.
+  `label-core`'s finding text and regulatory tables, MCP tool output, the extraction prompt and code comments are
+  left as they are.
 - **The docs say what the public demo now is, and how it deploys.** `docs/DESIGN.md` Phase 8 describes the
   three-stage image and moves the AWS resources to `portfolio-infra` (ECS on one EC2 instance, SSM Parameter Store
   rather than Secrets Manager); the target group checks `/health/live`, and the bundle grep looks for the Turnstile

@@ -1159,7 +1159,7 @@ Rewrite each with a colon, a comma, parentheses or two sentences, reading each i
 
 Run all checks. Expected: PASS.
 
-- [ ] **Step 5: CHANGELOG and commit**
+- [x] **Step 5: CHANGELOG and commit**
 
 CHANGELOG `### Changed`: visitor-facing text no longer uses em dashes. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
