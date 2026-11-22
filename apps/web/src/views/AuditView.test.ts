@@ -1031,7 +1031,7 @@ describe('the sample label', () => {
     expect((wrapper.find('[data-test="regime"]').element as HTMLSelectElement).value).toBe('eu-clp')
     const notice = wrapper.find('[data-test="sample-notice"]').text()
     expect(notice).toContain('recorded')
-    expect(notice).toContain('2026-09-15')
+    expect(notice).toContain('2026-11-18')
   })
 
   it('asks the server for nothing but the picture, though it has no audit', async () => {

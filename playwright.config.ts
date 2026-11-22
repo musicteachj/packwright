@@ -89,7 +89,10 @@ export default defineConfig({
     // `AI_MONTHLY_BUDGET_USD=0` for the reason `AUDIT_API_KEY` is set, and for a second one:
     // production requires it wherever the Anthropic key is set, and at 0 the spend ledger refuses
     // every live read, so a developer key in the environment can never be spent by this suite.
-    command: `npm run build && PORT=${PORT} NODE_ENV=production AUDIT_API_KEY=e2e-only AI_MONTHLY_BUDGET_USD=0 LABEL_CREATES_PER_HOUR=1000 node scripts/serve-with-memory-mongo.mjs`,
+    // `VITE_DESIGN_CATALOG=true` builds the design catalog, which production builds leave out
+    // (`apps/web/src/designCatalog.ts`), because its own specs and the masthead's and shell's
+    // walk `/design`. `verify:build` builds without it and checks that `/design` 404s.
+    command: `VITE_DESIGN_CATALOG=true npm run build && PORT=${PORT} NODE_ENV=production AUDIT_API_KEY=e2e-only AI_MONTHLY_BUDGET_USD=0 LABEL_CREATES_PER_HOUR=1000 node scripts/serve-with-memory-mongo.mjs`,
     url: `http://localhost:${PORT}/health`,
     reuseExistingServer: !process.env.CI,
     // The build is a Vite production build plus a tsup bundle; on a cold cache

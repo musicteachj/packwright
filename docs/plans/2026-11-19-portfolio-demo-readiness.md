@@ -1007,7 +1007,7 @@ git commit -m "feat(api): liveness, keep-alive past the load balancer, and a gra
 
 Run: `npx vitest run apps/api/src/mcp apps/api/src/env.test.ts` (FAIL). Re-read Anthropic's IP addresses page and record both outbound ranges and the date in the note above `ANTHROPIC_OUTBOUND`; add the subnet; rewrite the `anthropicPerHour` note (the spec's trade-off: about 0.2 vCPU at worst, and the shared claude.ai allowance can be used up five times faster). `server.ts`: `limits: { ...DEFAULT_MCP_LIMITS, anthropicPerHour: env.MCP_ANTHROPIC_CALLS_PER_HOUR ?? DEFAULT_MCP_LIMITS.anthropicPerHour }`. Run again: PASS.
 
-- [ ] **Step 3: Mutation test, checks, CHANGELOG, commit**
+- [x] **Step 3: Mutation test, checks, CHANGELOG, commit**
 
 Remove the new subnet: the `153.61.208.0` case fails; restore. Run all checks (PASS). CHANGELOG `### Changed`. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1026,23 +1026,23 @@ git commit -m "feat(mcp): recognize both Anthropic ranges and make their allowan
 **Interfaces:**
 - Produces: `export const DESIGN_CATALOG: boolean = import.meta.env.DEV || import.meta.env.VITE_DESIGN_CATALOG === 'true'`; `pages.ts`: `export const DESIGN_PATH = '/design'`, `export function pagePaths(designCatalog: boolean): readonly string[]`; `createAppRouter(history: RouterHistory, options?: { designCatalog?: boolean }): Router`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 - `AuditView.test.ts:769`: the notice contains `2026-11-18`.
 - `linkPreview.test.ts` (reads `apps/web/index.html` from disk): `og:title`, `og:description`, `og:url` `https://packwright.jameslittlefield.net/`, `og:image` `https://packwright.jameslittlefield.net/og-image.png` with width 1200 and height 630, `og:image:alt`, and `twitter:card` `summary_large_image` are present; every `og:` URL is absolute https.
 - `pages.test.ts`: `pagePaths(true)` equals `PAGE_PATHS`; `pagePaths(false)` lacks `/design` and keeps the rest; `createAppRouter(createMemoryHistory(), { designCatalog: false }).resolve('/design').name` is `'not-found'`, and `'design'` with `true`.
 - `SiteHeader.test.ts`: with `vi.mock('../designCatalog', () => ({ DESIGN_CATALOG: false }))` there is no `a[href="/design"]`; the other three links remain.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npx vitest run apps/web/src`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `sample.ts`: `recordedOn: '2026-11-18'`, comment "(`569fdce`)". `index.html`: the tags above (`og:type` `website`, `og:site_name` `Packwright`, the description reused), and drop "Link-preview tags wait for Phase 8" from the comment. The router builds its child routes with a function that leaves out `design` when the flag is false; `SiteHeader.vue` filters `LINKS` by `DESIGN_CATALOG`; `vite.config.ts` becomes `defineConfig(({ mode }) => ...)`, renames its plugin to `writePagePaths()`, and writes `pagePaths(loadEnv(mode, <the config's env directory>, 'VITE_').VITE_DESIGN_CATALOG === 'true')`: Vite's `loadEnv` reads the same `.env` files and prefixed process variables that fill the client's `import.meta.env`, so the client and `routes.json` read one source (a bare `process.env` would miss a `VITE_DESIGN_CATALOG=true` in `apps/web/.env`, and the server would 404 a page the client routes). `playwright.config.ts`: prefix the build with `VITE_DESIGN_CATALOG=true` and say why in the comment (the catalog's own specs). `verify-build.sh`: `/design` on the built server answers 404 with the client.
 
-- [ ] **Step 4: Run all checks**
+- [x] **Step 4: Run all checks**
 
 Run all checks. Expected: PASS (the design-catalog, masthead and shell browser specs still pass on the flagged build).
 

@@ -10,6 +10,9 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **Link-preview tags.** `index.html` carries Open Graph tags (title, the page's own description, absolute
+  `og:url` and `og:image`, the image's 1200 x 630 size and alt text) and `twitter:card` `summary_large_image`,
+  held by `apps/web/src/linkPreview.test.ts`.
 - **`GET /health/live`, and a graceful stop.** Liveness answers `{ status: 'ok' }` without asking the database,
   so a Mongo outage cannot have the platform restart every task in a loop. The image's new `HEALTHCHECK` and the
   compose file read it, as the load balancer will; `/health` stays the readiness check. On SIGTERM or SIGINT the
@@ -173,6 +176,14 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The sample's notice gives the date it was really read.** The sample reading was re-recorded on 2026-11-18
+  (`569fdce`), and the notice still said 2026-09-15.
+- **The design catalog is hidden in production builds.** `/design` is a workbench for the components, not a
+  page for visitors. A build has it only with `VITE_DESIGN_CATALOG=true` (the dev server and the tests always do):
+  without it the router does not register it, the masthead does not link to it, and `routes.json` leaves it out,
+  read from the same variable through Vite's `loadEnv`, so the server answers it 404 as the client does. Its code
+  chunk is still emitted, but nothing routes or links to it. `verify:build` builds without the flag and checks the
+  404; the browser specs build with it for the catalog's own specs.
 - **The audit page's market select draws its chevron like every other select.** It was the one bare `<select>`
   left, with the browser's own arrow flush against its right edge; it is now a `SelectField`, whose chevron sits
   8px in. Measured in a browser, every select on the audit page and in all three editor label types now has the

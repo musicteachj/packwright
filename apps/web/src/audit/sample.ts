@@ -41,7 +41,7 @@ export const SAMPLE = {
   photoUrl: '/samples/acetone-label.png',
   /** The market the reply was recorded under, which a reading belongs to. */
   regime: 'eu-clp' satisfies GhsRegime,
-  /** When the reply was recorded (`f35f630`). */
-  recordedOn: '2026-09-15',
+  /** When the reply was recorded (`569fdce`). */
+  recordedOn: '2026-11-18',
   reading: frozen(sampleReading as LabelReading),
 } as const

@@ -17,7 +17,10 @@ PORT=${PORT:-5187}
 BASE="http://localhost:${PORT}"
 LOG=/tmp/pw-build-check.log
 
-npm run build >/dev/null
+# Built as production is, without the design catalog: `false` rather than unset,
+# because a variable in the process outranks one in an `apps/web/.env` file, so
+# neither the shell nor a local file can put `/design` back into this build.
+VITE_DESIGN_CATALOG=false npm run build >/dev/null
 PORT="$PORT" NODE_ENV=test node scripts/serve-with-memory-mongo.mjs >"$LOG" 2>&1 &
 pid=$!
 trap 'kill $pid 2>/dev/null || true' EXIT
@@ -84,6 +87,13 @@ code=$(curl -s -o /tmp/pw-nopage.html -w '%{http_code}' "${BASE}/labels/abc/edit
 [ "$code" = "404" ] || fail "/labels/abc/edit returned HTTP ${code}, expected 404"
 grep -q '<div id="app">' /tmp/pw-nopage.html || fail "/labels/abc/edit 404'd without the client"
 
+# The design catalog is not in a production build: the server leaves `/design` out
+# of the pages it answers 200, as the client's router does, and serves the client's
+# own not-found page with a 404.
+code=$(curl -s -o /tmp/pw-design.html -w '%{http_code}' "${BASE}/design")
+[ "$code" = "404" ] || fail "/design returned HTTP ${code}, expected 404 in a build without the design catalog"
+grep -q '<div id="app">' /tmp/pw-design.html || fail "/design 404'd without the client"
+
 # --- and what the fallback must never swallow --------------------------------
 # An API caller that mistypes a route needs its JSON 404, not a page of HTML with
 # a 200 on it; and a missing asset answered with index.html turns a broken
@@ -95,4 +105,4 @@ for path in /api/labels/nope /assets/missing.js; do
 done
 
 echo "built artifact exports a Plex-embedded PDF ($(wc -c </tmp/pw-build-check.pdf) bytes)"
-echo "built artifact serves the client, its deep links and its assets, and still 404s the API as JSON"
+echo "built artifact serves the client, its deep links and its assets, 404s /design, and still 404s the API as JSON"

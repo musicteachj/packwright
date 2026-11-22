@@ -32,18 +32,22 @@ export type Section = 'landing' | 'labels' | 'audit' | 'rules' | 'design'
  * Every entry is at least 24px tall (`min-h-6`), WCAG 2.2's target floor. The
  * old text links were the 16px line box of 12px type.
  */
+import { DESIGN_CATALOG } from '../designCatalog'
 import BrandMark from './BrandMark.vue'
 import { BUTTON, PAGE_COLUMN } from './chrome'
 
 /** `undefined` on a page that is none of the sections — the 404. */
 const props = defineProps<{ current: Section | undefined }>()
 
-const LINKS: readonly { section: Section; to: string; label: string }[] = [
+const SECTIONS: readonly { section: Section; to: string; label: string }[] = [
   { section: 'labels', to: '/labels', label: 'Saved' },
   { section: 'audit', to: '/audit', label: 'Audit' },
   { section: 'rules', to: '/rules', label: 'Rules' },
   { section: 'design', to: '/design', label: 'Design' },
 ]
+
+/** A build without the design catalog does not route `/design`, so it does not link to it. */
+const LINKS = SECTIONS.filter((link) => DESIGN_CATALOG || link.section !== 'design')
 
 const FOCUS =
   'focus-visible:outline-notice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2'

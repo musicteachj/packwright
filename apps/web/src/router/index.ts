@@ -7,6 +7,7 @@ import {
   type RouterScrollBehavior,
 } from 'vue-router'
 import type { Section } from '../components/SiteHeader.vue'
+import { DESIGN_CATALOG } from '../designCatalog'
 
 /**
  * Route inventory from the plan. Implemented routes only; the rest are added as
@@ -20,6 +21,9 @@ import type { Section } from '../components/SiteHeader.vue'
  *   /rules         the rule catalogue, from the registry     — done
  *   /design        the interface catalogue, from the components — done
  *   anything else  the 404, inside the shell                   — done
+ *
+ * `/design` is registered only in a build that has the design catalog
+ * (`designCatalog.ts`); without it, the 404 answers that address too.
  *
  * `/labels/new` used to carry the editor *instead of* `/labels/:id`, because
  * there was nothing to have an id. Both exist now, and the order below matters:
@@ -108,6 +112,19 @@ const routes: RouteRecordRaw[] = [
 ]
 
 /**
+ * The route table, less the design catalog when the build has none. Its child
+ * route goes, and the catch-all then answers `/design` with the 404.
+ */
+function appRoutes(designCatalog: boolean): RouteRecordRaw[] {
+  if (designCatalog) return routes
+  return routes.map((route) =>
+    route.children
+      ? { ...route, children: route.children.filter((child) => child.name !== 'design') }
+      : route,
+  )
+}
+
+/**
  * Back and forward return to where the reader was; anything else starts at the
  * top. Without this a long page like `/rules`, left from far down, came back at
  * the top, and a new page opened at the scroll offset of the last one.
@@ -123,9 +140,15 @@ const scrollBehavior: RouterScrollBehavior = (to, from, savedPosition) => {
 /**
  * The application's router over a given history: the browser's in the app, a
  * memory one in tests, so a test mounts the real route table rather than a copy.
+ * `designCatalog` defaults to the build's own (`DESIGN_CATALOG`); a test passes it
+ * to ask for either table.
  */
-export function createAppRouter(history: RouterHistory): Router {
-  return createRouter({ history, routes, scrollBehavior })
+export function createAppRouter(
+  history: RouterHistory,
+  options: { designCatalog?: boolean } = {},
+): Router {
+  const { designCatalog = DESIGN_CATALOG } = options
+  return createRouter({ history, routes: appRoutes(designCatalog), scrollBehavior })
 }
 
 export const router = createAppRouter(createWebHistory())
