@@ -97,7 +97,7 @@ export const usFoodResponsibleFirmRule: UsFoodRule = {
           severity: 'violation',
           message:
             `"${firm.name.trim()}" did not manufacture this food, so its name must be qualified ` +
-            'by a phrase revealing the connection — "Manufactured for", "Distributed by", or any ' +
+            'by a phrase revealing the connection: "Manufactured for", "Distributed by", or any ' +
             'other wording that expresses the facts.',
           measurement: {
             actual: firm.name.trim(),

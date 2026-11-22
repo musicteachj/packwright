@@ -203,7 +203,7 @@ const judgedAsDrawn: UsFoodRule = {
           'Both 21 CFR 101.9(b)(12)(i) and 101.9(b)(2)(i)(D) reach this package: it and its ' +
           'individual unit each hold between 200 and 300 percent of the reference amount. The ' +
           'first asks for a second column for the entire package and the second for one per ' +
-          'individual unit — and the package is a single unit, so the two would carry the same ' +
+          'individual unit. The package is a single unit, so the two would carry the same ' +
           'figures. Neither paragraph, nor 101.9(e)(6), says whether one second column can serve as ' +
           'both. This tool draws one second column and does not decide that question, so it ' +
           'gives no verdict on the second column here. That is a limit of this tool, not a ' +
@@ -226,8 +226,8 @@ const judgedAsDrawn: UsFoodRule = {
 
     return {
       reason:
-        'This label has not stated everything 101.9(b)(12)(i) turns on — a reference amount, ' +
-        'what the whole package holds, and whether it is packaged and sold individually — so ' +
+        'This label has not stated everything 101.9(b)(12)(i) turns on (a reference amount, ' +
+        'what the whole package holds, and whether it is packaged and sold individually), so ' +
         'whether a second column of nutrition information is required cannot be told. ' +
         `${stateThese(duty.unstated['per-container'])} and this check will run. ` +
         '(b)(2)(i)(D) asks the same of an individual unit, where the product has them.',
@@ -392,7 +392,7 @@ const judgedAsDrawn: UsFoodRule = {
                   'column without saying what it counts.' +
                   statedApart
                 : `The information declared for presentation off this label carries a second ` +
-                  `column, but says it counts ${DECLARED_NAME[declared]} — which is not the ` +
+                  `column, but says it counts ${DECLARED_NAME[declared]}, which is not the ` +
                   `column ${missingReference} asks for.` +
                   statedApart),
           measurement: {
@@ -475,7 +475,7 @@ const judgedAsDrawn: UsFoodRule = {
             // the figures differ, so `statedApart` always follows to say why.
             (declared === undefined
               ? 'it does not say what it counts.'
-              : `the label says it counts ${DECLARED_NAME[declared]} — which is not the column ` +
+              : `the label says it counts ${DECLARED_NAME[declared]}, which is not the column ` +
                 `${missingReference} asks for.`) +
             statedApart,
           measurement: {

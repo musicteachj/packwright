@@ -43,7 +43,7 @@ export const FDA_NET_QUANTITY_TYPE_SIZE_MET = 'FDA_NET_QUANTITY_TYPE_SIZE_MET'
 const CITATION: Citation = {
   authority: 'FDA',
   reference: '21 CFR 101.7(i)',
-  title: 'Net quantity of contents — type size by area of the principal display panel',
+  title: 'Net quantity of contents: type size by area of the principal display panel',
 }
 
 const BASIS_NAME = {

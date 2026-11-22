@@ -586,7 +586,7 @@ export function layOutUsFoodLabel(request: UsFoodLayoutRequest): ResolvedLayout 
           (!secondColumnDrawn
             ? 'the panel draws a single column of figures. It is not printed.'
             : id === 'calories'
-              ? 'the second column carries no Calories cell to print it in — Calories is drawn in ' +
+              ? 'the second column carries no Calories cell to print it in: Calories is drawn in ' +
                 'its own block above the nutrient rows. It is not printed.'
               : !rowDrawn
                 ? 'the panel draws no row for it. It is not printed.'

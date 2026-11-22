@@ -143,7 +143,7 @@ const judgedAsDrawn: UsFoodRule = {
       return {
         reason:
           'The panel draws a second column and the label does not say what it counts, so which ' +
-          'paragraph of 101.9(e) governs its form — or whether any does — cannot be told. State ' +
+          'paragraph of 101.9(e) governs its form (or whether any does) cannot be told. State ' +
           'what the second column counts and this check will run.',
         wants: ['nutritionFacts.columns.basis'],
       }
@@ -171,7 +171,7 @@ const judgedAsDrawn: UsFoodRule = {
       reason:
         'The panel draws a second column counting the ' +
         `${basis === 'per-container' ? 'whole package' : 'individual unit'}, and whether ` +
-        `${PROVISION_FOR(basis)} requires it cannot be told from what the label states — so ` +
+        `${PROVISION_FOR(basis)} requires it cannot be told from what the label states, so ` +
         'whether 101.9(e)(6) governs its form cannot be told either. ' +
         `${stateThese(unstated[basis])} and this check will run.`,
       wants: asDeclinedFacts(unstated[basis]),
@@ -337,7 +337,7 @@ const judgedAsDrawn: UsFoodRule = {
         names.length === 0
           ? ''
           : `${names.length === 1 ? 'one nutrient declares' : `${names.length} nutrients declare`} ` +
-            `a quantity in the ${column} column only — ${names.join(', ')}`
+            `a quantity in the ${column} column only (${names.join(', ')})`
       const clauses = [clause(missing.second, 'first'), clause(missing.first, 'second')].filter(
         (part) => part !== '',
       )

@@ -254,7 +254,7 @@ export const DigitalLink = z.object({
     .min(1)
     .max(B.domain)
     .describe(
-      'The resolver’s whole origin, scheme included — "https://id.example.com", not ' +
+      'The resolver’s whole origin, scheme included: "https://id.example.com", not ' +
         '"id.example.com".',
     ),
   lot: z
@@ -298,7 +298,7 @@ export const UpcARequest = z.object({
     .max(B.magnification)
     .optional()
     .describe(
-      'The symbol’s size as a factor of the nominal: 1 for 100%, 0.8 for 80% — not a ' +
+      'The symbol’s size as a factor of the nominal: 1 for 100%, 0.8 for 80%, not a ' +
         'percentage. Send it only if the user stated it: a value you supply yourself is judged ' +
         'as the printed label’s, 1 included. Omitted, check_label gives no verdict on ' +
         'magnification or bar height.',
@@ -524,7 +524,7 @@ const GhsRequestShape = z.object({
     .boolean()
     .optional()
     .describe(
-      'True only if the supplier relies on the small-container provision — 29 CFR ' +
+      'True only if the supplier relies on the small-container provision: 29 CFR ' +
         '1910.1200(f)(12) on a US label, CLP Annex I section 1.5 on an EU one. Stated, not ' +
         'inferred from the capacity.',
     ),
@@ -874,7 +874,7 @@ export const UsFoodRequestBase = z.object({
     .optional()
     .describe(
       'The allergens the printed "Contains" statement names (FD&C Act §403(w)(1)(A)), as ' +
-        'printed — not worked out from the ingredients. Leave it out entirely if the label ' +
+        'printed, not worked out from the ingredients. Leave it out entirely if the label ' +
         'has no "Contains" statement.',
     ),
   containsStatementFontSizeMm: fontSizeMm()
@@ -1091,7 +1091,7 @@ export const CheckStockSchema = z.strictObject(
       .optional()
       .describe(
         'The unprinted border in millimeters, if known. Omitted, the label type’s default is ' +
-          `used — ${DEFAULT_MARGINS_TEXT} — and the answer says it was assumed.`,
+          `used (${DEFAULT_MARGINS_TEXT}), and the answer says it was assumed.`,
       ),
   },
   {

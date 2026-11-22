@@ -40,7 +40,7 @@ export const FDA_NET_QUANTITY_SEPARATION_MET = 'FDA_NET_QUANTITY_SEPARATION_MET'
 const CITATION: Citation = {
   authority: 'FDA',
   reference: '21 CFR 101.7(f)',
-  title: 'Net quantity of contents — separation from other printed label information',
+  title: 'Net quantity of contents: separation from other printed label information',
 }
 
 /**

@@ -69,7 +69,7 @@ export const FDA_NET_QUANTITY_ZONE_NOT_REQUIRED = 'FDA_NET_QUANTITY_ZONE_NOT_REQ
 const CITATION: Citation = {
   authority: 'FDA',
   reference: '21 CFR 101.7(f)',
-  title: 'Net quantity of contents — placement within the bottom 30 percent of the panel',
+  title: 'Net quantity of contents: placement within the bottom 30 percent of the panel',
 }
 
 const judgedAsDrawn: UsFoodRule = {

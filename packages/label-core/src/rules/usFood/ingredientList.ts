@@ -107,7 +107,7 @@ const EXEMPTIONS: Record<
     unchecked:
       'that it is displayed with the bulk container’s labeling plainly in view, or with a ' +
       'counter card, sign or other device, bearing the ingredient information in lettering at ' +
-      'least one-fourth of an inch high — a condition on the retail display, not on this label',
+      'least one-fourth of an inch high (a condition on the retail display, not on this label)',
   },
 }
 

@@ -220,7 +220,7 @@ export function buildDigitalLinkUri(input: DigitalLinkInput): string {
   const primarySpec = getAiSpec(primary.ai)
   if (!primarySpec?.primaryKey) {
     throw new DigitalLinkError(
-      `AI (${primary.ai}) cannot open a Digital Link path — it is not a primary key`,
+      `AI (${primary.ai}) cannot open a Digital Link path: it is not a primary key`,
     )
   }
 
