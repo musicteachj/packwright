@@ -76,6 +76,19 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **The docs say what the public demo now is, and how it deploys.** `docs/DESIGN.md` Phase 8 describes the
+  three-stage image and moves the AWS resources to `portfolio-infra` (ECS on one EC2 instance, SSM Parameter Store
+  rather than Secrets Manager); the target group checks `/health/live`, and the bundle grep looks for the Turnstile
+  site key too. "The audit key and the daily audit limit" gives way to "Public photo reads": Turnstile, 5 reads a
+  visitor a day, the paced ledger and the workspace's own limit, with `AI_MONTHLY_BUDGET_USD=0` as the off switch.
+  The saved-label, `/mcp`, quota and edge entries are brought to 7 days and 1,000 labels, the 1,000-an-hour
+  Anthropic allowance, the database-held counts and the shared web ACL, and the old deployment section is marked
+  superseded. `docs/security-review-2026-10-18.md` gains an addendum on what bounds the spend now and the two
+  recorded items the change closed (SDK retries, a read outliving its visitor), and says its $0.13 a call was
+  Opus 5 pricing.
+  `docs/BACKLOG.md`, still frozen, marks three entries settled or narrowed and gains none. The README names the
+  demo's address and how to run the production image locally, the connector page drops its "Not live yet"
+  notice, and the old road to deployment points at the plan that replaced it.
 - **`/mcp` recognizes both of Anthropic's outbound ranges, and its shared allowance is a setting.** The ranges are
   `160.79.104.0/21` and `153.61.208.0/20` (Anthropic's IP addresses page, read 2026-11-22), sharing one bucket.
   That bucket defaults to 1,000 calls an hour, down from 5,000, and `MCP_ANTHROPIC_CALLS_PER_HOUR` (1 to 100,000)

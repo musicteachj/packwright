@@ -130,6 +130,11 @@ four are hard to check by hand every time and cheap to automate. Everything else
 
 ### Deployment
 
+> **Superseded for the AWS layout on 2026-11-19.** The table and pipeline below are the plan of 2026-10: a Fargate
+> task on the old shared cluster, with Secrets Manager. Packwright now deploys through `portfolio-infra` (AWS CDK:
+> ECS tasks on one EC2 instance behind a shared load balancer, secrets in SSM Parameter Store), as Phase 8 below
+> and `docs/plans/2026-11-19-portfolio-demo-readiness.md` record. The section is kept for its reasoning.
+
 **Phase 8 work — nothing here is provisioned until the app is finished.** It then slots into the shared
 portfolio infrastructure already running `barcode-crud` rather than standing up anything new. Per
 `DEPLOYMENT.md` in the old repo:
@@ -152,7 +157,9 @@ for and shared.
 
 Deploy pipeline is the same shape as the old repo's `.github/workflows/deploy.yml`: push to `main` → build
 image → push to ECR → render task definition → update the ECS service with `wait-for-service-stability`, with
-the deployment circuit breaker handling rollback. Health check at `/health` for the ALB target group.
+the deployment circuit breaker handling rollback. The ALB target group checks liveness at `/health/live`, which
+does not ask the database (since 2026-11-22), so a Mongo outage cannot have every task restarted in a loop;
+`/health` stays the readiness check a deploy's smoke test reads.
 
 **Single container, as before.** Even though the repo is a workspace, the production build compiles `apps/web`
 to static assets that `apps/api` serves — so this is one ECS service, not two. Same pattern as `barcode-crud`,
@@ -162,10 +169,13 @@ and it keeps the marginal cost at one Fargate task.
 is injected into the task definition — it must never reach the browser bundle. This is part of why vision
 extraction lives in `apps/api` rather than being called from the client.
 
-**And the audit key beside it (2026-10-18).** `AUDIT_API_KEY` is required in production whenever
+**And the audit key beside it (2026-10-18; reversed for the public demo on 2026-11-18, see Phase 8's "Public
+photo reads").** `AUDIT_API_KEY` is required in production whenever
 `ANTHROPIC_API_KEY` is set, and the server refuses to start without it, because an audit open to anyone spends
 a budget anyone can exhaust (`docs/security-review-2026-10-18.md`, finding 3 and James's decision). It is never in
-the bundle either: the audit page asks the person using it to type it in.
+the bundle either: the audit page asks the person using it to type it in. **Since 2026-11-21** production starts
+without it when `AUDIT_PUBLIC` is true, the audit page has no key field, and the key, now the owner's path alone,
+is sent by the owner's own client in an `X-Audit-Key` header.
 
 ### Data model
 
@@ -503,7 +513,7 @@ interface should look exacting.
 | Route | Purpose |
 |---|---|
 | `/` | Landing, the portfolio front door. Three labels (GS1, GHS, FDA food) rendered live in the page by the same engines the PDF export uses, and a grid of dimensions traced to their sources. |
-| `/labels` | Saved labels: the labels this browser saved, one row each with its name, type, date and a Delete that confirms inline. The app keeps 200 labels and removes each one 30 days after its last change. |
+| `/labels` | Saved labels: the labels this browser saved, one row each with its name, type, date and a Delete that confirms inline. The app keeps 1,000 labels and removes each one 7 days after its last change. |
 | `/labels/new` | The editor, on a new, unsaved document: the GS1 starter label on a fresh load, or otherwise whatever the editor last held, unnamed and no longer attached to a saved label. The audit's "Open in the editor" also lands here. The label type is chosen with the select in the editor header. |
 | `/labels/:id` | **The editor**, on a saved label. This is the app. Only the browser that saved a label can change it; anyone else can Save as new. |
 | `/audit` | Photo or camera label audit (mobile-first), with a sample label that needs no audit key. |
@@ -720,15 +730,23 @@ Largest single piece of work in the project — budget accordingly.
 **Deliberately last.** Everything up to here runs locally. No AWS resource is created, and nothing is paid for,
 until there is a finished application to put behind it.
 
-*Build:* the Dockerfile (multi-stage — build `label-core`, then `apps/web`, then `apps/api`, ship one runtime
-image), the GitHub Actions ECS workflow, and the AWS resources: ECR repo, task definition, ECS service, target
-group, ALB listener rule, Route 53 record, and the three Secrets Manager entries.
+*Build* (rewritten 2026-11-22; Phase 1 of `docs/plans/2026-11-19-portfolio-demo-readiness.md` is the record of
+this work): the Dockerfile has three `node:24-slim` stages. The first runs `npm ci` and the root `npm run build`;
+the second installs the API workspace's run-time dependencies alone
+(`npm ci --omit=dev --omit=optional --workspace=@packwright/api`); the image ships that `node_modules` and
+`apps/api/dist`, and runs as `node`. `label-core` has no build step of its own, since tsup bundles it into the
+API. The AWS resources move to `portfolio-infra`, in AWS CDK: the ECR repository, the task definition and an ECS
+service on one EC2 instance, the target group and listener rule on the shared load balancer, Route 53, and SSM
+Parameter Store rather than Secrets Manager. The deploy workflow follows section 5.5 of the portfolio-infra design.
 
 *Done when:*
 - `packwright.jameslittlefield.net` serves the app over HTTPS
-- `/health` returns healthy and the ALB target group reflects it
-- All three secrets resolve from Secrets Manager into the task, and **the Anthropic key and the audit key are
-  absent from the browser bundle**: grep the built assets to confirm
+- The ALB target group checks liveness, `/health/live`, and reflects it; the deploy's smoke test reads
+  readiness, `/health`
+- Every secret resolves from SSM Parameter Store (`/portfolio/packwright/*`) into the task, and **the Anthropic
+  key and the Turnstile site key are absent from the browser bundle**: grep the built assets to confirm, as step 4
+  of `npm run verify:image` does locally. The page reads the site key from `/api/audit/status` at run time, so no
+  build carries a deployment's value
 - Push to `main` deploys; a failed deploy rolls back via the deployment circuit breaker
 - CloudWatch `/ecs/packwright` shows application logs
 
@@ -745,21 +763,24 @@ group, ALB listener rule, Route 53 record, and the three Secrets Manager entries
   document and answers 500 when it no longer matches, and `PUT` validates the same shape, so nothing in the
   application can repair one. Before any further tightening, decide on a migration or a read path that repairs.
   **Decided with James, 2026-10-11: a one-off migration script per schema change, run before the
-  deploy that needs it.** The store is capped at 200 labels in all (20 until 2026-10-18), so a migration is
+  deploy that needs it.** The store is capped at 1,000 labels in all (20 until 2026-10-18, 200 until 2026-11-21), so a migration is
   seconds of work against a few hundred documents at most, and a script can be run against a copy first; a read path that repairs would carry every
   old shape forever in code that serves every request. The 500 on a document that no longer validates stays the
   alarm that one was missed.
 - **Rate limits and quotas are per process.** They hold for the single container this plan deploys; a second
-  task would double the audit route's daily cap. Keep the service at one task, or move to a shared store.
-  **Decided with James, 2026-10-11: one task.** The label cap (counted in the database, and 200 since 2026-10-18),
+  task would double the audit route's daily cap (retired since 2026-11-21, below). Keep the service at one task, or move to a shared store.
+  **Decided with James, 2026-10-11: one task.** The label cap (counted in the database, 200 from 2026-10-18 and 1,000 since 2026-11-21),
   the audit route's spending caps and
   `/mcp`'s allowances are all held in the process, and this app's traffic does not need a second; a shared store
   is work to do the day it does. The deployment circuit breaker still replaces a failed task. **Since 2026-10-18
   the audit route's daily count is in the database** (`audit/dailyAllowance.ts`), so neither a restart nor a
-  second task resets or doubles what it may spend; its hourly per-client limit is still per process.
+  second task resets or doubles what it may spend; its hourly per-client limit is still per process. **Since
+  2026-11-21 the daily count is retired:** the per-visitor daily reads and the spend ledger are in the database
+  (`audit/visitorAllowance.ts`, `audit/ledgerStore.ts`), and only the hourly limiters are per process.
 - **Edge-level limits.** Every limit today is middleware in this process. An ALB rule or a WAF is the place
   to refuse traffic cheaply. The audit route parsed its 10 MB body before its guards ran until 2026-10-18; it now
-  reads it only after its limiter and its key have let the request through.
+  reads it only after its limiter and its key have let the request through. Since 2026-11-21 the public path
+  reads it after its limiter and the Turnstile check, and the limit is 6 MB.
   **Decided with James, 2026-10-11: one AWS WAF rate-based rule, about $6 a month** — $5 for the web
   ACL, $1 for the rule and $0.60 per million requests (aws.amazon.com/waf/pricing, read 2026-10-11). It is the one
   limit that counts every request before this process reads a byte: `/mcp`'s handshake requests and the audit
@@ -768,20 +789,30 @@ group, ALB listener rule, Route 53 record, and the three Secrets Manager entries
   follow from the `/mcp` allowances below. Since security fix 4 (2026-10-18), `/mcp` takes one message per
   request, so an uncounted request answers at most one `tools/list` (about 25 KB). Claude Code makes four uncounted
   requests per connection, one of them `tools/list`.
-- **The audit key and the daily audit limit (2026-10-18).** Set `AUDIT_API_KEY` (the server will not start in
-  production without it) and give it only to the people who should spend the Anthropic key; they type it on the
-  audit page, once per browser. `AUDIT_DAILY_LIMIT` is the deployment's vision calls per UTC day, 10 if unset
-  (about $1.30); keep it a small fraction of the Anthropic workspace's monthly spend limit, and lower it with that
-  limit.
+  **The WAF is now the shared web ACL in `portfolio-infra`** (section 5.5 of its design of 2026-11-18): three
+  rate-based rules over 5-minute windows, a general one of about 2,000 requests per address, one of about 100 on
+  the routes that do real work (for Packwright `/api/audit/*`, the PDF exports and `/mcp`), and a higher one for
+  Anthropic's ranges. It has no AWS managed rule groups, whose 8 KB body rule would block photo uploads.
+- **Public photo reads (James, 2026-11-18).** This reverses the shared key of 2026-10-18: the public demo reads
+  photographs for anyone, and four things bound what that can spend. Cloudflare Turnstile checks each read before
+  its body is read; each visitor (an HMAC-SHA256 of their network, keyed by `AUDIT_IP_HASH_KEY`, at least 32
+  characters) gets 5 reads a UTC day; a paced ledger reserves each read's worst case, $0.112, against
+  `AI_MONTHLY_BUDGET_USD` (set to 10 for the demo; production refuses to start without it), letting a day spend up to 3 times an even share of what is left, with a $0.50
+  floor (`AI_PACING_MULTIPLIER`, `AI_DAILY_FLOOR_USD`); and the Anthropic workspace has its own $12 monthly
+  limit. `AI_MONTHLY_BUDGET_USD=0` turns live reads off. `TRUST_PROXY_HOPS=1` is required in production public
+  mode, or every visitor would share the load balancer's count. Draining the budget is accepted as an
+  availability outcome, bounded in dollars: once it is spent, the page offers the recorded sample. `AUDIT_API_KEY`
+  remains as the owner's path, metered by the same ledger, and the server refuses it and `AUDIT_PUBLIC` together.
 - **Saved labels (2026-10-18, security fix 3).** Three things, each of which fails quietly if missed:
   - Start the database empty. A label stored before edit tokens has none, so no browser can change or delete it;
     it can only be read by its link until it expires.
   - Check the expiry index exists once the task is up: `db.labeldocuments.getIndexes()` should show
-    `{ updatedAt: 1 }` with `expireAfterSeconds: 2592000` (30 days). Mongoose builds it when the server connects
+    `{ updatedAt: 1 }` with `expireAfterSeconds: 604800` (7 days, since 2026-11-21, when the cap rose to 1,000
+    labels of at most 64 KB each). Mongoose builds it when the server connects
     and reports a failure only as an event nothing listens to, so a label would simply never expire.
   - `TRUST_PROXY_HOPS=1` governs the saved-label write limits too: unset, the world shares one address's ten new
     labels an hour. Leave `LABEL_CREATES_PER_HOUR` unset in production; it exists for the end-to-end suite.
-- **`/mcp` (recorded 2026-10-10, stage 18 of `docs/plans/2026-10-10-mcp.md`).** Five things, each of which
+- **`/mcp` (recorded 2026-10-10, stage 18 of `docs/plans/2026-10-10-mcp.md`).** Six things, each of which
   fails quietly if missed:
   - `MCP_ALLOWED_HOSTS=packwright.jameslittlefield.net`. Without it `/mcp` answers 403 to every request,
     because the `Host` check admits only localhost unless told otherwise.
@@ -793,12 +824,18 @@ group, ALB listener rule, Route 53 record, and the three Secrets Manager entries
   - The ALB's idle timeout against SSE answers: Claude's clients speak the older protocol, which is answered as
     an event stream. Only answers stream: since 2026-10-18 the server says its tool list never changes, so a
     `subscriptions/listen` is acknowledged and closed at once rather than held open on keep-alives.
-  - `WHAT_IS_NOT_CHECKED_URL` in `apps/api/src/mcp/server.ts` points at `dev`, because the document is not on
-    `main`; move it to `main` with the release.
-- **The live address in the docs (recorded 2026-10-19).** `README.md` says there is no public address until
-  phase 8, and `docs/USE-FROM-YOUR-AI.md` opens with a "Not live yet" notice. Once the host serves, give the
-  README the address and the deployed status, and take the notice out.
-- **Link-preview tags (recorded 2026-10-17).** `apps/web/public/og-image.png` (1200 × 630) ships already, but
+  - `WHAT_IS_NOT_CHECKED_URL` in `apps/api/src/mcp/server.ts` names `main` since 2026-11-22, and resolves once
+    the release in Phase 3 of the portfolio deployment (`portfolio-infra/PLAN.md`) fast-forwards `main` to `dev`: `docs/WHAT-IS-NOT-CHECKED.md` is not on `main` yet.
+  - `MCP_ANTHROPIC_CALLS_PER_HOUR` (1,000 unless set, since 2026-11-22) is the tool calls an hour shared by
+    everything from Anthropic's two outbound ranges, `160.79.104.0/21` and `153.61.208.0/20`, both recognized
+    since the same day.
+- **The live address in the docs (recorded 2026-10-19). Done, 2026-11-22:** `README.md` said there was no
+  public address until phase 8, and `docs/USE-FROM-YOUR-AI.md` opened with a "Not live yet" notice. The README
+  now names the address the demo will have once Phase 3 deploys it, and the connector page gives its address and
+  says it serves once the deployment is live.
+- **Link-preview tags (recorded 2026-10-17). Done, 2026-11-22:** `index.html` carries them, held by
+  `apps/web/src/linkPreview.test.ts`; the check in a link debugger waits for the host. As recorded:
+  `apps/web/public/og-image.png` (1200 × 630) ships already, but
   nothing points at it: `og:image` needs an absolute address, which exists only once the host serves. Add
   `og:title`, `og:description`, `og:image` (`https://packwright.jameslittlefield.net/og-image.png`), `og:url` and
   `twitter:card` (`summary_large_image`) to `apps/web/index.html`, then check a preview in one link debugger.

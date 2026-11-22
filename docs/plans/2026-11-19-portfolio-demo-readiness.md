@@ -1084,7 +1084,7 @@ James decided on 2026-11-19: no routine version-update PRs. Dependabot security 
 
 Run: `npm run format:check` (PASS; Prettier parses the YAML). Run: `grep -nE '^\s*-?\s*uses:' .github/workflows/*.yml | grep -vE '@[0-9a-f]{40} # v'` (expected: no output). Run: `npm audit --audit-level=high` (expected: exit 0; if it fails, stop and show James the advisories: no exceptions are added silently). If `gitleaks` is installed (`gitleaks version`), run `gitleaks git --redact --verbose --exit-code 1` over the full history (expected: no leaks; otherwise CI runs it on the first push).
 
-- [ ] **Step 5: CHANGELOG and commit**
+- [x] **Step 5: CHANGELOG and commit**
 
 CHANGELOG `### Added`: gitleaks over the whole history, a weekly dependency audit, read-only workflow permissions and SHA-pinned actions. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1101,7 +1101,7 @@ git commit -m "ci: scan for leaked secrets, audit dependencies weekly, pin every
 
 **Interfaces:** none.
 
-- [ ] **Step 1: `docs/DESIGN.md` § Phase 8 (`:718-813`)**
+- [x] **Step 1: `docs/DESIGN.md` § Phase 8 (`:718-813`)**
 
 - *Build* (`:723-725`): the Dockerfile is three-stage (`npm ci` and the root `npm run build`; a `deps` stage that installs the API workspace's run-time dependencies alone, `npm ci --omit=dev --omit=optional --workspace=@packwright/api`; ship that `node_modules` and `apps/api/dist`); `label-core` has no build step (tsup bundles it); AWS resources move to `portfolio-infra` (CDK, ECS on one EC2 instance, SSM Parameter Store, not Secrets Manager), and this plan is the Phase 1 record.
 - *Done when* (`:727-733`): liveness `/health/live` for the target group; readiness `/health` for smoke tests; secrets from SSM; the bundle grep includes the Turnstile site key.
@@ -1112,15 +1112,15 @@ git commit -m "ci: scan for leaked secrets, audit dependencies weekly, pin every
 - `/mcp` (`:784-797`): `MCP_ANTHROPIC_CALLS_PER_HOUR` (1,000), both ranges; `WHAT_IS_NOT_CHECKED_URL` now names `main`, and resolves once the Phase 3 release fast-forwards `main` to `dev` (`docs/WHAT-IS-NOT-CHECKED.md` is not on `main` yet).
 - "The live address in the docs" and "Link-preview tags" (`:798-804`): mark done, with the date.
 
-- [ ] **Step 2: `docs/security-review-2026-10-18.md`**
+- [x] **Step 2: `docs/security-review-2026-10-18.md`**
 
 Append "## Addendum, 2026-11-19: public photo reads": James's decision of 2026-11-18 (spec section 10) reverses the shared key of fix 2; what now bounds the spend (Turnstile, per-visitor reads, the ledger, Anthropic's $12 workspace limit); the stale "$0.13 a call" (`:39-41`) is Opus 5 pricing, and a read now costs about $0.02 to $0.04, $0.112 at worst; closed: "a vision call retried by the SDK is billed twice" (`:124`, `maxRetries` 0) and "a vision call keeps running after the client disconnects" (`:126-127`, the abort signal, which `liveExtractor` hands to the SDK in production, and a 60 s timeout below the 120 s idle timeout). Leave the original findings as written.
 
-- [ ] **Step 3: `docs/BACKLOG.md` (frozen: mark entries settled, add none)**
+- [x] **Step 3: `docs/BACKLOG.md` (frozen: mark entries settled, add none)**
 
 In the existing "**Settled <date> ...**" style: the key's `localStorage` and the key lines (`:1220-1226`) settled by the key's removal from the page; "Edge-level limits are phase 8's" (`:946`) settled by the shared WAF in `portfolio-infra`; "The audit route's quotas are per process" (`:982`) narrowed: the per-visitor count and the ledger are in Mongo.
 
-- [ ] **Step 4: README, USE-FROM-YOUR-AI, the old road**
+- [x] **Step 4: README, USE-FROM-YOUR-AI, the old road**
 
 `README.md` § Status (`:85-86`): the public demo is at `https://packwright.jameslittlefield.net` once Phase 3 deploys it; § Running it: "Run the production image locally" (`docker compose --profile prod up -d --build`, port 8080, live reads off, and `npm run verify:image`). `docs/USE-FROM-YOUR-AI.md:3-4`: replace the "Not live yet" notice with the connector address and one line saying it serves once the deployment is live. `docs/plans/2026-10-08-road-to-deployment.md`: a note under the title: "Its deployment parts are superseded by `docs/plans/2026-11-19-portfolio-demo-readiness.md` (2026-11-19) and the portfolio-infra design."
 
