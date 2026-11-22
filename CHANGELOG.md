@@ -176,6 +176,19 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **No high or critical advisory left in the lockfile.** The new audit gate failed on its first run on
+  2026-11-22: 22 advisories, two critical and four high, all in tools that run while building or testing and
+  none in the image, which `verify:image` holds to the server's own packages. `npm audit fix` moved the lockfile
+  alone, and no range this repository declares changed: `shell-quote` 1.9.0 to 1.12.0 (GHSA-pqg4-j6r4-53mv, critical) under
+  `concurrently` 10.0.4 to 10.0.7, `brace-expansion` to 1.1.22, 2.1.8 and 5.0.13 (GHSA-q2hr-2g5m-vwhr,
+  GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p), `follow-redirects` 1.16.0 to 1.16.3 (GHSA-q3jh-wrc6-jgq8),
+  `source-map-js` 1.2.1 to 1.2.4 (GHSA-68fv-2mgg-jv7q) and Vite 8.2.1 to 8.3.8 (GHSA-9jrq-w75r-8gcw and five
+  more, its dev server's), with `rolldown` 1.2.3 to 1.2.19 and `postcss` 8.5.26 to 8.5.33 behind them, and typescript-eslint
+  8.67.0 to 8.73.0, whose own new range takes the top-level `minimatch` from 10.2.6 to 11.0.9. The nine left are
+  moderate or low, and `npm audit fix` left them in place: Vitest's mocker,
+  esbuild's Windows dev server, `glob`, `minimatch` and `editorconfig` under `js-beautify`, all build or test
+  tools, and `@hono/node-server`'s `serveStatic`, which the MCP adapter never calls (it takes only
+  `getRequestListener`), and whose patched 2.x is outside the adapter's declared range.
 - **The sample's notice gives the date it was really read.** The sample reading was re-recorded on 2026-11-18
   (`569fdce`), and the notice still said 2026-09-15.
 - **The design catalog is hidden in production builds.** `/design` is a workbench for the components, not a
