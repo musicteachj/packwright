@@ -1,6 +1,35 @@
-import { describe, expect, it } from 'vitest'
-import { databaseStatus } from './db'
+import { MongoMemoryServer } from 'mongodb-memory-server'
+import mongoose from 'mongoose'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import {
+  connectToDatabase,
+  databaseStatus,
+  disconnectFromDatabase,
+  MONGO_MAX_POOL_SIZE,
+} from './db'
 import { withDatabase } from './testing/withDatabase'
+
+describe('connectToDatabase', () => {
+  let server: MongoMemoryServer
+
+  beforeAll(async () => {
+    server = await MongoMemoryServer.create()
+    await connectToDatabase(server.getUri('packwright'))
+  }, 120_000)
+
+  afterAll(async () => {
+    await disconnectFromDatabase()
+    await server?.stop()
+  })
+
+  it('keeps a small connection pool', () => {
+    // The driver's default is 100 connections per task, and a shared Atlas tier
+    // caps them across the cluster. Read from the client the connection opened, so
+    // this fails if the option stops reaching the driver.
+    expect(mongoose.connection.getClient().options.maxPoolSize).toBe(MONGO_MAX_POOL_SIZE)
+    expect(MONGO_MAX_POOL_SIZE).toBe(10)
+  })
+})
 
 describe('databaseStatus with a connection', () => {
   withDatabase()

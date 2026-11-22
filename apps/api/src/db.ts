@@ -18,8 +18,17 @@ const STATES: Record<number, DatabaseStatus> = {
   3: 'disconnecting',
 }
 
+/**
+ * Connections each task may hold open, a tenth of the driver's default of 100.
+ *
+ * A shared Atlas tier caps connections across the whole cluster, and every task,
+ * old and new, holds its own pool during a deployment. A demo's traffic needs a
+ * handful; at the default, a few tasks could hold hundreds between them.
+ */
+export const MONGO_MAX_POOL_SIZE = 10
+
 export async function connectToDatabase(uri: string): Promise<void> {
-  await mongoose.connect(uri)
+  await mongoose.connect(uri, { maxPoolSize: MONGO_MAX_POOL_SIZE })
 }
 
 export async function disconnectFromDatabase(): Promise<void> {

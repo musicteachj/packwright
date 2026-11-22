@@ -18,7 +18,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { PAGE_PATHS } from '../../web/src/router/pages'
 import { createApp } from './app'
 import { matchesClientPage, PAGE_PATHS_FILE } from './clientPages'
-import { resolveWebRoot } from './static'
+import { requireWebRoot, resolveWebRoot } from './static'
 
 const INDEX = '<!doctype html><html><body><div id="app"></div></body></html>'
 
@@ -214,5 +214,23 @@ describe('resolveWebRoot', () => {
     const resolved = resolveWebRoot()
     if (resolved === undefined) return
     expect(existsSync(join(resolved, 'index.html'))).toBe(true)
+  })
+})
+
+describe('requireWebRoot', () => {
+  it('refuses to start production without a client build', () => {
+    // Production is one container serving its own client, so a production server
+    // with no build in it answers every page with a JSON 404 while its health
+    // check says it is fine.
+    expect(() => requireWebRoot('production', undefined)).toThrow(/client build/)
+  })
+
+  it('lets development and the tests run the API alone', () => {
+    expect(requireWebRoot('development', undefined)).toBeUndefined()
+    expect(requireWebRoot('test', undefined)).toBeUndefined()
+  })
+
+  it('hands production the build it found', () => {
+    expect(requireWebRoot('production', webRoot)).toBe(webRoot)
   })
 })

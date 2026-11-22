@@ -932,7 +932,7 @@ Expected: FAIL.
 
 Run all checks (PASS). Remove the byte check from PUT only: the replace case fails; restore. Put back `.slice(0, MOST_IDS)` in `listLabels`: the 250-id test fails; restore.
 
-- [ ] **Step 5: CHANGELOG and commit**
+- [x] **Step 5: CHANGELOG and commit**
 
 CHANGELOG `### Changed`: labels expire after 7 days, the cap is 1,000, a label is at most 64 KB. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -956,7 +956,7 @@ git commit -m "feat: keep saved labels 7 days, up to 1,000 of them, 64 KB each"
   - `static.ts`: `export function requireWebRoot(nodeEnv: Env['NODE_ENV'], webRoot: string | undefined): string | undefined` (throws in production when `webRoot` is undefined).
   - `env.ts`: `MONGODB_URI` must name a database.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 - `env.test.ts`: `it.each(['mongodb://localhost:27017', 'mongodb://localhost:27017/', 'mongodb://localhost:27017/?replicaSet=rs0', 'mongodb+srv://u:p@cluster.example.net/?retryWrites=true'])('refuses %s, which names no database', ...)` throwing `/MONGODB_URI/` with "database"; `mongodb+srv://u:p@cluster.example.net/packwright?retryWrites=true` parses.
 - `app.test.ts`: `'liveness answers without the database'`: `databaseStatus: () => 'disconnected'`: `/health/live` 200 while `/health` is 503; `'liveness is never the client'` (with a `webRoot`, `/health/live` is JSON).
@@ -964,20 +964,20 @@ git commit -m "feat: keep saved labels 7 days, up to 1,000 of them, 64 KB each"
 - `static.test.ts`: `requireWebRoot('production', undefined)` throws naming the client build; `requireWebRoot('development', undefined)` is `undefined`; production with a root returns it.
 - `httpServer.test.ts` (a real `http.createServer` on port 0): `'outlasts the load balancer's idle timeout'` (`keepAliveTimeout` 130000, `headersTimeout` greater); `'finishes the request in flight, then closes the database once'`; `'does not wait for an idle keep-alive connection'` (a keep-alive agent holds a socket; shutdown resolves within 1 s); `'gives up on a request that never ends after the grace period'` (`graceMs` 100; resolves within 1 s and `closeDatabase` still runs).
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npx vitest run apps/api/src/env.test.ts apps/api/src/app.test.ts apps/api/src/db.test.ts apps/api/src/static.test.ts apps/api/src/httpServer.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `env.ts`: regex `^mongodb(\+srv)?:\/\/[^/\s]+\/[^/?\s]+` with the message "MONGODB_URI must name its database, such as mongodb://localhost:27017/packwright (an Atlas URI without one writes to `test`)". `scripts/serve-with-memory-mongo.mjs:141`: `mongo.getUri('packwright')`. `shutDownGracefully`: `server.close()` (promise), `server.closeIdleConnections()`, a `setTimeout(graceMs)` (unref'd) that calls `server.closeAllConnections()`, then `await closeDatabase()`. The `httpServer.ts` module note says why `SHUTDOWN_GRACE_MS` (25 s) can sit under the 60 s read timeout: in ECS the target is deregistered (a delay of about 90 s, spec Phase 2) before SIGTERM arrives, so reads in flight normally finish first; a read still running at the 25 s cut-off is dropped and keeps its reservation (over-counted, never under-counted). Neither figure changes. `server.ts`: `const webRoot = requireWebRoot(env.NODE_ENV, resolveWebRoot())`; `const server = app.listen(...)`; `configureTimeouts(server)`; `process.once` for `SIGTERM` and `SIGINT` runs `shutDownGracefully(server, disconnectFromDatabase)` then `process.exit(0)` (1 on error), logging "stopping: finishing requests in flight". In `app.ts`, update the `/health` note: readiness for smoke tests; the load balancer and the container check use `/health/live`. `Dockerfile`: `HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]` (the same command goes in the ECS task definition in Phase 3). `verify-image.sh`: wait on `/health/live`; then `/health` is 200; then, timed, `docker stop -t 30 <app>` must exit 0 (not 137) in under 30 s. `docker-compose.yml`: the same `healthcheck`. `.env.example`: the `MONGODB_URI` note.
 
-- [ ] **Step 4: Run all checks and the image check**
+- [x] **Step 4: Run all checks and the image check**
 
 Run all checks, then `npm run verify:image`. Expected: PASS.
 
-- [ ] **Step 5: Mutation test**
+- [x] **Step 5: Mutation test**
 
 Remove `configureTimeouts(server)`'s `headersTimeout` line: its test fails. Remove `closeAllConnections`: the never-ending request test times out. Remove the database-name regex: its env cases fail. Restore all three.
 

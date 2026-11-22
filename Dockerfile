@@ -52,7 +52,11 @@ COPY --from=deps /app/packages/label-core/package.json packages/label-core/
 # Files stay owned by root, so the app cannot rewrite itself; only the user changes.
 USER node
 EXPOSE 3000
-# Exec form, so node is PID 1 and receives SIGTERM directly. The server's handler
-# for it arrives in a later task (plan Task 12); until then `docker stop` waits
-# out the grace period before killing it.
+# Liveness, which asks nothing of the database (apps/api/src/app.ts says why). Node
+# rather than curl, which node:24-slim does not have. The same command goes in the
+# ECS task definition.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+# Exec form, so node is PID 1 and receives SIGTERM directly: the server finishes
+# the requests in flight and exits 0 well inside `docker stop`'s 30 s
+# (apps/api/src/httpServer.ts). scripts/verify-image.sh times it.
 CMD ["node", "--enable-source-maps", "--max-old-space-size=512", "apps/api/dist/server.js"]

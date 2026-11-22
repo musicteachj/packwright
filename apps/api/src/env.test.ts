@@ -123,6 +123,28 @@ describe('loadEnv', () => {
     },
   )
 
+  it.each([
+    'mongodb://localhost:27017',
+    'mongodb://localhost:27017/',
+    'mongodb://localhost:27017/?replicaSet=rs0',
+    'mongodb+srv://u:p@cluster.example.net/?retryWrites=true',
+    'mongodb://localhost:27017?tlsCAFile=/etc/ssl/ca.pem',
+  ])('refuses %s, which names no database', (uri) => {
+    // Without a database name the driver writes to `test`, so a deployment would
+    // save every label into a database nobody named and nothing reads.
+    expect(() => loadEnv({ MONGODB_URI: uri })).toThrow(/MONGODB_URI must name its database/)
+  })
+
+  it('accepts an Atlas URI that names its database before its options', () => {
+    const uri = 'mongodb+srv://u:p@cluster.example.net/packwright?retryWrites=true'
+    expect(loadEnv({ MONGODB_URI: uri }).MONGODB_URI).toBe(uri)
+  })
+
+  it('accepts a replica-set URI that names its database', () => {
+    const uri = 'mongodb://h1:1,h2:2/packwright?replicaSet=rs0'
+    expect(loadEnv({ MONGODB_URI: uri }).MONGODB_URI).toBe(uri)
+  })
+
   it('accepts the SRV form used by Atlas', () => {
     expect(loadEnv({ MONGODB_URI: 'mongodb+srv://host/packwright' }).MONGODB_URI).toBe(
       'mongodb+srv://host/packwright',

@@ -10,6 +10,12 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **`GET /health/live`, and a graceful stop.** Liveness answers `{ status: 'ok' }` without asking the database,
+  so a Mongo outage cannot have the platform restart every task in a loop. The image's new `HEALTHCHECK` and the
+  compose file read it, as the load balancer will; `/health` stays the readiness check. On SIGTERM or SIGINT the
+  server stops accepting, closes idle keep-alive connections, finishes the requests in flight for up to 25 s
+  (`apps/api/src/httpServer.ts`), then closes the database and exits 0. `verify:image` now times `docker stop`
+  and fails unless the container exits 0 in under 30 s.
 - **The landing page links straight to a live audit and to the sample.** Its header offers the editor, "Audit a
   label photo" and "Try the sample label"; `/audit?sample=1` puts the sample on screen on arrival, whatever the
   server's status says.
@@ -57,6 +63,11 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **Keep-alive outlasts the load balancer, the Mongo pool is 10, and production refuses a bad start.** Node keeps
+  an idle connection 130 s (headers 131 s), past the load balancer's 120 s, so the balancer always closes first.
+  The connection pool is 10, not the driver's 100. `MONGODB_URI` must name its database in every environment,
+  since without one the driver writes to `test`. Production without its client build refuses to start rather
+  than serve the API alone.
 - **Saved labels are kept 7 days after their last change, up to 1,000 of them, and each is at most 64 KB.** The
   lifetime was 30 days and the cap 200. A label whose validated JSON is past 64 KB is refused `413` on create and on
   replace, before anything is counted or written. The list still asks about at most 200 ids a request

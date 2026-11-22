@@ -9,10 +9,11 @@ import { DEFAULT_LABEL_WRITE_LIMITS } from './labels/labelDocumentRoutes'
 import { DEFAULT_EXPORT_LIMIT } from './labels/routes'
 import { DEFAULT_MCP_LIMITS } from './mcp/routes'
 import { liveExtractor, VISION_RESERVATION_MICROS } from './audit/extract'
-import { connectToDatabase, databaseStatus } from './db'
+import { connectToDatabase, databaseStatus, disconnectFromDatabase } from './db'
 import { loadDotenv } from './dotenv'
 import { loadEnv } from './env'
-import { resolveWebRoot } from './static'
+import { configureTimeouts, shutDownGracefully } from './httpServer'
+import { requireWebRoot, resolveWebRoot } from './static'
 
 // Loads .env before anything reads process.env. Declared as a dependency since
 // the first commit but never actually imported, so a local .env was silently
@@ -24,7 +25,9 @@ import { resolveWebRoot } from './static'
 loadDotenv()
 
 const env = loadEnv()
-const webRoot = resolveWebRoot()
+// Production without its client build refuses to start, here, before it connects to
+// anything; see `requireWebRoot`.
+const webRoot = requireWebRoot(env.NODE_ENV, resolveWebRoot())
 
 // Before `listen`, so a server accepting requests is a server with a database.
 // The alternative is a task that reports healthy and then fails under traffic,
@@ -105,7 +108,7 @@ const app = createApp({
     : {}),
 })
 
-app.listen(env.PORT, () => {
+const server = app.listen(env.PORT, () => {
   console.log(`Packwright API listening on :${env.PORT} (${env.NODE_ENV})`)
   // Said out loud because the two modes look identical from the outside until a
   // request arrives. In production the absence of a client build is the whole
@@ -137,3 +140,28 @@ app.listen(env.PORT, () => {
       : '/mcp disabled by MCP_ENABLED',
   )
 })
+
+// Keep-alive past the load balancer's idle timeout; see `httpServer.ts`.
+configureTimeouts(server)
+
+/**
+ * A stop that finishes the requests in flight and closes the database, then exits.
+ *
+ * `docker stop` and ECS send SIGTERM and kill the process 30 s later. Node as PID 1
+ * has no default action for SIGTERM, so without this the container ignored it, sat
+ * out the whole 30 s and was killed with 137, dropping whatever was in flight.
+ * `once`, so a second signal during the stop falls through to Node's default and
+ * ends the process at once: Ctrl-C twice still works.
+ */
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(signal, () => {
+    console.log(`stopping: finishing requests in flight (${signal})`)
+    shutDownGracefully(server, disconnectFromDatabase).then(
+      () => process.exit(0),
+      (error: unknown) => {
+        console.error(error)
+        process.exit(1)
+      },
+    )
+  })
+}
