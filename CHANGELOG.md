@@ -10,6 +10,16 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **Secret scanning, a weekly dependency audit, and CI that cannot write.** A new `security.yml` runs gitleaks
+  8.30.1 over the whole history, its download checked against the release's published checksum, and
+  `npm audit --audit-level=high` over the lockfile, on every push to `main` and `dev` and on every pull request.
+  It also runs weekly on Mondays, so an advisory against an unchanged dependency still surfaces, and on demand,
+  but GitHub runs both of those only from the default branch, so they start once the release brings the file to
+  `main`. gitleaks found one value in the history, the 32-character `AUDIT_IP_HASH_KEY` fixture in
+  `env.test.ts`, which is not a secret; `.gitleaksignore` lists that one finding by fingerprint. Both workflows
+  now run with a read-only token, check out without keeping the credentials, and pin every action by commit with
+  its version beside it (checkout v7.0.1, setup-node v7.1.0, upload-artifact v7.0.2, Open Door's vetted pins,
+  each confirmed against its tag on 2026-11-22), because a tag can be moved to other code and a commit cannot.
 - **Link-preview tags.** `index.html` carries Open Graph tags (title, the page's own description, absolute
   `og:url` and `og:image`, the image's 1200 x 630 size and alt text) and `twitter:card` `summary_large_image`,
   held by `apps/web/src/linkPreview.test.ts`.

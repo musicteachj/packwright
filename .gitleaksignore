@@ -1,0 +1,6 @@
+# Findings gitleaks reports that are not secrets, one fingerprint per line (commit:file:rule:line).
+# Each is a value a test needs, checked by hand before it was listed here.
+
+# apps/api/src/env.test.ts: '0123456789abcdef0123456789abcdef', the shortest AUDIT_IP_HASH_KEY the
+# server accepts, used only to load test settings. Found on 2026-11-22.
+6cf9826887d1ee28dced731819edd7fc3b1af74c:apps/api/src/env.test.ts:generic-api-key:231

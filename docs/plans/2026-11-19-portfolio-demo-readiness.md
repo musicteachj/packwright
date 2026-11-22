@@ -1054,7 +1054,7 @@ git add apps/web playwright.config.ts scripts/verify-build.sh CHANGELOG.md
 git commit -m "fix(web): date the sample, add link previews, and keep /design out of production"
 ```
 
-- [ ] **Step 6: PR checkpoint (stage boundary: hardening)**
+- [x] **Step 6: PR checkpoint (stage boundary: hardening)**
 
 As in Task 5 Step 9, for Tasks 11 to 14 ("Saved labels, server lifecycle, MCP and small fixes for the demo"). Two stops: push, then PR.
 
@@ -1068,19 +1068,19 @@ As in Task 5 Step 9, for Tasks 11 to 14 ("Saved labels, server lifecycle, MCP an
 
 **Interfaces:** none (CI only).
 
-- [ ] **Step 1: Harden `ci.yml`**
+- [x] **Step 1: Harden `ci.yml`**
 
 Add top-level `permissions: contents: read`. Pin, with the version as a trailing comment (Open Door's pins, `open-door/.github/workflows/security.yml:27`, `:78`, `ci.yml:348`): `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1` with `persist-credentials: false`; `actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0` (keep `node-version-file` and `cache: 'npm'`); `actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2`. If the network is available, confirm each with `gh api repos/actions/<name>/commits/<sha> --jq .sha`.
 
-- [ ] **Step 2: Write `security.yml`**
+- [x] **Step 2: Write `security.yml`**
 
 Modeled on `open-door/.github/workflows/security.yml`: on push to `main` and `dev`, pull requests, `schedule: - cron: '0 13 * * 1'` (Mondays, weekly), and `workflow_dispatch`; the same `concurrency` block; `permissions: contents: read`. Job `secrets` (gitleaks 8.30.1, downloaded and checked against its published checksum, `fetch-depth: 0`, `./gitleaks git --redact --verbose --exit-code 1`), copied as is. Job `dependencies`: checkout and setup-node (pinned as above), then `npm audit --audit-level=high` (it reads `package-lock.json`; no install).
 
-- [ ] **Step 3: No `dependabot.yml`**
+- [x] **Step 3: No `dependabot.yml`**
 
 James decided on 2026-11-19: no routine version-update PRs. Dependabot security updates come from the GitHub repository setting (master plan Phase 0), plus this workflow's weekly `npm audit`. Nothing to write in this step; it stays so the step numbers below don't shift.
 
-- [ ] **Step 4: Verify locally**
+- [x] **Step 4: Verify locally**
 
 Run: `npm run format:check` (PASS; Prettier parses the YAML). Run: `grep -nE '^\s*-?\s*uses:' .github/workflows/*.yml | grep -vE '@[0-9a-f]{40} # v'` (expected: no output). Run: `npm audit --audit-level=high` (expected: exit 0; if it fails, stop and show James the advisories: no exceptions are added silently). If `gitleaks` is installed (`gitleaks version`), run `gitleaks git --redact --verbose --exit-code 1` over the full history (expected: no leaks; otherwise CI runs it on the first push).
 
