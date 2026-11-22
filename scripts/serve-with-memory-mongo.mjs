@@ -117,14 +117,25 @@ for (const entry of readdirSync(HOME)) {
  */
 let mongo
 let stopping = false
+const exit = process.exit.bind(process)
 const stop = async (code = 0) => {
   if (stopping) return
   stopping = true
   await mongo?.stop().catch(() => undefined)
   rmSync(dbPath, { recursive: true, force: true })
   rmSync(ownerFile, { force: true })
-  process.exit(code)
+  exit(code)
 }
+/**
+ * The server's own exit, routed through `stop`.
+ *
+ * The server stops itself on SIGTERM and SIGINT and then calls `process.exit`
+ * (`server.ts`). Its handlers run beside the ones below, and its exit could land
+ * while `stop` was still waiting on the `mongod`, leaving the data directory and
+ * its claim behind. Through here, whichever finishes first, the database is stopped
+ * and its directory removed before the process ends.
+ */
+process.exit = (code) => void stop(typeof code === 'number' ? code : 0)
 process.on('SIGTERM', () => void stop())
 process.on('SIGINT', () => void stop())
 process.on('SIGHUP', () => void stop())
@@ -138,7 +149,8 @@ process.on('unhandledRejection', (error) => {
 })
 
 mongo = await MongoMemoryServer.create({ instance: { dbPath } })
-process.env.MONGODB_URI = mongo.getUri()
+// Named, as `env.ts` requires of every URI: without a name the driver writes to `test`.
+process.env.MONGODB_URI = mongo.getUri('packwright')
 
 // Handed from this script to the `mongod` it started: that is the process which
 // actually holds the wiredTiger files, and it outlives this one when this one is

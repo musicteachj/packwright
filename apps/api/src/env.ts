@@ -105,6 +105,11 @@ const EnvSchema = z.object({
    * one reports healthy and fails at first connect, which is precisely the
    * deferral this variable was made required to prevent. A value mongoose cannot
    * dial is a missing value that has not admitted it yet.
+   *
+   * **And it must name its database**, in every environment. A URI with no path
+   * after the host is one the driver connects with happily and then writes to
+   * `test`, which is how an Atlas connection string pasted as the console gives it
+   * would put every saved label in a database nothing else reads.
    */
   MONGODB_URI: blankAsAbsent(
     z
@@ -112,6 +117,10 @@ const EnvSchema = z.object({
       .regex(
         /^mongodb(\+srv)?:\/\/\S/,
         'MONGODB_URI must be a mongodb:// or mongodb+srv:// connection string',
+      )
+      .regex(
+        /^mongodb(\+srv)?:\/\/[^/?\s]+\/[^/?\s]+/,
+        'MONGODB_URI must name its database, such as mongodb://localhost:27017/packwright (an Atlas URI without one writes to `test`)',
       ),
   ),
 
@@ -245,6 +254,22 @@ const EnvSchema = z.object({
     z
       .string()
       .regex(/^\d+$/, 'must be a whole number of labels, such as 10')
+      .transform(Number)
+      .pipe(z.number().min(1).max(100_000))
+      .optional(),
+  ),
+
+  /**
+   * Tool calls an hour shared by everything arriving from Anthropic's outbound
+   * ranges, or nothing for `DEFAULT_MCP_LIMITS.anthropicPerHour` (1,000).
+   *
+   * Digits only, for the reason `LABEL_CREATES_PER_HOUR` is; at least one, since
+   * none would refuse every call from claude.ai.
+   */
+  MCP_ANTHROPIC_CALLS_PER_HOUR: blankAsAbsent(
+    z
+      .string()
+      .regex(/^\d+$/, 'must be a whole number of calls, such as 1000')
       .transform(Number)
       .pipe(z.number().min(1).max(100_000))
       .optional(),

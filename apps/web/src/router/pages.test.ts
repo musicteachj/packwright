@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from './index'
-import { PAGE_PATHS } from './pages'
+import { DESIGN_PATH, PAGE_PATHS, pagePaths } from './pages'
 
 describe('PAGE_PATHS', () => {
   it('is every page the router registers, and nothing else', () => {
@@ -16,6 +16,39 @@ describe('PAGE_PATHS', () => {
         .filter((path) => !path.includes('pathMatch')),
     )
     expect([...registered].sort()).toEqual([...PAGE_PATHS].sort())
+  })
+})
+
+describe('pagePaths', () => {
+  // The build writes this, not `PAGE_PATHS`, so a build without the design
+  // catalog has the server 404 `/design` as the client's router does.
+  it('is every page when the design catalog is built', () => {
+    expect(pagePaths(true)).toEqual(PAGE_PATHS)
+  })
+
+  it('leaves out the design catalog, and nothing else, when it is not', () => {
+    expect(pagePaths(false)).not.toContain(DESIGN_PATH)
+    expect(pagePaths(false)).toEqual(PAGE_PATHS.filter((path) => path !== DESIGN_PATH))
+  })
+})
+
+describe('the design catalog route', () => {
+  it('is not found when the catalog is not built', () => {
+    const router = createAppRouter(createMemoryHistory(), { designCatalog: false })
+    expect(router.resolve(DESIGN_PATH).name).toBe('not-found')
+  })
+
+  it('is the catalog when it is', () => {
+    const router = createAppRouter(createMemoryHistory(), { designCatalog: true })
+    expect(router.resolve(DESIGN_PATH).name).toBe('design')
+  })
+
+  it('registers the pages pagePaths(false) lists, and nothing else, without it', () => {
+    const registered = createAppRouter(createMemoryHistory(), { designCatalog: false })
+      .getRoutes()
+      .map((route) => route.path)
+      .filter((path) => !path.includes('pathMatch'))
+    expect([...new Set(registered)].sort()).toEqual([...pagePaths(false)].sort())
   })
 })
 

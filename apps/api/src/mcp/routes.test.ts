@@ -178,6 +178,18 @@ describe('rate limits', () => {
     // An address just past the range is a client of its own.
     expect((await from(agent, '160.79.112.0')).status).toBe(200)
   })
+
+  it('shares that one allowance across both of Anthropic’s ranges', async () => {
+    const { app } = appWith({ limits: LIMITS }, 1)
+    const agent = supertest(app)
+    expect((await from(agent, '160.79.104.0')).status).toBe(200)
+    expect((await from(agent, '153.61.208.0')).status).toBe(200)
+    expect((await from(agent, '153.61.223.255')).status).toBe(429)
+  })
+
+  it('allows 1,000 an hour to Anthropic by default', () => {
+    expect(DEFAULT_MCP_LIMITS.anthropicPerHour).toBe(1000)
+  })
 })
 
 describe('batches', () => {
@@ -229,6 +241,11 @@ describe('isFromAnthropic', () => {
     ['160.79.111.255', true],
     ['160.79.112.0', false],
     ['::ffff:160.79.104.1', true],
+    ['153.61.207.255', false],
+    ['153.61.208.0', true],
+    ['153.61.223.255', true],
+    ['153.61.224.0', false],
+    ['::ffff:153.61.208.1', true],
     // Anthropic's IPv6 range is inbound; its outbound calls come from IPv4.
     ['2607:6bc0::1', false],
     [undefined, false],

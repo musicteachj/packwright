@@ -138,11 +138,11 @@ export interface AppOptions {
  * `/mcp` is listed for when it is switched off: a client probing it then needs
  * the JSON 404, not the editor's page with a 200 on it.
  *
- * `/health` is listed and is **currently unreachable**, because it is registered
- * as a route above and answered before the fallback is consulted. It is here
- * against a reordering rather than against a request: it is the ALB's liveness
- * probe, and a target group reading `index.html` as healthy would hold a broken
- * task in service. Nothing can test that, which is why it is written down.
+ * `/health` is listed and is **currently unreachable** for `/health` and
+ * `/health/live`, because both are registered as routes above and answered before
+ * the fallback is consulted. It is here against a reordering rather than against
+ * a request: `/health/live` is the load balancer's liveness probe, and a target
+ * group reading `index.html` as healthy would hold a broken task in service.
  *
  * Matched by path segment rather than by string prefix, which this got wrong in
  * both directions at once. `startsWith('/api/')` missed bare `/api` — no
@@ -358,8 +358,21 @@ export function createApp(options: AppOptions = {}): Express {
   app.use(express.json({ limit: BODY_LIMIT }))
 
   /**
-   * Liveness probe. The ALB target group polls this, so its shape is load
-   * bearing — a 200 here is what keeps the ECS task in service.
+   * Liveness: the process is up and answering. The load balancer's target group
+   * and the container's `HEALTHCHECK` read this, and it asks nothing of the
+   * database on purpose. A Mongo outage is not something replacing the task would
+   * fix, and a probe that failed on one would have the platform kill and restart
+   * every task at once, in a loop, for as long as the outage lasted.
+   */
+  app.get('/health/live', (_req: Request, res: Response) => {
+    res.json({ status: 'ok' })
+  })
+
+  /**
+   * Readiness, for smoke tests and for people: whether this task can serve a save,
+   * which is the database too. `verify:build`, `verify:image` and the browser
+   * suite wait on it. The load balancer and the container check use
+   * `/health/live`, above, for the reason given there.
    */
   app.get('/health', (_req: Request, res: Response) => {
     const database = databaseStatus?.()

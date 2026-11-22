@@ -8,7 +8,7 @@
  * label can be changed only with the edit token its creator was handed, and the
  * list is of the labels this browser holds tokens for (`api/heldLabels.ts`).
  * The page says so in plain words, along with the two ways a label leaves it:
- * clearing the browser's storage, and expiry thirty days after its last change.
+ * clearing the browser's storage, and expiry seven days after its last change.
  *
  * Deliberately thin: name, kind, when it last changed, and the two things you
  * can do with it. The list endpoint omits each label's `data`, so this page
@@ -57,14 +57,16 @@ const atCap = computed(() => counted.value !== null && counted.value.count >= co
  */
 const tally = computed(() => {
   const yours = labels.value.length
-  return yours === 0 ? 'No labels saved in this browser yet.' : `${yours} saved in this browser.`
+  return yours === 0
+    ? 'No labels saved in this browser yet.'
+    : `${yours.toLocaleString('en-US')} saved in this browser.`
 })
 
 /** Said when the app is full, which stops this reader saving as surely as anyone. */
 const fullSentence = computed(() =>
   counted.value === null
     ? ''
-    : `This app keeps ${counted.value.cap} labels and has ${counted.value.count}, so nothing new can be saved until one is deleted or expires.`,
+    : `This app keeps ${counted.value.cap.toLocaleString('en-US')} labels and has ${counted.value.count.toLocaleString('en-US')}, so nothing new can be saved until one is deleted or expires.`,
 )
 
 /** The count line, shown and said alike. */
@@ -147,7 +149,8 @@ onMounted(load)
       <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed" data-labels-ownership>
         A label can be changed or deleted only from the browser that saved it. Clearing this
         browser's storage loses that for good, though anyone with a label's link can still open it.
-        Labels are removed 30 days after their last change.
+        Labels are removed 7 days after their last change. They're stored in MongoDB Atlas, and
+        Packwright runs on AWS.
       </p>
       <!--
         A count of labels, not a measurement, so it is set in the sentence's own

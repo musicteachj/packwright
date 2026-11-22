@@ -119,9 +119,10 @@ export interface LabelList {
 }
 
 /**
- * The most ids one list asks about: the server's cap, since a browser cannot
- * hold more live labels than the application keeps. Only ids of labels that have
- * since expired could take it past that, and the oldest are the ones left out.
+ * The most ids one request asks about: the server's `MAX_IDS_PER_LIST`, which is
+ * no longer the cap. The app keeps 1,000 labels, and a URL naming that many ids
+ * is past the header size Node accepts, so a browser holding more than this asks
+ * in turns.
  */
 const MOST_IDS = 200
 
@@ -138,13 +139,30 @@ const countIn = (answer: { cap?: unknown; count?: unknown }): LabelCount | null 
     : null
 
 /**
- * The labels this browser saved, newest first, in one request.
+ * Newest first, as the server sorts one answer: last changed, then id. Applied
+ * again to answers joined, since each is sorted only within itself. Both are
+ * compared as strings: an ISO date in UTC sorts as its text does, and an id is
+ * 24 lowercase hex digits, which sort as the ObjectId does.
+ */
+const descending = (a: string, b: string): number => (a < b ? 1 : a > b ? -1 : 0)
+const newestFirst = (a: SavedLabelSummary, b: SavedLabelSummary): number =>
+  descending(a.updatedAt, b.updatedAt) || descending(a.id, b.id)
+
+/**
+ * The labels this browser saved, newest first, `MOST_IDS` ids to a request.
  *
  * The server no longer lists every label, because that list published every
  * link (`docs/security-review-2026-10-18.md`, finding 4); it answers for the ids
  * it is given. An id it leaves out names a label that was deleted or has expired,
  * so this browser lets go of it, and only on an answer that succeeded: a failed
  * request says nothing about which labels exist.
+ *
+ * **Every held id is asked about.** This used to keep the newest `MOST_IDS` and
+ * leave the rest out of the request, which cost nothing while that was also the
+ * cap; at 1,000, the labels past the first 200 could not be listed, opened or
+ * deleted from this browser. The requests go one after another, so a browser
+ * holding many labels never sends the server a burst, and if any of them fails
+ * the whole list fails and nothing is let go of.
  */
 export const listLabels = async (): Promise<LabelList> => {
   // Only ids the server can read. It refuses a whole list over one it cannot,
@@ -154,20 +172,37 @@ export const listLabels = async (): Promise<LabelList> => {
   const ids = heldLabels()
     .map((label) => label.id)
     .filter((id) => OBJECT_ID.test(id))
-    .slice(0, MOST_IDS)
-  const answer = (await request(ids.length === 0 ? BASE : `${BASE}?ids=${ids.join(',')}`)) as {
-    labels?: SavedLabelSummary[]
-    cap?: unknown
-    count?: unknown
+  const chunks: string[][] = []
+  for (let start = 0; start < ids.length; start += MOST_IDS) {
+    chunks.push(ids.slice(start, start + MOST_IDS))
   }
-  // **Only an answer that lists anything can say a label is gone.** Read as an
-  // empty list, a body with no `labels` (an older server, or something in front
-  // of it answering) let go of every token this browser held, for good. Found
-  // by review.
-  if (!Array.isArray(answer.labels)) return { labels: [], counted: countIn(answer) }
-  const listed = new Set(answer.labels.map((label) => label.id))
-  forgetLabels(ids.filter((id) => !listed.has(id)))
-  return { labels: answer.labels, counted: countIn(answer) }
+  // With nothing held, one request still asks for the cap and the count.
+  if (chunks.length === 0) chunks.push([])
+
+  const labels: SavedLabelSummary[] = []
+  const gone: string[] = []
+  let anyListed = false
+  let counted: LabelCount | null = null
+  for (const chunk of chunks) {
+    const answer = (await request(
+      chunk.length === 0 ? BASE : `${BASE}?ids=${chunk.join(',')}`,
+    )) as { labels?: SavedLabelSummary[]; cap?: unknown; count?: unknown }
+    // The latest answer's figures, since each request reads them afresh.
+    counted = countIn(answer)
+    // **Only an answer that lists anything can say a label is gone.** Read as an
+    // empty list, a body with no `labels` (an older server, or something in
+    // front of it answering) let go of every token this browser held, for good.
+    // Found by review.
+    if (!Array.isArray(answer.labels)) continue
+    anyListed = true
+    labels.push(...answer.labels)
+    const listed = new Set(answer.labels.map((label) => label.id))
+    gone.push(...chunk.filter((id) => !listed.has(id)))
+  }
+  if (!anyListed) return { labels: [], counted }
+  forgetLabels(gone)
+  // One answer is already in the server's order, and is kept as it came.
+  return { labels: chunks.length > 1 ? labels.sort(newestFirst) : labels, counted }
 }
 
 /**

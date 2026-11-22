@@ -10,6 +10,15 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **Link-preview tags.** `index.html` carries Open Graph tags (title, the page's own description, absolute
+  `og:url` and `og:image`, the image's 1200 x 630 size and alt text) and `twitter:card` `summary_large_image`,
+  held by `apps/web/src/linkPreview.test.ts`.
+- **`GET /health/live`, and a graceful stop.** Liveness answers `{ status: 'ok' }` without asking the database,
+  so a Mongo outage cannot have the platform restart every task in a loop. The image's new `HEALTHCHECK` and the
+  compose file read it, as the load balancer will; `/health` stays the readiness check. On SIGTERM or SIGINT the
+  server stops accepting, closes idle keep-alive connections, finishes the requests in flight for up to 25 s
+  (`apps/api/src/httpServer.ts`), then closes the database and exits 0. `verify:image` now times `docker stop`
+  and fails unless the container exits 0 in under 30 s.
 - **The landing page links straight to a live audit and to the sample.** Its header offers the editor, "Audit a
   label photo" and "Try the sample label"; `/audit?sample=1` puts the sample on screen on arrival, whatever the
   server's status says.
@@ -57,6 +66,23 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **`/mcp` recognizes both of Anthropic's outbound ranges, and its shared allowance is a setting.** The ranges are
+  `160.79.104.0/21` and `153.61.208.0/20` (Anthropic's IP addresses page, read 2026-11-22), sharing one bucket.
+  That bucket defaults to 1,000 calls an hour, down from 5,000, and `MCP_ANTHROPIC_CALLS_PER_HOUR` (1 to 100,000)
+  sets it. The "what is not checked" link points at `main`.
+
+- **Keep-alive outlasts the load balancer, the Mongo pool is 10, and production refuses a bad start.** Node keeps
+  an idle connection 130 s (headers 131 s), past the load balancer's 120 s, so the balancer always closes first.
+  The connection pool is 10, not the driver's 100. `MONGODB_URI` must name its database in every environment,
+  since without one the driver writes to `test`. Production without its client build refuses to start rather
+  than serve the API alone.
+- **Saved labels are kept 7 days after their last change, up to 1,000 of them, and each is at most 64 KB.** The
+  lifetime was 30 days and the cap 200. A label whose validated JSON is past 64 KB is refused `413` on create and on
+  replace, before anything is counted or written. The list still asks about at most 200 ids a request
+  (`MAX_IDS_PER_LIST`), so the web client now asks in turns of 200 and joins the answers, newest first, rather than
+  listing only the newest 200. The Saved labels page says labels are stored in MongoDB Atlas and that Packwright
+  runs on AWS, and the cap's figures read "1,000". A database that already has the 30-day TTL index keeps it until
+  it is changed by hand.
 - **A status the audit page could not fetch, or a budget status, can be asked again, and the budget refusal no
   longer says the budget is spent.** Where `/api/audit/status` could not be had (a network blip, or the status limit
   on a shared address) or answered `budget`, the unavailable block offers "Try again" beside the sample, reading
@@ -150,6 +176,14 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The sample's notice gives the date it was really read.** The sample reading was re-recorded on 2026-11-18
+  (`569fdce`), and the notice still said 2026-09-15.
+- **The design catalog is hidden in production builds.** `/design` is a workbench for the components, not a
+  page for visitors. A build has it only with `VITE_DESIGN_CATALOG=true` (the dev server and the tests always do):
+  without it the router does not register it, the masthead does not link to it, and `routes.json` leaves it out,
+  read from the same variable through Vite's `loadEnv`, so the server answers it 404 as the client does. Its code
+  chunk is still emitted, but nothing routes or links to it. `verify:build` builds without the flag and checks the
+  404; the browser specs build with it for the catalog's own specs.
 - **The audit page's market select draws its chevron like every other select.** It was the one bare `<select>`
   left, with the browser's own arrow flush against its right edge; it is now a `SelectField`, whose chevron sits
   8px in. Measured in a browser, every select on the audit page and in all three editor label types now has the

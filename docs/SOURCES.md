@@ -88,6 +88,7 @@ order and the names of their colors, as the summaries describe them; no rule cit
 | **Model Context Protocol specification**, revision 2025-11-25 | The older revision Claude's clients still speak (observed 2026-10-10), which the server also answers | [specification](https://modelcontextprotocol.io/specification/2025-11-25) |
 | **MCP TypeScript SDK documentation** | Serving over Express, and declaring tools | [Express](https://ts.sdk.modelcontextprotocol.io/v2/serving/express.md), [tools](https://ts.sdk.modelcontextprotocol.io/v2/servers/tools.md) |
 | **Claude connector documentation** | Size and time limits, no sign-in, Anthropic's address range, adding an unlisted connector | [building](https://claude.com/docs/connectors/building/index.md), [authentication](https://claude.com/docs/connectors/building/authentication.md), [unlisted](https://claude.com/docs/connectors/custom/add-unlisted.md) |
+| **Anthropic, IP addresses**, § Outbound IP addresses, read 2026-11-22 | Anthropic's outbound IPv4 ranges, `160.79.104.0/21` and `153.61.208.0/20`, which `/mcp` treats as one shared caller (`apps/api/src/mcp/routes.ts`); the page lists no outbound IPv6 range | [Claude Platform docs](https://platform.claude.com/docs/en/api/ip-addresses) |
 
 The MCP sources were read on 2026-10-10 (`docs/plans/2026-10-10-mcp.md`).
 

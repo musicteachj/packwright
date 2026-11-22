@@ -278,7 +278,7 @@ const atCap = computed(
 const atCapReason = computed(() =>
   labelCount.value === null
     ? ''
-    : `${labelCount.value.count} of ${labelCount.value.cap} saved, as many as this app keeps. Delete one of yours from Saved labels, or try again later.`,
+    : `${labelCount.value.count.toLocaleString('en-US')} of ${labelCount.value.cap.toLocaleString('en-US')} saved, as many as this app keeps. Delete one of yours from Saved labels, or try again later.`,
 )
 
 async function persist(mode: 'replace' | 'create') {

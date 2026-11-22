@@ -2,17 +2,17 @@ import { expect, test, type Page } from '@playwright/test'
 import { holdInBrowser } from './support/savedLabels'
 
 /**
- * The 200-label cap, as the pages say it.
+ * The 1,000-label cap, as the pages say it.
  *
  * **The API is faked here, not filled.** Every spec in this suite shares one
- * database and runs in parallel, so standing it at 200 would make every other
+ * database and runs in parallel, so standing it at 1,000 would make every other
  * spec's save answer 409. The server's half (the count, the recount, the 409) is
  * held by `apps/api/src/labels/labelDocumentRoutes.test.ts`; what is asked here
  * is what a reader sees and hears once the server has said it.
  */
 
 const FULL =
-  'There are already 200 saved labels, which is as many as this app keeps. Labels are removed 30 days after their last change, so try again later, or delete one of yours from Saved labels.'
+  'There are already 1,000 saved labels, which is as many as this app keeps. Labels are removed 7 days after their last change, so try again later, or delete one of yours from Saved labels.'
 
 const SAVED = {
   id: 'abc123abc123abc123abc123',
@@ -31,7 +31,7 @@ const SAVED = {
 const fakeList = (page: Page, count: number, labels: unknown[] = []) =>
   page.route(/\/api\/labels(\?ids=[0-9a-f,]*)?$/, (route) =>
     route.request().method() === 'GET'
-      ? route.fulfill({ json: { cap: 200, count, labels } })
+      ? route.fulfill({ json: { cap: 1000, count, labels } })
       : route.fallback(),
   )
 
@@ -46,11 +46,11 @@ const heard = (page: Page) =>
 test('the list says when the app is full, though none of the labels are this browser’s', async ({
   page,
 }) => {
-  await fakeList(page, 200)
+  await fakeList(page, 1000)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/labels')
   const said =
-    'No labels saved in this browser yet. This app keeps 200 labels and has 200, so nothing new can be saved until one is deleted or expires.'
+    'No labels saved in this browser yet. This app keeps 1,000 labels and has 1,000, so nothing new can be saved until one is deleted or expires.'
   await expect(page.locator('[data-label-count]')).toHaveText(said)
   await expect(page.locator('[aria-live]')).toContainText(said)
 })
@@ -72,7 +72,7 @@ test('a list that could not be loaded is said once', async ({ page }) => {
 test('the editor holds back Save as new at the cap, and Save says the server’s sentence', async ({
   page,
 }) => {
-  await fakeList(page, 200)
+  await fakeList(page, 1000)
   await page.route(`**/api/labels/${SAVED.id}`, (route) => route.fulfill({ json: SAVED }))
   await page.route(/\/api\/labels$/, (route) =>
     route.request().method() === 'POST'
@@ -88,7 +88,7 @@ test('the editor holds back Save as new at the cap, and Save says the server’s
   await expect(page.locator('[data-save-state]')).toHaveText('Saved')
   await expect(page.locator('[data-save-as]')).toBeDisabled()
   await expect(page.locator('[data-save-as-reason]')).toHaveText(
-    '200 of 200 saved, as many as this app keeps. Delete one of yours from Saved labels, or try again later.',
+    '1,000 of 1,000 saved, as many as this app keeps. Delete one of yours from Saved labels, or try again later.',
   )
 
   // A new label's Save is a POST, and is refused in the server's words.
@@ -103,7 +103,7 @@ test('the reason wraps in the header on a phone rather than pushing Export off i
 }) => {
   // Measured before the fix: the editor's button group did not wrap, so the
   // reason ran past the right edge at 375 px and took Export PDF with it.
-  await fakeList(page, 200)
+  await fakeList(page, 1000)
   await page.route(`**/api/labels/${SAVED.id}`, (route) => route.fulfill({ json: SAVED }))
   await page.setViewportSize({ width: 375, height: 800 })
   await page.goto(`/labels/${SAVED.id}`)

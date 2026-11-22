@@ -7,7 +7,8 @@
 #
 # The checks are about what must NOT be in the image (any .env file, a key, a
 # site key, the web app's packages or the build tools) and about whether it runs the way production will run it: as a
-# non-root user, on a read-only filesystem, with every capability dropped.
+# non-root user, on a read-only filesystem, with every capability dropped, and
+# stopping cleanly when it is told to.
 set -euo pipefail
 
 IMAGE="${IMAGE:-packwright:local}"
@@ -129,16 +130,34 @@ port="$(docker port "$APP" 3000/tcp | head -n1 | sed 's/.*://')"
 [ -n "$port" ] || fail "could not find the published port"
 base="http://127.0.0.1:$port"
 
-healthy=""
+# Liveness first, as the load balancer waits on it; then readiness, which is the
+# database too.
+live=""
 for _ in $(seq 1 60); do
-  if [ "$(curl -s --max-time 2 -o /dev/null -w '%{http_code}' "$base/health" || true)" = "200" ]; then
-    healthy=1
+  if [ "$(curl -s --max-time 2 -o /dev/null -w '%{http_code}' "$base/health/live" || true)" = "200" ]; then
+    live=1
     break
   fi
   sleep 1
 done
-[ -n "$healthy" ] || fail "GET /health did not return 200 within 60 s"
+[ -n "$live" ] || fail "GET /health/live did not return 200 within 60 s"
+echo "PASS: GET /health/live is 200"
+[ "$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' "$base/health" || true)" = "200" ] ||
+  fail "GET /health is not 200 once /health/live is"
 echo "PASS: GET /health is 200"
+
+# The image's own HEALTHCHECK, run inside the container as Docker would run it, so
+# a command that cannot work on a read-only, capability-dropped node:24-slim fails
+# here rather than marking every task unhealthy.
+check_kind="$(docker inspect --format '{{index .Config.Healthcheck.Test 0}}' "$IMAGE")"
+[ "$check_kind" = "CMD" ] || fail "the image's HEALTHCHECK is '$check_kind', expected an exec-form CMD"
+check_script="$(docker inspect --format '{{index .Config.Healthcheck.Test 3}}' "$IMAGE")"
+case "$check_script" in
+  *"/health/live"*) ;;
+  *) fail "the image's HEALTHCHECK does not ask /health/live" ;;
+esac
+docker exec "$APP" node -e "$check_script" || fail "the image's HEALTHCHECK command fails inside the container"
+echo "PASS: the image's HEALTHCHECK passes inside the container"
 
 curl -sf "$base/" | grep -q '<div id="app">' || fail 'GET / does not contain <div id="app">'
 echo 'PASS: GET / serves the client'
@@ -149,5 +168,18 @@ curl -s -X POST "$base/api/labels/upc-a/export" \
 pdf_head="$(head -c 5 "$TMP_DIR/export.pdf")"
 [ "$pdf_head" = "%PDF-" ] || fail "POST /api/labels/upc-a/export did not return a PDF (got '$pdf_head')"
 echo "PASS: the export returns a PDF"
+
+# The graceful stop. Without a SIGTERM handler node as PID 1 ignores the signal,
+# so `docker stop` waits out all 30 s and kills it (exit 137).
+echo "==> 6. Stops on SIGTERM, exit 0, inside docker stop's 30 s"
+SECONDS=0
+docker stop -t 30 "$APP" >/dev/null || fail "docker stop failed"
+stop_seconds=$SECONDS
+stop_code="$(docker inspect --format '{{.State.ExitCode}}' "$APP")"
+[ "$stop_code" = "0" ] || fail "the app exited $stop_code on docker stop, expected 0 (137 means it was killed)"
+[ "$stop_seconds" -lt 30 ] || fail "docker stop took $stop_seconds s, expected under 30"
+docker logs "$APP" 2>&1 | grep -q 'stopping: finishing requests in flight' ||
+  fail "the app did not log its graceful stop"
+echo "PASS: stopped in ${stop_seconds} s with exit 0"
 
 echo "PASS: $IMAGE ($PLATFORM) is fit to ship"

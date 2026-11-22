@@ -50,6 +50,16 @@ services:
     security_opt: ['no-new-privileges:true']
     mem_limit: 768m
     stop_grace_period: 30s
+    # The Dockerfile's HEALTHCHECK, stated again so this file shows it.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
 
 volumes:
   packwright-mongo:

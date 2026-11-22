@@ -1,9 +1,14 @@
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import request from 'supertest'
 import { describe, expect, it, vi } from 'vitest'
+import { PAGE_PATHS } from '../../web/src/router/pages'
 import { createApp } from './app'
+import { PAGE_PATHS_FILE } from './clientPages'
 import { loadEnv } from './env'
 
 const app = createApp({ enableLogging: false })
@@ -77,6 +82,27 @@ describe('/health and the database', () => {
     ).get('/health')
     expect(response.status).toBe(503)
     expect(response.body.status).toBe('degraded')
+  })
+
+  it('liveness answers without the database', async () => {
+    // The load balancer and the container check read `/health/live`. A database
+    // outage is not something replacing this task would fix, so liveness must not
+    // turn it into a restart loop; `/health` still reports it.
+    const app = createApp({ enableLogging: false, databaseStatus: () => 'disconnected' })
+    const live = await request(app).get('/health/live')
+    expect(live.status).toBe(200)
+    expect(live.body).toEqual({ status: 'ok' })
+    expect((await request(app).get('/health')).status).toBe(503)
+  })
+
+  it('liveness is never the client', async () => {
+    const webRoot = mkdtempSync(join(tmpdir(), 'pw-web-live-'))
+    writeFileSync(join(webRoot, 'index.html'), '<!doctype html><div id="app"></div>')
+    writeFileSync(join(webRoot, PAGE_PATHS_FILE), JSON.stringify(PAGE_PATHS))
+    const response = await request(createApp({ enableLogging: false, webRoot })).get('/health/live')
+    expect(response.status).toBe(200)
+    expect(response.headers['content-type']).toMatch(/application\/json/)
+    expect(response.body).toEqual({ status: 'ok' })
   })
 
   it('reports healthy when nothing told it about a database', async () => {

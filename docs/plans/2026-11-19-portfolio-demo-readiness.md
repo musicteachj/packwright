@@ -897,7 +897,7 @@ git add apps/web CHANGELOG.md
 git commit -m "feat(web): link the audit and the sample from the landing page"
 ```
 
-- [ ] **Step 4: PR checkpoint (stage boundary: public mode)**
+- [x] **Step 4: PR checkpoint (stage boundary: public mode)**
 
 As in Task 5 Step 9: `git diff --shortstat dev...HEAD`, `/security-review`, draft "Public photo reads behind a bot check, with the sample as the free path" (Tasks 6 to 10, and the reversal of the 2026-10-18 shared-key decision); suggest `/code-review high <PR#>`. Stop for James's OK to push; stop again for his OK to open the PR.
 
@@ -911,7 +911,7 @@ As in Task 5 Step 9: `git diff --shortstat dev...HEAD`, `/security-review`, draf
 **Interfaces:**
 - Produces: `LABEL_LIFETIME_SECONDS = 7 * 24 * 60 * 60` (604,800); `LABEL_CAP = 1_000`; `MAX_IDS_PER_LIST = 200`; `LABEL_MAX_BYTES = 64 * 1024`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 - `labelDocument.test.ts`: the TTL index has `expireAfterSeconds: 604800`.
 - `labelDocumentRoutes.test.ts`: `expect(LABEL_CAP).toBe(1000)`; the cap tests store 1,000 (one `insertMany`); the 409 body is exactly `'There are already 1,000 saved labels, which is as many as this app keeps. Labels are removed 7 days after their last change, so try again later, or delete one of yours from Saved labels.'`; the list's `cap` is 1000; `'a list asks about at most 200 ids'` (201 ids gives 400 and the detail says "up to 200"); `'refuses a label past 64 KB, on create and on replace'` (a valid `us-food` document of exactly 65,537 bytes: 413 with `error` `'This label is too large to save: a saved label can be at most 64 KB. Shorten its longest fields, or export it as a PDF instead.'`, nothing stored; one of exactly 65,536 bytes, built the same way, is accepted). One ingredient name cannot get there (`INPUT_BOUNDS` allows 16,000 characters, and Zod counts UTF-16 units), so pad across several ingredients (the list allows 1,000 entries) with a small helper in the test file, `labelOfBytes(bytes)`: start from a valid `us-food` document; add ingredients whose names are ASCII `'x'` runs of up to 16,000 characters (one byte each); measure `Buffer.byteLength(JSON.stringify(validated), 'utf8')`, where `validated` is the document parsed by the schema the route validates with (it may strip or default fields, and the route measures what it parsed); lengthen the last name by the difference until the measure is exactly `bytes`, and assert that it is before returning the raw document.
@@ -919,20 +919,20 @@ As in Task 5 Step 9: `git diff --shortstat dev...HEAD`, `/security-review`, draf
 - `EditorSaveView.test.ts:299, :309`: the 409 text above, and "1,000 of 1,000 saved, as many as this app keeps. ...".
 - `e2e/the-label-cap.spec.ts`: `FULL` and the faked `cap` and `count` move to 1,000 and 7 days.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npx vitest run apps/api/src/labels apps/web/src/views`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `labelDocument.ts`: the lifetime and its note (seven days since 2026-11-18, spec 5.4; the `collMod` note stays and now matters: a database that already has the 30-day index keeps it, so the production database starts empty and is checked with `getIndexes()` at go-live). `labelDocumentRoutes.ts`: `LABEL_CAP` with a rewritten note (1,000 x 64 KB is about 64 MB of the shared 512 MB M0); `MAX_IDS_PER_LIST` used by `readIds` (`:136`) with its own note (a URL of 1,000 ids is about 25 KB, past Node's 16 KB header limit); `AT_CAP` formats with `toLocaleString('en-US')`; POST and PUT check `Buffer.byteLength(JSON.stringify(parsed.data), 'utf8') > LABEL_MAX_BYTES` after validation and before any write. `savedLabels.ts:126`: `MOST_IDS` stays 200 with its comment rewritten (it matches `MAX_IDS_PER_LIST`, no longer the cap), and `listLabels` (`:157`) stops slicing to the newest 200: it asks in chunks of `MOST_IDS`, one request each, and joins the answers, so a browser that holds more than 200 labels (possible once the cap is 1,000) still lists, opens and deletes every one. `savedLabels.test.ts`: `'lists every held label, 200 ids to a request'` (250 held ids: two requests of 200 and 50, 250 labels listed). `LabelsView.vue:150`: "Labels are removed 7 days after their last change. They're stored in MongoDB Atlas, and Packwright runs on AWS."; the count line and `EditorView.vue:281` format numbers with `toLocaleString('en-US')`.
 
-- [ ] **Step 4: Run all checks, mutation test**
+- [x] **Step 4: Run all checks, mutation test**
 
 Run all checks (PASS). Remove the byte check from PUT only: the replace case fails; restore. Put back `.slice(0, MOST_IDS)` in `listLabels`: the 250-id test fails; restore.
 
-- [ ] **Step 5: CHANGELOG and commit**
+- [x] **Step 5: CHANGELOG and commit**
 
 CHANGELOG `### Changed`: labels expire after 7 days, the cap is 1,000, a label is at most 64 KB. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -956,7 +956,7 @@ git commit -m "feat: keep saved labels 7 days, up to 1,000 of them, 64 KB each"
   - `static.ts`: `export function requireWebRoot(nodeEnv: Env['NODE_ENV'], webRoot: string | undefined): string | undefined` (throws in production when `webRoot` is undefined).
   - `env.ts`: `MONGODB_URI` must name a database.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 - `env.test.ts`: `it.each(['mongodb://localhost:27017', 'mongodb://localhost:27017/', 'mongodb://localhost:27017/?replicaSet=rs0', 'mongodb+srv://u:p@cluster.example.net/?retryWrites=true'])('refuses %s, which names no database', ...)` throwing `/MONGODB_URI/` with "database"; `mongodb+srv://u:p@cluster.example.net/packwright?retryWrites=true` parses.
 - `app.test.ts`: `'liveness answers without the database'`: `databaseStatus: () => 'disconnected'`: `/health/live` 200 while `/health` is 503; `'liveness is never the client'` (with a `webRoot`, `/health/live` is JSON).
@@ -964,24 +964,24 @@ git commit -m "feat: keep saved labels 7 days, up to 1,000 of them, 64 KB each"
 - `static.test.ts`: `requireWebRoot('production', undefined)` throws naming the client build; `requireWebRoot('development', undefined)` is `undefined`; production with a root returns it.
 - `httpServer.test.ts` (a real `http.createServer` on port 0): `'outlasts the load balancer's idle timeout'` (`keepAliveTimeout` 130000, `headersTimeout` greater); `'finishes the request in flight, then closes the database once'`; `'does not wait for an idle keep-alive connection'` (a keep-alive agent holds a socket; shutdown resolves within 1 s); `'gives up on a request that never ends after the grace period'` (`graceMs` 100; resolves within 1 s and `closeDatabase` still runs).
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npx vitest run apps/api/src/env.test.ts apps/api/src/app.test.ts apps/api/src/db.test.ts apps/api/src/static.test.ts apps/api/src/httpServer.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `env.ts`: regex `^mongodb(\+srv)?:\/\/[^/\s]+\/[^/?\s]+` with the message "MONGODB_URI must name its database, such as mongodb://localhost:27017/packwright (an Atlas URI without one writes to `test`)". `scripts/serve-with-memory-mongo.mjs:141`: `mongo.getUri('packwright')`. `shutDownGracefully`: `server.close()` (promise), `server.closeIdleConnections()`, a `setTimeout(graceMs)` (unref'd) that calls `server.closeAllConnections()`, then `await closeDatabase()`. The `httpServer.ts` module note says why `SHUTDOWN_GRACE_MS` (25 s) can sit under the 60 s read timeout: in ECS the target is deregistered (a delay of about 90 s, spec Phase 2) before SIGTERM arrives, so reads in flight normally finish first; a read still running at the 25 s cut-off is dropped and keeps its reservation (over-counted, never under-counted). Neither figure changes. `server.ts`: `const webRoot = requireWebRoot(env.NODE_ENV, resolveWebRoot())`; `const server = app.listen(...)`; `configureTimeouts(server)`; `process.once` for `SIGTERM` and `SIGINT` runs `shutDownGracefully(server, disconnectFromDatabase)` then `process.exit(0)` (1 on error), logging "stopping: finishing requests in flight". In `app.ts`, update the `/health` note: readiness for smoke tests; the load balancer and the container check use `/health/live`. `Dockerfile`: `HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]` (the same command goes in the ECS task definition in Phase 3). `verify-image.sh`: wait on `/health/live`; then `/health` is 200; then, timed, `docker stop -t 30 <app>` must exit 0 (not 137) in under 30 s. `docker-compose.yml`: the same `healthcheck`. `.env.example`: the `MONGODB_URI` note.
 
-- [ ] **Step 4: Run all checks and the image check**
+- [x] **Step 4: Run all checks and the image check**
 
 Run all checks, then `npm run verify:image`. Expected: PASS.
 
-- [ ] **Step 5: Mutation test**
+- [x] **Step 5: Mutation test**
 
 Remove `configureTimeouts(server)`'s `headersTimeout` line: its test fails. Remove `closeAllConnections`: the never-ending request test times out. Remove the database-name regex: its env cases fail. Restore all three.
 
-- [ ] **Step 6: CHANGELOG and commit**
+- [x] **Step 6: CHANGELOG and commit**
 
 CHANGELOG `### Added` and `### Changed`: `/health/live`; keep-alive 130 s; graceful stop; a pool of 10; the database name required; production refuses to start without its client build. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -999,15 +999,15 @@ git commit -m "feat(api): liveness, keep-alive past the load balancer, and a gra
 **Interfaces:**
 - Produces: `DEFAULT_MCP_LIMITS = { anthropicPerHour: 1_000, perClientPerHour: 60 }`; env `MCP_ANTHROPIC_CALLS_PER_HOUR?: number` (digits, 1 to 100,000); `isFromAnthropic` recognizes `160.79.104.0/21` and `153.61.208.0/20`; `WHAT_IS_NOT_CHECKED_URL = 'https://github.com/musicteachj/packwright/blob/main/docs/WHAT-IS-NOT-CHECKED.md'`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `routes.test.ts`, extend the range table at `:227`: `['153.61.207.255', false]`, `['153.61.208.0', true]`, `['153.61.223.255', true]`, `['153.61.224.0', false]`, `['::ffff:153.61.208.1', true]`; the shared bucket test also shares one bucket across both ranges. `expect(DEFAULT_MCP_LIMITS.anthropicPerHour).toBe(1000)`. `env.test.ts`: `MCP_ANTHROPIC_CALLS_PER_HOUR` parses `'1000'`, refuses `'0'` and `'many'`. `server.test.ts`: the URL points at `main`.
 
-- [ ] **Step 2: Run to fail, implement, run to pass**
+- [x] **Step 2: Run to fail, implement, run to pass**
 
 Run: `npx vitest run apps/api/src/mcp apps/api/src/env.test.ts` (FAIL). Re-read Anthropic's IP addresses page and record both outbound ranges and the date in the note above `ANTHROPIC_OUTBOUND`; add the subnet; rewrite the `anthropicPerHour` note (the spec's trade-off: about 0.2 vCPU at worst, and the shared claude.ai allowance can be used up five times faster). `server.ts`: `limits: { ...DEFAULT_MCP_LIMITS, anthropicPerHour: env.MCP_ANTHROPIC_CALLS_PER_HOUR ?? DEFAULT_MCP_LIMITS.anthropicPerHour }`. Run again: PASS.
 
-- [ ] **Step 3: Mutation test, checks, CHANGELOG, commit**
+- [x] **Step 3: Mutation test, checks, CHANGELOG, commit**
 
 Remove the new subnet: the `153.61.208.0` case fails; restore. Run all checks (PASS). CHANGELOG `### Changed`. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1026,27 +1026,27 @@ git commit -m "feat(mcp): recognize both Anthropic ranges and make their allowan
 **Interfaces:**
 - Produces: `export const DESIGN_CATALOG: boolean = import.meta.env.DEV || import.meta.env.VITE_DESIGN_CATALOG === 'true'`; `pages.ts`: `export const DESIGN_PATH = '/design'`, `export function pagePaths(designCatalog: boolean): readonly string[]`; `createAppRouter(history: RouterHistory, options?: { designCatalog?: boolean }): Router`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 - `AuditView.test.ts:769`: the notice contains `2026-11-18`.
 - `linkPreview.test.ts` (reads `apps/web/index.html` from disk): `og:title`, `og:description`, `og:url` `https://packwright.jameslittlefield.net/`, `og:image` `https://packwright.jameslittlefield.net/og-image.png` with width 1200 and height 630, `og:image:alt`, and `twitter:card` `summary_large_image` are present; every `og:` URL is absolute https.
 - `pages.test.ts`: `pagePaths(true)` equals `PAGE_PATHS`; `pagePaths(false)` lacks `/design` and keeps the rest; `createAppRouter(createMemoryHistory(), { designCatalog: false }).resolve('/design').name` is `'not-found'`, and `'design'` with `true`.
 - `SiteHeader.test.ts`: with `vi.mock('../designCatalog', () => ({ DESIGN_CATALOG: false }))` there is no `a[href="/design"]`; the other three links remain.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npx vitest run apps/web/src`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `sample.ts`: `recordedOn: '2026-11-18'`, comment "(`569fdce`)". `index.html`: the tags above (`og:type` `website`, `og:site_name` `Packwright`, the description reused), and drop "Link-preview tags wait for Phase 8" from the comment. The router builds its child routes with a function that leaves out `design` when the flag is false; `SiteHeader.vue` filters `LINKS` by `DESIGN_CATALOG`; `vite.config.ts` becomes `defineConfig(({ mode }) => ...)`, renames its plugin to `writePagePaths()`, and writes `pagePaths(loadEnv(mode, <the config's env directory>, 'VITE_').VITE_DESIGN_CATALOG === 'true')`: Vite's `loadEnv` reads the same `.env` files and prefixed process variables that fill the client's `import.meta.env`, so the client and `routes.json` read one source (a bare `process.env` would miss a `VITE_DESIGN_CATALOG=true` in `apps/web/.env`, and the server would 404 a page the client routes). `playwright.config.ts`: prefix the build with `VITE_DESIGN_CATALOG=true` and say why in the comment (the catalog's own specs). `verify-build.sh`: `/design` on the built server answers 404 with the client.
 
-- [ ] **Step 4: Run all checks**
+- [x] **Step 4: Run all checks**
 
 Run all checks. Expected: PASS (the design-catalog, masthead and shell browser specs still pass on the flagged build).
 
-- [ ] **Step 5: Mutation test, CHANGELOG, commit**
+- [x] **Step 5: Mutation test, CHANGELOG, commit**
 
 Make `pagePaths` ignore its argument: `verify:build` fails at the `/design` check; restore. CHANGELOG `### Fixed`/`### Added`. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash

@@ -420,6 +420,14 @@ describe('check_label on every document the judge is tested against', () => {
   })
 })
 
+describe('WHAT_IS_NOT_CHECKED_URL', () => {
+  it('points at main, where the document is', () => {
+    expect(WHAT_IS_NOT_CHECKED_URL).toBe(
+      'https://github.com/musicteachj/packwright/blob/main/docs/WHAT-IS-NOT-CHECKED.md',
+    )
+  })
+})
+
 describe('check_label, refusing', () => {
   it('refuses a document the export routes refuse, with the same issue', async () => {
     // The export route's own answer, then the server's, for the same label.

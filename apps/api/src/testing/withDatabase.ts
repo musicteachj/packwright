@@ -20,7 +20,9 @@ export function withDatabase(): void {
   // would make it both, and a default 5s hook timeout is not enough for that.
   beforeAll(async () => {
     server = await MongoMemoryServer.create()
-    await mongoose.connect(server.getUri())
+    // Named, as `env.ts` requires of every URI the server is given, so the tests
+    // write where the server would rather than to the driver's `test`.
+    await mongoose.connect(server.getUri('packwright'))
   }, 120_000)
 
   // Between tests rather than between files. A collection left populated makes a

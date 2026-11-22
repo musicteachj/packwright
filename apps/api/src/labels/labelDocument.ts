@@ -69,19 +69,21 @@ const labelDocumentSchema = new Schema(
   { timestamps: true, versionKey: false },
 )
 
-/** How long a label is kept after its last change: thirty days, in seconds. */
-export const LABEL_LIFETIME_SECONDS = 30 * 24 * 60 * 60
+/** How long a label is kept after its last change: seven days, in seconds. */
+export const LABEL_LIFETIME_SECONDS = 7 * 24 * 60 * 60
 
 /**
- * Labels expire thirty days after their last change (James's decision,
- * `docs/security-review-2026-10-18.md`, finding 4), so a cap filled by
- * strangers empties again without anyone deleting anything.
+ * Labels expire seven days after their last change. Thirty from 2026-10-18
+ * (James's decision, `docs/security-review-2026-10-18.md`, finding 4), so a cap
+ * filled by strangers empties again without anyone deleting anything; **seven
+ * since 2026-11-18**, for the public demo (the portfolio deployment design,
+ * section 5.4), which says so on the Saved labels page.
  *
  * A TTL index on `updatedAt`, which `PUT` moves (`findOneAndReplace` with
- * `timestamps`), so every save starts the thirty days again. What it does not
+ * `timestamps`), so every save starts the seven days again. What it does not
  * promise, written down:
  * - Mongo's TTL monitor runs about once a minute, so a label outlives its
- *   thirty days by up to that, and a test cannot wait for it; the index is
+ *   seven days by up to that, and a test cannot wait for it; the index is
  *   asserted instead.
  * - A TTL index must be on one field. The compound `{ updatedAt: -1, _id: -1 }`
  *   it might have shared served the list of every label, which is gone, so that
@@ -92,9 +94,13 @@ export const LABEL_LIFETIME_SECONDS = 30 * 24 * 60 * 60
  *   index with the same key and a different `expireAfterSeconds` fails with
  *   `IndexOptionsConflict` (tried against `mongod` on 2026-10-18), which Mongoose
  *   reports as an `index` event nothing here listens to, so the old figure
- *   quietly stays in force.
+ *   quietly stays in force. **This now matters:** a database that already has
+ *   the thirty-day index keeps it after this change. The production database
+ *   therefore starts empty, and its index is checked with `getIndexes()` at
+ *   go-live; a development database keeps thirty days until its index is
+ *   dropped or `collMod`ed.
  * - A label stored before this index existed expires by the same rule, at once
- *   if its last change is already more than thirty days old.
+ *   if its last change is already more than seven days old.
  */
 labelDocumentSchema.index({ updatedAt: 1 }, { expireAfterSeconds: LABEL_LIFETIME_SECONDS })
 

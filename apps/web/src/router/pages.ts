@@ -24,5 +24,17 @@ export const PAGE_PATHS = [
   '/design',
 ] as const
 
-/** The file the build writes `PAGE_PATHS` to, beside `index.html`. */
+/** The design catalog's address, which a build without the catalog leaves out. */
+export const DESIGN_PATH = '/design'
+
+/**
+ * The pages a build answers: every one, or every one but the design catalog when
+ * the build has none (`designCatalog.ts`). This, not `PAGE_PATHS`, is what the
+ * build writes, so the server 404s `/design` exactly when the router does.
+ */
+export function pagePaths(designCatalog: boolean): readonly string[] {
+  return designCatalog ? PAGE_PATHS : PAGE_PATHS.filter((path) => path !== DESIGN_PATH)
+}
+
+/** The file the build writes `pagePaths(...)` to, beside `index.html`. */
 export const PAGE_PATHS_FILE = 'routes.json'

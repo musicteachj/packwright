@@ -17,6 +17,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { Env } from './env'
 
 /** The file every candidate must contain to be a client build at all. */
 const ENTRY = 'index.html'
@@ -41,4 +42,25 @@ export function resolveWebRoot(): string | undefined {
   ]
 
   return candidates.find((candidate) => existsSync(join(candidate, ENTRY)))
+}
+
+/**
+ * The client build production cannot start without.
+ *
+ * Absent is ordinary in development, as `resolveWebRoot` says. In production it is
+ * the whole deployment being wrong: one container that serves the API but not the
+ * client answers every page with a JSON 404 while its health checks pass, so the
+ * process refuses to start, where the log says why, rather than run that way.
+ */
+export function requireWebRoot(
+  nodeEnv: Env['NODE_ENV'],
+  webRoot: string | undefined,
+): string | undefined {
+  if (nodeEnv === 'production' && webRoot === undefined) {
+    throw new Error(
+      'NODE_ENV is production and no client build was found: `npm run build` copies ' +
+        'apps/web/dist into apps/api/dist/public, and production serves it from there',
+    )
+  }
+  return webRoot
 }
