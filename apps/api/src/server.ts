@@ -151,11 +151,23 @@ configureTimeouts(server)
 /**
  * A stop that finishes the requests in flight and closes the database, then exits.
  *
- * `docker stop` and ECS send SIGTERM and kill the process 30 s later. Node as PID 1
- * has no default action for SIGTERM, so without this the container ignored it, sat
- * out the whole 30 s and was killed with 137, dropping whatever was in flight.
- * `once`, so a second signal during the stop falls through to Node's default and
- * ends the process at once: Ctrl-C twice still works.
+ * ECS sends SIGTERM and kills the process 30 s later by default; the compose file
+ * (`stop_grace_period: 30s`) and `verify-image.sh` (`docker stop -t 30`) give it
+ * the same 30 s, while a bare `docker stop` kills after 10 s. The kernel does not
+ * apply a signal's default action to PID 1 unless the process handles the signal,
+ * so without this handler the container ignored SIGTERM, sat out the whole wait
+ * and was killed with 137, dropping whatever was in flight.
+ *
+ * At 25 s (`SHUTDOWN_GRACE_MS`) the connections still open are cut; the process
+ * then exits once the database has closed, which nothing bounds, so a database
+ * slow to disconnect can still meet the runtime's kill.
+ *
+ * `once`, so a second signal of the same kind during the stop falls through to the
+ * default. From a terminal that ends the process at once, so Ctrl-C twice still
+ * works. As PID 1 the second SIGTERM is ignored, but a second `docker stop` still
+ * kills the process when its own timeout runs out (at once with `-t 0`). A second
+ * signal of the other kind runs the other handler and starts a second stop, which
+ * can fail (the server is already closing) and exit 1 before the first has finished.
  */
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, () => {

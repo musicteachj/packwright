@@ -1046,7 +1046,7 @@ Expected: FAIL.
 
 Run all checks. Expected: PASS (the design-catalog, masthead and shell browser specs still pass on the flagged build).
 
-- [ ] **Step 5: Mutation test, CHANGELOG, commit**
+- [x] **Step 5: Mutation test, CHANGELOG, commit**
 
 Make `pagePaths` ignore its argument: `verify:build` fails at the `/design` check; restore. CHANGELOG `### Fixed`/`### Added`. Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
