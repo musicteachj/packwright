@@ -809,7 +809,7 @@ describe('what an export costs to call', () => {
 
     const refused = await exportUpcA(built)
     expect(refused.status).toBe(429)
-    expect(refused.body.error).toBe('Too many exports — try again later')
+    expect(refused.body.error).toBe('Too many exports. Try again later.')
   })
 
   it('enforces none when told to enforce none', async () => {

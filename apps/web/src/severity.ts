@@ -39,7 +39,7 @@ export const SEVERITY_STYLES: Record<Severity, SeverityStyle> = {
     text: 'text-danger',
     border: 'border-danger',
     edge: 'border-l-danger-edge',
-    heading: 'Blocking — non-compliant as drawn',
+    heading: 'Blocking: non-compliant as drawn',
   },
   violation: {
     word: 'WARNING',

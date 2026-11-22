@@ -1124,7 +1124,7 @@ In the existing "**Settled <date> ...**" style: the key's `localStorage` and the
 
 `README.md` § Status (`:85-86`): the public demo is at `https://packwright.jameslittlefield.net` once Phase 3 deploys it; § Running it: "Run the production image locally" (`docker compose --profile prod up -d --build`, port 8080, live reads off, and `npm run verify:image`). `docs/USE-FROM-YOUR-AI.md:3-4`: replace the "Not live yet" notice with the connector address and one line saying it serves once the deployment is live. `docs/plans/2026-10-08-road-to-deployment.md`: a note under the title: "Its deployment parts are superseded by `docs/plans/2026-11-19-portfolio-demo-readiness.md` (2026-11-19) and the portfolio-infra design."
 
-- [ ] **Step 5: Checks, CHANGELOG, commit**
+- [x] **Step 5: Checks, CHANGELOG, commit**
 
 Run: `EM=$(printf '\342\200\224'); git diff dev -- docs README.md | grep '^+' | grep -n "$EM"` (expected: no output, so no new line carries an em dash). CHANGELOG `### Changed` (docs). Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1142,20 +1142,20 @@ git commit -m "docs: record public photo reads, the budget, and the new deployme
 
 **Interfaces:** none. Out of scope (decision 20): `packages/label-core`, MCP tool output, code comments.
 
-- [ ] **Step 1: Write the failing guard test**
+- [x] **Step 1: Write the failing guard test**
 
 `noEmDashes.test.ts`: for every `.vue` file under `apps/web/src`, take the `<template>` block, strip HTML comments, and expect no em dash (write it in the test as the JavaScript escape for U+2014 (backslash, u, 2014), never as the literal character); the failure lists `file:line`. Also assert `apps/web/index.html` outside comments has none.
 
-- [ ] **Step 2: Run it to see it fail**
+- [x] **Step 2: Run it to see it fail**
 
 Run: `npx vitest run apps/web/src/noEmDashes.test.ts`
 Expected: FAIL with about 40 template lines listed (42 on 2026-11-19). The guard covers templates only; about 39 more lines in `.vue` script blocks are found by Step 3's grep.
 
-- [ ] **Step 3: Replace them**
+- [x] **Step 3: Replace them**
 
 Rewrite each with a colon, a comma, parentheses or two sentences, reading each in place (no blind substitution). Keep en dashes in ranges (U+2013, as in the landing page's magnification range). Find the script-side strings with `EM=$(printf '\342\200\224')`, then `grep -rn "$EM" apps/web/src --include='*.ts' --include='*.vue'` (for `.vue` files, the lines outside `<template>`: string literals in the script blocks, such as `REGIME_NAMES`) and `grep -rnE "(error|message): .*$EM" apps/api/src`, skipping comments. Update the tests that assert the old strings.
 
-- [ ] **Step 4: Run all checks**
+- [x] **Step 4: Run all checks**
 
 Run all checks. Expected: PASS.
 

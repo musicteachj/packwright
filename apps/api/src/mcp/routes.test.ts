@@ -150,7 +150,7 @@ describe('rate limits', () => {
     // client can match the refusal to what it asked.
     expect(refused.body).toEqual({
       jsonrpc: '2.0',
-      error: { code: -32000, message: 'Too many tool calls to /mcp — try again later' },
+      error: { code: -32000, message: 'Too many tool calls to /mcp. Try again later.' },
       id: 2,
     })
     expect(lines).toEqual([expect.stringContaining('per-client limit, from 203.0.113.1')])

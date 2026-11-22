@@ -76,6 +76,15 @@ into a version only when there is a reason to.
 
 ### Changed
 
+- **Visitor-facing text no longer uses em dashes.** Every `.vue` template, the strings in script blocks a visitor
+  reads (the market names, the US food rail's options and exemption names, the severity heading, the export
+  confirmation, the audit's hints), and the server messages that reach a person (the export and `/mcp` rate limits,
+  and the audit's note on codes it cannot carry) now use a colon, a comma, parentheses or two sentences, each
+  rewritten where it stands. The markets read "EU CLP" and "US OSHA HazCom" (the audit's "European Union CLP" and
+  "United States OSHA HazCom"), a percentage the panel does not print shows "no %DV", and the rate limits say "Try
+  again later." as a sentence. En dashes in ranges stay. `apps/web/src/noEmDashes.test.ts` holds every template and
+  `index.html` to it, comments aside, and names the file and line it finds. `label-core`'s finding text and
+  regulatory tables, MCP tool output, the extraction prompt and code comments are left as they are.
 - **The docs say what the public demo now is, and how it deploys.** `docs/DESIGN.md` Phase 8 describes the
   three-stage image and moves the AWS resources to `portfolio-infra` (ECS on one EC2 instance, SSM Parameter Store
   rather than Secrets Manager); the target group checks `/health/live`, and the bundle grep looks for the Turnstile

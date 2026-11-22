@@ -82,15 +82,15 @@ const data = store.foodData
 const select = (elementId: string) => store.select(elementId)
 
 const SHAPE_NAMES: Record<ContainerShape, string> = {
-  rectangular: 'Rectangular — one face is the panel',
-  cylindrical: 'Cylindrical — 40% of height × circumference',
-  other: 'Other shape — 40% of total surface',
+  rectangular: 'Rectangular: one face is the panel',
+  cylindrical: 'Cylindrical: 40% of height × circumference',
+  other: 'Other shape: 40% of total surface',
 }
 
 const PACKAGING_NAMES: Record<(typeof US_FOOD_PACKAGINGS)[number], string> = {
-  standard: 'Standard — both measurement systems required',
-  random: 'Random weight — SI declaration optional',
-  'packaged-at-retail': 'Packaged at the retail store — SI does not apply',
+  standard: 'Standard: both measurement systems required',
+  random: 'Random weight: SI declaration optional',
+  'packaged-at-retail': 'Packaged at the retail store: SI does not apply',
 }
 
 /**
@@ -99,24 +99,24 @@ const PACKAGING_NAMES: Record<(typeof US_FOOD_PACKAGINGS)[number], string> = {
  */
 const INGREDIENTS_EXEMPTION_NAMES: Record<(typeof US_FOOD_INGREDIENTS_EXEMPTIONS)[number], string> =
   {
-    assortment: '§ 101.100(a)(1) — assortment, with a statement of what may be present',
-    'bulk-at-retail': '§ 101.100(a)(2) — received in bulk, displayed at retail',
+    assortment: '§ 101.100(a)(1): assortment, with a statement of what may be present',
+    'bulk-at-retail': '§ 101.100(a)(2): received in bulk, displayed at retail',
   }
 
 const NUTRITION_EXEMPTION_NAMES: Record<(typeof US_FOOD_NUTRITION_EXEMPTIONS)[number], string> = {
-  'small-business': '§ 101.9(j)(1) — direct sales to consumers, low annual sales',
-  'food-service': '§ 101.9(j)(2) — restaurants and other food service',
-  'retail-prepared': '§ 101.9(j)(3) — prepared and sold in one retail establishment',
-  'insignificant-nutrients': '§ 101.9(j)(4) — insignificant amounts of every nutrient',
-  'medical-food': '§ 101.9(j)(8) — medical food',
-  'bulk-for-manufacture': '§ 101.9(j)(9) — shipped in bulk, not for consumers',
-  'raw-produce-or-fish': '§ 101.9(j)(10) — raw fruit, vegetables or fish',
-  'custom-processed-fish-or-game': '§ 101.9(j)(11)(ii) — custom processed fish or game meat',
-  'small-package': '§ 101.9(j)(13)(i) — package under 12 in², with a line to ask',
-  'egg-carton': '§ 101.9(j)(14) — egg carton, information beneath the lid or in an insert',
-  'unit-container': '§ 101.9(j)(15) — unit of a multiunit package, marked not for retail sale',
-  'bulk-at-retail': '§ 101.9(j)(16) — sold from bulk containers',
-  'low-volume': '§ 101.9(j)(18) — low-volume product of a small business',
+  'small-business': '§ 101.9(j)(1): direct sales to consumers, low annual sales',
+  'food-service': '§ 101.9(j)(2): restaurants and other food service',
+  'retail-prepared': '§ 101.9(j)(3): prepared and sold in one retail establishment',
+  'insignificant-nutrients': '§ 101.9(j)(4): insignificant amounts of every nutrient',
+  'medical-food': '§ 101.9(j)(8): medical food',
+  'bulk-for-manufacture': '§ 101.9(j)(9): shipped in bulk, not for consumers',
+  'raw-produce-or-fish': '§ 101.9(j)(10): raw fruit, vegetables or fish',
+  'custom-processed-fish-or-game': '§ 101.9(j)(11)(ii): custom processed fish or game meat',
+  'small-package': '§ 101.9(j)(13)(i): package under 12 in², with a line to ask',
+  'egg-carton': '§ 101.9(j)(14): egg carton, information beneath the lid or in an insert',
+  'unit-container': '§ 101.9(j)(15): unit of a multiunit package, marked not for retail sale',
+  'bulk-at-retail': '§ 101.9(j)(16): sold from bulk containers',
+  'low-volume': '§ 101.9(j)(18): low-volume product of a small business',
 }
 
 /**
@@ -872,7 +872,7 @@ const printedPercent = (id: NutrientId): string => {
   // beside it will actually print. Spelled separately it showed Protein at 10%
   // against a panel that prints none, which 101.9(d)(7)(ii) permits it to omit.
   const value = printedPercentDailyValue(id, Number(printed), dailyValuePopulationOf(facts))
-  return value === undefined ? '—' : `${value}%`
+  return value === undefined ? 'no %DV' : `${value}%`
 }
 
 const showOverrides = ref(false)
@@ -1221,19 +1221,19 @@ const typeScalePercent = computed({
  * the call `fda/nutritionFormats.ts` records making.
  */
 const FORMAT_NAMES: Record<NutritionFormat, string> = {
-  vertical: 'Standard vertical — 101.9(d)(12)',
-  tabular: 'Tabular — 101.9(d)(11) or (j)(13)(ii)(A)(1)',
-  linear: 'Linear — 101.9(j)(13)(ii)(A)(2)',
+  vertical: 'Standard vertical: 101.9(d)(12)',
+  tabular: 'Tabular: 101.9(d)(11) or (j)(13)(ii)(A)(1)',
+  linear: 'Linear: 101.9(j)(13)(ii)(A)(2)',
 }
 
 const BASIS_NAMES: Record<DualColumnBasis, string> = {
-  'as-prepared': 'As packaged and as prepared — (e)',
-  combination: 'Common combination of foods — (e), (h)(4)',
-  'per-unit-measure': 'A different unit, e.g. per 100 g — (e)',
-  'rdi-groups': 'Two groups with RDIs — (e)(5)',
-  'per-cup-popped': 'Per cup popped — (b)(10)(iii)',
-  'per-container': 'Per serving and per container — (b)(12)(i)',
-  'per-unit': 'Per serving and per unit — (b)(2)(i)(D)',
+  'as-prepared': 'As packaged and as prepared: (e)',
+  combination: 'Common combination of foods: (e), (h)(4)',
+  'per-unit-measure': 'A different unit, e.g. per 100 g: (e)',
+  'rdi-groups': 'Two groups with RDIs: (e)(5)',
+  'per-cup-popped': 'Per cup popped: (b)(10)(iii)',
+  'per-container': 'Per serving and per container: (b)(12)(i)',
+  'per-unit': 'Per serving and per unit: (b)(2)(i)(D)',
 }
 
 /**
@@ -1457,7 +1457,7 @@ type SoldIndividually = (typeof SOLD_INDIVIDUALLY)[number]
 
 const SOLD_INDIVIDUALLY_NAMES: Record<SoldIndividually, string> = {
   unstated: 'Not stated',
-  yes: 'Yes — packaged and sold individually',
+  yes: 'Yes, packaged and sold individually',
   no: 'No',
 }
 
@@ -1637,8 +1637,8 @@ const packaging = computed({
 
       <p class="text-chrome-400 text-xs">
         Principal display panel
-        <span class="text-chrome-200 numeric">{{ panelSqInches.toFixed(2) }} in²</span>
-        — 21 CFR 101.7(i) requires
+        <span class="text-chrome-200 numeric">{{ panelSqInches.toFixed(2) }} in²</span>: 21 CFR
+        101.7(i) requires
         <span class="text-chrome-200 numeric">{{ requiredLetterText }}</span>
         measured on {{ measuredLetter }}.
       </p>
@@ -1675,7 +1675,7 @@ const packaging = computed({
       </SelectField>
       <p class="text-chrome-400 text-xs">
         Both measurement systems are required by the Fair Packaging and Labeling Act, 15 U.S.C.
-        1453(a)(2) — not by 21 CFR 101, which was never amended to ask for the metric half.
+        1453(a)(2), not by 21 CFR 101, which was never amended to ask for the metric half.
       </p>
     </EditorSection>
 
@@ -1744,7 +1744,7 @@ const packaging = computed({
       >
         <option value="">None claimed</option>
         <option v-if="ingredientsExemption === 'unstated'" value="unstated">
-          Exempt — paragraph not stated
+          Exempt (paragraph not stated)
         </option>
         <option v-for="(name, value) in INGREDIENTS_EXEMPTION_NAMES" :key="value" :value="value">
           {{ name }}
@@ -1774,7 +1774,7 @@ const packaging = computed({
         v-if="ingredientsExemption !== '' && ingredientsExemption !== 'assortment'"
         class="text-chrome-400 text-xs"
       >
-        The statement is not required. Listing one anyway is allowed — and a list that is printed
+        The statement is not required. Listing one anyway is allowed, and a list that is printed
         still runs in descending order, because a reader has no way of knowing it was voluntary.
       </p>
 
@@ -1796,7 +1796,7 @@ const packaging = computed({
       </template>
 
       <p class="text-chrome-400 text-xs">
-        Listed in the order printed. The weight beside each is what makes that order checkable — 21
+        Listed in the order printed. The weight beside each is what makes that order checkable: 21
         CFR 101.4(a)(1) runs the statement in descending order of predominance by weight.
       </p>
 
@@ -1905,10 +1905,10 @@ const packaging = computed({
           @change="setAllergen(index, ($event.target as HTMLSelectElement).value)"
         >
           <option value="">
-            {{ ingredient.name || `Ingredient ${index + 1}` }} — no major food allergen
+            {{ ingredient.name || `Ingredient ${index + 1}` }}: no major food allergen
           </option>
           <option v-for="allergen in MAJOR_FOOD_ALLERGENS" :key="allergen.id" :value="allergen.id">
-            {{ ingredient.name || `Ingredient ${index + 1}` }} — {{ allergen.name }}
+            {{ ingredient.name || `Ingredient ${index + 1}` }}: {{ allergen.name }}
           </option>
         </SelectField>
 
@@ -1980,7 +1980,7 @@ const packaging = computed({
         <p class="text-chrome-400 text-xs">
           FD&amp;C Act §403(w)(1) takes either this or a parenthetical after the ingredient. What
           the recipe holds and what the statement names are separate, so a statement that leaves one
-          out can be drawn — and reported.
+          out can be drawn, and is then reported.
         </p>
         <CheckboxField
           v-for="allergen in allergensPresent"
@@ -2009,7 +2009,7 @@ const packaging = computed({
       >
         <option value="">None claimed</option>
         <option v-if="nutritionExemption === 'unstated'" value="unstated">
-          Exempt — paragraph not stated
+          Exempt (paragraph not stated)
         </option>
         <option v-for="(name, value) in NUTRITION_EXEMPTION_NAMES" :key="value" :value="value">
           {{ name }}
@@ -2036,7 +2036,7 @@ const packaging = computed({
         />
         <p class="text-chrome-400 text-xs">
           21 CFR 101.9(j)(13)(i) exempts a package with less than 12 in² of total surface available
-          to bear labeling — the package, not this label — on the condition that the label bears an
+          to bear labeling (the package, not this label), on the condition that the label bears an
           address or telephone number a consumer can use to obtain the nutrition information. Typed
           as it should print; the placeholder is the regulation's own example.
         </p>
@@ -2080,9 +2080,9 @@ const packaging = computed({
           21 CFR 101.9(j)(15) exempts the unit containers of a multiunit retail package whose
           labeling carries the nutrition information, where the units are securely enclosed and not
           intended to be separated, and each is labeled "This Unit Not Labeled For Retail Sale" in
-          type not less than 1/16 inch high — "individual" may stand in lieu of or before "Retail".
-          The statement is the regulation's own words, printed where the panel would sit and
-          measured; the two conditions on the outer package are not checked.
+          type not less than 1/16 inch high, and "individual" may stand in lieu of or before
+          "Retail". The statement is the regulation's own words, printed where the panel would sit
+          and measured; the two conditions on the outer package are not checked.
         </p>
       </template>
 
@@ -2127,7 +2127,7 @@ const packaging = computed({
 
         <p class="text-chrome-400 text-xs">
           The amounts are what the food contains. What the panel prints is rounded from them by 21
-          CFR 101.9(c), and the percentages by (d)(7)(ii) and (c)(8)(iii) — two different rules on
+          CFR 101.9(c), and the percentages by (d)(7)(ii) and (c)(8)(iii): two different rules on
           one column.
         </p>
 
@@ -2173,7 +2173,7 @@ const packaging = computed({
         <template v-if="showOverrides">
           <p class="text-chrome-400 text-xs">
             What the panel says, where it differs from what the food contains. This is how a panel
-            that rounds wrongly or shows the wrong percentage gets drawn — and reported.
+            that rounds wrongly or shows the wrong percentage gets drawn, and then reported.
           </p>
           <div v-for="entry in panelRows" :key="`ovr-${entry.id}`" class="flex items-end gap-1">
             <MeasurementField
@@ -2276,7 +2276,7 @@ const packaging = computed({
       <p class="text-chrome-400 text-xs">
         A package holding 200 to 300 percent of its reference amount must carry a second column
         under 21 CFR 101.9(b)(12)(i), and one whose individual unit does under (b)(2)(i)(D). Those
-        figures are not checked against §101.12(b)'s table, which this tool does not carry — state
+        figures are not checked against §101.12(b)'s table, which this tool does not carry. State
         them and the check runs; leave them blank and it cannot.
       </p>
 

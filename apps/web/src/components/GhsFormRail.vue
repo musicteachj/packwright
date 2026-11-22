@@ -52,8 +52,8 @@ const data = store.ghsData
 const select = (elementId: string) => store.select(elementId)
 
 const REGIME_NAMES: Record<GhsRegime, string> = {
-  'eu-clp': 'EU — CLP',
-  'us-osha': 'US — OSHA HazCom',
+  'eu-clp': 'EU CLP',
+  'us-osha': 'US OSHA HazCom',
 }
 
 /**
@@ -471,7 +471,7 @@ const supplierTelephone = computed({
       >
         <option value="">Choose an H-statement…</option>
         <option v-for="[code, text] in hazardOptions" :key="code" :value="code">
-          {{ code }} — {{ text }}
+          {{ code }}: {{ text }}
         </option>
       </SelectField>
       <p v-else class="text-chrome-400 text-xs">
@@ -514,7 +514,7 @@ const supplierTelephone = computed({
       >
         <option value="">Choose a P-statement…</option>
         <option v-for="[code, text] in precautionaryOptions" :key="code" :value="code">
-          {{ code }} — {{ text }}
+          {{ code }}: {{ text }}
         </option>
       </SelectField>
       <p v-else class="text-chrome-400 text-xs">
@@ -579,7 +579,7 @@ const supplierTelephone = computed({
       />
       <p class="text-chrome-400 text-xs">
         Declared, not inferred from capacity. Both regimes make this conditional on a determination
-        about the packaging that no label can settle — for
+        about the packaging that no label can settle: for
         {{
           data.regime === 'us-osha'
             ? 'OSHA, that full-information pull-out, fold-back or tag labeling is not feasible'

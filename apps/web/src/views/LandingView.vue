@@ -91,7 +91,7 @@ const gtin = GTIN
       </h2>
       <p class="text-chrome-400 max-w-2xl text-sm leading-relaxed">
         None of the labels below is an image. The same three layout engines that produce the PDF
-        exports run here in the browser — the retail one resolving
+        exports run here in the browser: the retail one resolving
         <span class="numeric text-chrome-200">{{ gtin }}</span> to primitives positioned in
         millimeters, and handing them to the SVG renderer. Both renderers read the same geometry, so
         the preview cannot disagree with the print.
@@ -99,7 +99,7 @@ const gtin = GTIN
 
       <div class="flex flex-col gap-2">
         <p class="text-chrome-400 text-xs">
-          <span class="text-chrome-200 font-semibold">GS1 retail</span> — check digit, 80–200%
+          <span class="text-chrome-200 font-semibold">GS1 retail</span>: check digit, 80–200%
           magnification, quiet zones.
           <span class="text-chrome-400">GS1 General Specifications 26.0 §5.2</span>
         </p>
@@ -108,16 +108,16 @@ const gtin = GTIN
 
       <div class="flex flex-col gap-2">
         <p class="text-chrome-400 text-xs">
-          <span class="text-chrome-200 font-semibold">GHS chemical</span> — every H- and P-statement
+          <span class="text-chrome-200 font-semibold">GHS chemical</span>: every H- and P-statement
           looked up from the reference tables rather than written out, so
           <span class="numeric text-chrome-200">H225</span> reads exactly as CLP publishes it.
           <span class="text-chrome-400">CLP Regulation (EC) 1272/2008, Annex III</span>
           <br />
           <span class="text-chrome-200">The pictogram frames are empty on purpose.</span> Annex V
           requires the symbols inside them to conform to published specimens, and those specimens
-          could not be verified from an authoritative source — so the engine draws the frame,
-          records the missing symbol as an omission, and declines to invent the artwork. A label is
-          not finished until they are drawn; saying so is better than guessing.
+          could not be verified from an authoritative source, so the engine draws the frame, records
+          the missing symbol as an omission, and declines to invent the artwork. A label is not
+          finished until they are drawn; saying so is better than guessing.
         </p>
         <LabelCanvas
           :layout="ghsLayout"
@@ -127,7 +127,7 @@ const gtin = GTIN
 
       <div class="flex flex-col gap-2">
         <p class="text-chrome-400 text-xs">
-          <span class="text-chrome-200 font-semibold">FDA food</span> — Nutrition Facts typography,
+          <span class="text-chrome-200 font-semibold">FDA food</span>: Nutrition Facts typography,
           ingredient order, and an allergen the ingredient's own name does not give away.
           <span class="text-chrome-400">21 CFR 101.9</span>
         </p>
@@ -161,7 +161,7 @@ const gtin = GTIN
         </div>
         <div class="border-chrome-700 flex flex-col gap-1 border-l pl-4">
           <dt class="text-chrome-400">Symbol length</dt>
-          <dd class="numeric text-chrome-100">113 modules — 37.29 mm</dd>
+          <dd class="numeric text-chrome-100">113 modules (37.29 mm)</dd>
           <dd class="text-chrome-400 text-xs">
             GS1 General Specifications 26.0 §5.2.3.5, table 5-12, quiet zones included
           </dd>

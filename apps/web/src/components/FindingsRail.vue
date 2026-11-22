@@ -472,7 +472,7 @@ if (props.announce) useAnnouncement(`findings:${props.headingId}`, () => summary
         Every check passed.
       </p>
       <p v-else-if="findingCount === 0" class="text-chrome-300 px-4 py-6 text-sm leading-relaxed">
-        No checks have run — there is no resolved label to measure yet.
+        No checks have run: there is no resolved label to measure yet.
       </p>
 
       <details v-if="passes.length" class="border-chrome-800 mt-auto border-t">

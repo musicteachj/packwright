@@ -140,7 +140,7 @@ export interface McpRouterOptions {
   log?: ((line: string) => void) | undefined
 }
 
-const TOO_MANY = 'Too many tool calls to /mcp — try again later'
+const TOO_MANY = 'Too many tool calls to /mcp. Try again later.'
 const ONE_MESSAGE_PER_REQUEST =
   'Send one message per request: /mcp does not accept JSON-RPC batches'
 

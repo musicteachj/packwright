@@ -57,7 +57,7 @@ export const FIELD_SHAPES: Readonly<Record<ReadingKey, FieldShape>> = {
   supplier: {
     label: 'Supplier',
     editor: 'supplier',
-    hint: 'Name, address, telephone — one per line',
+    hint: 'Name, address and telephone, one per line',
   },
   outerPackageStatement: { label: 'Outer package statement', editor: 'line' },
 }

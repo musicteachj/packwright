@@ -168,7 +168,7 @@ onMounted(load)
 
     <!-- Visible only. The announcer says it; a role here would say it twice. -->
     <p v-if="error" class="border-danger text-danger border-l-2 pl-4 text-sm" data-labels-error>
-      <span class="font-semibold">Error</span> — {{ error }}
+      <span class="font-semibold">Error:</span> {{ error }}
     </p>
 
     <p v-if="loading" class="text-chrome-400 text-sm">Loading…</p>
