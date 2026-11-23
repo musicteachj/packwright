@@ -96,15 +96,18 @@ jobs:
     needs: [verify]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
-    # Inside the one-hour session configure-aws-credentials asks for by default, so the AWS
-    # credentials cannot expire partway through: the build, then up to 30 minutes of waiting
-    # for the service to settle.
-    timeout-minutes: 45
+    # The budget: the build (about 5 to 8 minutes), a setup task's wait of up to about 10, the
+    # wait for the service to settle of up to 30, and the smoke checks (a few minutes at most).
+    # That stays under 55, which is inside the one-hour session configure-aws-credentials asks
+    # for by default, so the AWS credentials cannot expire partway through.
+    timeout-minutes: 55
     environment: production
     permissions:
       contents: read
       id-token: write
-    # One deploy at a time, and a second waits rather than canceling one halfway through.
+    # One deploy at a time: a running deploy is never canceled. GitHub keeps at most one pending
+    # run per group, though, so a newer run replaces an older pending one (a push can drop a
+    # redeploy by hand that is still waiting for approval).
     concurrency:
       group: deploy-production
       cancel-in-progress: false

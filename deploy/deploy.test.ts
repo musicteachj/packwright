@@ -25,6 +25,7 @@ const IMAGE = `${ACCOUNT}.dkr.ecr.us-east-1.amazonaws.com/portfolio/packwright:0
 const TARGET_GROUP_ARN = `arn:aws:elasticloadbalancing:us-east-1:${ACCOUNT}:targetgroup/packwright/abc`
 const ALB_DNS_NAME = 'portfolio-alb.example'
 const HOST = 'packwright.jameslittlefield.net'
+const ARN_PREFIX = `arn:aws:ecs:us-east-1:${ACCOUNT}`
 // What the fake answers register-task-definition with, for the family it was given.
 const revisionArn = (family: string) =>
   `arn:aws:ecs:us-east-1:${ACCOUNT}:task-definition/${family}:7`
@@ -245,6 +246,27 @@ describe('deploy.sh', () => {
     expect(serviceCalls(result.calls)).toEqual([])
   })
 
+  it.each([
+    ['scaled to 0', 'zero'],
+    ['draining', 'draining'],
+  ])('runs no setup for a service that is %s', (_, service) => {
+    const result = deploy(FIXTURE_DIR, { FAKE_SERVICE: service })
+    expect(result.status).toBe(1)
+    expect(result.calls.some((call) => call.startsWith('aws ecs run-task'))).toBe(false)
+    expect(serviceCalls(result.calls)).toEqual([])
+  })
+
+  it('names the setup task when it does not stop in time, and touches no service', () => {
+    const result = deploy(FIXTURE_DIR, { FAKE_SETUP: 'timeout' })
+    expect(result.status).toBe(1)
+    expect(result.output).toContain(`${ARN_PREFIX}:task/portfolio/setuptask1`)
+    expect(result.output).toContain('may still be running')
+    expect(result.output).toContain('do not re-run')
+    expect(result.output).toContain('aws ecs describe-tasks --cluster portfolio --tasks')
+    expect(serviceCalls(result.calls)).toEqual([])
+    expect(result.calls.some((call) => call.startsWith('aws ecs stop-task'))).toBe(false)
+  })
+
   it('creates the service the first time and updates it after', () => {
     const webArn = revisionArn('packwright-web')
 
@@ -281,7 +303,15 @@ describe('deploy.sh', () => {
       `--health-check-grace-period-seconds ${service.healthCheckGracePeriodSeconds} `,
     )
     expect(update).not.toContain('--desired-count')
-    expect(update).not.toContain('--load-balancers')
+    // The target group comes from service.json, so a replaced group takes effect on the next deploy.
+    expect(update).toContain(
+      `--load-balancers ${JSON.stringify(
+        service.loadBalancers.map((balancer) => ({
+          ...balancer,
+          targetGroupArn: TARGET_GROUP_ARN,
+        })),
+      )}`,
+    )
   })
 
   it('refuses a service that is still draining', () => {
@@ -303,7 +333,7 @@ describe('deploy.sh', () => {
     )
   })
 
-  it.each(['deploymentConfiguration', 'healthCheckGracePeriodSeconds'])(
+  it.each(['deploymentConfiguration', 'healthCheckGracePeriodSeconds', 'loadBalancers'])(
     'fails when service.json has no %s',
     (key) => {
       const dir = mkdtempSync(join(tmpdir(), 'packwright-ecs-'))

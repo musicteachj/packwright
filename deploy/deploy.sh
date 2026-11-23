@@ -62,8 +62,8 @@ done
 slug="$(jq -r '.serviceName // empty' "$rendered/service.json")"
 cluster="$(jq -r '.cluster // empty' "$rendered/service.json")"
 [[ -n "$slug" && -n "$cluster" ]] || fail "service.json needs serviceName and cluster"
-# An update reads these two out of service.json, and jq prints a missing key as the word null.
-for key in deploymentConfiguration healthCheckGracePeriodSeconds; do
+# An update reads these three out of service.json, and jq prints a missing key as the word null.
+for key in deploymentConfiguration healthCheckGracePeriodSeconds loadBalancers; do
   jq -e --arg key "$key" '.[$key] != null' "$rendered/service.json" >/dev/null ||
     fail "service.json needs $key, which an update passes to the service"
 done
@@ -104,6 +104,21 @@ print_setup_log() {
     | @tsv' "$rendered/setup.json")
 }
 
+# Before step 3, look at the service once, and refuse before anything runs: a deploy that will be refused
+#    must not have run a setup task (a migration) first, or the schema would be ahead of the code.
+#    The same reply decides, in step 4, between an update and a create.
+echo "==> Checking $cluster/$slug"
+described="$(aws ecs describe-services --cluster "$cluster" --services "$slug" --output json)"
+status="$(jq -r '.services[0].status // empty' <<<"$described")"
+if [[ "$status" == DRAINING ]]; then
+  fail "service is still draining; wait until it is INACTIVE and re-run"
+fi
+if [[ "$status" == ACTIVE && "$(jq -r '.services[0].desiredCount' <<<"$described")" == 0 ]]; then
+  fail "$slug is scaled to 0 on purpose, so the deploy would leave it with no tasks and smoke would fail;" \
+    "scale it back to 1 (aws ecs update-service --cluster $cluster --service $slug --desired-count 1)" \
+    "and re-run the deploy"
+fi
+
 # 3. Setup, before anything that serves traffic changes. Any container that does not stop with
 #    exit code 0 (a failure, no exit code at all, or a task never placed) ends the deploy here,
 #    with the old version still serving.
@@ -117,8 +132,19 @@ if [[ -n "$setup_arn" ]]; then
     fail "the setup task was not placed, so the service was not touched"
   fi
   if ! aws ecs wait tasks-stopped --cluster "$cluster" --tasks "$task_arn"; then
-    print_setup_log "$task_arn"
-    fail "the setup task did not stop in time, so the service was not touched"
+    # The waiter gives up after about 10 minutes, and the task may be running still. The deploy
+    # role cannot stop it, so say so: a re-run would start a second setup on the same database.
+    last_status="$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task_arn" --output json |
+      jq -r '.tasks[0].lastStatus // empty' || true)"
+    if [[ "$last_status" == STOPPED ]]; then
+      print_setup_log "$task_arn"
+      fail "the setup task did not stop in time, so the service was not touched"
+    fi
+    fail "the setup task $task_arn did not stop in time and may still be running;" \
+      "do not re-run the deploy until it has stopped" \
+      "(aws ecs describe-tasks --cluster $cluster --tasks $task_arn shows STOPPED)," \
+      "because a re-run would start a second setup against the same database;" \
+      "the service was not touched"
   fi
   stopped="$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task_arn" --output json)"
   if ! jq -e '[.tasks[0].containers[]? | .exitCode == 0] | length > 0 and all' \
@@ -135,26 +161,17 @@ fi
 # 4. Update the service if it is there, or create it from service.json. Both name the web
 #    revision ARN. Their replies describe the service and are not printed.
 echo "==> Deploying $web_arn to $cluster/$slug"
-described="$(aws ecs describe-services --cluster "$cluster" --services "$slug" --output json)"
-status="$(jq -r '.services[0].status // empty' <<<"$described")"
-if [[ "$status" == DRAINING ]]; then
-  fail "service is still draining; wait until it is INACTIVE and re-run"
-fi
-if [[ "$status" == ACTIVE && "$(jq -r '.services[0].desiredCount' <<<"$described")" == 0 ]]; then
-  fail "$slug is scaled to 0 on purpose, so the deploy would leave it with no tasks and smoke would fail;" \
-    "scale it back to 1 (aws ecs update-service --cluster $cluster --service $slug --desired-count 1)" \
-    "and re-run the deploy"
-fi
 if [[ "$status" == ACTIVE ]]; then
-  # The deployment settings and the grace period come from service.json on every update, so an
-  # edit to them takes effect at the next deploy rather than only when the service is created.
-  # The desired count does not: a deploy must not undo a deliberate scale to 0 during an
-  # incident or the failover drill. Nor do the load balancers, which are fixed at creation.
+  # The deployment settings, the grace period and the load balancers come from service.json on
+  # every update, so an edit to them (a replaced target group, say) takes effect at the next
+  # deploy rather than only when the service is created. The desired count does not: a deploy
+  # must not undo a deliberate scale to 0 during an incident or the failover drill.
   aws ecs update-service --cluster "$cluster" --service "$slug" \
     --task-definition "$web_arn" \
     --deployment-configuration "$(jq -c '.deploymentConfiguration' "$rendered/service.json")" \
     --health-check-grace-period-seconds \
     "$(jq -r '.healthCheckGracePeriodSeconds' "$rendered/service.json")" \
+    --load-balancers "$(jq -c '.loadBalancers' "$rendered/service.json")" \
     --output json >/dev/null
 else
   jq --arg task_definition "$web_arn" '.taskDefinition = $task_definition' \
@@ -166,8 +183,8 @@ fi
 # 5. Wait for it to settle, then check it settled on this release: once the circuit breaker
 #    has rolled a failed deployment back, the service is stable again, on the old revision.
 #    One services-stable wait gives up after 10 minutes (40 polls 15 seconds apart), so it is
-#    asked up to 3 times, 30 minutes in all, inside the job's 45. Only its time limit is retried:
-#    any other failure (the service missing, draining or inactive) ends the deploy at once.
+#    asked up to 3 times, 30 minutes in all, inside the job's 55 minutes. Only its time limit is
+#    retried: any other failure (the service missing, draining or inactive) ends the deploy at once.
 echo "==> Waiting for $slug to settle"
 for round in 1 2 3; do
   if waited="$(aws ecs wait services-stable --cluster "$cluster" --services "$slug" 2>&1)"; then

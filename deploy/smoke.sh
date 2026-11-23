@@ -6,6 +6,9 @@
 # tries up to SMOKE_ATTEMPTS times (5), SMOKE_DELAY_SECONDS apart (5), because services-stable
 # can answer a moment before the load balancer counts the new target healthy, and each request
 # gives up after 10 seconds. A check that still fails exits 1.
+#
+# Each app repository supplies its own smoke.sh, with its own host and checks: deploy.sh only calls
+# $script_dir/smoke.sh, and knows nothing of this file's host.
 set -euo pipefail
 
 : "${ALB_DNS_NAME:?ALB_DNS_NAME is required}"

@@ -14,12 +14,12 @@ into a version only when there is a reason to.
   `main`, or by hand on `main`, after `verify` passes and James approves the `production` environment. It
   assumes `packwright-deploy` through GitHub's OIDC (its `id-token: write` is on this job alone), builds and
   pushes `portfolio/packwright:<commit>-<run id>-<run attempt>` (a new tag each attempt, since "Re-run jobs" keeps the run
-  id and the repository is mutable, so a rebuild never overwrites the image an older revision names), and runs `deploy/deploy.sh`, one deploy at a time, within 45 minutes. The
-  script renders `deploy/ecs/*.json` with jq, registers each task definition, runs a setup task first when there is one and
-  stops with its last 50 log lines before the service is touched if any container exits non-zero, refuses a
-  service that is still draining, needs `deploymentConfiguration` and `healthCheckGracePeriodSeconds` in
-  `service.json`, creates or updates the `packwright` service with the full revision ARN (an
-  update also carries `service.json`'s deployment settings and grace period, never its desired count, so a
+  id and the repository is mutable, so a rebuild never overwrites the image an older revision names), and runs `deploy/deploy.sh`, one deploy at a time (a running deploy is never canceled, but a newer run replaces an older pending one), within 55 minutes. The
+  script renders `deploy/ecs/*.json` with jq, registers each task definition, looks at the service first and refuses one that is draining or scaled to 0 before any setup runs, runs a setup task when there is one (if it
+  does not stop in time, the failure names its ARN and says not to re-run until it has stopped) and
+  stops with its last 50 log lines before the service is touched if any container exits non-zero, needs
+  `deploymentConfiguration`, `healthCheckGracePeriodSeconds` and `loadBalancers` in `service.json`, creates or updates the `packwright` service with the full revision ARN (an
+  update also carries `service.json`'s deployment settings, grace period and load balancers, never its desired count, so a
   deliberate scale to 0 survives a deploy, and a service found scaled to 0 stops the deploy with the command
   to scale it back to 1), waits up to 30 minutes for it to settle and fails if it settled on
   another revision (a circuit-breaker rollback), runs `deploy/smoke.sh` (`/`, `/health` and

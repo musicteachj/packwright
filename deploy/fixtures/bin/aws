@@ -5,6 +5,7 @@
 #   FAKE_SETUP=failed        the setup container exits 1
 #   FAKE_SETUP=no-exit-code  the setup container stops without an exit code
 #   FAKE_SETUP=unplaced      run-task places no task
+#   FAKE_SETUP=timeout       the tasks-stopped waiter gives up and the task is still RUNNING
 #   FAKE_SERVICE=active      the service exists before this deploy
 #   FAKE_SERVICE=zero        the service exists, scaled to 0 on purpose
 #   FAKE_SERVICE=inactive    the service was deleted before this deploy
@@ -47,6 +48,10 @@ case "$1 $2" in
     fi
     ;;
   'ecs wait')
+    if [ "$3" = tasks-stopped ] && [ "${FAKE_SETUP:-}" = timeout ]; then
+      echo 'Waiter TasksStopped failed: Max attempts exceeded' >&2
+      exit 255
+    fi
     if [ "$3" = services-stable ]; then
       if [ "${FAKE_WAIT_TERMINAL:-}" = 1 ]; then
         echo 'Waiter ServicesStable failed: Waiter encountered a terminal failure state' >&2
@@ -65,7 +70,11 @@ case "$1 $2" in
       no-exit-code) exit_code='' ;;
       *) exit_code=',"exitCode":0' ;;
     esac
-    echo "{\"tasks\":[{\"stoppedReason\":\"Essential container in task exited\",\"containers\":[{\"name\":\"example-setup\"$exit_code}]}]}"
+    if [ "${FAKE_SETUP:-}" = timeout ]; then
+      echo '{"tasks":[{"lastStatus":"RUNNING","containers":[{"name":"example-setup"}]}]}'
+      exit 0
+    fi
+    echo "{\"tasks\":[{\"lastStatus\":\"STOPPED\",\"stoppedReason\":\"Essential container in task exited\",\"containers\":[{\"name\":\"example-setup\"$exit_code}]}]}"
     ;;
   'logs get-log-events')
     echo '{"events":[{"message":"migration 7 failed"}]}'
