@@ -418,6 +418,16 @@ describe('deploy.sh', () => {
   })
 })
 
+describe('the deploy job', () => {
+  it('builds one plain image per tag, with no provenance or SBOM attestation', () => {
+    const workflow = readFileSync(join(here, '..', '.github', 'workflows', 'ci.yml'), 'utf8')
+    const build = workflow.split('\n').find((line) => line.includes('docker buildx build'))
+    expect(build).toBeDefined()
+    expect(build).toContain('--provenance=false')
+    expect(build).toContain('--sbom=false')
+  })
+})
+
 describe('smoke.sh', () => {
   it('asks the three addresses through the load balancer, each with a time limit', () => {
     const result = run([join(here, 'smoke.sh')], ECS_DIR)

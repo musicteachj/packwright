@@ -740,7 +740,7 @@ service on one EC2 instance, the target group and listener rule on the shared lo
 Parameter Store rather than Secrets Manager. The deploy workflow follows section 5.5 of the portfolio-infra design.
 It is the `deploy` job at the end of `.github/workflows/ci.yml` (added 2026-11-23): on a push to `main`, or a run
 by hand on `main`, once `verify` has passed and James has approved the `production` environment, it builds the
-image, pushes it to ECR as `portfolio/packwright:<commit>-<run id>-<run attempt>`, and runs `deploy/deploy.sh`. That registers
+image (with `--provenance=false --sbom=false`, so each tag is one plain image manifest that ECR's scan on push and the keep-5 lifecycle rule can count), pushes it to ECR as `portfolio/packwright:<commit>-<run id>-<run attempt>`, and runs `deploy/deploy.sh`. That registers
 `deploy/ecs/web.json`, creates or updates the `packwright` service on the `portfolio` cluster from
 `deploy/ecs/service.json`, waits for the service to settle on the new revision, and runs `deploy/smoke.sh`
 through the load balancer.
