@@ -244,6 +244,11 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The deploy pushed three manifests per tag.** On GitHub's runner buildx adds a provenance attestation by
+  default, so each push made an image index (the tagged entry) plus two untagged manifests. ECR's scan on push
+  never scanned it, and the keep-5 lifecycle rule counted all three per deploy, so it kept fewer than two deploys
+  and could expire the untagged image a tagged index still points to. The build now passes `--provenance=false
+  --sbom=false`, so each deploy pushes one plain image under its tag, and `deploy/deploy.test.ts` checks both flags.
 - **One em dash a visitor still saw.** The findings rail's heading over results that are not verdicts wrote its em
   dash as the character reference `&#8212;`, which the browser renders as the character but the em dash guard did
   not read as one. Task 18's walk through the production image found it on 2026-11-22. The heading now reads "Not

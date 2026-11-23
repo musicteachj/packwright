@@ -134,10 +134,13 @@ jobs:
       # "Re-run jobs" keeps the run id, so the attempt makes each tag new. The ECR repository is
       # mutable, so a reused tag would overwrite the image an older task definition revision names.
       # It still starts with the commit, which portfolio-infra's revision check reads.
+      # --provenance=false and --sbom=false keep buildx from pushing an image index with untagged
+      # attestation manifests beside the image. ECR's scan on push and the keep-5 lifecycle rule both
+      # need exactly one plain image manifest per tag.
       - name: Build and push the image
         env:
           IMAGE: ${{ steps.ecr.outputs.registry }}/portfolio/packwright:${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-        run: docker buildx build --platform linux/amd64 --push -t "$IMAGE" .
+        run: docker buildx build --platform linux/amd64 --provenance=false --sbom=false --push -t "$IMAGE" .
 
       # Registers the task definition, creates or updates the service, waits for it to settle on
       # this release, and runs the smoke checks (deploy/deploy.sh says how each step fails).
