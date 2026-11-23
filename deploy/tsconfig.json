@@ -1,0 +1,10 @@
+{
+  // The deploy test sits outside every workspace, as the browser tests do, so it gets its own
+  // project for `npm run typecheck` to walk.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"]
+}

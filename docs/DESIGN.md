@@ -738,6 +738,12 @@ the second installs the API workspace's run-time dependencies alone
 API. The AWS resources move to `portfolio-infra`, in AWS CDK: the ECR repository, the task definition and an ECS
 service on one EC2 instance, the target group and listener rule on the shared load balancer, Route 53, and SSM
 Parameter Store rather than Secrets Manager. The deploy workflow follows section 5.5 of the portfolio-infra design.
+It is the `deploy` job at the end of `.github/workflows/ci.yml` (added 2026-11-23): on a push to `main`, or a run
+by hand on `main`, once `verify` has passed and James has approved the `production` environment, it builds the
+image, pushes it to ECR as `portfolio/packwright:<commit>-<run id>`, and runs `deploy/deploy.sh`. That registers
+`deploy/ecs/web.json`, creates or updates the `packwright` service on the `portfolio` cluster from
+`deploy/ecs/service.json`, waits for the service to settle on the new revision, and runs `deploy/smoke.sh`
+through the load balancer.
 
 *Done when:*
 - `packwright.jameslittlefield.net` serves the app over HTTPS
@@ -747,8 +753,10 @@ Parameter Store rather than Secrets Manager. The deploy workflow follows section
   key and the Turnstile site key are absent from the browser bundle**: grep the built assets to confirm, as step 4
   of `npm run verify:image` does locally. The page reads the site key from `/api/audit/status` at run time, so no
   build carries a deployment's value
-- Push to `main` deploys; a failed deploy rolls back via the deployment circuit breaker
-- CloudWatch `/ecs/packwright` shows application logs
+- Push to `main` deploys. The deployment circuit breaker rolls back a release whose tasks fail their health
+  checks; a failed smoke test stops the job, with no job revision written, but leaves the new version serving,
+  and the manual rollback is in portfolio-infra's incident runbook ("A deploy's smoke test failed")
+- CloudWatch `/portfolio/packwright` shows application logs
 
 *Settle before deploying* (recorded 2026-10-09; the reasoning for each is in `docs/BACKLOG.md`):
 - **A `dev` → `main` release.** A push to `main` deploys, and `main` is far behind `dev` and left alone by
