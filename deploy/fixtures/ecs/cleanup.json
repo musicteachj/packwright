@@ -1,0 +1,4 @@
+{
+  "family": "example-cleanup",
+  "containerDefinitions": [{ "name": "example-cleanup", "image": "__IMAGE__" }]
+}

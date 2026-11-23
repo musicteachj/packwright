@@ -1,0 +1,4 @@
+{
+  "family": "example-web",
+  "containerDefinitions": [{ "name": "example", "image": "__IMAGE__" }]
+}

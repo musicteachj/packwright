@@ -1,0 +1,80 @@
+{
+  "family": "packwright-web",
+  "networkMode": "bridge",
+  "requiresCompatibilities": ["EC2"],
+  "executionRoleArn": "arn:aws:iam::__ACCOUNT_ID__:role/packwright-execution",
+  "taskRoleArn": "arn:aws:iam::__ACCOUNT_ID__:role/packwright-task",
+  "containerDefinitions": [
+    {
+      "name": "packwright",
+      "image": "__IMAGE__",
+      "essential": true,
+      "memoryReservation": 256,
+      "memory": 768,
+      "stopTimeout": 30,
+      "portMappings": [{ "containerPort": 3000, "hostPort": 0, "protocol": "tcp" }],
+      "privileged": false,
+      "readonlyRootFilesystem": true,
+      "linuxParameters": {
+        "capabilities": { "drop": ["ALL"] },
+        "tmpfs": [{ "containerPath": "/tmp", "size": 64 }]
+      },
+      "dockerSecurityOptions": ["no-new-privileges"],
+      "healthCheck": {
+        "command": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "environment": [
+        { "name": "AUDIT_PUBLIC", "value": "true" },
+        { "name": "TURNSTILE_HOSTNAMES", "value": "packwright.jameslittlefield.net" },
+        { "name": "TRUST_PROXY_HOPS", "value": "1" },
+        { "name": "MCP_ALLOWED_HOSTS", "value": "packwright.jameslittlefield.net" },
+        { "name": "AUDIT_READS_PER_IP_PER_DAY", "value": "5" },
+        { "name": "AI_PACING_MULTIPLIER", "value": "3" },
+        { "name": "AI_DAILY_FLOOR_USD", "value": "0.50" }
+      ],
+      "secrets": [
+        {
+          "name": "MONGODB_URI",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/packwright/MONGODB_URI"
+        },
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/packwright/ANTHROPIC_API_KEY"
+        },
+        {
+          "name": "TURNSTILE_SITE_KEY",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/packwright/TURNSTILE_SITE_KEY"
+        },
+        {
+          "name": "TURNSTILE_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/packwright/TURNSTILE_SECRET_KEY"
+        },
+        {
+          "name": "AUDIT_IP_HASH_KEY",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/packwright/AUDIT_IP_HASH_KEY"
+        },
+        {
+          "name": "AI_MONTHLY_BUDGET_USD",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/packwright/AI_MONTHLY_BUDGET_USD"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/portfolio/packwright",
+          "awslogs-region": "__REGION__",
+          "awslogs-stream-prefix": "web"
+        }
+      }
+    }
+  ]
+}

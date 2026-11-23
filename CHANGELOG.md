@@ -10,6 +10,26 @@ into a version only when there is a reason to.
 
 ### Added
 
+- **The deploy job, and the ECS files it deploys.** `ci.yml` gains a `deploy` job that runs on a push to
+  `main`, or by hand on `main`, after `verify` passes and James approves the `production` environment. It
+  assumes `packwright-deploy` through GitHub's OIDC (its `id-token: write` is on this job alone), builds and
+  pushes `portfolio/packwright:<commit>-<run id>-<run attempt>` (a new tag each attempt, since "Re-run jobs" keeps the run
+  id and the repository is mutable, so a rebuild never overwrites the image an older revision names), and runs `deploy/deploy.sh`, one deploy at a time (a running deploy is never canceled, but a newer run replaces an older pending one), within 55 minutes. The
+  script renders `deploy/ecs/*.json` with jq, registers each task definition, looks at the service first and refuses one that is draining or scaled to 0 before any setup runs, runs a setup task when there is one (if it
+  does not stop in time, the failure names its ARN and says not to re-run until it has stopped) and
+  stops with its last 50 log lines before the service is touched if any container exits non-zero, needs
+  `deploymentConfiguration`, `healthCheckGracePeriodSeconds` and `loadBalancers` in `service.json`, creates or updates the `packwright` service with the full revision ARN (an
+  update also carries `service.json`'s deployment settings, grace period and load balancers, never its desired count, so a
+  deliberate scale to 0 survives a deploy, and a service found scaled to 0 stops the deploy with the command
+  to scale it back to 1), waits up to 30 minutes for it to settle and fails if it settled on
+  another revision (a circuit-breaker rollback), runs `deploy/smoke.sh` (`/`, `/health` and
+  `/api/audit/status` through the load balancer, five tries five seconds apart), and only then writes each
+  scheduled job's revision to SSM. Packwright has neither a setup task nor a job; `deploy/deploy.test.ts`
+  covers those paths with a fixture app and a fake `aws` and `curl`. `web.json` runs read-only with a 64 MiB
+  `/tmp`, every capability dropped and `no-new-privileges`, sets no `NODE_ENV` (the image's `production`
+  stands), trusts one proxy hop, and takes its six secrets from `/portfolio/packwright/*` in SSM by name; a
+  test checks each variable against `apps/api/src/env.ts`. The new actions are pinned by commit:
+  configure-aws-credentials v6.3.0 and amazon-ecr-login v2.2.0, each read from its release tag on 2026-11-23.
 - **Secret scanning, a weekly dependency audit, and CI that cannot write.** A new `security.yml` runs gitleaks
   8.30.1 over the whole history, its download checked against a SHA-256 written in the workflow (read from the
   release's checksums file on 2026-11-22 and matched by the tarball and by GitHub's digest of the asset), not

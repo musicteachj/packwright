@@ -1,0 +1,17 @@
+{
+  "family": "example-setup",
+  "containerDefinitions": [
+    {
+      "name": "example-setup",
+      "image": "__IMAGE__",
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/portfolio/example",
+          "awslogs-region": "__REGION__",
+          "awslogs-stream-prefix": "setup"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "cluster": "portfolio",
+  "serviceName": "example",
+  "healthCheckGracePeriodSeconds": 30,
+  "deploymentConfiguration": { "minimumHealthyPercent": 100, "maximumPercent": 200 },
+  "loadBalancers": [
+    { "targetGroupArn": "__TARGET_GROUP_ARN__", "containerName": "example", "containerPort": 8000 }
+  ]
+}
