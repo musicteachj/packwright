@@ -6,6 +6,9 @@
 #   FAKE_SETUP=no-exit-code  the setup container stops without an exit code
 #   FAKE_SETUP=unplaced      run-task places no task
 #   FAKE_SETUP=timeout       the tasks-stopped waiter gives up and the task is still RUNNING
+#   FAKE_SETUP=timeout-stopped         the waiter gives up, but the task has STOPPED, exit code 0
+#   FAKE_SETUP=timeout-stopped-failed  the waiter gives up, the task has STOPPED, exit code 1
+#   FAKE_SETUP=timeout-stopping        the waiter gives up, the task is still STOPPING, its container exited 0
 #   FAKE_SERVICE=active      the service exists before this deploy
 #   FAKE_SERVICE=zero        the service exists, scaled to 0 on purpose
 #   FAKE_SERVICE=inactive    the service was deleted before this deploy
@@ -48,7 +51,7 @@ case "$1 $2" in
     fi
     ;;
   'ecs wait')
-    if [ "$3" = tasks-stopped ] && [ "${FAKE_SETUP:-}" = timeout ]; then
+    if [ "$3" = tasks-stopped ] && case "${FAKE_SETUP:-}" in timeout*) true ;; *) false ;; esac; then
       echo 'Waiter TasksStopped failed: Max attempts exceeded' >&2
       exit 255
     fi
@@ -66,10 +69,14 @@ case "$1 $2" in
     ;;
   'ecs describe-tasks')
     case "${FAKE_SETUP:-}" in
-      failed) exit_code=',"exitCode":1' ;;
+      failed | timeout-stopped-failed) exit_code=',"exitCode":1' ;;
       no-exit-code) exit_code='' ;;
       *) exit_code=',"exitCode":0' ;;
     esac
+    if [ "${FAKE_SETUP:-}" = timeout-stopping ]; then
+      echo '{"tasks":[{"lastStatus":"STOPPING","containers":[{"name":"example-setup","exitCode":0}]}]}'
+      exit 0
+    fi
     if [ "${FAKE_SETUP:-}" = timeout ]; then
       echo '{"tasks":[{"lastStatus":"RUNNING","containers":[{"name":"example-setup"}]}]}'
       exit 0
