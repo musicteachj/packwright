@@ -104,8 +104,9 @@ print_setup_log() {
     | @tsv' "$rendered/setup.json")
 }
 
-# Before step 3, look at the service once, and refuse before anything runs: a deploy that will be refused
-#    must not have run a setup task (a migration) first, or the schema would be ahead of the code.
+# Before step 3, look at the service once, and refuse before the setup task runs: a deploy that will be
+#    refused must not have run a setup task (a migration) first, or the schema would be ahead of the code.
+#    (Registering a revision above changes nothing that serves.)
 #    The same reply decides, in step 4, between an update and a create.
 echo "==> Checking $cluster/$slug"
 described="$(aws ecs describe-services --cluster "$cluster" --services "$slug" --output json)"
@@ -134,17 +135,19 @@ if [[ -n "$setup_arn" ]]; then
   if ! aws ecs wait tasks-stopped --cluster "$cluster" --tasks "$task_arn"; then
     # The waiter gives up after about 10 minutes, and the task may be running still. The deploy
     # role cannot stop it, so say so: a re-run would start a second setup on the same database.
-    last_status="$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task_arn" --output json |
-      jq -r '.tasks[0].lastStatus // empty' || true)"
-    if [[ "$last_status" == STOPPED ]]; then
-      print_setup_log "$task_arn"
-      fail "the setup task did not stop in time, so the service was not touched"
+    settled="$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task_arn" --output json |
+      jq -r '(.tasks[0] // {}) as $t | ($t.containers // []) as $c
+        | $t.lastStatus == "STOPPED" or (($c | length) > 0 and ($c | all(.exitCode != null)))' || true)"
+    # A task that stopped just after the waiter gave up (or whose containers have all exited and that
+    # is still STOPPING) is judged by its exit code below, like any other stopped task: a clean setup
+    # must not fail the deploy.
+    if [[ "$settled" != true ]]; then
+      fail "the setup task $task_arn did not stop in time and may still be running;" \
+        "do not re-run the deploy until it has stopped" \
+        "(aws ecs describe-tasks --cluster $cluster --tasks $task_arn shows STOPPED)," \
+        "because a re-run would start a second setup against the same database;" \
+        "the service was not touched"
     fi
-    fail "the setup task $task_arn did not stop in time and may still be running;" \
-      "do not re-run the deploy until it has stopped" \
-      "(aws ecs describe-tasks --cluster $cluster --tasks $task_arn shows STOPPED)," \
-      "because a re-run would start a second setup against the same database;" \
-      "the service was not touched"
   fi
   stopped="$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task_arn" --output json)"
   if ! jq -e '[.tasks[0].containers[]? | .exitCode == 0] | length > 0 and all' \
@@ -183,7 +186,9 @@ fi
 # 5. Wait for it to settle, then check it settled on this release: once the circuit breaker
 #    has rolled a failed deployment back, the service is stable again, on the old revision.
 #    One services-stable wait gives up after 10 minutes (40 polls 15 seconds apart), so it is
-#    asked up to 3 times, 30 minutes in all, inside the job's 55 minutes. Only its time limit is
+#    asked up to 3 times, 30 minutes in all. With the build (about 8 minutes at most, its own cap), a
+#    setup task's wait of up to 10 minutes, smoke (about 5 minutes at most) and a minute for checkout
+#    and login, the worst case is about 54 minutes, inside the job's 58. Only its time limit is
 #    retried: any other failure (the service missing, draining or inactive) ends the deploy at once.
 echo "==> Waiting for $slug to settle"
 for round in 1 2 3; do

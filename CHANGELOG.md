@@ -14,7 +14,9 @@ into a version only when there is a reason to.
   `main`, or by hand on `main`, after `verify` passes and James approves the `production` environment. It
   assumes `packwright-deploy` through GitHub's OIDC (its `id-token: write` is on this job alone), builds and
   pushes `portfolio/packwright:<commit>-<run id>-<run attempt>` (a new tag each attempt, since "Re-run jobs" keeps the run
-  id and the repository is mutable, so a rebuild never overwrites the image an older revision names), and runs `deploy/deploy.sh`, one deploy at a time (a running deploy is never canceled, but a newer run replaces an older pending one), within 55 minutes. The
+  id and the repository is mutable, so a rebuild never overwrites the image an older revision names), and runs
+  `deploy/deploy.sh`, one deploy at a time (a running deploy is never canceled, but a newer run replaces an
+  older pending one), within 58 minutes. The
   script renders `deploy/ecs/*.json` with jq, registers each task definition, looks at the service first and refuses one that is draining or scaled to 0 before any setup runs, runs a setup task when there is one (if it
   does not stop in time, the failure names its ARN and says not to re-run until it has stopped) and
   stops with its last 50 log lines before the service is touched if any container exits non-zero, needs
@@ -23,8 +25,8 @@ into a version only when there is a reason to.
   deliberate scale to 0 survives a deploy, and a service found scaled to 0 stops the deploy with the command
   to scale it back to 1), waits up to 30 minutes for it to settle and fails if it settled on
   another revision (a circuit-breaker rollback), runs `deploy/smoke.sh` (`/`, `/health` and
-  `/api/audit/status` through the load balancer, five tries five seconds apart), and only then writes each
-  scheduled job's revision to SSM. Packwright has neither a setup task nor a job; `deploy/deploy.test.ts`
+  `/api/audit/status` through the load balancer, retried for up to 180 seconds for the first and 30 for each later one), and only then writes
+  each scheduled job's revision to SSM. Packwright has neither a setup task nor a job; `deploy/deploy.test.ts`
   covers those paths with a fixture app and a fake `aws` and `curl`. `web.json` runs read-only with a 64 MiB
   `/tmp`, every capability dropped and `no-new-privileges`, sets no `NODE_ENV` (the image's `production`
   stands), trusts one proxy hop, and takes its six secrets from `/portfolio/packwright/*` in SSM by name; a
@@ -243,6 +245,23 @@ into a version only when there is a reason to.
   states one says so.
 
 ### Fixed
+
+- **Three deploy guards, from the owner's review.** The deploy job now refuses a run whose commit is not the
+  current head of `main` (a "Re-run jobs" on an older run, or an older run approved late, would otherwise put
+  old code over a newer release); the head is read with `gh api` and both values go through `env`, never into
+  the script text. A setup task that stopped just after the waiter gave up is now judged by its exit code
+  (clean continues; a failure or no exit code stops before the service is touched), instead of always
+  failing; a task still running fails as before. Each smoke check now retries until it passes or its own
+  deadline passes: `/` gets 180 seconds, because on a first service creation the service can report stable
+  before the load balancer counts the target healthy (15 second checks, 2 passes) and answers 503 at once
+  until then, and each later check gets its own 30 seconds (it was 5 tries each), five seconds apart, so one
+  transient error does not fail a healthy deploy; the first check to run out of time still ends smoke. That
+  caps smoke at about 5 minutes. The build step now has its own 8-minute timeout, so a slow build fails
+  before the service is touched, and the head-of-main check runs a second time right before the deploy,
+  because main can move during the build. The job's timeout is now 58 minutes (was 55): the worst case is the
+  build (8), a setup wait (10), a settle wait (30), smoke (5) and checkout and login (1), about 54, and 58
+  stays inside the one-hour OIDC credentials, which are taken about a minute into the job. A setup task
+  that is still STOPPING but whose containers have all exited is also judged by its exit code.
 
 - **The deploy pushed three manifests per tag.** On GitHub's runner buildx adds a provenance attestation by
   default, so each push made an image index (the tagged entry) plus two untagged manifests. ECR's scan on push

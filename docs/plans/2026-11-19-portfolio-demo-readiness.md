@@ -1274,9 +1274,11 @@ Load `/`, the editor, `/audit?sample=1`, and export three PDFs; then `docker sta
 
 The real Turnstile widget only renders when a read is possible, which needs a budget above 0, and the compose file fixes it at 0 so the dummy key is never called. That the widget's script and frame load under the CSP is proven by `e2e/the-bot-check.spec.ts`; the live widget is a Phase 3 go-live check with real keys. Record this in the PLAN.md row.
 
-- [ ] **Step 12: Tear down and record**
+- [x] **Step 12: Tear down and record**
 
 `docker compose --profile prod down` (keep the volume). Update Packwright's Phase 1 row in `portfolio-infra/PLAN.md`: Status "Done: local checks passed (Task 18), memory <figure> MiB", Updated with today's date, and the branch or PR links. Stop: show the change and wait for James's explicit OK before committing it in the `portfolio-infra` repo.
+
+*Done.* The PLAN.md row was recorded on 2026-11-22 (Phase 1 done, memory 152.7 MiB). Packwright went live on 2026-11-24, and the claude.ai connector was tested against `/mcp` the same day.
 
 ---
 
