@@ -10,8 +10,9 @@
 # registers), and the load balancer answers 503 at once until then, so a count of tries would run out
 # in under a minute. Each later check has SMOKE_SECONDS (30) of its own, so one transient error after
 # the target is healthy does not fail a healthy deploy. Each request gives up after 10 seconds, so the
-# worst case is 180 + 15 + 2 x (30 + 15) seconds, about 5 minutes. A check that runs out of time exits 1
-# at once, naming it, without running the checks after it.
+# worst case is about 181 + 10 + 2 x (31 + 10) = 273 seconds, under 5 minutes (a window, the extra second
+# SECONDS needs, and a last request). A check that runs out of time exits 1 at once, naming it, without
+# running the checks after it.
 #
 # Each app repository supplies its own smoke.sh, with its own host and checks: deploy.sh only calls
 # $script_dir/smoke.sh, and knows nothing of this file's host.
@@ -22,6 +23,17 @@ host=packwright.jameslittlefield.net
 first_seconds="${SMOKE_FIRST_SECONDS:-180}"
 later_seconds="${SMOKE_SECONDS:-30}"
 delay="${SMOKE_DELAY_SECONDS:-5}"
+
+# Each setting must be a whole number of seconds, 0 or more; anything else is a mistake to name, not to guess at.
+for setting in SMOKE_FIRST_SECONDS:"$first_seconds" SMOKE_SECONDS:"$later_seconds" SMOKE_DELAY_SECONDS:"$delay"; do
+  if [[ ! "${setting#*:}" =~ ^[0-9]+$ ]]; then
+    echo "smoke.sh: ${setting%%:*} must be a non-negative whole number, got '${setting#*:}'" >&2
+    exit 2
+  fi
+done
+first_seconds=$((10#$first_seconds))
+later_seconds=$((10#$later_seconds))
+delay=$((10#$delay))
 
 # The body, then the status code on a line of its own. The address goes last.
 fetch() {
@@ -38,7 +50,7 @@ the_audit_status() { jq -e 'type == "object" and has("available")' >/dev/null; }
 # have gone by since this check began. The first request is always made. SECONDS counts whole seconds,
 # so the extra second keeps a check from stopping up to a second before its stated time.
 check() {
-  local seconds="$1" path="$2" body_check="$3" response deadline=$((SECONDS + $1 + 1))
+  local seconds="$1" path="$2" body_check="$3" response remaining deadline=$((SECONDS + $1 + 1))
   while true; do
     if response="$(fetch "$path")" &&
       [[ "${response##*$'\n'}" == 200 ]] &&
@@ -46,8 +58,11 @@ check() {
       echo "PASS: GET $path"
       return 0
     fi
-    if ((SECONDS >= deadline)); then break; fi
-    sleep "$delay"
+    # Sleep the delay, or only what is left of the window if that is less, so a check retries for all
+    # of its stated time and no longer.
+    remaining=$((deadline - SECONDS))
+    if ((remaining <= 0)); then break; fi
+    sleep "$((delay < remaining ? delay : remaining))"
   done
   echo "FAIL: GET $path did not answer 200 with the expected body within $seconds seconds" >&2
   return 1

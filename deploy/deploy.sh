@@ -186,9 +186,9 @@ fi
 # 5. Wait for it to settle, then check it settled on this release: once the circuit breaker
 #    has rolled a failed deployment back, the service is stable again, on the old revision.
 #    One services-stable wait gives up after 10 minutes (40 polls 15 seconds apart), so it is
-#    asked up to 3 times, 30 minutes in all. With the build (about 8 minutes at most, its own cap), a
-#    setup task's wait of up to 10 minutes, smoke (about 5 minutes at most) and a minute for checkout
-#    and login, the worst case is about 54 minutes, inside the job's 58. Only its time limit is
+#    asked up to 3 times, 30 minutes in all. With the build and push (8 minutes at most, their own cap),
+#    a setup task's wait of up to 10 minutes, smoke (about 5 minutes at most) and a minute for checkout,
+#    login and the guards, the worst case is about 54 minutes, inside the job's 58. Only its time limit is
 #    retried: any other failure (the service missing, draining or inactive) ends the deploy at once.
 echo "==> Waiting for $slug to settle"
 for round in 1 2 3; do

@@ -206,7 +206,7 @@ describe('the task definitions', () => {
 
 describe('deploy.sh', () => {
   it('never traces the script', () => {
-    for (const script of ['deploy.sh', 'smoke.sh']) {
+    for (const script of ['deploy.sh', 'smoke.sh', 'head-of-main.sh']) {
       const code = codeOf(script)
       expect(code).toContain('set -euo pipefail')
       expect(code).not.toMatch(/set -[a-z]*x/)
@@ -442,37 +442,68 @@ describe('the deploy job', () => {
     expect(build).toBeDefined()
     expect(build).toContain('--provenance=false')
     expect(build).toContain('--sbom=false')
+    expect(build).toContain('--push')
+    expect(build).not.toContain('--load')
   })
 
-  it('limits the job to 58 minutes and the build step to 8', () => {
+  it('limits the job to 58 minutes and the build and push step to 8, with no separate push step', () => {
     const workflow = readFileSync(join(here, '..', '.github', 'workflows', 'ci.yml'), 'utf8')
     const job = workflow.slice(workflow.indexOf('\n  deploy:\n'))
     expect(job.slice(0, job.indexOf('\n    steps:'))).toContain('\n    timeout-minutes: 58\n')
     const build = job.slice(job.indexOf('- name: Build and push the image'))
     expect(build.slice(0, build.indexOf('run:'))).toContain('timeout-minutes: 8\n')
+    expect(job).not.toContain('- name: Push the image')
+    expect(job).not.toContain('docker push')
   })
 
-  it('checks for the head of main before credentials and again right before the deploy', () => {
+  it('checks for the head of main before credentials and again right before the push', () => {
     const workflow = readFileSync(join(here, '..', '.github', 'workflows', 'ci.yml'), 'utf8')
     const job = workflow.slice(workflow.indexOf('\n  deploy:\n'))
     const first = job.indexOf('- name: Refuse a run that is not for the head of main')
     const credentials = job.indexOf('- name: Configure AWS credentials')
-    const second = job.indexOf('- name: Refuse again if main moved during the build')
+    const second = job.indexOf('- name: Refuse again, right before the push, if main moved')
+    const build = job.indexOf('- name: Build and push the image')
     const deployStep = job.indexOf('- name: Deploy\n')
     expect(first).toBeGreaterThan(-1)
+    // The order: first check, credentials, second check, build and push, deploy.
     expect(credentials).toBeGreaterThan(first)
-    expect(second).toBeGreaterThan(job.indexOf('- name: Build and push the image'))
-    expect(deployStep).toBeGreaterThan(second)
-    // Nothing sits between the second check and the deploy.
-    expect(job.slice(second + 1, deployStep).match(/- name:/g)).toBeNull()
-    for (const step of [job.slice(first, credentials), job.slice(second, deployStep)]) {
-      // The commit goes through env, never into the script text.
+    expect(second).toBeGreaterThan(credentials)
+    expect(build).toBeGreaterThan(second)
+    expect(deployStep).toBeGreaterThan(build)
+    // Nothing sits between the second check and the push.
+    expect(job.slice(second + 1, build).match(/- name:/g)).toBeNull()
+    for (const step of [job.slice(first, credentials), job.slice(second, build)]) {
+      // The commit goes through env, and the script text holds no expression.
       expect(step).toContain('RUN_SHA: ${{ github.sha }}')
-      expect(step).toContain('gh api "repos/$REPO/branches/main" --jq .commit.sha')
-      const script = step.slice(step.indexOf('run: |'))
-      expect(script).toContain('"$RUN_SHA"')
+      expect(step).toContain('REPO: ${{ github.repository }}')
+      expect(step).toContain('GH_TOKEN: ${{ github.token }}')
+      const script = step.slice(step.indexOf('run:'))
+      expect(script).toMatch(/^run: deploy\/head-of-main\.sh\n/)
       expect(script).not.toContain('${{')
     }
+  })
+})
+
+describe('head-of-main.sh', () => {
+  const guard = (main: string) =>
+    run([join(here, 'head-of-main.sh')], ECS_DIR, {
+      RUN_SHA: 'aaaa111',
+      REPO: 'owner/repo',
+      GH_TOKEN: 'token',
+      FAKE_MAIN_SHA: main,
+    })
+
+  it('passes when the run is for the head of main', () => {
+    const result = guard('aaaa111')
+    expect(result.status).toBe(0)
+    expect(result.calls).toEqual(['gh api repos/owner/repo/branches/main --jq .commit.sha'])
+  })
+
+  it('refuses a run for any other commit, naming both', () => {
+    const result = guard('bbbb222')
+    expect(result.status).toBe(1)
+    expect(result.output).toContain('This run is for aaaa111, but main is now bbbb222.')
+    expect(result.output).toContain('run the workflow by hand on main')
   })
 })
 
@@ -535,18 +566,31 @@ describe('smoke.sh', () => {
     expect(fails.status).toBe(1)
     expect(Date.now() - started).toBeGreaterThanOrEqual(2000)
     expect(fails.calls.length).toBeGreaterThanOrEqual(2)
-  })
+  }, 15000)
 
-  it('gives a later check its own deadline after the first used all of its own', () => {
-    // / fails twice and passes at 2 seconds; /health then fails twice and passes at 2 seconds of its own.
+  it('gives a later check its own fresh deadline, not what is left of the first one', () => {
+    // / (5 seconds) fails 4 times and passes on its fifth request, about 4 seconds in. /health (5
+    // seconds) then fails 4 times and passes on its fifth, about 4 seconds after it began and 8 in: inside
+    // its own window, but long past a window counted from the start of the run.
     const result = run([join(here, 'smoke.sh')], ECS_DIR, {
-      FAKE_CURL_FAIL_ON: '1,2,4,5',
-      SMOKE_FIRST_SECONDS: '2',
-      SMOKE_SECONDS: '2',
+      FAKE_CURL_FAIL_ON: '1,2,3,4,6,7,8,9',
+      SMOKE_FIRST_SECONDS: '5',
+      SMOKE_SECONDS: '5',
       SMOKE_DELAY_SECONDS: '1',
     })
     expect(result.status).toBe(0)
-    expect(result.calls).toHaveLength(7)
+    expect(result.calls).toHaveLength(11)
+  }, 15000)
+
+  it.each([
+    ['SMOKE_FIRST_SECONDS', 'abc'],
+    ['SMOKE_SECONDS', '-1'],
+    ['SMOKE_DELAY_SECONDS', '1.5'],
+  ])('refuses %s=%s, naming the setting, before any request', (name, value) => {
+    const result = run([join(here, 'smoke.sh')], ECS_DIR, { [name]: value })
+    expect(result.status).toBe(2)
+    expect(result.output).toContain(name)
+    expect(result.calls).toEqual([])
   })
 
   it('fails the run when a later check never passes, and never asks for the next check', () => {
@@ -558,7 +602,7 @@ describe('smoke.sh', () => {
     expect(result.status).toBe(1)
     expect(result.output).toContain('FAIL: GET /health')
     expect(result.calls.some((call) => call.endsWith('/api/audit/status'))).toBe(false)
-  })
+  }, 15000)
 
   it('passes when all three checks pass early, using one request each', () => {
     const result = run([join(here, 'smoke.sh')], ECS_DIR)

@@ -256,11 +256,14 @@ into a version only when there is a reason to.
   before the load balancer counts the target healthy (15 second checks, 2 passes) and answers 503 at once
   until then, and each later check gets its own 30 seconds (it was 5 tries each), five seconds apart, so one
   transient error does not fail a healthy deploy; the first check to run out of time still ends smoke. That
-  caps smoke at about 5 minutes. The build step now has its own 8-minute timeout, so a slow build fails
-  before the service is touched, and the head-of-main check runs a second time right before the deploy,
-  because main can move during the build. The job's timeout is now 58 minutes (was 55): the worst case is the
-  build (8), a setup wait (10), a settle wait (30), smoke (5) and checkout and login (1), about 54, and 58
-  stays inside the one-hour OIDC credentials, which are taken about a minute into the job. A setup task
+  caps smoke at about 5 minutes, and a smoke time setting that is not a whole number of seconds now stops
+  it with exit code 2 and the setting's name. The head-of-main check now lives in
+  `deploy/head-of-main.sh` (tested with a fake `gh`) and also runs right before the image is
+  built and pushed, so a refused run pushes nothing (and takes no place in ECR's keep-5), and the build and
+  push step has its own 8-minute timeout, so a slow build fails before the service is touched. The job's
+  timeout is now 58 minutes (was 55): the worst case is build and push (8), a setup wait (10), a settle wait
+  (30), smoke (5) and checkout, login and guards (1), about 54, and 58 stays inside the one-hour OIDC
+  credentials, which are taken about a minute into the job. A setup task
   that is still STOPPING but whose containers have all exited is also judged by its exit code.
 
 - **The deploy pushed three manifests per tag.** On GitHub's runner buildx adds a provenance attestation by
