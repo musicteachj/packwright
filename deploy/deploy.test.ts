@@ -118,7 +118,7 @@ function run(command: string[], ecsDir: string, fake: Record<string, string> = {
       TARGET_GROUP_ARN,
       DEPLOY_ECS_DIR: ecsDir,
       // Short deadlines, so a failing check ends the run in a second, not in minutes.
-      SMOKE_DELAY_SECONDS: '0',
+      SMOKE_DELAY_SECONDS: '1',
       SMOKE_FIRST_SECONDS: '1',
       SMOKE_SECONDS: '1',
       FAKE_CALLS: calls,
@@ -283,6 +283,61 @@ describe('deploy.sh', () => {
       if (!succeeds) expect(result.output).toContain('the setup task failed')
     },
   )
+
+  it.each(['UserInitiated', 'ServiceSchedulerInitiated', 'SpotInterruption'])(
+    'does not pass a setup that exited 0 but was stopped by ECS (stop code %s)',
+    (stopCode) => {
+      // A migration that trapped SIGTERM and exited 0 half done must not pass as a finished setup.
+      const result = deploy(FIXTURE_DIR, { FAKE_STOP_CODE: stopCode })
+      expect(result.status).toBe(1)
+      expect(result.output).toContain(`stop code ${stopCode}`)
+      expect(result.output).toContain('was stopped by ECS')
+      expect(serviceCalls(result.calls)).toEqual([])
+      expect(result.calls.some((call) => call.startsWith('aws ssm'))).toBe(false)
+    },
+  )
+
+  it('does not trust a setup with exit code 0 and no stop code', () => {
+    const result = deploy(FIXTURE_DIR, { FAKE_STOP_CODE: 'absent' })
+    expect(result.status).toBe(1)
+    expect(result.output).toContain('exited 0, but ECS reported no stop code')
+    expect(result.output).not.toContain('was stopped by ECS')
+    expect(serviceCalls(result.calls)).toEqual([])
+  })
+
+  it('names the stop code only when every container exited 0', () => {
+    // A failed container stopped by ECS is a plain failure: the exit code is the news.
+    const result = deploy(FIXTURE_DIR, { FAKE_SETUP: 'failed', FAKE_STOP_CODE: 'UserInitiated' })
+    expect(result.status).toBe(1)
+    expect(result.output).toContain('the setup task failed, so the service was not touched')
+    expect(result.output).not.toContain('was stopped by ECS')
+    expect(serviceCalls(result.calls)).toEqual([])
+  })
+
+  it('says what to check when the setup task failed to start', () => {
+    const result = deploy(FIXTURE_DIR, {
+      FAKE_SETUP: 'no-exit-code',
+      FAKE_STOP_CODE: 'TaskFailedToStart',
+    })
+    expect(result.status).toBe(1)
+    expect(result.output).toContain('failed to start (stop code TaskFailedToStart)')
+    expect(result.output).toContain('image pull')
+    expect(result.output).toContain('free memory')
+    expect(serviceCalls(result.calls)).toEqual([])
+  })
+
+  it('does not settle a stopping task that has no stop code yet', () => {
+    const result = deploy(FIXTURE_DIR, { FAKE_SETUP: 'timeout-stopping-no-stop-code' })
+    expect(result.status).toBe(1)
+    expect(result.output).toContain('may still be running')
+    expect(serviceCalls(result.calls)).toEqual([])
+  })
+
+  it('passes a setup whose essential container exited by itself', () => {
+    const result = deploy(FIXTURE_DIR, { FAKE_STOP_CODE: 'EssentialContainerExited' })
+    expect(result.status).toBe(0)
+    expect(serviceCalls(result.calls)).toHaveLength(1)
+  })
 
   it('creates the service the first time and updates it after', () => {
     const webArn = revisionArn('packwright-web')
@@ -538,7 +593,7 @@ describe('smoke.sh', () => {
     })
     expect(result.status).toBe(1)
     expect(result.output).toContain('FAIL: GET / did not answer 200')
-    // With no delay, the first check may make several requests before its deadline; none is for a later check.
+    // The first check may make several requests before its deadline; none is for a later check.
     expect(new Set(result.calls.map((call) => call.split(' ').at(-1)))).toEqual(
       new Set([`https://${HOST}/`]),
     )
@@ -586,6 +641,7 @@ describe('smoke.sh', () => {
     ['SMOKE_FIRST_SECONDS', 'abc'],
     ['SMOKE_SECONDS', '-1'],
     ['SMOKE_DELAY_SECONDS', '1.5'],
+    ['SMOKE_DELAY_SECONDS', '0'],
   ])('refuses %s=%s, naming the setting, before any request', (name, value) => {
     const result = run([join(here, 'smoke.sh')], ECS_DIR, { [name]: value })
     expect(result.status).toBe(2)

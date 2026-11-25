@@ -104,9 +104,9 @@ print_setup_log() {
     | @tsv' "$rendered/setup.json")
 }
 
-# Before step 3, look at the service once, and refuse before the setup task runs: a deploy that will be
-#    refused must not have run a setup task (a migration) first, or the schema would be ahead of the code.
-#    (Registering a revision above changes nothing that serves.)
+# Before step 3, look at the service once, and refuse before the setup task runs: a deploy that will
+#    be refused must not have run a setup task (a migration) first, or the schema would be ahead of
+#    the code. (Registering a revision above changes nothing that serves.)
 #    The same reply decides, in step 4, between an update and a create.
 echo "==> Checking $cluster/$slug"
 described="$(aws ecs describe-services --cluster "$cluster" --services "$slug" --output json)"
@@ -121,8 +121,9 @@ if [[ "$status" == ACTIVE && "$(jq -r '.services[0].desiredCount' <<<"$described
 fi
 
 # 3. Setup, before anything that serves traffic changes. Any container that does not stop with
-#    exit code 0 (a failure, no exit code at all, or a task never placed) ends the deploy here,
-#    with the old version still serving.
+#    exit code 0 (a failure, no exit code at all, or a task never placed), and any task ECS stopped for
+#    a reason other than its essential container exiting, ends the deploy here, with the old version
+#    still serving.
 if [[ -n "$setup_arn" ]]; then
   echo "==> Running the setup task"
   started="$(aws ecs run-task --cluster "$cluster" --launch-type EC2 \
@@ -137,9 +138,10 @@ if [[ -n "$setup_arn" ]]; then
     # role cannot stop it, so say so: a re-run would start a second setup on the same database.
     settled="$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task_arn" --output json |
       jq -r '(.tasks[0] // {}) as $t | ($t.containers // []) as $c
-        | $t.lastStatus == "STOPPED" or (($c | length) > 0 and ($c | all(.exitCode != null)))' || true)"
-    # A task that stopped just after the waiter gave up (or whose containers have all exited and that
-    # is still STOPPING) is judged by its exit code below, like any other stopped task: a clean setup
+        | $t.lastStatus == "STOPPED"
+        or (($c | length) > 0 and ($c | all(.exitCode != null)) and $t.stopCode != null)' || true)"
+    # A task that stopped just after the waiter gave up (or that is still STOPPING with every
+    # container exited and its stop code set) is judged by its exit code below, like any other stopped task: a clean setup
     # must not fail the deploy.
     if [[ "$settled" != true ]]; then
       fail "the setup task $task_arn did not stop in time and may still be running;" \
@@ -150,12 +152,33 @@ if [[ -n "$setup_arn" ]]; then
     fi
   fi
   stopped="$(aws ecs describe-tasks --cluster "$cluster" --tasks "$task_arn" --output json)"
-  if ! jq -e '[.tasks[0].containers[]? | .exitCode == 0] | length > 0 and all' \
+  # Exit code 0 is not enough: a task stopped with any stop code but EssentialContainerExited (a manual
+  # stop is UserInitiated) can have a migration that trapped SIGTERM and exited 0 half done. Only a task
+  # whose essential container exited by itself is a finished setup.
+  stop_code="$(jq -r '.tasks[0].stopCode // "none"' <<<"$stopped")"
+  all_exited_0=false
+  if jq -e '[.tasks[0].containers[]? | .exitCode == 0] | length > 0 and all' \
     <<<"$stopped" >/dev/null; then
-    jq -r '.tasks[0] | "    stopped: \(.stoppedReason // "no reason given")",
+    all_exited_0=true
+  fi
+  if [[ "$all_exited_0" != true || "$stop_code" != EssentialContainerExited ]]; then
+    jq -r '.tasks[0] | "    stopped: \(.stoppedReason // "no reason given") (stop code \(.stopCode // "none"))",
       (.containers[]? | "    \(.name): exit code \(.exitCode // "none") \(.reason // "")")' \
       <<<"$stopped" >&2
     print_setup_log "$task_arn"
+    if [[ "$stop_code" == TaskFailedToStart ]]; then
+      fail "the setup task failed to start (stop code TaskFailedToStart):" \
+        "check the image pull and the instance's free memory; the service was not touched"
+    fi
+    # Every container exited 0, but ECS gave no stop code, so nothing says the task finished by itself.
+    if [[ "$all_exited_0" == true && "$stop_code" == none ]]; then
+      fail "the setup task exited 0, but ECS reported no stop code, so it can't be trusted;" \
+        "check aws ecs describe-tasks --cluster $cluster --tasks $task_arn; the service was not touched"
+    fi
+    # Every container exited 0 but ECS, not the task, ended it: the trapped-signal case.
+    if [[ "$all_exited_0" == true ]]; then
+      fail "the setup task was stopped by ECS (stop code $stop_code), not by finishing, so the service was not touched"
+    fi
     fail "the setup task failed, so the service was not touched"
   fi
   echo "    setup succeeded"
