@@ -246,6 +246,17 @@ into a version only when there is a reason to.
 
 ### Fixed
 
+- **The setup-task and smoke-delay guards Open Door added, ported back.** `deploy/deploy.sh` now counts a setup
+  as successful only when every container exited 0 and ECS's stop code is `EssentialContainerExited`, so a
+  task ECS stopped (for example `UserInitiated`) whose migration trapped SIGTERM and exited 0 half done no
+  longer passes; it fails before the service is touched, saying it was stopped by ECS (stop code X), not by
+  finishing. Exit code 0 with no stop code fails as one that can't be trusted, `TaskFailedToStart` says to
+  check the image pull and the instance's free memory, and a non-zero or missing exit code still fails as
+  "the setup task failed". A task still STOPPING after the waiter gave up counts as settled only once every
+  container has an exit code and a stop code is set. `deploy/smoke.sh` now refuses `SMOKE_DELAY_SECONDS`
+  below 1 (exit code 2, naming the setting), so its retry loop can never send requests with no pause. Both
+  scripts match Open Door's again apart from the header, host and checks; `deploy/deploy.test.ts` covers each
+  rule, and its tests that used a delay of 0 now use 1.
 - **Three deploy guards, from the owner's review.** The deploy job now refuses a run whose commit is not the
   current head of `main` (a "Re-run jobs" on an older run, or an older run approved late, would otherwise put
   old code over a newer release); the head is read with `gh api` and both values go through `env`, never into

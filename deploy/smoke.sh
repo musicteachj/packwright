@@ -4,7 +4,7 @@
 # Every request goes to the load balancer at ALB_DNS_NAME while naming the real host, through
 # `curl --connect-to`, so the checks work before the DNS record exists and after. Each check retries
 # until it passes or its own deadline passes (measured with bash's SECONDS), SMOKE_DELAY_SECONDS apart
-# (5), and always makes at least one request. The first check (`/`) has SMOKE_FIRST_SECONDS (180),
+# (5, and never less than 1), and always makes at least one request. The first check (`/`) has SMOKE_FIRST_SECONDS (180),
 # because services-stable can answer as soon as the task is running, before the load balancer counts
 # the new target healthy (its checks run every 15 seconds and need 2 passes, after the target
 # registers), and the load balancer answers 503 at once until then, so a count of tries would run out
@@ -24,13 +24,19 @@ first_seconds="${SMOKE_FIRST_SECONDS:-180}"
 later_seconds="${SMOKE_SECONDS:-30}"
 delay="${SMOKE_DELAY_SECONDS:-5}"
 
-# Each setting must be a whole number of seconds, 0 or more; anything else is a mistake to name, not to guess at.
+# Each setting must be a whole number of seconds (the two windows 0 or more, the delay 1 or more, so the
+# loop can never hit the shared load balancer with no pause); anything else is a mistake to name, not to
+# guess at.
 for setting in SMOKE_FIRST_SECONDS:"$first_seconds" SMOKE_SECONDS:"$later_seconds" SMOKE_DELAY_SECONDS:"$delay"; do
   if [[ ! "${setting#*:}" =~ ^[0-9]+$ ]]; then
     echo "smoke.sh: ${setting%%:*} must be a non-negative whole number, got '${setting#*:}'" >&2
     exit 2
   fi
 done
+if ((10#$delay < 1)); then
+  echo "smoke.sh: SMOKE_DELAY_SECONDS must be at least 1, got '$delay'" >&2
+  exit 2
+fi
 first_seconds=$((10#$first_seconds))
 later_seconds=$((10#$later_seconds))
 delay=$((10#$delay))
@@ -41,9 +47,9 @@ fetch() {
     -w '\n%{http_code}' "https://$host$1"
 }
 
-# The three things a body is checked for, read from stdin.
-the_client() { grep -qF '<div id="app">'; }
+# The things a body is checked for, read from stdin. The readiness check needs only the 200.
 anything() { cat >/dev/null; }
+the_client() { grep -qF '<div id="app">'; }
 the_audit_status() { jq -e 'type == "object" and has("available")' >/dev/null; }
 
 # check <seconds> <path> <body check>: 200, and a body that passes, retried until it does or <seconds>
